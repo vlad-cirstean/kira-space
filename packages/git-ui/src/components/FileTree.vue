@@ -54,6 +54,7 @@ import {
   reviewAttention,
   toggleTitleKey,
 } from '../lib/reviewAttention.ts';
+import { keptScrollIf } from '../lib/reviewKeep.ts';
 import { buildFileRowMenu } from '../lib/rowMenuModel.ts';
 import { useRevealSelectedFile } from '../lib/useRevealSelectedFile.ts';
 import type { FileListMode } from '../state/detail.ts';
@@ -69,6 +70,8 @@ const props = defineProps<{
   parentIndex: number;
   store: CommitStore;
   actions: DetailActions;
+  /** Review Files pane only: view-state key of the tree scroll. */
+  keepScroll?: string | null;
   /** The commit these files belong to — enables the row menu's "Go to file"
    *  (`actions.goToFile({ rev: sha, path, line: 1 })`). Absent
    *  renders byte-identically: the item does not appear, the same "absent, not disabled"
@@ -178,6 +181,7 @@ const {
 watch(() => props.files, resetCap);
 
 const treeEl = ref<HTMLDivElement | null>(null);
+keptScrollIf(() => props.keepScroll ?? null, treeEl, { ready: () => visibleRows.value.length > 0 });
 const rootEl = ref<HTMLElement | null>(null);
 const activeKey = ref<string | null>(null);
 

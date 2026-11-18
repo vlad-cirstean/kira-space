@@ -65,6 +65,8 @@ const props = withDefaults(
     committed?: boolean;
     /** Shown above the Uncommitted section when `committed` is false. */
     emptyNote?: string;
+    /** View-state key of the committed tree's scroll; null keeps none. */
+    keepScroll?: string | null;
   }>(),
   { committed: true, emptyNote: '' },
 );
@@ -258,6 +260,7 @@ function onToggleWorkingReviewed(path: string): void {
         v-if="committed"
         data-testid="review-files-tree"
         class="flex-auto min-h-0"
+        :keep-scroll="keepScroll"
         :files="files"
         :selected-file="selectedIndex"
         :list-mode="listMode"

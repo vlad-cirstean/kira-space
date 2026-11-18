@@ -20,11 +20,14 @@ import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, useTemplateRef } from 'vue';
+import { keptScrollIf } from '../../lib/reviewKeep.ts';
 import { shaLabel } from '../../lib/text.ts';
 import type { ReviewCommentsState } from '../../state/reviewComments.ts';
 
 const props = defineProps<{
   reviewComments: ReviewCommentsState;
+  /** View-state key of the list scroll; null keeps none. */
+  keepScroll?: string | null;
 }>();
 
 // Reuses ReviewFilesState.selectFile rather than a second editor.openRangeDiff call site (D10) —
@@ -91,6 +94,7 @@ function anchorTitle(c: ReviewComment): string | undefined {
 // data-kira-tip — MountRoot.vue's own TooltipProvider (Part 2 §3.5) covers every real
 // Tooltip/TooltipTrigger trio this file also uses.
 const listEl = useTemplateRef<HTMLElement>('list');
+keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value.length > 0 });
 </script>
 
 <template>

@@ -146,8 +146,7 @@ U47 packages/git-ui/src/components/SearchResults.vue # listbox of the SearchBox 
 U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defers each request with its own zero-delay timer; debounce drops concurrent ones
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
 U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
-U109 packages/git-ui/src/components/FileTree.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
-U109 packages/git-ui/src/components/review/ReviewView.vue # git-ui is its own Vue app with no Pinia; P660 Part 2 changes its mount contract
+U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not

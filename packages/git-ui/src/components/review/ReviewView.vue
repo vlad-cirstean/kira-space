@@ -6,7 +6,8 @@ import { Button } from '@theme/components/ui/button';
 /**
  * The sidebar view's root, mounted by `main.ts` when `view === "review"`. States: no branch, ask
  * for a base, unrelated histories, nothing to review, the list, plus `resolving` and `error`.
- * Persists nothing itself (`viewState` is accepted only to share `MountOptions` with `AppRoot`).
+ * Keeps view state through the host's `keep` (lib/reviewKeep.ts); `viewState` is accepted only to
+ * share `MountOptions`.
  *
  * The branch arrives three ways: `props.target` (cold bootstrap), the `review.target` event (any
  * time), and the no-branch state's own picker.
@@ -22,6 +23,7 @@ import { BridgeClient } from '../../bridge/client.ts';
 import { adjacentInOrder, orderedFilePaths } from '../../lib/fileTreeModel.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import { createReviewFilesActions } from '../../lib/reviewFilesActions.ts';
+import { useReviewKeep } from '../../lib/reviewKeep.ts';
 import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
 import { useReviewStepping } from '../../lib/useReviewStepping.ts';
 import { useReviewWorkingOnly } from '../../lib/useReviewWorkingOnly.ts';
@@ -173,15 +175,9 @@ async function bootstrap(): Promise<void> {
   }
 }
 
-/**
- * The read half of durable persistence — its own round trip, made once `bootstrap()`
- * has a real `repoId` in hand (right here, alongside `props.target`/`review.target`'s own
- * priority, both of which still win unchanged: `props.target` already returned above, and a
- * `review.target` push that races ahead of this call already set `review.branch.value`, checked
- * again just before applying so it is never clobbered). No commit/diff data is ever restored —
- * only identifiers `setTarget`/`setBase` already re-ask fresh; a snapshot the extension host
- * judges too old (14 days) comes back as `{session: null}`, the same as never having saved one.
- */
+/** The read half of durable persistence, run once `bootstrap()` has a `repoId`. `props.target` and
+ *  a `review.target` push win over it. Only identifiers are restored; a snapshot older than 14
+ *  days comes back as `{session: null}`. */
 async function resumeSession(id: string): Promise<void> {
   if (review.value?.branch.value) return;
   let loaded: { session: ReviewSessionSnapshot | null };
@@ -244,6 +240,7 @@ async function persistSession(): Promise<void> {
  *  never silently jumps back into a comparison the user deliberately left. */
 async function goBackToSelection(): Promise<void> {
   const id = repoId.value;
+  forgetBranch();
   review.value?.clearTarget();
   if (id) await bridge.request('review.session.save', { repoId: id, session: null });
 }
@@ -253,15 +250,14 @@ const { workingOnly, showsPanes, pane, emptyNote } = useReviewWorkingOnly(
   () => props.workingChanges,
 );
 
-// The file filter is revealed by the toolbar's search button; `filterVisible` gates it.
-const filterVisible = ref(false);
-
-// Declared before the composable below, which reads it at setup.
-const filter = ref('');
+// The toolbar's search button reveals the file filter; `filterVisible` gates it. Declared before the
+// composable below, which reads `filter` at setup.
+const keep = useReviewKeep({ review, reviewFiles });
+const { filter, filterVisible, stateKey, scrollKeys, forgetBranch } = keep;
 
 // Type to search: a printable key in the commit list reveals the file filter and starts it.
 const { showSearch } = usePanelHeaderSearch(rootEl, {
-  stateKey: null,
+  stateKey,
   searchable: () => showsPanes.value,
   getSearch: () => filter.value,
   setSearch: (value) => {
@@ -566,6 +562,7 @@ useReviewAnnouncements(review, announce);
             :list-mode="listMode"
             :filter="filter"
             :boundary="rootEl"
+            :keep-scroll="scrollKeys?.commits ?? null"
           />
         </template>
 
@@ -583,6 +580,7 @@ useReviewAnnouncements(review, announce);
           :cursor="cursor"
           :can-step="canStep"
           :review-shortcuts="reviewShortcuts === true"
+          :keep-scroll="scrollKeys?.files ?? null"
           @step="step"
           @opened-working="(path) => (cursor = { section: 'working', path })"
         />
@@ -591,6 +589,7 @@ useReviewAnnouncements(review, announce);
           v-else-if="showsPanes && pane === 'comments' && reviewComments"
           class="flex-1 min-h-0"
           :review-comments="reviewComments"
+          :keep-scroll="scrollKeys?.comments ?? null"
           @select="onSelectComment"
         />
       </div>

@@ -83,10 +83,10 @@ const viewOptions = computed(() => [
 // This panel is one persistent component instance across every repo workspace
 // (WorkbenchShell.vue's `<component :is="activeModePanel" />` carries no per-repo key, unlike a
 // tab), so "kept alive with v-show while the workspace is open" is tracked per repoId here
-// rather than with a single boolean — switching to a DIFFERENT repo's workspace and back remounts
-// (review.session.save/load is exactly the resume path that makes that safe) while switching
-// between this SAME repo's Files/Search/Review segments never does, since the set entry it added
-// on first activation never goes away.
+// rather than with a single boolean — switching to a DIFFERENT repo's workspace, or to another
+// module and back, remounts (review.session.save/load plus the kept view state in
+// useViewStateStore restore it) while switching between this SAME repo's Files/Search/Review
+// segments never does, since the set entry it added on first activation never goes away.
 const reviewActivatedRepoIds = reactive(new Set<string>());
 // A watcher, not the computed setter above, because setRepoPanelTab also has a second caller
 // (hostHandlers.ts's review.open, via "Review branch changes") this component's own setter is

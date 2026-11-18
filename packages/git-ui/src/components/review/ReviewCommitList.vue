@@ -9,6 +9,7 @@ import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref } from 'vue';
+import { keptScrollIf } from '../../lib/reviewKeep.ts';
 import type { FileListMode } from '../../state/detail.ts';
 import type { DetailActions } from '../../state/detailActions.ts';
 import type { ReviewSessionState } from '../../state/review.ts';
@@ -23,6 +24,8 @@ const props = defineProps<{
   filter: string;
   /** The view's root: Escape counts only when it lands inside it (a graph tab can sit beside). */
   boundary: HTMLElement | null;
+  /** View-state key of the list scroll; null keeps none. */
+  keepScroll?: string | null;
 }>();
 
 // `generation` is read so a reset that lands on the same row count (a base override back to an
@@ -52,6 +55,8 @@ const { virtualizer, virtualItems, totalSize, onScroll } = useVirtualRows({
   scrollElement: rowsEl,
   pinned: () => focusedRow.value,
 });
+
+keptScrollIf(() => props.keepScroll ?? null, rowsEl, { ready: () => totalSize.value > 0 });
 
 const focusedRowMounted = computed(() =>
   virtualItems.value.some((item) => item.index === focusedRow.value),
@@ -137,6 +142,7 @@ function loadMore(): void {
 
   <div
     ref="rowsEl"
+    data-testid="review-commit-rows"
     class="flex-1 min-h-0 overflow-auto"
     role="tree"
     :aria-label="t('common.module.commits.label')"
