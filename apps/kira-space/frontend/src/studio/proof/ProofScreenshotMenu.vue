@@ -2,14 +2,11 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SplitButton from '@theme/components/SplitButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from '@theme/components/ui/dropdown-menu';
+import { DropdownMenuContent, DropdownMenuLabel } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, toRef } from 'vue';
 import {
   useChooseShotLocation,
@@ -50,6 +47,52 @@ const tooltip = computed(() => {
     : t('studio.proof.shot.saveAllNoPath.tooltip');
 });
 
+const copyItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'copy',
+    testId: 'proof-shot-copy',
+    label: t('studio.proof.shot.copy.label'),
+    icon: 'copy',
+    run: () => shot.copy(),
+  },
+  ...(primary.value === 'copyAll'
+    ? [
+        {
+          type: 'item' as const,
+          id: 'save-all',
+          testId: 'proof-shot-save-all',
+          label: t('studio.proof.shot.saveAll.label'),
+          icon: 'save-all',
+          run: () => shot.saveAll(),
+        },
+      ]
+    : []),
+  { type: 'separator' },
+]);
+const locationItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'location-choose',
+    testId: 'proof-shot-location-choose',
+    label: t('studio.proof.shot.location.choose.label'),
+    icon: 'folder',
+    run: () => choose.mutate(undefined, { onError: fail }),
+  },
+  ...(location.data.value?.custom
+    ? [
+        {
+          type: 'item' as const,
+          id: 'location-reset',
+          testId: 'proof-shot-location-reset',
+          label: t('studio.proof.shot.location.reset.label'),
+          icon: 'discard',
+          run: () => reset.mutate(undefined, { onError: fail }),
+        },
+      ]
+    : []),
+]);
+
 function fail(e: unknown): void {
   store.setShotResult({ kind: 'error', message: errorText(e) });
 }
@@ -74,17 +117,8 @@ function fail(e: unknown): void {
     }}
     <template #menu>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem data-testid="proof-shot-copy" @select="shot.copy()">
-          {{ t('studio.proof.shot.copy.label') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          v-if="primary === 'copyAll'"
-          data-testid="proof-shot-save-all"
-          @select="shot.saveAll()"
-        >
-          {{ t('studio.proof.shot.saveAll.label') }}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        <MenuItems :items="copyItems" />
+        <!-- rich block: MenuItem has no multi-line label kind -->
         <DropdownMenuLabel
           v-if="location.data.value"
           class="flex h-auto max-w-80 flex-col items-stretch justify-start gap-0.5 py-1 font-normal normal-case tracking-normal"
@@ -101,19 +135,7 @@ function fail(e: unknown): void {
             t('studio.proof.shot.location.missing.status')
           }}</span>
         </DropdownMenuLabel>
-        <DropdownMenuItem
-          data-testid="proof-shot-location-choose"
-          @select="choose.mutate(undefined, { onError: fail })"
-        >
-          {{ t('studio.proof.shot.location.choose.label') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          v-if="location.data.value?.custom"
-          data-testid="proof-shot-location-reset"
-          @select="reset.mutate(undefined, { onError: fail })"
-        >
-          {{ t('studio.proof.shot.location.reset.label') }}
-        </DropdownMenuItem>
+        <MenuItems :items="locationItems" />
       </DropdownMenuContent>
     </template>
   </SplitButton>

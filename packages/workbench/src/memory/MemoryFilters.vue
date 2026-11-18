@@ -62,6 +62,7 @@ function clear(): void {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuLabel>{{ t('common.field.scope.label') }}</DropdownMenuLabel>
+        <!-- checkbox: MenuItem has no checkbox kind -->
         <DropdownMenuCheckboxItem
           v-for="scope in SCOPES"
           :key="scope"

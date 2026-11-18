@@ -65,6 +65,7 @@ async function onSelect(value: unknown): Promise<void> {
       </PickerTrigger>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" data-testid="docker-context-menu">
+      <!-- radio: MenuItem has no radio kind -->
       <DropdownMenuRadioGroup :model-value="selected" @update:model-value="onSelect">
         <DropdownMenuRadioItem
           :value="AUTOMATIC"

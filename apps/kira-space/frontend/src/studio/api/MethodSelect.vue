@@ -38,6 +38,7 @@ function select(value: unknown): void {
       </DropdownMenuTrigger>
     </div>
     <DropdownMenuContent align="start" data-testid="method-menu">
+      <!-- radio: MenuItem has no radio kind -->
       <DropdownMenuRadioGroup :model-value="method" @update:model-value="select">
         <DropdownMenuRadioItem
           v-for="m in HTTP_METHODS"

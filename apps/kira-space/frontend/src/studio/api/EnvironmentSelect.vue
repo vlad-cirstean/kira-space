@@ -4,14 +4,14 @@ import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed } from 'vue';
 import { useVariablesStore } from './state/variables';
 
@@ -45,9 +45,17 @@ function onSelect(value: unknown): void {
   void variablesStore.selectEnvironmentForTab(props.tabId, id === NONE ? '' : id);
 }
 
-function manage(): void {
-  variablesStore.openEnvironments();
-}
+const manageItems = computed<MenuItem[]>(() => [
+  { type: 'separator' },
+  {
+    type: 'item',
+    id: 'manage',
+    testId: 'api-environment-manage',
+    label: t('studio.api.environments.manage.label'),
+    icon: 'settings-gear',
+    run: () => variablesStore.openEnvironments(),
+  },
+]);
 </script>
 
 <template>
@@ -67,6 +75,7 @@ function manage(): void {
       </DropdownMenuTrigger>
     </div>
     <DropdownMenuContent align="end" data-testid="api-environment-menu">
+      <!-- radio: MenuItem has no radio kind -->
       <DropdownMenuRadioGroup :model-value="radioValue" @update:model-value="onSelect">
         <DropdownMenuRadioItem
           :value="NONE"
@@ -89,10 +98,7 @@ function manage(): void {
           <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
         </DropdownMenuRadioItem>
       </DropdownMenuRadioGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem data-testid="api-environment-manage" @select="manage">
-        <span class="flex-1 truncate">{{ t('studio.api.environments.manage.label') }}</span>
-      </DropdownMenuItem>
+      <MenuItems :items="manageItems" />
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

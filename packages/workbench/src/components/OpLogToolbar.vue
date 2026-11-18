@@ -8,14 +8,14 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { OpLogStatusFilter } from '../lib/opLog';
+import type { MenuItem } from '../state/contextMenu';
+import MenuItems from './MenuItems.vue';
 
 // The Operations panel's one toolbar row: filter text, status tabs (Running carries its count), the
 // optional facet dropdown, the app's own `default` slot content and Clear.
@@ -42,6 +42,17 @@ const statusFilterOptions = computed(() => [
     testid: 'ops-tab-running',
   },
   { value: 'error', label: t('workbench.opLog.errors.option'), testid: 'ops-tab-error' },
+]);
+
+const allItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'facet-all',
+    testId: 'ops-facet-all',
+    label: t('common.state.all.option'),
+    run: () => emit('update:facetValues', []),
+  },
+  { type: 'separator' },
 ]);
 
 function toggleFacet(value: string): void {
@@ -81,10 +92,8 @@ function toggleFacet(value: string): void {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem data-testid="ops-facet-all" @select="emit('update:facetValues', [])">
-          {{ t('common.state.all.option') }}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        <MenuItems :items="allItems" />
+        <!-- checkbox: MenuItem has no checkbox kind -->
         <DropdownMenuCheckboxItem
           v-for="option in facet.options"
           :key="option.value"

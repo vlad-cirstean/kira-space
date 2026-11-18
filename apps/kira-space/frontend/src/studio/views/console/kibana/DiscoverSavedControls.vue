@@ -8,7 +8,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Kbd } from '@theme/components/ui/kbd';
@@ -16,10 +15,12 @@ import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText, toCodedError } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { formatShortcut } from '@workbench/shortcuts/keys';
-import { ref, useTemplateRef, watch } from 'vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { guardedSavedWrite } from '../../../state/guardedSavedWrite';
 import DiscoverSavedMenu from './DiscoverSavedMenu.vue';
@@ -120,6 +121,39 @@ function onApply(entry: SavedDiscoverQuery): void {
   if (props.d.applySaved(entry)) emit('run');
 }
 
+const moreItems = computed<MenuItem[]>(() => [
+  {
+    type: 'item',
+    id: 'save-as',
+    testId: 'kibana-save-as',
+    label: t('studio.kibana.saved.saveAs.label'),
+    icon: 'save-as',
+    disabled: !props.d.body.value || pending(),
+    run: onSaveAs,
+  },
+  {
+    type: 'item',
+    id: 'revert',
+    testId: 'kibana-revert',
+    label: t('studio.kibana.saved.revert.label'),
+    icon: 'discard',
+    disabled: !props.d.state.value.saved || !props.d.dirty.value,
+    run: onRevert,
+  },
+  ...(props.d.state.value.saved
+    ? [
+        {
+          type: 'item' as const,
+          id: 'detach',
+          testId: 'kibana-detach',
+          label: t('studio.kibana.saved.detach.label'),
+          icon: 'debug-disconnect',
+          run: () => props.d.unlink(),
+        },
+      ]
+    : []),
+]);
+
 const menuOpen = ref(false);
 const menuTrigger = useTemplateRef<{ $el: HTMLElement }>('menuTrigger');
 const saveChord = formatShortcut('form.save');
@@ -172,27 +206,7 @@ const saveChord = formatShortcut('form.save');
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            :disabled="!d.body.value || pending()"
-            data-testid="kibana-save-as"
-            @select="onSaveAs"
-          >
-            {{ t('studio.kibana.saved.saveAs.label') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            :disabled="!d.state.value.saved || !d.dirty.value"
-            data-testid="kibana-revert"
-            @select="onRevert"
-          >
-            {{ t('studio.kibana.saved.revert.label') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            v-if="d.state.value.saved"
-            data-testid="kibana-detach"
-            @select="d.unlink()"
-          >
-            {{ t('studio.kibana.saved.detach.label') }}
-          </DropdownMenuItem>
+          <MenuItems :items="moreItems" />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
