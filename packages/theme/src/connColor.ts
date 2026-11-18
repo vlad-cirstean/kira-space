@@ -46,6 +46,27 @@ const CONN_TEXT: Record<string, string> = {
   grey: 'text-conn-grey',
 };
 
+// Picker swatch: the colour, kept when checked (RadioGroupItem would turn it primary).
+const CONN_SWATCH: Record<string, string> = {
+  red: 'bg-conn-red data-[state=checked]:bg-conn-red',
+  orange: 'bg-conn-orange data-[state=checked]:bg-conn-orange',
+  amber: 'bg-conn-amber data-[state=checked]:bg-conn-amber',
+  olive: 'bg-conn-olive data-[state=checked]:bg-conn-olive',
+  green: 'bg-conn-green data-[state=checked]:bg-conn-green',
+  teal: 'bg-conn-teal data-[state=checked]:bg-conn-teal',
+  cyan: 'bg-conn-cyan data-[state=checked]:bg-conn-cyan',
+  blue: 'bg-conn-blue data-[state=checked]:bg-conn-blue',
+  indigo: 'bg-conn-indigo data-[state=checked]:bg-conn-indigo',
+  violet: 'bg-conn-violet data-[state=checked]:bg-conn-violet',
+  magenta: 'bg-conn-magenta data-[state=checked]:bg-conn-magenta',
+  grey: 'bg-conn-grey data-[state=checked]:bg-conn-grey',
+  none: 'swatch-none border-[color:var(--kira-fg-muted)] data-[state=checked]:border-[color:var(--kira-fg-muted)] data-[state=checked]:bg-transparent',
+};
+
+export function connSwatchClass(color: string): string {
+  return CONN_SWATCH[color] ?? '';
+}
+
 export function connBgClass(color: string | null | undefined): string | undefined {
   return color ? CONN_BG[color] : undefined;
 }
