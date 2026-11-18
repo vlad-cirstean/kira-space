@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useQuery } from '@tanstack/vue-query';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
@@ -139,7 +140,7 @@ function close(): void {
               {{ c.column }}
               <template v-if="c.before === null || c.after === null">
                 <Badge v-if="c.before === null">{{ t('studio.common.nullValue.label') }}</Badge>
-                <span class="text-muted-foreground">→</span>
+                <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
                 <Badge v-if="c.after === null">{{ t('studio.common.nullValue.label') }}</Badge>
               </template>
             </button>

@@ -174,7 +174,7 @@ function copy(): void {
       <span class="min-w-0 truncate">{{ b.name }}</span>
       <span class="inline-flex items-center gap-1 text-subtle"
         ><Identifier :value="b.before" :short="shortSha" />
-        →
+        <CodiconIcon name="arrow-right" :size="12" />
         <Identifier :value="b.after" :short="shortSha" /></span
       >
       <span v-if="!b.onBase" class="text-warn">{{ t('space.ade.outcome.notOnBase.status') }}</span>

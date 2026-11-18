@@ -176,7 +176,9 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
     />
     <div class="flex items-center gap-1.5 px-2 pt-2">
       <TextTooltip v-if="data.start" :text="t('common.action.start.label')"
-        ><span class="text-ok" data-testid="ade-wf-node-start">▶</span></TextTooltip
+        ><span class="text-ok" data-testid="ade-wf-node-start"
+          ><CodiconIcon :name="ICON.run" :size="13" /></span
+        ></TextTooltip
       >
       <span class="shrink-0 font-medium" data-testid="ade-wf-node-number"
         >{{ data.index + 1 }}.</span

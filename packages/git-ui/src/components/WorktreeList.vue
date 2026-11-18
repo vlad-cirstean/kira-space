@@ -20,6 +20,7 @@ import type { WorktreeEntry, WorktreeRemovePreflight } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -140,12 +141,11 @@ async function confirmRemove(): Promise<void> {
       :tabindex="focusedRowId === `worktree:${entry.path}` ? 0 : -1"
     >
       <div data-testid="branch-row-main" class="flex items-center gap-0.5 flex-1 min-w-0 text-left">
-        <span
+        <StatusDot
           v-if="entry.isCurrent"
-          class="text-kira-sm text-subtle"
+          tone="muted"
           :data-kira-tip="t('git.worktree.current.tooltip')"
-          >●</span
-        >
+        />
         <span
           v-if="entry.isMain"
           class="text-kira-sm text-subtle"

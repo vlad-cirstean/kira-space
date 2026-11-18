@@ -158,7 +158,7 @@ const summaryLabel = computed(() => {
         review.branch.value
       }}</span
     >
-    <span class="text-muted-foreground shrink-0" aria-hidden="true">↔</span>
+    <CodiconIcon name="arrow-swap" :size="13" class="shrink-0 text-muted-foreground" />
     <span
       v-if="locked"
       class="min-w-0 truncate font-data text-kira-md text-fg"

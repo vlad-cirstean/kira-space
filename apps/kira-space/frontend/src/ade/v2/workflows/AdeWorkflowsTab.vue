@@ -9,6 +9,7 @@ import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
+import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -164,18 +165,12 @@ async function createNew(): Promise<void> {
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-lg font-medium"
-              data-testid="ade-wf-row-name"
-              >{{
-                e.workflow?.name ?? configName(e.fileName)
-              }}</span
-            >
+            <span class="min-w-0 flex-1 truncate font-medium" data-testid="ade-wf-row-name">{{
+              e.workflow?.name ?? configName(e.fileName)
+            }}</span>
             <TextTooltip v-if="e.error" :text="e.error.message">
-              <span
-                class="shrink-0 text-kira-sm font-medium text-error"
-                data-testid="ade-wf-row-error"
-                >✕</span
+              <span class="shrink-0 text-error" data-testid="ade-wf-row-error"
+                ><CodiconIcon :name="ICON.error" :size="13" /></span
               >
             </TextTooltip>
           </span>

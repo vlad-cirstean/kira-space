@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { statusClass, statusHint } from '@shared/domain/http';
 import type { ResponseHistorySnapshot } from '@shared/domain/responseHistory';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
@@ -291,7 +292,7 @@ onUnmounted(() => {
                 <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
               </div>
             </div>
-            <span class="text-muted-foreground">→</span>
+            <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
             <div class="flex flex-col gap-0.5">
               <TextTooltip :text="snapB.entry.sentAt">
                 <span :class="[rowMeta, 'self-start']">{{

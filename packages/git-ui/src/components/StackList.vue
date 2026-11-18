@@ -18,6 +18,7 @@ import type { StackBranch } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -122,12 +123,11 @@ async function removeFromStack(branch: string): Promise<void> {
           data-testid="branch-row-main"
           class="flex items-center gap-0.5 flex-1 min-w-0 text-left"
         >
-          <span
+          <StatusDot
             v-if="row.isHead"
-            class="text-kira-sm text-muted-foreground"
+            tone="muted"
             :data-kira-tip="t('git.common.currentBranch.tooltip')"
-            >●</span
-          >
+          />
           <span class="truncate">{{ row.name }}</span>
           <span v-if="row.stale" :class="refBadgeClass('warn')" :data-kira-tip="row.staleText">
             {{ t('common.stale.status') }}

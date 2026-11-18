@@ -3,6 +3,7 @@ import type { RefRow } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -215,15 +216,13 @@ async function submitRename(from: string, to: string): Promise<void> {
           :class="cn(rowVariants(), 'flex-1 min-w-0 text-left')"
           @click="checkoutBranch(row)"
         >
-          <span
-            class="w-2.5 text-focus"
-            :role="row.isHead ? 'img' : undefined"
-            :aria-label="row.isHead ? t('git.common.currentBranch.tooltip') : undefined"
-            :aria-hidden="!row.isHead"
-            >{{
-              row.isHead ? '●' : ''
-            }}</span
-          >
+          <span class="w-2.5">
+            <StatusDot
+              v-if="row.isHead"
+              tone="muted"
+              :label="t('git.common.currentBranch.tooltip')"
+            />
+          </span>
           <span class="truncate">{{ row.shortName }}</span>
           <Badge
             v-if="row.checkedOutIn"

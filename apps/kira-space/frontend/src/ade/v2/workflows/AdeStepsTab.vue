@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -126,19 +127,13 @@ async function createNew(kind: StepKind): Promise<void> {
           @click="pick(e.fileName)"
         >
           <span class="flex w-full items-center gap-1.5">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-lg font-medium"
-              data-testid="ade-step-row-name"
-              >{{
-                e.step?.name ?? e.fileName
-              }}</span
-            >
+            <span class="min-w-0 flex-1 truncate font-medium" data-testid="ade-step-row-name">{{
+              e.step?.name ?? e.fileName
+            }}</span>
             <Badge v-if="e.step" variant="default">{{ kindLabel(e.step.kind) }}</Badge>
             <TextTooltip v-if="e.error" :text="e.error.message">
-              <span
-                class="shrink-0 text-kira-sm font-medium text-error"
-                data-testid="ade-step-row-error"
-                >✕</span
+              <span class="shrink-0 text-error" data-testid="ade-step-row-error"
+                ><CodiconIcon :name="ICON.error" :size="13" /></span
               >
             </TextTooltip>
           </span>

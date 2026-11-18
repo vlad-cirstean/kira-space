@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { HttpTimelineHop } from '@shared/domain/http';
 import { statusClass, statusHint } from '@shared/domain/http';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
@@ -255,7 +256,7 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
             <span class="text-muted-foreground">{{ hop.index + 1 }}</span>
             <span>{{ hop.method }}</span>
             <span class="min-w-0 flex-1"><TruncatedText :text="hop.url" /></span>
-            <span>→</span>
+            <CodiconIcon name="arrow-right" :size="12" />
             <TextTooltip v-if="hop.status > 0" :text="statusHint(hop.status)"
               ><Badge data :variant="statusClass(hop.status)"
                 >{{ hop.status }} {{ hop.statusText }}</Badge
