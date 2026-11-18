@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { Skeleton } from '@theme/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -237,30 +237,29 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
           data-testid="ade-links-line"
           :data-category="g.id"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <span
-                class="flex min-h-6 w-5 shrink-0 items-center justify-center text-muted-foreground"
-                role="img"
-                :aria-label="
-                  t('space.ade.links.category.tooltip', {
-                    category: t(CATEGORY_LABEL[g.id]),
-                    count: g.items.length,
-                  })
-                "
-                :data-category="g.id"
-                data-testid="ade-links-category"
-              >
-                <CodiconIcon :name="CATEGORY_ICON[g.id]" :size="13" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>{{
+          <TextTooltip
+            :text="
               t('space.ade.links.category.tooltip', {
                 category: t(CATEGORY_LABEL[g.id]),
                 count: g.items.length,
               })
-            }}</TooltipContent>
-          </Tooltip>
+            "
+          >
+            <span
+              class="flex min-h-6 w-5 shrink-0 items-center justify-center text-muted-foreground"
+              role="img"
+              :aria-label="
+                t('space.ade.links.category.tooltip', {
+                  category: t(CATEGORY_LABEL[g.id]),
+                  count: g.items.length,
+                })
+              "
+              :data-category="g.id"
+              data-testid="ade-links-category"
+            >
+              <CodiconIcon :name="CATEGORY_ICON[g.id]" :size="13" />
+            </span>
+          </TextTooltip>
           <Collapsible v-slot="{ open }" class="flex min-w-0 flex-1 flex-wrap gap-1 py-[3px]">
             <template v-for="(item, i) in g.items" :key="item.key">
               <Popover

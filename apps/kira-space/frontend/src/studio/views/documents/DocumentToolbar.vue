@@ -4,6 +4,7 @@ import type { PageSize } from '@shared/domain/tabs';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
@@ -122,32 +123,31 @@ const projectionCount = computed(() => {
         }}</TooltipContent>
       </Tooltip>
       <div class="relative">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              ref="projectionTriggerEl"
-              variant="toolbar"
-              size="kira-icon"
-              class="relative"
-              :aria-expanded="projectionOpen"
-              :aria-label="t('studio.common.fields.label')"
-              data-testid="document-toolbar-projection"
-              @click="projectionOpen = !projectionOpen"
-            >
-              <CodiconIcon name="list-selection" :size="13" />
-              <StatusDot
-                v-if="tab.state.projection !== null"
-                tone="state-on"
-                class="absolute top-0.5 right-0.5"
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{
+        <TextTooltip
+          :text="
             projectionCount
               ? t('studio.documents.projection.shown.tooltip', projectionCount)
               : t('studio.common.fields.label')
-          }}</TooltipContent>
-        </Tooltip>
+          "
+        >
+          <Button
+            ref="projectionTriggerEl"
+            variant="toolbar"
+            size="kira-icon"
+            class="relative"
+            :aria-expanded="projectionOpen"
+            :aria-label="t('studio.common.fields.label')"
+            data-testid="document-toolbar-projection"
+            @click="projectionOpen = !projectionOpen"
+          >
+            <CodiconIcon name="list-selection" :size="13" />
+            <StatusDot
+              v-if="tab.state.projection !== null"
+              tone="state-on"
+              class="absolute top-0.5 right-0.5"
+            />
+          </Button>
+        </TextTooltip>
         <Popover :open="projectionOpen" @update:open="(v) => (projectionOpen = v)">
           <PopoverAnchor
             :reference="(projectionTriggerEl?.$el as HTMLElement) ?? undefined"

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
@@ -343,31 +344,26 @@ function onDeleteRow(): void {
 
     <Popover :open="columnsOpen" @update:open="columnsOpen = $event">
       <div ref="columnsAnchorRef" class="relative">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="kira-icon"
-              class="relative"
-              data-testid="toolbar-columns"
-              :aria-label="t('studio.common.columns.label')"
-              :aria-expanded="columnsOpen"
-              @click="columnsOpen = !columnsOpen"
-            >
-              <CodiconIcon name="list-selection" :size="13" />
-              <StatusDot
-                v-if="columnsIndicator"
-                tone="state-on"
-                class="absolute top-0.5 right-0.5"
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{
+        <TextTooltip
+          :text="
             columnCount
               ? t('studio.grid.columns.shown.tooltip', columnCount)
               : t('studio.common.columns.label')
-          }}</TooltipContent>
-        </Tooltip>
+          "
+        >
+          <Button
+            variant="toolbar"
+            size="kira-icon"
+            class="relative"
+            data-testid="toolbar-columns"
+            :aria-label="t('studio.common.columns.label')"
+            :aria-expanded="columnsOpen"
+            @click="columnsOpen = !columnsOpen"
+          >
+            <CodiconIcon name="list-selection" :size="13" />
+            <StatusDot v-if="columnsIndicator" tone="state-on" class="absolute top-0.5 right-0.5" />
+          </Button>
+        </TextTooltip>
         <PopoverAnchor :reference="columnsAnchorRef ?? undefined" />
       </div>
       <ColumnsMenu v-if="columnsOpen" :tab-id="tab.id" :caps="caps" />

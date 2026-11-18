@@ -3,10 +3,10 @@ import type { CommitStore } from '@kira/git-core';
 import { shortSha } from '@kira/git-core';
 import EmptyState from '@theme/components/EmptyState.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { FieldError } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 /**
@@ -76,14 +76,11 @@ function onOpenFile(index: number, pinned: boolean): void {
         <span class="min-w-0 text-kira-md text-fg"><TruncatedText :text="entry.message" /></span>
         <Badge><Identifier :value="entry.baseSha" :short="shortSha" /></Badge>
         <Badge v-if="entry.includedUntracked">{{ t('git.stash.untracked.example') }}</Badge>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="shrink-0 text-kira-sm text-subtle">{{
-              formatAgeCompact(entry.timestamp)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatAbsoluteUtc(entry.timestamp) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="formatAbsoluteUtc(entry.timestamp)">
+          <span class="shrink-0 text-kira-sm text-subtle">{{
+            formatAgeCompact(entry.timestamp)
+          }}</span>
+        </TextTooltip>
       </ViewToolbar>
       <FileTree
         class="flex-auto min-h-0"

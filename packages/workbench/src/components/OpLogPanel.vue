@@ -5,6 +5,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -411,25 +412,22 @@ function alignClass(column: OpLogColumn): string {
             >
               <template v-for="column in fitted" :key="column.id">
                 <span v-if="column.id === 'status'" class="flex items-center gap-1 min-w-0">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <span
-                        role="img"
-                        :aria-label="statusLabel(entry.item.row.record.status)"
-                        data-testid="op-status-icon"
-                        class="inline-flex shrink-0"
-                      >
-                        <Spinner v-if="entry.item.row.record.status === 'running'" label="" />
-                        <CodiconIcon
-                          v-else
-                          :name="STATUS_ICON[entry.item.row.record.status].icon"
-                          :size="13"
-                          :class="STATUS_ICON[entry.item.row.record.status].tone"
-                        />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{{ statusLabel(entry.item.row.record.status) }}</TooltipContent>
-                  </Tooltip>
+                  <TextTooltip :text="statusLabel(entry.item.row.record.status)">
+                    <span
+                      role="img"
+                      :aria-label="statusLabel(entry.item.row.record.status)"
+                      data-testid="op-status-icon"
+                      class="inline-flex shrink-0"
+                    >
+                      <Spinner v-if="entry.item.row.record.status === 'running'" label="" />
+                      <CodiconIcon
+                        v-else
+                        :name="STATUS_ICON[entry.item.row.record.status].icon"
+                        :size="13"
+                        :class="STATUS_ICON[entry.item.row.record.status].tone"
+                      />
+                    </span>
+                  </TextTooltip>
                   <Badge
                     v-if="statusNote?.(entry.item.row.record)"
                     class="min-w-0 truncate px-0.5"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -263,23 +263,20 @@ const secondText = computed<string>({
         data-testid="datetime-picker-prev-month"
         @click="pagePrev"
       />
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <!-- P42 D33a: a plain <button> now, so the label itself is the mode-cycling control --
+      <TextTooltip :text="t('studio.dateTimePicker.cycleView.tooltip')">
+        <!-- P42 D33a: a plain <button> now, so the label itself is the mode-cycling control --
                reset to look like the <span> it replaces rather than a bordered control. -->
-          <Button
-            type="button"
-            variant="toolbar"
-            size="kira"
-            class="h-auto px-1 py-0.5 text-fg"
-            data-testid="datetime-picker-month"
-            @click="cycleMode"
-          >
-            {{ labelText }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.dateTimePicker.cycleView.tooltip') }}</TooltipContent>
-      </Tooltip>
+        <Button
+          type="button"
+          variant="toolbar"
+          size="kira"
+          class="h-auto px-1 py-0.5 text-fg"
+          data-testid="datetime-picker-month"
+          @click="cycleMode"
+        >
+          {{ labelText }}
+        </Button>
+      </TextTooltip>
       <TooltipIconButton
         icon="chevron-right"
         :label="pageNextTitle"

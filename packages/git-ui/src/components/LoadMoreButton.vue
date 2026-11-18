@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 /**
  * §5.1.1's explicit "load more" affordance — pages of `pageSize` rows, never infinite scroll.
  * A plain click calls `graphView.loadMore()`; an Alt/Option-click ("do the bigger thing", the
@@ -10,7 +11,6 @@
  * load-more and refresh outcomes, and a second region here would fight it (plan lines ~1325-6).
  */
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatCount } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -59,16 +59,11 @@ function handleCancel(): void {
     v-if="!graphView.exhausted.value && (isLoading || graphView.remaining.value > 0)"
     class="flex items-center justify-center gap-1 py-1 px-2 shrink-0"
   >
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button variant="toolbar" size="kira" :pending="isLoading" @click="handlePress">
-          {{ buttonLabel }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {{ t('git.loadMore.loadAll.hint') }}
-      </TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('git.loadMore.loadAll.hint')">
+      <Button variant="toolbar" size="kira" :pending="isLoading" @click="handlePress">
+        {{ buttonLabel }}
+      </Button>
+    </TextTooltip>
     <!-- G34: the toolbar Button box already matches this shape; Cancel keeps its one genuine
          distinction, the underline. -->
     <Button

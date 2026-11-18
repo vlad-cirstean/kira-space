@@ -3,6 +3,7 @@ import type { EditorLanguageId } from '@shared/domain/editor';
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -425,12 +426,9 @@ const statusLine = computed(() => {
       <Badge v-if="isTruncatedValue" variant="warn" data-testid="cell-editor-badge-truncated">{{
         t('studio.common.truncated.status')
       }}</Badge>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Badge class="max-w-56 truncate" data-testid="cell-editor-status">{{ statusLine }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ statusLine }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="statusLine">
+        <Badge class="max-w-56 truncate" data-testid="cell-editor-status">{{ statusLine }}</Badge>
+      </TextTooltip>
       <Tooltip v-if="formatProblem">
         <TooltipTrigger as-child>
           <Badge variant="error" class="max-w-56 truncate" data-testid="cell-editor-invalid">{{
@@ -443,21 +441,18 @@ const statusLine = computed(() => {
       <!-- the format select + beautify/reset trio: this panel's own controls, set off from the
            identity badges with the standard s-4 gutter (mirrors CellEditor.html's inline group) -->
       <span class="flex items-center shrink-0 gap-1.5 ml-2">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <TooltipDisabledTrigger>
-              <PickerTrigger
-                size="kira"
-                class="max-w-40 font-ui"
-                data-testid="cell-editor-format"
-                :disabled="isNullValue"
-                :label="override ? formatLabel(override) : formatAutoLabel(detectedFormat)"
-                @click="openFormatMenu"
-              />
-            </TooltipDisabledTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatHint }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="formatHint">
+          <TooltipDisabledTrigger>
+            <PickerTrigger
+              size="kira"
+              class="max-w-40 font-ui"
+              data-testid="cell-editor-format"
+              :disabled="isNullValue"
+              :label="override ? formatLabel(override) : formatAutoLabel(detectedFormat)"
+              @click="openFormatMenu"
+            />
+          </TooltipDisabledTrigger>
+        </TextTooltip>
 
         <template v-if="!viewerMode">
           <CellGenerateMenu :disabled="!isEditable" @apply="applyGenerator" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { tabChipVariants } from '@theme/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -217,36 +218,33 @@ if (moveTab) {
       data-testid="tab-strip-pinned"
     >
       <template v-for="{ tab, icon } in pinnedTabs" :key="tab.id">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <button
-              type="button"
-              :class="tabChipVariants({ active: tab.active, size: 'icon' })"
-              data-testid="tab"
-              :data-tab-id="tab.id"
-              :data-tab-kind="tab.kind"
-              :data-active="tab.active"
-              data-pinned="true"
-              :aria-label="titleFor(tab)"
-              @click="onClick(tab)"
-              @contextmenu.prevent="onContextMenu($event, tab)"
-            >
-              <CodiconIcon
-                v-if="'codicon' in icon"
-                :name="icon.codicon"
-                :size="13"
-                class="shrink-0"
-              />
-              <span
-                v-else
-                class="shrink-0 tab-file-icon w-3.5 h-3.5 text-muted-foreground mask-contain mask-no-repeat mask-center"
-                :style="icon.fileStyle"
-                aria-hidden="true"
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>{{ titleFor(tab) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="titleFor(tab)">
+          <button
+            type="button"
+            :class="tabChipVariants({ active: tab.active, size: 'icon' })"
+            data-testid="tab"
+            :data-tab-id="tab.id"
+            :data-tab-kind="tab.kind"
+            :data-active="tab.active"
+            data-pinned="true"
+            :aria-label="titleFor(tab)"
+            @click="onClick(tab)"
+            @contextmenu.prevent="onContextMenu($event, tab)"
+          >
+            <CodiconIcon
+              v-if="'codicon' in icon"
+              :name="icon.codicon"
+              :size="13"
+              class="shrink-0"
+            />
+            <span
+              v-else
+              class="shrink-0 tab-file-icon w-3.5 h-3.5 text-muted-foreground mask-contain mask-no-repeat mask-center"
+              :style="icon.fileStyle"
+              aria-hidden="true"
+            />
+          </button>
+        </TextTooltip>
       </template>
       <span class="self-stretch shrink-0 w-px my-1 mr-0.5 bg-transparent" aria-hidden="true"></span>
     </div>

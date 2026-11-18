@@ -2,10 +2,10 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -100,20 +100,17 @@ defineSlots<{
           @click="emit('apply', entry)"
           @keydown="onRowKeydown($event, entry)"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                data-testid="saved-entry-pin"
-                class="flex shrink-0 border-0 bg-transparent p-0"
-                :class="isPinned(entry) ? 'text-warn' : 'text-subtle'"
-                @click.stop="emit('togglePin', entry)"
-              >
-                <CodiconIcon :name="isPinned(entry) ? 'star-full' : 'star-empty'" :size="13" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.savedList.pin.tooltip') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip :text="t('studio.savedList.pin.tooltip')">
+            <button
+              type="button"
+              data-testid="saved-entry-pin"
+              class="flex shrink-0 border-0 bg-transparent p-0"
+              :class="isPinned(entry) ? 'text-warn' : 'text-subtle'"
+              @click.stop="emit('togglePin', entry)"
+            >
+              <CodiconIcon :name="isPinned(entry) ? 'star-full' : 'star-empty'" :size="13" />
+            </button>
+          </TextTooltip>
           <slot name="entry" :entry="entry" />
           <span class="flex shrink-0 gap-0.5">
             <slot name="entry-actions" :entry="entry" />

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ConnectionFileMask } from '@shared/domain/connectionConfig';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -85,29 +86,28 @@ function onToggle(field: 'keep_hint' | 'correlate'): void {
         />
         <FieldLabel :for="maskRuleKeepHintId">{{ keepHintLabel }}</FieldLabel>
       </Field>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Field class="flex-none" orientation="horizontal">
-            <Checkbox
-              :id="maskRuleCorrelateId"
-              :model-value="!isNumber && (rule.correlate ?? true)"
-              :disabled="isNumber"
-              data-testid="mask-rule-correlate"
-              @update:model-value="onToggle('correlate')"
-            />
-            <FieldLabel :for="maskRuleCorrelateId">{{
-              t('studio.project.connectionDialog.privacy.tag.label')
-            }}</FieldLabel>
-          </Field>
-        </TooltipTrigger>
-        <TooltipContent>{{
+      <TextTooltip
+        :text="
           t(
             isNumber
               ? 'studio.project.connectionDialog.privacy.tagNumber.tooltip'
               : 'studio.project.connectionDialog.privacy.tag.tooltip',
           )
-        }}</TooltipContent>
-      </Tooltip>
+        "
+      >
+        <Field class="flex-none" orientation="horizontal">
+          <Checkbox
+            :id="maskRuleCorrelateId"
+            :model-value="!isNumber && (rule.correlate ?? true)"
+            :disabled="isNumber"
+            data-testid="mask-rule-correlate"
+            @update:model-value="onToggle('correlate')"
+          />
+          <FieldLabel :for="maskRuleCorrelateId">{{
+            t('studio.project.connectionDialog.privacy.tag.label')
+          }}</FieldLabel>
+        </Field>
+      </TextTooltip>
       <span class="flex min-w-0 items-center gap-1.5 text-subtle">
         <span class="font-data">{{ example.input }}</span>
         <CodiconIcon name="arrow-right" :size="12" />

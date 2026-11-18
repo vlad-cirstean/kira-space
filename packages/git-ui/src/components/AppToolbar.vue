@@ -23,6 +23,7 @@ import type { StashEntry } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import SplitButton from '@theme/components/SplitButton.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { DropdownMenuContent } from '@theme/components/ui/dropdown-menu';
@@ -322,23 +323,18 @@ const stashDisabled = computed(
 
     <template v-if="hasRemote">
       <ToolbarSeparator />
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira"
-            :disabled="fetchDisabled"
-            data-testid="fetch-button"
-            @click="doFetch"
-          >
-            <CodiconIcon name="cloud-download" :size="13" />
-            {{ t('git.toolbar.fetch.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{
-          t('common.fetchTarget.tooltip', { name: defaultRemote ?? '' })
-        }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('common.fetchTarget.tooltip', { name: defaultRemote ?? '' })">
+        <Button
+          variant="toolbar"
+          size="kira"
+          :disabled="fetchDisabled"
+          data-testid="fetch-button"
+          @click="doFetch"
+        >
+          <CodiconIcon name="cloud-download" :size="13" />
+          {{ t('git.toolbar.fetch.label') }}
+        </Button>
+      </TextTooltip>
 
       <PullStrategyPicker
         v-if="currentBranch !== undefined"
@@ -384,21 +380,18 @@ const stashDisabled = computed(
     </Tooltip>
 
     <ToolbarSeparator />
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          :disabled="stashDisabled"
-          data-testid="stash-changes-button"
-          @click="emit('stashChanges')"
-        >
-          <CodiconIcon name="inbox" :size="13" />
-          {{ t('git.toolbar.stash.label') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('git.toolbar.stash.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('git.toolbar.stash.tooltip')">
+      <Button
+        variant="toolbar"
+        size="kira"
+        :disabled="stashDisabled"
+        data-testid="stash-changes-button"
+        @click="emit('stashChanges')"
+      >
+        <CodiconIcon name="inbox" :size="13" />
+        {{ t('git.toolbar.stash.label') }}
+      </Button>
+    </TextTooltip>
 
     <span class="flex-1" aria-hidden="true"></span>
 

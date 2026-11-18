@@ -4,6 +4,7 @@ import { grpcRequestTitle } from '@shared/domain/grpc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -315,23 +316,20 @@ onUnmounted(() => {
         <TooltipContent>{{ t('studio.api.common.incognitoChip.tooltip') }}</TooltipContent>
       </Tooltip>
       <span class="ml-auto flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <TooltipDisabledTrigger>
-              <Button
-                variant="toolbar"
-                size="kira"
-                data-testid="grpc-save"
-                :disabled="incognito || unresolved || (canSave && !dirty)"
-                @click="onSave"
-              >
-                <CodiconIcon name="save" :size="13" />
-                {{ t('common.action.save.label') }}
-              </Button>
-            </TooltipDisabledTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ saveTooltip }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="saveTooltip">
+          <TooltipDisabledTrigger>
+            <Button
+              variant="toolbar"
+              size="kira"
+              data-testid="grpc-save"
+              :disabled="incognito || unresolved || (canSave && !dirty)"
+              @click="onSave"
+            >
+              <CodiconIcon name="save" :size="13" />
+              {{ t('common.action.save.label') }}
+            </Button>
+          </TooltipDisabledTrigger>
+        </TextTooltip>
       </span>
     </ViewToolbar>
     <div :class="colorMarkClass('band', railColor)" />
@@ -389,28 +387,27 @@ onUnmounted(() => {
           }}</option>
         </NativeSelect>
       </div>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="dialog-primary"
-              size="kira"
-              data-testid="grpc-call"
-              :pending="running"
-              :disabled="!tab.state.service || !tab.state.method || !methodResolved"
-              @click="onCall"
-            >
-              <CodiconIcon :name="ICON.run" :size="13" />
-              {{ t('studio.grpc.call.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{
+      <TextTooltip
+        :text="
           !running && tab.state.service && tab.state.method && !methodResolved
             ? t('studio.grpc.call.waitingSchema.tooltip')
             : t('studio.grpc.call.label')
-        }}</TooltipContent>
-      </Tooltip>
+        "
+      >
+        <TooltipDisabledTrigger>
+          <Button
+            variant="dialog-primary"
+            size="kira"
+            data-testid="grpc-call"
+            :pending="running"
+            :disabled="!tab.state.service || !tab.state.method || !methodResolved"
+            @click="onCall"
+          >
+            <CodiconIcon :name="ICON.run" :size="13" />
+            {{ t('studio.grpc.call.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
       <span class="ml-auto" />
       <RunState :state="runState" />
       <div class="flex items-center gap-1.5 min-w-0">

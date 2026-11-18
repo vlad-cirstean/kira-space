@@ -6,11 +6,11 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from '@theme/components/ui/input-group';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
 import type { HTMLAttributes } from 'vue';
 import { ref, useAttrs } from 'vue';
+import TextTooltip from './components/TextTooltip.vue';
 
 // Today's InputGroup + InputGroupInput type="number" + two Tooltip-wrapped
 // InputGroupButton steppers recipe, carried once instead of 14 times. Owns the container ref and
@@ -59,36 +59,30 @@ function stepBy(dir: 1 | -1): void {
         "
       />
       <InputGroupAddon align="inline-end" class="self-stretch flex-col gap-0 p-0">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <InputGroupButton
-              class="flex-1 h-auto min-h-0 w-5 rounded-none p-0"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="number-step-up"
-              :disabled="!!attrs.disabled"
-              @mousedown.prevent="stepBy(1)"
-            >
-              <CodiconIcon name="chevron-up" :size="12" />
-            </InputGroupButton>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('theme.numberStepper.increase.tooltip') }}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <InputGroupButton
-              class="flex-1 h-auto min-h-0 w-5 rounded-none p-0"
-              tabindex="-1"
-              aria-hidden="true"
-              data-testid="number-step-down"
-              :disabled="!!attrs.disabled"
-              @mousedown.prevent="stepBy(-1)"
-            >
-              <CodiconIcon name="chevron-down" :size="12" />
-            </InputGroupButton>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('theme.numberStepper.decrease.tooltip') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('theme.numberStepper.increase.tooltip')">
+          <InputGroupButton
+            class="flex-1 h-auto min-h-0 w-5 rounded-none p-0"
+            tabindex="-1"
+            aria-hidden="true"
+            data-testid="number-step-up"
+            :disabled="!!attrs.disabled"
+            @mousedown.prevent="stepBy(1)"
+          >
+            <CodiconIcon name="chevron-up" :size="12" />
+          </InputGroupButton>
+        </TextTooltip>
+        <TextTooltip :text="t('theme.numberStepper.decrease.tooltip')">
+          <InputGroupButton
+            class="flex-1 h-auto min-h-0 w-5 rounded-none p-0"
+            tabindex="-1"
+            aria-hidden="true"
+            data-testid="number-step-down"
+            :disabled="!!attrs.disabled"
+            @mousedown.prevent="stepBy(-1)"
+          >
+            <CodiconIcon name="chevron-down" :size="12" />
+          </InputGroupButton>
+        </TextTooltip>
       </InputGroupAddon>
     </InputGroup>
   </div>

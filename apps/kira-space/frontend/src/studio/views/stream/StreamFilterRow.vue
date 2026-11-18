@@ -2,6 +2,7 @@
 import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -214,22 +215,19 @@ const partitionButtonLabel = computed(() => {
       </InputGroup>
     </div>
     <div class="relative">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            ref="partitionTriggerEl"
-            variant="toolbar"
-            size="kira"
-            data-testid="stream-filter-partition"
-            :class="selectedPartitions.length ? 'text-state-on' : ''"
-            @click="partitionMenuOpen = !partitionMenuOpen"
-          >
-            <CodiconIcon :name="ICON.filter" :size="13" />
-            {{ partitionButtonLabel }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.stream.partitionFilter.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.stream.partitionFilter.tooltip')">
+        <Button
+          ref="partitionTriggerEl"
+          variant="toolbar"
+          size="kira"
+          data-testid="stream-filter-partition"
+          :class="selectedPartitions.length ? 'text-state-on' : ''"
+          @click="partitionMenuOpen = !partitionMenuOpen"
+        >
+          <CodiconIcon :name="ICON.filter" :size="13" />
+          {{ partitionButtonLabel }}
+        </Button>
+      </TextTooltip>
       <Popover :open="partitionMenuOpen" @update:open="(v) => (partitionMenuOpen = v)">
         <PopoverAnchor
           :reference="(partitionTriggerEl?.$el as HTMLElement) ?? undefined"
@@ -323,18 +321,15 @@ const partitionButtonLabel = computed(() => {
         }}</FieldError
       >
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="stream-filter-clear"
-          @click="onClearFilter"
-        >
-          {{ t('common.action.clear.label') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.common.clearFilters.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
+      <Button
+        variant="toolbar"
+        size="kira"
+        data-testid="stream-filter-clear"
+        @click="onClearFilter"
+      >
+        {{ t('common.action.clear.label') }}
+      </Button>
+    </TextTooltip>
   </ViewToolbar>
 </template>

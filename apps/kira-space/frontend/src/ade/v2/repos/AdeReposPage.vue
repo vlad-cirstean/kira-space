@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -221,43 +222,40 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             :class="cn(VIRTUAL_ROW_CLASS, 'pb-px')"
             :style="{ transform: `translateY(${item.start}px)` }"
           >
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <button
-                  type="button"
-                  role="option"
-                  v-bind="nav.rowProps(r.id)"
-                  class="relative flex w-full shrink-0 items-center gap-1.5 border-none text-left"
-                  :class="repoRowClass(r)"
-                  :aria-selected="showRepos && selected?.id === r.id"
-                  data-testid="ade-repos-repo"
-                  :data-repo-id="r.id"
-                  :data-hidden="r.hidden"
-                  @click="reposUi.pickRepo(r.id)"
-                >
-                  <span
-                    :class="colorMarkClass('rail', r.color)"
-                    data-testid="ade-repos-repo-rail"
-                    aria-hidden="true"
-                  />
-                  <span class="min-w-0 flex-1 truncate">{{ nickOf(r.id) || r.name }}</span>
-                  <StatusDot
-                    v-if="hasProblem(r.id)"
-                    tone="error"
-                    :label="t('space.repo.settingsFile.problem.aria')"
-                    data-testid="ade-repos-repo-problem"
-                  />
-                  <CodiconIcon
-                    v-if="r.hidden"
-                    name="eye-closed"
-                    :size="13"
-                    class="shrink-0"
-                    data-testid="ade-repos-repo-hidden-mark"
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>{{ r.root }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="r.root">
+              <button
+                type="button"
+                role="option"
+                v-bind="nav.rowProps(r.id)"
+                class="relative flex w-full shrink-0 items-center gap-1.5 border-none text-left"
+                :class="repoRowClass(r)"
+                :aria-selected="showRepos && selected?.id === r.id"
+                data-testid="ade-repos-repo"
+                :data-repo-id="r.id"
+                :data-hidden="r.hidden"
+                @click="reposUi.pickRepo(r.id)"
+              >
+                <span
+                  :class="colorMarkClass('rail', r.color)"
+                  data-testid="ade-repos-repo-rail"
+                  aria-hidden="true"
+                />
+                <span class="min-w-0 flex-1 truncate">{{ nickOf(r.id) || r.name }}</span>
+                <StatusDot
+                  v-if="hasProblem(r.id)"
+                  tone="error"
+                  :label="t('space.repo.settingsFile.problem.aria')"
+                  data-testid="ade-repos-repo-problem"
+                />
+                <CodiconIcon
+                  v-if="r.hidden"
+                  name="eye-closed"
+                  :size="13"
+                  class="shrink-0"
+                  data-testid="ade-repos-repo-hidden-mark"
+                />
+              </button>
+            </TextTooltip>
           </div>
         </div>
       </div>
@@ -451,22 +449,19 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                   : t('space.ade.repos.folder.repoCount.label', { count: f.repoCount })
               }}</span
             >
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <div class="flex shrink-0 items-center gap-1.5">
-                  <Switch
-                    :id="`ade-repos-watch-${i}`"
-                    :model-value="f.watch"
-                    data-testid="ade-repos-folder-watch"
-                    @update:model-value="(v: boolean) => onWatch(f.path, v)"
-                  />
-                  <Label :for="`ade-repos-watch-${i}`">{{
-                    t('space.ade.repos.folder.watch.label')
-                  }}</Label>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>{{ t('space.ade.repos.folder.watch.tooltip') }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="t('space.ade.repos.folder.watch.tooltip')">
+              <div class="flex shrink-0 items-center gap-1.5">
+                <Switch
+                  :id="`ade-repos-watch-${i}`"
+                  :model-value="f.watch"
+                  data-testid="ade-repos-folder-watch"
+                  @update:model-value="(v: boolean) => onWatch(f.path, v)"
+                />
+                <Label :for="`ade-repos-watch-${i}`">{{
+                  t('space.ade.repos.folder.watch.label')
+                }}</Label>
+              </div>
+            </TextTooltip>
             <TooltipIconButton
               :icon="f.hidden ? 'eye' : 'eye-closed'"
               :label="

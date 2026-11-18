@@ -19,13 +19,13 @@ import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useEventListener, useFocus } from '@vueuse/core';
@@ -413,22 +413,19 @@ watch(visibleBranchNames, (names) => {
   <div class="relative">
     <Popover :open="isOpen" modal @update:open="onOpenChange">
       <PopoverAnchor as-child>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <PopoverTrigger as-child>
-              <PickerTrigger
-                data-testid="branch-trigger"
-                ref="triggerEl"
-                size="kira"
-                class="max-w-50"
-                :label="triggerLabel"
-              >
-                <template #leading><CodiconIcon name="git-branch" :size="13" /></template>
-              </PickerTrigger>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ triggerLabel }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="triggerLabel">
+          <PopoverTrigger as-child>
+            <PickerTrigger
+              data-testid="branch-trigger"
+              ref="triggerEl"
+              size="kira"
+              class="max-w-50"
+              :label="triggerLabel"
+            >
+              <template #leading><CodiconIcon name="git-branch" :size="13" /></template>
+            </PickerTrigger>
+          </PopoverTrigger>
+        </TextTooltip>
       </PopoverAnchor>
 
       <PopoverContent

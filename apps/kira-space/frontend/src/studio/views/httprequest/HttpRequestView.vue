@@ -14,6 +14,7 @@ import { type HttpMethod, type HttpRequestPane, httpMethodToken } from '@shared/
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -350,23 +351,20 @@ onUnmounted(() => {
         <TooltipContent>{{ t('studio.api.common.incognitoChip.tooltip') }}</TooltipContent>
       </Tooltip>
       <span class="ml-auto flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <TooltipDisabledTrigger>
-              <Button
-                variant="toolbar"
-                size="kira"
-                data-testid="http-save"
-                :disabled="incognito || unresolved || (canSave && !dirty)"
-                @click="onSave"
-              >
-                <CodiconIcon name="save" :size="13" />
-                {{ t('common.action.save.label') }}
-              </Button>
-            </TooltipDisabledTrigger>
-          </TooltipTrigger>
-          <TooltipContent>{{ saveTooltip }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="saveTooltip">
+          <TooltipDisabledTrigger>
+            <Button
+              variant="toolbar"
+              size="kira"
+              data-testid="http-save"
+              :disabled="incognito || unresolved || (canSave && !dirty)"
+              @click="onSave"
+            >
+              <CodiconIcon name="save" :size="13" />
+              {{ t('common.action.save.label') }}
+            </Button>
+          </TooltipDisabledTrigger>
+        </TextTooltip>
       </span>
     </ViewToolbar>
     <div :class="colorMarkClass('band', railColor)" data-testid="toolbar-rail" />
@@ -416,23 +414,20 @@ onUnmounted(() => {
         </TooltipTrigger>
         <TooltipContent>{{ t('studio.http.sslOff.tooltip') }}</TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <!-- conventions-allow N17: send is the query Run commit; outline primary, not approve (RB.2) --><Button
-              variant="dialog-primary"
-              size="kira"
-              data-testid="http-send"
-              :pending="running"
-              @click="onSend"
-            >
-              <CodiconIcon :name="ICON.run" :size="13" />
-              {{ t('common.action.send.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('common.action.send.label') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('common.action.send.label')">
+        <TooltipDisabledTrigger>
+          <!-- conventions-allow N17: send is the query Run commit; outline primary, not approve (RB.2) --><Button
+            variant="dialog-primary"
+            size="kira"
+            data-testid="http-send"
+            :pending="running"
+            @click="onSend"
+          >
+            <CodiconIcon :name="ICON.run" :size="13" />
+            {{ t('common.action.send.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
       <span class="ml-auto" />
       <RunState :state="runState" />
       <div class="flex items-center gap-1.5 min-w-0">

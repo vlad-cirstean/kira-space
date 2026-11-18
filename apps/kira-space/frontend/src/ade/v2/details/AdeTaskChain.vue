@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -77,20 +78,17 @@ const editing = ref<string | null>(null);
   <div class="flex flex-col gap-2" data-testid="ade-task-chain">
     <div class="flex items-center gap-1 text-kira-sm text-muted-foreground">
       <span class="flex-1">{{ t('space.ade.proof.chain.title') }}</span>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Toggle
-            :model-value="list.showTimeline"
-            size="kira"
-            data-testid="ade-details-timeline-toggle"
-            @update:model-value="list.setShowTimeline"
-          >
-            <CodiconIcon name="history" :size="13" />
-            {{ t('common.timeline.label') }}
-          </Toggle>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('space.ade.details.timeline.toggle.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('space.ade.details.timeline.toggle.tooltip')">
+        <Toggle
+          :model-value="list.showTimeline"
+          size="kira"
+          data-testid="ade-details-timeline-toggle"
+          @update:model-value="list.setShowTimeline"
+        >
+          <CodiconIcon name="history" :size="13" />
+          {{ t('common.timeline.label') }}
+        </Toggle>
+      </TextTooltip>
       <Tooltip v-if="auditCount > 0">
         <TooltipTrigger as-child>
           <Toggle

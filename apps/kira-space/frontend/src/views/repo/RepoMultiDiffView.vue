@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { type ComponentPublicInstance, nextTick, onUnmounted, type Ref, reactive, ref } from 'vue';
@@ -137,14 +137,11 @@ onUnmounted(() => {
           data-testid="repo-multi-diff-toggle"
           @click="toggle(section)"
         />
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="shrink-0 text-kira-md text-fg whitespace-nowrap">{{
-              basename(section.path)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ section.path }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="section.path">
+          <span class="shrink-0 text-kira-md text-fg whitespace-nowrap">{{
+            basename(section.path)
+          }}</span>
+        </TextTooltip>
         <span class="path-dir flex-auto min-w-0 text-kira-md text-subtle"
           ><TruncatedText :text="section.path" /></span
         >

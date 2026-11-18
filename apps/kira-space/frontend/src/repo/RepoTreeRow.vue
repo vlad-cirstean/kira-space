@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
@@ -110,13 +110,10 @@ function onContextMenu(e: MouseEvent): void {
         :style="fileIconStyle(row.path)"
       ></span>
     </span>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <span class="overflow-hidden text-ellipsis min-w-0" :class="labelStatusClass">{{
-          row.name
-        }}</span>
-      </TooltipTrigger>
-      <TooltipContent>{{ row.name }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="row.name">
+      <span class="overflow-hidden text-ellipsis min-w-0" :class="labelStatusClass">{{
+        row.name
+      }}</span>
+    </TextTooltip>
   </div>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -140,19 +141,16 @@ function editEnvironmentVariables(): void {
           :data-scope="row.scope"
           :data-shadowed="row.shadowed"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
-                variant="toolbar"
-                size="inline"
-                class="min-w-0 justify-start font-data font-normal text-fg hover:bg-transparent"
-                data-testid="variables-overview-name"
-                @click="onCopy(row.name)"
-                ><span class="truncate">{{ reference(row.name) }}</span></Button
-              >
-            </TooltipTrigger>
-            <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip :text="t('common.action.copy.label')">
+            <Button
+              variant="toolbar"
+              size="inline"
+              class="min-w-0 justify-start font-data font-normal text-fg hover:bg-transparent"
+              data-testid="variables-overview-name"
+              @click="onCopy(row.name)"
+              ><span class="truncate">{{ reference(row.name) }}</span></Button
+            >
+          </TextTooltip>
           <Badge v-if="row.isSecret" variant="warn" data-testid="variables-overview-secret">{{
             t('common.secret.label')
           }}</Badge>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
 import type { ImportAction } from '@shared/domain/memoryImport';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -80,14 +81,9 @@ async function discard(): Promise<void> {
   >
     <div class="flex shrink-0 flex-col gap-1.5 p-3">
       <div class="flex items-center gap-1.5">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="min-w-0 flex-1 truncate text-kira-md font-medium">{{
-              jobTitle(job)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ job.roots.join(', ') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="job.roots.join(', ')">
+          <span class="min-w-0 flex-1 truncate text-kira-md font-medium">{{ jobTitle(job) }}</span>
+        </TextTooltip>
         <span class="text-kira-sm text-muted-foreground" data-testid="import-job-state">{{
           t(JOB_STATE_LABEL[job.state])
         }}</span>

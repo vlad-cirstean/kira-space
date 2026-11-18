@@ -24,6 +24,7 @@ import type { ChangeRequestLookup, ChangeRequestRecord, GitHostInfo } from '@kir
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import AttributeTooltip from '@theme/components/AttributeTooltip.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
@@ -452,28 +453,22 @@ const changeRequestIcon = computed(() => {
         {{ expanded ? t('common.action.showLess.label') : t('common.action.showMore.label') }}
       </Button>
       <div class="ml-auto flex items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge
-              as="button"
-              type="button"
-              :aria-label="t('git.commit.copySha.tooltip')"
-              data-testid="commit-meta-sha"
-              @click="copySha"
-            >
-              <Identifier :value="detail.sha" :short="shortSha" />
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('git.commit.copySha.tooltip') }}</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="shrink-0 text-kira-sm text-muted-foreground">{{
-              formatAgeCompact(detail.committer.timestamp)
-            }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatAbsoluteUtc(detail.committer.timestamp) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('git.commit.copySha.tooltip')">
+          <Badge
+            as="button"
+            type="button"
+            :aria-label="t('git.commit.copySha.tooltip')"
+            data-testid="commit-meta-sha"
+            @click="copySha"
+          >
+            <Identifier :value="detail.sha" :short="shortSha" />
+          </Badge>
+        </TextTooltip>
+        <TextTooltip :text="formatAbsoluteUtc(detail.committer.timestamp)">
+          <span class="shrink-0 text-kira-sm text-muted-foreground">{{
+            formatAgeCompact(detail.committer.timestamp)
+          }}</span>
+        </TextTooltip>
         <TooltipIconButton
           icon="diff-multiple"
           :label="t('git.commit.openAllChanges.tooltip')"

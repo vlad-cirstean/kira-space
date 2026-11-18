@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -208,16 +209,13 @@ async function onSetActive(id: string): Promise<void> {
             >
               <CodiconIcon name="gripper" :size="13" />
             </button>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <RadioGroupItem
-                  :value="env.id"
-                  :aria-label="t('studio.api.environments.active.aria', { name: env.name })"
-                  data-testid="environment-active"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ t('studio.api.environments.active.tooltip') }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="t('studio.api.environments.active.tooltip')">
+              <RadioGroupItem
+                :value="env.id"
+                :aria-label="t('studio.api.environments.active.aria', { name: env.name })"
+                data-testid="environment-active"
+              />
+            </TextTooltip>
             <span class="min-w-0 flex-1 truncate text-kira-md" data-testid="environment-name">{{
               env.name
             }}</span>

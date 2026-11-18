@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { shortSha } from '@kira/git-core';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 /**
  * The single-level "Undo last operation". Present only while
  * `ops.undoSlot` holds a record (`OpsState.refreshUndo`/`#applyResult` are the only things that
@@ -31,32 +31,26 @@ async function undo(): Promise<void> {
 
 <template>
   <div v-if="ops.undoSlot.value" class="flex items-center gap-0.5">
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button variant="toolbar" size="kira" :pending="ops.busy.value" @click="undo">
-          <CodiconIcon name="discard" :size="13" />
-          {{ ops.undoSlot.value.label }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ composeUndoTooltip(ops.undoSlot.value.label) }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="composeUndoTooltip(ops.undoSlot.value.label)">
+      <Button variant="toolbar" size="kira" :pending="ops.busy.value" @click="undo">
+        <CodiconIcon name="discard" :size="13" />
+        {{ ops.undoSlot.value.label }}
+      </Button>
+    </TextTooltip>
     <!-- The slot holds real multi-character sha text, not an icon, so an icon-only button's fixed
          square width would clip it. Dropped to the plain default, the same call the
          "Show more"/"Show less" toggle gets for the identical reason. -->
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          class="text-kira-sm"
-          @click="copy(ops.undoSlot.value.recoverySha, t('git.copy.recoverySha.announce'))"
-        >
-          <Identifier :value="ops.undoSlot.value.recoverySha" :short="shortSha" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{
-        t('git.undo.copyRecovery.tooltip', { sha: ops.undoSlot.value.recoverySha })
-      }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip
+      :text="t('git.undo.copyRecovery.tooltip', { sha: ops.undoSlot.value.recoverySha })"
+    >
+      <Button
+        variant="toolbar"
+        size="kira"
+        class="text-kira-sm"
+        @click="copy(ops.undoSlot.value.recoverySha, t('git.copy.recoverySha.announce'))"
+      >
+        <Identifier :value="ops.undoSlot.value.recoverySha" :short="shortSha" />
+      </Button>
+    </TextTooltip>
   </div>
 </template>

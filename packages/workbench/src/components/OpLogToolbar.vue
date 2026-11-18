@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -10,7 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { OpLogStatusFilter } from '../lib/opLog';
@@ -107,13 +107,10 @@ function toggleFacet(value: string): void {
       </DropdownMenuContent>
     </DropdownMenu>
     <slot />
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button class="ml-auto" variant="toolbar" size="kira" @click="emit('clear')"
-          ><CodiconIcon name="clear-all" :size="13" />{{ t('common.action.clear.label') }}</Button
-        >
-      </TooltipTrigger>
-      <TooltipContent>{{ clearHint }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="clearHint">
+      <Button class="ml-auto" variant="toolbar" size="kira" @click="emit('clear')"
+        ><CodiconIcon name="clear-all" :size="13" />{{ t('common.action.clear.label') }}</Button
+      >
+    </TextTooltip>
   </div>
 </template>

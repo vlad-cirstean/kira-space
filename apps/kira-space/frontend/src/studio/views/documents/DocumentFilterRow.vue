@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { SortSpec } from '@shared/domain/queries';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -149,58 +149,49 @@ function applyFromFilterHistory(where: string | null, orderBy: SortSpec | null):
       </Popover>
     </div>
     <div class="flex-1 min-w-0">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <AutocompleteField
-            v-model="searchText"
-            class="w-full"
-            prefix="FILTER"
-            :prefix-active="tab.state.search.trim() !== ''"
-            :placeholder="FILTER_EXAMPLE"
-            data-testid="document-search"
-            :candidates="filterCandidates"
-            language="mongo"
-            @enter="onSearchInput"
-            @escape="onSearchEscape"
-            @blur="onSearchInput"
-          />
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.documents.filter.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.documents.filter.tooltip')">
+        <AutocompleteField
+          v-model="searchText"
+          class="w-full"
+          prefix="FILTER"
+          :prefix-active="tab.state.search.trim() !== ''"
+          :placeholder="FILTER_EXAMPLE"
+          data-testid="document-search"
+          :candidates="filterCandidates"
+          language="mongo"
+          @enter="onSearchInput"
+          @escape="onSearchEscape"
+          @blur="onSearchInput"
+        />
+      </TextTooltip>
     </div>
     <div class="w-72 shrink-0">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <AutocompleteField
-            v-model="sortText"
-            class="w-full"
-            prefix="SORT"
-            :prefix-active="!!tab.state.sort"
-            :placeholder="SORT_EXAMPLE"
-            data-testid="document-sort"
-            :candidates="sortCandidates"
-            language="mongo"
-            @enter="onSortInput"
-            @escape="onSortEscape"
-            @blur="onSortInput"
-          />
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.documents.sort.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.documents.sort.tooltip')">
+        <AutocompleteField
+          v-model="sortText"
+          class="w-full"
+          prefix="SORT"
+          :prefix-active="!!tab.state.sort"
+          :placeholder="SORT_EXAMPLE"
+          data-testid="document-sort"
+          :candidates="sortCandidates"
+          language="mongo"
+          @enter="onSortInput"
+          @escape="onSortEscape"
+          @blur="onSortInput"
+        />
+      </TextTooltip>
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="document-filter-clear"
-          @click="onClearFilter"
-          >{{
-            t('common.action.clear.label')
-          }}</Button
-        >
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.common.clearFilters.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('studio.common.clearFilters.tooltip')">
+      <Button
+        variant="toolbar"
+        size="kira"
+        data-testid="document-filter-clear"
+        @click="onClearFilter"
+        >{{
+          t('common.action.clear.label')
+        }}</Button
+      >
+    </TextTooltip>
   </ViewToolbar>
 </template>

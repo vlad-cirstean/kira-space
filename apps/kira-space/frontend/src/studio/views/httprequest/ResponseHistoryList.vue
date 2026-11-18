@@ -4,13 +4,13 @@ import { HISTORY_PER_SCOPE_LIMIT, type ResponseHistoryEntry } from '@shared/doma
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -219,28 +219,22 @@ async function onClear(): Promise<void> {
         />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <span class="text-kira-sm text-subtle min-w-16">{{
-                  formatRelative(entry.sentAt)
-                }}</span>
-              </TooltipTrigger>
-              <TooltipContent>{{ entry.sentAt }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="entry.sentAt">
+              <span class="text-kira-sm text-subtle min-w-16">{{
+                formatRelative(entry.sentAt)
+              }}</span>
+            </TextTooltip>
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
             }}</Badge>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <Badge
-                  data
-                  :variant="statusClass(entry.status)"
-                  data-testid="http-history-status-chip"
-                  >{{ entry.status }} {{ entry.statusText }}</Badge
-                >
-              </TooltipTrigger>
-              <TooltipContent>{{ statusHint(entry.status) }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip :text="statusHint(entry.status)">
+              <Badge
+                data
+                :variant="statusClass(entry.status)"
+                data-testid="http-history-status-chip"
+                >{{ entry.status }} {{ entry.statusText }}</Badge
+              >
+            </TextTooltip>
             <span class="text-kira-sm text-subtle">{{ formatDuration(entry.elapsedMs) }}</span>
             <span class="text-kira-sm text-subtle">{{ formatBytes(entry.bodyBytes) }}</span>
             <span v-if="entry.environment" class="text-kira-sm text-subtle">{{

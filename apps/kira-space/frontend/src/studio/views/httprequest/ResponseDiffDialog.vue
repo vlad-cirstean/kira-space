@@ -3,6 +3,7 @@ import { statusClass, statusHint } from '@shared/domain/http';
 import type { ResponseHistorySnapshot } from '@shared/domain/responseHistory';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -23,7 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -275,54 +275,42 @@ onUnmounted(() => {
         <div v-else-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
           <div class="flex shrink-0 items-center gap-2 px-2 py-1.5" data-testid="http-diff-summary">
             <div class="flex flex-col gap-0.5">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <span :class="[rowMeta, 'self-start']">{{
-                    formatRelative(snapA.entry.sentAt)
-                  }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{ snapA.entry.sentAt }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="snapA.entry.sentAt">
+                <span :class="[rowMeta, 'self-start']">{{
+                  formatRelative(snapA.entry.sentAt)
+                }}</span>
+              </TextTooltip>
               <div class="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Badge
-                      data
-                      :variant="statusClass(snapA.entry.status)"
-                      data-testid="http-diff-status-a"
-                    >
-                      {{ snapA.entry.status }} {{ snapA.entry.statusText }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ statusHint(snapA.entry.status) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip :text="statusHint(snapA.entry.status)">
+                  <Badge
+                    data
+                    :variant="statusClass(snapA.entry.status)"
+                    data-testid="http-diff-status-a"
+                  >
+                    {{ snapA.entry.status }} {{ snapA.entry.statusText }}
+                  </Badge>
+                </TextTooltip>
                 <span :class="rowMeta">{{ formatDuration(snapA.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
               </div>
             </div>
             <span class="text-muted-foreground">→</span>
             <div class="flex flex-col gap-0.5">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <span :class="[rowMeta, 'self-start']">{{
-                    formatRelative(snapB.entry.sentAt)
-                  }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{ snapB.entry.sentAt }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="snapB.entry.sentAt">
+                <span :class="[rowMeta, 'self-start']">{{
+                  formatRelative(snapB.entry.sentAt)
+                }}</span>
+              </TextTooltip>
               <div class="flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger as-child>
-                    <Badge
-                      data
-                      :variant="statusClass(snapB.entry.status)"
-                      data-testid="http-diff-status-b"
-                    >
-                      {{ snapB.entry.status }} {{ snapB.entry.statusText }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ statusHint(snapB.entry.status) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip :text="statusHint(snapB.entry.status)">
+                  <Badge
+                    data
+                    :variant="statusClass(snapB.entry.status)"
+                    data-testid="http-diff-status-b"
+                  >
+                    {{ snapB.entry.status }} {{ snapB.entry.statusText }}
+                  </Badge>
+                </TextTooltip>
                 <span :class="rowMeta">{{ formatDuration(snapB.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapB.entry.bodyBytes) }}</span>
               </div>

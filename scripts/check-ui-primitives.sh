@@ -120,7 +120,6 @@ U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders
 U101 apps/kira-space/frontend/mobile/TabBar.vue # count badge marks items needing attention, not a tab count
 U101 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # count marks agent requests awaiting the person
 U91 apps/kira-space/frontend/src/workbench/OperationsPanel.vue # tooltip shows the repo root, not the truncated name
-U91 packages/workbench/src/memory/import/ImportJobDetail.vue # tooltip lists the import roots, not the title text
 U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a white ground for scanner contrast
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
@@ -135,7 +134,6 @@ U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain(
 U47 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # Up/Down jump between the wrapping pill lines of a roving-focus strip; useListNavigation is one vertical list
 U62 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # focus moves between pills and to the + after a removal; reka's roving group owns Left/Right only
 # C (rest)
-U91 packages/git-ui/src/components/UncommittedChangesStrip.vue # tooltip text differs from the visible label
 U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome
 U41 packages/git-ui/src/App.vue # git engine host reads modifier keys
 U41 apps/kira-space/frontend/src/capture/chord.ts # chord recorder reads modifier flags to build an accelerator string, not a shortcut

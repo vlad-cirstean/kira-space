@@ -4,6 +4,7 @@ import type { SavedDiscoverQuery } from '@shared/domain/queries';
 import { useMutation, useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -210,21 +211,18 @@ const saveChord = formatShortcut('form.save');
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          ref="menuTrigger"
-          variant="toolbar"
-          size="kira"
-          data-testid="kibana-saved-toggle"
-          @click="menuOpen = !menuOpen"
-        >
-          <CodiconIcon name="bookmark" :size="13" />
-          {{ t('studio.console.savedMenu.title') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.console.savedMenu.title') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip :text="t('studio.console.savedMenu.title')">
+      <Button
+        ref="menuTrigger"
+        variant="toolbar"
+        size="kira"
+        data-testid="kibana-saved-toggle"
+        @click="menuOpen = !menuOpen"
+      >
+        <CodiconIcon name="bookmark" :size="13" />
+        {{ t('studio.console.savedMenu.title') }}
+      </Button>
+    </TextTooltip>
     <Popover :open="menuOpen" @update:open="(v) => (menuOpen = v)">
       <PopoverAnchor :reference="(menuTrigger?.$el as HTMLElement) ?? undefined" class="hidden" />
       <DiscoverSavedMenu

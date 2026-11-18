@@ -2,8 +2,8 @@
 import type { KibanaField } from '@shared/domain/kibana';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { useCappedList } from '@workbench/behaviour/cappedList';
@@ -90,24 +90,21 @@ watch(search, reset);
           :class="[rowVariants({ layout: 'tree' }), 'group pl-2']"
           data-testid="kibana-field-row"
         >
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <button
-                type="button"
-                class="flex h-control min-w-0 flex-1 items-center gap-1.5 text-left text-kira-md"
-                :data-testid="`kibana-field-${f.name}`"
-                @click="emit('insert', f.name)"
-              >
-                <CodiconIcon
-                  :name="ICONS[f.type] ?? 'symbol-field'"
-                  :size="12"
-                  class="shrink-0 text-muted-foreground"
-                />
-                <span class="truncate font-data">{{ f.name }}</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{{ f.type }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip :text="f.type">
+            <button
+              type="button"
+              class="flex h-control min-w-0 flex-1 items-center gap-1.5 text-left text-kira-md"
+              :data-testid="`kibana-field-${f.name}`"
+              @click="emit('insert', f.name)"
+            >
+              <CodiconIcon
+                :name="ICONS[f.type] ?? 'symbol-field'"
+                :size="12"
+                class="shrink-0 text-muted-foreground"
+              />
+              <span class="truncate font-data">{{ f.name }}</span>
+            </button>
+          </TextTooltip>
           <TooltipIconButton
             :icon="section.id === 'selected' ? 'close' : 'add'"
             class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"

@@ -7,11 +7,11 @@ import {
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -172,19 +172,13 @@ async function onClear(): Promise<void> {
         @click="onRowClick(entry.id)"
         @keydown="onRowKeydown($event, entry.id)"
       >
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge data :variant="grpcCodeClass(entry.code)">{{ entry.codeName }}</Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ grpcCodeHint(entry.code) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="grpcCodeHint(entry.code)">
+          <Badge data :variant="grpcCodeClass(entry.code)">{{ entry.codeName }}</Badge>
+        </TextTooltip>
         <span class="text-kira-sm font-data">{{ entry.method }}</span>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <span class="text-kira-sm text-subtle">{{ formatRelative(entry.calledAt) }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ entry.calledAt }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="entry.calledAt">
+          <span class="text-kira-sm text-subtle">{{ formatRelative(entry.calledAt) }}</span>
+        </TextTooltip>
         <span class="ml-auto" />
         <TooltipIconButton
           :icon="ICON.delete"

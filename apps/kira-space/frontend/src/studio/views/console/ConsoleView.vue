@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -267,40 +268,34 @@ onUnmounted(() => {
           @click="onStop"
         />
       </div>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="dialog-primary"
-              size="kira"
-              data-testid="console-run-statement"
-              :pending="running || starting"
-              @click="runStatement"
-            >
-              <CodiconIcon name="play" :size="13" />
-              {{ t('common.action.run.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.run.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-run-all"
-              :disabled="runBlocked"
-              @click="runAll"
-            >
-              <CodiconIcon name="run-all" :size="13" />
-              {{ t('common.action.runAll.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.runAll.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip :text="t('studio.console.run.tooltip')">
+        <TooltipDisabledTrigger>
+          <Button
+            variant="dialog-primary"
+            size="kira"
+            data-testid="console-run-statement"
+            :pending="running || starting"
+            @click="runStatement"
+          >
+            <CodiconIcon name="play" :size="13" />
+            {{ t('common.action.run.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
+      <TextTooltip :text="t('studio.console.runAll.tooltip')">
+        <TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-run-all"
+            :disabled="runBlocked"
+            @click="runAll"
+          >
+            <CodiconIcon name="run-all" :size="13" />
+            {{ t('common.action.runAll.label') }}
+          </Button>
+        </TooltipDisabledTrigger>
+      </TextTooltip>
       <Tooltip v-if="canFormat">
         <TooltipTrigger as-child>
           <TooltipDisabledTrigger>
@@ -350,21 +345,18 @@ onUnmounted(() => {
       />
       <ToolbarSeparator />
       <div class="relative">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button
-              ref="savedMenuTriggerEl"
-              variant="toolbar"
-              size="kira"
-              data-testid="console-saved-toggle"
-              @click="savedMenuOpen = !savedMenuOpen"
-            >
-              <CodiconIcon name="bookmark" :size="13" />
-              {{ t('studio.console.savedMenu.title') }}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.console.savedMenu.title') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="t('studio.console.savedMenu.title')">
+          <Button
+            ref="savedMenuTriggerEl"
+            variant="toolbar"
+            size="kira"
+            data-testid="console-saved-toggle"
+            @click="savedMenuOpen = !savedMenuOpen"
+          >
+            <CodiconIcon name="bookmark" :size="13" />
+            {{ t('studio.console.savedMenu.title') }}
+          </Button>
+        </TextTooltip>
         <Popover :open="savedMenuOpen" @update:open="(v) => (savedMenuOpen = v)">
           <PopoverAnchor
             :reference="(savedMenuTriggerEl?.$el as HTMLElement) ?? undefined"

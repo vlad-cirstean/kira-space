@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { formatDateTime } from '@theme/format';
 import { formatRelative } from '@workbench/behaviour/format';
 
@@ -8,10 +8,7 @@ defineProps<{ at: number }>();
 </script>
 
 <template>
-  <Tooltip>
-    <TooltipTrigger as-child>
-      <span>{{ formatRelative(at) }}</span>
-    </TooltipTrigger>
-    <TooltipContent>{{ formatDateTime(at) }}</TooltipContent>
-  </Tooltip>
+  <TextTooltip :text="formatDateTime(at)">
+    <span>{{ formatRelative(at) }}</span>
+  </TextTooltip>
 </template>
