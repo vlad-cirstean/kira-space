@@ -330,7 +330,7 @@ function alignClass(column: OpLogColumn): string {
     </OpLogToolbar>
 
     <div v-if="loading" class="flex flex-col gap-px p-2" data-testid="ops-loading">
-      <Skeleton v-for="n in 4" :key="n" class="h-4.5" />
+      <Skeleton v-for="n in 4" :key="n" class="h-4 w-full" />
     </div>
     <div v-else-if="records.length === 0" class="flex-1 min-h-0">
       <EmptyState

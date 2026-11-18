@@ -362,7 +362,7 @@ test('loading shows three skeleton pills, then the links', async ({ relaunch }) 
     { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] }, hold: true },
   ]);
   await openDetails(page);
-  await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(3);
+  await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(1);
   control.release(IPC.adeTaskArtifacts);
   await expect(page.locator(t('ade-links-pill'))).toHaveCount(8);
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(0);

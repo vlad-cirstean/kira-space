@@ -59,7 +59,7 @@ function viewIssue(): void {
     class="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5"
     data-testid="ade-task-issue"
   >
-    <Skeleton v-if="query.isPending.value" class="h-3 w-32" data-testid="ade-task-issue-loading" />
+    <Skeleton v-if="query.isPending.value" class="h-4 w-1/3" data-testid="ade-task-issue-loading" />
     <template v-else-if="issue">
       <span
         v-if="issue.title"

@@ -180,12 +180,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
     <QueryState :query="links.query" variant="inline">
       <template #loading>
         <div class="flex min-h-6 items-center gap-1" data-testid="ade-links-loading">
-          <Skeleton
-            v-for="n in 3"
-            :key="n"
-            class="h-4.5 w-16 rounded-kira-sm"
-            data-testid="ade-links-skeleton"
-          />
+          <Skeleton class="h-4 w-1/3" data-testid="ade-links-skeleton" />
         </div>
       </template>
       <template #error="{ message, retry }">
