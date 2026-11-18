@@ -126,6 +126,7 @@ Part 6 iter2: SectionHeading action slot resets case and gets a `data` prop, new
 Part 5 iter2: menu radio/checkbox kinds, popover bar/list pieces, tooltip wrappers, 5 guards (U141-U145) plus U123 extended, plan `plans/P672-part5-iter2.md`.
 Part 8 iter2: 12 form values and 6 value selects render `choice`, 5 bar view switches and filters `segmented`, hand toggle groups use SecondaryTabs, TooltipIconButton, rowVariants and Toggle, one idle text rule in toggleVariants, every tab count a count Badge (`countBadge` prop removed), U117 extended, U152 new (hand toggle), plan `plans/P672-part8-iter2.md`.
 Part 7 iter2: shared issue, check and change tones in statusTone, `connIconClass`, toolbar button `warn` tone, unsaved markers as warn StatusDot, 5 guards (U147-U151), plan `plans/P672-part7-iter2.md`.
+Part 9 iter2: icon table concepts (edit, back, delete, clear-all, duplicate, remove-draft `close`) and sizes, text glyphs to CodiconIcon/StatusDot, opacity to tone/rowVariants/SORTABLE_GHOST_CLASS, rowIndent for depth indent, Disclosure owns content spacing (`meta` prop, trigger/content class props removed), pane blocks stack with gap-3, `windowBody` frame and paneFrame in 8 hosts, guards U153-U156 plus U73, U88, U90 extended, plan `plans/P672-part9-iter2.md`.
 
 ## P673: Re-pin ONNX Runtime, pinned release asset is gone
 
