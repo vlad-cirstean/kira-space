@@ -33,7 +33,7 @@ function setAmount(v: string | number): void {
       type="number"
       min="0"
       step="any"
-      class="w-28"
+      class="w-24"
       v-bind="$attrs"
       :placeholder="t('docker.edit.noLimit.placeholder')"
       :model-value="amount"
@@ -43,7 +43,7 @@ function setAmount(v: string | number): void {
     />
     <NativeSelect
       v-model="unit"
-      class="w-20"
+      class="w-24"
       :disabled="disabled || unlimited"
       :data-testid="`${testid}-unit`"
     >

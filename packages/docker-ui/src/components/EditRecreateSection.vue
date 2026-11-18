@@ -76,7 +76,7 @@ function addMount(): void {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-3 @2xl:grid-cols-2" data-testid="docker-edit-recreate">
+  <div class="flex flex-col gap-3" data-testid="docker-edit-recreate">
     <EditField
       field="image"
       :label="t('docker.field.image.label')"
@@ -84,9 +84,10 @@ function addMount(): void {
       :changed="changed('image')"
       :error="errors['recreate.image']"
       :description="t('docker.edit.imagePresent.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.image"
         :disabled="disabled"
         data-testid="docker-edit-image"
@@ -99,9 +100,10 @@ function addMount(): void {
       :label="t('common.user.label')"
       mode="recreate"
       :changed="changed('user')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.user"
         :placeholder="t('docker.edit.imageDefault.placeholder')"
         :disabled="disabled"
@@ -116,9 +118,10 @@ function addMount(): void {
       mode="recreate"
       :changed="changed('hostname')"
       :description="t('docker.edit.hostname.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="rc.hostname"
         :disabled="disabled"
         data-testid="docker-edit-hostname"
@@ -131,9 +134,10 @@ function addMount(): void {
       :label="t('docker.edit.entrypoint.label')"
       mode="recreate"
       :changed="changed('entrypoint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Textarea
+        :id="id"
         v-model="entrypointText"
         class="font-data"
         :disabled="disabled"
@@ -147,9 +151,10 @@ function addMount(): void {
       :label="t('docker.edit.command.label')"
       mode="recreate"
       :changed="changed('cmd')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Textarea
+        :id="id"
         v-model="cmdText"
         class="font-data"
         :disabled="disabled"
@@ -160,6 +165,7 @@ function addMount(): void {
 
     <EditField
       field="env"
+      multi
       :label="t('docker.field.env.label')"
       mode="recreate"
       :changed="changed('env')"
@@ -198,6 +204,7 @@ function addMount(): void {
 
     <EditField
       field="labels"
+      multi
       :label="t('docker.field.labels.label')"
       mode="recreate"
       :changed="changed('labels')"
@@ -235,11 +242,11 @@ function addMount(): void {
 
     <EditField
       field="ports"
+      multi
       :label="t('docker.field.ports.label')"
       mode="recreate"
       :changed="changed('ports')"
       :error="errors['recreate.ports']"
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <EditRows
@@ -263,14 +270,14 @@ function addMount(): void {
           />
           <NativeSelect
             v-model="item.proto"
-            class="w-20"
+            class="w-24"
             :disabled="disabled"
             data-testid="docker-edit-port-proto"
           >
             <option v-for="p in PROTOCOLS" :key="p" :value="p">{{ p }}</option>
           </NativeSelect>
           <Input
-            class="w-36"
+            class="w-40"
             :placeholder="t('docker.edit.hostIp.placeholder')"
             v-model="item.hostIp"
             :disabled="disabled"
@@ -289,11 +296,11 @@ function addMount(): void {
 
     <EditField
       field="mounts"
+      multi
       :label="t('docker.field.mounts.label')"
       mode="recreate"
       :changed="changed('mounts')"
       :error="errors['recreate.mounts']"
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <datalist id="docker-edit-volumes">
@@ -346,6 +353,7 @@ function addMount(): void {
 
     <EditField
       field="capAdd"
+      multi
       :label="t('docker.edit.capAdd.label')"
       mode="recreate"
       :changed="changed('capAdd')"
@@ -374,6 +382,7 @@ function addMount(): void {
 
     <EditField
       field="capDrop"
+      multi
       :label="t('docker.edit.capDrop.label')"
       mode="recreate"
       :changed="changed('capDrop')"
@@ -400,11 +409,7 @@ function addMount(): void {
       </EditRows>
     </EditField>
 
-    <div
-      v-if="preserved.length"
-      class="text-muted-foreground @2xl:col-span-2"
-      data-testid="docker-edit-preserved"
-    >
+    <div v-if="preserved.length" class="text-muted-foreground" data-testid="docker-edit-preserved">
       <span class="font-medium">{{ t('docker.edit.preserved.label') }}:</span>
       {{ preserved.join(', ') }}
     </div>

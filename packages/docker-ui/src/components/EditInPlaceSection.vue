@@ -100,16 +100,17 @@ const netChanged = (name: string): boolean => {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-3 @2xl:grid-cols-2" data-testid="docker-edit-inplace">
+  <div class="flex flex-col gap-3" data-testid="docker-edit-inplace">
     <EditField
       field="name"
       :label="t('common.field.name.label')"
       mode="now"
       :changed="ip.name !== baseIp.name"
       :error="errors.name"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="ip.name"
         :disabled="disabled"
         data-testid="docker-edit-name"
@@ -123,10 +124,11 @@ const netChanged = (name: string): boolean => {
       mode="now"
       :changed="restartChanged"
       :error="errors.restart"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <div class="flex items-center gap-2">
         <NativeSelect
+          :id="id"
           :model-value="ip.restart.name"
           :disabled="disabled"
           data-testid="docker-edit-restart"
@@ -157,9 +159,10 @@ const netChanged = (name: string): boolean => {
       :changed="cpuChanged"
       :error="err('nanoCpus')"
       :description="cpuHint"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         step="0.1"
@@ -178,9 +181,10 @@ const netChanged = (name: string): boolean => {
         :mode="mode('cpuQuota')"
         :changed="changed('cpuQuota')"
         :error="err('cpuQuota')"
-        v-slot="{ invalid }"
+        v-slot="{ invalid, id }"
       >
         <Input
+          :id="id"
           type="number"
           min="0"
           :model-value="res.cpuQuota"
@@ -196,9 +200,10 @@ const netChanged = (name: string): boolean => {
         :mode="mode('cpuPeriod')"
         :changed="changed('cpuPeriod')"
         :error="err('cpuPeriod')"
-        v-slot="{ invalid }"
+        v-slot="{ invalid, id }"
       >
         <Input
+          :id="id"
           type="number"
           min="0"
           :model-value="res.cpuPeriod"
@@ -216,9 +221,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('cpuShares')"
       :changed="changed('cpuShares')"
       :error="err('cpuShares')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('common.state.default.option')"
@@ -237,9 +243,10 @@ const netChanged = (name: string): boolean => {
       :changed="changed('cpusetCpus')"
       :error="err('cpusetCpus')"
       :description="cpusetHint"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="res.cpusetCpus"
         :placeholder="t('docker.edit.cpusetCpus.example')"
         :disabled="disabled"
@@ -254,9 +261,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('cpusetMems')"
       :changed="changed('cpusetMems')"
       :error="err('cpusetMems')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         v-model="res.cpusetMems"
         :placeholder="t('docker.edit.cpusetMems.example')"
         :disabled="disabled"
@@ -271,9 +279,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('memory')"
       :changed="changed('memory')"
       :error="err('memory')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memory"
         :disabled="disabled"
         testid="docker-edit-memory"
@@ -287,9 +296,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('memoryReservation')"
       :changed="changed('memoryReservation')"
       :error="err('memoryReservation')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memoryReservation"
         :disabled="disabled"
         testid="docker-edit-reservation"
@@ -304,9 +314,10 @@ const netChanged = (name: string): boolean => {
       :changed="changed('memorySwap')"
       :error="err('memorySwap')"
       :description="t('docker.edit.swap.hint')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <EditSize
+        :id="id"
         v-model="res.memorySwap"
         allow-unlimited
         :disabled="disabled"
@@ -321,9 +332,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('blkioWeight')"
       :changed="changed('blkioWeight')"
       :error="err('blkioWeight')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('common.state.default.option')"
@@ -341,9 +353,10 @@ const netChanged = (name: string): boolean => {
       :mode="mode('pidsLimit')"
       :changed="changed('pidsLimit')"
       :error="err('pidsLimit')"
-      v-slot="{ invalid }"
+      v-slot="{ invalid, id }"
     >
       <Input
+        :id="id"
         type="number"
         min="0"
         :placeholder="t('docker.edit.unlimited.label')"
@@ -357,6 +370,7 @@ const netChanged = (name: string): boolean => {
 
     <EditField
       field="networks"
+      multi
       :label="t('docker.field.networks.label')"
       mode="now"
       :changed="
@@ -366,7 +380,6 @@ const netChanged = (name: string): boolean => {
       :description="
         networkLocked ? t('docker.edit.networkLocked.hint') : t('docker.edit.aliasesChange.hint')
       "
-      class="@2xl:col-span-2"
       v-slot="{ invalid }"
     >
       <div class="flex flex-col gap-1.5" data-testid="docker-edit-networks">
@@ -404,7 +417,7 @@ const netChanged = (name: string): boolean => {
         <div class="flex items-center gap-2">
           <NativeSelect
             v-model="toAdd"
-            class="w-48"
+            class="w-40"
             :disabled="disabled || networkLocked"
             data-testid="docker-edit-network-select"
           >

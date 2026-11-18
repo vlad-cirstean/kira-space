@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import StatusDot from '@theme/components/StatusDot.vue';
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useFormErrors } from '@workbench/behaviour/formErrors';
-import { computed, inject } from 'vue';
+import { computed, inject, useId } from 'vue';
 import type { EditMode } from '../lib/editDiff';
 import { inPlaceSectionKey } from '../lib/editSection';
 
@@ -15,7 +15,11 @@ const props = defineProps<{
   changed?: boolean;
   error?: string;
   description?: string;
+  // Several controls: the label names the group, not one control.
+  multi?: boolean;
 }>();
+
+const id = useId();
 
 const inPlaceTab = inject(inPlaceSectionKey, undefined);
 const form = useFormErrors({
@@ -25,22 +29,24 @@ const needsRecreate = computed(() => inPlaceTab === true && props.mode === 'recr
 </script>
 
 <template>
-  <fieldset
-    class="m-0 flex min-w-0 flex-col gap-1 border-0 p-0"
+  <!-- biome-ignore lint/a11y/useSemanticElements: a fieldset cannot be the responsive grid. -->
+  <Field
+    orientation="responsive"
+    role="group"
     :aria-label="label"
     :data-testid="`docker-edit-field-${field}`"
     :data-changed="changed ? 'true' : 'false'"
   >
-    <div class="flex items-center gap-2">
-      <span class="text-muted-foreground">{{ label }}</span>
+    <FieldLabel :for="multi ? undefined : id">
+      {{ label }}
       <Tooltip v-if="changed">
         <TooltipTrigger as-child>
           <StatusDot tone="muted" :label="t('common.changed.status')" />
         </TooltipTrigger>
         <TooltipContent>{{ t('common.changed.status') }}</TooltipContent>
       </Tooltip>
-    </div>
-    <slot v-bind="{ invalid: form.invalidAttrs('field') }" />
+    </FieldLabel>
+    <slot v-bind="{ invalid: form.invalidAttrs('field'), id }" />
     <FieldError
       v-if="form.errorFor('field')"
       :id="form.errorId('field')"
@@ -53,5 +59,5 @@ const needsRecreate = computed(() => inPlaceTab === true && props.mode === 'recr
       t('docker.edit.needsRecreate.hint')
     }}</FieldDescription>
     <FieldDescription v-else-if="description">{{ description }}</FieldDescription>
-  </fieldset>
+  </Field>
 </template>
