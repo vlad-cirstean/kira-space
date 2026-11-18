@@ -23,6 +23,7 @@
 # Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
 # Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
 # Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
+# Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -171,7 +172,7 @@ U9@@v@@NumberStepperInput.vue@@Input/NativeSelect/Textarea/InputGroup with size=
 U10@@v@@@@raw <label>/<select> (use FieldLabel/Label, NativeSelect)@@<(?:label|select)\b
 U11@@vt@@@@font-bold, font-semibold, font-extrabold or font-black (headings use SectionHeading, FieldLegend)@@${TOK}font-(?:bold|semibold|extrabold|black)(?![\w-])
 U12@@v@@@@CodiconIcon :size outside 12/13/16/24@@<CodiconIcon\b(?&t)\s:size="(?!(?:12|13|16|24)")\d+"
-U13@@v@@@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))
+U13@@v@@ViewToolbar.vue|PanelHeader.vue|AdeShell.vue@@hand-rolled panel header/toolbar bar (use PanelHeader/ViewToolbar)@@\bclass="(?=[^"]*${TOK}h-bar(?![\w-]))(?=[^"]*${TOK}gap-1(?![\w.-]))(?=[^"]*${TOK}border-b(?![\w-]))(?:(?=[^"]*${TOK}px-1\.5(?![\w-]))(?=[^"]*${TOK}text-kira-sm(?![\w-]))|(?=[^"]*${TOK}px-2(?![\w-]))(?=[^"]*${TOK}shrink-0(?![\w-])))|\bclass="(?=[^"]*${TOK}h-(?:bar|tabbar)(?![\w-]))(?=[^"]*${TOK}items-center(?![\w-]))(?=[^"]*${TOK}px-)
 U14@@v@@@@EmptyMedia variant="icon", or Alert faking an empty state@@<EmptyMedia\b(?&t)\svariant="icon"|<Alert\b(?&t)\sclass="[^"]*${TOK}bg-transparent
 U15@@v@@@@PopoverContent width outside w-56/w-80/w-96/w-120/w-auto@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}w-(?!(?:56|80|96|120|auto)(?![\w.\[(-]))
 U16@@v@@@@DialogClose wrapping an icon-sm Button (use DialogHeader closable)@@<DialogClose\b(?&t)>\s*<Button\b(?&t)\ssize="icon-sm"
@@ -196,7 +197,7 @@ U32@@v@@@@scrollbar styling in a component (use scrollbar-none, base.css)@@\[scr
 U33@@v@@@@keyboard hint text (use Kbd)@@Cmd/Ctrl|\(\{\{\s*formatShortcut
 U34@@vt@@monacoTheme.ts|/setiFileIcon|/ade/v2/palette.ts@@colour literal in app code (use tokens)@@(?:["'\`\[(]|:\s*)#(?:[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|(?=[0-9]*[a-fA-F])[0-9a-fA-F]{3,4}|(?<d>\d)\k<d>\k<d>\k<d>?)\b|${TOK}(?:bg|text|border)-(?:black|white)(?![\w-])
 U35@@v@@AutocompleteField.vue@@outline-none, border-focus, not-allowed cursor or odd disabled opacity (one focus and disabled recipe)@@${TOK}outline-(?:none|hidden|0)(?![\w-])|focus:outline|focus-visible:outline-|${TOK}focus(?:-visible|-within)?:border-focus|${TOK}cursor-not-allowed|${TOK}disabled:opacity-(?!50(?![\w-]))|data-\[off\]
-U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
+U36@@v@@PickerTrigger.vue@@hand-rolled box (use Card)@@\bclass="(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}border(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)|\bclass="(?![^"]*${TOK}inline-flex(?![\w-]))(?=[^"]*${TOK}rounded-kira(?:-sm)?(?![\w-]))(?=[^"]*${TOK}bg-(?:elevated|field)(?![\w-]))(?=[^"]*${TOK}(?:p|px|py)-)
 U37@@vt@@rowVariants.ts@@raw table markup, density formula, or hand-rolled row state (use Table, useRowHeight, rowVariants)@@<(?:table|thead|tbody|tr|th|td)\b|rowDensity\s*===|${TOK}(?:hover:)?bg-select(?![\w-])
 U38@@v@@@@scale leftovers: text-kira-xs, stock text size/radius, text-[Npx], raw h-5..h-12@@${TOK}text-kira-xs(?![\w-])|${TOK}text-(?:xs|sm|base|lg|xl|2xl)(?![\w-])|${TOK}text-\[\d|${TOK}rounded(?:-md|-lg|-xl)?(?![\w-])|${TOK}h-(?:5|6|7|8|9|10|12)(?![\w.-])
 U39@@vt@@/behaviour/!|/testing/!@@instanceof Error ? message : String (use errorText)@@instanceof\s+Error\s*\?\s*[\w.]+\.message\s*:\s*String\(
@@ -280,7 +281,7 @@ U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link"
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
 U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
-U124@@v@@CodeBlock.vue@@Card class sets padding, gap, type or row layout (variant inset, section or list; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle)
+U124@@v@@CodeBlock.vue|AdeTaskCard.vue@@Card class sets padding, gap, type, fill, border, opacity or row layout, or binds :class (variant inset, section or list; state shows through a Badge; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle|border|opacity-|bg-|rounded|shadow)|<Card\b(?&t)\s:class=
 U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
 U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
@@ -297,6 +298,7 @@ U137@@v@@@@dialog-danger footer without DialogContent destructive (RD.7)@@<Dialo
 U138@@v@@@@FieldError as last DialogBody child (failure is an error Alert, RD.6)@@</FieldError\s*>\s*(?:</template\s*>\s*)*</DialogBody\s*>
 U139@@v@@@@two adjacent emphasised buttons (one emphasised button rightmost, RD.2)@@<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")(?&t)>(?:(?!</Button\s*>)[\s\S])*</Button\s*>\s*(?:<!--(?:(?!-->)[\s\S])*-->\s*)?<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")
 U140@@v@@@@dismiss label on an emphasised button (Close, Done, Dismiss are dialog)@@<Button\b(?=(?&t)\svariant="dialog-(?:primary|approve|danger)")(?&t)>(?:(?!</Button\s*>)[\s\S])*?t\('common\.(?:done\.status|action\.close\.label|action\.dismiss\.label)'\)
+U146@@v@@@@hand title bar title (use TitleBarTitle)@@(?s)\A(?=.*<TitleBarBase\b).*\bclass="(?=[^"]*${TOK}text-kira-md(?![\w-]))(?=[^"]*${TOK}font-medium(?![\w-]))
 GUARDS
 
 # hits: "U<n> path"
