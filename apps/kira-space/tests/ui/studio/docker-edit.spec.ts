@@ -152,6 +152,8 @@ test('contract: edit tab splits in-place and recreate into tabs without mode bad
   await expect(tid(page, 'docker-edit-tab-recreate')).toHaveAttribute('data-state', 'off');
   await expect(tid(page, 'docker-edit-badge')).toHaveCount(0);
   await expect(tid(page, 'docker-edit-name')).toHaveValue('kira-flow-edit');
+  await expect(field(page, 'name')).toHaveAttribute('data-orientation', 'responsive');
+  await expect(field(page, 'name').locator('[data-slot="field-label"]')).toBeVisible();
   await expect(tid(page, 'docker-edit-pending')).toHaveCount(0);
   await expect(tid(page, 'docker-edit-tab-dirty')).toHaveCount(0);
   await expect(tid(page, 'docker-edit-apply-now')).toBeDisabled();

@@ -262,6 +262,9 @@ reviewTest('a folder checkbox marks every file under it', async ({ relaunch }) =
   const folder = tree.locator(t('review-folder-check'));
   const files = tree.locator(`${t('file-tree-row')} button[role="checkbox"]`);
   await expect(folder).toHaveAttribute('aria-checked', 'mixed');
+  // The primitive draws the indeterminate minus glyph; no restyled codicon check anywhere.
+  await expect(folder.locator('svg.lucide-minus')).toBeVisible();
+  await expect(mixed.locator('[data-slot="checkbox"] .codicon-check')).toHaveCount(0);
 
   await folder.click();
   await expect(folder).toHaveAttribute('aria-checked', 'true');

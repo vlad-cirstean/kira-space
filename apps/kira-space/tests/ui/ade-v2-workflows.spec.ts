@@ -196,8 +196,11 @@ test('the inspector groups a step into What it does, Where and when and How it e
     .locator(`${t('ade-wf-step')} [data-slot="field"][data-orientation="responsive"]`)
     .first();
   await expect(row).toBeVisible();
-  const labelBox = await row.locator(':scope > [data-slot="label"]').boundingBox();
-  const controlBox = await row.locator(':scope > :not([data-slot="label"])').first().boundingBox();
+  const labelBox = await row.locator(':scope > [data-slot="field-label"]').boundingBox();
+  const controlBox = await row
+    .locator(':scope > :not([data-slot="field-label"])')
+    .first()
+    .boundingBox();
   expect(Math.abs((labelBox?.y ?? 0) - (controlBox?.y ?? 99))).toBeLessThan(4);
   expect(labelBox?.x ?? 99).toBeLessThan(controlBox?.x ?? 0);
   await expect(page.locator(t('ade-wf-step-tools'))).toBeHidden();
