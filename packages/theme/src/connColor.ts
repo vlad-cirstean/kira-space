@@ -75,6 +75,11 @@ export function connTextClass(color: string | null | undefined): string | undefi
   return color ? CONN_TEXT[color] : undefined;
 }
 
+/** Connection icon colour; no connection colour reads muted. */
+export function connIconClass(color: string | null | undefined): string {
+  return connTextClass(color) ?? 'text-muted-foreground';
+}
+
 export type ColorMark = 'rail' | 'bar' | 'dot' | 'band' | 'swatch';
 
 // Tailwind emits only scanned literals, so each shape is spelled in full.
