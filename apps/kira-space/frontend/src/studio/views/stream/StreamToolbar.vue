@@ -189,24 +189,19 @@ async function onDeleteMessage(): Promise<void> {
     <ToolbarSeparator />
 
     <div class="flex items-center gap-1.5 min-w-0">
-      <TextTooltip
-        content-testid="stream-count-tooltip"
-        :text="
+      <TooltipIconButton
+        icon="symbol-number"
+        :label="
           rt?.countError
             ? t('studio.common.countFailed.tooltip', { error: rt.countError })
             : t('studio.stream.count.label')
         "
-        ><Button
-          variant="toolbar"
-          size="kira-icon"
-          :class="rt?.countError ? 'text-error' : ''"
-          :aria-label="t('studio.stream.count.label')"
-          data-testid="stream-count"
-          @click="streamViewStore.runCount(tab.id)"
-        >
-          <CodiconIcon name="symbol-number" :size="13" />
-        </Button></TextTooltip
-      >
+        :aria-label="t('studio.stream.count.label')"
+        content-testid="stream-count-tooltip"
+        :class="rt?.countError ? 'text-error' : ''"
+        data-testid="stream-count"
+        @click="streamViewStore.runCount(tab.id)"
+      />
       <span class="text-kira-sm text-muted-foreground" data-testid="stream-status">{{
         statusLine
       }}</span>

@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import type { Caps } from '@shared/caps';
 import type { PageSize } from '@shared/domain/tabs';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -102,50 +99,42 @@ const projectionCount = computed(() => {
     <!-- DataToolbar's [count, columns, preview] group — this collection's equivalents are
          the exact count, the fields/projection menu, and expand/collapse-all. -->
     <div class="flex items-center gap-1.5 min-w-0">
-      <TextTooltip
-        content-testid="document-count-tooltip"
-        :text="
+      <TooltipIconButton
+        icon="symbol-number"
+        :label="
           rt?.countError
             ? t('studio.common.countFailed.tooltip', { error: rt.countError })
             : t('studio.documents.count.run.tooltip')
         "
-        ><Button
-          variant="toolbar"
-          size="kira-icon"
-          :class="rt?.countError ? 'text-error' : ''"
-          :aria-label="t('studio.documents.count.run.aria')"
-          data-testid="document-count"
-          @click="documentViewStore.runCount(tab.id)"
-        >
-          <CodiconIcon name="symbol-number" :size="13" />
-        </Button></TextTooltip
-      >
+        :aria-label="t('studio.documents.count.run.aria')"
+        content-testid="document-count-tooltip"
+        :class="rt?.countError ? 'text-error' : ''"
+        data-testid="document-count"
+        @click="documentViewStore.runCount(tab.id)"
+      />
       <div class="relative">
-        <TextTooltip
-          :text="
+        <TooltipIconButton
+          ref="projectionTriggerEl"
+          icon="list-selection"
+          :label="
             projectionCount
               ? t('studio.documents.projection.shown.tooltip', projectionCount)
               : t('studio.common.fields.label')
           "
+          :aria-label="t('studio.common.fields.label')"
+          class="relative"
+          :aria-expanded="projectionOpen"
+          data-testid="document-toolbar-projection"
+          @click="projectionOpen = !projectionOpen"
         >
-          <Button
-            ref="projectionTriggerEl"
-            variant="toolbar"
-            size="kira-icon"
-            class="relative"
-            :aria-expanded="projectionOpen"
-            :aria-label="t('studio.common.fields.label')"
-            data-testid="document-toolbar-projection"
-            @click="projectionOpen = !projectionOpen"
-          >
-            <CodiconIcon name="list-selection" :size="13" />
+          <template #badge>
             <StatusDot
               v-if="tab.state.projection !== null"
               tone="state-on"
               class="absolute top-0.5 right-0.5"
             />
-          </Button>
-        </TextTooltip>
+          </template>
+        </TooltipIconButton>
         <Popover :open="projectionOpen" @update:open="(v) => (projectionOpen = v)">
           <PopoverAnchor
             :reference="(projectionTriggerEl?.$el as HTMLElement) ?? undefined"

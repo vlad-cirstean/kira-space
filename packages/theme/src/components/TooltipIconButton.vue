@@ -38,6 +38,8 @@ withDefaults(
     tone?: 'ok' | 'error';
     /** Shortcut text (callers format it), shown as a `Kbd` after the label. */
     kbd?: string;
+    /** `data-testid` of the tooltip body. */
+    contentTestid?: string;
   }>(),
   {
     ariaLabel: undefined,
@@ -48,6 +50,7 @@ withDefaults(
     pressed: undefined,
     tone: undefined,
     kbd: undefined,
+    contentTestid: undefined,
   },
 );
 
@@ -96,6 +99,8 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         <slot name="badge" />
       </Button>
     </TooltipTrigger>
-    <TooltipContent><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent>
+    <TooltipContent :data-testid="contentTestid"
+      ><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent
+    >
   </Tooltip>
 </template>

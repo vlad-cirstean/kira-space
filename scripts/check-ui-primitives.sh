@@ -24,6 +24,7 @@
 # Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
 # Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
 # Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
+# Guards U141-U145, U123 extended: docs/v0.3.17/plans/P672-part5-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -280,8 +281,8 @@ U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5); f
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
-U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
 U124@@v@@CodeBlock.vue|AdeTaskCard.vue@@Card class sets padding, gap, type, fill, border, opacity or row layout, or binds :class (variant inset, section or list; state shows through a Badge; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle|border|opacity-|bg-|rounded|shadow)|<Card\b(?&t)\s:class=
+U123@@v@@@@plain-text Tooltip triple (use TextTooltip; text and kbd: TextTooltip :kbd, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*(?:<Kbd>\{\{(?:(?!\}\}).)*\}\}</Kbd>\s*)?</TooltipContent>\s*</Tooltip>
 U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
 U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
@@ -299,6 +300,11 @@ U138@@v@@@@FieldError as last DialogBody child (failure is an error Alert, RD.6)
 U139@@v@@@@two adjacent emphasised buttons (one emphasised button rightmost, RD.2)@@<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")(?&t)>(?:(?!</Button\s*>)[\s\S])*</Button\s*>\s*(?:<!--(?:(?!-->)[\s\S])*-->\s*)?<Button\b(?=(?&t)\svariant="dialog-(?:danger|primary|approve)")
 U140@@v@@@@dismiss label on an emphasised button (Close, Done, Dismiss are dialog)@@<Button\b(?=(?&t)\svariant="dialog-(?:primary|approve|danger)")(?&t)>(?:(?!</Button\s*>)[\s\S])*?t\('common\.(?:done\.status|action\.close\.label|action\.dismiss\.label)'\)
 U146@@v@@@@hand title bar title (use TitleBarTitle)@@(?s)\A(?=.*<TitleBarBase\b).*\bclass="(?=[^"]*${TOK}text-kira-md(?![\w-]))(?=[^"]*${TOK}font-medium(?![\w-]))
+U141@@v@@@@menu indicator override (the primitive draws the codicon check, RM.2)@@<template #indicator-icon\b
+U142@@v@@@@disabled Tooltip wrapper (render the trigger bare, RT.1)@@<Tooltip\b(?&t)\s:disabled="true"
+U143@@v@@@@TextTooltip around an icon-only Button (use TooltipIconButton, RT.1)@@(?s)<TextTooltip\b(?&t)(?<!/)>\s*<Button\b(?&t)\ssize="(?:kira-icon|icon-sm|touch-icon|title)"
+U144@@v@@@@Kbd inside a TooltipIconButton body (use :kbd, RT.1)@@(?s)<TooltipIconButton\b(?&t)(?<!/)>(?:(?!</TooltipIconButton>).)*?<Kbd\b
+U145@@v@@@@margin or padding class on a popover bar control (use PopoverBar, RP.1)@@(?s)\A(?=.*<PopoverContent\b).*?<(?:SecondaryTabs|SearchField)\b(?&t)\s:?class="[^"]*${TOK}(?:m|mx|my|mt|mb|ml|mr|p|px|py)-
 GUARDS
 
 # hits: "U<n> path"

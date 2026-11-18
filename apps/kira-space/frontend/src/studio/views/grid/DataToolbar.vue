@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import type { PageSize } from '@shared/domain/tabs';
 import { useQuery } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
@@ -317,49 +314,39 @@ function onDeleteRow(): void {
   <ToolbarSeparator />
 
   <div class="flex items-center gap-1.5 min-w-0">
-    <TextTooltip
+    <!-- F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
+         before a fresh count runs, so a failure right after has no old count to keep showing;
+         a failed *refresh* of an existing count keeps that count on screen (unchanged) with
+         the error appended, rather than losing it. -->
+    <TooltipIconButton
+      icon="symbol-number"
+      :label="countTooltip"
+      :aria-label="t('studio.grid.count.tooltip')"
       content-testid="toolbar-count-tooltip"
-      :text="
-        // F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
-        // before a fresh count runs, so a failure right after has no old count to keep showing;
-        // a failed *refresh* of an existing count keeps that count on screen (unchanged) with
-        // the error appended, rather than losing it.
-        countTooltip
-      "
-      ><Button
-        variant="toolbar"
-        size="kira-icon"
-        data-testid="toolbar-count"
-        :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
-        :aria-label="t('studio.grid.count.tooltip')"
-        @click="onCount"
-      >
-        <CodiconIcon name="symbol-number" :size="13" />
-      </Button></TextTooltip
-    >
+      data-testid="toolbar-count"
+      :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
+      @click="onCount"
+    />
 
     <Popover :open="columnsOpen" @update:open="columnsOpen = $event">
       <div ref="columnsAnchorRef" class="relative">
-        <TextTooltip
-          :text="
+        <TooltipIconButton
+          icon="list-selection"
+          :label="
             columnCount
               ? t('studio.grid.columns.shown.tooltip', columnCount)
               : t('studio.common.columns.label')
           "
+          :aria-label="t('studio.common.columns.label')"
+          class="relative"
+          data-testid="toolbar-columns"
+          :aria-expanded="columnsOpen"
+          @click="columnsOpen = !columnsOpen"
         >
-          <Button
-            variant="toolbar"
-            size="kira-icon"
-            class="relative"
-            data-testid="toolbar-columns"
-            :aria-label="t('studio.common.columns.label')"
-            :aria-expanded="columnsOpen"
-            @click="columnsOpen = !columnsOpen"
-          >
-            <CodiconIcon name="list-selection" :size="13" />
+          <template #badge>
             <StatusDot v-if="columnsIndicator" tone="state-on" class="absolute top-0.5 right-0.5" />
-          </Button>
-        </TextTooltip>
+          </template>
+        </TooltipIconButton>
         <PopoverAnchor :reference="columnsAnchorRef ?? undefined" />
       </div>
       <ColumnsMenu v-if="columnsOpen" :tab-id="tab.id" :caps="caps" />
