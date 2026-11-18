@@ -329,12 +329,12 @@ const connectionName = computed(
 
       <DialogFooter>
         <template #start>
-          <FieldDescription
+          <span
             ><CatalogText k="studio.project.connectionScope.hint">
               <template #connectionName
                 ><span class="font-data">{{ connectionName }}</span></template
               >
-            </CatalogText></FieldDescription
+            </CatalogText></span
           >
         </template>
         <Button variant="dialog" size="kira-lg" @click="filtersDialogStore.closeFiltersDialog">{{

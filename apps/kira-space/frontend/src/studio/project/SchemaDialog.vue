@@ -187,12 +187,12 @@ async function onSave(): Promise<void> {
       <DialogFooter>
         <template #start>
           <FieldError v-if="saveError" data-testid="schema-save-error">{{ saveError }}</FieldError>
-          <FieldDescription v-else
+          <span v-else
             ><CatalogText k="studio.project.connectionScope.hint">
               <template #connectionName
                 ><span class="font-data">{{ connectionName }}</span></template
               >
-            </CatalogText></FieldDescription
+            </CatalogText></span
           >
         </template>
         <Button variant="dialog" size="kira-lg" @click="schemaDialogStore.closeSchemaDialog">{{

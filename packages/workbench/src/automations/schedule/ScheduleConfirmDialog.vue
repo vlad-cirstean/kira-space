@@ -228,7 +228,7 @@ function onChord(event: KeyboardEvent): void {
 
       <DialogFooter>
         <template v-if="more > 0" #start>
-          <span class="text-kira-sm text-muted-foreground" data-testid="schedule-confirm-more">{{
+          <span data-testid="schedule-confirm-more">{{
             t('common.moreWaiting.status', { count: more })
           }}</span>
         </template>

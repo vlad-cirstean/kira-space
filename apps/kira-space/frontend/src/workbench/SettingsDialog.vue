@@ -272,14 +272,9 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       <FieldError v-if="f.saveError" data-testid="settings-save-error">{{
         f.saveError
       }}</FieldError>
-      <span
-        v-else
-        class="text-subtle text-kira-sm leading-normal"
-        data-testid="settings-footer-status"
-        >{{
-          f.isDirty ? t('common.state.unsavedChanges.status') : ''
-        }}</span
-      >
+      <span v-else data-testid="settings-footer-status">{{
+        f.isDirty ? t('common.state.unsavedChanges.status') : ''
+      }}</span>
     </template>
 
     <template #footer="f">

@@ -431,15 +431,19 @@ function onSequenceStartChange(index: number, start: number): void {
       <DialogFooter>
         <!-- P104 §3: RunState inlined -- status is always 'running' here (elapsedMs is always
              null, so the label is always the em dash RunState's own computed would give it). -->
-        <TextTooltip
-          v-if="running"
-          :text="
-            t('studio.generateData.progress.tooltip', { committed: committedRows, count: rowCount })
-          "
-          ><span class="inline-flex items-center text-info">
-            <Spinner :size="12" label="" />
-          </span></TextTooltip
-        >
+        <template v-if="running" #start>
+          <TextTooltip
+            :text="
+              t('studio.generateData.progress.tooltip', {
+                committed: committedRows,
+                count: rowCount,
+              })
+            "
+            ><span class="inline-flex items-center text-info">
+              <Spinner :size="12" label="" />
+            </span></TextTooltip
+          >
+        </template>
         <Button
           v-if="running"
           variant="dialog"

@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/vue-query';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -49,12 +48,12 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
           {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody>
-        <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="masking-review-more">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
-      </DialogBody>
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span data-testid="masking-review-more">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
           :kbd="formatShortcut('prompt.hide')"
           variant="dialog"

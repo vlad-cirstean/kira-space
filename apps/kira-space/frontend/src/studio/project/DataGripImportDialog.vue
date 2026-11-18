@@ -16,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -330,9 +329,7 @@ async function onConfirm(): Promise<void> {
 
       <DialogFooter>
         <template v-if="!report" #start>
-          <FieldDescription class="font-data">{{
-            datagripImportStore.projectPath
-          }}</FieldDescription>
+          <span class="font-data">{{ datagripImportStore.projectPath }}</span>
         </template>
         <template v-if="!report">
           <Button

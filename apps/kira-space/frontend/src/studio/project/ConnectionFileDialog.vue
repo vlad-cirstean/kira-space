@@ -399,14 +399,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             <CodiconIcon name="trash" :size="13" />
             {{ t('common.action.delete.label') }}
           </Button>
-          <span
-            v-if="detail?.id && draft.dirty.value"
-            class="text-kira-sm text-subtle"
-            data-testid="connection-save-first"
-            >{{
-              t('studio.project.connectionDialog.saveFirst.hint')
-            }}</span
-          >
+          <span v-if="detail?.id && draft.dirty.value" data-testid="connection-save-first">{{
+            t('studio.project.connectionDialog.saveFirst.hint')
+          }}</span>
           <Button
             variant="dialog"
             size="kira-lg"

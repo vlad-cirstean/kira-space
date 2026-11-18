@@ -4,7 +4,6 @@ import { useMutation } from '@tanstack/vue-query';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -50,12 +49,12 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
           {{ session?.name || entry.title }}
         </DialogDescription>
       </DialogHeader>
-      <DialogBody v-if="more > 0">
-        <p v-if="more > 0" class="m-0 text-muted-foreground" data-testid="proof-ready-more">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
-      </DialogBody>
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span data-testid="proof-ready-more">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
           :kbd="formatShortcut('prompt.hide')"
           variant="dialog"

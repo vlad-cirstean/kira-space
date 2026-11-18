@@ -103,7 +103,7 @@ function onChord(event: KeyboardEvent): void {
 
       <DialogFooter>
         <template v-if="more > 0" #start>
-          <span class="text-kira-sm text-muted-foreground" data-testid="git-credential-more">
+          <span data-testid="git-credential-more">
             {{ t('common.moreWaiting.status', { count: more }) }}
           </span>
         </template>

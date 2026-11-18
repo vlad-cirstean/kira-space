@@ -48,12 +48,14 @@ const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
         <p class="m-0 text-subtle" :data-testid="`${testidPrefix}-expires`">
           {{ t('common.expiresIn.status', { seconds: remainingSeconds }) }}
         </p>
-        <p v-if="more > 0" class="m-0 text-subtle" :data-testid="`${testidPrefix}-queue-count`">
-          {{ t('common.moreWaiting.status', { count: more }) }}
-        </p>
       </DialogBody>
 
       <DialogFooter>
+        <template v-if="more > 0" #start>
+          <span :data-testid="`${testidPrefix}-queue-count`">{{
+            t('common.moreWaiting.status', { count: more })
+          }}</span>
+        </template>
         <Button
           ref="denyButton"
           :kbd="formatShortcut('prompt.deny')"
