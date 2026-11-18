@@ -114,17 +114,6 @@ export function grpcCodeClass(code: number): 'info' | 'ok' | 'warn' | 'error' {
   return 'error';
 }
 
-/** The collections tree's own row needs a class for its leading chip and http/** may not import
- *  views/** (biome.json), so this lives here rather than in views/grpcrequest/. The tree's own
- *  denormalised columns (method/url, reused verbatim for a gRPC row's "pkg.Service/Method" and
- *  target) carry no streaming flag — that lives in the method's own descriptor, which a
- *  collections row cannot resolve without a live call — so every gRPC row gets the one neutral
- *  class from the status family (a gRPC call has no per-verb distinction to colour-code at all,
- *  so this stays on the plain status palette). */
-export function grpcMethodClass(_method: string): 'info' | 'ok' | 'warn' | 'error' {
-  return 'info';
-}
-
 // A per-code sentence, statusHint's own shape and register
 // (domain/http.ts) — lowercase, no trailing period, a sentence a person can act on. Lives here,
 // not in the view, for grpcCodeClass's own stated reason: http/** may not import views/**, and the

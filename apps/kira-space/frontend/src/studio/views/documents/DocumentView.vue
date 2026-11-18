@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -87,7 +87,7 @@ const connectionColor = computed(
   () => connectionsStore.connectionRecord(props.tab.connectionId)?.color,
 );
 
-const iconClass = computed(() => connTextClass(connectionColor.value) ?? 'text-muted-foreground');
+const iconClass = computed(() => connIconClass(connectionColor.value));
 
 const railColor = computed(() => (connRecord.value ? (connRecord.value.color ?? null) : undefined));
 const _runState = useRunState(() => props.tab.id);

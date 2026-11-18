@@ -10,12 +10,13 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { type MessageKey, t } from '@theme/i18n';
+import { TONE_BADGE, TONE_DOT } from '@theme/lib/statusTone';
 import { formatBytes, formatPercent } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, ref, watch } from 'vue';
-import { publishedPorts, shortId, stateDotTone } from '../lib/format';
+import { containerStateTone, publishedPorts, shortId } from '../lib/format';
 import type { ContainerAction } from '../queries';
 import { useContainerAction, useContainerDetail, useRegistryLink } from '../queries';
 import { useDockerEditStore } from '../state/dockerEdit';
@@ -77,20 +78,6 @@ const tabItems = computed(() =>
   })),
 );
 
-const stateVariant = computed(() => {
-  switch (c.value?.state) {
-    case 'running':
-      return 'ok';
-    case 'paused':
-    case 'restarting':
-      return 'warn';
-    case 'dead':
-      return 'error';
-    default:
-      return 'default';
-  }
-});
-
 // A stopped container cannot serve its Terminal tab: fall back to Overview.
 watch([running, c], () => {
   if (c.value && !running.value && ui.detailTab === 'terminal') {
@@ -137,9 +124,15 @@ function act(action: ContainerAction): void {
       </template>
       <template v-if="c" #default="{ data }">
         <DetailHeader title-testid="docker-detail-name" :title="c.name">
-          <template #leading><StatusDot :tone="stateDotTone(c.state)" /></template>
+          <template #leading><StatusDot :tone="TONE_DOT[containerStateTone(c.state)]" /></template>
           <template #meta>
-            <Badge :variant="stateVariant" data-testid="docker-detail-state">{{ c.state }}</Badge>
+            <Badge
+              :variant="TONE_BADGE[containerStateTone(c.state)]"
+              data-testid="docker-detail-state"
+              >{{
+                c.state
+              }}</Badge
+            >
           </template>
           <template #actions>
             <Button

@@ -7,10 +7,11 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
+import { TONE_DOT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { displayValue, formatBytes, formatDateTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
-import { nameOrShortId, stateDotTone } from '../lib/format';
+import { containerStateTone, nameOrShortId } from '../lib/format';
 import {
   useContainers,
   useImages,
@@ -168,7 +169,7 @@ const usedByRows = computed(() =>
             data-testid="docker-used-by"
             @click="ui.select({ kind: 'container', id: row.id })"
           >
-            <StatusDot :tone="row.state ? stateDotTone(row.state) : 'muted'" />
+            <StatusDot :tone="TONE_DOT[row.state ? containerStateTone(row.state) : 'neutral']" />
             {{ row.name }}
           </button>
         </DetailSection>

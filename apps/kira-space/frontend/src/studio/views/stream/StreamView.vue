@@ -5,7 +5,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
@@ -30,7 +30,7 @@ const gate = useStreamGate(() => props.tab);
 const { connRecord, rt, page, isBatch, isKafka, isReadOnlyBatch, redriveLimit, hideDuration } =
   gate;
 
-const iconClass = computed(() => connTextClass(connRecord.value?.color) ?? 'text-muted-foreground');
+const iconClass = computed(() => connIconClass(connRecord.value?.color));
 const pathPrefix = computed(() => (connRecord.value ? `${connRecord.value.name} / ` : ''));
 const railColor = computed(() => (connRecord.value ? (connRecord.value.color ?? null) : undefined));
 const targetTail = computed(() => pathTail(props.tab.path));

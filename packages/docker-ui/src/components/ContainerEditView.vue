@@ -248,7 +248,7 @@ const originNotice = computed(() => {
             {{ item.label }}
             <StatusDot
               v-if="item.value === 'inPlace' ? inPlaceCount : recreateCount"
-              tone="muted"
+              tone="warn"
               data-testid="docker-edit-tab-dirty"
             />
           </template>

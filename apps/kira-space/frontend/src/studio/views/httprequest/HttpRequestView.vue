@@ -14,6 +14,7 @@ import { type HttpMethod, type HttpRequestPane, httpMethodToken } from '@shared/
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -318,13 +319,11 @@ onUnmounted(() => {
         }}</Badge
       >
       <TextTooltip v-if="dirty" :text="t('common.state.unsavedChanges.status')"
-        ><span
-          class="text-warn text-kira-lg leading-none"
-          role="img"
+        ><StatusDot
+          tone="warn"
+          :label="t('common.state.unsavedChanges.status')"
           data-testid="http-dirty"
-          :aria-label="t('common.state.unsavedChanges.status')"
-          >•</span
-        ></TextTooltip
+        /></TextTooltip
       >
       <TextTooltip v-if="unresolvedRefs.length > 0" :text="unresolvedTooltip"
         ><Badge variant="warn" data-testid="http-unresolved-chip">{{

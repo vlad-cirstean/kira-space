@@ -4,6 +4,7 @@ import { grpcRequestTitle } from '@shared/domain/grpc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -17,6 +18,7 @@ import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { methodTextClass } from '@theme/methodColor';
 import RunState from '@theme/RunState.vue';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -277,19 +279,18 @@ onUnmounted(() => {
       <Badge
         data
         v-if="tab.state.service && tab.state.method"
-        variant="info"
+        variant="chip"
+        :class="methodTextClass('other')"
         data-testid="grpc-method-chip"
       >
         {{ tab.state.service }}/{{ tab.state.method }}
       </Badge>
       <TextTooltip v-if="dirty" :text="t('common.state.unsavedChanges.status')"
-        ><span
-          class="text-warn text-kira-lg leading-none"
-          role="img"
+        ><StatusDot
+          tone="warn"
+          :label="t('common.state.unsavedChanges.status')"
           data-testid="grpc-dirty"
-          :aria-label="t('common.state.unsavedChanges.status')"
-          >•</span
-        ></TextTooltip
+        /></TextTooltip
       >
       <TextTooltip v-if="unresolvedRefs.length > 0" :text="unresolvedTooltip"
         ><Badge variant="warn" data-testid="grpc-unresolved-chip">{{

@@ -23,26 +23,13 @@ import { computed } from 'vue';
 import { useConnectionsStore } from '../state/connections';
 import { looksAlreadyImported, useDatagripImportStore } from '../state/datagripImport';
 import EngineIcon from '../theme/EngineIcon.vue';
+import { KIND_ACCENT_CLASS } from './connection/kinds';
 
 // A real review step. Nothing is written until "Import N connections" is pressed —
 // every row here is either checkable (it maps to a supported engine and has enough of a JDBC URL
 // to build fields from) or greyed with the specific reason it cannot be. The password itself
 // is never fetched or shown here: only an outlook badge, resolved from file reads,
 // says what Import is expected to do.
-
-const KIND_ACCENT_CLASS: Record<ConnectionKind, string> = {
-  postgres: 'text-conn-cyan',
-  mariadb: 'text-conn-blue',
-  mysql: 'text-conn-teal',
-  sqlite: 'text-conn-violet',
-  clickhouse: 'text-conn-orange',
-  mongodb: 'text-conn-green',
-  redis: 'text-conn-red',
-  kafka: 'text-conn-amber',
-  sqs: 'text-conn-magenta',
-  s3: 'text-conn-olive',
-  kibana: 'text-conn-indigo',
-};
 
 const OUTLOOK_KEY: Record<string, MessageKey> = {
   'will-attempt': 'studio.project.dataGripImport.outlook.willAttempt.label',

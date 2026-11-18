@@ -8,7 +8,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -62,7 +62,7 @@ usePublishEditDirty(
 
 const running = computed(() => rt.value?.status === 'loading');
 const connColor = computed(() => connRecord.value?.color);
-const iconClass = computed(() => connTextClass(connColor.value) ?? 'text-info');
+const iconClass = computed(() => connIconClass(connColor.value));
 const runState = useRunState(() => props.tab?.id);
 
 // "connection / dbN / " (redis) or "connection / bucket / " (s3): the path's top-level segment.

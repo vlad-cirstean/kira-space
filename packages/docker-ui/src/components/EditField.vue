@@ -40,7 +40,7 @@ const needsRecreate = computed(() => inPlaceTab === true && props.mode === 'recr
     <FieldLabel :for="multi ? undefined : id">
       {{ label }}
       <TextTooltip v-if="changed" :text="t('common.changed.status')"
-        ><StatusDot tone="muted" :label="t('common.changed.status')" /></TextTooltip
+        ><StatusDot tone="warn" :label="t('common.changed.status')" /></TextTooltip
       >
     </FieldLabel>
     <slot v-bind="{ invalid: form.invalidAttrs('field'), id }" />

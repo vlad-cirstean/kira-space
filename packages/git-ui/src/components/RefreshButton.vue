@@ -86,7 +86,7 @@ defineExpose({ refresh: doRefresh });
       <StatusDot
         v-if="hasPendingChange"
         class="absolute top-0.5 right-0.5"
-        color="var(--kira-focus)"
+        tone="info"
         aria-hidden="true"
       />
     </template>

@@ -3,7 +3,7 @@ import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connTextClass } from '@theme/connColor';
+import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
@@ -51,10 +51,7 @@ function iconFor(entry: RecentTableEntry): string {
 }
 
 function iconColorClass(entry: RecentTableEntry): string {
-  if (entry.kind === 'document') {
-    return connTextClass(connectionFor(entry)?.color) ?? 'text-muted-foreground';
-  }
-  return 'text-info';
+  return connIconClass(connectionFor(entry)?.color);
 }
 
 function openRecent(entry: RecentTableEntry): void {
