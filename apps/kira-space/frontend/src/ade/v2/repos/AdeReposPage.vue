@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import InlineState from '@theme/components/InlineState.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -7,6 +8,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
@@ -422,64 +424,66 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             </Button>
           </div>
           <FieldDescription v-if="note" data-testid="ade-repos-note">{{ note }}</FieldDescription>
-          <p v-if="folders.length === 0" class="m-0 text-muted-foreground">{{
+          <InlineState v-if="folders.length === 0" kind="empty">{{
             t('space.ade.repos.noFolders.empty')
-          }}</p>
-          <div
-            v-for="(f, i) in folders"
-            :key="f.path"
-            class="flex items-center gap-2 rounded-kira-sm bg-field px-2 py-1"
-            data-testid="ade-repos-folder"
-            :data-path="f.path"
-          >
-            <span class="min-w-0 flex-1 font-data"><TruncatedText :text="f.path" /></span>
-            <span
-              class="shrink-0 text-kira-sm text-muted-foreground"
-              data-testid="ade-repos-folder-count"
-              >{{
-                f.hiddenCount > 0
-                  ? t('common.dotPair.label', {
-                      first: t('space.ade.repos.folder.repoCount.label', {
-                        count: f.repoCount,
-                      }),
-                      second: t('space.ade.repos.folder.hiddenCount.label', {
-                        count: f.hiddenCount,
-                      }),
-                    })
-                  : t('space.ade.repos.folder.repoCount.label', { count: f.repoCount })
-              }}</span
+          }}</InlineState>
+          <Card v-else variant="list">
+            <div
+              v-for="(f, i) in folders"
+              :key="f.path"
+              :class="cn(rowVariants(), 'gap-2')"
+              data-testid="ade-repos-folder"
+              :data-path="f.path"
             >
-            <TextTooltip :text="t('space.ade.repos.folder.watch.tooltip')">
-              <div class="flex shrink-0 items-center gap-1.5">
-                <Switch
-                  :id="`ade-repos-watch-${i}`"
-                  :model-value="f.watch"
-                  data-testid="ade-repos-folder-watch"
-                  @update:model-value="(v: boolean) => onWatch(f.path, v)"
-                />
-                <Label :for="`ade-repos-watch-${i}`">{{
-                  t('space.ade.repos.folder.watch.label')
-                }}</Label>
-              </div>
-            </TextTooltip>
-            <TooltipIconButton
-              :icon="f.hidden ? 'eye' : 'eye-closed'"
-              :label="
-                f.hidden
-                  ? t('common.action.showAll.label')
-                  : t('space.ade.repos.folder.hideAll.label')
-              "
-              :aria-pressed="f.hidden"
-              data-testid="ade-repos-folder-hide"
-              @click="onHideFolder(f.path, !f.hidden)"
-            />
-            <TooltipIconButton
-              icon="close"
-              :label="t('space.ade.repos.folder.remove.tooltip')"
-              data-testid="ade-repos-folder-remove"
-              @click="onRemoveFolder(f.path)"
-            />
-          </div>
+              <span class="min-w-0 flex-1 font-data"><TruncatedText :text="f.path" /></span>
+              <span
+                class="shrink-0 text-kira-sm text-muted-foreground"
+                data-testid="ade-repos-folder-count"
+                >{{
+                  f.hiddenCount > 0
+                    ? t('common.dotPair.label', {
+                        first: t('space.ade.repos.folder.repoCount.label', {
+                          count: f.repoCount,
+                        }),
+                        second: t('space.ade.repos.folder.hiddenCount.label', {
+                          count: f.hiddenCount,
+                        }),
+                      })
+                    : t('space.ade.repos.folder.repoCount.label', { count: f.repoCount })
+                }}</span
+              >
+              <TextTooltip :text="t('space.ade.repos.folder.watch.tooltip')">
+                <div class="flex shrink-0 items-center gap-1.5">
+                  <Switch
+                    :id="`ade-repos-watch-${i}`"
+                    :model-value="f.watch"
+                    data-testid="ade-repos-folder-watch"
+                    @update:model-value="(v: boolean) => onWatch(f.path, v)"
+                  />
+                  <Label :for="`ade-repos-watch-${i}`">{{
+                    t('space.ade.repos.folder.watch.label')
+                  }}</Label>
+                </div>
+              </TextTooltip>
+              <TooltipIconButton
+                :icon="f.hidden ? 'eye' : 'eye-closed'"
+                :label="
+                  f.hidden
+                    ? t('common.action.showAll.label')
+                    : t('space.ade.repos.folder.hideAll.label')
+                "
+                :aria-pressed="f.hidden"
+                data-testid="ade-repos-folder-hide"
+                @click="onHideFolder(f.path, !f.hidden)"
+              />
+              <TooltipIconButton
+                icon="close"
+                :label="t('space.ade.repos.folder.remove.tooltip')"
+                data-testid="ade-repos-folder-remove"
+                @click="onRemoveFolder(f.path)"
+              />
+            </div>
+          </Card>
         </div>
       </div>
     </section>

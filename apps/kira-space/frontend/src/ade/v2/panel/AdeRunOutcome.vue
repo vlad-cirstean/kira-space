@@ -6,6 +6,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
@@ -109,11 +110,7 @@ function copy(): void {
 </script>
 
 <template>
-  <div
-    class="flex flex-col gap-1.5 rounded-kira-sm bg-elevated p-2"
-    data-testid="ade-run-outcome"
-    :data-run-id="run.id"
-  >
+  <Card data-testid="ade-run-outcome" :data-run-id="run.id">
     <div class="flex items-center gap-2">
       <span class="text-kira-sm text-muted-foreground">{{ title }}</span>
       <Badge :variant="TONE_BADGE[STATE_TONE[run.state] ?? 'neutral']">{{ state }}</Badge>
@@ -210,5 +207,5 @@ function copy(): void {
       {{ showLog ? t('space.common.hideLog.label') : t('space.common.showLog.label') }}
     </Button>
     <AdeRunLog v-if="showLog" kind="run" :id="run.id" />
-  </div>
+  </Card>
 </template>

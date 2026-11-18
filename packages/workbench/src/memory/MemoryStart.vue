@@ -127,7 +127,6 @@ function eventsFor(id: string) {
           <Card
             v-for="version in trail"
             :key="version.id"
-            :class="{ 'opacity-50': version.historical }"
             :data-testid="`memory-version-${version.version}`"
           >
             <div class="flex items-center gap-1">

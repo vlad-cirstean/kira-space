@@ -4,11 +4,13 @@ import BranchChip from '@theme/components/BranchChip.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
+import { Card } from '@theme/components/ui/card';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
@@ -501,64 +503,64 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
       />
 
       <div class="flex flex-col gap-0.5">
-        <div class="pb-0.5 text-kira-sm text-muted-foreground">{{
-          t('space.ade.branchPanel.mergedInto.label')
-        }}</div>
-        <div
-          v-for="i in intoRows"
-          :key="i.target"
-          class="flex min-h-row items-center gap-2 rounded-kira-sm bg-elevated px-1.5"
-          data-testid="ade-branch-into"
-          :data-target="i.target"
-        >
-          <Badge :variant="TONE_BADGE[INTO_TONE[i.status]]" class="min-w-21 justify-center">{{
-            t(INTO_STATUS[i.status])
-          }}</Badge>
-          <Identifier :value="i.target" />
-          <span class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground">{{
-            intoNote(i)
-          }}</span>
-          <Button
-            variant="toolbar"
-            v-if="canMerge && i.status !== 'merged'"
-            size="kira"
-            class="shrink-0"
-            :pending="dialogs.pending.has(`merge:${branch.id}:${i.target}`)"
-            data-testid="ade-branch-merge"
-            @click="dialogs.merge(branch.id, i.target)"
+        <SectionHeading flush :label="t('space.ade.branchPanel.mergedInto.label')" />
+        <Card v-if="intoRows.length" variant="list">
+          <div
+            v-for="i in intoRows"
+            :key="i.target"
+            class="flex min-h-row items-center gap-2 px-1.5"
+            data-testid="ade-branch-into"
+            :data-target="i.target"
           >
-            <CodiconIcon name="git-merge" :size="13" />
-            {{
-              i.status === 'stale'
-                ? t('space.ade.needs.action.reMerge.label')
-                : t('common.merge.label')
-            }}
-          </Button>
-        </div>
+            <Badge :variant="TONE_BADGE[INTO_TONE[i.status]]" class="min-w-21 justify-center">{{
+              t(INTO_STATUS[i.status])
+            }}</Badge>
+            <Identifier :value="i.target" />
+            <span class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground">{{
+              intoNote(i)
+            }}</span>
+            <Button
+              variant="toolbar"
+              v-if="canMerge && i.status !== 'merged'"
+              size="kira"
+              class="shrink-0"
+              :pending="dialogs.pending.has(`merge:${branch.id}:${i.target}`)"
+              data-testid="ade-branch-merge"
+              @click="dialogs.merge(branch.id, i.target)"
+            >
+              <CodiconIcon name="git-merge" :size="13" />
+              {{
+                i.status === 'stale'
+                  ? t('space.ade.needs.action.reMerge.label')
+                  : t('common.merge.label')
+              }}
+            </Button>
+          </div>
+        </Card>
         <InlineState v-if="intoRows.length === 0" kind="empty">{{
           t('space.ade.branchPanel.noIntegration.emptyHint')
         }}</InlineState>
       </div>
 
       <div class="flex flex-col gap-0.5">
-        <div class="pb-0.5 text-kira-sm text-muted-foreground">{{
-          t('space.ade.branchPanel.deployedTo.label')
-        }}</div>
-        <div
-          v-for="d in deployRows"
-          :key="d.env"
-          class="flex min-h-row items-center gap-2 rounded-kira-sm bg-elevated px-1.5"
-          data-testid="ade-branch-deploy"
-          :data-env="d.env"
-        >
-          <Badge :variant="TONE_BADGE[DEPLOY_TONE[d.status]]" class="min-w-21 justify-center">{{
-            t(DEPLOY_STATUS[d.status])
-          }}</Badge>
-          <Identifier :value="d.env" />
-          <span class="min-w-0 truncate text-kira-sm text-muted-foreground">{{
-            deployNote(d)
-          }}</span>
-        </div>
+        <SectionHeading flush :label="t('space.ade.branchPanel.deployedTo.label')" />
+        <Card v-if="deployRows.length" variant="list">
+          <div
+            v-for="d in deployRows"
+            :key="d.env"
+            class="flex min-h-row items-center gap-2 px-1.5"
+            data-testid="ade-branch-deploy"
+            :data-env="d.env"
+          >
+            <Badge :variant="TONE_BADGE[DEPLOY_TONE[d.status]]" class="min-w-21 justify-center">{{
+              t(DEPLOY_STATUS[d.status])
+            }}</Badge>
+            <Identifier :value="d.env" />
+            <span class="min-w-0 truncate text-kira-sm text-muted-foreground">{{
+              deployNote(d)
+            }}</span>
+          </div>
+        </Card>
         <InlineState v-if="deployRows.length === 0" kind="empty">{{
           t('space.ade.branchPanel.noEnvironments.emptyHint')
         }}</InlineState>

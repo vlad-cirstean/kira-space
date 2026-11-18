@@ -41,11 +41,7 @@ const elapsed = computed(() => {
 </script>
 
 <template>
-  <Card
-    :class="state === 'failed' && 'border-error'"
-    :data-state="state"
-    data-testid="script-progress"
-  >
+  <Card :data-state="state" data-testid="script-progress">
     <div class="flex min-w-0 items-center gap-2 text-kira-md">
       <Spinner
         v-if="state === 'running'"
