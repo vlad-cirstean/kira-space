@@ -48,8 +48,8 @@ test.describe('paired phone', () => {
     await expect(ctrl).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('Needs and Plan chips render the shared AdeChip', async ({ page }) => {
-    await expect(page.locator(`${t('needs-item')} ${t('ade-chip')}`).first()).toBeVisible();
+  test('Needs badges and Plan chips render the shared pieces', async ({ page }) => {
+    await expect(page.locator(`${t('needs-item')} [data-slot="badge"]`).first()).toBeVisible();
     await page.locator(t('tab-plan')).click();
     await expect(page.locator(`${t('plan-task')} ${t('ade-chip')}`).first()).toBeVisible();
   });

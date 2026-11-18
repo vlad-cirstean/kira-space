@@ -72,7 +72,7 @@ test('the Steps list shows each library step with its kind and users', async ({ 
   const row = page.locator(t('ade-step-row'));
   await expect(row).toHaveCount(1);
   await expect(row.locator(t('ade-step-row-name'))).toHaveText('Implement');
-  await expect(row.locator(t('ade-chip'))).toHaveText('Agent step');
+  await expect(row.locator('[data-slot="badge"]')).toHaveText('Agent step');
   await expect(row.locator(t('ade-step-row-used'))).toHaveText('Used by 1 workflow');
 });
 

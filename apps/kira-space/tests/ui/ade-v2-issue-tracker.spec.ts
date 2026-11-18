@@ -33,7 +33,7 @@ test('contract: the Details tab shows the issue title, status and PR count', asy
   // The pill's dot carries the tone of the tracker's status category; the card holds the issue line.
   await expect(pill(page, 'PAY-130').locator(t('ade-links-pill-dot'))).toHaveAttribute(
     'data-tone',
-    'blue',
+    'info',
   );
   const card = await openCard(page, 'PAY-130');
   await expect(card.locator(t('ade-task-issue'))).toHaveCount(1);
