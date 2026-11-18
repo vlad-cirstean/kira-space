@@ -14056,21 +14056,8 @@
           "hint": "This connection has an error. Kira uses the last valid version until you fix it."
         },
         "secrets": {
-          "clearConfirm": {
-            "body": "The saved value is deleted. The connection keeps the reference.",
-            "title": "Clear the secret “{name}”?"
-          },
-          "kindUri": {
-            "label": "URI"
-          },
-          "none": {
-            "hint": "This connection references no secrets."
-          },
           "storageOff": {
             "hint": "Secure storage is off, so secrets can’t be saved or read."
-          },
-          "value": {
-            "aria": "New value for {name}"
           }
         },
         "title": "Connection: {name}"
