@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { computed, useId } from 'vue';
@@ -53,29 +52,30 @@ const statusText = computed(() => {
 
 <template>
   <div class="contents" v-show="active">
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="switchId">{{ t('space.settings.capture.enabled.label') }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          data-testid="settings-reset-capture-enabled"
-          :disabled-trigger="isAtDefault('capture', 'enabled')"
-          :disabled="isAtDefault('capture', 'enabled')"
-          @click="resetLeaf('capture', 'enabled')"
-        />
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="switchId"
         :model-value="draft.capture.enabled"
         data-testid="settings-capture-enabled"
         @update:model-value="(v) => (draft.capture.enabled = v === true)"
       />
-      <FieldDescription>{{ t('space.settings.capture.enabled.description') }}</FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="switchId">{{ t('space.settings.capture.enabled.label') }}</FieldLabel>
+        <FieldDescription>{{ t('space.settings.capture.enabled.description') }}</FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        data-testid="settings-reset-capture-enabled"
+        :disabled-trigger="isAtDefault('capture', 'enabled')"
+        :disabled="isAtDefault('capture', 'enabled')"
+        @click="resetLeaf('capture', 'enabled')"
+      />
     </Field>
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="hotkeyId">{{ t('space.settings.capture.hotkey.label') }}</Label>
+        <FieldLabel :for="hotkeyId">{{ t('space.settings.capture.hotkey.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"

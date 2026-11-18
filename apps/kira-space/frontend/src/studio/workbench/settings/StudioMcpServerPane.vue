@@ -2,8 +2,7 @@
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Field, FieldContent, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -105,7 +104,7 @@ const dbMcpFocusId = useId();
          Studio MCP server in one call, so it belongs on the action side of the draft/Save line,
          never mixed with it. Toggle, then command, then button, strictly in that DOM order
          ("enabling is never a silent action"). -->
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpEnabledId"
         :model-value="settingsStore.dbMcp.serverEnabled"
@@ -114,7 +113,7 @@ const dbMcpFocusId = useId();
         @update:model-value="(v) => onToggleDbMcpEnabled(v === true)"
       />
       <FieldContent>
-        <Label :for="dbMcpEnabledId">{{ t('studio.settings.dbMcp.enable.label') }}</Label>
+        <FieldLabel :for="dbMcpEnabledId">{{ t('studio.settings.dbMcp.enable.label') }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.enable.description') }}</FieldDescription>
         <FieldDescription data-testid="dbmcp-sessions-hint">{{
           t('studio.settings.dbMcp.sessions.hint')
@@ -123,7 +122,7 @@ const dbMcpFocusId = useId();
     </Field>
 
     <!-- Meaningful before the server starts, so always visible. Instant like the toggle above. -->
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpPreviewId"
         :model-value="settingsStore.dbMcp.previewResponses"
@@ -132,12 +131,14 @@ const dbMcpFocusId = useId();
         @update:model-value="(v) => onTogglePreviewResponses(v === true)"
       />
       <FieldContent>
-        <Label :for="dbMcpPreviewId">{{ t('studio.settings.dbMcp.preview.label') }}</Label>
+        <FieldLabel :for="dbMcpPreviewId">{{
+          t('studio.settings.dbMcp.preview.label')
+        }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.preview.description') }}</FieldDescription>
       </FieldContent>
     </Field>
 
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpFocusId"
         :model-value="settingsStore.dbMcp.focusOnApproval"
@@ -146,7 +147,7 @@ const dbMcpFocusId = useId();
         @update:model-value="(v) => onToggleFocusOnApproval(v === true)"
       />
       <FieldContent>
-        <Label :for="dbMcpFocusId">{{ t('studio.settings.dbMcp.focus.label') }}</Label>
+        <FieldLabel :for="dbMcpFocusId">{{ t('studio.settings.dbMcp.focus.label') }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.focus.description') }}</FieldDescription>
       </FieldContent>
     </Field>

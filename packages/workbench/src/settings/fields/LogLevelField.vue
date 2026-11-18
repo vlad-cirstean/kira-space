@@ -1,8 +1,7 @@
 <script setup lang="ts" generic="K extends string">
 import type { LogLevel } from '@shared/domain/settings';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { computed, useId } from 'vue';
@@ -35,7 +34,7 @@ const fieldId = useId();
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <Label :for="fieldId">{{ label }}</Label>
+      <FieldLabel :for="fieldId">{{ label }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"

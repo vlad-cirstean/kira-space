@@ -4,8 +4,10 @@ import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
@@ -162,10 +164,7 @@ const activeDevices = computed(() =>
 
 <template>
   <div class="contents" v-show="active">
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="switchId">{{ t('space.settings.mobileAccess.enabled.label') }}</Label>
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="switchId"
         :model-value="store.status.enabled"
@@ -173,12 +172,17 @@ const activeDevices = computed(() =>
         data-testid="mobile-access-enabled"
         @update:model-value="(v) => onToggle(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.mobileAccess.enabled.description') }}
-      </FieldDescription>
-      <FieldError v-if="store.status.error" data-testid="mobile-access-error">
-        {{ store.status.error }}
-      </FieldError>
+      <FieldContent>
+        <FieldLabel :for="switchId">{{
+          t('space.settings.mobileAccess.enabled.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.mobileAccess.enabled.description') }}
+        </FieldDescription>
+        <FieldError v-if="store.status.error" data-testid="mobile-access-error">
+          {{ store.status.error }}
+        </FieldError>
+      </FieldContent>
     </Field>
 
     <Alert variant="warn" data-testid="mobile-access-plaintext-warning">
@@ -246,10 +250,7 @@ const activeDevices = computed(() =>
       </figure>
     </FieldSet>
 
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="agentInputId">{{ t('space.settings.mobileAccess.agentInput.label') }}</Label>
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="agentInputId"
         :model-value="store.status.agentInput"
@@ -257,13 +258,18 @@ const activeDevices = computed(() =>
         data-testid="mobile-access-agent-input"
         @update:model-value="(v) => onToggleAgentInput(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.mobileAccess.agentInput.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="agentInputId">{{
+          t('space.settings.mobileAccess.agentInput.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.mobileAccess.agentInput.description') }}
+        </FieldDescription>
+      </FieldContent>
     </Field>
 
     <Field>
-      <Label :for="portId">{{ t('common.port.label') }}</Label>
+      <FieldLabel :for="portId">{{ t('common.port.label') }}</FieldLabel>
       <NumberStepperInput
         :id="portId"
         :min="MOBILE_PORT_RANGE.min"
@@ -326,7 +332,7 @@ const activeDevices = computed(() =>
             </span>
           </span>
           <span class="flex shrink-0 items-center gap-2">
-            <Label class="flex items-center gap-1 text-kira-sm">
+            <Label class="flex items-center gap-1">
               {{ t('space.ade.branchPanel.changes.label') }}
               <Switch
                 :model-value="device.canWrite"
@@ -336,7 +342,7 @@ const activeDevices = computed(() =>
                 "
               />
             </Label>
-            <Label class="flex items-center gap-1 text-kira-sm">
+            <Label class="flex items-center gap-1">
               {{ t('space.settings.mobileAccess.devices.agentInput.label') }}
               <Switch
                 :model-value="device.canAgentInput"

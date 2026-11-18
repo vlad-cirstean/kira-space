@@ -3,8 +3,13 @@ import type { FileHandlerExt, FileHandlerGroup } from '@shared/domain/repo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import Disclosure from '@theme/components/Disclosure.vue';
 import { Alert } from '@theme/components/ui/alert';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
@@ -106,8 +111,7 @@ const open = ref<Record<string, boolean>>({});
       </FieldError>
 
       <Field v-for="group in groups" :key="group.id" :data-testid="`file-types-group-${group.id}`">
-        <div class="flex items-center justify-between gap-2">
-          <Label :for="`${baseId}-${group.id}`">{{ groupLabel(group.id) }}</Label>
+        <Field orientation="horizontal">
           <Switch
             :id="`${baseId}-${group.id}`"
             :model-value="groupOn(group)"
@@ -117,10 +121,13 @@ const open = ref<Record<string, boolean>>({});
             :data-mixed="groupMixed(group)"
             @update:model-value="(v) => toggleGroup(group, v === true)"
           />
-        </div>
-        <FieldDescription v-if="groupMixed(group)" :data-testid="`file-types-some-${group.id}`">
-          {{ t('space.settings.fileTypes.some.status', { count: selfCount(group) }) }}
-        </FieldDescription>
+          <FieldContent>
+            <FieldLabel :for="`${baseId}-${group.id}`">{{ groupLabel(group.id) }}</FieldLabel>
+            <FieldDescription v-if="groupMixed(group)" :data-testid="`file-types-some-${group.id}`">
+              {{ t('space.settings.fileTypes.some.status', { count: selfCount(group) }) }}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
         <Disclosure
           v-model:open="open[group.id]"
           :label="

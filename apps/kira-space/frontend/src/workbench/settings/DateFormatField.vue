@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
@@ -33,7 +32,7 @@ const fieldId = useId();
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <Label :for="fieldId">{{ t('space.settings.appearance.commitDate.label') }}</Label>
+      <FieldLabel :for="fieldId">{{ t('space.settings.appearance.commitDate.label') }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"

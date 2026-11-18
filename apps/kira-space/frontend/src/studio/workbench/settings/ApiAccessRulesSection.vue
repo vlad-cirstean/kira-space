@@ -4,8 +4,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { Field, FieldDescription, FieldLegend } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldLabel, FieldLegend } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -141,7 +140,7 @@ function onRemove(index: number): void {
     {{ t('studio.settings.dbMcp.apiRules.add.label') }}
   </Button>
   <Field data-testid="settings-db-mcp-api-default-field">
-    <Label :for="defaultId">{{ t('studio.settings.dbMcp.apiDefault.label') }}</Label>
+    <FieldLabel :for="defaultId">{{ t('studio.settings.dbMcp.apiDefault.label') }}</FieldLabel>
     <NativeSelect
       :id="defaultId"
       variant="bordered"

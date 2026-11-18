@@ -2,8 +2,7 @@
 import type { AppearanceSettings } from '@shared/domain/settings';
 import { FONT_SIZE_RANGE } from '@shared/domain/settings';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import type { ComputedRef, Ref } from 'vue';
@@ -45,7 +44,7 @@ const fieldId = useId();
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <Label :for="fieldId">{{ t('workbench.settings.fontSize.label') }}</Label>
+      <FieldLabel :for="fieldId">{{ t('workbench.settings.fontSize.label') }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"

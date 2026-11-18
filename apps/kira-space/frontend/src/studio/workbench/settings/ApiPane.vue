@@ -7,8 +7,8 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
+  FieldLabel,
 } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
@@ -104,7 +104,7 @@ const disableCookieJarId = useId();
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="httpVersionId">{{ t('studio.http.settings.version.label') }}</Label>
+        <FieldLabel :for="httpVersionId">{{ t('studio.http.settings.version.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -131,7 +131,9 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="requestTimeoutMsId">{{ t('studio.http.settings.timeout.label') }}</Label>
+        <FieldLabel :for="requestTimeoutMsId">{{
+          t('studio.http.settings.timeout.label')
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -160,7 +162,9 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="maxResponseMbId">{{ t('studio.http.settings.maxResponse.label') }}</Label>
+        <FieldLabel :for="maxResponseMbId">{{
+          t('studio.http.settings.maxResponse.label')
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -195,7 +199,7 @@ const disableCookieJarId = useId();
           data-testid="settings-api-sslVerify"
           @update:model-value="(v) => onSslVerifyChange(v === true)"
         />
-        <Label :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</Label>
+        <FieldLabel :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</FieldLabel>
       </Field>
       <TooltipIconButton
         icon="discard"
@@ -219,9 +223,9 @@ const disableCookieJarId = useId();
           data-testid="settings-api-followRedirects"
           @update:model-value="(v) => onFollowRedirectsChange(v === true)"
         />
-        <Label :for="followRedirectsId">{{
+        <FieldLabel :for="followRedirectsId">{{
           t('studio.http.settings.followRedirects.label')
-        }}</Label>
+        }}</FieldLabel>
       </Field>
       <TooltipIconButton
         icon="discard"
@@ -236,7 +240,9 @@ const disableCookieJarId = useId();
 
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="maxRedirectsId">{{ t('studio.http.settings.maxRedirects.label') }}</Label>
+        <FieldLabel :for="maxRedirectsId">{{
+          t('studio.http.settings.maxRedirects.label')
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -265,7 +271,7 @@ const disableCookieJarId = useId();
     </Field>
 
     <FieldGroup>
-      <Field orientation="horizontal" class="items-start">
+      <Field orientation="horizontal">
         <Switch
           :id="disableCookieJarId"
           :model-value="draft.api.disableCookieJar"
@@ -273,7 +279,9 @@ const disableCookieJarId = useId();
           @update:model-value="(v) => onDisableCookieJarChange(v === true)"
         />
         <FieldContent>
-          <Label :for="disableCookieJarId">{{ t('studio.http.settings.disableJar.label') }}</Label>
+          <FieldLabel :for="disableCookieJarId">{{
+            t('studio.http.settings.disableJar.label')
+          }}</FieldLabel>
           <FieldDescription>{{ t('studio.settings.api.cookieJar.description') }}</FieldDescription>
         </FieldContent>
       </Field>

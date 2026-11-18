@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { Field, FieldError } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { displayValue, formatBytes } from '@workbench/behaviour/format';
@@ -65,7 +64,9 @@ const hitRateId = useId();
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="cacheBudgetMbId">{{ t('studio.settings.cache.budget.label') }}</Label>
+        <FieldLabel :for="cacheBudgetMbId">{{
+          t('studio.settings.cache.budget.label')
+        }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -89,9 +90,7 @@ const hitRateId = useId();
       </FieldError>
     </Field>
     <Field>
-      <Label :for="currentUsageId" class="text-muted-foreground">{{
-        t('studio.settings.cache.usage.label')
-      }}</Label>
+      <FieldLabel :for="currentUsageId">{{ t('studio.settings.cache.usage.label') }}</FieldLabel>
       <Input
         :id="currentUsageId"
         type="text"
@@ -101,9 +100,7 @@ const hitRateId = useId();
       />
     </Field>
     <Field>
-      <Label :for="hitRateId" class="text-muted-foreground">{{
-        t('studio.settings.cache.hitRate.label')
-      }}</Label>
+      <FieldLabel :for="hitRateId">{{ t('studio.settings.cache.hitRate.label') }}</FieldLabel>
       <Input :id="hitRateId" type="text" class="font-data" :model-value="hitRateLabel" disabled />
     </Field>
     <Button

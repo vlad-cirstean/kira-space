@@ -4,11 +4,11 @@ import {
   Field,
   FieldDescription,
   FieldError,
+  FieldLabel,
   FieldLegend,
   FieldSet,
 } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
@@ -102,7 +102,9 @@ const graphFontSizeId = useId();
       </FieldDescription>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="protectedBranchesId">{{ t('space.settings.git.protected.label') }}</Label>
+          <FieldLabel :for="protectedBranchesId">{{
+            t('space.settings.git.protected.label')
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -124,9 +126,9 @@ const graphFontSizeId = useId();
       </Field>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="fetchAutoIntervalMinutesId">{{
+          <FieldLabel :for="fetchAutoIntervalMinutesId">{{
             t('space.settings.git.fetchInterval.label')
-          }}</Label>
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -157,7 +159,7 @@ const graphFontSizeId = useId();
       </Field>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="gitPathId">{{ t('space.settings.git.gitPath.label') }}</Label>
+          <FieldLabel :for="gitPathId">{{ t('space.settings.git.gitPath.label') }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"
@@ -181,7 +183,9 @@ const graphFontSizeId = useId();
       <FieldLegend>{{ t('common.graph.label') }}</FieldLegend>
       <Field>
         <div class="flex items-center justify-between gap-1">
-          <Label :for="graphFontSizeId">{{ t('space.settings.git.graphFont.label') }}</Label>
+          <FieldLabel :for="graphFontSizeId">{{
+            t('space.settings.git.graphFont.label')
+          }}</FieldLabel>
           <TooltipIconButton
             icon="discard"
             :label="t('common.action.resetToDefault.label')"

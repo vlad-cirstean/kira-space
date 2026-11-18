@@ -5,9 +5,9 @@ import {
   FieldContent,
   FieldDescription,
   FieldGroup,
+  FieldLabel,
   FieldLegend,
 } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import { ROW_HEIGHT_PX } from '@workbench/lib/rowHeight';
@@ -76,7 +76,7 @@ const rowColoringId = useId();
     </WordWrapField>
 
     <FieldGroup>
-      <Field orientation="horizontal" class="items-start">
+      <Field orientation="horizontal">
         <Switch
           :id="rowColoringId"
           :model-value="draft.appearance.rowColoring"
@@ -84,9 +84,9 @@ const rowColoringId = useId();
           @update:model-value="(v) => onRowColoringChange(v === true)"
         />
         <FieldContent>
-          <Label :for="rowColoringId">{{
+          <FieldLabel :for="rowColoringId">{{
             t('studio.settings.appearance.rowColoring.label')
-          }}</Label>
+          }}</FieldLabel>
           <FieldDescription>{{
             t('studio.settings.appearance.rowColoring.description')
           }}</FieldDescription>
@@ -104,7 +104,7 @@ const rowColoringId = useId();
     </FieldGroup>
 
     <FieldGroup>
-      <Field orientation="horizontal" class="items-start">
+      <Field orientation="horizontal">
         <Switch
           :id="inlineBlameId"
           :model-value="draft.appearance.inlineBlame"
@@ -112,7 +112,9 @@ const rowColoringId = useId();
           @update:model-value="(v) => onInlineBlameChange(v === true)"
         />
         <FieldContent>
-          <Label :for="inlineBlameId">{{ t('space.settings.appearance.inlineBlame.label') }}</Label>
+          <FieldLabel :for="inlineBlameId">{{
+            t('space.settings.appearance.inlineBlame.label')
+          }}</FieldLabel>
           <FieldDescription>{{
             t('space.settings.appearance.inlineBlame.description')
           }}</FieldDescription>

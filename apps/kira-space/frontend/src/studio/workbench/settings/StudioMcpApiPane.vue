@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Field, FieldContent, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
@@ -48,7 +47,7 @@ const dbMcpApiApprovalId = useId();
 
 <template>
   <div class="contents" v-show="active">
-    <Field orientation="horizontal" class="items-start">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpApiId"
         :model-value="settingsStore.dbMcp.apiRequests"
@@ -57,7 +56,7 @@ const dbMcpApiApprovalId = useId();
         @update:model-value="(v) => onToggleApiRequests(v === true)"
       />
       <FieldContent>
-        <Label :for="dbMcpApiId">{{ t('studio.settings.dbMcp.api.label') }}</Label>
+        <FieldLabel :for="dbMcpApiId">{{ t('studio.settings.dbMcp.api.label') }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.api.description') }}</FieldDescription>
         <FieldDescription data-testid="settings-db-mcp-api-count">{{
           t('studio.settings.dbMcp.api.count.status', {
@@ -68,7 +67,9 @@ const dbMcpApiApprovalId = useId();
       </FieldContent>
     </Field>
     <Field v-if="settingsStore.dbMcp.apiRequests">
-      <Label :for="dbMcpApiApprovalId">{{ t('studio.settings.dbMcp.apiApproval.label') }}</Label>
+      <FieldLabel :for="dbMcpApiApprovalId">{{
+        t('studio.settings.dbMcp.apiApproval.label')
+      }}</FieldLabel>
       <NativeSelect
         :id="dbMcpApiApprovalId"
         variant="bordered"

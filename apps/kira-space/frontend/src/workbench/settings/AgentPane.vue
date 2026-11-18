@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { Field, FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
@@ -91,7 +90,7 @@ function setKeepAwake(on: boolean): void {
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <Label :for="providerId">{{ t('memory.common.origin.agent.label') }}</Label>
+        <FieldLabel :for="providerId">{{ t('memory.common.origin.agent.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -127,66 +126,62 @@ function setKeepAwake(on: boolean): void {
       </FieldDescription>
     </Field>
 
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="`${switchId}-hermetic`">{{ t('space.settings.agent.hermetic.label') }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          data-testid="settings-reset-agent-hermetic"
-          :disabled-trigger="isAtDefault('agent', 'hermetic')"
-          :disabled="isAtDefault('agent', 'hermetic')"
-          @click="resetLeaf('agent', 'hermetic')"
-        />
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="`${switchId}-hermetic`"
         :model-value="draft.agent.hermetic"
         data-testid="settings-agent-hermetic"
         @update:model-value="(v) => setHermetic(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.agent.hermetic.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="`${switchId}-hermetic`">{{
+          t('space.settings.agent.hermetic.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.agent.hermetic.description') }}
+        </FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        data-testid="settings-reset-agent-hermetic"
+        :disabled-trigger="isAtDefault('agent', 'hermetic')"
+        :disabled="isAtDefault('agent', 'hermetic')"
+        @click="resetLeaf('agent', 'hermetic')"
+      />
     </Field>
 
-    <Field>
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="switchId">{{ t('space.settings.agent.keepAwake.label') }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          data-testid="settings-reset-agent-keepAwakeWithAgents"
-          :disabled-trigger="isAtDefault('agent', 'keepAwakeWithAgents')"
-          :disabled="isAtDefault('agent', 'keepAwakeWithAgents')"
-          @click="resetLeaf('agent', 'keepAwakeWithAgents')"
-        />
-      </div>
+    <Field orientation="horizontal">
       <Switch
         :id="switchId"
         :model-value="draft.agent.keepAwakeWithAgents"
         data-testid="settings-agent-keep-awake"
         @update:model-value="(v) => setKeepAwake(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.agent.keepAwake.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="switchId">{{ t('space.settings.agent.keepAwake.label') }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.agent.keepAwake.description') }}
+        </FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        data-testid="settings-reset-agent-keepAwakeWithAgents"
+        :disabled-trigger="isAtDefault('agent', 'keepAwakeWithAgents')"
+        :disabled="isAtDefault('agent', 'keepAwakeWithAgents')"
+        @click="resetLeaf('agent', 'keepAwakeWithAgents')"
+      />
     </Field>
 
-    <Field v-for="n in shownNotifyLeaves" :key="n.leaf">
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="`${switchId}-${n.leaf}`" :class="n.leaf === 'notifyEnabled' ? '' : 'pl-4'">{{
-          n.label
-        }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          :data-testid="`settings-reset-agent-${n.leaf}`"
-          :disabled-trigger="isAtDefault('agent', n.leaf)"
-          :disabled="isAtDefault('agent', n.leaf)"
-          @click="resetLeaf('agent', n.leaf)"
-        />
-      </div>
+    <Field
+      v-for="n in shownNotifyLeaves"
+      :key="n.leaf"
+      orientation="horizontal"
+      :class="n.leaf === 'notifyEnabled' ? '' : 'pl-4'"
+    >
       <Switch
         :id="`${switchId}-${n.leaf}`"
         :model-value="draft.agent[n.leaf]"
@@ -194,9 +189,21 @@ function setKeepAwake(on: boolean): void {
         :data-testid="n.testid"
         @update:model-value="(v) => setNotify(n.leaf, v === true)"
       />
-      <FieldDescription v-if="n.leaf === 'notifyEnabled'">
-        {{ t('space.settings.agent.notify.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="`${switchId}-${n.leaf}`">{{ n.label }}</FieldLabel>
+        <FieldDescription v-if="n.leaf === 'notifyEnabled'">
+          {{ t('space.settings.agent.notify.description') }}
+        </FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        :data-testid="`settings-reset-agent-${n.leaf}`"
+        :disabled-trigger="isAtDefault('agent', n.leaf)"
+        :disabled="isAtDefault('agent', n.leaf)"
+        @click="resetLeaf('agent', n.leaf)"
+      />
     </Field>
     <Field>
       <!-- conventions-allow N17: sends a test notification, not an approval -->
@@ -212,27 +219,30 @@ function setKeepAwake(on: boolean): void {
       </Button>
     </Field>
 
-    <Field v-if="info.usage">
-      <div class="flex items-center justify-between gap-1">
-        <Label :for="`${switchId}-usage`">{{ t('space.settings.agent.usage.label') }}</Label>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
-          data-testid="settings-reset-agent-usageEnabled"
-          :disabled-trigger="isAtDefault('agent', 'usageEnabled')"
-          :disabled="isAtDefault('agent', 'usageEnabled')"
-          @click="resetLeaf('agent', 'usageEnabled')"
-        />
-      </div>
+    <Field v-if="info.usage" orientation="horizontal">
       <Switch
         :id="`${switchId}-usage`"
         :model-value="draft.agent.usageEnabled"
         data-testid="settings-agent-usage"
         @update:model-value="(v) => setUsage(v === true)"
       />
-      <FieldDescription>
-        {{ t('space.settings.agent.usage.description') }}
-      </FieldDescription>
+      <FieldContent>
+        <FieldLabel :for="`${switchId}-usage`">{{
+          t('space.settings.agent.usage.label')
+        }}</FieldLabel>
+        <FieldDescription>
+          {{ t('space.settings.agent.usage.description') }}
+        </FieldDescription>
+      </FieldContent>
+      <TooltipIconButton
+        class="ml-auto"
+        icon="discard"
+        :label="t('common.action.resetToDefault.label')"
+        data-testid="settings-reset-agent-usageEnabled"
+        :disabled-trigger="isAtDefault('agent', 'usageEnabled')"
+        :disabled="isAtDefault('agent', 'usageEnabled')"
+        @click="resetLeaf('agent', 'usageEnabled')"
+      />
     </Field>
   </div>
 </template>
