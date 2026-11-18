@@ -5,6 +5,7 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
@@ -141,37 +142,27 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
         @save="draft.saveNow"
         @submit="draft.saveNow"
       />
-      <div class="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          class="mr-auto"
-          :pending="sharedText.isPending.value"
-          data-testid="repo-file-copy-shared"
-          @click="onCopyShared"
-        >
-          {{ t('space.repo.settingsFile.copyShared.label') }}
-        </Button>
-        <Button
-          variant="dialog-danger"
-          size="kira-lg"
-          :disabled="!draft.dirty.value"
-          data-testid="repo-file-discard"
-          @click="draft.discard"
-        >
-          {{ t('common.action.discard.label') }}
-        </Button>
-        <Button
-          variant="dialog-primary"
-          size="kira-lg"
-          :disabled="!draft.canSave.value"
-          :pending="draft.saving.value"
-          data-testid="repo-file-save"
-          @click="draft.saveNow"
-        >
-          {{ creating ? t('space.repo.settingsFile.create.label') : t('common.action.save.label') }}
-        </Button>
-      </div>
+      <SaveBar
+        :dirty="draft.dirty.value"
+        :saving="draft.saving.value"
+        :can-save="draft.canSave.value"
+        :save-label="creating ? t('space.repo.settingsFile.create.label') : undefined"
+        testid-prefix="repo-file"
+        @save="draft.saveNow"
+        @discard="draft.discard"
+      >
+        <template #start>
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            :pending="sharedText.isPending.value"
+            data-testid="repo-file-copy-shared"
+            @click="onCopyShared"
+          >
+            {{ t('space.repo.settingsFile.copyShared.label') }}
+          </Button>
+        </template>
+      </SaveBar>
     </template>
     <Alert v-if="sharedText.error.value" variant="error" data-testid="repo-file-copy-shared-error">
       <AlertDescription>{{ errorText(sharedText.error.value) }}</AlertDescription>

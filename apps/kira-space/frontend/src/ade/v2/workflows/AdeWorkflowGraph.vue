@@ -8,6 +8,7 @@ import CatalogText from '@theme/i18n/CatalogText.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import MenuItems from '@workbench/components/MenuItems.vue';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import '@vue-flow/core/dist/style.css';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -42,7 +43,6 @@ import AdeEndNode from './AdeEndNode.vue';
 import AdeResultEdge from './AdeResultEdge.vue';
 import AdeStepInspector from './AdeStepInspector.vue';
 import AdeStepNode from './AdeStepNode.vue';
-import AdeWorkflowSaveBar from './AdeWorkflowSaveBar.vue';
 import { useStepRemoval } from './useStepRemoval';
 
 // Graph mode: edits a local draft of the last valid workflow as a canvas of steps, one
@@ -287,12 +287,15 @@ onBeforeUnmount(() => {
     class="@container flex h-full min-h-0 flex-col gap-3"
     data-testid="ade-wf-form"
   >
-    <AdeWorkflowSaveBar
+    <SaveBar
       :dirty="draft.dirty"
       :saving="save.isPending.value"
+      testid-prefix="ade-wf"
       @save="saveNow"
       @discard="discard"
-    />
+    >
+      <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
+    </SaveBar>
     <Field orientation="responsive">
       <FieldLabel for="ade-wf-form-name">{{ t('common.field.name.label') }}</FieldLabel>
       <Input

@@ -6,13 +6,13 @@ import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
+import SaveBar from '@workbench/components/SaveBar.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useSaveWorkflowYaml, useValidateWorkflowYaml, useWorkflowYaml } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry, WorkflowError } from '../wire';
-import AdeWorkflowSaveBar from './AdeWorkflowSaveBar.vue';
 
 // YAML mode: validates 300 ms after a keystroke; Save writes the draft, Discard restores the
 // saved text. The draft is the source while it has unsaved edits, so a push never resets it. Save
@@ -133,12 +133,15 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex flex-col gap-1.5" ref="root" data-testid="ade-wf-yaml-pane">
-    <AdeWorkflowSaveBar
+    <SaveBar
       :dirty="dirty"
       :saving="save.isPending.value"
+      testid-prefix="ade-wf"
       @save="saveNow"
       @discard="discard"
-    />
+    >
+      <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
+    </SaveBar>
     <CodeTextEditor
       :model-value="draft"
       language="yaml"
