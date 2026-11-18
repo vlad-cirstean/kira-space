@@ -19,7 +19,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P666 | Git and Memory modules last | Done |
 | P667 | Single-select cards | Done |
 | P668 | Single-select toggle groups | Done |
-| P669 | Drop move up/down from left-panel menus | Planned |
+| P669 | Drop move up/down from left-panel menus | Done |
 | P670 | Remove connection Secrets section | Planned |
 | P671 | Terminal links: copy via right click and reliable file paths | Planned |
 | P672 Part 1 | UI inventory and uniformity rules | Planned |
@@ -183,6 +183,8 @@ Result: Done. `SecondaryTabs` gains `variant="choice"` (outline strip, selected 
 Right-click menus in the left panels (Studio Connections, API Collections, Kubernetes clusters, any other left-panel tree) have Move up / Move down items. Drag and drop already covers reordering. Remove the items and their keyboard shortcuts, commands, palette entries and i18n keys, plus backend or state code only they used. Keep what drag and drop still uses (e.g. `orderAfterDrop`; `canMoveStep` only if still used). Acceptance: no Move up/down in any left-panel menu or the shortcut registry; drag reorder still works; UI specs of removed items removed, drag specs kept; `docs/ARCHITECTURE.md` and shortcut docs updated. UI specs; flow tests only where backend code is removed (planner states if none needed).
 
 Plan: `plans/P669.md`.
+
+Result: Option A. Removed Move up/down menu items and Alt+Up/Down bindings from every left panel: Studio Connections, API Collections, Kubernetes clusters, Automations (scripts and collections, both apps) and the Git Repos list. Deleted the code only they used (`moveConnection`, store `moveStep`/`canMoveStep`, `collectionOrder.ts`, `runMenuShortcutAsync`, menu action members, `list.moveUp/Down` from `TREE_IDS`). `SortableList` takes a `keyboard` prop (default true); Automations passes false. `list.moveUp/Down` registry rows stay, since Alt+Up/Down still reorders the four non-left-panel lists (grid Columns menu, API Environments, ADE later shelf, ADE task statuses); the acceptance clause "not in the shortcut registry" is therefore only partly met. No i18n key removed (`common.moveUp/moveDown.tooltip` still used by ParamsEditor and AdeStepNode). UI specs rewritten to assert no Move items and no reorder call on Alt+ArrowDown, drag specs kept; `collectionStepOrder` unit test removed. No Go change, no flow test. Ran: `api-collection-drop` unit, UI (WebKit) automations-order, script-order, connection-order, api-order, kubernetes-order, repo-order, tree, ade-v2-task-status: all pass; `lint:dead` clean. Keyboard-only reorder is gone in left panels.
 
 ## P670 Remove connection Secrets section
 
