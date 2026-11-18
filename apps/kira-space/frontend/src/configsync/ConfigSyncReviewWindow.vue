@@ -6,6 +6,8 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame, windowBody } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -87,8 +89,8 @@ function onCancel(): void {
     <div v-if="failure" class="mx-3 mt-2">
       <Alert variant="error" data-testid="config-sync-error">{{ errorText(failure) }}</Alert>
     </div>
-    <div class="flex min-h-0 flex-1 bg-chrome px-1.5 pb-0.5">
-      <section class="flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-kira bg-bg">
+    <div :class="windowBody">
+      <section :class="cn(paneFrame, 'flex flex-1')">
         <EmptyState
           v-if="preview.isPending.value"
           fill

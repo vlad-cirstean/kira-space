@@ -4,6 +4,8 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
+import { paneFrame, windowBody } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import QueryState from '@workbench/components/QueryState.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
@@ -91,10 +93,10 @@ const right = useLiveSize(
     </ProofHeader>
     <div v-else class="h-titlebar shrink-0 bg-chrome" />
     <ProofShotStatus v-if="detail && store.shotResult" />
-    <div class="flex min-h-0 flex-1 gap-0.5 bg-chrome px-1.5 pb-0.5">
+    <div :class="windowBody">
       <section
         ref="centre"
-        class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
+        :class="cn(paneFrame, 'flex flex-1 flex-col')"
         :aria-label="t('studio.proof.session.aria')"
         data-testid="proof-centre"
       >
@@ -151,7 +153,7 @@ const right = useLiveSize(
           v-bind="right.bind"
         />
         <section
-          class="flex min-h-0 flex-none flex-col overflow-hidden rounded-kira bg-bg"
+          :class="cn(paneFrame, 'flex flex-none flex-col')"
           :style="{ width: `${right.size.value}px` }"
           :aria-label="t('studio.proof.change.title')"
           data-testid="proof-right"

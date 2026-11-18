@@ -3,6 +3,8 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import SaveBar from '@workbench/components/SaveBar.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -87,7 +89,7 @@ onBeforeUnmount(() => {
     >
       <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
     </SaveBar>
-    <div class="min-h-96 flex-1 rounded-kira bg-bg" data-testid="ade-step-inspector">
+    <div :class="cn(paneFrame, 'min-h-96 flex-1')" data-testid="ade-step-inspector">
       <AdeStepInspector
         :key="draft.step.id"
         :step="draft.step"

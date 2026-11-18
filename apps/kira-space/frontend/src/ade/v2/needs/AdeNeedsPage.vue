@@ -3,6 +3,8 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { paneFrame } from '@theme/lib/frames';
+import { cn } from '@theme/lib/utils';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { computed, useTemplateRef } from 'vue';
@@ -27,10 +29,7 @@ useKeptScroll('ade:needs', bodyEl);
 </script>
 
 <template>
-  <div
-    class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-kira bg-bg"
-    data-testid="ade-needs-page"
-  >
+  <div :class="cn(paneFrame, 'flex flex-1 flex-col')" data-testid="ade-needs-page">
     <PanelHeader>
       {{ t('common.needsYou.status') }}
       <template v-if="needs && !needs.empty" #actions>
