@@ -3,7 +3,6 @@
   lang="ts"
   generic="T extends { name: string; value: string; enabled?: boolean; description?: string }"
 >
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { InputGroup, InputGroupTextarea } from '@theme/components/ui/input-group';
@@ -291,9 +290,7 @@ useEventListener(containerRef, 'keydown', onContainerKeydown);
         :disabled="entry.index >= rows.length"
         :data-testid="`${testidPrefix}-enabled`"
         @update:model-value="toggleEnabled(entry.index)"
-      >
-        <CodiconIcon name="check" :size="12" />
-      </Checkbox>
+      />
       <div class="min-w-0">
         <!-- A name is as legal a place for a {{reference}} as a value is
              (`X-{{tenant}}-Id`), and until now it was the one editable Api surface that painted

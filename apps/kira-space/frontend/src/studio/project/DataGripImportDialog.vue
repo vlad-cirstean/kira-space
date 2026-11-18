@@ -229,11 +229,8 @@ async function onConfirm(): Promise<void> {
                 <Checkbox
                   v-if="row.importable"
                   :model-value="datagripImportStore.selected.has(row.uuid)"
-                  class="size-3.5"
                   @update:model-value="datagripImportStore.toggleDataGripRow(row.uuid)"
-                >
-                  <CodiconIcon name="check" :size="12" />
-                </Checkbox>
+                />
               </span>
               <span
                 v-if="row.importable"

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { NodeKind } from '@shared/domain/tree';
 import { EMPTY_VISIBILITY, type TreeVisibility } from '@shared/domain/treeFilter';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
@@ -245,11 +244,9 @@ const connectionName = computed(
             >
               <Checkbox
                 :model-value="!row.hidden"
-                class="size-3.5 after:inset-0"
+                class="after:inset-0"
                 @update:model-value="onToggleKind(row.kind)"
-              >
-                <CodiconIcon name="check" :size="12" />
-              </Checkbox>
+              />
               <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.label }}</span>
               <span :class="rowMeta">{{ row.count }}</span>
             </Label>
@@ -301,16 +298,9 @@ const connectionName = computed(
                     <Checkbox
                       :model-value="row.state === 'partial' ? 'indeterminate' : row.state !== 'off'"
                       :disabled="row.disabled"
-                      class="size-3.5 after:inset-0"
+                      class="after:inset-0"
                       @update:model-value="onToggleNode(row)"
-                    >
-                      <template #default="{ state }">
-                        <CodiconIcon
-                          :name="state === 'indeterminate' ? 'dash' : 'check'"
-                          :size="12"
-                        />
-                      </template>
-                    </Checkbox>
+                    />
                     <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.name }}</span>
                   </Label>
                 </TooltipTrigger>

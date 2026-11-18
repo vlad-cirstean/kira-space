@@ -72,13 +72,10 @@ function resetTools(): void {
       <div v-for="tool in BUILTIN_TOOLS" :key="tool" class="flex items-center gap-1.5">
         <Checkbox
           :id="`${idBase}-${tool}`"
-          class="size-3.5"
           :model-value="smart.tools.includes(tool)"
           :data-testid="`smart-tool-${tool}`"
           @update:model-value="(v) => toggle(tool, v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <Label :for="`${idBase}-${tool}`">{{ tool }}</Label>
       </div>
     </div>

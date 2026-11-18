@@ -168,9 +168,7 @@ onBeforeUnmount(() => {
                 disabled
                 data-testid="columns-menu-item"
                 @update:model-value="toggle(name)"
-              >
-                <CodiconIcon name="check" :size="12" />
-              </Checkbox>
+              />
             </TooltipTrigger>
             <TooltipContent>{{ t('studio.grid.columns.primaryKey.tooltip') }}</TooltipContent>
           </Tooltip>
@@ -179,9 +177,7 @@ onBeforeUnmount(() => {
             :model-value="selected.has(name)"
             data-testid="columns-menu-item"
             @update:model-value="toggle(name)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ name }}
         </Label>
       </div>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { MemoryScope } from '@shared/domain/memory';
 import { SOURCE_TAG_PATTERN } from '@shared/domain/memoryImport';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -187,13 +186,10 @@ async function dismiss(): Promise<void> {
           <div class="flex items-center gap-1.5">
             <Checkbox
               id="import-write-doc"
-              class="size-3.5"
               :model-value="writeDoc"
               data-testid="import-write-doc"
               @update:model-value="(v) => (writeDoc = v === true)"
-            >
-              <CodiconIcon name="check" :size="12" />
-            </Checkbox>
+            />
             <Label for="import-write-doc">{{ t('memory.import.confirm.writeDoc.label') }}</Label>
           </div>
         </template>

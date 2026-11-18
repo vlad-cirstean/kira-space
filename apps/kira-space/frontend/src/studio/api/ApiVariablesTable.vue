@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ApiFileVariable } from '@shared/domain/apiConfig';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -114,12 +113,9 @@ function remove(i: number): void {
       <Checkbox
         :model-value="!!row.secret"
         :aria-label="t('common.secret.label')"
-        class="size-3.5"
         :data-testid="`api-variable-is-secret-${i}`"
         @update:model-value="(v) => setSecret(i, v === true)"
-      >
-        <CodiconIcon name="check" :size="12" />
-      </Checkbox>
+      />
       <Input
         :model-value="row.description ?? ''"
         :aria-label="t('studio.api.variablesDialog.description.aria')"

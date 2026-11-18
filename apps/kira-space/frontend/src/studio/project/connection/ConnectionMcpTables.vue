@@ -2,7 +2,6 @@
 import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { TABLE_LIST_KINDS } from '@shared/domain/dbmcp';
 import { useQuery } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -138,13 +137,10 @@ function toggleShown(on: boolean): void {
             <Checkbox
               :model-value="selectAllState"
               :disabled="!enabled || tableRows.length === 0"
-              class="size-3.5"
               :aria-label="t('studio.project.connectionDialog.mcp.tablesSelectAll.label')"
               data-testid="connection-mcp-tables-select-all"
               @update:model-value="(v) => toggleShown(v === true)"
-            >
-              <CodiconIcon :name="selectAllState === true ? 'check' : 'remove'" :size="12" />
-            </Checkbox>
+            />
             <SearchField
               v-model="tableSearch"
               class="flex-1"
@@ -177,13 +173,10 @@ function toggleShown(on: boolean): void {
                 <Checkbox
                   :model-value="chosen.has(tableRows[item.index]?.ref ?? '')"
                   :disabled="!enabled"
-                  class="size-3.5"
                   @update:model-value="
                     (v) => toggleTable(tableRows[item.index]?.ref ?? '', v === true)
                   "
-                >
-                  <CodiconIcon name="check" :size="12" />
-                </Checkbox>
+                />
                 <span class="font-data truncate">{{ tableRows[item.index]?.ref }}</span>
                 <span v-if="tableRows[item.index]?.stale" class="text-subtle text-kira-sm">{{
                   t('studio.project.connectionDialog.mcp.tablesStale.label')

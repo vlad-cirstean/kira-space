@@ -5,7 +5,6 @@ import type {
   ScriptParamType,
   SecretValues,
 } from '@shared/domain/scripts';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
@@ -230,13 +229,10 @@ function toggleDefault(i: number, option: string, on: boolean): void {
       <div v-else class="flex flex-col gap-1" :data-testid="`param-options-${i}`">
         <div v-for="(o, k) in p.options" :key="k" class="flex items-center gap-1">
           <Checkbox
-            class="size-3.5"
             :model-value="p.default.includes(o)"
             :aria-label="t('automations.params.default.aria', { option: o })"
             @update:model-value="(v) => toggleDefault(i, o, v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           <Input
             :model-value="o"
             :placeholder="t('automations.params.option.placeholder')"
@@ -274,26 +270,20 @@ function toggleDefault(i: number, option: string, on: boolean): void {
         <div class="flex items-center gap-1.5">
           <Checkbox
             :id="`${idBase}-req-${i}`"
-            class="size-3.5"
             :model-value="p.required"
             @update:model-value="(v) => patch(i, { required: v === true })"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           <Label :for="`${idBase}-req-${i}`">{{ t('common.required.label') }}</Label>
         </div>
         <div v-if="p.type === 'text'" class="flex items-center gap-1.5">
           <Checkbox
             :id="`${idBase}-sec-${i}`"
-            class="size-3.5"
             :model-value="p.secret"
             :data-testid="`param-secret-${i}`"
             @update:model-value="
               (v) => patch(i, v === true ? { secret: true, default: [] } : { secret: false })
             "
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           <Label :for="`${idBase}-sec-${i}`">{{ t('common.secret.label') }}</Label>
         </div>
       </div>

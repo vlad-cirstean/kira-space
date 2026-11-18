@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Caps } from '@shared/caps';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -107,12 +106,9 @@ onUnmounted(() => {
       <Label v-for="name in fieldNames" :key="name" :class="rowVariants()">
         <Checkbox
           :model-value="selected.has(name)"
-          class="size-3.5"
           data-testid="document-projection-menu-item"
           @update:model-value="toggle(name)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         {{ name }}
       </Label>
     </div>

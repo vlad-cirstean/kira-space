@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -98,27 +97,22 @@ function importDocument(): void {
       <div class="flex items-center gap-1.5">
         <Checkbox
           id="distill-select-all"
-          class="size-3.5"
           :model-value="allPicked"
           data-testid="distill-select-all"
           @update:model-value="(v) => toggleAll(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <Label for="distill-select-all">{{ t('common.action.selectAll.label') }}</Label>
       </div>
       <ul class="m-0 flex list-none flex-col gap-1 p-0">
         <li v-for="(line, i) in lines" :key="i" class="flex items-start gap-1.5">
           <Checkbox
             :id="`distill-line-${i}`"
-            class="mt-0.5 size-3.5 shrink-0"
+            class="mt-0.5 shrink-0"
             :model-value="selected.has(i)"
             :aria-label="t('memory.distill.result.line.aria', { number: i + 1 })"
             :data-testid="`distill-line-${i}`"
             @update:model-value="(v) => toggle(i, v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           <Label
             :for="`distill-line-${i}`"
             class="text-kira-md font-normal whitespace-pre-wrap"

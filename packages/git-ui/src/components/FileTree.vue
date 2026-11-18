@@ -499,12 +499,7 @@ function onToggleFolder(path: string): void {
             :data-kira-tip="folderToggleTitle(row.node.path)"
             @click.stop
             @update:model-value="() => onToggleFolder(row.node.path)"
-          >
-            <CodiconIcon
-              :name="folderState(row.node.path) === 'indeterminate' ? 'dash' : 'check'"
-              :size="13"
-            />
-          </Checkbox>
+          />
           <TreeTwisty
             :expanded="row.expanded"
             :has-children="true"
@@ -536,14 +531,7 @@ function onToggleFolder(path: string): void {
             :data-kira-tip="reviewToggleTitle(row.node.change.path)"
             @click.stop
             @update:model-value="() => emit('toggleReviewed', row.node.change.path)"
-          >
-            <CodiconIcon
-              :name="
-                reviewCheckboxState(row.node.change.path) === 'indeterminate' ? 'dash' : 'check'
-              "
-              :size="13"
-            />
-          </Checkbox>
+          />
           <span class="size-4 shrink-0 flex items-center justify-center" aria-hidden="true">
             <span
               class="size-3.25 mask-contain mask-no-repeat mask-center"

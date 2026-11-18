@@ -216,9 +216,7 @@ async function onClear(): Promise<void> {
           :disabled="!selected.includes(entry.id) && selected.length >= 2"
           @click.stop
           @update:model-value="onToggle(entry.id)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
             <Tooltip>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ScriptParam } from '@shared/domain/scripts';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
@@ -109,13 +108,10 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         <div v-for="o in p.options" :key="o" class="flex items-center gap-2">
           <Checkbox
             :id="`${idBase}-${p.name}-${o}`"
-            class="size-3.5"
             :model-value="(values[p.name] ?? []).includes(o)"
             :data-testid="`run-param-option-${p.name}-${o}`"
             @update:model-value="(v) => toggle(p, o, v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           <Label :for="`${idBase}-${p.name}-${o}`">{{ o }}</Label>
         </div>
       </div>

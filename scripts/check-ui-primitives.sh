@@ -150,24 +150,7 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U110 apps/kira-space/frontend/src/studio/api/ApiVariablesTable.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/approvals/ReviewResultOption.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/project/DataGripImportDialog.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/project/FiltersDialog.vue # 2026-11-18 P672 Part 3
 U110 apps/kira-space/frontend/src/studio/project/connection/CheckboxRow.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpTables.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/documents/ProjectionMenu.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/grid/ColumnsMenu.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/httprequest/RequestSettingsPane.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/httprequest/ResponseHistoryList.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2026-11-18 P672 Part 3
-U110 apps/kira-space/frontend/src/studio/views/stream/StreamFilterRow.vue # 2026-11-18 P672 Part 3
-U110 packages/git-ui/src/components/FileTree.vue # 2026-11-18 P672 Part 3
-U110 packages/workbench/src/automations/form/ParamsEditor.vue # 2026-11-18 P672 Part 3
-U110 packages/workbench/src/automations/form/ToolsField.vue # 2026-11-18 P672 Part 3
-U110 packages/workbench/src/automations/run/ParamsForm.vue # 2026-11-18 P672 Part 3
-U110 packages/workbench/src/memory/distill/DistillResult.vue # 2026-11-18 P672 Part 3
-U110 packages/workbench/src/memory/import/ImportConfirmDialog.vue # 2026-11-18 P672 Part 3
 U111 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/ade/v2/links/AdeLinkAdd.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskBranchForm.vue # 2026-11-18 P672 Part 5

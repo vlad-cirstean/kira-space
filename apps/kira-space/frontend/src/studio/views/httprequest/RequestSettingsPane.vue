@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldGroup } from '@theme/components/ui/field';
@@ -136,9 +135,7 @@ const disableCookieJarId = useId();
             :model-value="settings.httpVersion === null"
             data-testid="http-settings-httpVersion-inherit"
             @update:model-value="(v) => onHttpVersionInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ t('common.state.inherit.option') }}
         </Label>
       </div>
@@ -171,9 +168,7 @@ const disableCookieJarId = useId();
             :model-value="settings.requestTimeoutMs === null"
             data-testid="http-settings-requestTimeoutMs-inherit"
             @update:model-value="(v) => onRequestTimeoutMsInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ t('common.state.inherit.option') }}
         </Label>
       </div>
@@ -207,9 +202,7 @@ const disableCookieJarId = useId();
             :model-value="settings.maxResponseMb === null"
             data-testid="http-settings-maxResponseMb-inherit"
             @update:model-value="(v) => onMaxResponseMbInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ t('common.state.inherit.option') }}
         </Label>
       </div>
@@ -243,9 +236,7 @@ const disableCookieJarId = useId();
           :disabled="settings.sslVerify === null"
           data-testid="http-settings-sslVerify"
           @update:model-value="(v) => onSslVerifyChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <Label :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</Label>
       </Field>
       <Label :class="INHERIT_LABEL">
@@ -253,9 +244,7 @@ const disableCookieJarId = useId();
           :model-value="settings.sslVerify === null"
           data-testid="http-settings-sslVerify-inherit"
           @update:model-value="(v) => onSslVerifyInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         {{ t('common.state.inherit.option') }}
       </Label>
     </FieldGroup>
@@ -275,9 +264,7 @@ const disableCookieJarId = useId();
           :disabled="settings.followRedirects === null"
           data-testid="http-settings-followRedirects"
           @update:model-value="(v) => onFollowRedirectsChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <Label :for="followRedirectsId">{{
           t('studio.http.settings.followRedirects.label')
         }}</Label>
@@ -287,9 +274,7 @@ const disableCookieJarId = useId();
           :model-value="settings.followRedirects === null"
           data-testid="http-settings-followRedirects-inherit"
           @update:model-value="(v) => onFollowRedirectsInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         {{ t('common.state.inherit.option') }}
       </Label>
     </FieldGroup>
@@ -309,9 +294,7 @@ const disableCookieJarId = useId();
             :model-value="settings.maxRedirects === null"
             data-testid="http-settings-maxRedirects-inherit"
             @update:model-value="(v) => onMaxRedirectsInherit(v === true)"
-          >
-            <CodiconIcon name="check" :size="12" />
-          </Checkbox>
+          />
           {{ t('common.state.inherit.option') }}
         </Label>
       </div>
@@ -342,9 +325,7 @@ const disableCookieJarId = useId();
           :disabled="settings.disableCookieJar === null"
           data-testid="http-settings-disableCookieJar"
           @update:model-value="(v) => onDisableCookieJarChange(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         <Label :for="disableCookieJarId">{{ t('studio.http.settings.disableJar.label') }}</Label>
       </Field>
       <Label :class="INHERIT_LABEL">
@@ -352,9 +333,7 @@ const disableCookieJarId = useId();
           :model-value="settings.disableCookieJar === null"
           data-testid="http-settings-disableCookieJar-inherit"
           @update:model-value="(v) => onDisableCookieJarInherit(v === true)"
-        >
-          <CodiconIcon name="check" :size="12" />
-        </Checkbox>
+        />
         {{ t('common.state.inherit.option') }}
       </Label>
     </FieldGroup>

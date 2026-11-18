@@ -250,12 +250,9 @@ const partitionButtonLabel = computed(() => {
                   :data-testid="`stream-filter-partition-option-${p}`"
                 >
                   <Checkbox
-                    class="size-3.5"
                     :model-value="selectedPartitions.includes(p)"
                     @update:model-value="onTogglePartition(p)"
-                  >
-                    <CodiconIcon name="check" :size="12" />
-                  </Checkbox>
+                  />
                   <span>{{ t('studio.stream.partition.label', { id: String(p) }) }}</span>
                 </Label>
               </template>
