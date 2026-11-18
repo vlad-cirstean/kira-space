@@ -57,7 +57,7 @@ const open = computed({
         <CodiconIcon name="watch" :size="13" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-auto p-2" @click.stop>
+    <PopoverContent align="start" class="w-auto" @click.stop>
       <AdeEstimateField
         :est="card.task.est"
         :days="card.entry.span"

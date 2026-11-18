@@ -178,11 +178,7 @@ async function pick(value: string): Promise<void> {
         {{ t('space.ade.add.trigger.label') }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent
-      align="end"
-      class="w-120 gap-0 overflow-hidden p-0"
-      data-testid="ade-add-popover"
-    >
+    <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <div class="p-1">
         <SecondaryTabs v-model="tab" :items="tabItems" size="kira-lg" class="w-full" />
       </div>

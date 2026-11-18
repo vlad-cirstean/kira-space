@@ -194,7 +194,7 @@ async function confirmRemove(): Promise<void> {
                   <span class="size-3 rounded-full" :class="STATUS_DOT_CLASS[s.color]" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" class="w-auto p-2" data-testid="ade-status-colors">
+              <PopoverContent align="start" class="w-auto" data-testid="ade-status-colors">
                 <RadioGroup
                   :model-value="s.color"
                   :aria-label="t('common.field.colour.label')"

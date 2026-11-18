@@ -152,16 +152,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U111 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/links/AdeLinkAdd.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskBranchForm.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/plan/AdeArchivedFinder.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/plan/AdeEstimateChip.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskChildren.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/status/AdeAgentsStatusItem.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/updates/AdeUpdatesPopover.vue # 2026-11-18 P672 Part 5
-U111 apps/kira-space/frontend/src/ade/v2/workflows/statuses/AdeTaskStatuses.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/studio/api/VariableHistoryMenu.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/studio/api/VariablesOverviewPanel.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/studio/project/ErrorPopover.vue # 2026-11-18 P672 Part 5

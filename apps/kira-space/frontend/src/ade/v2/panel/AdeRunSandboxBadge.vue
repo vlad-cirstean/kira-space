@@ -78,7 +78,7 @@ const lists = computed(() =>
         <CodiconIcon name="lock" :size="12" />{{ label }}
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-96 text-kira-md" align="start" data-testid="ade-run-sandbox-popover">
+    <PopoverContent class="w-96" align="start" data-testid="ade-run-sandbox-popover">
       <div v-if="d" class="flex flex-col gap-2">
         <FieldDescription data-testid="ade-run-sandbox-enforced">{{
           d.enforced ? t('space.ade.sandbox.popover.enforced.status') : d.reason

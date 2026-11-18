@@ -69,7 +69,7 @@ const rows = computed(() =>
         </template>
       </StatusBarItem>
     </PopoverTrigger>
-    <PopoverContent side="top" align="end" class="w-96 p-1" data-testid="status-agents-popover">
+    <PopoverContent side="top" align="end" flush class="w-96" data-testid="status-agents-popover">
       <AdeAgentsStatusList @close="open = false" />
     </PopoverContent>
   </Popover>

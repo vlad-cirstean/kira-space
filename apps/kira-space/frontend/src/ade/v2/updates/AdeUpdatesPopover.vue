@@ -25,7 +25,7 @@ defineProps<{ taskId: string }>();
         <StatusDot tone="info" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-80 p-0" @click.stop>
+    <PopoverContent align="start" flush class="w-80" @click.stop>
       <AdeTaskUpdates :task-id="taskId" :framed="false" />
     </PopoverContent>
   </Popover>

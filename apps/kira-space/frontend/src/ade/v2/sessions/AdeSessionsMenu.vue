@@ -43,7 +43,7 @@ const attention = computed(() =>
         <CodiconIcon name="chevron-down" :size="12" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="end" class="w-120 p-0" data-testid="ade-sessions-menu-popover">
+    <PopoverContent align="end" flush class="w-120" data-testid="ade-sessions-menu-popover">
       <AdeSessionsList
         :running="running"
         :stopped="stopped"

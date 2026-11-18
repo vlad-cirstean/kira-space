@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FieldDescription, FieldError } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldError } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
@@ -80,19 +80,21 @@ defineExpose({
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child><slot /></PopoverTrigger>
-    <PopoverContent align="end" class="w-80 gap-1.5" data-testid="ade-links-add-popover">
-      <Input
-        v-model="text"
-        :placeholder="t('space.ade.details.addLine.placeholder')"
-        :aria-label="t('space.ade.details.addLine.aria')"
-        data-testid="ade-links-paste"
-        @keydown="onKeydown"
-        @paste="onPaste"
-      />
-      <FieldDescription v-if="known" data-testid="ade-links-paste-known">{{
-        t('space.ade.details.addLine.known.body')
-      }}</FieldDescription>
-      <FieldError v-if="error" data-testid="ade-links-paste-error">{{ error }}</FieldError>
+    <PopoverContent align="end" class="w-80" data-testid="ade-links-add-popover">
+      <Field>
+        <Input
+          v-model="text"
+          :placeholder="t('space.ade.details.addLine.placeholder')"
+          :aria-label="t('space.ade.details.addLine.aria')"
+          data-testid="ade-links-paste"
+          @keydown="onKeydown"
+          @paste="onPaste"
+        />
+        <FieldDescription v-if="known" data-testid="ade-links-paste-known">{{
+          t('space.ade.details.addLine.known.body')
+        }}</FieldDescription>
+        <FieldError v-if="error" data-testid="ade-links-paste-error">{{ error }}</FieldError>
+      </Field>
     </PopoverContent>
   </Popover>
 </template>

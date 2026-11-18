@@ -2,7 +2,12 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverFooter,
+  PopoverTrigger,
+} from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
@@ -66,20 +71,17 @@ function addBranch(): void {
         :error="projects.error.value"
         @select="(o) => pickRepo(o.value)"
       />
-      <div v-if="error" class="m-2">
+      <div v-if="error" class="p-1">
         <Alert variant="error" data-testid="ade-card-add-error"
           ><AlertDescription>{{ error }}</AlertDescription></Alert
         >
       </div>
-      <Button
-        variant="toolbar"
-        size="kira"
-        class="justify-start border-t border-border"
-        data-testid="ade-card-add-branch"
-        @click="addBranch"
-      >
-        {{ t('space.ade.taskTab.addBranch.label') }}…
-      </Button>
+      <PopoverFooter>
+        <Button variant="toolbar" size="kira" data-testid="ade-card-add-branch" @click="addBranch">
+          <CodiconIcon name="add" :size="13" />
+          {{ t('space.ade.taskTab.addBranch.label') }}…
+        </Button>
+      </PopoverFooter>
     </PopoverContent>
   </Popover>
 </template>

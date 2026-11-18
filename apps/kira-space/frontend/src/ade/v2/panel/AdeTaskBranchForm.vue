@@ -91,11 +91,7 @@ async function submitRepo(codeRepoId: string): Promise<void> {
 <template>
   <Popover v-model:open="open">
     <PopoverAnchor as-child><slot /></PopoverAnchor>
-    <PopoverContent
-      :align="align ?? 'end'"
-      class="w-80 gap-0 overflow-hidden p-0"
-      data-testid="ade-branch-form"
-    >
+    <PopoverContent :align="align ?? 'end'" flush class="w-80" data-testid="ade-branch-form">
       <BranchPicker
         v-if="mode === 'branch'"
         inline
@@ -117,7 +113,7 @@ async function submitRepo(codeRepoId: string): Promise<void> {
         :error="projects.error.value"
         @select="(o) => submitRepo(o.value)"
       />
-      <div v-if="error" class="m-2">
+      <div v-if="error" class="p-1">
         <Alert variant="error" data-testid="ade-branch-form-error"
           ><AlertDescription>{{ error }}</AlertDescription></Alert
         >
