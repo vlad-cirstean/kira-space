@@ -5,9 +5,10 @@ import SecondaryTabs, { type SecondaryTabItem } from '@theme/components/Secondar
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Button } from '@theme/components/ui/button';
 import { PopoverBar, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
+import { rowVariants } from '@theme/lib/rowVariants';
+import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { computed, ref } from 'vue';
@@ -124,10 +125,11 @@ function close(): void {
           data-testid="pending-diff-list"
         >
           <li v-for="c in cells" :key="c.id">
-            <Button
-              variant="toolbar"
-              size="kira"
-              class="justify-start"
+            <button
+              type="button"
+              :class="
+                cn(rowVariants({ layout: 'menu', selected: c.id === selected?.id }), 'w-full')
+              "
               :aria-pressed="c.id === selected?.id"
               :data-column="c.column"
               data-testid="pending-diff-item"
@@ -140,7 +142,7 @@ function close(): void {
                 <span class="text-muted-foreground">→</span>
                 <Badge v-if="c.after === null">{{ t('studio.common.nullValue.label') }}</Badge>
               </template>
-            </Button>
+            </button>
           </li>
         </ul>
         <div v-if="sides" class="h-60">

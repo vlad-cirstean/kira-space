@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -241,15 +242,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                   }}</AlertDescription>
                 </Alert>
                 <div class="flex justify-end px-1.5">
-                  <Button
-                    variant="toolbar"
-                    size="kira"
-                    :aria-pressed="bulk"
-                    data-testid="api-variables-bulk-toggle"
-                    @click="bulk = !bulk"
-                  >
+                  <Toggle v-model="bulk" size="kira" data-testid="api-variables-bulk-toggle">
                     {{ t('studio.api.variablesDialog.bulk.toggle.label') }}
-                  </Button>
+                  </Toggle>
                 </div>
                 <BulkVariablesEditor
                   v-if="bulk"

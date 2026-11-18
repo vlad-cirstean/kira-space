@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -68,6 +69,16 @@ const hasProblem = (id: string) => !!configs.value.find((c) => c.codeRepoId === 
 const nickOf = (id: string) => configs.value.find((c) => c.codeRepoId === id)?.nickname ?? '';
 const selectedConfig = computed(
   () => configs.value.find((c) => c.codeRepoId === selected.value?.id) ?? null,
+);
+const problemFiles = computed(
+  () => new Set(otherFiles.value.filter((f) => f.problem).map((f) => f.file)),
+);
+const otherFileItems = computed(() =>
+  otherFiles.value.map((f) => ({
+    value: f.file,
+    label: configName(f.file),
+    testid: `ade-repos-file-${f.file}`,
+  })),
 );
 async function pickOtherFile(file: string): Promise<void> {
   if (pickedOther.value?.file === file) return;
@@ -378,26 +389,22 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
             t('space.repo.settingsFile.otherFiles.empty')
           }}</p>
           <template v-else>
-            <div class="flex flex-wrap gap-1">
-              <Button
-                v-for="f in otherFiles"
-                :key="f.file"
-                variant="toolbar"
-                size="kira"
-                :aria-pressed="pickedOther?.file === f.file"
-                data-testid="ade-repos-file"
-                :data-file="f.file"
-                @click="pickOtherFile(f.file)"
-              >
+            <SecondaryTabs
+              wrap
+              :model-value="pickedOther?.file ?? ''"
+              :items="otherFileItems"
+              @update:model-value="pickOtherFile"
+            >
+              <template #item="{ item }">
                 <StatusDot
-                  v-if="f.problem"
+                  v-if="problemFiles.has(item.value)"
                   tone="error"
                   :label="t('space.repo.settingsFile.problem.aria')"
                 />
                 <CodiconIcon v-else name="file" :size="13" />
-                {{ configName(f.file) }}
-              </Button>
-            </div>
+                {{ item.label }}
+              </template>
+            </SecondaryTabs>
             <RepoFilePane
               v-if="pickedOther"
               :key="pickedOther.file"

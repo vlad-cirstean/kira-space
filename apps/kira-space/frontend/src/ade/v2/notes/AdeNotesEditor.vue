@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
@@ -109,11 +109,9 @@ onBeforeUnmount(() => {
   editor.value.destroy();
 });
 
-// Toolbar: codicon where the theme has one, else the glyph text.
 interface ToolbarButton {
   label: string;
   icon: string;
-  glyph: string;
   active: boolean;
   run: () => void;
 }
@@ -125,56 +123,48 @@ const toolbar = computed<ToolbarButton[]>(() => {
     {
       label: t('space.ade.notes.bold.tooltip'),
       icon: 'bold',
-      glyph: 'B',
       active: ed.isActive('bold'),
       run: () => chain().toggleBold().run(),
     },
     {
       label: t('space.ade.notes.italic.tooltip'),
       icon: 'italic',
-      glyph: 'I',
       active: ed.isActive('italic'),
       run: () => chain().toggleItalic().run(),
     },
     {
       label: t('common.code.label'),
       icon: 'code',
-      glyph: '</>',
       active: ed.isActive('code'),
       run: () => chain().toggleCode().run(),
     },
     {
       label: t('space.ade.notes.heading.tooltip'),
-      icon: '',
-      glyph: 'H',
+      icon: 'text-size',
       active: ed.isActive('heading', { level: 2 }),
       run: () => chain().toggleHeading({ level: 2 }).run(),
     },
     {
       label: t('space.ade.notes.bulletedList.tooltip'),
       icon: 'list-unordered',
-      glyph: '•',
       active: ed.isActive('bulletList'),
       run: () => chain().toggleBulletList().run(),
     },
     {
       label: t('space.ade.notes.numberedList.tooltip'),
       icon: 'list-ordered',
-      glyph: '1.',
       active: ed.isActive('orderedList'),
       run: () => chain().toggleOrderedList().run(),
     },
     {
       label: t('space.ade.notes.checklist.tooltip'),
       icon: 'checklist',
-      glyph: '☐',
       active: ed.isActive('taskList'),
       run: () => chain().toggleTaskList().run(),
     },
     {
       label: t('space.ade.notes.link.tooltip'),
       icon: 'link',
-      glyph: '🔗',
       active: ed.isActive('link'),
       run: openLink,
     },
@@ -212,10 +202,6 @@ function onLinkKey(e: KeyboardEvent): void {
     linkOpen.value = false;
   }
 }
-
-function keepFocus(e: MouseEvent): void {
-  e.preventDefault();
-}
 </script>
 
 <template>
@@ -230,22 +216,16 @@ function keepFocus(e: MouseEvent): void {
       class="flex shrink-0 items-center gap-0.5 bg-chrome px-1.5 py-1"
     >
       <span class="px-1.5 text-kira-sm text-muted-foreground">{{ caption }}</span>
-      <Button
+      <TooltipIconButton
         v-for="btn in toolbar"
         :key="btn.label"
-        variant="toolbar"
-        size="kira-icon"
-        class="text-kira-sm"
-        :aria-label="btn.label"
-        :aria-pressed="btn.active"
-        :title="btn.label"
+        :icon="btn.icon"
+        :label="btn.label"
+        :pressed="btn.active"
         data-testid="ade-notes-toolbar-btn"
-        @mousedown="keepFocus"
+        @mousedown.prevent
         @click="btn.run"
-      >
-        <CodiconIcon v-if="btn.icon" :name="btn.icon" :size="13" />
-        <span v-else>{{ btn.glyph }}</span>
-      </Button>
+      />
       <template v-if="linkOpen">
         <Label for="ade-notes-link" class="sr-only">{{ t('space.ade.notes.linkUrl.label') }}</Label>
         <Input
@@ -260,7 +240,7 @@ function keepFocus(e: MouseEvent): void {
           variant="dialog"
           size="kira"
           class="shrink-0"
-          @mousedown="keepFocus"
+          @mousedown.prevent
           @click="applyLink"
           >{{
             t('common.action.add.label')

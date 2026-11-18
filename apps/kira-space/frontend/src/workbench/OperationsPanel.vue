@@ -348,12 +348,7 @@ function menuFor(record: Row): MenuItem[] {
     @reset-filters="opsStore.resetFilters"
   >
     <template #toolbar>
-      <Toggle
-        v-model="opsStore.showBackground"
-        variant="outline"
-        size="kira"
-        data-testid="ops-background"
-      >
+      <Toggle v-model="opsStore.showBackground" size="kira" data-testid="ops-background">
         {{
           opsStore.backgroundCount > 0
             ? t('space.operations.backgroundCount.label', { count: opsStore.backgroundCount })
