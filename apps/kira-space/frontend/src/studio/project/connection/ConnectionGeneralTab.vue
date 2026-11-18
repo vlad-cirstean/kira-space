@@ -9,10 +9,10 @@ import {
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
@@ -149,18 +149,18 @@ async function onBrowseDatabaseFile(): Promise<void> {
             class="color-picker m-0 flex h-6.5 flex-wrap items-center gap-1 border-0 p-0"
             :aria-label="t('studio.project.connectionDialog.colour.aria')"
           >
-            <Tooltip v-for="color in PALETTE_COLOR_CHOICES" :key="color">
-              <TooltipTrigger as-child>
-                <SwatchRadio
-                  name="connection-color"
-                  :value="color"
-                  :color="color"
-                  :checked="(file.color ?? 'none') === color"
-                  @change="file.color = color"
-                />
-              </TooltipTrigger>
-              <TooltipContent>{{ colourLabel(color) }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip
+              v-for="color in PALETTE_COLOR_CHOICES"
+              :key="color"
+              :text="colourLabel(color)"
+              ><SwatchRadio
+                name="connection-color"
+                :value="color"
+                :color="color"
+                :checked="(file.color ?? 'none') === color"
+                @change="file.color = color"
+              /></TextTooltip
+            >
           </fieldset>
         </Field>
       </div>

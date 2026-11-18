@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed, provide, ref } from 'vue';
 import { resourceMode, toNumber } from '../lib/editDiff';
@@ -400,12 +400,11 @@ const netChanged = (name: string): boolean => {
             @change="setAliases(n.name, ($event.target as HTMLInputElement).value)"
             v-bind="invalid"
           />
-          <Tooltip v-if="n.ipv4 || n.ipv6">
-            <TooltipTrigger as-child>
-              <span class="shrink-0 font-data text-muted-foreground">{{ n.ipv4 || n.ipv6 }}</span>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('docker.edit.staticAddress.tooltip') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="n.ipv4 || n.ipv6" :text="t('docker.edit.staticAddress.tooltip')"
+            ><span class="shrink-0 font-data text-muted-foreground">{{
+              n.ipv4 || n.ipv6
+            }}</span></TextTooltip
+          >
           <TooltipIconButton
             icon="trash"
             :label="t('docker.edit.detach.tooltip')"

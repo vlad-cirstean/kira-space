@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { HttpFormDataFieldState } from '@shared/domain/http';
 import { contentTypeForFilename } from '@shared/domain/objectStore';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { InputGroup, InputGroupTextarea } from '@theme/components/ui/input-group';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatBytes } from '@workbench/behaviour/format';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
@@ -141,18 +141,15 @@ function onClearFile(index: number): void {
         >
           {{ t('studio.http.body.chooseFile.label') }}
         </Button>
-        <Tooltip v-if="row.fileName">
-          <TooltipTrigger as-child>
-            <span
-              class="text-kira-sm text-muted-foreground whitespace-nowrap p-0"
-              data-testid="http-formdata-file-caption"
-            >
-              {{ row.fileName }}
-              ({{ formatBytes(row.fileSize) }})
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{{ row.path }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="row.fileName" :text="row.path"
+          ><span
+            class="text-kira-sm text-muted-foreground whitespace-nowrap p-0"
+            data-testid="http-formdata-file-caption"
+          >
+            {{ row.fileName }}
+            ({{ formatBytes(row.fileSize) }})
+          </span></TextTooltip
+        >
         <TooltipIconButton
           v-if="row.fileName"
           icon="close"

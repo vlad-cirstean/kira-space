@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useFormErrors } from '@workbench/behaviour/formErrors';
 import { computed, inject, useId } from 'vue';
@@ -39,12 +39,9 @@ const needsRecreate = computed(() => inPlaceTab === true && props.mode === 'recr
   >
     <FieldLabel :for="multi ? undefined : id">
       {{ label }}
-      <Tooltip v-if="changed">
-        <TooltipTrigger as-child>
-          <StatusDot tone="muted" :label="t('common.changed.status')" />
-        </TooltipTrigger>
-        <TooltipContent>{{ t('common.changed.status') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="changed" :text="t('common.changed.status')"
+        ><StatusDot tone="muted" :label="t('common.changed.status')" /></TextTooltip
+      >
     </FieldLabel>
     <slot v-bind="{ invalid: form.invalidAttrs('field'), id }" />
     <FieldError

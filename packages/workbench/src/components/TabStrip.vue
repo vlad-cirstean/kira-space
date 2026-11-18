@@ -3,7 +3,6 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { tabChipVariants } from '@theme/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -289,30 +288,24 @@ if (moveTab) {
             aria-hidden="true"
           />
           <slot name="tab-leading" :tab="tab" />
-          <Tooltip v-if="indicatorFor(tab)">
-            <TooltipTrigger as-child>
-              <CodiconIcon
-                :name="indicatorFor(tab)!.icon"
-                :size="12"
-                class="shrink-0 text-muted-foreground"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ indicatorFor(tab)!.tooltip }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="indicatorFor(tab)" :text="indicatorFor(tab)!.tooltip"
+            ><CodiconIcon
+              :name="indicatorFor(tab)!.icon"
+              :size="12"
+              class="shrink-0 text-muted-foreground"
+            /></TextTooltip
+          >
           <span class="tab-title truncate min-w-0" :class="{ italic: isPreview(tab) }">{{
             titleFor(tab)
           }}</span>
-          <Tooltip v-if="badgeFor(tab)">
-            <TooltipTrigger as-child>
-              <CodiconIcon
-                :name="badgeFor(tab)!.icon"
-                :size="12"
-                class="shrink-0 text-muted-foreground"
-                data-testid="tab-badge"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ badgeFor(tab)!.tooltip }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="badgeFor(tab)" :text="badgeFor(tab)!.tooltip"
+            ><CodiconIcon
+              :name="badgeFor(tab)!.icon"
+              :size="12"
+              class="shrink-0 text-muted-foreground"
+              data-testid="tab-badge"
+            /></TextTooltip
+          >
         </button>
         <Button
           v-if="host.tabs.closeTab"

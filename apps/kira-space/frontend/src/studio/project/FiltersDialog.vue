@@ -4,6 +4,7 @@ import { EMPTY_VISIBILITY, type TreeVisibility } from '@shared/domain/treeFilter
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -19,7 +20,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { rowMeta } from '@theme/lib/rowVariants';
@@ -284,20 +284,17 @@ const connectionName = computed(
                 :has-children="row.hasChildren"
                 @toggle="onToggleExpand(row.path)"
               />
-              <Tooltip :disabled="!row.disabledReason">
-                <TooltipTrigger as-child>
-                  <Label class="object-checkbox-label flex items-center flex-1 min-w-0 gap-1">
-                    <Checkbox
-                      :model-value="row.state === 'partial' ? 'indeterminate' : row.state !== 'off'"
-                      :disabled="row.disabled"
-                      class="after:inset-0"
-                      @update:model-value="onToggleNode(row)"
-                    />
-                    <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.name }}</span>
-                  </Label>
-                </TooltipTrigger>
-                <TooltipContent v-if="row.disabledReason">{{ row.disabledReason }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip :text="row.disabledReason"
+                ><Label class="object-checkbox-label flex items-center flex-1 min-w-0 gap-1">
+                  <Checkbox
+                    :model-value="row.state === 'partial' ? 'indeterminate' : row.state !== 'off'"
+                    :disabled="row.disabled"
+                    class="after:inset-0"
+                    @update:model-value="onToggleNode(row)"
+                  />
+                  <span class="min-w-0 flex-1 truncate text-kira-md">{{ row.name }}</span>
+                </Label></TextTooltip
+              >
               <span v-if="row.hasChildren" :class="rowMeta">{{ row.childCount }}</span>
             </div>
             <InlineState v-if="objectRows.length === 0" kind="empty">{{

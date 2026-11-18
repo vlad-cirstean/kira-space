@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -233,16 +233,13 @@ function cellClass(row: number, col: 'field' | 'value') {
                 data-testid="keyvalue-value"
               >
                 <TruncatedText :text="displayText(rowAt(entry.i)?.value ?? '')" />
-                <Tooltip v-if="rowAt(entry.i)?.isTruncated">
-                  <TooltipTrigger as-child>
-                    <Badge variant="chip" class="bg-field text-subtle ml-1.5 shrink-0">{{
-                      t('studio.common.truncated.status')
-                    }}</Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{
-                    t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })
-                  }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-if="rowAt(entry.i)?.isTruncated"
+                  :text="t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })"
+                  ><Badge variant="chip" class="bg-field text-subtle ml-1.5 shrink-0">{{
+                    t('studio.common.truncated.status')
+                  }}</Badge></TextTooltip
+                >
               </div>
             </div>
           </template>

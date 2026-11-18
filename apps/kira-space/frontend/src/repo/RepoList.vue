@@ -5,8 +5,8 @@ import type { RepoSummary } from '@shared/domain/repo';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass, colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
@@ -477,35 +477,29 @@ useTreeShortcuts(nav, {
            size/colour
            pair as `.worktree-badge` below, so a collapsed row's branch and its expanded
            children's read as the same class of information. -->
-        <Tooltip v-if="repo.hidden">
-          <TooltipTrigger as-child>
-            <CodiconIcon
-              name="eye-closed"
-              :size="13"
-              class="shrink-0 text-subtle"
-              data-testid="repo-hidden-mark"
-            />
-          </TooltipTrigger>
-          <TooltipContent>{{ t('space.common.hidden.status') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="repo.hidden" :text="t('space.common.hidden.status')"
+          ><CodiconIcon
+            name="eye-closed"
+            :size="13"
+            class="shrink-0 text-subtle"
+            data-testid="repo-hidden-mark"
+          /></TextTooltip
+        >
         <span
           v-if="repoHeadsStore.repoHeadLabel(repo.id)"
           class="repo-head min-w-0 max-w-5/12 flex-none text-kira-sm text-subtle"
           ><TruncatedText :text="repoHeadsStore.repoHeadLabel(repo.id)" /></span
         >
-        <Tooltip v-if="terminalsStore.terminalCountAtPath(repo.root) > 0">
-          <TooltipTrigger as-child>
-            <CodiconIcon
-              name="terminal-bash"
-              :size="12"
-              class="shrink-0 text-subtle"
-              data-testid="repo-terminal-indicator"
-            />
-          </TooltipTrigger>
-          <TooltipContent>{{
-            terminalTooltip(terminalsStore.terminalCountAtPath(repo.root))
-          }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip
+          v-if="terminalsStore.terminalCountAtPath(repo.root) > 0"
+          :text="terminalTooltip(terminalsStore.terminalCountAtPath(repo.root))"
+          ><CodiconIcon
+            name="terminal-bash"
+            :size="12"
+            class="shrink-0 text-subtle"
+            data-testid="repo-terminal-indicator"
+          /></TextTooltip
+        >
       </div>
       <section
         v-if="worktreesStore.isWorktreesExpanded(repo.id)"

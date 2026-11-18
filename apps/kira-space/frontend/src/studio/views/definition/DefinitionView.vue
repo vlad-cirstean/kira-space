@@ -10,7 +10,6 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -322,20 +321,17 @@ const breadcrumb = computed(() => {
             </Button>
           </TextTooltip>
         </template>
-        <Tooltip v-if="canOpenConsole">
-          <TooltipTrigger as-child>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="definition-open-console"
-              @click="onOpenConsole"
-            >
-              <CodiconIcon name="terminal" :size="13" />
-              {{ t('studio.definition.openConsole.label') }}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.definition.openConsole.tooltip') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="canOpenConsole" :text="t('studio.definition.openConsole.tooltip')"
+          ><Button
+            variant="toolbar"
+            size="kira"
+            data-testid="definition-open-console"
+            @click="onOpenConsole"
+          >
+            <CodiconIcon name="terminal" :size="13" />
+            {{ t('studio.definition.openConsole.label') }}
+          </Button></TextTooltip
+        >
       </div>
     </ViewToolbar>
 

@@ -8,7 +8,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { tableCellClass, tableRowClass } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
@@ -157,19 +156,16 @@ function editEnvironmentVariables(): void {
           <span v-else class="min-w-0 text-subtle" data-testid="variables-overview-value"
             ><TruncatedText :text="row.value" /></span
           >
-          <Tooltip v-if="row.shadowed">
-            <TooltipTrigger as-child>
-              <Badge
-                class="justify-self-start"
-                :variant="row.scope === 'environment' ? 'info' : 'default'"
-                data-testid="variables-overview-scope"
-                >{{
-                  row.scope
-                }}</Badge
-              >
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.api.variablesOverview.shadowed.hint') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="row.shadowed" :text="t('studio.api.variablesOverview.shadowed.hint')"
+            ><Badge
+              class="justify-self-start"
+              :variant="row.scope === 'environment' ? 'info' : 'default'"
+              data-testid="variables-overview-scope"
+              >{{
+                row.scope
+              }}</Badge
+            ></TextTooltip
+          >
           <Badge
             v-else
             class="justify-self-start"

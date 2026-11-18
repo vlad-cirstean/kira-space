@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { PALETTE_COLOR_CHOICES, type PaletteColor } from '@shared/domain/color';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Field, FieldError, FieldSet } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import SwatchRadio from '@theme/SwatchRadio.vue';
@@ -51,18 +51,18 @@ const source = computed(() =>
         :aria-label="t('common.field.colour.label')"
         data-testid="repo-color"
       >
-        <Tooltip v-for="swatch in PALETTE_COLOR_CHOICES" :key="swatch">
-          <TooltipTrigger as-child>
-            <SwatchRadio
-              name="repo-color"
-              :value="swatch"
-              :color="swatch"
-              :checked="color === swatch"
-              @change="chooseColor(swatch)"
-            />
-          </TooltipTrigger>
-          <TooltipContent>{{ colourLabel(swatch as ColourName) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip
+          v-for="swatch in PALETTE_COLOR_CHOICES"
+          :key="swatch"
+          :text="colourLabel(swatch as ColourName)"
+          ><SwatchRadio
+            name="repo-color"
+            :value="swatch"
+            :color="swatch"
+            :checked="color === swatch"
+            @change="chooseColor(swatch)"
+          /></TextTooltip
+        >
       </fieldset>
       <FieldError v-if="colorError" data-testid="repo-color-error">{{ colorError }}</FieldError>
     </Field>

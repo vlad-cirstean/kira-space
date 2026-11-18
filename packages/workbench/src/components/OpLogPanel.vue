@@ -12,7 +12,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { tableHeadClass, tableHeadRowClass, tableRowClass } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
 import { useElementSize, useFocus, useIntervalFn } from '@vueuse/core';
@@ -436,18 +435,17 @@ function alignClass(column: OpLogColumn): string {
                     }}</Badge
                   >
                 </span>
-                <Tooltip v-else-if="column.id === 'time'">
-                  <TooltipTrigger as-child>
-                    <span
-                      class="font-data tabular-nums whitespace-nowrap"
-                      data-testid="op-time-cell"
-                      >{{
-                        formatOpTime(entry.item.row.record.startedAt, now)
-                      }}</span
-                    >
-                  </TooltipTrigger>
-                  <TooltipContent>{{ timeTitle(entry.item.row.record) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-else-if="column.id === 'time'"
+                  :text="timeTitle(entry.item.row.record)"
+                  ><span
+                    class="font-data tabular-nums whitespace-nowrap"
+                    data-testid="op-time-cell"
+                    >{{
+                      formatOpTime(entry.item.row.record.startedAt, now)
+                    }}</span
+                  ></TextTooltip
+                >
                 <span
                   v-else-if="column.id === 'kind'"
                   class="truncate min-w-0 font-data text-muted-foreground"

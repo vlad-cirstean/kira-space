@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { PALETTE_COLOR_CHOICES, type PaletteColor } from '@shared/domain/color';
 import type { RunFile } from '@shared/domain/scripts';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import SwatchRadio from '@theme/SwatchRadio.vue';
 import { computed, useId } from 'vue';
@@ -77,20 +77,18 @@ const bodyError = computed(() => props.errorFor(smart.value ? '/prompt' : '/comm
         class="color-picker m-0 flex h-control flex-wrap items-center gap-1 border-0 p-0"
         :aria-label="t('common.field.colour.label')"
       >
-        <Tooltip v-for="swatch in PALETTE_COLOR_CHOICES" :key="swatch">
-          <TooltipTrigger as-child>
-            <SwatchRadio
-              name="script-color"
-              :value="swatch"
-              :color="swatch"
-              :checked="color === swatch"
-              @change="color = swatch"
-            />
-          </TooltipTrigger>
-          <TooltipContent>{{
-            swatch === 'none' ? t('common.field.noColour.label') : swatch
-          }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip
+          v-for="swatch in PALETTE_COLOR_CHOICES"
+          :key="swatch"
+          :text="swatch === 'none' ? t('common.field.noColour.label') : swatch"
+          ><SwatchRadio
+            name="script-color"
+            :value="swatch"
+            :color="swatch"
+            :checked="color === swatch"
+            @change="color = swatch"
+          /></TextTooltip
+        >
       </fieldset>
     </div>
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ApiEnvironmentFileModel } from '@shared/domain/apiConfig';
 import { PALETTE_COLOR_CHOICES } from '@shared/domain/color';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import SwatchRadio from '@theme/SwatchRadio.vue';
@@ -45,18 +45,18 @@ const env = defineModel<ApiEnvironmentFileModel>({ required: true });
           :aria-label="t('studio.api.variablesDialog.colour.aria')"
           data-testid="api-environment-color-picker"
         >
-          <Tooltip v-for="color in PALETTE_COLOR_CHOICES" :key="color">
-            <TooltipTrigger as-child>
-              <SwatchRadio
-                name="environment-color"
-                :value="color"
-                :color="color"
-                :checked="(env.color ?? 'none') === color"
-                @change="env.color = color"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ colourLabel(color) }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip
+            v-for="color in PALETTE_COLOR_CHOICES"
+            :key="color"
+            :text="colourLabel(color)"
+            ><SwatchRadio
+              name="environment-color"
+              :value="color"
+              :color="color"
+              :checked="(env.color ?? 'none') === color"
+              @change="env.color = color"
+            /></TextTooltip
+          >
         </fieldset>
         <FieldError v-if="props.errorFor('/color')">{{ props.errorFor('/color') }}</FieldError>
       </Field>

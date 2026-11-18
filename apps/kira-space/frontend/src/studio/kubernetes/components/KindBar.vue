@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { t } from '@theme/i18n';
 import PickerPopover from '@workbench/components/pickers/PickerPopover.vue';
 import type { PickerGroup, PickerOption } from '@workbench/lib/pickerOptions';
@@ -78,16 +78,13 @@ const options = computed<PickerOption[]>(() =>
       testid="kube-kind-more"
       @select="(o) => emit('select', o.value)"
     />
-    <Tooltip v-if="partial">
-      <TooltipTrigger as-child>
-        <CodiconIcon
-          name="warning"
-          :size="13"
-          class="shrink-0 text-warn"
-          data-testid="kube-kinds-partial"
-        />
-      </TooltipTrigger>
-      <TooltipContent>{{ t('kubernetes.kinds.partial.hint') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="partial" :text="t('kubernetes.kinds.partial.hint')"
+      ><CodiconIcon
+        name="warning"
+        :size="13"
+        class="shrink-0 text-warn"
+        data-testid="kube-kinds-partial"
+      /></TextTooltip
+    >
   </div>
 </template>

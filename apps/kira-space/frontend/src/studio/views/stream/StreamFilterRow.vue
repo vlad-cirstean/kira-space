@@ -10,7 +10,6 @@ import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Label } from '@theme/components/ui/label';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -261,29 +260,26 @@ const partitionButtonLabel = computed(() => {
     </div>
     <div class="flex flex-col gap-0.5 shrink-0">
       <div class="flex items-center gap-0.5">
-        <Tooltip :disabled="!timestampError">
-          <TooltipTrigger as-child>
-            <InputGroup variant="kira" class="flex w-40 font-data" :aria-invalid="!!timestampError">
-              <span
-                class="shrink-0 text-kira-sm"
-                :class="tab.state.timestampFilter ? 'text-state-on' : 'text-muted-foreground'"
-                >{{
-                  t('studio.stream.since.label')
-                }}</span
-              >
-              <InputGroupInput
-                :model-value="timestampText"
-                :placeholder="t('studio.cellEditor.detect.iso8601.status')"
-                class="h-full p-0 font-data"
-                data-testid="stream-filter-timestamp"
-                @update:model-value="timestampEdit.onInput"
-                @keydown="timestampEdit.onKeydown"
-                @blur="timestampEdit.onCommit"
-              />
-            </InputGroup>
-          </TooltipTrigger>
-          <TooltipContent>{{ timestampError }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip :text="timestampError"
+          ><InputGroup variant="kira" class="flex w-40 font-data" :aria-invalid="!!timestampError">
+            <span
+              class="shrink-0 text-kira-sm"
+              :class="tab.state.timestampFilter ? 'text-state-on' : 'text-muted-foreground'"
+              >{{
+                t('studio.stream.since.label')
+              }}</span
+            >
+            <InputGroupInput
+              :model-value="timestampText"
+              :placeholder="t('studio.cellEditor.detect.iso8601.status')"
+              class="h-full p-0 font-data"
+              data-testid="stream-filter-timestamp"
+              @update:model-value="timestampEdit.onInput"
+              @keydown="timestampEdit.onKeydown"
+              @blur="timestampEdit.onCommit"
+            />
+          </InputGroup></TextTooltip
+        >
         <span class="relative shrink-0">
           <TooltipIconButton
             icon="calendar"

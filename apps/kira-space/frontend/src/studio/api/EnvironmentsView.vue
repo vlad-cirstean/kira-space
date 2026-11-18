@@ -8,7 +8,6 @@ import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -186,20 +185,15 @@ async function onSetActive(id: string): Promise<void> {
             :data-id="env.id"
           >
             <span :class="colorMarkClass('dot', env.color)" data-testid="environment-color-dot" />
-            <Tooltip v-if="isFiltered">
-              <TooltipTrigger as-child>
-                <span
-                  class="flex cursor-grab items-center text-subtle"
-                  aria-hidden="true"
-                  data-testid="environment-grip"
-                >
-                  <CodiconIcon name="gripper" :size="13" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{{
-                t('studio.api.environments.reorderBlocked.hint')
-              }}</TooltipContent>
-            </Tooltip>
+            <TextTooltip v-if="isFiltered" :text="t('studio.api.environments.reorderBlocked.hint')"
+              ><span
+                class="flex cursor-grab items-center text-subtle"
+                aria-hidden="true"
+                data-testid="environment-grip"
+              >
+                <CodiconIcon name="gripper" :size="13" />
+              </span></TextTooltip
+            >
             <button
               v-else
               type="button"

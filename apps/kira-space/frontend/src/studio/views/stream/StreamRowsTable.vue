@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { ResizeHandle } from '@theme/components/ui/resizable';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -377,14 +377,13 @@ const CELL_BASE =
               @click="onCellClickFromEvent"
               @keydown="onCellKeydown"
             >
-              <Tooltip v-if="rowAt(rowIndices[vi.index])?.body === null">
-                <TooltipTrigger as-child>
-                  <span class="text-subtle italic" data-testid="stream-body-null">{{
-                    t('studio.common.nullValue.label')
-                  }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{ t('studio.stream.tombstone.tooltip') }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip
+                v-if="rowAt(rowIndices[vi.index])?.body === null"
+                :text="t('studio.stream.tombstone.tooltip')"
+                ><span class="text-subtle italic" data-testid="stream-body-null">{{
+                  t('studio.common.nullValue.label')
+                }}</span></TextTooltip
+              >
               <template v-else>
                 <Badge
                   v-if="rowAt(rowIndices[vi.index])?.bodyBinary"
@@ -396,14 +395,13 @@ const CELL_BASE =
                 >
                 {{ displayText(rowAt(rowIndices[vi.index])?.body ?? '') }}
               </template>
-              <Tooltip v-if="rowAt(rowIndices[vi.index])?.isTruncated">
-                <TooltipTrigger as-child>
-                  <span :class="rowMeta">{{ t('studio.common.truncated.status') }}</span>
-                </TooltipTrigger>
-                <TooltipContent>{{
-                  t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })
-                }}</TooltipContent>
-              </Tooltip>
+              <TextTooltip
+                v-if="rowAt(rowIndices[vi.index])?.isTruncated"
+                :text="t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })"
+                ><span :class="rowMeta">{{
+                  t('studio.common.truncated.status')
+                }}</span></TextTooltip
+              >
             </div>
           </div>
         </div>

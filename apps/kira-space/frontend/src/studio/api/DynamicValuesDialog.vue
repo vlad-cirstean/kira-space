@@ -2,6 +2,7 @@
 import { FAKE_NAMES, loadDynamicGenerator } from '@kira/api-core';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -13,7 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
@@ -103,31 +103,26 @@ function close(): void {
           :title="t('common.state.noMatches.empty')"
         />
         <div class="flex flex-col gap-1.5">
-          <Tooltip v-for="entry in filteredEntries" :key="entry.name">
-            <TooltipTrigger as-child>
-              <Button
-                variant="toolbar"
-                size="kira"
-                class="h-auto min-h-6.5 w-full justify-between gap-1 px-1.5 py-1 text-left text-kira-md font-normal text-fg"
-                data-testid="dynamic-values-fake-row"
-                :data-name="entry.name"
-                @click="onCopy(entry.name)"
-              >
-                <code class="shrink-0 text-fg font-data" data-testid="dynamic-values-reference">{{
-                  reference(entry.name)
-                }}</code>
-                <Badge
-                  variant="info"
-                  class="min-w-0 truncate"
-                  data-testid="dynamic-values-sample"
-                  >{{
-                    samples[entry.name] ?? ''
-                  }}</Badge
-                >
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{{ t('common.action.copy.label') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip
+            v-for="entry in filteredEntries"
+            :key="entry.name"
+            :text="t('common.action.copy.label')"
+            ><Button
+              variant="toolbar"
+              size="kira"
+              class="h-auto min-h-6.5 w-full justify-between gap-1 px-1.5 py-1 text-left text-kira-md font-normal text-fg"
+              data-testid="dynamic-values-fake-row"
+              :data-name="entry.name"
+              @click="onCopy(entry.name)"
+            >
+              <code class="shrink-0 text-fg font-data" data-testid="dynamic-values-reference">{{
+                reference(entry.name)
+              }}</code>
+              <Badge variant="info" class="min-w-0 truncate" data-testid="dynamic-values-sample">{{
+                samples[entry.name] ?? ''
+              }}</Badge>
+            </Button></TextTooltip
+          >
         </div>
       </DialogBody>
 

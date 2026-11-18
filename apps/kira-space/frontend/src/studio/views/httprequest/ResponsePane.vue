@@ -9,7 +9,6 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { formatBytes, formatClockTime, formatDuration } from '@workbench/behaviour/format';
@@ -408,20 +407,17 @@ onUnmounted(() => {
         }}
       </AlertDescription>
     </Alert>
-    <Tooltip v-if="redirectCaption">
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="status"
-          class="w-full justify-start"
-          data-testid="http-redirects"
-          @click="viewTimeline"
-        >
-          {{ redirectCaption }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('studio.http.response.timeTooltip.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="redirectCaption" :text="t('studio.http.response.timeTooltip.tooltip')"
+      ><Button
+        variant="toolbar"
+        size="status"
+        class="w-full justify-start"
+        data-testid="http-redirects"
+        @click="viewTimeline"
+      >
+        {{ redirectCaption }}
+      </Button></TextTooltip
+    >
 
     <ResponseHistoryList
       v-if="tab.state.responsePane === 'history'"

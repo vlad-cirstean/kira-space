@@ -2,12 +2,12 @@
 import type { Caps } from '@shared/caps';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
 import { PopoverContent } from '@theme/components/ui/popover';
 import { Separator } from '@theme/components/ui/separator';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -161,17 +161,14 @@ onBeforeUnmount(() => {
           <span class="flex items-center shrink-0 text-subtle cursor-grab" aria-hidden="true"
             ><CodiconIcon name="gripper" :size="13" /></span
           >
-          <Tooltip v-if="pkNames.has(name)">
-            <TooltipTrigger as-child>
-              <Checkbox
-                :model-value="selected.has(name)"
-                disabled
-                data-testid="columns-menu-item"
-                @update:model-value="toggle(name)"
-              />
-            </TooltipTrigger>
-            <TooltipContent>{{ t('studio.grid.columns.primaryKey.tooltip') }}</TooltipContent>
-          </Tooltip>
+          <TextTooltip v-if="pkNames.has(name)" :text="t('studio.grid.columns.primaryKey.tooltip')"
+            ><Checkbox
+              :model-value="selected.has(name)"
+              disabled
+              data-testid="columns-menu-item"
+              @update:model-value="toggle(name)"
+            /></TextTooltip
+          >
           <Checkbox
             v-else
             :model-value="selected.has(name)"

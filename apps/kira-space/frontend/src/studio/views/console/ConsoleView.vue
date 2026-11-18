@@ -6,12 +6,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { Tooltip, TooltipDisabledTrigger, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import RunState from '@theme/RunState.vue';
@@ -296,40 +291,34 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
-      <Tooltip v-if="canFormat">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-format"
-              :disabled="!tab.state.text.trim()"
-              @click="onFormat"
-            >
-              <CodiconIcon name="indent" :size="13" />
-              {{ t('studio.console.format.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.console.format.tooltip') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="dialect">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger>
-            <Button
-              variant="toolbar"
-              size="kira"
-              data-testid="console-explain"
-              :disabled="!canExplain || runBlocked"
-              @click="onExplain"
-            >
-              <CodiconIcon name="list-tree" :size="13" />
-              {{ t('studio.console.explain.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{ explainTooltip }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="canFormat" :text="t('studio.console.format.tooltip')"
+        ><TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-format"
+            :disabled="!tab.state.text.trim()"
+            @click="onFormat"
+          >
+            <CodiconIcon name="indent" :size="13" />
+            {{ t('studio.console.format.label') }}
+          </Button>
+        </TooltipDisabledTrigger></TextTooltip
+      >
+      <TextTooltip v-if="dialect" :text="explainTooltip"
+        ><TooltipDisabledTrigger>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="console-explain"
+            :disabled="!canExplain || runBlocked"
+            @click="onExplain"
+          >
+            <CodiconIcon name="list-tree" :size="13" />
+            {{ t('studio.console.explain.label') }}
+          </Button>
+        </TooltipDisabledTrigger></TextTooltip
+      >
       <ToolbarSeparator />
       <TooltipIconButton
         icon="layers"

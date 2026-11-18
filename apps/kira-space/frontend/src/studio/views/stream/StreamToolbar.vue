@@ -6,12 +6,13 @@ import {
 import type { PageSize } from '@shared/domain/tabs';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -189,58 +190,54 @@ async function onDeleteMessage(): Promise<void> {
     <ToolbarSeparator />
 
     <div class="flex items-center gap-1.5 min-w-0">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira-icon"
-            :class="rt?.countError ? 'text-error' : ''"
-            :aria-label="t('studio.stream.count.label')"
-            data-testid="stream-count"
-            @click="streamViewStore.runCount(tab.id)"
-          >
-            <CodiconIcon name="symbol-number" :size="13" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent data-testid="stream-count-tooltip">{{
+      <TextTooltip
+        content-testid="stream-count-tooltip"
+        :text="
           rt?.countError
             ? t('studio.common.countFailed.tooltip', { error: rt.countError })
             : t('studio.stream.count.label')
-        }}</TooltipContent>
-      </Tooltip>
+        "
+        ><Button
+          variant="toolbar"
+          size="kira-icon"
+          :class="rt?.countError ? 'text-error' : ''"
+          :aria-label="t('studio.stream.count.label')"
+          data-testid="stream-count"
+          @click="streamViewStore.runCount(tab.id)"
+        >
+          <CodiconIcon name="symbol-number" :size="13" />
+        </Button></TextTooltip
+      >
       <span class="text-kira-sm text-muted-foreground" data-testid="stream-status">{{
         statusLine
       }}</span>
-      <Tooltip v-if="isReadOnlyBatch">
-        <TooltipTrigger as-child>
-          <InputGroup
-            variant="kira"
-            class="flex w-24 shrink-0 font-data"
-            :aria-invalid="!visibilityValid"
-          >
-            <span class="shrink-0 text-kira-sm text-muted-foreground">{{
-              t('common.action.hide.label')
-            }}</span>
-            <InputGroupInput
-              :model-value="visibility.text.value"
-              type="number"
-              inputmode="numeric"
-              :min="SQS_MIN_VISIBILITY_TIMEOUT_SECONDS"
-              :max="SQS_MAX_VISIBILITY_TIMEOUT_SECONDS"
-              step="1"
-              class="h-full p-0 font-data"
-              data-testid="stream-poll-visibility"
-              @update:model-value="visibility.onInput"
-              @keydown="visibility.onKeydown"
-              @blur="visibility.onCommit"
-            />
-            <span class="shrink-0 text-kira-sm text-muted-foreground">{{
-              t('format.duration.secondsCompact', { seconds: '' })
-            }}</span>
-          </InputGroup>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.stream.hideDuration.description') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="isReadOnlyBatch" :text="t('studio.stream.hideDuration.description')"
+        ><InputGroup
+          variant="kira"
+          class="flex w-24 shrink-0 font-data"
+          :aria-invalid="!visibilityValid"
+        >
+          <span class="shrink-0 text-kira-sm text-muted-foreground">{{
+            t('common.action.hide.label')
+          }}</span>
+          <InputGroupInput
+            :model-value="visibility.text.value"
+            type="number"
+            inputmode="numeric"
+            :min="SQS_MIN_VISIBILITY_TIMEOUT_SECONDS"
+            :max="SQS_MAX_VISIBILITY_TIMEOUT_SECONDS"
+            step="1"
+            class="h-full p-0 font-data"
+            data-testid="stream-poll-visibility"
+            @update:model-value="visibility.onInput"
+            @keydown="visibility.onKeydown"
+            @blur="visibility.onCommit"
+          />
+          <span class="shrink-0 text-kira-sm text-muted-foreground">{{
+            t('format.duration.secondsCompact', { seconds: '' })
+          }}</span>
+        </InputGroup></TextTooltip
+      >
       <FieldError
         v-if="isReadOnlyBatch && !visibilityValid"
         data-testid="stream-poll-visibility-error"
@@ -248,25 +245,24 @@ async function onDeleteMessage(): Promise<void> {
           visibilityRangeHint
         }}</FieldError
       >
-      <Tooltip v-if="isBatch">
-        <TooltipTrigger as-child>
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            data-testid="stream-poll"
-            :disabled="isReadOnlyBatch && !visibilityValid"
-            @click="onPoll"
-          >
-            <CodiconIcon name="arrow-swap" :size="13" />
-            {{ t('studio.stream.poll.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{
+      <TextTooltip
+        v-if="isBatch"
+        :text="
           isReadOnlyBatch && !visibilityValid
             ? visibilityRangeHint
             : t('studio.stream.poll.tooltip')
-        }}</TooltipContent>
-      </Tooltip>
+        "
+        ><Button
+          variant="dialog-primary"
+          size="kira"
+          data-testid="stream-poll"
+          :disabled="isReadOnlyBatch && !visibilityValid"
+          @click="onPoll"
+        >
+          <CodiconIcon name="arrow-swap" :size="13" />
+          {{ t('studio.stream.poll.label') }}
+        </Button></TextTooltip
+      >
       <TooltipIconButton
         v-else
         icon="arrow-right"

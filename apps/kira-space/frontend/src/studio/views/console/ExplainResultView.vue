@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Card } from '@theme/components/ui/card';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -117,12 +117,11 @@ const rawLanguage = computed(() =>
           <CodiconIcon :name="plan.overThreshold ? 'warning' : 'check'" :size="12" />
           <span>{{ verdict }}</span>
         </div>
-        <Tooltip v-if="nativeCostLabel">
-          <TooltipTrigger as-child>
-            <span :class="rowMeta" data-testid="explain-native-cost">{{ nativeCostLabel }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('studio.console.plan.nativeCost.tooltip') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="nativeCostLabel" :text="t('studio.console.plan.nativeCost.tooltip')"
+          ><span :class="rowMeta" data-testid="explain-native-cost">{{
+            nativeCostLabel
+          }}</span></TextTooltip
+        >
       </div>
       <p
         :class="[rowMeta, 'whitespace-pre-wrap break-words font-data']"

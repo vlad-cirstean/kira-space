@@ -7,12 +7,7 @@ import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { formatBytes } from '@workbench/behaviour/format';
@@ -410,12 +405,9 @@ const statusLine = computed(() => {
       <span class="text-kira-md text-fg truncate" data-testid="cell-editor-target">{{
         t('studio.cellEditor.target.label', { target: targetLabel, row: selectedCell.row + 1 })
       }}</span>
-      <Tooltip v-if="dataTypeHint">
-        <TooltipTrigger as-child>
-          <Badge data :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ dataTypeHint }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="dataTypeHint" :text="dataTypeHint"
+        ><Badge data :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge></TextTooltip
+      >
       <Badge data v-else :class="dataTypeClass">{{ selectedCell.column.dataType }}</Badge>
       <Badge v-if="isNullValue" variant="info" data-testid="cell-editor-badge-null">{{
         t('studio.common.nullValue.label')
@@ -429,14 +421,11 @@ const statusLine = computed(() => {
       <TextTooltip :text="statusLine">
         <Badge class="max-w-56 truncate" data-testid="cell-editor-status">{{ statusLine }}</Badge>
       </TextTooltip>
-      <Tooltip v-if="formatProblem">
-        <TooltipTrigger as-child>
-          <Badge variant="error" class="max-w-56 truncate" data-testid="cell-editor-invalid">{{
-            formatProblem.message
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ formatProblem.message }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="formatProblem" :text="formatProblem.message"
+        ><Badge variant="error" class="max-w-56 truncate" data-testid="cell-editor-invalid">{{
+          formatProblem.message
+        }}</Badge></TextTooltip
+      >
 
       <!-- the format select + beautify/reset trio: this panel's own controls, set off from the
            identity badges with the standard s-4 gutter (mirrors CellEditor.html's inline group) -->
@@ -474,15 +463,12 @@ const statusLine = computed(() => {
       </span>
 
       <span class="ml-auto flex items-center gap-1">
-        <Tooltip v-if="readOnlyReason && chipTitle">
-          <TooltipTrigger as-child>
-            <Badge variant="warn">
-              <CodiconIcon name="lock" :size="13" />
-              {{ chipText }}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ chipTitle }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="readOnlyReason && chipTitle" :text="chipTitle"
+          ><Badge variant="warn">
+            <CodiconIcon name="lock" :size="13" />
+            {{ chipText }}
+          </Badge></TextTooltip
+        >
         <Badge v-else-if="readOnlyReason" variant="warn">
           <CodiconIcon name="lock" :size="13" />
           {{ chipText }}

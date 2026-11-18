@@ -27,7 +27,6 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { DropdownMenuContent } from '@theme/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import MenuItems from '@workbench/components/MenuItems.vue';
@@ -364,20 +363,17 @@ const stashDisabled = computed(
       </SplitButton>
     </template>
 
-    <Tooltip v-if="autoFetchStopped !== null">
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira"
-          data-testid="autofetch-stopped"
-          @click="onAutoFetchMarkerClick"
-        >
-          <CodiconIcon name="warning" :size="13" class="text-warn" />
-          {{ t('git.toolbar.autoFetchStopped.label') }}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{{ autoFetchTooltip }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="autoFetchStopped !== null" :text="autoFetchTooltip"
+      ><Button
+        variant="toolbar"
+        size="kira"
+        data-testid="autofetch-stopped"
+        @click="onAutoFetchMarkerClick"
+      >
+        <CodiconIcon name="warning" :size="13" class="text-warn" />
+        {{ t('git.toolbar.autoFetchStopped.label') }}
+      </Button></TextTooltip
+    >
 
     <ToolbarSeparator />
     <TextTooltip :text="t('git.toolbar.stash.tooltip')">

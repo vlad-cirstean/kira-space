@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import HighlightedText from '@theme/components/HighlightedText.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -90,12 +90,9 @@ function onDblClick(): void {
     <span :class="[rowMeta, 'shrink-0']" data-testid="repo-search-match-count">{{
       row.matchCount
     }}</span>
-    <Tooltip v-if="row.fileTruncated">
-      <TooltipTrigger as-child>
-        <span class="text-kira-sm text-subtle">+</span>
-      </TooltipTrigger>
-      <TooltipContent>{{ t('space.repo.search.truncated.tooltip') }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-if="row.fileTruncated" :text="t('space.repo.search.truncated.tooltip')"
+      ><span class="text-kira-sm text-subtle">+</span></TextTooltip
+    >
   </div>
   <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter, Space and the arrows come from useListNavigation on the list. -->
   <div

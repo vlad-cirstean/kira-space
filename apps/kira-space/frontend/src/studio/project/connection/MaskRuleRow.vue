@@ -8,7 +8,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { computed, useId } from 'vue';
 import { KEEP_HINT_LABEL, MASK_KIND_OPTIONS, maskExample } from './maskKinds';
@@ -45,18 +44,17 @@ function onToggle(field: 'keep_hint' | 'correlate'): void {
       <span class="min-w-0 flex-1 text-fg font-data">
         <TruncatedText :text="rule.column" />
       </span>
-      <Tooltip v-if="tableIgnored">
-        <TooltipTrigger as-child>
-          <Badge variant="warn" data-testid="mask-rule-table-ignored">{{
-            t('studio.project.connectionDialog.privacy.tableIgnored.status')
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{
+      <TextTooltip
+        v-if="tableIgnored"
+        :text="
           t('studio.project.connectionDialog.privacy.tableIgnored.tooltip', {
             table: rule.table ?? '',
           })
-        }}</TooltipContent>
-      </Tooltip>
+        "
+        ><Badge variant="warn" data-testid="mask-rule-table-ignored">{{
+          t('studio.project.connectionDialog.privacy.tableIgnored.status')
+        }}</Badge></TextTooltip
+      >
       <NativeSelect
         variant="bordered"
         :model-value="rule.kind"

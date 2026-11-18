@@ -8,11 +8,11 @@ import {
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
@@ -295,15 +295,12 @@ onUnmounted(() => {
     <!-- `.response-status-row` stays a bare marker: api-ui-consistency.spec.ts locates it directly. -->
     <ViewToolbar class="response-status-row">
       <template v-if="hasCode">
-        <Tooltip v-if="codeHint">
-          <TooltipTrigger as-child>
-            <Badge data :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
-              {{ codeName }}
-              ({{ code }})
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ codeHint }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="codeHint" :text="codeHint"
+          ><Badge data :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
+            {{ codeName }}
+            ({{ code }})
+          </Badge></TextTooltip
+        >
         <Badge data v-else :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
           {{ codeName }}
           ({{ code }})
@@ -494,19 +491,18 @@ onUnmounted(() => {
                 })
               }}</span>
               <span :class="rowMeta">{{ formatBytes(entry.m.wireBytes) }}</span>
-              <Tooltip v-if="entry.m.truncated">
-                <TooltipTrigger as-child>
-                  <CodiconIcon
-                    :name="ICON.warning"
-                    :size="12"
-                    class="text-warn"
-                    data-testid="grpc-message-truncated"
-                  />
-                </TooltipTrigger>
-                <TooltipContent>{{
+              <TextTooltip
+                v-if="entry.m.truncated"
+                :text="
                   t('studio.grpc.response.messageCut.tooltip', { size: formatBytes(64 * 1024) })
-                }}</TooltipContent>
-              </Tooltip>
+                "
+                ><CodiconIcon
+                  :name="ICON.warning"
+                  :size="12"
+                  class="text-warn"
+                  data-testid="grpc-message-truncated"
+                /></TextTooltip
+              >
               <span class="ml-auto" />
               <span :class="rowMeta">#{{ entry.m.seq }}</span>
             </button>

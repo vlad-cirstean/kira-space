@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatCurrency } from '@workbench/behaviour/format';
@@ -93,19 +93,16 @@ async function copyForAgent(): Promise<void> {
         ><CodiconIcon name="copy" :size="13" />
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
       </Button>
-      <Tooltip v-if="run.resumable">
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira"
-            :pending="resume.isPending.value"
-            data-testid="run-resume"
-            @click="resume.mutate(run)"
-            ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('automations.run.resume.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="run.resumable" :text="t('automations.run.resume.tooltip')"
+        ><Button
+          variant="toolbar"
+          size="kira"
+          :pending="resume.isPending.value"
+          data-testid="run-resume"
+          @click="resume.mutate(run)"
+          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
+        </Button></TextTooltip
+      >
       <Button
         v-if="run.scriptId"
         variant="toolbar"

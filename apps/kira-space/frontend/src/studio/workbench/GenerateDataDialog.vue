@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import Spinner from '@theme/components/Spinner.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -23,7 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -424,16 +424,15 @@ function onSequenceStartChange(index: number, start: number): void {
       <DialogFooter>
         <!-- P104 §3: RunState inlined -- status is always 'running' here (elapsedMs is always
              null, so the label is always the em dash RunState's own computed would give it). -->
-        <Tooltip v-if="running">
-          <TooltipTrigger as-child>
-            <span class="inline-flex items-center text-info">
-              <Spinner :size="12" label="" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>{{
+        <TextTooltip
+          v-if="running"
+          :text="
             t('studio.generateData.progress.tooltip', { committed: committedRows, count: rowCount })
-          }}</TooltipContent>
-        </Tooltip>
+          "
+          ><span class="inline-flex items-center text-info">
+            <Spinner :size="12" label="" />
+          </span></TextTooltip
+        >
         <Button
           v-if="running"
           variant="dialog"

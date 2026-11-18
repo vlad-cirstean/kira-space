@@ -3,6 +3,7 @@ import type { ConnectionKind } from '@shared/domain/connection';
 import type { DataGripPreviewRow, DataGripReportRow } from '@shared/domain/datagrip';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -16,7 +17,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -253,16 +253,13 @@ async function onConfirm(): Promise<void> {
                 <span v-if="row.username" class="whitespace-nowrap" :class="rowMeta">{{
                   row.username
                 }}</span>
-                <Tooltip v-if="looksAlreadyImported(row)">
-                  <TooltipTrigger as-child>
-                    <Badge variant="warn" data-testid="datagrip-row-duplicate">
-                      {{ t('studio.project.dataGripImport.badge.duplicate.label') }}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>{{
-                    t('studio.project.dataGripImport.badge.duplicate.tooltip')
-                  }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip
+                  v-if="looksAlreadyImported(row)"
+                  :text="t('studio.project.dataGripImport.badge.duplicate.tooltip')"
+                  ><Badge variant="warn" data-testid="datagrip-row-duplicate">
+                    {{ t('studio.project.dataGripImport.badge.duplicate.label') }}
+                  </Badge></TextTooltip
+                >
                 <Badge
                   v-if="row.passwordOutlook"
                   class="ml-auto"
@@ -284,14 +281,11 @@ async function onConfirm(): Promise<void> {
               </template>
 
               <span v-if="row.warnings.length > 0" class="flex shrink-0 gap-0.5">
-                <Tooltip v-for="w in row.warnings" :key="w">
-                  <TooltipTrigger as-child>
-                    <span class="size-4 flex items-center justify-center shrink-0 text-warn">
-                      <CodiconIcon name="warning" :size="12" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{{ warningLabel(w) }}</TooltipContent>
-                </Tooltip>
+                <TextTooltip v-for="w in row.warnings" :key="w" :text="warningLabel(w)"
+                  ><span class="size-4 flex items-center justify-center shrink-0 text-warn">
+                    <CodiconIcon name="warning" :size="12" />
+                  </span></TextTooltip
+                >
               </span>
             </div>
             <InlineState v-if="rows.length === 0" kind="empty">{{

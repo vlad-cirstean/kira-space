@@ -2,6 +2,7 @@
 import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -13,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '@theme/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import {
@@ -57,12 +57,9 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
   <DetailSection :title="t('docker.disk.title')" class="shrink-0">
     <template #actions>
       <span class="ml-auto flex items-center gap-1">
-        <Tooltip v-if="usage">
-          <TooltipTrigger as-child>
-            <span data-testid="docker-disk-taken">{{ ago }}</span>
-          </TooltipTrigger>
-          <TooltipContent>{{ formatDateTime(usage.takenAt) }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip v-if="usage" :text="formatDateTime(usage.takenAt)"
+          ><span data-testid="docker-disk-taken">{{ ago }}</span></TextTooltip
+        >
         <TooltipIconButton
           icon="refresh"
           :label="t('docker.disk.measure.tooltip')"

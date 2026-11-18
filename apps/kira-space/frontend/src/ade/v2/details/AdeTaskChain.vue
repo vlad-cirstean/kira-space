@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Toggle } from '@theme/components/ui/toggle';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
@@ -89,20 +88,17 @@ const editing = ref<string | null>(null);
           {{ t('common.timeline.label') }}
         </Toggle>
       </TextTooltip>
-      <Tooltip v-if="auditCount > 0">
-        <TooltipTrigger as-child>
-          <Toggle
-            :model-value="list.showDbAudit"
-            size="kira"
-            data-testid="ade-details-dbaudit-toggle"
-            @update:model-value="list.setShowDbAudit"
-          >
-            <CodiconIcon name="database" :size="13" />
-            {{ t('space.ade.details.dbAudit.toggle.label', { count: auditCount }) }}
-          </Toggle>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('space.ade.details.dbAudit.toggle.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="auditCount > 0" :text="t('space.ade.details.dbAudit.toggle.tooltip')"
+        ><Toggle
+          :model-value="list.showDbAudit"
+          size="kira"
+          data-testid="ade-details-dbaudit-toggle"
+          @update:model-value="list.setShowDbAudit"
+        >
+          <CodiconIcon name="database" :size="13" />
+          {{ t('space.ade.details.dbAudit.toggle.label', { count: auditCount }) }}
+        </Toggle></TextTooltip
+      >
       <template v-if="!readonly">
         <TooltipIconButton
           v-if="!composing"

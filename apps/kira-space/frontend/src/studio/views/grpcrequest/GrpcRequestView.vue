@@ -13,12 +13,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -287,34 +282,25 @@ onUnmounted(() => {
       >
         {{ tab.state.service }}/{{ tab.state.method }}
       </Badge>
-      <Tooltip v-if="dirty">
-        <TooltipTrigger as-child>
-          <span
-            class="text-warn text-kira-lg leading-none"
-            role="img"
-            data-testid="grpc-dirty"
-            :aria-label="t('common.state.unsavedChanges.status')"
-            >•</span
-          >
-        </TooltipTrigger>
-        <TooltipContent>{{ t('common.state.unsavedChanges.status') }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="unresolvedRefs.length > 0">
-        <TooltipTrigger as-child>
-          <Badge variant="warn" data-testid="grpc-unresolved-chip">{{
-            t('common.unresolved.label', { count: unresolvedRefs.length })
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ unresolvedTooltip }}</TooltipContent>
-      </Tooltip>
-      <Tooltip v-if="incognito">
-        <TooltipTrigger as-child>
-          <Badge variant="chip" data-testid="grpc-incognito-chip">{{
-            t('studio.tabs.incognito.label')
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{ t('studio.api.common.incognitoChip.tooltip') }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="dirty" :text="t('common.state.unsavedChanges.status')"
+        ><span
+          class="text-warn text-kira-lg leading-none"
+          role="img"
+          data-testid="grpc-dirty"
+          :aria-label="t('common.state.unsavedChanges.status')"
+          >•</span
+        ></TextTooltip
+      >
+      <TextTooltip v-if="unresolvedRefs.length > 0" :text="unresolvedTooltip"
+        ><Badge variant="warn" data-testid="grpc-unresolved-chip">{{
+          t('common.unresolved.label', { count: unresolvedRefs.length })
+        }}</Badge></TextTooltip
+      >
+      <TextTooltip v-if="incognito" :text="t('studio.api.common.incognitoChip.tooltip')"
+        ><Badge variant="chip" data-testid="grpc-incognito-chip">{{
+          t('studio.tabs.incognito.label')
+        }}</Badge></TextTooltip
+      >
       <span class="ml-auto flex items-center gap-1">
         <TextTooltip :text="saveTooltip">
           <TooltipDisabledTrigger>

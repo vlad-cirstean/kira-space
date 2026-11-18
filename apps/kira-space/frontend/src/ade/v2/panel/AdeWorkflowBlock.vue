@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { ref } from 'vue';
@@ -57,14 +57,13 @@ function edit(): void {
           }}</option>
           <option v-for="v in options" :key="v.id" :value="v.id">{{ v.name }}</option>
         </NativeSelect>
-        <Tooltip v-if="card.task.workflowOutdated">
-          <TooltipTrigger as-child>
-            <Badge variant="warn" data-testid="ade-workflow-outdated">{{
-              t('space.ade.workflowBlock.outdated.status')
-            }}</Badge>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('space.ade.workflowBlock.outdatedHint.hint') }}</TooltipContent>
-        </Tooltip>
+        <TextTooltip
+          v-if="card.task.workflowOutdated"
+          :text="t('space.ade.workflowBlock.outdatedHint.hint')"
+          ><Badge variant="warn" data-testid="ade-workflow-outdated">{{
+            t('space.ade.workflowBlock.outdated.status')
+          }}</Badge></TextTooltip
+        >
         <Button
           variant="toolbar"
           size="kira"

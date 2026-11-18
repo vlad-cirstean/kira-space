@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@theme/components/ui/toggle-group';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { cn } from '@theme/lib/utils';
 
 // P262 §2.3: the one secondary-tab / segmented-picker element. Wraps ToggleGroup so call sites
@@ -68,34 +68,31 @@ function onUpdate(v: unknown): void {
     <template v-for="item in items" :key="item.value">
       <!-- A tooltip trigger stamps its own data-state on the element it wraps, which would hide
            the toggle's on/off state: wrap in a span only when the item has a tooltip. -->
-      <Tooltip v-if="item.tooltip">
-        <TooltipTrigger as-child>
-          <span class="inline-flex">
-            <ToggleGroupItem
-              :value="item.value"
-              :disabled="item.disabled"
-              :data-testid="item.testid"
-              :class="
-                cn(
-                  variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
-                  variant === 'text' && TEXT_ITEM,
-                  variant === 'choice' && CHOICE_ITEM,
-                )
-              "
-            >
-              <slot name="item" :item="item" :active="item.value === model">
-                <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
-                <span :class="variant === 'choice' && 'min-w-0 truncate'">{{ item.label }}</span>
-                <template v-if="item.count !== undefined">
-                  <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
-                  <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
-                </template>
-              </slot>
-            </ToggleGroupItem>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>{{ item.tooltip }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip v-if="item.tooltip" :text="item.tooltip"
+        ><span class="inline-flex">
+          <ToggleGroupItem
+            :value="item.value"
+            :disabled="item.disabled"
+            :data-testid="item.testid"
+            :class="
+              cn(
+                variant === 'tabs' && 'text-muted-foreground data-[state=on]:text-fg',
+                variant === 'text' && TEXT_ITEM,
+                variant === 'choice' && CHOICE_ITEM,
+              )
+            "
+          >
+            <slot name="item" :item="item" :active="item.value === model">
+              <CodiconIcon v-if="item.icon" :name="item.icon" :size="13" />
+              <span :class="variant === 'choice' && 'min-w-0 truncate'">{{ item.label }}</span>
+              <template v-if="item.count !== undefined">
+                <Badge v-if="countBadge" variant="count" class="px-1">{{ item.count }}</Badge>
+                <span v-else class="text-kira-sm text-muted-foreground">{{ item.count }}</span>
+              </template>
+            </slot>
+          </ToggleGroupItem>
+        </span></TextTooltip
+      >
       <ToggleGroupItem
         v-else
         :value="item.value"

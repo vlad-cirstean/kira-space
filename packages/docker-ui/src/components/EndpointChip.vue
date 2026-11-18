@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import {
   DropdownMenu,
@@ -12,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { computed } from 'vue';
@@ -93,13 +93,10 @@ async function onSelect(value: unknown): Promise<void> {
       </DropdownMenuRadioGroup>
     </DropdownMenuContent>
   </DropdownMenu>
-  <Tooltip v-if="endpoint && !endpoint.secure">
-    <TooltipTrigger as-child>
-      <span class="flex items-center text-warn" data-testid="docker-insecure">
-        <span class="sr-only">{{ t('docker.endpoint.insecure.tooltip') }}</span>
-        <CodiconIcon name="warning" :size="12" />
-      </span>
-    </TooltipTrigger>
-    <TooltipContent>{{ t('docker.endpoint.insecure.tooltip') }}</TooltipContent>
-  </Tooltip>
+  <TextTooltip v-if="endpoint && !endpoint.secure" :text="t('docker.endpoint.insecure.tooltip')"
+    ><span class="flex items-center text-warn" data-testid="docker-insecure">
+      <span class="sr-only">{{ t('docker.endpoint.insecure.tooltip') }}</span>
+      <CodiconIcon name="warning" :size="12" />
+    </span></TextTooltip
+  >
 </template>

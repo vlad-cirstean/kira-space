@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -79,16 +79,13 @@ function onHeadKeydown(e: KeyboardEvent): void {
         t('studio.documents.row.fieldCount.status', { count: view.fieldCount })
       }}</Badge>
       <Badge data data-testid="document-byte-badge">{{ view.byteLabel }}</Badge>
-      <Tooltip v-if="view.isTruncated">
-        <TooltipTrigger as-child>
-          <Badge variant="warn" data-testid="document-truncated">{{
-            t('studio.common.truncated.status')
-          }}</Badge>
-        </TooltipTrigger>
-        <TooltipContent>{{
-          t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })
-        }}</TooltipContent>
-      </Tooltip>
+      <TextTooltip
+        v-if="view.isTruncated"
+        :text="t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })"
+        ><Badge variant="warn" data-testid="document-truncated">{{
+          t('studio.common.truncated.status')
+        }}</Badge></TextTooltip
+      >
       <slot name="actions" />
     </div>
     <slot name="body" />

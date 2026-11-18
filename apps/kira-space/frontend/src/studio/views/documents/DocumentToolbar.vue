@@ -8,7 +8,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import { Tooltip, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -103,25 +103,24 @@ const projectionCount = computed(() => {
     <!-- DataToolbar's [count, columns, preview] group — this collection's equivalents are
          the exact count, the fields/projection menu, and expand/collapse-all. -->
     <div class="flex items-center gap-1.5 min-w-0">
-      <Tooltip>
-        <TooltipTrigger as-child>
-          <Button
-            variant="toolbar"
-            size="kira-icon"
-            :class="rt?.countError ? 'text-error' : ''"
-            :aria-label="t('studio.documents.count.run.aria')"
-            data-testid="document-count"
-            @click="documentViewStore.runCount(tab.id)"
-          >
-            <CodiconIcon name="symbol-number" :size="13" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent data-testid="document-count-tooltip">{{
+      <TextTooltip
+        content-testid="document-count-tooltip"
+        :text="
           rt?.countError
             ? t('studio.common.countFailed.tooltip', { error: rt.countError })
             : t('studio.documents.count.run.tooltip')
-        }}</TooltipContent>
-      </Tooltip>
+        "
+        ><Button
+          variant="toolbar"
+          size="kira-icon"
+          :class="rt?.countError ? 'text-error' : ''"
+          :aria-label="t('studio.documents.count.run.aria')"
+          data-testid="document-count"
+          @click="documentViewStore.runCount(tab.id)"
+        >
+          <CodiconIcon name="symbol-number" :size="13" />
+        </Button></TextTooltip
+      >
       <div class="relative">
         <TextTooltip
           :text="

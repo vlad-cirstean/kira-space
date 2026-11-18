@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import type { ChangeRequestReviewEvent } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipDisabledTrigger,
-  TooltipTrigger,
-} from '@theme/components/ui/tooltip';
+import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { useTimeoutFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -77,27 +73,26 @@ function done(kind: 'review' | 'comment'): void {
     class="wails-no-drag flex shrink-0 items-center gap-1"
     data-testid="ade-review-actions"
   >
-    <Tooltip v-if="unavailable || failed || none">
-      <TooltipTrigger as-child>
-        <TooltipDisabledTrigger>
-          <Button
-            variant="title"
-            size="title-labelled"
-            disabled
-            data-testid="ade-review-actions-trigger"
-          >
-            {{ t('space.ade.board.branchTag.review.label') }}
-          </Button>
-        </TooltipDisabledTrigger>
-      </TooltipTrigger>
-      <TooltipContent>{{
+    <TextTooltip
+      v-if="unavailable || failed || none"
+      :text="
         none
           ? t('space.ade.review.actions.none.hint', { short })
           : unavailable
             ? unavailable.status.reason
             : t('space.ade.review.actions.stateFailed.hint', { reason: failed ?? '' })
-      }}</TooltipContent>
-    </Tooltip>
+      "
+      ><TooltipDisabledTrigger>
+        <Button
+          variant="title"
+          size="title-labelled"
+          disabled
+          data-testid="ade-review-actions-trigger"
+        >
+          {{ t('space.ade.board.branchTag.review.label') }}
+        </Button>
+      </TooltipDisabledTrigger></TextTooltip
+    >
     <template v-else-if="ok">
       <span
         v-if="posted"

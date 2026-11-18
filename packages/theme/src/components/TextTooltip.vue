@@ -6,7 +6,7 @@ import type { TooltipContentProps } from 'reka-ui';
 
 // Plain-text tooltip; renders the bare slot when text and parts are empty.
 defineProps<{
-  text?: string;
+  text?: string | null;
   parts?: readonly TextPart[];
   side?: TooltipContentProps['side'];
   contentTestid?: string;

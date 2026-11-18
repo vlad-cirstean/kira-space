@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CodiconSize } from '@theme/CodiconIcon.vue';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import type { ContainerOrigin } from '../wire';
@@ -61,19 +61,16 @@ const label = computed(() => {
     >
       <OriginGlyph :origin="origin" :size="size" />
     </span>
-    <Tooltip v-else>
-      <TooltipTrigger as-child>
-        <span
-          class="inline-flex shrink-0 items-center text-muted-foreground"
-          data-testid="docker-origin-icon"
-          :data-origin="origin"
-          :aria-label="label"
-          v-bind="$attrs"
-        >
-          <OriginGlyph :origin="origin" :size="size" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>{{ label }}</TooltipContent>
-    </Tooltip>
+    <TextTooltip v-else :text="label"
+      ><span
+        class="inline-flex shrink-0 items-center text-muted-foreground"
+        data-testid="docker-origin-icon"
+        :data-origin="origin"
+        :aria-label="label"
+        v-bind="$attrs"
+      >
+        <OriginGlyph :origin="origin" :size="size" />
+      </span></TextTooltip
+    >
   </template>
 </template>

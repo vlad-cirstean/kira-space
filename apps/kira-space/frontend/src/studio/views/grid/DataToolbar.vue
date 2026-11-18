@@ -8,7 +8,6 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import { computed, ref } from 'vue';
@@ -318,29 +317,26 @@ function onDeleteRow(): void {
   <ToolbarSeparator />
 
   <div class="flex items-center gap-1.5 min-w-0">
-    <Tooltip>
-      <TooltipTrigger as-child>
-        <Button
-          variant="toolbar"
-          size="kira-icon"
-          data-testid="toolbar-count"
-          :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
-          :aria-label="t('studio.grid.count.tooltip')"
-          @click="onCount"
-        >
-          <CodiconIcon name="symbol-number" :size="13" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent data-testid="toolbar-count-tooltip">
-        {{
-          // F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
-          // before a fresh count runs, so a failure right after has no old count to keep showing;
-          // a failed *refresh* of an existing count keeps that count on screen (unchanged) with
-          // the error appended, rather than losing it.
-          countTooltip
-        }}
-      </TooltipContent>
-    </Tooltip>
+    <TextTooltip
+      content-testid="toolbar-count-tooltip"
+      :text="
+        // F13 (P108 Part 10): a failed count is no longer silent — setFilter nulls `count`
+        // before a fresh count runs, so a failure right after has no old count to keep showing;
+        // a failed *refresh* of an existing count keeps that count on screen (unchanged) with
+        // the error appended, rather than losing it.
+        countTooltip
+      "
+      ><Button
+        variant="toolbar"
+        size="kira-icon"
+        data-testid="toolbar-count"
+        :class="rt?.countError ? 'text-error' : rt?.count?.stale ? 'text-warn' : ''"
+        :aria-label="t('studio.grid.count.tooltip')"
+        @click="onCount"
+      >
+        <CodiconIcon name="symbol-number" :size="13" />
+      </Button></TextTooltip
+    >
 
     <Popover :open="columnsOpen" @update:open="columnsOpen = $event">
       <div ref="columnsAnchorRef" class="relative">
