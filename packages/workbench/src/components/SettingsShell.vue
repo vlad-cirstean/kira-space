@@ -246,6 +246,9 @@ async function onSave(): Promise<void> {
       </DialogBody>
 
       <UiDialogFooter>
+        <template #start>
+          <slot name="footerStart" :is-dirty="isDirty" :save-error="saveError" />
+        </template>
         <slot
           name="footer"
           :is-dirty="isDirty"

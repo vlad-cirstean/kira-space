@@ -26,7 +26,7 @@ const requestClose = inject(DIALOG_REQUEST_CLOSE_KEY, null);
 
 <template>
   <div data-slot="dialog-header" :class="cn(dialogHeaderClass, props.class)">
-    <slot />
+    <div class="flex min-w-0 flex-1 flex-col gap-0.5"><slot /></div>
     <template v-if="closable">
       <Button
         v-if="requestClose"
