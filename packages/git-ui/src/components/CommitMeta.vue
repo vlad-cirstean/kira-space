@@ -33,8 +33,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
-import { changeRequestTone, TONE_TEXT } from '@theme/lib/statusTone';
-import { cn } from '@theme/lib/utils';
+import { changeRequestTone, toolbarTone } from '@theme/lib/statusTone';
 import { formatAbsoluteUtc, formatAgeCompact } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
 import { createOpenExternal } from '@workbench/bridge/openExternal';
@@ -326,9 +325,8 @@ const changeRequestIcon = computed(() => {
           <Button
             variant="toolbar"
             size="inline"
-            :class="
-              cn('ml-auto leading-none', TONE_TEXT[changeRequestTone(changeRequestIcon!.state)])
-            "
+            class="ml-auto leading-none"
+            :data-tone="toolbarTone(changeRequestTone(changeRequestIcon!.state))"
             :aria-label="
               t('git.changeRequest.open.aria', {
                 changeRequestNoun: words.changeRequestNoun,

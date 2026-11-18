@@ -7,7 +7,6 @@ import {
   TooltipDisabledTrigger,
   TooltipTrigger,
 } from '@theme/components/ui/tooltip';
-import { TONE_TEXT } from '@theme/lib/statusTone';
 import { computed, useSlots, useTemplateRef } from 'vue';
 
 // The one status bar item shape: icon, label, optional tooltip body (slot `tip`). Muted unless
@@ -15,7 +14,7 @@ import { computed, useSlots, useTemplateRef } from 'vue';
 // exposed as `$el` so a `PopoverTrigger as-child` can anchor on it, as TooltipIconButton does.
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     icon: string;
     tone?: 'info' | 'warn' | 'error';
@@ -24,8 +23,6 @@ const props = withDefaults(
   }>(),
   { tone: undefined, as: 'button', disabled: false },
 );
-
-const toneClass = computed(() => (props.tone ? TONE_TEXT[props.tone] : undefined));
 
 const slots = useSlots();
 const hasTip = computed(() => Boolean(slots.tip));
@@ -42,7 +39,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
           variant="toolbar"
           size="status"
           :as="as"
-          :class="toneClass"
+          :data-tone="tone"
           v-bind="$attrs"
         >
           <CodiconIcon :name="icon" :size="12" />
@@ -55,7 +52,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         variant="toolbar"
         size="status"
         :as="as"
-        :class="toneClass"
+        :data-tone="tone"
         v-bind="$attrs"
       >
         <CodiconIcon :name="icon" :size="12" />
@@ -71,7 +68,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
     size="status"
     :as="as"
     :disabled="disabled"
-    :class="toneClass"
+    :data-tone="tone"
     v-bind="$attrs"
   >
     <CodiconIcon :name="icon" :size="12" />
