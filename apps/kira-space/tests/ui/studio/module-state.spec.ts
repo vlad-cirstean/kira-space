@@ -1,4 +1,3 @@
-import type { Locator } from '@playwright/test';
 import { DATA_OP } from '@shared/protocol/dataOps';
 import { TIMING } from '@workbench/behaviour/timing';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
@@ -6,6 +5,7 @@ import { apiTest, expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import { roundTrip } from '../support/moduleRoundTrip';
+import { scrollTo, scrollTop } from '../support/scroll';
 import { modeTab } from './support/apiMode';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
@@ -32,16 +32,6 @@ import { findRow, treeContainer } from './support/tree';
 // state is frontend-only and session-only, never sent over IPC.
 
 const t = (id: string) => `[data-testid="${id}"]`;
-const scrollTop = (el: Locator) => el.evaluate((e) => e.scrollTop);
-
-async function scrollTo(el: Locator, top: number): Promise<number> {
-  await el.evaluate((e, y) => {
-    e.scrollTop = y;
-  }, top);
-  await expect.poll(() => scrollTop(el)).toBeGreaterThan(0);
-  return scrollTop(el);
-}
-
 const CONNECTION_ID = 'conn-module-state';
 const FIXTURE = bigRowsFixture(CONNECTION_ID);
 const NAMES = WIDE_TABLE_COLUMNS.map((c) => c.name);
