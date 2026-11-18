@@ -196,12 +196,7 @@ const timeoutThrottled = computed(
     </Field>
 
     <Field class="flex-1">
-      <FieldLabel
-        >{{ t('common.field.description.label') }}
-        <span class="text-subtle"
-          >— {{ t('studio.project.connectionDialog.mcp.descriptionNote.label') }}</span
-        ></FieldLabel
-      >
+      <FieldLabel>{{ t('common.field.description.label') }}</FieldLabel>
       <Textarea
         class="font-data"
         :model-value="mcp.description ?? ''"
@@ -212,6 +207,9 @@ const timeoutThrottled = computed(
         @update:model-value="(v) => setMcp({ description: String(v) })"
         @keydown="wrapSelectionOnType"
       />
+      <FieldDescription>{{
+        t('studio.project.connectionDialog.mcp.descriptionNote.label')
+      }}</FieldDescription>
       <FieldError v-if="props.errorFor('/mcp/description')">{{
         props.errorFor('/mcp/description')
       }}</FieldError>
@@ -274,10 +272,7 @@ const timeoutThrottled = computed(
     <ConnectionMcpMasked :mcp="mcp" :kind="file.kind" :enabled="enabled" @change="setMcp" />
 
     <Field v-for="c in CLASSES" :key="c.cls" class="flex-1">
-      <FieldLabel
-        >{{ t(c.label) }}
-        <span class="text-subtle">— {{ t(c.note) }}</span></FieldLabel
-      >
+      <FieldLabel>{{ t(c.label) }}</FieldLabel>
       <SecondaryTabs
         variant="choice"
         size="kira-lg"
@@ -287,6 +282,7 @@ const timeoutThrottled = computed(
         :data-testid="`connection-mcp-${c.cls}`"
         @update:model-value="(v) => setMcp({ [c.cls]: String(v) })"
       />
+      <FieldDescription>{{ t(c.note) }}</FieldDescription>
       <FieldDescription
         v-if="classNote(c.cls)"
         class="w-full"

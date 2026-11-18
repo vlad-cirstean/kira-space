@@ -5,7 +5,14 @@ import { useQuery } from '@tanstack/vue-query';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
@@ -89,13 +96,11 @@ function toggleShown(on: boolean): void {
 </script>
 
 <template>
-  <Field class="flex-1" data-testid="connection-mcp-tables">
-    <FieldLabel
-      >{{ t('studio.project.connectionDialog.mcp.tables.label') }}
-      <span class="text-subtle"
-        >— {{ t('studio.project.connectionDialog.mcp.tablesNote.label') }}</span
-      ></FieldLabel
-    >
+  <FieldSet class="flex-1" data-testid="connection-mcp-tables">
+    <FieldLegend>{{ t('studio.project.connectionDialog.mcp.tables.label') }}</FieldLegend>
+    <FieldDescription class="w-full">{{
+      t('studio.project.connectionDialog.mcp.tablesNote.label')
+    }}</FieldDescription>
     <FieldDescription v-if="!tablesApply" class="w-full" data-testid="connection-mcp-tables-na">
       {{ t('studio.project.connectionDialog.mcp.tablesNa.body') }}
     </FieldDescription>
@@ -209,5 +214,5 @@ function toggleShown(on: boolean): void {
         {{ t('studio.project.connectionDialog.mcp.tablesEnforceExempt.body') }}
       </FieldDescription>
     </template>
-  </Field>
+  </FieldSet>
 </template>

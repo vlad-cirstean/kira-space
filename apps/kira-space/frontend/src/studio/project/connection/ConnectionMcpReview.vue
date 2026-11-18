@@ -2,7 +2,13 @@
 import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { BROWSE_KINDS } from '@shared/domain/dbmcp';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
@@ -66,15 +72,13 @@ function setValue(cls: Mode, value: string): void {
 </script>
 
 <template>
-  <Field class="flex-1">
-    <FieldLabel
-      >{{ t('studio.project.connectionDialog.mcp.review.label') }}
-      <span class="text-subtle"
-        >— {{ t('studio.project.connectionDialog.mcp.reviewNote.label') }}</span
-      ></FieldLabel
-    >
-    <div v-for="m in MODES" :key="m.cls" class="flex flex-col gap-1">
-      <FieldDescription>{{ t(m.label) }}</FieldDescription>
+  <FieldSet class="flex-1">
+    <FieldLegend>{{ t('studio.project.connectionDialog.mcp.review.label') }}</FieldLegend>
+    <FieldDescription class="w-full">{{
+      t('studio.project.connectionDialog.mcp.reviewNote.label')
+    }}</FieldDescription>
+    <Field v-for="m in MODES" :key="m.cls">
+      <FieldLabel>{{ t(m.label) }}</FieldLabel>
       <SecondaryTabs
         variant="choice"
         size="kira-lg"
@@ -84,7 +88,7 @@ function setValue(cls: Mode, value: string): void {
         :data-testid="`connection-mcp-review-${m.cls}`"
         @update:model-value="(v) => setValue(m.cls, String(v))"
       />
-    </div>
+    </Field>
     <FieldDescription class="w-full">{{
       t('studio.project.connectionDialog.mcp.review.description')
     }}</FieldDescription>
@@ -95,5 +99,5 @@ function setValue(cls: Mode, value: string): void {
       {{ t('studio.project.connectionDialog.mcp.reviewEnforceLimits.body') }}
       {{ t('studio.project.connectionDialog.mcp.reviewEnforceScope.body') }}
     </FieldDescription>
-  </Field>
+  </FieldSet>
 </template>

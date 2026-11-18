@@ -89,12 +89,7 @@ function onSave(): void {
         <FieldDescription>{{ t('kubernetes.mcp.enable.hint') }}</FieldDescription>
         <template v-if="draft.enabled">
           <Field>
-            <FieldLabel
-              >{{ t('common.field.description.label') }}
-              <span class="text-subtle"
-                >— {{ t('kubernetes.mcp.descriptionNote.label') }}</span
-              ></FieldLabel
-            >
+            <FieldLabel>{{ t('common.field.description.label') }}</FieldLabel>
             <Textarea
               class="font-data"
               v-model="draft.description"
@@ -102,6 +97,7 @@ function onSave(): void {
               data-testid="kube-mcp-description"
               @keydown="wrapSelectionOnType"
             />
+            <FieldDescription>{{ t('kubernetes.mcp.descriptionNote.label') }}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel>{{ t('kubernetes.mcp.approval.label') }}</FieldLabel>
