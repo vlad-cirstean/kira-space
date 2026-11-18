@@ -28,6 +28,8 @@
 # Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
 # Guards U147-U151: docs/v0.3.17/plans/P672-part7-iter2.md.
 #
+# Guards U153-U156, U73/U88/U90 extensions: docs/v0.3.17/plans/P672-part9-iter2.md.
+#
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
 
@@ -230,7 +232,7 @@ U61@@vt@@/behaviour/!|/testing/!@@empty catch (give a reason comment or surface 
 U62@@vt@@/behaviour/!|/testing/!|SearchField.vue@@manual focus() (use useFocusOnMount, useFocusReturn, useListNavigation)@@\.focus\(\)|nextTick\([^)]*\.focus
 U63@@s@@/behaviour/!|/testing/!@@side panel with SearchField and no usePanelHeaderSearch@@(?s)\A(?!.*usePanelHeaderSearch).*<SearchField
 U72@@vt@@@@@lucide/vue import outside the theme ui primitives (use CodiconIcon, ICON)@@['"]@lucide/vue
-U73@@vt@@/theme/src/icons.ts@@retired icon name gear/settings/kebab-vertical, or a 'codicon-' string literal (use ICON)@@(?<!<slot )\b(?:name|icon)(?:=|:\s*)["']{1,2}(?:gear|settings|kebab-vertical)["']|['"\x60]codicon-
+U73@@vt@@/theme/src/icons.ts@@retired icon name gear/settings/kebab-vertical/pencil, or a 'codicon-' string literal (use ICON)@@(?<!<slot )\b(?:name|icon)(?:=|:\s*)["']{1,2}(?:gear|settings|kebab-vertical|pencil)["']|['"\x60]codicon-
 U74@@v@@EmptyState.vue@@<Empty outside EmptyState.vue (use EmptyState)@@<Empty\b
 U75@@vt@@@@duration-, ease-, animate-in, animate-out outside theme (motion tokens own them)@@${TOK}(?:duration|ease)-[\w\[]|${TOK}animate-(?:in|out)(?![\w-])
 U76@@vt@@sortableReorder.ts@@ghostClass/chosenClass outside sortableReorder.ts (use SORTABLE_GHOST_CLASS; no chosen class)@@\b(?:ghost|chosen)Class:
@@ -247,9 +249,9 @@ U84@@v@@@@<Button class sets a size (the size variants own h-touch, size-touch, 
 U85@@v@@@@<EmptyState class sets padding or fill (use the fill prop)@@<EmptyState\b(?&t)\s:?class="[^"]*${TOK}(?:(?:p|px|py)-|h-full(?![\w-])|flex-1(?![\w-]))
 U86@@vt@@@@z-index off the token ladder (use z-(--kira-z-*) tiers; in-pane z-0..3)@@${TOK}z-(?:\d{2,}|\[)
 U87@@v@@Disclosure.vue@@<details (use Disclosure)@@<details\b
-U88@@vt@@EmptyState.vue|PairScreen.vue@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py)-(?:0\.25|1\.25|1\.75|2\.5|3\.5|5|6|7|8|10|12)(?![\w.-])
+U88@@vt@@EmptyState.vue|PairScreen.vue@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py|mt|mb|my|pt|pb)-(?:0\.25|1\.25|1\.75|2\.5|3\.5|5|6|7|8|10|12)(?![\w.-])
 U89@@vt@@linkify.ts|badgeClass.ts@@cursor-pointer outside link owners, or cursor-help/copy (controls and rows are cursor-default)@@${TOK}cursor-(?:pointer|help|copy)(?![\w-])
-U90@@vt@@@@hover tone override, or opacity as muted (use tone, text-muted-foreground)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])
+U90@@vt@@rowVariants.ts|sortableReorder.ts|FilterBar.vue@@hover tone override, or opacity as muted or state (use tone, rowVariants muted/disabled, SORTABLE_GHOST_CLASS)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])|(?<![\w:-])opacity-50(?![\w.-])
 U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate, also a TextTooltip repeating the truncated text (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])|<TextTooltip\b(?&t)\s:text="(?<u91>[^"]+)"(?&t)>\s*<(?:span|div|button|Badge)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])[^"]*"(?&t)>\s*\{\{\s*\k<u91>\s*\}\}
 U92@@v@@SplitButton.vue@@<Button :disabled carries a pending flag, or Spinner inside Button (use pending)@@<Button\b(?&t)\s:disabled="[^"]*(?i:pending|busy|saving|loading|running|installing|committing)|(?s)<Button\b(?&t)(?<!/)>(?:(?!</Button>).)*?<Spinner\b
 U93@@vt@@/theme/src/format.ts|/testing/!@@toFixed or {{ }}% (use formatPercent, formatBytes, formatDuration)@@toFixed\(|\}\}%
@@ -313,6 +315,10 @@ U148@@v@@@@spin attribute on CodiconIcon (use Spinner, RS.1)@@<CodiconIcon\b(?&t
 U149@@v@@@@tone class on a toolbar button (use tone or data-tone)@@(?:<TooltipIconButton\b|<Button\b(?=(?&t)\svariant="toolbar"))(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
 U150@@v@@@@toned action icon (action icons stay muted, RI.2)@@<CodiconIcon\b(?=(?&t)\sname="(?:play|debug-stop|debug-start|run-all|debug-restart|debug-pause)")(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info)(?![\w-])
 U151@@v@@@@StatusDot status through a theme var colour (use tone)@@<StatusDot\b(?&t)\scolor="var\(--kira-
+U153@@v@@OpLogPanel.vue@@hand depth indent (use rowIndent)@@paddingLeft:\s*\x60[^\x60]*\bdepth\b
+U154@@v@@@@Disclosure trigger or content class (use the meta prop; content spacing is built in)@@<Disclosure\b(?&t)\s:?(?:trigger-class|content-class)=
+U155@@v@@@@hand pane frame or window body (use paneFrame, windowBody)@@\bclass="(?=[^"]*${TOK}rounded-kira(?![\w-]))(?=[^"]*${TOK}bg-bg(?![\w-]))|\bclass="(?=[^"]*${TOK}bg-chrome(?![\w-]))(?=[^"]*${TOK}px-1\.5(?![\w.-]))(?=[^"]*${TOK}pb-0\.5(?![\w.-]))
+U156@@v@@@@text glyph as icon or status (use CodiconIcon or StatusDot)@@>\s*(?:✕|✓|▶|●|•|→|↔|↩)\s*<|\?\s*'(?:●|•)'(?!\.repeat)
 GUARDS
 
 # hits: "U<n> path"
