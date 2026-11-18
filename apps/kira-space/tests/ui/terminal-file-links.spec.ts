@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { filesTest, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
+import { stubClipboard } from './support/logSpecs';
 import { emitWailsEvent } from './support/mockRuntime';
 import { repoRowById, repoTab } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
@@ -24,7 +25,10 @@ const resolveArgs = contract<{ paths: string[] }>(
   SCENARIO,
   'args:OpenedFilesService.TerminalResolve',
 );
-const resolved = contract<{ openable: boolean[] }>(SCENARIO, 'OpenedFilesService.TerminalResolve');
+const resolved = contract<{ openable: boolean[]; paths: string[] }>(
+  SCENARIO,
+  'OpenedFilesService.TerminalResolve',
+);
 const openArgs = contract<{ path: string; line: number; col: number }>(
   SCENARIO,
   'args:OpenedFilesService.TerminalOpen',
@@ -124,6 +128,128 @@ test('contract: a file path opens in Kira Space only on Cmd/Ctrl-click, with a h
     path: PATHS[0],
     line: openArgs.line,
     col: openArgs.col,
+  });
+});
+
+const menu = (page: Page) => page.locator('[data-testid="context-menu"]');
+
+test('contract: right-click on a file path offers Open and Copy path, opening nothing itself', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({ control: BASE });
+  await printLine(page, LINE);
+  const row = page.locator('.xterm-rows > div', { hasText: PATHS[0] });
+  await expect(row).toBeVisible();
+  const at = await over(row, `${PATHS[0]}:${openArgs.line}`);
+
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  await row.click({ position: at, button: 'right', force: true });
+  await expect(menu(page)).toBeVisible();
+  await expect(page.locator('[data-testid="menu-item-open-file"]')).toBeVisible();
+  await expect(page.locator('[data-testid="menu-item-copy-path"]')).toBeVisible();
+  expect(calls(control, IPC.openedFilesTerminalOpen)).toHaveLength(0);
+});
+
+test('contract: Copy path copies the absolute resolved path', async ({ relaunch }) => {
+  const { window: page } = await relaunch({ control: BASE });
+  await printLine(page, LINE);
+  const row = page.locator('.xterm-rows > div', { hasText: PATHS[0] });
+  await expect(row).toBeVisible();
+  const clipboard = await stubClipboard(page);
+  const at = await over(row, `${PATHS[0]}:${openArgs.line}`);
+
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  await row.click({ position: at, button: 'right', force: true });
+  await page.locator('[data-testid="menu-item-copy-path"]').click();
+  await expect.poll(clipboard).toEqual([resolved.paths[0]]);
+  await expect(menu(page)).toBeHidden();
+});
+
+test('contract: Open from the menu opens the path at its line and column', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: BASE });
+  const terminalId = await printLine(page, LINE);
+  const row = page.locator('.xterm-rows > div', { hasText: PATHS[0] });
+  await expect(row).toBeVisible();
+  const at = await over(row, `${PATHS[0]}:${openArgs.line}`);
+
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  await row.click({ position: at, button: 'right', force: true });
+  await page.locator('[data-testid="menu-item-open-file"]').click();
+  await expect.poll(() => calls(control, IPC.openedFilesTerminalOpen)).toHaveLength(1);
+  expect(calls(control, IPC.openedFilesTerminalOpen)[0]?.args).toMatchObject({
+    terminalId,
+    path: PATHS[0],
+    line: openArgs.line,
+    col: openArgs.col,
+  });
+});
+
+test('contract: right-click away from a link shows no menu; Cmd+right-click opens nothing', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({ control: BASE });
+  await printLine(page, LINE);
+  const row = page.locator('.xterm-rows > div', { hasText: PATHS[0] });
+  await expect(row).toBeVisible();
+
+  await page
+    .locator('.xterm-rows')
+    .click({ position: { x: 300, y: 200 }, button: 'right', force: true });
+  await expect(menu(page)).toBeHidden();
+
+  const at = await over(row, `${PATHS[0]}:${openArgs.line}`);
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  await row.click({ position: at, button: 'right', modifiers: ['Meta'], force: true });
+  expect(calls(control, IPC.openedFilesTerminalOpen)).toHaveLength(0);
+});
+
+test('contract: a path soft-wrapped over several rows is one link', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: BASE });
+  const long = `wrapped/${'dir/'.repeat(150)}last.go`;
+  await printLine(page, long);
+  const row = page.locator('.xterm-rows > div', { hasText: 'last.go' });
+  await expect(row).toBeVisible();
+  const clipboard = await stubClipboard(page);
+  const at = await over(row, 'last.go');
+
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  expect(
+    calls(control, IPC.openedFilesTerminalResolve).some((e) =>
+      JSON.stringify(e.args).includes(long),
+    ),
+  ).toBe(true);
+  await row.click({ position: at, button: 'right', force: true });
+  await page.locator('[data-testid="menu-item-copy-path"]').click();
+  await expect.poll(clipboard).toEqual([resolved.paths[0]]);
+
+  // xterm skips a re-hover of the cell it last saw, so move to another cell of the link.
+  const next = { x: at.x + 8, y: at.y };
+  await row.hover({ position: next, force: true });
+  await expect(hint(page)).toBeVisible();
+  await row.click({ position: next, modifiers: ['Meta'], force: true });
+  await expect.poll(() => calls(control, IPC.openedFilesTerminalOpen)).toHaveLength(1);
+  expect(calls(control, IPC.openedFilesTerminalOpen)[0]?.args).toMatchObject({ path: long });
+});
+
+test('contract: a quoted path with a space links and opens', async ({ relaunch }) => {
+  const { window: page, control } = await relaunch({ control: BASE });
+  await printLine(page, 'edited "My Docs/a.ts" today');
+  const row = page.locator('.xterm-rows > div', { hasText: 'My Docs/a.ts' });
+  await expect(row).toBeVisible();
+  const at = await over(row, 'My Docs/a.ts');
+
+  await row.hover({ position: at, force: true });
+  await expect(hint(page)).toBeVisible();
+  await expect(hint(page)).toContainText('My Docs/a.ts');
+  await row.click({ position: at, modifiers: ['Meta'], force: true });
+  await expect.poll(() => calls(control, IPC.openedFilesTerminalOpen)).toHaveLength(1);
+  expect(calls(control, IPC.openedFilesTerminalOpen)[0]?.args).toMatchObject({
+    path: 'My Docs/a.ts',
   });
 });
 
