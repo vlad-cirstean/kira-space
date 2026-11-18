@@ -171,8 +171,9 @@ function toggleDefault(i: number, option: string, on: boolean): void {
             @update:model-value="(v) => patch(i, { name: String(v) })"
           />
           <SecondaryTabs
-            variant="segmented"
+            variant="choice"
             size="kira-lg"
+            :aria-label="t('common.field.type.label')"
             :model-value="p.type"
             :items="TYPE_ITEMS.map((it) => ({ ...it, testid: `param-type-${i}-${it.testid}` }))"
             @update:model-value="(v) => setType(i, v as ScriptParamType)"

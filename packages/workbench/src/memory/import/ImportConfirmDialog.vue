@@ -15,7 +15,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
@@ -153,17 +152,17 @@ async function dismiss(): Promise<void> {
           <p v-if="job.truncated" class="m-0 text-warn" data-testid="import-truncated">
             {{ t('memory.import.confirm.truncated.description', { count: job.estimate.files }) }}
           </p>
-          <div class="flex flex-col gap-1">
-            <Label>{{ t('memory.import.confirm.origin.label') }}</Label>
+          <Field>
+            <FieldLabel>{{ t('memory.import.confirm.origin.label') }}</FieldLabel>
             <SecondaryTabs
               v-model="origin"
               :items="originItems"
-              variant="segmented"
+              variant="choice"
               size="kira-lg"
               :aria-label="t('memory.import.confirm.origin.label')"
               data-testid="import-origin"
             />
-          </div>
+          </Field>
           <Field v-if="origin === 'external'">
             <FieldLabel for="import-source-tag">{{
               t('memory.import.confirm.sourceTag.label')

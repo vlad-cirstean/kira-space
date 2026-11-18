@@ -2,7 +2,7 @@
 import type { AppearanceSettings, RowDensity } from '@shared/domain/settings';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Field } from '@theme/components/ui/field';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 
@@ -36,7 +36,7 @@ function setRowDensity(density: RowDensity): void {
 <template>
   <Field>
     <div class="flex items-center justify-between gap-1">
-      <span>{{ t('workbench.settings.rowHeight.label') }}</span>
+      <FieldLabel>{{ t('workbench.settings.rowHeight.label') }}</FieldLabel>
       <TooltipIconButton
         icon="discard"
         :label="t('common.action.resetToDefault.label')"
@@ -47,7 +47,9 @@ function setRowDensity(density: RowDensity): void {
       />
     </div>
     <SecondaryTabs
-      variant="segmented"
+      variant="choice"
+      size="kira-lg"
+      :aria-label="t('workbench.settings.rowHeight.label')"
       :model-value="appearance.rowDensity"
       :items="DENSITY_ITEMS"
       @update:model-value="(v) => setRowDensity(v as RowDensity)"

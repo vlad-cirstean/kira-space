@@ -158,9 +158,6 @@ U115 apps/kira-space/frontend/src/ade/v2/panel/AdePanelForwardBar.vue # 2026-11-
 U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/studio/proof/ProofHeader.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/workbench/settings/FileTypesPane.vue # 2026-11-18 P672 Part 9
-U117 packages/workbench/src/automations/form/ParamsEditor.vue # 2026-11-18 P672 Part 8
-U117 packages/workbench/src/memory/import/ImportConfirmDialog.vue # 2026-11-18 P672 Part 8
-U117 packages/workbench/src/settings/fields/RowDensityField.vue # 2026-11-18 P672 Part 8
 TEMPORARY
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
