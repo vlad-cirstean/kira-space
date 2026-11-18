@@ -127,10 +127,10 @@ test('the usage item sits in the left group with the dashboard icon', async ({ r
 
 test('warns at 80 percent and errors at 95 percent', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, usageControl(snapshot(85, 10)));
-  await expect(item(page)).toHaveClass(/(^|\s)text-warn(\s|$)/);
+  await expect(item(page)).toHaveAttribute('data-tone', 'warn');
   await emitWailsEvent(page, IPC.agentUsage, snapshot(85, 97));
   await expect(text(page)).toHaveText('Session 85% · Weekly 97%');
-  await expect(item(page)).toHaveClass(/(^|\s)text-error(\s|$)/);
+  await expect(item(page)).toHaveAttribute('data-tone', 'error');
 });
 
 test('shows a dash and the hint before any session reported', async ({ relaunch }) => {

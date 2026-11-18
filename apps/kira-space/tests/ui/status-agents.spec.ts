@@ -86,7 +86,7 @@ test('contract: an agent asking for input shows in the label and turns the item 
   await emitAgentEvent(page, 'term-qa01', 'Notification');
   await expect(item(page)).toHaveText('2 agents · 1 needs input');
   await expect(item(page)).toHaveAttribute('data-kind', 'input');
-  await expect(item(page)).toHaveClass(/(^|\s)text-warn(\s|$)/);
+  await expect(item(page)).toHaveAttribute('data-tone', 'warn');
   await expect(dot(page)).toBeVisible();
 });
 
