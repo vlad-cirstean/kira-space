@@ -1,7 +1,7 @@
 # P672 inventory: UI elements and uniformity rules
 
 Spec row: `../SPEC.md` P672 Part 1. Plan: `P672.md`. Base: `chapter/v0.3.16` at `6527aec4`.
-Analysis only. Status: in progress (sections land as written; see "Sections" for what is done).
+Analysis only. Status: complete (§0-§20, appendix A.1-A.10).
 
 ## 0. Method and scope
 
@@ -678,9 +678,355 @@ Rank = visibility (how often a user sees it) × spread (modules) × count.
   compositions of existing primitives; no new dependency. Accept or name any to drop.
 - **D3 Toasts** (RE.4): restrict to background outcomes (recommended) vs allow app-wide.
 
+## 20. Migration items by Part
+
+Each item names its rule and scope. Part numbers match `P672.md` "Parts 2..n" and `SPEC.md`.
+
+Part 2 (theme pieces + lint), runs first:
+- M1 `Field orientation="responsive"` (RF.2), `PopoverContent flush` (RM.3), `KeyValueList
+  density="compact"` (RH.4), `DetailHeader` (RH.2), `DetailSection` to theme as the titled section
+  card (RC.1), `TextTooltip` from `AdeTip` (RT.2). Theme only; no call-site migration beyond the
+  move of `DetailSection` and `AdeTip` imports.
+- M2 New guards in `scripts/check-ui-primitives.sh` for rules a regex can hold, added with the
+  current offenders as a temporary, dated baseline that later Parts empty (never PERMANENT):
+  Checkbox `size-*` class or child (RF.8); `PopoverContent` padding classes (RM.3); `h[1-6]` with
+  `text-kira-lg` outside `DetailHeader`/`DialogTitle` (RH.3); `grid-cols-[` on `KeyValueList`
+  and hand dt/dd grids (RH.4); `text-tone-*` outside the ADE board allowlist (RS.3, after D1);
+  `font-mono` (RTy.2); `iconClass` tones in `MenuItem` (RM.2); `segmented` inside `Field`/
+  `DialogBody` (RTa.1).
+- M3 ARCHITECTURE "UI architecture": rules RD-RTa as short bullets; PanelHeader vs SectionHeading
+  grey step (§7.1); spacing table (§14.2).
+
+Part 3 (forms): M4 RF.1 labels (A.4); M5 RF.2 columns layout: `AdeInspectorRow`, `EditField`,
+`AdeRow` editable label column onto `Field responsive`; M6 RF.3/RF.8 `CheckboxRow` and A.6; M7
+RF.4-RF.6 FieldSet gaps, widths, textarea heights; M8 RF.7 hand error text (A.9 + bound classes);
+M9 input `kira` in forms (§4.1 list) to default, drop explicit `size="kira-lg"`.
+
+Part 4 (buttons + dialogs): M10 RB.1/RB.2 in-view outline buttons to `toolbar@kira` (candidates: ADE 86,
+Runs 23, Studio, Git, Memory, API per §3.1 table), keep commit/decision uses; M11 RB.3
+`ACTION_CLASS` off-board; M12 RD.1 sizes per A.1; M13 RD.2 footers (5 dialogs); M14 RD.3/RD.4
+header extras and intro text; M15 RD.5 `DialogBody` overrides.
+
+Part 5 (menus, popovers, tooltips): M16 RM.1 hand dropdowns (22 files) to `MenuItems`; M17 RM.2
+toned menu icons; M18 RM.3 every `PopoverContent` in A.2 to default or `flush` + section rows;
+M19 RT.1/RT.2 hand Tooltip triples with a text-only body to `TextTooltip`.
+
+Part 6 (headings, detail headers, key-value, cards): M20 RH.2 the 11 detail headers onto
+`DetailHeader`; M21 RH.3 the 13 `h3` section titles; M22 RH.4 `KeyValueList` variants and hand
+grids; M23 RC.1-RC.3 cards per A.3.
+
+Part 7 (status, tones, colours; needs D1): M24 RS.1 status map (`AdeOpStatus` running to info,
+Git change-request badge classes to `Badge` tones); M25 RS.3 per D1 (A.7); M26 RL.4/RI.2 warning
+and error icon colours; M27 RCo.2 redundant `text-fg`, row meta greys (RL.2).
+
+Part 8 (tabs, segmented, choice): M28 RTa.1 the 9 form `segmented` to `choice`, ADE `tabs@kira-lg`
+to default; M29 RTa.2 `ConnectionEnginePicker` onto `RadioGroupCard`, `EngineIcon` 16, delete its
+U36 PERMANENT line.
+
+Part 9 (states, icons, type, spacing residue): M30 RE.1-RE.3 EmptyState media (A.10), failure
+shape, Skeleton shapes; M31 RE.4 toasts (needs D3); M32 RI.1 labelled-button icons 12 to 13; M33
+RTy.1-RTy.3 sizes, `font-mono`, leading/tracking; M34 RSp.1/RSp.2 pane `p-4` to `p-3`, alignment;
+M35 RBo.1-RBo.3 radii, borders, shadows; M36 remove every temporary baseline left in the M2 guards
+(all must be empty here).
+
 ## Appendix: exhaustive per-file lists
 
 Generated from the template scans in §0 at base `6527aec4`; line numbers are the opening tag.
 Parts re-run the same scans against their own base before applying.
 
-<!-- appendix lands in the next commit -->
+### A.1 Dialogs (62)
+
+Flags: `F` fixed-height, `D` DialogDescription, `H` header extras, `S` footer `#start`, `B` DialogBody class, `T` tabs in body. Rule column names the rule the dialog breaks today (blank: none found by scan).
+
+| Module | File | Size | Flags | Footer | Breaks |
+|---|---|---|---|---|---|
+| ADE | `ade/v2/details/AdeDetailsDiskBanner.vue` | xl | D | dialog-danger, dialog-primary | RD.2 two emphasised |
+| ADE | `ade/v2/dialog/AdeAgentDialog.vue` | lg | HT | dialog, dialog-danger, dialog-primary | RD.2 two emphasised; RD.3; RD.4? |
+| ADE | `ade/v2/panel/AdeRunSandboxBadge.vue` | lg |  |  | RD.4? |
+| ADE | `ade/v2/port/AdePortBackupsDialog.vue` | 2xl | F | dialog | RD.4? |
+| ADE | `ade/v2/port/AdePortExportDialog.vue` | 2xl | F | dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/port/AdePortImportDialog.vue` | 2xl | F | dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/review/AdeReviewSubmitDialog.vue` | md |  | Close>, dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/run/AdeRepoGateDialog.vue` | sm |  | dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/run/AdeRunDialog.vue` | lg |  | dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/settings/AdeSettingsSecrets.vue` | sm |  | dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/stage/AdeStageDialog.vue` | lg | T | dialog, dialog, dialog-primary | RD.4? |
+| ADE | `ade/v2/workflows/statuses/AdeTaskStatuses.vue` | sm | D | dialog, dialog-primary |  |
+| API | `studio/api/ApiSecrets.vue` | sm |  | dialog, dialog-primary | RD.4? |
+| API | `studio/api/ApiVariablesDialog.vue` | 2xl | FT | dialog-danger, dialog-primary | RD.2 two emphasised; RD.4? |
+| API | `studio/api/CopyAsCurlDialog.vue` | xl |  | dialog, dialog-primary | RD.4? |
+| API | `studio/api/DynamicValuesDialog.vue` | md |  | dialog | RD.4? |
+| API | `studio/api/EditRawRequestDialog.vue` | xl |  | dialog, dialog-primary | RD.4? |
+| API | `studio/api/ImportCurlDialog.vue` | lg |  | dialog, dialog-primary | RD.4? |
+| API | `studio/api/SaveRequestDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Docker | `docker-ui/src/components/RecreateConfirmDialog.vue` | lg | D | dialog, dialog-danger |  |
+| Git | `git-ui/src/components/WorktreeList.vue` | md |  | dialog, dialog-danger | RD.4? |
+| Git | `git-ui/src/components/dialogs/BranchDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Git | `git-ui/src/components/dialogs/CheckoutDialog.vue` | md | D | dialog, dialog-primary, dialog-danger | RD.2 two emphasised |
+| Git | `git-ui/src/components/dialogs/CherryPickDialog.vue` | md | D | dialog, dialog-primary |  |
+| Git | `git-ui/src/components/dialogs/ForcePushDialog.vue` | md | D | dialog, dialog-danger |  |
+| Git | `git-ui/src/components/dialogs/PostCheckoutPullDialog.vue` | md | D | dialog, dialog-primary |  |
+| Git | `git-ui/src/components/dialogs/PullDialog.vue` | md | D | dialog, dialog-primary |  |
+| Git | `git-ui/src/components/dialogs/RenameRefDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Git | `git-ui/src/components/dialogs/RepoSettingsDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Git | `git-ui/src/components/dialogs/ResetDialog.vue` | md | DH | dialog, dialog-primary, isHardDestructive ? 'dialog-danger' : 'dialog-primary' | RD.2 order; RD.3 |
+| Git | `git-ui/src/components/dialogs/RevertDialog.vue` | md | D | dialog, dialog-primary |  |
+| Git | `git-ui/src/components/dialogs/StackDialog.vue` | md |  | multi-step (5) | RD.4? |
+| Git | `git-ui/src/components/dialogs/StashDialog.vue` | md | T | multi-step (8) | RD.4? |
+| Git | `git-ui/src/components/dialogs/TagDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Git | `git-ui/src/components/dialogs/WorktreeDialog.vue` | md | T | dialog, dialog-primary | RD.4? |
+| Kubernetes | `studio/kubernetes/components/ClusterMcpDialog.vue` | lg | DT | dialog, dialog-primary |  |
+| Memory | `workbench/src/memory/AddMemoryDialog.vue` | lg |  | dialog-primary, dialog, dialog, dialog-primary | RD.2 two emphasised; RD.4? |
+| Memory | `workbench/src/memory/import/ImportConfirmDialog.vue` | md | T | dialog, dialog-primary | RD.4? |
+| Mobile | `mobile/components/ReplySheet.vue` | sm | D | dialog, dialog-approve |  |
+| Runs | `workbench/src/automations/RunFileDialog.vue` | lg | T | Close>, dialog-danger, dialog-primary | RD.2 two emphasised; RD.4? |
+| Runs | `workbench/src/automations/run/RunScriptDialog.vue` | lg |  | Close>, dialog, dialog-primary | RD.4? |
+| Runs | `workbench/src/automations/schedule/ScheduleConfirmDialog.vue` | lg | HS | dialog, dialog-approve | RD.3; RD.4? |
+| Runs | `workbench/src/automations/schedule/ScheduleTargetDialog.vue` | md |  | Close>, dialog, dialog-primary | RD.4? |
+| Shell | `workbench/GitCredentialDialog.vue` | sm | S | dialog, dialog-primary | RD.4? |
+| Shell | `workbench/PairingRequestDialog.vue` | sm |  | dialog-deny, dialog-approve | RD.4? |
+| Studio | `studio/project/ConnectionFileDialog.vue` | 2xl | FST | multi-step (5) | RD.4? |
+| Studio | `studio/project/CredentialsUpdateDialog.vue` | md |  |  | RD.4? |
+| Studio | `studio/project/DataGripImportDialog.vue` | xl | FSB | dialog, dialog, dialog-primary, dialog-primary | RD.2 two emphasised; RD.4? |
+| Studio | `studio/project/FiltersDialog.vue` | lg | S | dialog, dialog-primary | RD.4? |
+| Studio | `studio/project/MaskingReviewPrompt.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Studio | `studio/project/NewConnectionDialog.vue` | 2xl | FHB | dialog, dialog-primary | RD.3; RD.4? |
+| Studio | `studio/project/SchemaDialog.vue` | xl | FS | dialog, dialog-primary | RD.4? |
+| Studio | `studio/proof/ProofReadyPrompt.vue` | md | D | dialog, dialog-primary |  |
+| Studio | `studio/views/httprequest/ResponseDiffDialog.vue` | 2xl | FB | dialog | RD.4? |
+| Studio | `studio/workbench/GenerateDataDialog.vue` | xl |  | dialog, dialog, dialog-primary | RD.4? |
+| Studio | `studio/workbench/UploadObjectDialog.vue` | md |  | dialog, dialog-primary | RD.4? |
+| Studio | `studio/workbench/apiaccess/ApiAccessRuleDialog.vue` | lg |  | dialog, dialog-primary | RD.4? |
+| Workbench | `workbench/src/approvals/ApprovalsDialog.vue` | full | FH | dialog-deny | RD.3; RD.4? |
+| Workbench | `workbench/src/components/ConfirmDialogView.vue` | sm |  | dialog, dialog, tone === 'danger' ? 'dialog-danger' : 'dialog-primary' | RD.4? |
+| Workbench | `workbench/src/components/SettingsShell.vue` | xl | FB |  | RD.4? |
+| Workbench | `workbench/src/components/UpdateDialog.vue` | sm |  | multi-step (6) | RD.4? |
+| Workbench | `workbench/src/restore/RestoreDialog.vue` | lg | DH | dialog, dialog-primary | RD.3 |
+
+`RD.4?`: no `DialogDescription`; the Part checks whether the body opens with intro text that belongs there.
+
+### A.2 PopoverContent (41)
+
+| Module | File:line | class |
+|---|---|---|
+| ADE | `ade/v2/AdeAddPopover.vue:182` | `w-120 gap-0 overflow-hidden p-0` |
+| ADE | `ade/v2/links/AdeLinkAdd.vue:83` | `w-80 gap-1.5` |
+| ADE | `ade/v2/links/AdeLinkStrip.vue:285` | `w-80` |
+| ADE | `ade/v2/panel/AdeRunSandboxBadge.vue:79` | `w-96 text-kira-md` |
+| ADE | `ade/v2/panel/AdeTaskBranchForm.vue:94` | `w-80 gap-0 overflow-hidden p-0` |
+| ADE | `ade/v2/plan/AdeArchivedFinder.vue:37` | `w-96 p-0` |
+| ADE | `ade/v2/plan/AdeEstimateChip.vue:60` | `w-auto p-2` |
+| ADE | `ade/v2/plan/AdeTaskAddMenu.vue:59` | `w-80 gap-0 overflow-hidden p-0` |
+| ADE | `ade/v2/plan/AdeTaskChildren.vue:74` | `w-80 gap-0 p-1` |
+| ADE | `ade/v2/sessions/AdeSessionsMenu.vue:46` | `w-120 p-0` |
+| ADE | `ade/v2/status/AdeAgentsStatusItem.vue:72` | `w-96 p-1` |
+| ADE | `ade/v2/updates/AdeUpdatesPopover.vue:28` | `w-80 p-0` |
+| ADE | `ade/v2/workflows/statuses/AdeTaskStatuses.vue:198` | `w-auto p-2` |
+| API | `studio/api/VariableHistoryMenu.vue:47` | `w-80 gap-0 p-0` |
+| API | `studio/api/VariablesOverviewPanel.vue:97` | `w-96 gap-0 p-0` |
+| Git | `git-ui/src/App.vue:1949` | `w-auto flex-row items-center gap-1 px-2 py-1` |
+| Git | `git-ui/src/components/RefsPopover.vue:434` | `w-96 p-0 gap-0` |
+| Git | `git-ui/src/components/SearchBox.vue:288` | `p-0 gap-0 w-120` |
+| Proto | `proto/grid/NavPreview.vue:32` | `` |
+| Runs | `workbench/src/automations/form/ScheduleFields.vue:146` | `w-96 p-0` |
+| Runs | `workbench/src/automations/run/AdeContextFields.vue:70` | `w-96 p-0` |
+| Studio | `studio/project/ErrorPopover.vue:41` | `w-96 max-h-60 gap-0 overflow-hidden p-0` |
+| Studio | `studio/views/console/kibana/FilterBar.vue:88` | `w-80 p-2` |
+| Studio | `studio/views/console/kibana/FilterBar.vue:130` | `w-80 p-2` |
+| Studio | `studio/views/console/kibana/TimePicker.vue:92` | `w-80 p-2` |
+| Studio | `studio/views/documents/DocumentToolbar.vue:156` | `w-56 p-0` |
+| Studio | `studio/views/grid/ColumnsMenu.vue:131` | `w-56 gap-0 p-0` |
+| Studio | `studio/views/grid/PreviewCommandPanel.vue:103` | `w-120 gap-0 p-0` |
+| Studio | `studio/views/shared/SavedListMenu.vue:87` | `w-80 gap-0 p-0` |
+| Studio | `studio/views/shared/celleditor/CellGenerateMenu.vue:36` | `w-56 gap-0 p-0` |
+| Studio | `studio/views/shared/celleditor/TimestampPane.vue:179` | `w-56 gap-0 p-0` |
+| Studio | `studio/views/shared/keyvalue/KeyValueAddPopover.vue:76` | `w-80` |
+| Studio | `studio/views/shared/keyvalue/KeyValueEditPopover.vue:73` | `w-80` |
+| Studio | `studio/views/stream/StreamFilterRow.vue:238` | `w-56 p-0` |
+| Studio | `studio/views/stream/StreamFilterRow.vue:305` | `w-56 p-0` |
+| Studio | `studio/views/stream/StreamToolbar.vue:318` | `w-96 p-0` |
+| Workbench | `workbench/src/components/AutocompleteField.vue:451` | `autocomplete-suggestions z-(--kira-z-autocomplete) w-auto min-w-50 max-w-completion-max-w max-h-60 gap-0 overflow-x-hidden overflow-y-auto p-0.5 font-data` |
+| Workbench | `workbench/src/components/AutocompleteField.vue:499` | `var-hover-panel pointer-events-none z-(--kira-z-autocomplete) w-auto max-w-96 gap-0 overflow-hidden px-1.5 py-1 font-data` |
+| Workbench | `workbench/src/components/PointPopover.vue:22` | `` |
+| Workbench | `workbench/src/components/RunningOpsStatusItem.vue:45` | `w-96 p-1` |
+| Workbench | `workbench/src/components/pickers/PickerPopover.vue:127` | `w-80 gap-0 p-0` |
+
+### A.3 Card (41)
+
+| Module | File:line | variant | class |
+|---|---|---|---|
+| ADE | `ade/v2/agents/AdeLeasesPane.vue:45` | section | `flex flex-col gap-2 p-3` |
+| ADE | `ade/v2/details/AdeProofEntry.vue:46` | default | `flex flex-col gap-2 p-2 text-kira-md` |
+| ADE | `ade/v2/details/AdeTaskChain.vue:119` | default | `flex flex-col gap-2 p-2` |
+| ADE | `ade/v2/dialog/AdeAgentDialog.vue:284` | default | `whitespace-pre-wrap font-data text-kira-sm text-muted-foreground` |
+| ADE | `ade/v2/notes/AdeNoteEntry.vue:68` | default | `flex flex-col gap-1 p-2 text-kira-md` |
+| ADE | `ade/v2/panel/AdeStepBlock.vue:216` | section | `gap-0 py-1` |
+| ADE | `ade/v2/plan/AdeTaskCard.vue:117` | section | `box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira` |
+| ADE | `ade/v2/review/AdeReviewRemoved.vue:77` | default | `` |
+| ADE | `ade/v2/review/AdeWorkflowReviewPanel.vue:205` | default | `flex flex-col gap-1 p-2` |
+| ADE | `ade/v2/run/AdeRunDialog.vue:227` | default | `select-text whitespace-pre-wrap break-words font-data text-kira-sm` |
+| ADE | `ade/v2/run/AdeRunDialog.vue:235` | default | `select-text whitespace-pre-wrap break-words font-data text-kira-sm` |
+| ADE | `ade/v2/run/AdeRunDialog.vue:245` | default | `whitespace-pre-wrap font-data text-kira-sm` |
+| ADE | `ade/v2/workflows/AdeStepInspector.vue:289` | default | `text-kira-sm text-subtle` |
+| ADE | `ade/v2/workflows/inspector/AdeStepAgentFields.vue:94` | default | `font-data text-kira-sm whitespace-pre-wrap` |
+| ADE | `ade/v2/workflows/inspector/AdeStepAgentFields.vue:121` | default | `text-kira-sm text-muted-foreground` |
+| Docker | `docker-ui/src/components/DetailSection.vue:8` | section | `` |
+| Memory | `workbench/src/memory/AddMemoryDialog.vue:136` | default | `gap-0.5` |
+| Memory | `workbench/src/memory/MemoryStart.vue:126` | default | `gap-0.5` |
+| Memory | `workbench/src/memory/import/ImportJobDetail.vue:290` | default | `gap-0` |
+| Memory | `workbench/src/memory/settings/AgentMcpSection.vue:44` | default | `font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal` |
+| Memory | `workbench/src/memory/settings/CheckHookSection.vue:32` | default | `font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal` |
+| Memory | `workbench/src/memory/settings/CheckHookSection.vue:54` | default | `font-data whitespace-pre-wrap break-all select-all text-kira-sm leading-normal` |
+| Mobile | `mobile/screens/PairScreen.vue:67` | default | `flex flex-col gap-1` |
+| Runs | `workbench/src/automations/form/ParamsEditor.vue:158` | default | `` |
+| Runs | `workbench/src/automations/form/ScheduleFields.vue:97` | default | `gap-3` |
+| Runs | `workbench/src/automations/run/RunPreview.vue:40` | default | `text-kira-sm` |
+| Settings | `workbench/settings/CliToolsPane.vue:70` | default | `flex flex-col gap-2 p-3` |
+| Shell | `hostview/CommentComposer.vue:81` | section | `relative gap-2 p-2` |
+| Shell | `hostview/CommentComposer.vue:105` | default | `min-h-16` |
+| Studio | `studio/project/FiltersDialog.vue:234` | list | `flex max-h-56 flex-col gap-px overflow-y-auto` |
+| Studio | `studio/project/FiltersDialog.vue:279` | list | `flex max-h-56 flex-col gap-px overflow-y-auto` |
+| Studio | `studio/project/connection/ConnectionMaskReview.vue:141` | section | `` |
+| Studio | `studio/project/connection/ConnectionPrivacyTab.vue:54` | section | `` |
+| Studio | `studio/project/connection/PrivacyOverview.vue:18` | default | `gap-1` |
+| Studio | `studio/views/console/ExplainResultView.vue:155` | list | `` |
+| Studio | `studio/views/httprequest/TimelinePane.vue:250` | default | `gap-0.5` |
+| Studio | `studio/workbench/settings/ApiAccessRulesSection.vue:83` | list | `flex-row items-center justify-between gap-1.5` |
+| Studio | `studio/workbench/settings/McpExposureRow.vue:23` | list | `flex-row items-center justify-between gap-1.5` |
+| Studio | `studio/workbench/settings/StudioMcpConnectionsPane.vue:53` | list | `flex-row items-center justify-between gap-1.5` |
+| Theme | `theme/src/components/CodeBlock.vue:11` | default | `` |
+| Theme | `theme/src/components/ScriptProgress.vue:44` | default | `` |
+
+### A.4 Bare `Label` as a field label (beside an input, not wrapping a checkbox/switch)
+
+Files with bare `Label` (any use; Part 3 classifies each use against RF.1): `ade/v2/AdeAddPopover.vue` (3), `ade/v2/dialog/AdeAgentDialog.vue` (2), `ade/v2/panel/AdeMainTab.vue` (2), `ade/v2/panel/AdeRow.vue` (1), `ade/v2/plan/AdeHistoryBar.vue` (1), `ade/v2/port/AdePortExportDialog.vue` (1), `ade/v2/repos/AdeReposPage.vue` (1), `ade/v2/request/BranchRequestBody.vue` (2), `ade/v2/request/DetailsEditBody.vue` (1), `ade/v2/review/AdeWorkflowReviewPanel.vue` (1), `ade/v2/run/AdeRunDialog.vue` (2), `ade/v2/stage/AdeStageDialog.vue` (2), `ade/v2/workflows/AdeWorkflowGraph.vue` (1), `ade/v2/workflows/inspector/AdeInspectorRow.vue` (1), `ade/v2/workflows/inspector/AdeStepResults.vue` (1), `ade/v2/workflows/statuses/AdeTaskStatuses.vue` (2), `studio/api/ApiAgentAccessForm.vue` (1), `studio/api/SaveRequestDialog.vue` (2), `docker-ui/src/components/DockerPanel.vue` (1), `git-ui/src/components/FileTreeToolbar.vue` (1), `studio/kubernetes/components/ClusterMcpDialog.vue` (1), `workbench/src/memory/AddMemoryDialog.vue` (3), `workbench/src/memory/MemoryPanel.vue` (1), `workbench/src/memory/ScopeField.vue` (2), `workbench/src/memory/distill/DistillResult.vue` (2), `workbench/src/memory/import/ImportConfirmDialog.vue` (3), `mobile/screens/PairScreen.vue` (1), `workbench/src/automations/RunFileDialog.vue` (1), `workbench/src/automations/form/McpServerTools.vue` (1), `workbench/src/automations/form/McpToolsField.vue` (1), `workbench/src/automations/form/ParamsEditor.vue` (2), `workbench/src/automations/form/RunFolderTab.vue` (1), `workbench/src/automations/form/RunMcpTab.vue` (1), `workbench/src/automations/form/ScheduleFields.vue` (2), `workbench/src/automations/form/SmartSettingsFields.vue` (1), `workbench/src/automations/form/ToolsField.vue` (1), `workbench/src/automations/run/ParamsForm.vue` (1), `workbench/settings/AdvancedPane.vue` (3), `workbench/settings/AgentPane.vue` (5), `workbench/settings/AppearancePane.vue` (2), `workbench/settings/CapturePane.vue` (2), `workbench/settings/ConfigSyncPane.vue` (3), `workbench/settings/DateFormatField.vue` (1), `workbench/settings/ExperimentalPane.vue` (1), `workbench/settings/FileTypesPane.vue` (1), `workbench/settings/GitPane.vue` (4), `workbench/settings/MemoryPane.vue` (1), `workbench/settings/MobileAccessPane.vue` (5), `workbench/settings/UpdatesPane.vue` (1), `workbench/src/settings/fields/FontFamilyField.vue` (1), `workbench/src/settings/fields/FontSizeField.vue` (1), `workbench/src/settings/fields/LogLevelField.vue` (1), `workbench/src/settings/fields/NotifyPromptsField.vue` (1), `workbench/src/settings/fields/WordWrapField.vue` (1), `configsync/ConfigSyncUnitRow.vue` (1), `studio/approvals/ReviewResultOption.vue` (1), `studio/project/FiltersDialog.vue` (2), `studio/project/connection/CheckboxRow.vue` (1), `studio/project/connection/ConnectionMcpTables.vue` (1), `studio/project/credentialPaste/CredentialPastePanel.vue` (1), `studio/views/documents/ProjectionMenu.vue` (1), `studio/views/grid/ColumnsMenu.vue` (1), `studio/views/httprequest/RequestSettingsPane.vue` (14), `studio/views/stream/StreamComposeMessage.vue` (3), `studio/views/stream/StreamFilterRow.vue` (1), `studio/workbench/GenerateDataDialog.vue` (2), `studio/workbench/UploadObjectDialog.vue` (2), `studio/workbench/apiaccess/ApiAccessRuleDialog.vue` (3), `studio/workbench/settings/ApiAccessRulesSection.vue` (1), `studio/workbench/settings/ApiPane.vue` (7), `studio/workbench/settings/CachePane.vue` (3), `studio/workbench/settings/DataPane.vue` (1), `studio/workbench/settings/StudioMcpApiPane.vue` (2), `studio/workbench/settings/StudioMcpServerPane.vue` (3), `theme/src/SwatchRadio.vue` (1)
+
+### A.5 Headings h1-h6 (24)
+
+| Module | File:line | tag | class |
+|---|---|---|---|
+| ADE | `ade/v2/later/AdeShelfSection.vue:51` | h3 | `shrink-0 px-3 pb-1 pt-3 text-kira-lg font-medium` |
+| ADE | `ade/v2/needs/AdeAllSessions.vue:131` | h3 | `m-0 truncate text-kira-lg font-medium` |
+| ADE | `ade/v2/panel/AdeArchivedPanel.vue:152` | h3 | `m-0 line-clamp-2 min-w-0 flex-1 break-words text-kira-lg font-medium text-fg` |
+| ADE | `ade/v2/panel/AdeBranchPanel.vue:319` | h3 | `m-0 line-clamp-2 min-w-0 flex-1 break-all font-data text-kira-lg font-medium text-fg` |
+| ADE | `ade/v2/port/AdePortExportDialog.vue:137` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/port/AdePortExportDialog.vue:209` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/port/AdePortExportDialog.vue:231` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/port/AdePortResult.vue:14` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/settings/AdeSettingsResult.vue:51` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/settings/AdeSettingsSecrets.vue:75` | h3 | `m-0 text-kira-lg font-medium` |
+| ADE | `ade/v2/workflows/statuses/AdeTaskStatuses.vue:258` | h4 | `m-0 text-kira-lg font-medium text-fg` |
+| API | `studio/api/ApiAgentAccess.vue:28` | h3 | `m-0 text-kira-lg font-medium` |
+| API | `studio/api/ApiSecrets.vue:77` | h3 | `m-0 text-kira-lg font-medium` |
+| Docker | `docker-ui/src/components/EngineOverview.vue:173` | h2 | `text-kira-lg font-medium` |
+| Git | `git-ui/src/components/review/ReviewNoBranch.vue:16` | h2 | `text-kira-lg font-medium text-fg` |
+| Git | `git-ui/src/components/review/ReviewView.vue:485` | h2 | `text-kira-lg font-medium text-fg` |
+| Memory | `workbench/src/memory/distill/DistillResult.vue:180` | h3 | `m-0 text-kira-lg font-medium` |
+| Memory | `workbench/src/memory/distill/DistillRewriteResult.vue:76` | h3 | `m-0 text-kira-lg font-medium` |
+| Mobile | `mobile/AppShell.vue:49` | h1 | `m-0 flex-1 text-kira-lg font-medium` |
+| Mobile | `mobile/components/PhoneApprovals.vue:45` | h2 | `m-0 flex items-center gap-2 px-3 pt-3 text-kira-lg font-medium text-fg` |
+| Mobile | `mobile/screens/PairScreen.vue:58` | h1 | `m-0 text-kira-lg font-medium` |
+| Mobile | `mobile/screens/TerminalScreen.vue:151` | h1 | `m-0 min-w-0 flex-1 truncate text-kira-lg font-medium` |
+| Runs | `workbench/src/automations/RunSecretsSection.vue:39` | h3 | `m-0 text-kira-lg font-medium` |
+| Workbench | `workbench/src/llmPrompts/PromptDetail.vue:81` | h3 | `m-0 min-w-0 truncate text-kira-lg font-medium` |
+
+### A.6 Checkbox with custom indicator or size class
+
+34 uses: `studio/api/ApiVariablesTable.vue:114`, `studio/approvals/ReviewResultOption.vue:34`, `studio/project/DataGripImportDialog.vue:229`, `studio/project/FiltersDialog.vue:246`, `studio/project/FiltersDialog.vue:301`, `studio/project/connection/CheckboxRow.vue:12`, `studio/project/connection/ConnectionMcpTables.vue:138`, `studio/project/connection/ConnectionMcpTables.vue:177`, `studio/views/documents/ProjectionMenu.vue:108`, `studio/views/grid/ColumnsMenu.vue:166`, `studio/views/grid/ColumnsMenu.vue:177`, `studio/views/httprequest/RequestSettingsPane.vue:135`, `studio/views/httprequest/RequestSettingsPane.vue:170`, `studio/views/httprequest/RequestSettingsPane.vue:206`, `studio/views/httprequest/RequestSettingsPane.vue:240`, `studio/views/httprequest/RequestSettingsPane.vue:252`, `studio/views/httprequest/RequestSettingsPane.vue:272`, `studio/views/httprequest/RequestSettingsPane.vue:286`, `studio/views/httprequest/RequestSettingsPane.vue:308`, `studio/views/httprequest/RequestSettingsPane.vue:339`, `studio/views/httprequest/RequestSettingsPane.vue:351`, `studio/views/httprequest/ResponseHistoryList.vue:213`, `studio/views/shared/fields/FieldRowsTable.vue:288`, `studio/views/stream/StreamFilterRow.vue:252`, `git-ui/src/components/FileTree.vue:493`, `git-ui/src/components/FileTree.vue:530`, `workbench/src/automations/form/ParamsEditor.vue:232`, `workbench/src/automations/form/ParamsEditor.vue:275`, `workbench/src/automations/form/ParamsEditor.vue:286`, `workbench/src/automations/form/ToolsField.vue:73`, `workbench/src/automations/run/ParamsForm.vue:110`, `workbench/src/memory/distill/DistillResult.vue:99`, `workbench/src/memory/distill/DistillResult.vue:112`, `workbench/src/memory/import/ImportConfirmDialog.vue:188`
+
+### A.7 ADE tone classes in `.vue` files (all lines; Part 7 sorts board from non-board)
+
+56 lines: `ade/v2/AdeActivityIcon.vue:22`, `ade/v2/AdeActivityIcon.vue:28`, `ade/v2/AdeActivityIcon.vue:33`, `ade/v2/AdeActivityIcon.vue:38`, `ade/v2/context/AdeContextPane.vue:77`, `ade/v2/dialog/AdeAgentDialog.vue:225`, `ade/v2/links/AdeLinkStrip.vue:201`, `ade/v2/needs/AdeAllSessionRow.vue:30`, `ade/v2/needs/AdeAllSessionRow.vue:32`, `ade/v2/needs/AdeAllSessionRow.vue:33`, `ade/v2/needs/AdeAllSessionRow.vue:34`, `ade/v2/needs/AdeNeedsPage.vue:51`, `ade/v2/panel/AdeBranchPanel.vue:307`, `ade/v2/panel/AdeBranchPanel.vue:333`, `ade/v2/panel/AdeRunOutcome.vue:160`, `ade/v2/panel/AdeRunOutcome.vue:185`, `ade/v2/panel/AdeStepBlock.vue:90`, `ade/v2/panel/AdeStepBlock.vue:145`, `ade/v2/panel/AdeStepBlock.vue:146`, `ade/v2/panel/AdeStepBlock.vue:147`, `ade/v2/panel/AdeStepBlock.vue:148`, `ade/v2/panel/AdeStepBlock.vue:160`, `ade/v2/panel/AdeStepBlock.vue:161`, `ade/v2/panel/AdeStepBlock.vue:162`, `ade/v2/panel/AdeStepBlock.vue:163`, `ade/v2/panel/AdeStepBlock.vue:260`, `ade/v2/panel/AdeStepBlock.vue:265`, `ade/v2/panel/AdeTaskIssueLine.vue:98`, `ade/v2/plan/AdeBranchChips.vue:14`, `ade/v2/plan/AdeBranchChips.vue:25`, `ade/v2/plan/AdeBranchProg.vue:11`, `ade/v2/plan/AdeBranchProg.vue:15`, `ade/v2/plan/AdeBranchTip.vue:29`, `ade/v2/plan/AdeBranchTip.vue:30`, `ade/v2/plan/AdeBranchTip.vue:31`, `ade/v2/plan/AdeBranchTip.vue:34`, `ade/v2/plan/AdeDayBand.vue:91`, `ade/v2/plan/AdeDayBand.vue:97`, `ade/v2/plan/AdeDayBand.vue:172`, `ade/v2/plan/AdeDayBand.vue:183`, `ade/v2/plan/AdeStepMenu.vue:33`, `ade/v2/plan/AdeTaskCard.vue:96`, `ade/v2/plan/AdeTaskCard.vue:265`, `ade/v2/plan/AdeTaskChildren.vue:49`, `ade/v2/plan/AdeTaskSessions.vue:57`, `ade/v2/review/AdeReviewSync.vue:165`, `ade/v2/sessions/AdeSessionsRow.vue:133`, `ade/v2/settings/AdeSettingsPane.vue:77`, `ade/v2/workflows/AdeStepNode.vue:116`, `ade/v2/workflows/AdeStepNode.vue:283`, `ade/v2/workflows/AdeStepsTab.vue:134`, `ade/v2/workflows/AdeWorkflowsTab.vue:177`, `workbench/src/automations/RunFileDialog.vue:418`, `workbench/src/automations/ScriptBrokenRow.vue:30`, `workbench/src/automations/ScriptBrokenRow.vue:33`, `workbench/src/automations/ScriptRow.vue:78`
+
+### A.8 SecondaryTabs (79)
+
+| Module | File:line | variant | size |
+|---|---|---|---|
+| ADE | `ade/v2/AdeAddPopover.vue:188` | tabs | kira-lg |
+| ADE | `ade/v2/AdeAddPopover.vue:224` | choice | kira-lg |
+| ADE | `ade/v2/agents/AdeAgentsPage.vue:40` | tabs | default |
+| ADE | `ade/v2/dialog/AdeAgentDialog.vue:241` | segmented | kira-lg |
+| ADE | `ade/v2/links/AdeLinkCard.vue:122` | segmented | default |
+| ADE | `ade/v2/needs/AdeAllSessions.vue:105` | segmented | kira-lg |
+| ADE | `ade/v2/panel/AdeEstimateField.vue:82` | segmented | kira |
+| ADE | `ade/v2/panel/AdePanelFrame.vue:19` | tabs | default |
+| ADE | `ade/v2/review/AdeReviewWindow.vue:163` | tabs | default |
+| ADE | `ade/v2/settings/AdeSettingsResult.vue:53` | tabs | default |
+| ADE | `ade/v2/stage/AdeStageDialog.vue:170` | choice | kira-lg |
+| ADE | `ade/v2/workflows/AdeLibraryStepEditor.vue:71` | segmented | kira-lg |
+| ADE | `ade/v2/workflows/AdeStepInspector.vue:221` | tabs | default |
+| ADE | `ade/v2/workflows/AdeWorkflowEditor.vue:38` | segmented | kira-lg |
+| ADE | `ade/v2/workflows/AdeWorkflowsPage.vue:40` | tabs | kira-lg |
+| ADE | `ade/v2/workflows/inspector/AdeStepAgentFields.vue:58` | tabs | default |
+| ADE | `ade/v2/workflows/inspector/AdeStepRunFields.vue:100` | tabs | default |
+| ADE | `ade/v2/workflows/inspector/AdeStepRunFields.vue:124` | tabs | default |
+| ADE | `ade/v2/workflows/inspector/AdeStepSandbox.vue:97` | tabs | default |
+| API | `studio/api/ApiVariablesDialog.vue:174` | tabs | default |
+| Docker | `docker-ui/src/components/ContainerDetail.vue:232` | tabs | default |
+| Docker | `docker-ui/src/components/ContainerEditView.vue:247` | tabs | default |
+| Docker | `docker-ui/src/components/DockerPanel.vue:134` | tabs | default |
+| Git | `repo/GitPanel.vue:159` | tabs | default |
+| Git | `repo/GitPanel.vue:218` | tabs | default |
+| Git | `repo/RepoFilePane.vue:94` | tabs | default |
+| Git | `repo/RepoScriptField.vue:57` | tabs | default |
+| Git | `views/repo/LocalFileView.vue:95` | tabs | default |
+| Git | `views/repo/RepoDiffView.vue:314` | segmented | default |
+| Git | `views/repo/RepoFileView.vue:201` | tabs | default |
+| Git | `views/repo/ReviewThread.vue:254` | segmented | default |
+| Git | `git-ui/src/components/FileTreeToolbar.vue:75` | segmented | default |
+| Git | `git-ui/src/components/RefsPopover.vue:444` | tabs | default |
+| Git | `git-ui/src/components/dialogs/StashDialog.vue:417` | choice | kira-lg |
+| Git | `git-ui/src/components/dialogs/WorktreeDialog.vue:239` | choice | kira-lg |
+| Git | `git-ui/src/components/review/ReviewFilesPane.vue:188` | segmented | default |
+| Git | `git-ui/src/components/review/ReviewToolbars.vue:197` | tabs | default |
+| Git | `git-ui/src/components/review/ReviewToolbars.vue:226` | segmented | default |
+| Kubernetes | `studio/kubernetes/components/ClusterMcpDialog.vue:110` | choice | kira-lg |
+| Kubernetes | `studio/kubernetes/components/KindBar.vue:61` | tabs | default |
+| Kubernetes | `studio/kubernetes/components/ResourceTabPanel.vue:54` | tabs | default |
+| Memory | `workbench/src/memory/ScopeField.vue:29` | segmented | kira-lg |
+| Memory | `workbench/src/memory/distill/DistillView.vue:127` | segmented | default |
+| Memory | `workbench/src/memory/distill/DistillView.vue:128` | segmented | default |
+| Memory | `workbench/src/memory/import/ImportConfirmDialog.vue:159` | segmented | kira-lg |
+| Memory | `workbench/src/memory/import/ImportView.vue:49` | tabs | default |
+| Runs | `workbench/src/automations/RunFileDialog.vue:251` | tabs | default |
+| Runs | `workbench/src/automations/form/ParamsEditor.vue:167` | segmented | kira-lg |
+| Runs | `workbench/src/automations/form/RunFolderTab.vue:71` | choice | kira-lg |
+| Runs | `workbench/src/automations/form/RunMcpTab.vue:77` | choice | kira-lg |
+| Runs | `workbench/src/automations/form/RunMcpTab.vue:93` | choice | kira-lg |
+| Runs | `workbench/src/automations/run/ParamsForm.vue:81` | choice | kira-lg |
+| Settings | `workbench/src/settings/fields/RowDensityField.vue:49` | segmented | default |
+| Shell | `hostview/CommentComposer.vue:88` | segmented | default |
+| Studio | `studio/approvals/TabbedContent.vue:24` | text | default |
+| Studio | `studio/project/ConnectionFileDialog.vue:248` | tabs | default |
+| Studio | `studio/project/connection/ConnectionGeneralTab.vue:187` | segmented | kira-lg |
+| Studio | `studio/project/connection/ConnectionMcpMasked.vue:53` | segmented | kira-lg |
+| Studio | `studio/project/connection/ConnectionMcpReview.vue:78` | segmented | kira-lg |
+| Studio | `studio/project/connection/ConnectionMcpTab.vue:259` | segmented | kira-lg |
+| Studio | `studio/proof/ProofChangePanel.vue:82` | segmented | default |
+| Studio | `studio/views/console/kibana/QueryBar.vue:67` | segmented | default |
+| Studio | `studio/views/definition/DefinitionView.vue:289` | tabs | default |
+| Studio | `studio/views/documents/DocumentToolbar.vue:94` | segmented | default |
+| Studio | `studio/views/grid/DataToolbar.vue:309` | segmented | default |
+| Studio | `studio/views/grid/PreviewCommandPanel.vue:117` | segmented | default |
+| Studio | `studio/views/grpcrequest/GrpcRequestView.vue:370` | segmented | default |
+| Studio | `studio/views/grpcrequest/GrpcRequestView.vue:433` | tabs | default |
+| Studio | `studio/views/grpcrequest/ResponsePane.vue:335` | tabs | default |
+| Studio | `studio/views/grpcrequest/SchemaBrowser.vue:123` | segmented | default |
+| Studio | `studio/views/httprequest/HttpRequestView.vue:471` | tabs | default |
+| Studio | `studio/views/httprequest/RequestBodyPane.vue:203` | segmented | default |
+| Studio | `studio/views/httprequest/ResponsePane.vue:322` | tabs | default |
+| Studio | `studio/views/httprequest/ResponsePane.vue:341` | tabs | default |
+| Studio | `studio/views/shared/celleditor/TimestampPane.vue:140` | segmented | default |
+| Studio | `studio/views/shared/keyvalue/KeyValueToolbar.vue:128` | segmented | default |
+| Studio | `studio/views/stream/StreamToolbar.vue:283` | segmented | default |
+| Workbench | `workbench/src/components/OpLogToolbar.vue:67` | segmented | default |
+| Workbench | `workbench/src/llmPrompts/PromptDetail.vue:110` | tabs | default |
+
+### A.9 Hand `text-error` text with a static class (RF.7; bound `:class` uses add 21 more, found by Part 3 grep)
+
+21 uses: `ade/v2/port/AdePortImportDialog.vue:170`, `ade/v2/review/AdeReviewRemoved.vue:116`, `configsync/ConfigSyncUnitRow.vue:77`, `hostview/CommentComposer.vue:113`, `studio/project/DataGripImportDialog.vue:323`, `studio/project/TreeRow.vue:218`, `studio/project/TreeRow.vue:233`, `studio/proof/ProofScreenshotMenu.vue:100`, `studio/views/shared/page/SearchToolbar.vue:308`, `git-ui/src/components/StackList.vue:180`, `theme/src/components/InlineState.vue:13`, `workbench/src/automations/run/AdeContextFields.vue:53`, `workbench/src/automations/run/AdeContextFields.vue:94`, `workbench/src/automations/run/ParamsForm.vue:61`, `workbench/src/automations/runs/RunOutcomeBlock.vue:68`, `workbench/src/automations/runs/RunOutcomeBlock.vue:75`, `workbench/src/automations/runs/RunOutcomeBlock.vue:83`, `workbench/src/automations/runs/RunOutcomeBlock.vue:84`, `workbench/src/components/OpLogDetail.vue:143`, `workbench/src/components/OpLogPanel.vue:499`, `workbench/src/memory/distill/DistillView.vue:146`
+
+### A.10 EmptyState with `#media` slot
+
+12 uses: `studio/kubernetes/components/ClusterUnavailable.vue:49`, `studio/views/documents/DocumentView.vue:448`, `studio/views/shared/keyvalue/KeyValueRowsTable.vue:183`, `studio/views/stream/StreamRowsTable.vue:247`, `studio/views/stream/StreamRowsTable.vue:253`, `docker-ui/src/components/ConnectionState.vue:13`, `docker-ui/src/components/ContainerDetail.vue:120`, `docker-ui/src/components/UnavailableState.vue:52`, `git-ui/src/components/DetailPane.vue:106`, `git-ui/src/components/GitBlockedPanel.vue:23`, `git-ui/src/components/StashDetailPane.vue:105`, `workbench/src/components/QueryState.vue:78`
+
