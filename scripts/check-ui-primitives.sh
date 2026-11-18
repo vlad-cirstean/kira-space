@@ -20,6 +20,7 @@
 # Guard U125: docs/v0.3.17/plans/P672-part7.md.
 # Guard U126: docs/v0.3.17/plans/P672-part8.md.
 # Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
+# Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -243,7 +244,7 @@ U87@@v@@Disclosure.vue@@<details (use Disclosure)@@<details\b
 U88@@vt@@EmptyState.vue|PairScreen.vue@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py)-(?:0\.25|1\.25|1\.75|2\.5|3\.5|5|6|7|8|10|12)(?![\w.-])
 U89@@vt@@linkify.ts|badgeClass.ts@@cursor-pointer outside link owners, or cursor-help/copy (controls and rows are cursor-default)@@${TOK}cursor-(?:pointer|help|copy)(?![\w-])
 U90@@vt@@@@hover tone override, or opacity as muted (use tone, text-muted-foreground)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])
-U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])
+U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate, also a TextTooltip repeating the truncated text (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])|<TextTooltip\b(?&t)\s:text="(?<u91>[^"]+)"(?&t)>\s*<(?:span|div|button|Badge)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])[^"]*"(?&t)>\s*\{\{\s*\k<u91>\s*\}\}
 U92@@v@@SplitButton.vue@@<Button :disabled carries a pending flag, or Spinner inside Button (use pending)@@<Button\b(?&t)\s:disabled="[^"]*(?i:pending|busy|saving|loading|running|installing|committing)|(?s)<Button\b(?&t)(?<!/)>(?:(?!</Button>).)*?<Spinner\b
 U93@@vt@@/theme/src/format.ts|/testing/!@@toFixed or {{ }}% (use formatPercent, formatBytes, formatDuration)@@toFixed\(|\}\}%
 U94@@v@@@@heading element without text-kira-lg font-medium@@<h[1-6]\b(?!(?=(?&t)\sclass="[^"]*${TOK}text-kira-lg(?![\w-]))(?=(?&t)\sclass="[^"]*${TOK}font-medium(?![\w-])))
@@ -263,20 +264,20 @@ U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|Toolti
 U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
 U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
 U109@@s@@/behaviour/!|/testing/!@@panel view state in a component ref (use useKeptState, useKeptScroll)@@const \w*(?:[Ss]earch|[Qq]uery|[Ff]ilter|[Nn]eedle)\w*\s*=\s*ref\b|reactive\(\{[^}]*[Ss]earch\w*:\s*''
-U110@@v@@@@Checkbox restyled: size class or a check icon child (the primitive draws the 14px box and its CheckIcon)@@<Checkbox\b(?&t)\s:?class="[^"]*${TOK}size-|(?s)<Checkbox\b(?&t)(?<!/)>(?:(?!</Checkbox>).)*?<CodiconIcon\b
+U110@@v@@@@Checkbox restyled: size, colour, fill or shape class, or a check icon child (the primitive draws the 14px box and its CheckIcon; classes place it only)@@<Checkbox\b(?&t)\s:?class="[^"]*${TOK}size-|(?s)<Checkbox\b(?&t)(?<!/)>(?:(?!</Checkbox>).)*?<CodiconIcon\b|<Checkbox\b(?&t)\s:?class="[^"]*${TOK}(?:bg-|border-|rounded|text-)
 U111@@v@@@@PopoverContent padding or gap class (default form popover, or flush for a list popover)@@<PopoverContent\b(?&t)\s:?class="[^"]*${TOK}(?:p|px|py|pt|pb|gap)-
 U112@@v@@DetailHeader.vue@@heading element outside DetailHeader (titles DetailHeader, sections SectionHeading or FieldLegend, cards CardTitle)@@<h[1-6]\b
 U113@@v@@@@KeyValueList class sets grid, gap, type or alignment (use density)@@<KeyValueList\b(?&t)\s:?class="[^"]*${TOK}(?:grid-cols-|gap-|text-|font-|items-|py-|\[&)
 U113@@v@@KeyValueList.vue@@hand key-value grid or raw <dl> (use KeyValueList)@@${TOK}grid-cols-\[(?:auto|max-content|72px|7\.5rem)_(?:1fr|minmax\(0,1fr\))\]|<dl\b
 U114@@v@@/ade/v2/plan/@@ADE tone class off the plan board (theme tones and Badge elsewhere, P672 D1)@@${TOK}(?:text|bg|border)-tone-[a-z]
 U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
-U116@@vt@@@@toned menu icon (menu icons stay muted; a destructive item uses variant destructive)@@iconClass:\s*['"\x60][^'"\x60]*${TOK}text-(?:ok|warn|error|info|tone-)
+U116@@v@@@@toned icon in a hand menu entry (menu icons stay muted)@@(?s)<DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)\b(?:(?!</DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)>).)*?<CodiconIcon\b(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info|tone-)
 U117@@v@@@@segmented SecondaryTabs inside a form (a form value is variant choice)@@(?s)<(?:Field|FieldSet|DialogBody)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet|DialogBody)>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
 U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5)@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
-U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
+U123@@v@@@@plain-text Tooltip triple (use TextTooltip, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*</TooltipContent>\s*</Tooltip>
 U124@@v@@CodeBlock.vue@@Card class sets padding, gap, type or row layout (variant inset, section or list; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle)
 U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
