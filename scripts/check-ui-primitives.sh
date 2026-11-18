@@ -206,7 +206,6 @@ U112 packages/workbench/src/memory/distill/DistillRewriteResult.vue # 2026-11-18
 U113 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/ade/v2/panel/AdeArchivedPanel.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 6
-U113 apps/kira-space/frontend/src/ade/v2/panel/AdeMainTab.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/hostview/IssueSidebar.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/repo/RepoIdentity.vue # 2026-11-18 P672 Part 6
 U113 apps/kira-space/frontend/src/studio/approvals/ProofReviewBody.vue # 2026-11-18 P672 Part 6

@@ -2,7 +2,7 @@
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
@@ -23,8 +23,6 @@ import AdeTaskUpdates from '../updates/AdeTaskUpdates.vue';
 import type { TaskPatch } from '../wire';
 import AdeEstimateField from './AdeEstimateField.vue';
 import AdeMainBranches from './AdeMainBranches.vue';
-import AdeRow from './AdeRow.vue';
-import AdeRowDetail from './AdeRowDetail.vue';
 import AdeStatusPicker from './AdeStatusPicker.vue';
 import AdeWorkflowBlock from './AdeWorkflowBlock.vue';
 import { useEstimateWrite } from './useEstimateWrite';
@@ -71,105 +69,106 @@ useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
     class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-1.5 py-3 text-kira-md"
     data-testid="ade-main-tab"
   >
-    <dl class="m-0 flex flex-col">
-      <AdeRow term :label="t('common.field.status.label')">
-        <AdeStatusPicker :card="card" />
-        <AdeChip
-          v-if="card.blocked"
-          :label="t('space.common.status.blocked.status')"
-          tone="red"
-          data-testid="ade-task-blocked"
-        />
-        <span class="truncate" :class="rowMeta" data-testid="ade-task-status-why">{{ why }}</span>
-      </AdeRow>
-      <AdeRow term :label="t('space.ade.estimate.field.label')" label-for="ade-est-num">
-        <AdeEstimateField
-          :est="task.est"
-          :days="spanDays"
-          :error="est.error.value"
-          @save="est.save"
-        />
-      </AdeRow>
-      <AdeRow
+    <div class="@container flex flex-col gap-2 px-1.5" data-testid="ade-main-fields">
+      <Field orientation="responsive">
+        <FieldLabel>{{ t('common.field.status.label') }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <AdeStatusPicker :card="card" />
+          <AdeChip
+            v-if="card.blocked"
+            :label="t('space.common.status.blocked.status')"
+            tone="red"
+            data-testid="ade-task-blocked"
+          />
+          <span class="truncate" :class="rowMeta" data-testid="ade-task-status-why">{{ why }}</span>
+        </div>
+      </Field>
+      <Field orientation="responsive">
+        <FieldLabel for="ade-est-num">{{ t('space.ade.estimate.field.label') }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <AdeEstimateField
+            :est="task.est"
+            :days="spanDays"
+            :error="est.error.value"
+            @save="est.save"
+          />
+        </div>
+      </Field>
+      <Field
         v-if="task.branchRequestId"
-        term
-        :label="t('space.ade.taskTab.branchRequest.label')"
+        orientation="responsive"
         data-testid="ade-task-branch-request-row"
       >
-        <span>{{ t('space.ade.taskTab.branchRequest.status') }}</span>
-        <template #actions>
+        <FieldLabel>{{ t('space.ade.taskTab.branchRequest.label') }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <span>{{ t('space.ade.taskTab.branchRequest.status') }}</span>
           <Button
             variant="dialog"
             size="kira"
+            class="ml-auto"
             data-testid="ade-task-branch-request-open"
             @click="approvalsStore.open(`branch.request:${task.branchRequestId}`)"
             >{{
               t('space.ade.board.branchTag.review.label')
             }}</Button
           >
-        </template>
-      </AdeRow>
-      <AdeRow
-        v-if="card.parent"
-        term
-        :label="t('space.ade.orchestrator.parent.label')"
-        data-testid="ade-task-parent-row"
-      >
-        <AdeParentChip
-          :parent="card.parent"
-          @select="card.parent && boardUi.select(card.parent.id)"
-        />
-      </AdeRow>
-      <AdeRow v-if="!review" term>
-        <template #label>
-          <Label for="ade-task-parked" class="text-kira-sm font-normal text-muted-foreground">{{
-            t('space.ade.board.notMerging.label')
-          }}</Label>
-        </template>
-        <TextTooltip
-          :text="card.orchestrator ? t('space.ade.orchestrator.parkRefused.tooltip') : ''"
-        >
-          <TooltipDisabledTrigger :disabled="card.orchestrator">
-            <Switch
-              id="ade-task-parked"
-              :model-value="card.parked"
-              :disabled="card.orchestrator"
-              data-testid="ade-task-parked"
-              @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
-            />
-          </TooltipDisabledTrigger>
-        </TextTooltip>
-        <span class="truncate" :class="rowMeta">{{ t('space.ade.taskTab.notMerging.hint') }}</span>
-      </AdeRow>
-      <AdeRow v-if="!review" term data-testid="ade-task-orchestrator-row">
-        <template #label>
-          <Label
-            for="ade-task-orchestrator"
-            class="text-kira-sm font-normal text-muted-foreground"
-            >{{
-              t('space.ade.orchestrator.badge.label')
-            }}</Label
+        </div>
+      </Field>
+      <Field v-if="card.parent" orientation="responsive" data-testid="ade-task-parent-row">
+        <FieldLabel>{{ t('space.ade.orchestrator.parent.label') }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <AdeParentChip
+            :parent="card.parent"
+            @select="card.parent && boardUi.select(card.parent.id)"
+          />
+        </div>
+      </Field>
+      <Field v-if="!review" orientation="responsive">
+        <FieldLabel for="ade-task-parked">{{ t('space.ade.board.notMerging.label') }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <TextTooltip
+            :text="card.orchestrator ? t('space.ade.orchestrator.parkRefused.tooltip') : ''"
           >
-        </template>
-        <TextTooltip :text="toggle.why">
-          <TooltipDisabledTrigger :disabled="toggle.disabled">
-            <Switch
-              id="ade-task-orchestrator"
-              :model-value="card.orchestrator"
-              :disabled="toggle.disabled"
-              data-testid="ade-task-orchestrator"
-              @update:model-value="(v: boolean) => write({ kind: v ? 'orchestrator' : 'task' })"
-            />
-          </TooltipDisabledTrigger>
-        </TextTooltip>
-        <span class="truncate" :class="rowMeta">{{ t('space.ade.orchestrator.switch.hint') }}</span>
-      </AdeRow>
-    </dl>
-    <AdeRowDetail v-if="fieldError">
-      <Alert variant="error" data-testid="ade-task-error"
+            <TooltipDisabledTrigger :disabled="card.orchestrator">
+              <Switch
+                id="ade-task-parked"
+                :model-value="card.parked"
+                :disabled="card.orchestrator"
+                data-testid="ade-task-parked"
+                @update:model-value="(v: boolean) => write({ kind: v ? 'parked' : 'task' })"
+              />
+            </TooltipDisabledTrigger>
+          </TextTooltip>
+          <span class="truncate" :class="rowMeta">{{
+            t('space.ade.taskTab.notMerging.hint')
+          }}</span>
+        </div>
+      </Field>
+      <Field v-if="!review" orientation="responsive" data-testid="ade-task-orchestrator-row">
+        <FieldLabel for="ade-task-orchestrator">{{
+          t('space.ade.orchestrator.badge.label')
+        }}</FieldLabel>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <TextTooltip :text="toggle.why">
+            <TooltipDisabledTrigger :disabled="toggle.disabled">
+              <Switch
+                id="ade-task-orchestrator"
+                :model-value="card.orchestrator"
+                :disabled="toggle.disabled"
+                data-testid="ade-task-orchestrator"
+                @update:model-value="(v: boolean) => write({ kind: v ? 'orchestrator' : 'task' })"
+              />
+            </TooltipDisabledTrigger>
+          </TextTooltip>
+          <span class="truncate" :class="rowMeta">{{
+            t('space.ade.orchestrator.switch.hint')
+          }}</span>
+        </div>
+      </Field>
+      <Alert v-if="fieldError" variant="error" data-testid="ade-task-error"
         ><AlertDescription>{{ fieldError }}</AlertDescription></Alert
       >
-    </AdeRowDetail>
+    </div>
 
     <div v-if="card.orchestrator" class="flex flex-col gap-1 px-1.5">
       <span class="text-kira-sm text-subtle">{{ t('space.ade.orchestrator.children.label') }}</span>

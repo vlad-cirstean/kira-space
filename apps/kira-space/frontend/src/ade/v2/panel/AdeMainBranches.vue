@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -66,30 +67,28 @@ async function onAddRepo(id: string): Promise<void> {
 
 <template>
   <div class="flex flex-col">
-    <AdeRow :label="t('common.module.branches.label')">
-      <template #actions>
-        <ProjectPicker
-          v-if="!review && addProjects.options.value.length > 0"
-          v-model="addRepoValue"
-          size="kira"
-          testid="ade-add-repo"
-          :projects="addProjects.options.value"
-          :placeholder="t('space.ade.taskTab.addRepo.option')"
-          :aria-label="t('space.ade.taskTab.addRepo.aria')"
-          :title="t('space.ade.taskTab.addRepo.tooltip')"
-          class="max-w-50"
-          @select="(o) => onAddRepo(o.value)"
-        />
-        <Button
-          variant="dialog"
-          size="kira"
-          data-testid="ade-add-branch"
-          @click="addUi.openAttach(task.id, card.title)"
-        >
-          {{ t('space.ade.taskTab.addBranch.label') }}
-        </Button>
-      </template>
-    </AdeRow>
+    <SectionHeading :label="t('common.module.branches.label')">
+      <ProjectPicker
+        v-if="!review && addProjects.options.value.length > 0"
+        v-model="addRepoValue"
+        size="kira"
+        testid="ade-add-repo"
+        :projects="addProjects.options.value"
+        :placeholder="t('space.ade.taskTab.addRepo.option')"
+        :aria-label="t('space.ade.taskTab.addRepo.aria')"
+        :title="t('space.ade.taskTab.addRepo.tooltip')"
+        class="max-w-50"
+        @select="(o) => onAddRepo(o.value)"
+      />
+      <Button
+        variant="dialog"
+        size="kira"
+        data-testid="ade-add-branch"
+        @click="addUi.openAttach(task.id, card.title)"
+      >
+        {{ t('space.ade.taskTab.addBranch.label') }}
+      </Button>
+    </SectionHeading>
     <div
       v-for="{ row, pr } in lines"
       :key="row.id"
