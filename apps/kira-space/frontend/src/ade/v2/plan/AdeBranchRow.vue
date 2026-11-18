@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import BranchChip from '@theme/components/BranchChip.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
@@ -503,16 +504,13 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               </TextTooltip>
             </span>
           </AdeBranchTip>
-          <TextTooltip v-if="row.context" :text="row.context">
-            <span
-              class="min-w-0 flex-1 basis-0 truncate"
-              :class="rowMeta"
-              data-testid="ade-branch-context"
-              >{{
-                row.context
-              }}</span
-            >
-          </TextTooltip>
+          <span
+            v-if="row.context"
+            class="min-w-0 flex-1 basis-0"
+            :class="rowMeta"
+            data-testid="ade-branch-context"
+            ><TruncatedText :text="row.context" /></span
+          >
           <span v-else class="flex-1" />
         </div>
         <div class="flex items-center gap-1">
