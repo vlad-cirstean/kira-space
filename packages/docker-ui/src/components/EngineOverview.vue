@@ -219,15 +219,12 @@ function refresh(): Promise<void> {
                   }}</span>
                   <span class="text-muted-foreground">{{ t('common.state.running.status') }}</span>
                 </div>
-                <div class="mt-2 flex h-1.5 w-full overflow-hidden rounded-full bg-field">
+                <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-field">
                   <div class="bg-ok" :style="{ width: `${split.running}%` }" />
                   <div class="bg-warn" :style="{ width: `${split.paused}%` }" />
                   <div class="bg-subtle" :style="{ width: `${split.stopped}%` }" />
                 </div>
-                <div
-                  class="mt-2 text-kira-sm text-muted-foreground"
-                  data-testid="docker-engine-counts"
-                >
+                <div class="text-kira-sm text-muted-foreground" data-testid="docker-engine-counts">
                   {{
                     t('docker.engine.counts.label', {
                       stopped: engine.stopped,
@@ -245,14 +242,8 @@ function refresh(): Promise<void> {
                     t('docker.engine.of.label', { total: `${engine.cpus * 100}%` })
                   }}</span>
                 </div>
-                <div class="mt-2"><UsageBar :percent="cpuPercentOfCapacity" /></div>
-                <div class="mt-2"
-                  ><StatsSparkline
-                    :values="cpuSeries"
-                    :max="cpuCapacity"
-                    height-class="h-[2rem]"
-                  /></div
-                >
+                <UsageBar :percent="cpuPercentOfCapacity" />
+                <StatsSparkline :values="cpuSeries" :max="cpuCapacity" height-class="h-[2rem]" />
               </DetailSection>
               <DetailSection :title="t('common.module.memory.label')">
                 <div class="flex items-baseline gap-1.5">
@@ -263,14 +254,12 @@ function refresh(): Promise<void> {
                     t('docker.engine.of.label', { total: formatBytes(engine.memTotal) })
                   }}</span>
                 </div>
-                <div class="mt-2"><UsageBar :percent="memPercentOfTotal" /></div>
-                <div class="mt-2"
-                  ><StatsSparkline
-                    :values="memSeries"
-                    :max="engine.memTotal"
-                    height-class="h-[2rem]"
-                  /></div
-                >
+                <UsageBar :percent="memPercentOfTotal" />
+                <StatsSparkline
+                  :values="memSeries"
+                  :max="engine.memTotal"
+                  height-class="h-[2rem]"
+                />
               </DetailSection>
               <DetailSection :title="t('docker.engine.resources.title')" flush>
                 <button

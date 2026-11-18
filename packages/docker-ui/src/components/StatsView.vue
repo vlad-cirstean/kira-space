@@ -29,7 +29,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
       }}</p>
       <div v-else class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
         <DetailSection :title="t('docker.metric.cpu.label')">
-          <div class="mb-2 flex items-baseline justify-between">
+          <div class="flex items-baseline justify-between">
             <span class="text-kira-lg font-medium" data-testid="docker-stats-cpu">{{
               formatPercent(latest.cpuPercent)
             }}</span>
@@ -40,7 +40,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
           <StatsSparkline :values="cpu" height-class="h-24" />
         </DetailSection>
         <DetailSection :title="t('common.module.memory.label')">
-          <div class="mb-2 flex items-baseline justify-between">
+          <div class="flex items-baseline justify-between">
             <span class="text-kira-lg font-medium" data-testid="docker-stats-mem">{{
               formatBytes(latest.memUsage)
             }}</span>

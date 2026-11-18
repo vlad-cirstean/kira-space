@@ -115,7 +115,7 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
           </TableRow>
         </TableBody>
       </Table>
-      <div v-if="topVolumes.length" class="mt-3">
+      <div v-if="topVolumes.length">
         <SectionHeading :label="t('docker.disk.volumesBySize.label')" />
         <div
           v-for="v in topVolumes"

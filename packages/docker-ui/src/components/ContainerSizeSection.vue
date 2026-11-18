@@ -41,7 +41,7 @@ const ago = useRelativeTime(takenAt);
       </span>
     </template>
 
-    <FieldError v-if="query.error.value" class="mb-2" data-testid="docker-size-error">{{
+    <FieldError v-if="query.error.value" data-testid="docker-size-error">{{
       query.error.value.message
     }}</FieldError>
 
