@@ -32,7 +32,6 @@ const props = withDefaults(defineProps<Props>(), {
     :as-child="asChild"
     :disabled="pending || undefined"
     :aria-busy="pending || undefined"
-    :aria-keyshortcuts="kbd || undefined"
     :class="
       cn(
         buttonVariants({ variant, size }),
