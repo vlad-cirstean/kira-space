@@ -21,9 +21,9 @@ import {
 } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
-import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import SortableList from '@workbench/components/SortableList.vue';
 import { computed, ref } from 'vue';
@@ -62,10 +62,7 @@ const ids = computed(() => statuses.value.map((s) => s.id));
 const error = ref('');
 const fresh = ref('');
 
-const colorItems = STATUS_COLORS.map((c) => ({
-  value: c,
-  label: t(`common.colour.${c}.label` as MessageKey),
-}));
+const statusColorLabel = (c: string): string => t(`common.colour.${c}.label` as MessageKey);
 
 async function commit(
   next: TaskStatusDef[],
@@ -202,29 +199,18 @@ async function confirmRemove(): Promise<void> {
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="start" class="w-auto" data-testid="ade-status-colors">
-                <RadioGroup
+                <SwatchPicker
                   :model-value="s.color"
+                  :colors="STATUS_COLORS"
+                  :swatch-class="(c) => STATUS_SWATCH_CLASS[c as StatusColor]"
+                  :color-label="statusColorLabel"
+                  testid-prefix="ade-status-color"
                   :aria-label="t('common.field.colour.label')"
                   class="grid grid-cols-8 gap-1.5"
                   @update:model-value="
-                    (v) => v !== s.color && edit(s.id, { color: String(v) as StatusColor })
+                    (v) => v !== s.color && edit(s.id, { color: v as StatusColor })
                   "
-                >
-                  <RadioGroupItem
-                    v-for="c in colorItems"
-                    :key="c.value"
-                    :value="c.value"
-                    :aria-label="c.label"
-                    :title="c.label"
-                    :class="[
-                      'size-4 border-transparent data-[state=checked]:border-fg',
-                      STATUS_SWATCH_CLASS[c.value],
-                    ]"
-                    :data-testid="`ade-status-color-${c.value}`"
-                  >
-                    <span />
-                  </RadioGroupItem>
-                </RadioGroup>
+                />
               </PopoverContent>
             </Popover>
             <AdeStatusName

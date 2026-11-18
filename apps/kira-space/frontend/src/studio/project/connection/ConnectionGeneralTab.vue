@@ -9,16 +9,14 @@ import {
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { colourLabel } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
-import SwatchRadio from '@theme/SwatchRadio.vue';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import SecretInput from '@workbench/components/SecretInput.vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
 import { revealConnectionSecret } from '../state/connectionReveal';
 import ConnectionEnginePicker from './ConnectionEnginePicker.vue';
@@ -38,6 +36,7 @@ const props = defineProps<{
   connectionName?: string;
 }>();
 const file = defineModel<ConnectionFileModel>({ required: true });
+const idBase = useId();
 const secrets = defineModel<{ password: string; uri: string }>('secrets', { required: true });
 
 const mode = computed(() => (file.value.mode === 'uri' ? 'uri' : 'fields'));
@@ -144,24 +143,14 @@ async function onBrowseDatabaseFile(): Promise<void> {
           }}</FieldError>
         </Field>
         <Field class="flex-none">
-          <FieldLabel>{{ t('common.field.colour.label') }}</FieldLabel>
-          <fieldset
-            class="color-picker m-0 flex h-6.5 flex-wrap items-center gap-1 border-0 p-0"
-            :aria-label="t('studio.project.connectionDialog.colour.aria')"
-          >
-            <TextTooltip
-              v-for="color in PALETTE_COLOR_CHOICES"
-              :key="color"
-              :text="colourLabel(color)"
-              ><SwatchRadio
-                name="connection-color"
-                :value="color"
-                :color="color"
-                :checked="(file.color ?? 'none') === color"
-                @change="file.color = color"
-              /></TextTooltip
-            >
-          </fieldset>
+          <FieldLabel :id="`${idBase}-colour`">{{ t('common.field.colour.label') }}</FieldLabel>
+          <SwatchPicker
+            :model-value="file.color ?? 'none'"
+            :colors="PALETTE_COLOR_CHOICES"
+            class="h-control"
+            :labelledby="`${idBase}-colour`"
+            @update:model-value="(v) => (file.color = v)"
+          />
         </Field>
       </div>
 

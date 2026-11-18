@@ -13584,9 +13584,6 @@
             "label": "Edit as dotenv text"
           }
         },
-        "colour": {
-          "aria": "Environment colour"
-        },
         "description": {
           "aria": "Variable description"
         },
@@ -16242,9 +16239,6 @@
         },
         "changeEngine": {
           "title": "Change engine"
-        },
-        "colour": {
-          "aria": "Connection colour"
         },
         "column": {
           "placeholder": "Column"

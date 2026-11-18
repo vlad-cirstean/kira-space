@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { PALETTE_COLOR_CHOICES, type PaletteColor } from '@shared/domain/color';
 import type { RunFile } from '@shared/domain/scripts';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
-import SwatchRadio from '@theme/SwatchRadio.vue';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import { computed, useId } from 'vue';
 import { useAutomationsModule } from '../module';
 import { paramsOf } from './runForm';
@@ -21,6 +20,7 @@ const props = defineProps<{
 const file = defineModel<RunFile>({ required: true });
 const ctx = useAutomationsModule();
 const listId = useId();
+const colourId = useId();
 
 const smart = computed(() => file.value.kind === 'smart');
 const params = computed(() => paramsOf(file.value));
@@ -73,23 +73,16 @@ const bodyError = computed(() => props.errorFor(smart.value ? '/prompt' : '/comm
           <option v-for="c in ctx.scripts.collections()" :key="c.name" :value="c.name" />
         </datalist>
       </Field>
-      <fieldset
-        class="color-picker m-0 flex h-control flex-wrap items-center gap-1 border-0 p-0"
-        :aria-label="t('common.field.colour.label')"
-      >
-        <TextTooltip
-          v-for="swatch in PALETTE_COLOR_CHOICES"
-          :key="swatch"
-          :text="swatch === 'none' ? t('common.field.noColour.label') : swatch"
-          ><SwatchRadio
-            name="script-color"
-            :value="swatch"
-            :color="swatch"
-            :checked="color === swatch"
-            @change="color = swatch"
-          /></TextTooltip
-        >
-      </fieldset>
+      <Field class="flex-none">
+        <FieldLabel :id="colourId">{{ t('common.field.colour.label') }}</FieldLabel>
+        <SwatchPicker
+          :model-value="color"
+          :colors="PALETTE_COLOR_CHOICES"
+          class="h-control"
+          :labelledby="colourId"
+          @update:model-value="(v) => (color = v as PaletteColor)"
+        />
+      </Field>
     </div>
 
     <ScriptBodyField

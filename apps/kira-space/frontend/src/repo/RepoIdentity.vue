@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { PALETTE_COLOR_CHOICES, type PaletteColor } from '@shared/domain/color';
 import KeyValueList from '@theme/components/KeyValueList.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Field, FieldError, FieldSet } from '@theme/components/ui/field';
-import { colourLabel } from '@theme/connColor';
+import { Field, FieldError, FieldLabel, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import SwatchRadio from '@theme/SwatchRadio.vue';
+import SwatchPicker from '@theme/SwatchPicker.vue';
 import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import type { Repo } from '../ade/v2/wire';
 import { useCodeReposStore } from '../state/coderepos';
-
-type ColourName = Parameters<typeof colourLabel>[0];
 
 // What the settings file does not hold: the repo's colour, its path and where it came from.
 const props = defineProps<{ repo: Repo }>();
@@ -20,6 +16,7 @@ const props = defineProps<{ repo: Repo }>();
 const codeRepos = useCodeReposStore();
 const color = computed(() => codeRepos.colorOf(props.repo.codeRepoId));
 const colorError = ref('');
+const labelId = useId();
 async function chooseColor(next: PaletteColor): Promise<void> {
   colorError.value = '';
   try {
@@ -45,25 +42,15 @@ const source = computed(() =>
 <template>
   <FieldSet data-testid="repo-config">
     <Field>
-      <span class="text-muted-foreground">{{ t('common.field.colour.label') }}</span>
-      <fieldset
-        class="m-0 flex h-control flex-wrap items-center gap-1 border-0 p-0"
-        :aria-label="t('common.field.colour.label')"
+      <FieldLabel :id="labelId">{{ t('common.field.colour.label') }}</FieldLabel>
+      <SwatchPicker
+        :model-value="color"
+        :colors="PALETTE_COLOR_CHOICES"
+        class="h-control"
+        :labelledby="labelId"
         data-testid="repo-color"
-      >
-        <TextTooltip
-          v-for="swatch in PALETTE_COLOR_CHOICES"
-          :key="swatch"
-          :text="colourLabel(swatch as ColourName)"
-          ><SwatchRadio
-            name="repo-color"
-            :value="swatch"
-            :color="swatch"
-            :checked="color === swatch"
-            @change="chooseColor(swatch)"
-          /></TextTooltip
-        >
-      </fieldset>
+        @update:model-value="(v) => chooseColor(v as PaletteColor)"
+      />
       <FieldError v-if="colorError" data-testid="repo-color-error">{{ colorError }}</FieldError>
     </Field>
     <KeyValueList>
