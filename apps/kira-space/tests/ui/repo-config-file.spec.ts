@@ -171,7 +171,7 @@ test('contract: a repo with a file error shows a dot, and unbound files list und
 
   await expect(page.locator(t('ade-repos-files-count'))).toHaveText('1');
   await page.locator(t('ade-repos-tab-files')).click();
-  await expect(page.locator(t('ade-repos-file'))).toHaveCount(1);
+  await expect(page.locator('[data-testid^="ade-repos-file-"]')).toHaveCount(1);
   await expect
     .poll(() => calls(control, IPC.repoConfigFile).map((e) => e.args))
     .toContainEqual({ path: dup.path, file: dup.file });

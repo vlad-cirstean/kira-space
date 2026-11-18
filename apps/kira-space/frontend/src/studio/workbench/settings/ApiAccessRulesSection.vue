@@ -46,7 +46,7 @@ const defaultItems = computed(() => [
     value: 'ask',
     label: t('studio.project.connectionDialog.mcp.prompt.label'),
     disabled: setDefault.pending.value,
-    testid: 'settings-db-mcp-api-default-ask',
+    testid: 'settings-db-mcp-api-default-ask-option',
   },
   {
     value: 'deny',

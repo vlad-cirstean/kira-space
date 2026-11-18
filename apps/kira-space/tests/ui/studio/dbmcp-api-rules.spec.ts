@@ -18,7 +18,7 @@ const empty = (page: Page) => page.locator('[data-testid="settings-db-mcp-api-ru
 
 async function addRule(page: Page, host: string, effect: 'allow' | 'deny', methods: string[]) {
   await page.click('[data-testid="settings-db-mcp-api-rules-add"]');
-  await page.selectOption('[data-testid="api-rule-effect"]', effect);
+  await page.click(`[data-testid="api-rule-effect-${effect}"]`);
   const input = page.locator('[data-testid="api-rule-hosts"] input');
   await input.fill(host);
   await input.press('Enter');

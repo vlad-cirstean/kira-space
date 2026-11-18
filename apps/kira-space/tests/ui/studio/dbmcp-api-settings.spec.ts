@@ -2,6 +2,7 @@ import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { expectOn } from '../support/toggleGroup';
 import { openSettings } from './support/settings';
 
 // Contract dbmcp-api-settings. Backend half: dbmcpflow TestApiToolsToggle and TestApiApprovalModes,
@@ -33,11 +34,10 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(on);
-  const select = page.locator('[data-testid="settings-db-mcp-api-approval"]');
-  await expect(select).toHaveValue('always');
+  await expectOn(page.locator('[data-testid="settings-db-mcp-api-approval-always"]'));
   await expect(page.locator('[data-testid="settings-db-mcp-api-never-warning"]')).toHaveCount(0);
 
-  await select.selectOption('never');
+  await page.click('[data-testid="settings-db-mcp-api-approval-never"]');
   await expect
     .poll(
       () =>

@@ -160,7 +160,7 @@ test('switching the kind to Review confirms, then saves a review block with appr
   await expect(page.locator(t('ade-wf-step-review'))).toBeVisible();
   await expect(page.locator(t('ade-wf-step-prompt'))).toHaveCount(0);
   await expect(node(page, 'pr')).toHaveAttribute('data-kind', 'review');
-  await page.locator(t('ade-wf-step-review-send-to')).selectOption('new');
+  await page.locator(t('ade-wf-step-review-send-to-new')).click();
   const args = await saved<SavedWorkflow>(page, control, 1);
   const step = stepOf(args, 'pr');
   expect(step?.kind).toBe('review');

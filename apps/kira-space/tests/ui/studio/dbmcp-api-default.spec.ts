@@ -3,6 +3,7 @@ import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { expectOn } from '../support/toggleGroup';
 import { openSettings } from './support/settings';
 
 type Rule = { effect: 'allow' | 'deny'; hosts: string[]; methods: string[] };
@@ -46,16 +47,16 @@ test('contract: default select sends the settings the backend enforces', async (
       .at(-1)?.args;
 
   await openPane(page);
-  await expect(page.locator(id('settings-db-mcp-api-default'))).toHaveValue('ask');
+  await expectOn(page.locator(id('settings-db-mcp-api-default-ask-option')));
   await expect(page.locator(id('settings-db-mcp-api-default-ask'))).toBeVisible();
   await expect(page.locator(id('settings-db-mcp-api-rules-no-allow'))).toBeHidden();
 
-  await page.selectOption(id('settings-db-mcp-api-default'), 'deny');
+  await page.click(id('settings-db-mcp-api-default-deny-option'));
   await expect.poll(lastSet).toEqual(deny);
   await expect(page.locator(id('settings-db-mcp-api-default-deny'))).toBeVisible();
   await expect(page.locator(id('settings-db-mcp-api-rules-no-allow'))).toBeVisible();
 
-  await page.selectOption(id('settings-db-mcp-api-default'), 'ask');
+  await page.click(id('settings-db-mcp-api-default-ask-option'));
   await expect.poll(lastSet).toEqual(ask);
   await expect(page.locator(id('settings-db-mcp-api-default-ask'))).toBeVisible();
   await expect(page.locator(id('settings-db-mcp-api-rules-no-allow'))).toBeHidden();
