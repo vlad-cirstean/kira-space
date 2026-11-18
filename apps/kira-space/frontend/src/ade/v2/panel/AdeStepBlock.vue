@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -9,7 +10,6 @@ import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu
 import { computed, ref } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
-import AdeTip from '../AdeTip.vue';
 import type { Tone } from '../board/actions';
 import type { StepRun } from '../board/progress';
 import { WAITING_SETUP_NOTES } from '../board/setupGate';
@@ -265,7 +265,7 @@ function logToggleLabel(runId: string): string {
         <span v-if="block.gated" :class="ADE_ROW_STATUS" class="text-tone-amber">{{
           t('space.ade.stepBlock.needsApproval.status')
         }}</span>
-        <AdeTip v-if="block.scope" :text="block.scope">
+        <TextTooltip v-if="block.scope" :text="block.scope">
           <span
             class="min-w-0 shrink truncate"
             :class="[rowMeta, block.step.kind === 'script' ? 'font-data' : '']"
@@ -274,7 +274,7 @@ function logToggleLabel(runId: string): string {
               block.scope
             }}</span
           >
-        </AdeTip>
+        </TextTooltip>
         <template v-if="block.step.approval" #actions>
           <Button
             variant="dialog-approve"
@@ -313,16 +313,16 @@ function logToggleLabel(runId: string): string {
             :run-id="rl.run.runId"
             :badge="rl.run.sandbox"
           />
-          <AdeTip v-if="rl.returns" :text="rl.returnsTip">
+          <TextTooltip v-if="rl.returns" :text="rl.returnsTip">
             <span class="shrink-0" data-testid="ade-run-returns" :data-spent="rl.returnsSpent"
               ><AdeChip :label="rl.returns" :tone="rl.returnsSpent ? 'red' : 'amber'" /></span
             >
-          </AdeTip>
-          <AdeTip v-if="rl.note" :text="rl.note">
+          </TextTooltip>
+          <TextTooltip v-if="rl.note" :text="rl.note">
             <span class="min-w-0 truncate" :class="rowMeta" data-testid="ade-run-note">{{
               rl.note
             }}</span>
-          </AdeTip>
+          </TextTooltip>
           <template #actions>
             <Button
               v-if="rl.hasLog"
@@ -334,7 +334,7 @@ function logToggleLabel(runId: string): string {
             >
               {{ logToggleLabel(rl.run.runId) }}
             </Button>
-            <AdeTip v-if="rl.canResume" :text="t('space.ade.stepBlock.resume.tooltip')">
+            <TextTooltip v-if="rl.canResume" :text="t('space.ade.stepBlock.resume.tooltip')">
               <Button
                 variant="dialog"
                 size="kira"
@@ -346,7 +346,7 @@ function logToggleLabel(runId: string): string {
               >
                 {{ t('common.action.resume.label') }}
               </Button>
-            </AdeTip>
+            </TextTooltip>
             <Button
               v-if="rl.canReview"
               variant="dialog"
@@ -357,7 +357,7 @@ function logToggleLabel(runId: string): string {
             >
               {{ t('space.ade.board.branchTag.review.label') }}
             </Button>
-            <AdeTip
+            <TextTooltip
               v-if="canTakeOver(rl.run)"
               :text="
                 rl.run.sandbox && rl.run.sandbox.access !== 'off'
@@ -376,7 +376,7 @@ function logToggleLabel(runId: string): string {
               >
                 {{ t('common.action.takeOver.label') }}
               </Button>
-            </AdeTip>
+            </TextTooltip>
             <Button
               v-if="rl.canRetry"
               variant="dialog"

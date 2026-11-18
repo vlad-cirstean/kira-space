@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -18,7 +19,6 @@ import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, useTemplateRef } from 'vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeParentChip from '../AdeParentChip.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeAutomationChip from '../automation/AdeAutomationChip.vue';
 import { changeBaseChoices } from '../board/changeBase';
 import { taskReviewTip } from '../board/reviewCode';
@@ -211,7 +211,7 @@ const boxClass = computed(() => {
           </div>
           <div class="flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden">
             <template v-if="p.hasWorkflow && !card.parked">
-              <AdeTip :text="p.workflowTip">
+              <TextTooltip :text="p.workflowTip">
                 <span
                   class="inline-flex w-12 shrink-0 items-center gap-0.5"
                   data-testid="ade-step-segs"
@@ -223,9 +223,9 @@ const boxClass = computed(() => {
                     :class="segClass(seg.state)"
                   />
                 </span>
-              </AdeTip>
+              </TextTooltip>
               <AdeStepMenu :card="card" />
-              <AdeTip v-if="p.showBar" :text="p.barTip">
+              <TextTooltip v-if="p.showBar" :text="p.barTip">
                 <span
                   class="shrink-0 text-kira-sm text-muted-foreground"
                   data-testid="ade-step-percent"
@@ -233,7 +233,7 @@ const boxClass = computed(() => {
                     formatPercent(p.percent)
                   }}</span
                 >
-              </AdeTip>
+              </TextTooltip>
             </template>
             <AdeEstimateChip v-if="!card.review" :card="card" />
             <AdeTagIcon
@@ -268,7 +268,7 @@ const boxClass = computed(() => {
             >
               {{ t('space.ade.taskTab.branchRequest.label') }}
             </Button>
-            <AdeTip :text="card.meta">
+            <TextTooltip :text="card.meta">
               <span
                 class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"
                 data-testid="ade-card-meta"
@@ -276,7 +276,7 @@ const boxClass = computed(() => {
                   card.meta
                 }}</span
               >
-            </AdeTip>
+            </TextTooltip>
           </div>
         </div>
       </div>

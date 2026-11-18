@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/to
 import VarText from '@theme/components/VarText.vue';
 import type { TextPart } from '@theme/varText';
 
+// Plain-text tooltip; renders the bare slot when text and parts are empty.
 defineProps<{ text?: string; parts?: readonly TextPart[] }>();
 </script>
 

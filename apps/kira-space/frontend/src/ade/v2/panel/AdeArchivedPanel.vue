@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -15,7 +16,6 @@ import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeParentChip from '../AdeParentChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import { useHostLabels } from '../hostLabels';
 import { type ParentModel, usePlanModel } from '../plan/usePlanModel';
@@ -148,14 +148,14 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
               :color="status(a)!.color"
               data-testid="ade-archived-status"
             />
-            <AdeTip :text="titleOf(a)">
+            <TextTooltip :text="titleOf(a)">
               <h3
                 class="m-0 line-clamp-2 min-w-0 flex-1 break-words text-kira-lg font-medium text-fg"
                 data-testid="ade-panel-title"
               >
                 {{ titleOf(a) }}
               </h3>
-            </AdeTip>
+            </TextTooltip>
           </div>
           <div class="flex items-center gap-2">
             <span

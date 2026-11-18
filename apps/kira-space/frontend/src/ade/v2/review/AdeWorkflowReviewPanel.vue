@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ReviewComment } from '@kira/git-ipc';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldError } from '@theme/components/ui/field';
@@ -12,7 +13,6 @@ import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import type { Tone } from '../board/actions';
 import AdeRunLog from '../panel/AdeRunLog.vue';
 import AdeRunOutcome from '../panel/AdeRunOutcome.vue';
@@ -305,7 +305,7 @@ const stateLabel = (c: ReviewComment): string =>
           }}
         </option>
       </NativeSelect>
-      <AdeTip :text="sendTip">
+      <TextTooltip :text="sendTip">
         <span class="inline-flex">
           <Button
             variant="dialog-approve"
@@ -322,7 +322,7 @@ const stateLabel = (c: ReviewComment): string =>
             }}</span>
           </Button>
         </span>
-      </AdeTip>
+      </TextTooltip>
     </section>
 
     <section v-if="round" class="flex flex-col gap-1.5" data-testid="ade-review-round-block">

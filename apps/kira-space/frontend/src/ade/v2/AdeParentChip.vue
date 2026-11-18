@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
-import AdeTip from './AdeTip.vue';
 import type { ParentModel } from './plan/usePlanModel';
 import { TONE_TAG_CLASS } from './tones';
 
@@ -13,7 +13,7 @@ const emit = defineEmits<{ select: [] }>();
 </script>
 
 <template>
-  <AdeTip
+  <TextTooltip
     :text="
       parent.archived
         ? t('space.ade.orchestrator.parent.archived.tooltip', { title: parent.title })
@@ -48,5 +48,5 @@ const emit = defineEmits<{ select: [] }>();
         <span v-if="!iconOnly" class="truncate">{{ parent.title }}</span>
       </button>
     </Badge>
-  </AdeTip>
+  </TextTooltip>
 </template>

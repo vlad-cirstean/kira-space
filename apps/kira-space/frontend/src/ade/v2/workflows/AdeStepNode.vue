@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
@@ -20,7 +21,6 @@ import { useEventListener } from '@vueuse/core';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed, ref, useTemplateRef } from 'vue';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import { promptParts } from '../automation/smartStepBody';
 import { isDefaultSandbox } from '../board/stepSandbox';
 import { KIND_TONE, kindLabel, runsOnLabel, STEP_KINDS } from '../board/workflowForm';
@@ -112,8 +112,8 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       class="!size-2 !border-0 !bg-muted-foreground !left-5"
     />
     <div class="flex items-center gap-1.5 px-2 pt-2">
-      <AdeTip v-if="data.start" :text="t('common.action.start.label')"
-        ><span class="text-tone-green" data-testid="ade-wf-node-start">▶</span></AdeTip
+      <TextTooltip v-if="data.start" :text="t('common.action.start.label')"
+        ><span class="text-tone-green" data-testid="ade-wf-node-start">▶</span></TextTooltip
       >
       <span class="shrink-0 font-medium" data-testid="ade-wf-node-number"
         >{{ data.index + 1 }}.</span
@@ -131,14 +131,14 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
         :tone="KIND_TONE[step.kind]"
         data-testid="ade-wf-node-kind"
       />
-      <AdeTip
+      <TextTooltip
         v-if="step.use"
         :text="t('space.ade.workflows.stepNode.library.tooltip', { id: step.use })"
       >
         <span class="shrink-0 text-info" data-testid="ade-wf-node-library">{{
           t('space.ade.workflows.stepNode.library.label')
         }}</span>
-      </AdeTip>
+      </TextTooltip>
       <span
         v-if="step.before === 'approval'"
         class="shrink-0 text-warn-text"
@@ -264,7 +264,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       class="!size-2 !border-0 !bg-muted-foreground"
     />
     <div v-else class="mt-auto flex">
-      <AdeTip v-for="r in step.results" :key="r.id" :text="tip(r)">
+      <TextTooltip v-for="r in step.results" :key="r.id" :text="tip(r)">
         <span
           class="relative flex min-w-0 flex-1 items-center justify-center gap-1 px-1 py-1"
           data-testid="ade-wf-node-result"
@@ -283,7 +283,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
             :class="r.ok ? '!bg-tone-green-solid' : '!bg-tone-red-solid'"
           />
         </span>
-      </AdeTip>
+      </TextTooltip>
     </div>
   </div>
 </template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { useStopRun } from '../queries';
 import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
@@ -35,7 +35,7 @@ async function onStop(): Promise<void> {
 
 <template>
   <template v-if="view.headless">
-    <AdeTip :text="t('space.ade.headless.takeOver.tooltip')">
+    <TextTooltip :text="t('space.ade.headless.takeOver.tooltip')">
       <Button
         variant="dialog"
         size="kira"
@@ -47,8 +47,8 @@ async function onStop(): Promise<void> {
       >
         {{ t('common.action.takeOver.label') }}
       </Button>
-    </AdeTip>
-    <AdeTip v-if="view.run?.state === 'running'" :text="t('space.ade.headless.stop.tooltip')">
+    </TextTooltip>
+    <TextTooltip v-if="view.run?.state === 'running'" :text="t('space.ade.headless.stop.tooltip')">
       <Button
         variant="dialog"
         size="kira"
@@ -59,6 +59,6 @@ async function onStop(): Promise<void> {
       >
         {{ t('common.action.stop.label') }}
       </Button>
-    </AdeTip>
+    </TextTooltip>
   </template>
 </template>

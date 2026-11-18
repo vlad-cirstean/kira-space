@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import BranchChip from '@theme/components/BranchChip.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -20,7 +21,6 @@ import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
 import AdeChip from '../AdeChip.vue';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
-import AdeTip from '../AdeTip.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import type { Tone } from '../board/actions';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
@@ -308,14 +308,14 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           :style="card.review ? undefined : { borderColor: card.color }"
           data-testid="ade-panel-dot"
         />
-        <AdeTip :text="row.tag.tip">
+        <TextTooltip :text="row.tag.tip">
           <AdeChip :label="chipLabel" :tone="row.tag.tone" />
-        </AdeTip>
-        <AdeTip v-if="branch.origin === 'agent'" :text="t('space.ade.agentOrigin.tooltip')">
+        </TextTooltip>
+        <TextTooltip v-if="branch.origin === 'agent'" :text="t('space.ade.agentOrigin.tooltip')">
           <span class="mt-px inline-flex shrink-0 text-subtle" data-testid="ade-panel-agent">
             <CodiconIcon name="sparkle" :size="13" />
           </span>
-        </AdeTip>
+        </TextTooltip>
         <h3
           class="m-0 line-clamp-2 min-w-0 flex-1 break-all font-data text-kira-lg font-medium text-fg"
           data-testid="ade-panel-title"
@@ -361,7 +361,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         >
           {{ t('space.ade.setup.retry.label') }}
         </Button>
-        <AdeTip v-if="canForcePush" :text="FORCE_PUSH_CMD">
+        <TextTooltip v-if="canForcePush" :text="FORCE_PUSH_CMD">
           <Button
             variant="dialog-danger"
             size="kira-lg"
@@ -371,9 +371,9 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           >
             {{ t('common.forcePush.label') }}
           </Button>
-        </AdeTip>
+        </TextTooltip>
         <template v-for="a in actions" :key="(a.kind === 'rebase' ? a.act.id : a.kind) + a.label">
-          <AdeTip v-if="a.kind === 'review'" :parts="reviewChoice?.tip ?? []">
+          <TextTooltip v-if="a.kind === 'review'" :parts="reviewChoice?.tip ?? []">
             <TooltipDisabledTrigger :disabled="reviewOff">
               <Button
                 variant="dialog"
@@ -387,8 +387,8 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
                 {{ a.label }}
               </Button>
             </TooltipDisabledTrigger>
-          </AdeTip>
-          <AdeTip v-else-if="a.kind === 'rebase'" :parts="a.act.tip">
+          </TextTooltip>
+          <TextTooltip v-else-if="a.kind === 'rebase'" :parts="a.act.tip">
             <TooltipDisabledTrigger :disabled="a.act.disabled">
               <Button
                 variant="dialog"
@@ -401,7 +401,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
                 {{ a.label }}
               </Button>
             </TooltipDisabledTrigger>
-          </AdeTip>
+          </TextTooltip>
           <Button
             variant="dialog"
             v-else
@@ -428,7 +428,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         <dd class="flex min-h-row min-w-0 items-center gap-2">
           <AdeChip :label="chipLabel" :tone="row.tag.tone" wide />
           <template v-if="branch.name">
-            <AdeTip :text="branch.name">
+            <TextTooltip :text="branch.name">
               <a
                 v-if="branchUrl"
                 :href="branchUrl"
@@ -437,7 +437,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
                 ><BranchChip :name="branch.name" class="max-w-full" /></a
               >
               <BranchChip v-else :name="branch.name" class="max-w-1/2" />
-            </AdeTip>
+            </TextTooltip>
             <span class="flex-1" />
             <TooltipIconButton
               :icon="copied && copiedKey === 'branch' ? 'check' : 'copy'"

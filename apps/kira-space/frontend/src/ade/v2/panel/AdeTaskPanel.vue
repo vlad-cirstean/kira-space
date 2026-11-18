@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -10,7 +11,6 @@ import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
-import AdeTip from '../AdeTip.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
@@ -89,7 +89,7 @@ const label = computed(() =>
   >
     <template #actions>
       <AdeTaskActionButton :card="card" />
-      <AdeTip v-if="choices.length" :parts="reviewTip">
+      <TextTooltip v-if="choices.length" :parts="reviewTip">
         <TooltipDisabledTrigger :disabled="reviewDisabled">
           <Button
             variant="dialog"
@@ -102,7 +102,7 @@ const label = computed(() =>
             {{ t('space.ade.board.taskMenu.reviewCode.label') }}
           </Button>
         </TooltipDisabledTrigger>
-      </AdeTip>
+      </TextTooltip>
       <TooltipIconButton
         icon="ellipsis"
         :label="t('common.moreActions.tooltip')"

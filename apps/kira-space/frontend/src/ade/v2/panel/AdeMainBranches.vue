@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
@@ -8,7 +9,6 @@ import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
-import AdeTip from '../AdeTip.vue';
 import type { ForcePushTarget } from '../board/panelFacts';
 import AdeBranchRow from '../plan/AdeBranchRow.vue';
 import { CHECKS_GLYPH, PR_GLYPH } from '../plan/glyphs';
@@ -130,7 +130,7 @@ async function onAddRepo(id: string): Promise<void> {
         :data-branch-id="row.id"
       >
         <template #lead>
-          <AdeTip :text="prStateLabel(pr.state)">
+          <TextTooltip :text="prStateLabel(pr.state)">
             <span
               class="shrink-0"
               :class="TONE_TEXT_CLASS[PR_TONE[pr.state] ?? 'grey']"
@@ -138,7 +138,7 @@ async function onAddRepo(id: string): Promise<void> {
               data-testid="ade-task-branch-pr-state"
               ><CodiconIcon :name="PR_GLYPH[pr.state] ?? 'git-pull-request'" :size="13" /></span
             >
-          </AdeTip>
+          </TextTooltip>
         </template>
         <a
           :href="pr.url"
@@ -157,7 +157,10 @@ async function onAddRepo(id: string): Promise<void> {
             t('space.ade.mainTab.prBase.label', { base: pr.baseRef })
           }}</span
         >
-        <AdeTip v-if="CHECKS_GLYPH[pr.checksState]" :text="t(CHECKS_GLYPH[pr.checksState]!.tip)">
+        <TextTooltip
+          v-if="CHECKS_GLYPH[pr.checksState]"
+          :text="t(CHECKS_GLYPH[pr.checksState]!.tip)"
+        >
           <span
             class="shrink-0"
             :class="CHECKS_GLYPH[pr.checksState]!.class"
@@ -165,7 +168,7 @@ async function onAddRepo(id: string): Promise<void> {
             data-testid="ade-task-branch-pr-checks"
             ><CodiconIcon :name="CHECKS_GLYPH[pr.checksState]!.icon" :size="13" /></span
           >
-        </AdeTip>
+        </TextTooltip>
       </AdeRow>
     </div>
     <AdeForcePushDialog :target="forcePushTarget" @close="forcePushTarget = null" />

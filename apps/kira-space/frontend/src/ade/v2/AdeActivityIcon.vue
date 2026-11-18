@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { computed } from 'vue';
-import AdeTip from './AdeTip.vue';
 import { type ActivityKind, activityLabel } from './activity';
 
 // Activity glyph of a session: `!` needs input, a green dot working, `z` waiting on a monitor, a
@@ -14,7 +14,7 @@ const dot = computed(() => DOT[props.size ?? 12]);
 </script>
 
 <template>
-  <AdeTip :text="bare ? '' : activityLabel(kind)">
+  <TextTooltip :text="bare ? '' : activityLabel(kind)">
     <span :data-activity="kind" class="inline-flex shrink-0 items-center justify-center">
       <span
         v-if="kind === 'input'"
@@ -45,5 +45,5 @@ const dot = computed(() => DOT[props.size ?? 12]);
       />
       <span v-else class="m-0.75 inline-block size-1.5 rounded-kira-sm bg-subtle" />
     </span>
-  </AdeTip>
+  </TextTooltip>
 </template>

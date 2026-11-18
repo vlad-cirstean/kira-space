@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { shortSha } from '@kira/git-core';
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -10,7 +11,6 @@ import { useCopy } from '@workbench/behaviour/clipboard';
 import Identifier from '@workbench/components/Identifier.vue';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import type { Tone } from '../board/actions';
 import type { RebaseAct } from '../board/rebaseActions';
 import { runStateLabel } from '../runState';
@@ -190,7 +190,7 @@ function copy(): void {
       ><AlertDescription>{{ copyError }}</AlertDescription></Alert
     >
     <div v-if="acts?.length" class="flex flex-wrap gap-1.5">
-      <AdeTip v-for="a in acts" :key="a.id" :parts="a.tip">
+      <TextTooltip v-for="a in acts" :key="a.id" :parts="a.tip">
         <Button
           variant="dialog"
           size="kira"
@@ -201,7 +201,7 @@ function copy(): void {
         >
           <VarText :parts="a.label" />
         </Button>
-      </AdeTip>
+      </TextTooltip>
     </div>
     <Button
       variant="toolbar"

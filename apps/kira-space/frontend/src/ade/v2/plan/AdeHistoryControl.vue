@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import AdeTip from '../AdeTip.vue';
 import AdeArchivedFinder from './AdeArchivedFinder.vue';
 
 // Compact row in the sticky header: toggles the loaded history, finds any archived task, and hosts a trailing slot.
@@ -12,7 +12,7 @@ const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
 
 <template>
   <div class="flex h-row items-center gap-1 px-3">
-    <AdeTip :text="tip">
+    <TextTooltip :text="tip">
       <Button
         variant="toolbar"
         size="kira"
@@ -27,7 +27,7 @@ const emit = defineEmits<{ load: []; hide: []; pick: [taskId: string] }>();
         }}</span>
         <span v-if="!open && count > 0" class="tabular-nums text-subtle">{{ count }}</span>
       </Button>
-    </AdeTip>
+    </TextTooltip>
     <AdeArchivedFinder @pick="(id) => emit('pick', id)" />
     <span class="ml-auto flex items-center"><slot /></span>
   </div>

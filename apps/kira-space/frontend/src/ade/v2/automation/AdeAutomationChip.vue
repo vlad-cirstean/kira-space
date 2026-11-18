@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { t } from '@theme/i18n';
 import { useAutomationsModule } from '@workbench/automations/module';
 import RunElapsed from '@workbench/automations/runs/RunElapsed.vue';
@@ -7,7 +8,6 @@ import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
 import { computed } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import { runReason } from './automationRuns';
 import { useChipRuns } from './useChipRuns';
 
@@ -43,7 +43,7 @@ function open(): void {
 </script>
 
 <template>
-  <AdeTip v-if="run" :text="tip">
+  <TextTooltip v-if="run" :text="tip">
     <button
       type="button"
       class="inline-flex min-w-0 shrink items-center gap-1 border-0 bg-transparent p-0 text-inherit"
@@ -59,5 +59,5 @@ function open(): void {
         class="shrink-0 text-kira-sm text-muted-foreground"
       />
     </button>
-  </AdeTip>
+  </TextTooltip>
 </template>

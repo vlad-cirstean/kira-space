@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
@@ -14,7 +15,6 @@ import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
-import AdeTip from '../AdeTip.vue';
 import { useImportWorkflow, useNewWorkflow, useWorkflows } from '../queries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { WorkflowEntry } from '../wire';
@@ -172,13 +172,13 @@ async function createNew(): Promise<void> {
                 e.workflow?.name ?? configName(e.fileName)
               }}</span
             >
-            <AdeTip v-if="e.error" :text="e.error.message">
+            <TextTooltip v-if="e.error" :text="e.error.message">
               <span
                 class="shrink-0 text-kira-sm font-medium text-tone-red"
                 data-testid="ade-wf-row-error"
                 >✕</span
               >
-            </AdeTip>
+            </TextTooltip>
           </span>
           <span
             class="max-w-full truncate text-kira-sm text-muted-foreground"

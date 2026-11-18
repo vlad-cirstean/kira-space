@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
-import AdeTip from '../AdeTip.vue';
 import type { TaskSessions } from '../board/taskSessions';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 
@@ -34,7 +34,7 @@ function tip(): string {
 </script>
 
 <template>
-  <AdeTip :text="tip()">
+  <TextTooltip :text="tip()">
     <Button
       size="inline"
       type="button"
@@ -56,5 +56,5 @@ function tip(): string {
       </template>
       <CodiconIcon v-else name="check" :size="sz.icon" class="text-tone-green" />
     </Button>
-  </AdeTip>
+  </TextTooltip>
 </template>

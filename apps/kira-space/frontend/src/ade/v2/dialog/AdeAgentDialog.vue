@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -21,7 +22,6 @@ import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import { computed, ref } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
-import AdeTip from '../AdeTip.vue';
 import { baseOf } from '../board/rebaseActions';
 import { baseChoiceOf, baseGroups, baseOptions, baseValue } from '../branchOptions';
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
@@ -310,7 +310,7 @@ async function discard(): Promise<void> {
             t('common.action.cancel.label')
           }}</Button
         >
-        <AdeTip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
+        <TextTooltip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
           <Button
             variant="dialog-danger"
             size="kira-lg"
@@ -320,7 +320,7 @@ async function discard(): Promise<void> {
           >
             {{ t('space.ade.agentDialog.deleteAnyway.label') }}
           </Button>
-        </AdeTip>
+        </TextTooltip>
         <Button
           variant="dialog-primary"
           size="kira-lg"

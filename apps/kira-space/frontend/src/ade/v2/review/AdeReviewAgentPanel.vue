@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -12,7 +13,6 @@ import { computed, ref } from 'vue';
 import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
 import { useTerminalsStore } from '../../../state/terminals';
 import { useAgentSessionsStore } from '../../state';
-import AdeTip from '../AdeTip.vue';
 import { activityKind, withTuiActivity } from '../activity';
 import { blockingSetups } from '../board/setupGate';
 import { useLaunchOpener } from '../dialog/useLaunchOpener';
@@ -157,7 +157,7 @@ async function focus(): Promise<void> {
         class="flex flex-none items-center gap-2 px-2 py-1.5"
         data-testid="ade-review-forward-bar"
       >
-        <AdeTip :text="forwardTip">
+        <TextTooltip :text="forwardTip">
           <TooltipDisabledTrigger :disabled="forwardOff">
             <Button
               variant="dialog"
@@ -171,8 +171,8 @@ async function focus(): Promise<void> {
               {{ t('space.ade.review.forward.label', { count: openCount }) }}
             </Button>
           </TooltipDisabledTrigger>
-        </AdeTip>
-        <AdeTip
+        </TextTooltip>
+        <TextTooltip
           :text="
             openCount === 0
               ? t('space.ade.review.copy.none.tooltip')
@@ -191,7 +191,7 @@ async function focus(): Promise<void> {
               {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
             </Button>
           </TooltipDisabledTrigger>
-        </AdeTip>
+        </TextTooltip>
       </div>
       <AdeTuiPane v-if="here" :view="view" class="min-h-0 flex-1" />
       <div

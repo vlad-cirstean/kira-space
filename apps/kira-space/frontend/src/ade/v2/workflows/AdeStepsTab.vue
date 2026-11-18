@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -17,7 +18,6 @@ import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
-import AdeTip from '../AdeTip.vue';
 import { KIND_TONE, kindLabel, STEP_KINDS } from '../board/workflowForm';
 import { useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
@@ -129,13 +129,13 @@ async function createNew(kind: StepKind): Promise<void> {
               }}</span
             >
             <AdeChip v-if="e.step" :label="kindLabel(e.step.kind)" :tone="KIND_TONE[e.step.kind]" />
-            <AdeTip v-if="e.error" :text="e.error.message">
+            <TextTooltip v-if="e.error" :text="e.error.message">
               <span
                 class="shrink-0 text-kira-sm font-medium text-tone-red"
                 data-testid="ade-step-row-error"
                 >✕</span
               >
-            </AdeTip>
+            </TextTooltip>
           </span>
           <span class="text-kira-sm text-subtle" data-testid="ade-step-row-used">{{
             t('space.ade.steps.usedBy.label', { count: e.usedBy.length })
