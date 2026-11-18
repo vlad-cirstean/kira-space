@@ -214,9 +214,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
                 <FieldDescription>{{ t('automations.dialog.run.notSaved.hint') }}</FieldDescription>
               </div>
             </template>
-            <FieldLabel class="mt-1 text-muted-foreground">{{
-              t('automations.dialog.run.suffix.label')
-            }}</FieldLabel>
+          </Field>
+          <Field v-if="isSmart && pv">
+            <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
             <CodeBlock class="text-muted-foreground" data-testid="run-suffix">{{
               pv.suffix
             }}</CodeBlock>

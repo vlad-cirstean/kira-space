@@ -25,7 +25,7 @@ function onDate(e: Event): void {
       <Input
         id="ade-go-to-date"
         type="date"
-        class="w-36 scheme-dark"
+        class="w-40 scheme-dark"
         data-testid="ade-go-to-date"
         @input="onDate"
       />

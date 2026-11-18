@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
@@ -9,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -183,21 +184,25 @@ async function send(): Promise<void> {
         </DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <div v-if="named.length" class="flex flex-col gap-1.5" data-testid="ade-run-branches">
-          <div v-for="(r, i) in named" :key="r.id" class="flex items-center gap-3">
-            <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />
-            <FieldLabel :for="`ade-run-branch-${r.id}`" class="whitespace-nowrap">{{
-              t('common.field.branch.label')
-            }}</FieldLabel>
+        <div
+          v-if="named.length"
+          class="@container flex flex-col gap-1.5"
+          data-testid="ade-run-branches"
+        >
+          <Field v-for="(r, i) in named" :key="r.id" orientation="responsive">
+            <FieldLabel :for="`ade-run-branch-${r.id}`">
+              <AdeRepoTag :code-repo-id="r.branch.codeRepoId" :label="r.repo" />
+              {{ t('common.field.branch.label') }}
+            </FieldLabel>
             <Input
               :id="`ade-run-branch-${r.id}`"
               v-model="names[r.id]"
-              class="flex-1 font-data"
+              class="font-data"
               :placeholder="placeholder"
               :data-dialog-initial="i === 0 || undefined"
               data-testid="ade-run-branch"
             />
-          </div>
+          </Field>
         </div>
         <AdeSetupProgress
           v-for="r in setups"
@@ -238,42 +243,40 @@ async function send(): Promise<void> {
           <FieldError v-else data-testid="ade-run-smart-missing">{{
             t('space.ade.runDialog.smartMissing.error')
           }}</FieldError>
-          <FieldDescription data-testid="ade-run-suffix">{{ suffix }}</FieldDescription>
         </div>
-        <div v-else class="flex flex-col gap-1">
-          <div class="flex items-center gap-2">
-            <FieldLabel for="ade-run-message" class="flex-1">{{
+        <Field v-else>
+          <div class="flex items-center justify-between gap-1">
+            <FieldLabel for="ade-run-message">{{
               t('space.ade.agentDialog.message.label')
             }}</FieldLabel>
-            <Button
+            <TooltipIconButton
               v-if="edited"
-              variant="toolbar"
-              size="kira"
+              icon="discard"
+              :label="t('common.action.resetToDefault.label')"
               data-testid="ade-run-reset"
               @click="message = initial"
-            >
-              {{ t('common.action.reset.label') }}
-            </Button>
-          </div>
-          <div class="flex flex-col gap-1">
-            <Skeleton
-              v-if="stepPreview.isPending.value"
-              class="h-24 w-full"
-              data-testid="ade-run-message-skeleton"
             />
-            <Textarea
-              class="min-h-24 max-h-90 resize-y"
-              v-else
-              id="ade-run-message"
-              v-model="message"
-              :data-dialog-initial="named.length === 0 || undefined"
-              data-testid="ade-run-message"
-            />
-            <FieldDescription data-testid="ade-run-suffix">
-              {{ suffix }}
-            </FieldDescription>
           </div>
-        </div>
+          <Skeleton
+            v-if="stepPreview.isPending.value"
+            class="h-24 w-full"
+            data-testid="ade-run-message-skeleton"
+          />
+          <Textarea
+            class="min-h-24 max-h-90 resize-y"
+            v-else
+            id="ade-run-message"
+            v-model="message"
+            :data-dialog-initial="named.length === 0 || undefined"
+            data-testid="ade-run-message"
+          />
+        </Field>
+        <Field>
+          <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+          <CodeBlock class="text-muted-foreground" data-testid="ade-run-suffix">{{
+            suffix
+          }}</CodeBlock>
+        </Field>
       </DialogBody>
       <DialogFooter>
         <Button variant="dialog" size="kira-lg" data-testid="ade-run-cancel" @click="close">{{

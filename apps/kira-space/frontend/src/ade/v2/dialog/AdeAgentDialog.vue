@@ -2,6 +2,7 @@
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -222,15 +223,10 @@ async function discard(): Promise<void> {
           }}</AlertDescription>
         </Alert>
 
-        <div
-          v-for="(tg, i) in view.targets"
-          :key="tg.branchId"
-          class="flex flex-col gap-1.5"
-          data-testid="ade-dialog-target"
-        >
+        <Field v-for="(tg, i) in view.targets" :key="tg.branchId" data-testid="ade-dialog-target">
           <div class="flex items-center gap-2">
             <AdeRepoTag :code-repo-id="tg.repoId" :label="tg.repo" />
-            <span class="min-w-0 flex-1 truncate font-data text-kira-sm">{{ tg.branch }}</span>
+            <FieldLabel class="min-w-0 flex-1 truncate font-data">{{ tg.branch }}</FieldLabel>
           </div>
           <SecondaryTabs
             variant="choice"
@@ -241,7 +237,7 @@ async function discard(): Promise<void> {
             :data-testid="`ade-dialog-target-${i}`"
             @update:model-value="(v) => dialogs.pick(tg.branchId, v)"
           />
-        </div>
+        </Field>
 
         <Field v-if="view.canPush" orientation="horizontal">
           <Checkbox id="ade-dialog-push" v-model="dialogs.push" data-testid="ade-dialog-push" />
@@ -255,21 +251,18 @@ async function discard(): Promise<void> {
           </FieldContent>
         </Field>
 
-        <div v-if="view.showMessage" class="flex flex-col gap-1">
-          <div class="flex items-center gap-2">
-            <FieldLabel for="ade-dialog-message" class="flex-1">{{
+        <Field v-if="view.showMessage">
+          <div class="flex items-center justify-between gap-1">
+            <FieldLabel for="ade-dialog-message">{{
               t('space.ade.agentDialog.message.label')
             }}</FieldLabel>
-            <Button
+            <TooltipIconButton
               v-if="view.edited"
-              variant="toolbar"
-              size="kira"
-              class="text-muted-foreground"
+              icon="discard"
+              :label="t('common.action.resetToDefault.label')"
               data-testid="ade-dialog-reset"
               @click="dialogs.msg = null"
-            >
-              {{ t('common.action.reset.label') }}
-            </Button>
+            />
           </div>
           <Textarea
             class="min-h-24 max-h-90 resize-y"
@@ -278,15 +271,13 @@ async function discard(): Promise<void> {
             data-testid="ade-dialog-message"
             @update:model-value="(v) => (dialogs.msg = String(v))"
           />
-          <CodeBlock
-            v-if="view.suffix"
-            class="text-muted-foreground"
-            data-testid="ade-dialog-suffix"
-            >{{
-              view.suffix
-            }}</CodeBlock
-          >
-        </div>
+        </Field>
+        <Field v-if="view.showMessage && view.suffix">
+          <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+          <CodeBlock class="text-muted-foreground" data-testid="ade-dialog-suffix">{{
+            view.suffix
+          }}</CodeBlock>
+        </Field>
 
         <Alert v-if="previewError" variant="error" data-testid="ade-dialog-preview-error">
           <AlertDescription>{{ previewError }}</AlertDescription>

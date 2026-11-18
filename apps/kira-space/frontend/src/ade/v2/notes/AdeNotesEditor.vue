@@ -253,7 +253,7 @@ function keepFocus(e: MouseEvent): void {
           v-model="linkUrl"
           :placeholder="t('space.ade.notes.linkUrl.example')"
           size="kira"
-          class="ml-1 w-42.5 font-data"
+          class="ml-1 w-40 font-data"
           @keydown="onLinkKey"
         />
         <Button

@@ -96,25 +96,27 @@ onBeforeUnmount(() => {
         }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <div class="flex items-center gap-2">
+        <div class="@container flex flex-col gap-2">
           <span v-if="!pass" class="text-muted-foreground" data-testid="ade-stage-from">{{
             t('space.ade.stageDialog.from.label', { stage: fromName })
           }}</span>
-          <FieldLabel for="ade-stage-target" class="ml-auto">{{
-            t('space.ade.stageDialog.target.label')
-          }}</FieldLabel>
-          <span v-if="pass" class="font-medium" data-testid="ade-stage-pass-target">{{
-            store.passStep?.name ?? ''
-          }}</span>
-          <NativeSelect
-            v-else
-            id="ade-stage-target"
-            v-model="store.toStepId"
-            variant="bordered"
-            data-testid="ade-stage-target"
-          >
-            <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
-          </NativeSelect>
+          <Field orientation="responsive">
+            <FieldLabel for="ade-stage-target">{{
+              t('space.ade.stageDialog.target.label')
+            }}</FieldLabel>
+            <span v-if="pass" class="font-medium" data-testid="ade-stage-pass-target">{{
+              store.passStep?.name ?? ''
+            }}</span>
+            <NativeSelect
+              v-else
+              id="ade-stage-target"
+              v-model="store.toStepId"
+              variant="bordered"
+              data-testid="ade-stage-target"
+            >
+              <option v-for="o in targets" :key="o.id" :value="o.id">{{ o.name }}</option>
+            </NativeSelect>
+          </Field>
         </div>
         <Field>
           <FieldLabel for="ade-stage-notes">{{

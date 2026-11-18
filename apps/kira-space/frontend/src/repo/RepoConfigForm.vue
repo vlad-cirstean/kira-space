@@ -111,11 +111,6 @@ function addEnv(): void {
       <FieldLegend>{{ t('common.module.worktrees.label') }}</FieldLegend>
       <Field>
         <FieldLabel for="repo-prepare">{{ t('space.repo.config.prepare.label') }}</FieldLabel>
-        <FieldDescription>
-          <CatalogText k="space.repo.config.prepare.description">
-            <template #command><code class="font-data">{{ SETUP_EXAMPLE }}</code></template>
-          </CatalogText>
-        </FieldDescription>
         <RepoScriptField
           id="repo-prepare"
           :model-value="file.worktree?.prepare_script ?? ''"
@@ -126,6 +121,11 @@ function addEnv(): void {
           @update:model-value="setPrepare"
           @update:run-ref="setPrepareRun"
         />
+        <FieldDescription>
+          <CatalogText k="space.repo.config.prepare.description">
+            <template #command><code class="font-data">{{ SETUP_EXAMPLE }}</code></template>
+          </CatalogText>
+        </FieldDescription>
         <FieldError
           v-if="props.errorFor('/worktree/prepare_script')"
           data-testid="repo-prepare-error"
@@ -134,7 +134,7 @@ function addEnv(): void {
           }}</FieldError
         >
       </Field>
-      <Field orientation="horizontal">
+      <Field>
         <FieldLabel for="repo-timeout">{{ t('common.field.timeout.label') }}</FieldLabel>
         <Input
           id="repo-timeout"
@@ -153,7 +153,6 @@ function addEnv(): void {
       </Field>
       <Field>
         <FieldLabel for="repo-base-path">{{ t('space.repo.config.basePath.label') }}</FieldLabel>
-        <FieldDescription>{{ t('space.repo.config.basePath.description') }}</FieldDescription>
         <div class="flex items-center gap-1.5">
           <Input
             id="repo-base-path"
@@ -172,6 +171,7 @@ function addEnv(): void {
             {{ t('common.action.choose.label') }}
           </Button>
         </div>
+        <FieldDescription>{{ t('space.repo.config.basePath.description') }}</FieldDescription>
         <FieldError
           v-if="props.errorFor('/worktree/base_path')"
           data-testid="repo-base-path-error"
@@ -186,7 +186,6 @@ function addEnv(): void {
       <FieldLegend>{{ t('common.module.branches.label') }}</FieldLegend>
       <Field>
         <FieldLabel for="repo-targets">{{ t('space.repo.config.targets.label') }}</FieldLabel>
-        <FieldDescription>{{ t('space.repo.config.targets.description') }}</FieldDescription>
         <Input
           id="repo-targets"
           :model-value="targetsText"
@@ -195,6 +194,7 @@ function addEnv(): void {
           data-testid="repo-targets"
           @update:model-value="(v) => onTargets(String(v))"
         />
+        <FieldDescription>{{ t('space.repo.config.targets.description') }}</FieldDescription>
         <FieldError
           v-if="props.errorFor('/integration_branches')"
           data-testid="repo-targets-error"

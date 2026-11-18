@@ -284,7 +284,7 @@ onBeforeUnmount(() => {
   <div
     v-if="draft.draft"
     ref="root"
-    class="flex h-full min-h-0 flex-col gap-3"
+    class="@container flex h-full min-h-0 flex-col gap-3"
     data-testid="ade-wf-form"
   >
     <AdeWorkflowSaveBar
@@ -293,18 +293,16 @@ onBeforeUnmount(() => {
       @save="saveNow"
       @discard="discard"
     />
-    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Field orientation="horizontal" class="w-auto">
-        <FieldLabel for="ade-wf-form-name">{{ t('common.field.name.label') }}</FieldLabel>
-        <Input
-          id="ade-wf-form-name"
-          :model-value="draft.draft.name"
-          class="w-56 font-medium"
-          data-testid="ade-wf-form-name"
-          @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
-        />
-      </Field>
-    </div>
+    <Field orientation="responsive">
+      <FieldLabel for="ade-wf-form-name">{{ t('common.field.name.label') }}</FieldLabel>
+      <Input
+        id="ade-wf-form-name"
+        :model-value="draft.draft.name"
+        class="w-56 font-medium"
+        data-testid="ade-wf-form-name"
+        @update:model-value="(v: string | number) => draft.patchWorkflow({ name: String(v) })"
+      />
+    </Field>
     <div ref="split" class="flex min-h-96 flex-1 rounded-kira bg-bg">
       <div class="relative min-w-0" :style="{ flex: `0 0 ${graphPane.size.value}%` }">
         <div
