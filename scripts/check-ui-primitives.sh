@@ -152,14 +152,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U111 packages/git-ui/src/App.vue # 2026-11-18 P672 Part 5
-U111 packages/git-ui/src/components/RefsPopover.vue # 2026-11-18 P672 Part 5
-U111 packages/git-ui/src/components/SearchBox.vue # 2026-11-18 P672 Part 5
-U111 packages/workbench/src/automations/form/ScheduleFields.vue # 2026-11-18 P672 Part 5
-U111 packages/workbench/src/automations/run/AdeContextFields.vue # 2026-11-18 P672 Part 5
-U111 packages/workbench/src/components/AutocompleteField.vue # 2026-11-18 P672 Part 5
-U111 packages/workbench/src/components/RunningOpsStatusItem.vue # 2026-11-18 P672 Part 5
-U111 packages/workbench/src/components/pickers/PickerPopover.vue # 2026-11-18 P672 Part 5
 U112 apps/kira-space/frontend/mobile/AppShell.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # 2026-11-18 P672 Part 6
 U112 apps/kira-space/frontend/mobile/screens/PairScreen.vue # 2026-11-18 P672 Part 6

@@ -147,7 +147,7 @@ const appName = computed(() => t('common.product.kiraSpace.label'));
             <CodiconIcon name="chevron-down" :size="12" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent class="w-96 p-0">
+        <PopoverContent flush class="w-96">
           <Command
             :model-value="schedule.timezone"
             @update:model-value="(v) => pickZone(String(v))"

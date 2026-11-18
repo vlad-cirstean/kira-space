@@ -96,7 +96,8 @@ onUnmounted(() => {
     :x="x"
     :y="y"
     :open="true"
-    class="w-80 gap-0 overflow-hidden p-0 max-h-(--reka-popover-content-available-height)"
+    flush
+    class="w-80 max-h-(--reka-popover-content-available-height)"
     @update:open="onOpenChange"
   >
     <div class="flex min-h-0 flex-col" data-testid="fk-preview">

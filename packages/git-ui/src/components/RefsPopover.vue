@@ -433,7 +433,8 @@ watch(visibleBranchNames, (names) => {
 
       <PopoverContent
         align="start"
-        class="w-96 p-0 gap-0"
+        flush
+        class="w-96"
         :aria-label="t('git.picker.region.aria', { tab: t(TAB_LABELS[activeTab]) })"
         @open-auto-focus="onOpenAutoFocus"
         @close-auto-focus="onCloseAutoFocus"

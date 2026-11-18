@@ -288,7 +288,8 @@ defineExpose({ focusInput });
     <PopoverContent
       align="start"
       :side-offset="2"
-      class="p-0 gap-0 w-120"
+      flush
+      class="w-120"
       @open-auto-focus.prevent
       @close-auto-focus.prevent
       @escape-key-down="(e) => e.preventDefault()"

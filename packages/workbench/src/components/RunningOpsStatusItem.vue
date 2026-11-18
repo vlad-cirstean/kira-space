@@ -1,7 +1,13 @@
 <script setup lang="ts">
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverFooter,
+  PopoverTrigger,
+} from '@theme/components/ui/popover';
 import { formatDuration } from '@theme/format';
 import { t } from '@theme/i18n';
 import { useIntervalFn, useNow } from '@vueuse/core';
@@ -42,11 +48,9 @@ function showOperations(): void {
         {{ t('common.state.runningCount.status', { count: items.length }) }}
       </StatusBarItem>
     </PopoverTrigger>
-    <PopoverContent side="top" align="end" class="w-96 p-1" data-testid="status-ops-popover">
-      <div class="px-2 py-1 text-kira-sm font-medium text-muted-foreground">
-        {{ t('workbench.statusBar.ops.title') }}
-      </div>
-      <div class="flex flex-col gap-0.5">
+    <PopoverContent side="top" align="end" flush class="w-96" data-testid="status-ops-popover">
+      <SectionHeading :label="t('workbench.statusBar.ops.title')" />
+      <div class="flex flex-col gap-0.5 p-1">
         <div
           v-for="item in items"
           :key="item.id"
@@ -77,7 +81,7 @@ function showOperations(): void {
           />
         </div>
       </div>
-      <div class="flex justify-end px-1 pt-1">
+      <PopoverFooter>
         <Button
           variant="link"
           size="inline"
@@ -87,7 +91,7 @@ function showOperations(): void {
             t('workbench.statusBar.ops.open.label')
           }}</Button
         >
-      </div>
+      </PopoverFooter>
     </PopoverContent>
   </Popover>
 </template>

@@ -124,7 +124,7 @@ function onCustom(text: string): void {
         }}</span>
       </PickerTrigger>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-80 gap-0 p-0" :data-testid="`${testid}-content`">
+    <PopoverContent align="start" flush class="w-80" :data-testid="`${testid}-content`">
       <PickerCombobox
         v-model:search="search"
         :options="options"

@@ -1946,26 +1946,23 @@ onBeforeUnmount(() => {
               }"
             />
           </PopoverAnchor>
-          <PopoverContent
-            align="start"
-            :side-offset="0"
-            class="w-auto flex-row items-center gap-1 px-2 py-1"
-            destructive
-          >
-            <span>{{
-              t('git.common.forceDelete.body', { name: forceDeleteRefCandidate?.name ?? '' })
-            }}</span>
-            <Button variant="dialog-danger" size="kira" @click="confirmForceDeleteRef">{{
-              t('git.common.forceDelete.confirm')
-            }}</Button>
-            <Button
-              data-dialog-dismiss
-              variant="toolbar"
-              size="kira"
-              @click="forceDeleteRefCandidate = undefined"
-            >
-              {{ t('common.action.cancel.label') }}
-            </Button>
+          <PopoverContent align="start" :side-offset="0" class="w-80" destructive>
+            <p>
+              {{ t('git.common.forceDelete.body', { name: forceDeleteRefCandidate?.name ?? '' }) }}
+            </p>
+            <div class="flex justify-end gap-1">
+              <Button
+                data-dialog-dismiss
+                variant="dialog"
+                size="kira"
+                @click="forceDeleteRefCandidate = undefined"
+              >
+                {{ t('common.action.cancel.label') }}
+              </Button>
+              <Button variant="dialog-danger" size="kira" @click="confirmForceDeleteRef">{{
+                t('git.common.forceDelete.confirm')
+              }}</Button>
+            </div>
           </PopoverContent>
         </Popover>
         <RenameRefDialog

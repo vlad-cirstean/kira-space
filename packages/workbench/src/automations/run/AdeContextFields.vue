@@ -67,7 +67,7 @@ function pickTask(id: string): void {
             <CodiconIcon name="chevron-down" :size="12" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent class="w-96 p-0">
+        <PopoverContent flush class="w-96">
           <Command :model-value="taskId" @update:model-value="(v) => pickTask(String(v))">
             <CommandInput :placeholder="t('automations.run.findTask.placeholder')" />
             <CommandList>
