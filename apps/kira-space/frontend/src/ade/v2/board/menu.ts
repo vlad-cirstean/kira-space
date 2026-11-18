@@ -48,15 +48,34 @@ export interface TaskMenuItem {
   disabled?: boolean;
   hint?: string | readonly TextPart[];
   shortcut?: ShortcutId;
-  checked?: boolean;
   danger?: boolean;
 }
+
+/** One option of a `TaskMenuRadio`; `value` is compared with the radio's. */
+export interface TaskRadioOption {
+  id: string;
+  value: string;
+  label: string;
+  cmd: TaskMenuCmd;
+  disabled?: boolean;
+  hint?: string | readonly TextPart[];
+}
+
+/** Mutually exclusive options (a submenu body); `value` marks the current one. */
+export interface TaskMenuRadio {
+  type: 'radio';
+  id: string;
+  value: string | null;
+  items: TaskRadioOption[];
+}
+
+export type TaskSubEntry = TaskMenuItem | TaskMenuRadio;
 
 export type TaskMenuEntry =
   | { type: 'label'; label: string }
   | { type: 'separator' }
   | ({ type: 'item' } & TaskMenuItem)
-  | { type: 'submenu'; id: string; label: string; items: TaskMenuItem[] };
+  | { type: 'submenu'; id: string; label: string; items: TaskSubEntry[] };
 
 export interface TaskMenuInput {
   card: CardModel;
@@ -132,20 +151,22 @@ function copyItems(c: CardModel, sessions: readonly Session[]): TaskMenuItem[] {
 function stepEntries(c: CardModel, live: boolean): TaskMenuEntry[] {
   if (!c.blocks.length) return [];
   const current = c.progress.step?.id ?? c.task.entryStepId;
-  const items: TaskMenuItem[] = [
+  const skipped = (b: CardModel['blocks'][number]): boolean =>
+    b.state === 'skipped' && b.step.id !== current;
+  const items: TaskRadioOption[] = [
     ...c.blocks.map((b) => ({
       id: `ade-task-step-${b.step.id}`,
+      value: b.step.id,
       label: b.step.name,
       cmd: { kind: 'moveStep', stepId: b.step.id } as const,
-      checked: b.step.id === current,
-      disabled: live || (b.state === 'skipped' && b.step.id !== current),
-      hint: live ? liveHint() : undefined,
+      disabled: live || skipped(b),
+      hint: live ? liveHint() : skipped(b) ? t('common.skipped.status') : undefined,
     })),
     {
       id: 'ade-task-step-done',
+      value: DONE,
       label: t('common.done.status'),
       cmd: { kind: 'moveStep', stepId: DONE },
-      checked: current === DONE,
       disabled: live,
       hint: live ? liveHint() : undefined,
     },
@@ -155,7 +176,7 @@ function stepEntries(c: CardModel, live: boolean): TaskMenuEntry[] {
       type: 'submenu',
       id: 'ade-task-step',
       label: t('space.ade.board.taskMenu.moveToStep.label'),
-      items,
+      items: [{ type: 'radio', id: 'ade-task-step-radio', value: current, items }],
     },
   ];
   const at = c.blocks.find((b) => b.step.id === current);
@@ -177,12 +198,19 @@ function statusEntry(c: CardModel, statuses: readonly TaskStatusDef[]): TaskMenu
     type: 'submenu',
     id: 'ade-task-status',
     label: t('common.field.status.label'),
-    items: statuses.map((s) => ({
-      id: `ade-task-status-${s.id}`,
-      label: s.name,
-      cmd: { kind: 'setStatus', statusId: s.id },
-      checked: s.id === c.status.id,
-    })),
+    items: [
+      {
+        type: 'radio',
+        id: 'ade-task-status-radio',
+        value: c.status.id,
+        items: statuses.map((s) => ({
+          id: `ade-task-status-${s.id}`,
+          value: s.id,
+          label: s.name,
+          cmd: { kind: 'setStatus', statusId: s.id },
+        })),
+      },
+    ],
   };
 }
 
@@ -243,23 +271,34 @@ function changeBaseEntry(choices: readonly ChangeBaseChoice[]): TaskMenuEntry[] 
 
 function planEntry(i: TaskMenuInput): TaskMenuEntry {
   const day = i.card.entry.auto ? LATER : i.card.entry.day;
-  const at = (id: string, label: string, to: number): TaskMenuItem => {
+  const here = (to: number): boolean =>
     // A shelved task has no day: only the Later shelf counts as "on Later", so Backlog tasks can move there.
-    const here = to === LATER ? i.card.shelf === 'later' || i.card.entry.auto : day === to;
-    return { id, label, cmd: { kind: 'plan', day: to }, checked: here, disabled: here };
-  };
+    to === LATER ? i.card.shelf === 'later' || i.card.entry.auto : day === to;
+  const days: readonly { id: string; label: string; to: number }[] = [
+    { id: 'ade-task-plan-today', label: t('space.ade.board.taskMenu.moveToday.label'), to: 0 },
+    {
+      id: 'ade-task-plan-next',
+      label: t('space.ade.board.taskMenu.moveNextWorkDay.label'),
+      to: nextWork(i.cal, 0),
+    },
+    { id: 'ade-task-plan-later', label: t('space.ade.board.taskMenu.moveLater.label'), to: LATER },
+  ];
   return {
     type: 'submenu',
     id: 'ade-task-plan',
     label: t('space.common.plan.label'),
     items: [
-      at('ade-task-plan-today', t('space.ade.board.taskMenu.moveToday.label'), 0),
-      at(
-        'ade-task-plan-next',
-        t('space.ade.board.taskMenu.moveNextWorkDay.label'),
-        nextWork(i.cal, 0),
-      ),
-      at('ade-task-plan-later', t('space.ade.board.taskMenu.moveLater.label'), LATER),
+      {
+        type: 'radio',
+        id: 'ade-task-plan-radio',
+        value: days.find((d) => here(d.to))?.id ?? null,
+        items: days.map((d) => ({
+          id: d.id,
+          value: d.id,
+          label: d.label,
+          cmd: { kind: 'plan', day: d.to },
+        })),
+      },
     ],
   };
 }
@@ -338,12 +377,19 @@ export function taskMenuModel(i: TaskMenuInput): TaskMenuEntry[] {
         type: 'submenu',
         id: 'ade-task-workflow',
         label: t('space.common.workflow.label'),
-        items: i.workflows.map((w) => ({
-          id: `ade-task-workflow-${w.id}`,
-          label: w.name,
-          cmd: { kind: 'workflow', workflowId: w.id },
-          checked: c.task.workflowId === w.id,
-        })),
+        items: [
+          {
+            type: 'radio',
+            id: 'ade-task-workflow-radio',
+            value: c.task.workflowId || null,
+            items: i.workflows.map((w) => ({
+              id: `ade-task-workflow-${w.id}`,
+              value: w.id,
+              label: w.name,
+              cmd: { kind: 'workflow', workflowId: w.id },
+            })),
+          },
+        ],
       });
     }
     if (c.task.runs.some((r) => r.state === 'running' || r.state === 'pending')) {

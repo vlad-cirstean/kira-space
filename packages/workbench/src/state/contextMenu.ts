@@ -41,7 +41,6 @@ export type MenuItem =
       swatch?: string;
       danger?: boolean;
       disabled?: boolean;
-      checked?: boolean;
       /** A hover explanation for this one row (e.g. the cell editor's format picker) —
        *  rendered through the same Tooltip/TooltipTrigger/TooltipContent trio every other hint
        *  uses, so it inherits the shared open-delay/rearm behavior for free rather than

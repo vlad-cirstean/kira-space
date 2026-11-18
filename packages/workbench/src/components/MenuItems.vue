@@ -191,9 +191,6 @@ async function onItemClick(item: MenuItem): Promise<void> {
           <DropdownMenuShortcut v-if="item.shortcut" :data-testid="`${tidOf(item)}-shortcut`">{{
             formatShortcut(item.shortcut)
           }}</DropdownMenuShortcut>
-          <span v-if="item.checked" class="flex items-center justify-center shrink-0 size-4">
-            <CodiconIcon name="check" :size="13" />
-          </span>
         </DropdownMenuItem>
       </TooltipTrigger>
       <TooltipContent v-if="item.hint"><VarText :parts="hintParts(item.hint)" /></TooltipContent>

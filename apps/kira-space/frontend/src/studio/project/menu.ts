@@ -175,19 +175,23 @@ function countItem(
 // error popover instead of an unhandled rejection with no trace.
 function reportingErrors(row: TreeRowVm, items: MenuItem[]): MenuItem[] {
   const path = row.kind === 'group' ? groupParentPath(row.path) : row.path;
+  const guarded = (run: () => void | Promise<void>) => async (): Promise<void> => {
+    try {
+      await run();
+    } catch (err) {
+      useTreeStore().reportError(row.connectionId, path, err);
+    }
+  };
   return items.map((item): MenuItem => {
     if (item.type === 'submenu') return { ...item, items: reportingErrors(row, item.items) };
-    if (item.type !== 'item') return item;
-    return {
-      ...item,
-      run: async () => {
-        try {
-          await item.run();
-        } catch (err) {
-          useTreeStore().reportError(row.connectionId, path, err);
-        }
-      },
-    };
+    if (item.type === 'item' || item.type === 'checkbox')
+      return { ...item, run: guarded(item.run) };
+    if (item.type === 'radio')
+      return {
+        ...item,
+        items: item.items.map((o) => (o.type === 'option' ? { ...o, run: guarded(o.run) } : o)),
+      };
+    return item;
   });
 }
 
@@ -395,7 +399,7 @@ function setAsDefaultMenuItem(row: TreeRowVm): MenuItem[] {
   if (record?.kind !== 'postgres') return [];
   return [
     {
-      type: 'item',
+      type: 'checkbox',
       id: 'set-as-default',
       label: t('studio.project.menu.setDefault.label'),
       icon: 'star',

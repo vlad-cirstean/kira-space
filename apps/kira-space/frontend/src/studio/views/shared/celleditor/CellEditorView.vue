@@ -16,7 +16,7 @@ import { formatBytes } from '@workbench/behaviour/format';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
+import { type MenuRadioOption, useContextMenuStore } from '@workbench/state/contextMenu';
 import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import type { ConsoleDiagnostic } from '../../../editor/diagnostics';
@@ -327,30 +327,32 @@ function setFormat(format: CellFormat | null): void {
 
 function openFormatMenu(e: MouseEvent): void {
   if (isNullValue.value) return;
-  const rows: MenuItem[] = [
+  const options: (MenuRadioOption | { type: 'separator' })[] = [
     {
-      type: 'item',
+      type: 'option',
       id: 'format-auto',
+      value: null,
       label: formatAutoLabel(detectedFormat.value),
-      checked: override.value === null,
       hint: detectedReason.value || undefined,
       run: () => setFormat(null),
     },
   ];
   FORMAT_GROUPS.forEach((group, i) => {
-    if (i > 0) rows.push({ type: 'separator' });
+    if (i > 0) options.push({ type: 'separator' });
     for (const f of group) {
-      rows.push({
-        type: 'item',
+      options.push({
+        type: 'option',
         id: `format-${f}`,
+        value: f,
         label: formatLabel(f),
-        checked: override.value === f,
         hint: formatHelp(f),
         run: () => setFormat(f),
       });
     }
   });
-  contextMenuStore.openContextMenu(e, rows);
+  contextMenuStore.openContextMenu(e, [
+    { type: 'radio', id: 'format', value: override.value, items: options },
+  ]);
 }
 
 function applyGenerator(gen: Generator): void {

@@ -11,6 +11,7 @@ import {
   type TaskMenuCmd,
   type TaskMenuEntry,
   type TaskMenuItem,
+  type TaskSubEntry,
   taskMenuModel,
 } from '../board/menu';
 import { taskPatch } from '../board/panelFacts';
@@ -173,15 +174,31 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
       disabled: e.disabled,
       hint: e.hint,
       shortcut: e.shortcut,
-      checked: e.checked,
       danger: e.danger,
       run: () => run(e.cmd),
+    };
+  }
+  function toSub(e: TaskSubEntry): MenuItem {
+    if (!('type' in e)) return toItem(e);
+    return {
+      type: 'radio',
+      id: e.id,
+      value: e.value,
+      items: e.items.map((o) => ({
+        type: 'option',
+        id: o.id,
+        value: o.value,
+        label: o.label,
+        disabled: o.disabled,
+        hint: o.hint,
+        run: () => run(o.cmd),
+      })),
     };
   }
   function toMenu(e: TaskMenuEntry): MenuItem {
     if (e.type === 'item') return toItem(e);
     if (e.type === 'submenu')
-      return { type: 'submenu', id: e.id, label: e.label, items: e.items.map(toItem) };
+      return { type: 'submenu', id: e.id, label: e.label, items: e.items.map(toSub) };
     return e;
   }
 

@@ -214,14 +214,21 @@ function repoMenuItems(repo: RepoSummary): MenuItem[] {
       id: 'color',
       label: t('common.field.colour.label'),
       icon: 'symbol-color',
-      items: PALETTE_COLOR_CHOICES.map((color) => ({
-        type: 'item' as const,
-        id: `color-${color}`,
-        label: colourLabel(color as ColourName),
-        swatch: color,
-        checked: repo.color === color,
-        run: () => codeReposStore.setCodeRepoColor(repo.id, color),
-      })),
+      items: [
+        {
+          type: 'radio' as const,
+          id: 'color-radio',
+          value: repo.color,
+          items: PALETTE_COLOR_CHOICES.map((color) => ({
+            type: 'option' as const,
+            id: `color-${color}`,
+            value: color,
+            label: colourLabel(color as ColourName),
+            swatch: color,
+            run: () => codeReposStore.setCodeRepoColor(repo.id, color),
+          })),
+        },
+      ],
     },
     repo.hidden
       ? {
