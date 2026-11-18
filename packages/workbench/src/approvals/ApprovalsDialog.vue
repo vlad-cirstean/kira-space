@@ -92,7 +92,7 @@ function onChord(event: KeyboardEvent): void {
         >
           <Button
             variant="dialog-deny"
-            size="kira"
+            size="kira-lg"
             :pending="pending"
             data-testid="approvals-deny-all"
             @click="denyAll"

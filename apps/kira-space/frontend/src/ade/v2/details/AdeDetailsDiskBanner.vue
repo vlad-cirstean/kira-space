@@ -124,7 +124,7 @@ function stateLabel(c: DiskChange): string {
         </DialogBody>
         <DialogFooter>
           <Button
-            variant="dialog-danger"
+            variant="dialog"
             size="kira-lg"
             data-testid="ade-details-disk-discard-all"
             @click="resolve('discard', [])"

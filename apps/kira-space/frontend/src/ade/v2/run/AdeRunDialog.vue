@@ -32,7 +32,6 @@ import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { timedCall } from '../state/refusalTiming';
 import { useRepoGate } from '../state/useRepoGate';
-import { ACTION_CLASS } from '../tones';
 import { RUN_PREVIEW_IDS, runPreviewVars } from './runPreview';
 
 // Agent step Run dialog (SPEC2 section 5, R24): per-branch names for branches not created yet, the
@@ -291,7 +290,6 @@ async function send(): Promise<void> {
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :class="ACTION_CLASS.agent"
           :data-dialog-initial="(smartStep && named.length === 0) || undefined"
           data-testid="ade-run-send"
           @click="send"

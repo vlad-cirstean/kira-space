@@ -218,7 +218,7 @@ function confirm(): void {
         }}</Button>
         <Button
           v-if="isHardDestructive && canStashFirst"
-          variant="dialog-primary"
+          :variant="stashFirst ? 'dialog-primary' : 'dialog-danger'"
           size="kira-lg"
           :disabled="!canConfirm"
           data-testid="reset-confirm"

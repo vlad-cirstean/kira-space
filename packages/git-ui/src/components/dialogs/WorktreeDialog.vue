@@ -340,8 +340,8 @@ function onClose(): void {
             </Alert>
             <Button
               v-if="canOfferDetachHere"
-              variant="dialog-primary"
-              size="kira-lg"
+              variant="dialog"
+              size="kira"
               @click="submitCreateDetached"
             >
               {{ t('git.dialog.worktree.detachHere.label') }}

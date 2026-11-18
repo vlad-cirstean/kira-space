@@ -131,15 +131,20 @@ function stashAndCarry(): void {
           t('common.action.cancel.label')
         }}</Button>
         <Button
+          v-if="canDiscard"
+          :variant="canStashAndCarry ? 'dialog' : 'dialog-danger'"
+          size="kira-lg"
+          @click="discard"
+        >
+          {{ t('git.dialog.checkout.discardAndCheckOut.confirm') }}
+        </Button>
+        <Button
           v-if="canStashAndCarry"
           variant="dialog-primary"
           size="kira-lg"
           @click="stashAndCarry"
         >
           {{ t('git.dialog.checkout.stashAndCheckOut.confirm') }}
-        </Button>
-        <Button v-if="canDiscard" variant="dialog-danger" size="kira-lg" @click="discard">
-          {{ t('git.dialog.checkout.discardAndCheckOut.confirm') }}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -26,7 +26,6 @@ import { baseChoiceOf, baseGroups, baseOptions, baseValue } from '../branchOptio
 import AdeSetupProgress from '../panel/AdeSetupProgress.vue';
 import { useRebasePreview, useRepoBranches } from '../queries';
 import { useAdeDialogsStore } from '../state/adeDialogs';
-import { ACTION_CLASS } from '../tones';
 import { composeDialog, isRebaseKind } from './compose';
 
 // The one Claude dialog every opener shares (mockup `dlg`): kind-specific title, busy alert, targets,
@@ -157,8 +156,8 @@ async function discard(): Promise<void> {
                 </div>
               </div>
               <Button
-                variant="dialog-danger"
-                size="kira-lg"
+                variant="dialog"
+                size="kira"
                 class="shrink-0"
                 data-testid="ade-dialog-override"
                 @click="dialogs.override = !dialogs.override"
@@ -310,8 +309,9 @@ async function discard(): Promise<void> {
           }}</Button
         >
         <TextTooltip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
+          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
           <Button
-            variant="dialog-danger"
+            variant="dialog"
             size="kira-lg"
             :pending="sending"
             data-testid="ade-dialog-delete"
@@ -321,9 +321,8 @@ async function discard(): Promise<void> {
           </Button>
         </TextTooltip>
         <Button
-          variant="dialog-primary"
+          :variant="view.overridden ? 'dialog-danger' : 'dialog-primary'"
           size="kira-lg"
-          :class="ACTION_CLASS[view.overridden ? 'red' : 'agent']"
           :pending="sending"
           :disabled="view.blocked || view.sendDisabled || dialogs.waitingSetup"
           data-testid="ade-dialog-send"

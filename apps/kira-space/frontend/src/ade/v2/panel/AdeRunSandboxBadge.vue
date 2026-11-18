@@ -5,7 +5,9 @@ import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
@@ -127,12 +129,13 @@ const lists = computed(() =>
         </div>
         <Button
           v-if="d.profile"
-          variant="dialog"
+          variant="toolbar"
           size="kira"
           class="self-start"
           data-testid="ade-run-sandbox-profile"
           @click="profileOpen = true"
         >
+          <CodiconIcon name="eye" :size="13" />
           {{ t('space.ade.sandbox.popover.viewProfile.label') }}
         </Button>
       </div>
@@ -144,19 +147,27 @@ const lists = computed(() =>
         <DialogTitle>{{ t('space.ade.sandbox.profile.title') }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
-        <Button
-          variant="toolbar"
-          size="kira"
-          class="self-start"
-          data-testid="ade-run-sandbox-profile-copy"
-          @click="copy(d?.profile ?? '')"
-        >
-          {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
-        </Button>
         <CodeBlock class="max-h-96 overflow-auto" data-testid="ade-run-sandbox-profile-text">{{
           d?.profile ?? ''
         }}</CodeBlock>
       </DialogBody>
+      <DialogFooter>
+        <template #start>
+          <Button
+            variant="dialog"
+            size="kira-lg"
+            data-testid="ade-run-sandbox-profile-copy"
+            @click="copy(d?.profile ?? '')"
+          >
+            {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
+          </Button>
+        </template>
+        <DialogClose as-child>
+          <Button variant="dialog" size="kira-lg" data-dialog-dismiss>{{
+            t('common.action.close.label')
+          }}</Button>
+        </DialogClose>
+      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
