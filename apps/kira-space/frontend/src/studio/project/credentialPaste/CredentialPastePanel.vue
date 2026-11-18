@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConnectionKind } from '@shared/domain/connection';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -158,46 +159,48 @@ function onCancel(): void {
       <AlertDescription>{{ t('studio.project.credentialPaste.tooLong.error') }}</AlertDescription>
     </Alert>
 
-    <div v-if="rows.length > 0" class="flex flex-col gap-1">
-      <div
-        v-for="row in rows"
-        :key="row.field"
-        class="flex items-center gap-2"
-        :data-testid="`paste-credentials-row-${row.field}`"
-      >
-        <span class="w-20 shrink-0 text-muted-foreground">{{ fieldLabel(row.field) }}</span>
-        <NativeSelect
-          v-if="row.candidates.length > 1"
-          :model-value="picks[row.field] ?? 0"
-          class="min-w-0 flex-1 font-data"
-          :data-testid="`paste-credentials-pick-${row.field}`"
-          @update:model-value="(v) => (picks[row.field] = Number(v))"
+    <KeyValueList v-if="rows.length > 0">
+      <template v-for="row in rows" :key="row.field">
+        <dt>{{ fieldLabel(row.field) }}</dt>
+        <dd
+          class="flex min-w-0 items-center gap-1.5"
+          :data-testid="`paste-credentials-row-${row.field}`"
         >
-          <option v-for="(c, i) in row.candidates" :key="i" :value="i"
-            >{{ shown(row.field, c) }}
-            ({{ c.label }})</option
+          <NativeSelect
+            v-if="row.candidates.length > 1"
+            :model-value="picks[row.field] ?? 0"
+            class="min-w-0 flex-1 font-data"
+            :data-testid="`paste-credentials-pick-${row.field}`"
+            @update:model-value="(v) => (picks[row.field] = Number(v))"
           >
-        </NativeSelect>
-        <template v-else>
-          <span class="min-w-0 flex-1 truncate font-data">{{ shown(row.field, chosen(row)) }}</span>
-          <span class="shrink-0 text-kira-sm text-muted-foreground">{{ chosen(row).label }}</span>
-        </template>
-        <Badge v-if="chosen(row).guessed" variant="warn">{{
-          t('studio.project.credentialPaste.guessed.label')
-        }}</Badge>
-        <TooltipIconButton
-          v-if="row.field === 'password'"
-          :icon="showPassword ? 'eye-closed' : 'eye'"
-          :label="
-            showPassword
-              ? t('studio.project.connectionDialog.hidePassword.label')
-              : t('studio.project.connectionDialog.showPassword.label')
-          "
-          data-testid="paste-credentials-toggle-password"
-          @click="showPassword = !showPassword"
-        />
-      </div>
-    </div>
+            <option v-for="(c, i) in row.candidates" :key="i" :value="i"
+              >{{ shown(row.field, c) }}
+              ({{ c.label }})</option
+            >
+          </NativeSelect>
+          <template v-else>
+            <span class="min-w-0 flex-1 truncate font-data">{{
+              shown(row.field, chosen(row))
+            }}</span>
+            <span class="shrink-0 text-kira-sm text-muted-foreground">{{ chosen(row).label }}</span>
+          </template>
+          <Badge v-if="chosen(row).guessed" variant="warn">{{
+            t('studio.project.credentialPaste.guessed.label')
+          }}</Badge>
+          <TooltipIconButton
+            v-if="row.field === 'password'"
+            :icon="showPassword ? 'eye-closed' : 'eye'"
+            :label="
+              showPassword
+                ? t('studio.project.connectionDialog.hidePassword.label')
+                : t('studio.project.connectionDialog.showPassword.label')
+            "
+            data-testid="paste-credentials-toggle-password"
+            @click="showPassword = !showPassword"
+          />
+        </dd>
+      </template>
+    </KeyValueList>
     <p
       v-else-if="result && !result.tooLong"
       class="m-0 text-muted-foreground"

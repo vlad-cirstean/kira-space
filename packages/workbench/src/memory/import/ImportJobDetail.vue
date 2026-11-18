@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
 import type { ImportAction } from '@shared/domain/memoryImport';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -8,7 +9,6 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Progress } from '@theme/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { storeToRefs } from 'pinia';
@@ -79,34 +79,37 @@ async function discard(): Promise<void> {
     data-testid="import-job"
     :data-state="job.state"
   >
-    <div class="flex shrink-0 flex-col gap-1.5 p-3">
-      <div class="flex items-center gap-1.5">
+    <DetailHeader>
+      <template #title>
         <TextTooltip :text="job.roots.join(', ')">
-          <span class="min-w-0 flex-1 truncate text-kira-md font-medium">{{ jobTitle(job) }}</span>
+          <span>{{ jobTitle(job) }}</span>
         </TextTooltip>
-        <span class="text-kira-sm text-muted-foreground" data-testid="import-job-state">{{
-          t(JOB_STATE_LABEL[job.state])
-        }}</span>
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Badge variant="default" data-testid="import-job-channel">{{
-              t(
-                job.channel === 'mcp'
-                  ? 'memory.common.origin.agent.label'
-                  : 'memory.import.channel.ui.label',
-              )
-            }}</Badge>
-          </TooltipTrigger>
-          <TooltipContent v-if="job.sessionId">{{
-            t('memory.import.channel.agent.description', { session: job.sessionId })
-          }}</TooltipContent>
-        </Tooltip>
+      </template>
+      <template #meta>
+        <span data-testid="import-job-state">{{ t(JOB_STATE_LABEL[job.state]) }}</span>
+        <TextTooltip
+          :text="
+            job.sessionId
+              ? t('memory.import.channel.agent.description', { session: job.sessionId })
+              : ''
+          "
+        >
+          <Badge variant="default" data-testid="import-job-channel">{{
+            t(
+              job.channel === 'mcp'
+                ? 'memory.common.origin.agent.label'
+                : 'memory.import.channel.ui.label',
+            )
+          }}</Badge>
+        </TextTooltip>
         <Badge variant="default" data-testid="import-job-origin">{{
           originText(job.origin as MemoryOrigin, job.sourceTag)
         }}</Badge>
         <Badge variant="default" data-testid="import-job-scope">{{
           job.project ? job.project : t(SCOPE_LABEL[job.scope as MemoryScope])
         }}</Badge>
+      </template>
+      <template #actions>
         <Button
           v-if="job.state === 'awaiting'"
           variant="toolbar"
@@ -176,7 +179,7 @@ async function discard(): Promise<void> {
             t('common.action.discard.label')
           }}</Button
         >
-      </div>
+      </template>
       <Alert
         v-if="
           job.reason &&
@@ -217,7 +220,7 @@ async function discard(): Promise<void> {
           t('memory.import.totals.skipped.label', { count: job.totals.skippedFiles })
         }}</span>
       </div>
-    </div>
+    </DetailHeader>
     <div ref="scroll" class="min-h-0 flex-1 overflow-y-auto" data-testid="import-files">
       <div class="relative w-full" :style="{ height: `${totalSize}px` }">
         <div
