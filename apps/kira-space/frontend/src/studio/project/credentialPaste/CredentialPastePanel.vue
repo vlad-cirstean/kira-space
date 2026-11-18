@@ -4,8 +4,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { FieldDescription } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
@@ -127,9 +126,7 @@ function onCancel(): void {
   <div class="flex flex-col gap-2 text-kira-md" data-testid="paste-credentials-panel">
     <div class="flex flex-col gap-1">
       <div class="flex items-center justify-between gap-1">
-        <Label class="leading-none text-muted-foreground">{{
-          t('studio.project.credentialPaste.heading.label')
-        }}</Label>
+        <FieldLabel>{{ t('studio.project.credentialPaste.heading.label') }}</FieldLabel>
         <TooltipIconButton
           :icon="showText ? 'eye-closed' : 'eye'"
           :label="

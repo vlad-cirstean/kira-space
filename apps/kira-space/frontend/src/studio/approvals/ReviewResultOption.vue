@@ -29,7 +29,7 @@ function onTick(v: boolean): void {
 <template>
   <Tooltip v-if="payload.reviewOffered" :disabled="!payload.reviewResult">
     <TooltipTrigger as-child>
-      <Label class="flex shrink-0 items-center gap-1.5 text-kira-md font-normal">
+      <Label class="flex shrink-0 items-center gap-1.5 font-normal">
         <Checkbox
           :model-value="payload.reviewResult || ticked"
           :disabled="payload.reviewResult"

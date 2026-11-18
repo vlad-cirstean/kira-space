@@ -2,15 +2,14 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { FieldError } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { produceKafkaMessage, sendSqsMessage } from './mutations';
 import { useStreamViewStore } from './state';
 
@@ -29,6 +28,9 @@ const HEADERS_EXAMPLE = '{"source": "manual"}';
 const key = ref('');
 const body = ref('');
 const headers = ref('');
+const keyId = useId();
+const bodyId = useId();
+const headersId = useId();
 
 const isKafka = computed(() => props.kind === 'kafka');
 const streamViewStore = useStreamViewStore();
@@ -69,23 +71,22 @@ async function submit(): Promise<void> {
     </PanelHeader>
 
     <div class="flex flex-col gap-1.5 p-2">
-      <Label v-if="isKafka" class="flex flex-col gap-0.5">
-        <span class="text-kira-md text-muted-foreground">{{
-          t('studio.stream.compose.key.label')
-        }}</span>
+      <Field v-if="isKafka">
+        <FieldLabel :for="keyId">{{ t('studio.stream.compose.key.label') }}</FieldLabel>
         <Input
+          :id="keyId"
           :model-value="key"
           :placeholder="t('common.state.none.option')"
-          size="kira"
           class="font-data"
           data-testid="stream-add-message-key"
           @update:model-value="(v) => (key = String(v))"
         />
-      </Label>
+      </Field>
 
-      <Label class="flex flex-col gap-0.5">
-        <span class="text-kira-md text-muted-foreground">{{ t('common.body.label') }}</span>
+      <Field>
+        <FieldLabel :for="bodyId">{{ t('common.body.label') }}</FieldLabel>
         <Textarea
+          :id="bodyId"
           v-model="body"
           class="font-data"
           rows="6"
@@ -93,13 +94,12 @@ async function submit(): Promise<void> {
           data-testid="stream-add-message-body"
           @keydown="wrapSelectionOnType"
         />
-      </Label>
+      </Field>
 
-      <Label class="flex flex-col gap-0.5">
-        <span class="text-kira-md text-muted-foreground">{{
-          t('studio.stream.compose.headers.label')
-        }}</span>
+      <Field>
+        <FieldLabel :for="headersId">{{ t('studio.stream.compose.headers.label') }}</FieldLabel>
         <Textarea
+          :id="headersId"
           v-model="headers"
           class="font-data"
           rows="3"
@@ -107,7 +107,7 @@ async function submit(): Promise<void> {
           data-testid="stream-add-message-headers"
           @keydown="wrapSelectionOnType"
         />
-      </Label>
+      </Field>
 
       <FieldError v-if="error" data-testid="stream-add-message-error">{{ error }}</FieldError>
     </div>

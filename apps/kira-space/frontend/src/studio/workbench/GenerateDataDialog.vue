@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import {
   Table,
@@ -25,7 +25,6 @@ import {
 } from '@theme/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { rowMeta } from '@theme/lib/rowVariants';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
@@ -256,38 +255,42 @@ function onSequenceStartChange(index: number, start: number): void {
       </DialogHeader>
 
       <DialogBody>
-        <div class="flex items-center gap-1.5">
-          <Label class="p-0 text-muted-foreground">{{ t('studio.keyValue.rows.aria') }}</Label>
-          <NumberStepperInput
-            :model-value="String(rowCount)"
-            group-class="h-control-lg"
-            data-testid="generate-data-row-count"
-            :disabled="running"
-            @update:model-value="
-              (v: string | number) => (rowCount = Math.max(1, Math.trunc(Number(v)) || 1))
-            "
-          />
-          <Label class="p-0 text-muted-foreground">{{ t('studio.generateData.seed.label') }}</Label>
-          <NumberStepperInput
-            :model-value="String(seed)"
-            group-class="h-control-lg"
-            data-testid="generate-data-seed"
-            :disabled="running"
-            @update:model-value="(v: string | number) => (seed = Math.trunc(Number(v)) || 0)"
-          />
-          <span
-            v-if="rowCount > BATCH_SIZE"
-            :class="rowMeta"
-            data-testid="generate-data-batch-note"
-          >
-            {{
-              t('studio.generateData.batches.status', {
-                count: Math.ceil(rowCount / BATCH_SIZE),
-                size: BATCH_SIZE,
-              })
-            }}
-          </span>
-        </div>
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="generate-data-rows">{{ t('studio.keyValue.rows.aria') }}</FieldLabel>
+            <NumberStepperInput
+              id="generate-data-rows"
+              :model-value="String(rowCount)"
+              group-class="w-40"
+              data-testid="generate-data-row-count"
+              :disabled="running"
+              @update:model-value="
+                (v: string | number) => (rowCount = Math.max(1, Math.trunc(Number(v)) || 1))
+              "
+            />
+            <FieldDescription v-if="rowCount > BATCH_SIZE" data-testid="generate-data-batch-note">
+              {{
+                t('studio.generateData.batches.status', {
+                  count: Math.ceil(rowCount / BATCH_SIZE),
+                  size: BATCH_SIZE,
+                })
+              }}
+            </FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel for="generate-data-seed">{{
+              t('studio.generateData.seed.label')
+            }}</FieldLabel>
+            <NumberStepperInput
+              id="generate-data-seed"
+              :model-value="String(seed)"
+              group-class="w-40"
+              data-testid="generate-data-seed"
+              :disabled="running"
+              @update:model-value="(v: string | number) => (seed = Math.trunc(Number(v)) || 0)"
+            />
+          </Field>
+        </FieldGroup>
 
         <div class="max-h-64 overflow-y-auto">
           <Table>

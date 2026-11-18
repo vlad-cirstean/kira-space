@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import {
   TagsInput,
@@ -88,7 +87,9 @@ function onSave(): void {
       </DialogHeader>
       <DialogBody class="flex flex-col gap-3">
         <Field>
-          <Label :for="effectId">{{ t('studio.settings.dbMcp.apiRules.effect.label') }}</Label>
+          <FieldLabel :for="effectId">{{
+            t('studio.settings.dbMcp.apiRules.effect.label')
+          }}</FieldLabel>
           <NativeSelect
             :id="effectId"
             v-model="effect"
@@ -134,7 +135,7 @@ function onSave(): void {
         <Field>
           <FieldLabel>{{ t('studio.settings.dbMcp.apiRules.methods.label') }}</FieldLabel>
           <div class="flex flex-wrap gap-x-3 gap-y-1.5">
-            <div v-for="m in API_METHODS" :key="m" class="flex items-center gap-1.5 text-kira-md">
+            <Field v-for="m in API_METHODS" :key="m" orientation="horizontal" class="w-auto">
               <Checkbox
                 :id="`${methodsId}-${m}`"
                 :model-value="methods.includes(m)"
@@ -142,20 +143,20 @@ function onSave(): void {
                 :data-testid="`api-rule-method-${m}`"
                 @update:model-value="(v) => setMethod(m, v === true)"
               />
-              <Label :for="`${methodsId}-${m}`">{{ m }}</Label>
-            </div>
+              <FieldLabel :for="`${methodsId}-${m}`">{{ m }}</FieldLabel>
+            </Field>
           </div>
-          <div class="flex items-center gap-2 text-kira-md">
+          <Field orientation="horizontal">
             <Checkbox
               :id="anyMethodId"
               :model-value="anyMethod"
               data-testid="api-rule-any-method"
               @update:model-value="(v) => (anyMethod = v === true)"
             />
-            <Label :for="anyMethodId">{{
+            <FieldLabel :for="anyMethodId">{{
               t('studio.settings.dbMcp.apiRules.anyMethod.label')
-            }}</Label>
-          </div>
+            }}</FieldLabel>
+          </Field>
         </Field>
         <FieldError v-if="error" data-testid="api-rule-error">{{ error }}</FieldError>
       </DialogBody>

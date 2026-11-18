@@ -9,9 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldError } from '@theme/components/ui/field';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
@@ -98,8 +97,9 @@ function splitTarget(value: string): [string, string | null] {
       </DialogHeader>
       <DialogBody>
         <Field>
-          <Label class="text-muted-foreground">{{ t('common.field.name.label') }}</Label>
+          <FieldLabel for="save-request-name">{{ t('common.field.name.label') }}</FieldLabel>
           <Input
+            id="save-request-name"
             v-model="name"
             v-bind="invalidAttrs('name')"
             data-testid="save-request-name"
@@ -116,10 +116,15 @@ function splitTarget(value: string): [string, string | null] {
         </Field>
 
         <Field>
-          <Label class="text-muted-foreground">{{
+          <FieldLabel for="save-request-target">{{
             t('studio.api.saveRequest.target.label')
-          }}</Label>
-          <NativeSelect v-model="target" variant="bordered" data-testid="save-request-target">
+          }}</FieldLabel>
+          <NativeSelect
+            id="save-request-target"
+            v-model="target"
+            variant="bordered"
+            data-testid="save-request-target"
+          >
             <optgroup v-for="c in collectionTargets" :key="c.id" :label="c.name">
               <option :value="`${c.id}:`">{{
                 t('studio.api.saveRequest.collectionRoot.option')
