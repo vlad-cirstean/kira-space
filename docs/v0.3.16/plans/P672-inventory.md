@@ -1,7 +1,7 @@
 # P672 inventory: UI elements and uniformity rules
 
 Spec row: `../SPEC.md` P672 Part 1. Plan: `P672.md`. Base: `chapter/v0.3.16` at `6527aec4`.
-Analysis only. Status: complete (§0-§20, appendix A.1-A.10).
+Analysis only. Status: complete (§0-§20, appendix A.1-A.13).
 
 ## 0. Method and scope
 
@@ -262,9 +262,10 @@ max-w-80 from the primitive); `DropdownMenuItem` 0 overrides; context menus all 
 `openContextMenuAt` (25 call sites, no `ContextMenuContent` tag in app code); `MenuItems` renders a
 `MenuItem[]` in either. Divergence:
 
-- Two ways to build the same dropdown: `MenuItems` from a `MenuItem[]` (4 hosts: shell, Git, Studio)
-  vs hand `DropdownMenuItem` lists (22 files, ADE 12: `AdeSessionsMenu`, `AdeReviewActions`,
-  `AdeTaskAddMenu` items, `AdeBoardMenu`, …). Context menus already use the data form; dropdowns
+- Two ways to build the same dropdown: `MenuItems` from a `MenuItem[]` (3 dropdown hosts:
+  Git `AppToolbar`, `PullStrategyPicker`, Workbench `ContextMenu`) vs hand `DropdownMenuItem` lists
+  (21 files, ADE 12: `AdeStatusPicker`, `AdeStepMenu`, `AdeTaskStatusMenu`, `AdeReviewActions`,
+  `AdeTaskBranchMenu`, …; A.11). Context menus already use the data form; dropdowns
   mostly do not, so separators, icons (13 muted), shortcuts and disabled reasons differ by author.
 - Coloured menu icons: Docker `ContainerList` passes `iconClass` `text-ok`/`text-error` for
   Start/Stop (2). Every other menu icon is muted.
@@ -707,7 +708,7 @@ Runs 23, Studio, Git, Memory, API per §3.1 table), keep commit/decision uses; M
 `ACTION_CLASS` off-board; M12 RD.1 sizes per A.1; M13 RD.2 footers (5 dialogs); M14 RD.3/RD.4
 header extras and intro text; M15 RD.5 `DialogBody` overrides.
 
-Part 5 (menus, popovers, tooltips): M16 RM.1 hand dropdowns (22 files) to `MenuItems`; M17 RM.2
+Part 5 (menus, popovers, tooltips): M16 RM.1 hand dropdowns (21 files, A.11) to `MenuItems`; M17 RM.2
 toned menu icons; M18 RM.3 every `PopoverContent` in A.2 to default or `flush` + section rows;
 M19 RT.1/RT.2 hand Tooltip triples with a text-only body to `TextTooltip`.
 
@@ -1030,3 +1031,55 @@ Files with bare `Label` (any use; Part 3 classifies each use against RF.1): `ade
 
 12 uses: `studio/kubernetes/components/ClusterUnavailable.vue:49`, `studio/views/documents/DocumentView.vue:448`, `studio/views/shared/keyvalue/KeyValueRowsTable.vue:183`, `studio/views/stream/StreamRowsTable.vue:247`, `studio/views/stream/StreamRowsTable.vue:253`, `docker-ui/src/components/ConnectionState.vue:13`, `docker-ui/src/components/ContainerDetail.vue:120`, `docker-ui/src/components/UnavailableState.vue:52`, `git-ui/src/components/DetailPane.vue:106`, `git-ui/src/components/GitBlockedPanel.vue:23`, `git-ui/src/components/StashDetailPane.vue:105`, `workbench/src/components/QueryState.vue:78`
 
+### A.11 Menus (every dropdown and context menu host)
+
+Dropdowns (`DropdownMenuContent`, item build in parentheses):
+
+- ADE: `AdeLeasesPane.vue` (hand items), `AdeStatusPicker.vue` (hand items), `AdeStepMover.vue` (hand items), `AdeTaskBranchMenu.vue` (hand items), `AdeStepMenu.vue` (hand items), `AdeTaskCard.vue` (hand items), `AdeTaskStatusMenu.vue` (hand items), `AdeReviewActions.vue` (hand items), `AdeStepNode.vue` (hand items), `AdeStepsTab.vue` (hand items), `AdeWorkflowGraph.vue` (hand items), `AdeStepSandbox.vue` (hand items)
+- API: `EnvironmentSelect.vue` (hand items), `MethodSelect.vue` (hand items)
+- Docker: `EndpointChip.vue` (hand items)
+- Git: `AppToolbar.vue` (MenuItems), `PullStrategyPicker.vue` (MenuItems)
+- Memory: `MemoryFilters.vue` (hand items), `ImportMenu.vue` (hand items)
+- Studio: `MaskKindMenu.vue` (hand items), `ProofScreenshotMenu.vue` (hand items), `DiscoverSavedControls.vue` (hand items)
+- Workbench: `ContextMenu.vue` (MenuItems), `OpLogToolbar.vue` (hand items)
+
+Context menus (`openContextMenuAt` call sites, all data-driven `MenuItem[]`):
+
+- ADE: `AdeBranchPanel.vue` (1), `useTaskMenu.ts` (1), `useReviewCode.ts` (1)
+- API: `ApiNewTab.vue` (1), `CollectionsTree.vue` (1)
+- Docker: `ContainerList.vue` (1)
+- Git: `RepoFileTree.vue` (1), `RepoList.vue` (1), `FileTree.vue` (1), `useSectionMenu.ts` (1)
+- Kubernetes: `ClusterList.vue` (1), `ResourceTable.vue` (1)
+- Runs: `AutomationsNewTab.vue` (1)
+- Studio: `ProjectTree.vue` (1), `BrowseView.vue` (1), `ConsoleResultGrid.vue` (2), `DocumentView.vue` (1), `KeyValueRowsTable.vue` (1), `StreamRowsTable.vue` (1)
+- Workbench: `MenuIconButton.vue` (1), `OpLogPanel.vue` (1), `contextMenu.ts` (3)
+
+### A.12 Lists, rows, tables
+
+- ADE: `AdeAuditEntry.vue` (AdeRow 1), `AdeTimelineEntry.vue` (AdeRow 1), `AdeShelfRow.vue` (row 1), `AdeMainBranches.vue` (AdeRow 2), `AdeMainTab.vue` (AdeRow 6), `AdeStepBlock.vue` (AdeRow 3), `AdeStepMover.vue` (AdeRow 1), `AdeWorkflowBlock.vue` (AdeRow 1), `AdePortImportDialog.vue` (virtualRows 1), `AdeReposPage.vue` (row 3, virtualRows 1), `AdeStepsTab.vue` (row 1), `AdeWorkflowsTab.vue` (row 1)
+- API: `CollectionRow.vue` (row 1)
+- Docker: `ContainerGroupRow.vue` (row 1), `ContainerList.vue` (VirtualList 1), `ContainerOverview.vue` (row 1), `ContainerRow.vue` (row 1), `ContainerTable.vue` (virtualRows 1), `EngineDiskSection.vue` (Table 1), `EngineOverview.vue` (row 1), `ImageList.vue` (row 1, VirtualList 1), `NetworkList.vue` (row 1, VirtualList 1), `ResourceDetail.vue` (row 1), `VirtualList.vue` (virtualRows 1), `VolumeList.vue` (row 1, VirtualList 1)
+- Git: `RepoList.vue` (row 1), `RepoSearchRow.vue` (row 2), `RepoSearchView.vue` (virtualRows 1), `RepoTreeRow.vue` (row 1), `RepoWorktreeRow.vue` (row 1), `CommitGrid.vue` (SlickGrid 25), `FileTree.vue` (row 1), `RefsPopoverBranches.vue` (row 2), `SearchResults.vue` (row 2), `StashRows.vue` (row 1), `TagList.vue` (row 1), `UncommittedChangesStrip.vue` (row 1, SlickGrid 1), `ReviewCommentsPane.vue` (row 1), `ReviewCommitList.vue` (virtualRows 1), `ReviewCommitRow.vue` (row 1)
+- Kubernetes: `ClusterList.vue` (row 1), `ResourceTable.vue` (row 1, virtualRows 1)
+- Memory: `MemoryContext.vue` (row 1), `MemoryPanel.vue` (row 1, virtualRows 1), `ImportFileRow.vue` (row 1), `ImportJobDetail.vue` (virtualRows 1)
+- Proto: `SlickProto.vue` (SlickGrid 8), `TooltipProxy.vue` (SlickGrid 1)
+- Runs: `ScriptBrokenRow.vue` (row 1), `ScriptGroupHeader.vue` (row 1), `ScriptRow.vue` (row 1), `RunsSection.vue` (row 1)
+- Settings: `ConfigSyncPane.vue` (Table 1)
+- Studio: `PendingResponse.vue` (Table 1, virtualRows 1), `TreeRow.vue` (row 1), `ConnectionMaskReview.vue` (virtualRows 1), `ConnectionMcpTables.vue` (virtualRows 1), `ProofChangePanel.vue` (row 1), `BrowseView.vue` (row 1, virtualRows 1), `ConsoleResultGrid.vue` (row 2, virtualRows 2, SlickGrid 9), `ConsoleSavedMenu.vue` (row 1), `ConsoleSlickGrid.vue` (SlickGrid 55), `ExplainResultView.vue` (row 1), `DiscoverSavedMenu.vue` (row 1), `FieldSidebar.vue` (row 1), `TimePicker.vue` (row 1), `ColumnsSection.vue` (Table 1), `ConstraintsSection.vue` (Table 1, SlickGrid 1), `DefinitionView.vue` (SlickGrid 1), `IndexesSection.vue` (Table 1), `PropertiesSection.vue` (Table 1), `ValidationSection.vue` (Table 1), `DocumentView.vue` (virtualRows 1), `ProjectionMenu.vue` (row 1), `ColumnsMenu.vue` (row 1), `DataToolbar.vue` (SlickGrid 4), `DataView.vue` (SlickGrid 4), `FilterToolbar.vue` (SlickGrid 3), `FkPreviewPopover.vue` (Table 1, SlickGrid 4), `SlickGridHost.vue` (SlickGrid 87), `CallHistoryList.vue` (row 1), `ResponsePane.vue` (row 1, virtualRows 1), `SchemaBrowser.vue` (row 2), `ResponseDiffDialog.vue` (Table 2), `ResponseHistoryList.vue` (row 1), `FilterHistoryMenu.vue` (row 1), `SavedListMenu.vue` (row 2), `CellEditorView.vue` (SlickGrid 2), `CellGenerateMenu.vue` (row 1), `DocumentRow.vue` (row 1), `KeyValueRowsTable.vue` (row 1, virtualRows 1), `StreamFilterRow.vue` (row 1), `StreamRowsTable.vue` (row 1, virtualRows 1), `GenerateDataDialog.vue` (Table 1), `StudioStart.vue` (row 1)
+- Theme: `AttributeTooltip.vue` (SlickGrid 9), `TooltipAnchorBridge.vue` (SlickGrid 1)
+- Workbench: `AutocompleteField.vue` (row 1), `LogLines.vue` (virtualRows 1), `OpLogPanel.vue` (virtualRows 1), `SettingsShell.vue` (row 1), `WorkbenchShell.vue` (SlickGrid 1), `PromptsPane.vue` (row 1)
+
+### A.13 Forms (files with `Field`/`FieldSet`; label mix `FieldLabel`/`Label`)
+
+- ADE: `AdeSettingsSecrets.vue` (F1 1/0), `AdeTaskStatuses.vue` (F2 0/2)
+- API: `ApiSecrets.vue` (F1 1/0), `EnvironmentFields.vue` (F3 3/0), `SaveRequestDialog.vue` (F2 0/2)
+- Docker: `EditPendingSummary.vue` (F0 S1 0/0), `RecreateConfirmDialog.vue` (F0 S2 0/0)
+- Git: `RepoConfigForm.vue` (F5 S4 5/0), `RepoIdentity.vue` (F1 S1 0/0), `RunScriptRefPicker.vue` (F1 1/0), `BranchDialog.vue` (F2 2/0), `ForcePushDialog.vue` (F2 2/0), `PreflightPrediction.vue` (F1 1/0), `RenameRefDialog.vue` (F1 1/0), `RepoSettingsDialog.vue` (F8 S6 8/0), `ResetDialog.vue` (F2 S1 2/0), `StackDialog.vue` (F1 1/0), `StashDialog.vue` (F5 S1 5/0), `TagDialog.vue` (F4 4/0), `WorktreeDialog.vue` (F5 S1 5/0)
+- Kubernetes: `ClusterMcpDialog.vue` (F3 2/1)
+- Memory: `AgentMcpSection.vue` (F0 S1 0/0), `CheckHookSection.vue` (F0 S1 0/0), `SemanticModelSection.vue` (F0 S1 0/0)
+- Runs: `RunFileDialog.vue` (F1 0/1), `McpToolsField.vue` (F0 S1 0/1), `ParamsEditor.vue` (F0 S1 0/2), `RunFolderTab.vue` (F2 1/1), `RunMcpTab.vue` (F5 4/1), `RunScriptTab.vue` (F2 2/0), `ScheduleFields.vue` (F5 3/2), `ScriptBodyField.vue` (F1 1/0), `SmartSettingsFields.vue` (F4 3/1), `ToolsField.vue` (F0 S1 0/1), `AdeContextFields.vue` (F2 2/0), `ParamsForm.vue` (F1 1/1), `RunScriptDialog.vue` (F1 2/0), `ScheduleConfirmDialog.vue` (F1 1/0)
+- Settings: `AdvancedPane.vue` (F3 0/3), `AgentPane.vue` (F6 0/5), `AppearancePane.vue` (F2 0/2), `CapturePane.vue` (F2 0/2), `ConfigSyncPane.vue` (F3 0/3), `DateFormatField.vue` (F1 0/1), `ExperimentalPane.vue` (F1 0/1), `FileTypesPane.vue` (F1 0/1), `GitPane.vue` (F4 S2 0/4), `MemoryPane.vue` (F1 0/1), `MobileAccessPane.vue` (F3 S3 0/5), `UpdatesPane.vue` (F1 S1 0/1), `FontFamilyField.vue` (F1 0/1), `FontSizeField.vue` (F1 0/1), `LogLevelField.vue` (F1 0/1), `NotifyPromptsField.vue` (F1 0/1), `RowDensityField.vue` (F1 0/0), `WordWrapField.vue` (F1 0/1)
+- Studio: `NewConnectionDialog.vue` (F2 2/0), `ConnectionAdvancedTab.vue` (F2 2/0), `ConnectionGeneralTab.vue` (F12 12/0), `ConnectionMcpMasked.vue` (F1 1/0), `ConnectionMcpReview.vue` (F1 1/0), `ConnectionMcpTab.vue` (F3 3/0), `ConnectionMcpTables.vue` (F1 1/1), `ConnectionPreconnectTab.vue` (F2 2/0), `RequestSettingsPane.vue` (F7 0/14), `UploadObjectDialog.vue` (F2 0/2), `ApiAccessRuleDialog.vue` (F3 2/3), `ApiAccessRulesSection.vue` (F1 0/1), `ApiPane.vue` (F7 0/7), `CachePane.vue` (F3 0/3), `DataPane.vue` (F1 0/1), `StudioMcpApiPane.vue` (F2 0/2), `StudioMcpServerPane.vue` (F3 0/3)
+- Workbench: `PromptArgumentField.vue` (F1 1/0)
+
+Module-local form layouts outside `Field`: `AdeInspectorRow` hosts, `EditField` hosts, settings `fields/*` panes (see §4.1); Part 3 lists their call sites by grep.
