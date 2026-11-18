@@ -158,10 +158,6 @@ U115 apps/kira-space/frontend/src/ade/v2/panel/AdePanelForwardBar.vue # 2026-11-
 U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/studio/proof/ProofHeader.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/workbench/settings/FileTypesPane.vue # 2026-11-18 P672 Part 9
-U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionGeneralTab.vue # 2026-11-18 P672 Part 8
-U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpMasked.vue # 2026-11-18 P672 Part 8
-U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpReview.vue # 2026-11-18 P672 Part 8
-U117 apps/kira-space/frontend/src/studio/project/connection/ConnectionMcpTab.vue # 2026-11-18 P672 Part 8
 U117 packages/workbench/src/automations/form/ParamsEditor.vue # 2026-11-18 P672 Part 8
 U117 packages/workbench/src/memory/import/ImportConfirmDialog.vue # 2026-11-18 P672 Part 8
 U117 packages/workbench/src/settings/fields/RowDensityField.vue # 2026-11-18 P672 Part 8

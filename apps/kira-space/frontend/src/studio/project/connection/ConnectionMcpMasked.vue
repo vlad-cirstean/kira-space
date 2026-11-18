@@ -51,8 +51,9 @@ function setValue(value: string): void {
       ></FieldLabel
     >
     <SecondaryTabs
-      variant="segmented"
+      variant="choice"
       size="kira-lg"
+      :aria-label="t('studio.project.connectionDialog.mcp.masked.label')"
       :model-value="current"
       :items="items"
       data-testid="connection-mcp-masked-value"

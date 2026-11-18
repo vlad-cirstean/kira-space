@@ -76,8 +76,9 @@ function setValue(cls: Mode, value: string): void {
     <div v-for="m in MODES" :key="m.cls" class="flex flex-col gap-1">
       <FieldDescription>{{ t(m.label) }}</FieldDescription>
       <SecondaryTabs
-        variant="segmented"
+        variant="choice"
         size="kira-lg"
+        :aria-label="t(m.label)"
         :model-value="reviewOf(m.cls)"
         :items="optionsOf(m.cls)"
         :data-testid="`connection-mcp-review-${m.cls}`"

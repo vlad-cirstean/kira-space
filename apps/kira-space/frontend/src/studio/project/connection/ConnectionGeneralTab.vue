@@ -185,8 +185,9 @@ async function onBrowseDatabaseFile(): Promise<void> {
       <Field class="flex-1">
         <FieldLabel>{{ t('common.mode.label') }}</FieldLabel>
         <SecondaryTabs
-          variant="segmented"
+          variant="choice"
           size="kira-lg"
+          :aria-label="t('common.mode.label')"
           :model-value="mode"
           :items="MODE_ITEMS"
           @update:model-value="(v) => setMode(v as 'fields' | 'uri')"

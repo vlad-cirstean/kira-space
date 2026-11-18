@@ -279,8 +279,9 @@ const timeoutThrottled = computed(
         <span class="text-subtle">— {{ t(c.note) }}</span></FieldLabel
       >
       <SecondaryTabs
-        variant="segmented"
+        variant="choice"
         size="kira-lg"
+        :aria-label="t(c.label)"
         :model-value="mcp[c.cls] ?? c.fallback"
         :items="modeOptions(c.cls)"
         :data-testid="`connection-mcp-${c.cls}`"
