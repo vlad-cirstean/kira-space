@@ -73,9 +73,9 @@ function firstLine(command: string): string {
             <Tooltip v-if="problem">
               <TooltipTrigger as-child>
                 <CodiconIcon
-                  name="warning"
+                  name="error"
                   :size="12"
-                  class="shrink-0 text-tone-red"
+                  class="shrink-0 text-error"
                   data-testid="script-row-problem"
                 />
               </TooltipTrigger>

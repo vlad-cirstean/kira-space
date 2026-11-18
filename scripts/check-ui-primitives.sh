@@ -152,9 +152,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U114 packages/workbench/src/automations/RunFileDialog.vue # 2026-11-18 P672 Part 7
-U114 packages/workbench/src/automations/ScriptBrokenRow.vue # 2026-11-18 P672 Part 7
-U114 packages/workbench/src/automations/ScriptRow.vue # 2026-11-18 P672 Part 7
 U115 apps/kira-space/frontend/src/ade/v2/details/AdeDetailsDiskBanner.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/ade/v2/panel/AdePanelForwardBar.vue # 2026-11-18 P672 Part 9
 U115 apps/kira-space/frontend/src/ade/v2/request/DetailsEditBody.vue # 2026-11-18 P672 Part 9

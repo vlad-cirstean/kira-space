@@ -413,13 +413,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             </AlertAction>
           </Alert>
         </div>
-        <div
-          v-else-if="query.error.value"
-          class="text-kira-sm text-tone-red"
-          data-testid="run-file-error"
-        >
-          {{ errorText(query.error.value) }}
-        </div>
+        <Alert v-else-if="query.error.value" variant="error" data-testid="run-file-error">
+          <AlertDescription>{{ errorText(query.error.value) }}</AlertDescription>
+        </Alert>
       </DialogBody>
       <DialogFooter>
         <DialogClose as-child>

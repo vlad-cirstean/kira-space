@@ -26,10 +26,10 @@ const emit = defineEmits<{ open: [] }>();
       :data-testid="`script-broken-${problem.file}`"
       @dblclick="emit('open')"
     >
-      <CodiconIcon name="warning" :size="13" class="shrink-0 text-tone-red" aria-hidden="true" />
+      <CodiconIcon name="error" :size="13" class="shrink-0 text-error" aria-hidden="true" />
       <div class="flex-1 min-w-0 flex flex-col">
         <TruncatedText :text="configName(problem.file)" />
-        <span class="truncate text-kira-sm text-tone-red">{{
+        <span class="truncate text-kira-sm text-error">{{
           t('automations.file.broken.status')
         }}</span>
       </div>
