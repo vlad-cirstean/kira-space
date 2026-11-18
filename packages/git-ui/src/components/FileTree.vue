@@ -529,7 +529,6 @@ function onToggleFolder(path: string): void {
           <Checkbox
             v-if="reviewStates"
             class="shrink-0"
-            :class="{ 'border-warn': reviewAttentionFor(row.node.change.path) === 'changed' }"
             :model-value="reviewCheckboxState(row.node.change.path)"
             :aria-label="reviewToggleTitle(row.node.change.path)"
             :data-kira-tip="reviewToggleTitle(row.node.change.path)"

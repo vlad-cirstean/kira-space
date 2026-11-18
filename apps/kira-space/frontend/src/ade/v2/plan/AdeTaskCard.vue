@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import {
@@ -274,15 +275,11 @@ const boxClass = computed(() => {
             >
               {{ t('space.ade.taskTab.branchRequest.label') }}
             </Button>
-            <TextTooltip :text="card.meta">
-              <span
-                class="min-w-0 flex-1 truncate text-kira-sm leading-3.5 text-subtle"
-                data-testid="ade-card-meta"
-                >{{
-                  card.meta
-                }}</span
-              >
-            </TextTooltip>
+            <span
+              class="min-w-0 flex-1 text-kira-sm leading-3.5 text-subtle"
+              data-testid="ade-card-meta"
+              ><TruncatedText :text="card.meta" /></span
+            >
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
@@ -418,13 +419,11 @@ const statusLine = computed(() => {
       <Badge v-if="isTruncatedValue" variant="warn" data-testid="cell-editor-badge-truncated">{{
         t('studio.common.truncated.status')
       }}</Badge>
-      <TextTooltip :text="statusLine">
-        <Badge class="max-w-56 truncate" data-testid="cell-editor-status">{{ statusLine }}</Badge>
-      </TextTooltip>
-      <TextTooltip v-if="formatProblem" :text="formatProblem.message"
-        ><Badge variant="error" class="max-w-56 truncate" data-testid="cell-editor-invalid">{{
-          formatProblem.message
-        }}</Badge></TextTooltip
+      <Badge class="max-w-56" data-testid="cell-editor-status"
+        ><TruncatedText :text="statusLine" /></Badge
+      >
+      <Badge v-if="formatProblem" variant="error" class="max-w-56" data-testid="cell-editor-invalid"
+        ><TruncatedText :text="formatProblem.message" /></Badge
       >
 
       <!-- the format select + beautify/reset trio: this panel's own controls, set off from the

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -267,16 +268,13 @@ function logToggleLabel(runId: string): string {
         <span v-if="block.gated" :class="ADE_ROW_STATUS" class="text-warn">{{
           t('space.ade.stepBlock.needsApproval.status')
         }}</span>
-        <TextTooltip v-if="block.scope" :text="block.scope">
-          <span
-            class="min-w-0 shrink truncate"
-            :class="[rowMeta, block.step.kind === 'script' ? 'font-data' : '']"
-            data-testid="ade-step-scope"
-            >{{
-              block.scope
-            }}</span
-          >
-        </TextTooltip>
+        <span
+          v-if="block.scope"
+          class="min-w-0 shrink"
+          :class="[rowMeta, block.step.kind === 'script' ? 'font-data' : '']"
+          data-testid="ade-step-scope"
+          ><TruncatedText :text="block.scope" /></span
+        >
         <template v-if="block.step.approval" #actions>
           <Button
             variant="dialog-approve"
@@ -327,11 +325,9 @@ function logToggleLabel(runId: string): string {
               ><Badge :variant="rl.returnsSpent ? 'error' : 'warn'">{{ rl.returns }}</Badge></span
             >
           </TextTooltip>
-          <TextTooltip v-if="rl.note" :text="rl.note">
-            <span class="min-w-0 truncate" :class="rowMeta" data-testid="ade-run-note">{{
-              rl.note
-            }}</span>
-          </TextTooltip>
+          <span v-if="rl.note" class="min-w-0" :class="rowMeta" data-testid="ade-run-note"
+            ><TruncatedText :text="rl.note" /></span
+          >
           <template #actions>
             <Button
               v-if="rl.hasLog"
