@@ -3,8 +3,13 @@ import type { ScriptMcpServer, SmartSettings } from '@shared/domain/scripts';
 import { useQuery } from '@tanstack/vue-query';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref, useId } from 'vue';
@@ -103,14 +108,14 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
           data-testid="smart-mcp-server"
           :data-server="s.name"
         >
-          <div class="flex items-center gap-2">
+          <Field orientation="horizontal">
             <Checkbox
               :id="`${idBase}-${s.name}`"
               :model-value="enabled.includes(s.name)"
               :data-testid="`smart-mcp-switch-${s.name}`"
               @update:model-value="(v) => setServer(s.name, v === true)"
             />
-            <Label :for="`${idBase}-${s.name}`">{{ s.name }}</Label>
+            <FieldLabel :for="`${idBase}-${s.name}`">{{ s.name }}</FieldLabel>
             <span class="truncate font-data text-kira-sm text-muted-foreground"
               >{{ s.transport }} {{ s.target }}</span
             >
@@ -122,7 +127,7 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
                 statusText(s.status)
               }}</span
             >
-          </div>
+          </Field>
           <McpServerTools
             v-if="enabled.includes(s.name)"
             :server="s.name"

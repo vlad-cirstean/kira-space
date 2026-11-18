@@ -4,7 +4,6 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -44,7 +43,7 @@ function patch(change: Partial<Mcp>): void {
         data-testid="script-mcp-enabled"
         @update:model-value="(v) => patch({ enabled: v === true })"
       />
-      <Label for="script-mcp-enabled">{{ t('automations.form.mcp.enable.label') }}</Label>
+      <FieldLabel for="script-mcp-enabled">{{ t('automations.form.mcp.enable.label') }}</FieldLabel>
     </Field>
     <FieldDescription>{{ t('automations.form.mcp.enable.hint') }}</FieldDescription>
 

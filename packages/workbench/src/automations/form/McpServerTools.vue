@@ -2,8 +2,8 @@
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
 
@@ -21,15 +21,15 @@ const idBase = useId();
 
 <template>
   <div class="ml-9 flex flex-col gap-1" data-testid="smart-mcp-tools">
-    <div class="flex items-center gap-2">
+    <Field orientation="horizontal" class="w-auto">
       <Checkbox
         :id="`${idBase}-all`"
         :model-value="allTools"
         data-testid="smart-mcp-all"
         @update:model-value="(v) => emit('allTools', v === true)"
       />
-      <Label :for="`${idBase}-all`">{{ t('automations.smart.mcpAllTools.label') }}</Label>
-    </div>
+      <FieldLabel :for="`${idBase}-all`">{{ t('automations.smart.mcpAllTools.label') }}</FieldLabel>
+    </Field>
     <template v-if="!allTools">
       <div v-for="name in chosen" :key="name" class="flex items-center gap-1.5">
         <span class="font-data">{{ name }}</span>

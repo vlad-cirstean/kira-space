@@ -6,7 +6,6 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import type { TextPart } from '@theme/varText';
@@ -110,7 +109,9 @@ async function choose(): Promise<void> {
         data-testid="script-use-ade-dir"
         @update:model-value="(v) => (file.use_ade_dir = v === true)"
       />
-      <Label for="script-use-ade-dir">{{ t('automations.dialog.script.useAdeDir.label') }}</Label>
+      <FieldLabel for="script-use-ade-dir">{{
+        t('automations.dialog.script.useAdeDir.label')
+      }}</FieldLabel>
     </Field>
   </div>
 </template>

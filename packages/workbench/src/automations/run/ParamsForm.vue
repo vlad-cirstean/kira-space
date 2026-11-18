@@ -4,7 +4,6 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import SecretInput from '@workbench/components/SecretInput.vue';
@@ -105,15 +104,15 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
         class="flex flex-wrap gap-x-4 gap-y-1.5"
         :data-testid="`run-param-input-${p.name}`"
       >
-        <div v-for="o in p.options" :key="o" class="flex items-center gap-2">
+        <Field v-for="o in p.options" :key="o" orientation="horizontal" class="w-auto">
           <Checkbox
             :id="`${idBase}-${p.name}-${o}`"
             :model-value="(values[p.name] ?? []).includes(o)"
             :data-testid="`run-param-option-${p.name}-${o}`"
             @update:model-value="(v) => toggle(p, o, v === true)"
           />
-          <Label :for="`${idBase}-${p.name}-${o}`">{{ o }}</Label>
-        </div>
+          <FieldLabel :for="`${idBase}-${p.name}-${o}`">{{ o }}</FieldLabel>
+        </Field>
       </div>
     </Field>
   </div>

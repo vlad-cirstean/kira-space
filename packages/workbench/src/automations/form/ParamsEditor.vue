@@ -11,9 +11,15 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { FieldDescription, FieldError, FieldLegend, FieldSet } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
 import SecretInput from '../../components/SecretInput.vue';
@@ -267,15 +273,15 @@ function toggleDefault(i: number, option: string, on: boolean): void {
         </Button>
       </div>
       <div class="flex items-center gap-4">
-        <div class="flex items-center gap-1.5">
+        <Field orientation="horizontal" class="w-auto">
           <Checkbox
             :id="`${idBase}-req-${i}`"
             :model-value="p.required"
             @update:model-value="(v) => patch(i, { required: v === true })"
           />
-          <Label :for="`${idBase}-req-${i}`">{{ t('common.required.label') }}</Label>
-        </div>
-        <div v-if="p.type === 'text'" class="flex items-center gap-1.5">
+          <FieldLabel :for="`${idBase}-req-${i}`">{{ t('common.required.label') }}</FieldLabel>
+        </Field>
+        <Field v-if="p.type === 'text'" orientation="horizontal" class="w-auto">
           <Checkbox
             :id="`${idBase}-sec-${i}`"
             :model-value="p.secret"
@@ -284,8 +290,8 @@ function toggleDefault(i: number, option: string, on: boolean): void {
               (v) => patch(i, v === true ? { secret: true, default: [] } : { secret: false })
             "
           />
-          <Label :for="`${idBase}-sec-${i}`">{{ t('common.secret.label') }}</Label>
-        </div>
+          <FieldLabel :for="`${idBase}-sec-${i}`">{{ t('common.secret.label') }}</FieldLabel>
+        </Field>
       </div>
     </Card>
   </FieldSet>

@@ -14,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldError } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -347,9 +346,9 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                       v-model="scheduleOn"
                       data-testid="script-schedule"
                     />
-                    <Label for="script-schedule">{{
+                    <FieldLabel for="script-schedule">{{
                       t('automations.schedule.enable.label')
-                    }}</Label>
+                    }}</FieldLabel>
                   </Field>
                   <ScheduleFields
                     v-if="schedule"

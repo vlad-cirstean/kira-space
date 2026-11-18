@@ -12,9 +12,14 @@ import {
   CommandItem,
   CommandList,
 } from '@theme/components/ui/command';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
@@ -175,27 +180,31 @@ const appName = computed(() => t('common.product.kiraSpace.label'));
         data-testid="schedule-enabled"
         @update:model-value="(v) => patch({ enabled: Boolean(v) })"
       />
-      <Label :for="`${idBase}-enabled`">{{ t('automations.schedule.enabled.label') }}</Label>
+      <FieldLabel :for="`${idBase}-enabled`">{{
+        t('automations.schedule.enabled.label')
+      }}</FieldLabel>
     </Field>
 
-    <Field>
-      <div class="flex items-center gap-2">
-        <Checkbox
-          :id="`${idBase}-quiet`"
-          :model-value="!schedule.confirm"
-          :disabled="askLocked"
-          data-testid="schedule-quiet"
-          @update:model-value="(v) => patch({ confirm: !v })"
-        />
-        <Label :for="`${idBase}-quiet`">{{ t('automations.schedule.quiet.label') }}</Label>
-      </div>
-      <FieldDescription v-if="askLocked" data-testid="schedule-quiet-why">
-        {{ t('automations.schedule.askLocked.hint') }}
-      </FieldDescription>
-      <FieldDescription v-else-if="schedule.confirm">{{
-        t('automations.schedule.askEach.hint')
-      }}</FieldDescription>
-      <FieldDescription v-else>{{ t('automations.schedule.quietWhy.hint') }}</FieldDescription>
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="`${idBase}-quiet`"
+        :model-value="!schedule.confirm"
+        :disabled="askLocked"
+        data-testid="schedule-quiet"
+        @update:model-value="(v) => patch({ confirm: !v })"
+      />
+      <FieldContent>
+        <FieldLabel :for="`${idBase}-quiet`">{{
+          t('automations.schedule.quiet.label')
+        }}</FieldLabel>
+        <FieldDescription v-if="askLocked" data-testid="schedule-quiet-why">
+          {{ t('automations.schedule.askLocked.hint') }}
+        </FieldDescription>
+        <FieldDescription v-else-if="schedule.confirm">{{
+          t('automations.schedule.askEach.hint')
+        }}</FieldDescription>
+        <FieldDescription v-else>{{ t('automations.schedule.quietWhy.hint') }}</FieldDescription>
+      </FieldContent>
     </Field>
 
     <Field v-if="kind === 'script'">
