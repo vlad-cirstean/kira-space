@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shortSha } from '@kira/git-core';
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -16,7 +17,6 @@ import type { RebaseAct } from '../board/rebaseActions';
 import { runStateLabel } from '../runState';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
-import { ACTION_CLASS } from '../tones';
 import type { Run } from '../wire';
 import AdeRunLog from './AdeRunLog.vue';
 import AdeRunSandboxBadge from './AdeRunSandboxBadge.vue';
@@ -192,13 +192,14 @@ function copy(): void {
     <div v-if="acts?.length" class="flex flex-wrap gap-1.5">
       <TextTooltip v-for="a in acts" :key="a.id" :parts="a.tip">
         <Button
-          variant="dialog"
+          variant="toolbar"
           size="kira"
-          :class="ACTION_CLASS[a.kind === 'abortRebase' ? 'red' : 'amber']"
+          :data-tone="a.kind === 'abortRebase' ? 'error' : undefined"
           :disabled="a.disabled"
           :data-testid="`ade-outcome-act-${a.id}`"
           @click="dialogs.act(a)"
         >
+          <CodiconIcon :name="a.kind === 'abortRebase' ? 'debug-stop' : 'repo-pull'" :size="13" />
           <VarText :parts="a.label" />
         </Button>
       </TextTooltip>

@@ -32,7 +32,6 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
-import { ACTION_CLASS } from '../tones';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
@@ -163,7 +162,14 @@ function run(a: HeaderAction, ev?: MouseEvent): void {
     reviewCode.open(props.card.task.id, id, null, { onError: (msg) => (setupError.value = msg) });
   }
 }
-const actionClass = (a: HeaderAction): string => ACTION_CLASS[a.tone];
+const HEADER_ICON = {
+  remerge: 'git-merge',
+  start: 'play',
+  automation: 'run-all',
+  created: 'check',
+  review: 'git-compare',
+  rebase: 'repo-pull',
+} as const;
 const canForcePush = computed(() => props.row.tag.actions.some((a) => a.kind === 'forcePush'));
 
 // ---- Details rows
@@ -351,34 +357,32 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
       >
       <div v-if="canForcePush || setupFailed || actions.length" class="flex flex-wrap gap-1.5 pt-1">
         <Button
-          variant="dialog"
+          variant="toolbar"
           v-if="setupFailed"
-          size="kira-lg"
-          :class="ACTION_CLASS.amber"
+          size="kira"
           :pending="retrySetup.isPending.value"
           data-testid="ade-panel-retry-setup"
           @click="onRetrySetup"
         >
-          {{ t('space.ade.setup.retry.label') }}
+          <CodiconIcon name="refresh" :size="13" />{{ t('space.ade.setup.retry.label') }}
         </Button>
         <TextTooltip v-if="canForcePush" :text="FORCE_PUSH_CMD">
           <Button
-            variant="dialog-danger"
-            size="kira-lg"
-            :class="ACTION_CLASS.amber"
+            variant="toolbar"
+            size="kira"
+            data-tone="error"
             data-testid="ade-panel-force-push"
             @click="forcePush = true"
           >
-            {{ t('common.forcePush.label') }}
+            <CodiconIcon name="repo-force-push" :size="13" />{{ t('common.forcePush.label') }}
           </Button>
         </TextTooltip>
         <template v-for="a in actions" :key="(a.kind === 'rebase' ? a.act.id : a.kind) + a.label">
           <TextTooltip v-if="a.kind === 'review'" :parts="reviewChoice?.tip ?? []">
             <TooltipDisabledTrigger :disabled="reviewOff">
               <Button
-                variant="dialog"
-                size="kira-lg"
-                :class="actionClass(a)"
+                variant="toolbar"
+                size="kira"
                 :disabled="reviewOff"
                 :data-testid="`ade-panel-action-${a.kind}`"
                 @click="run(a)"
@@ -391,26 +395,26 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           <TextTooltip v-else-if="a.kind === 'rebase'" :parts="a.act.tip">
             <TooltipDisabledTrigger :disabled="a.act.disabled">
               <Button
-                variant="dialog"
-                size="kira-lg"
-                :class="actionClass(a)"
+                variant="toolbar"
+                size="kira"
                 :disabled="a.act.disabled"
                 :data-testid="`ade-panel-action-${a.act.id}`"
                 @click="run(a)"
               >
+                <CodiconIcon name="repo-pull" :size="13" />
                 {{ a.label }}
               </Button>
             </TooltipDisabledTrigger>
           </TextTooltip>
           <Button
-            variant="dialog"
+            variant="toolbar"
             v-else
-            size="kira-lg"
-            :class="actionClass(a)"
+            size="kira"
             :disabled="a.kind === 'created'"
             :data-testid="`ade-panel-action-${a.kind}`"
             @click="(ev: MouseEvent) => run(a, ev)"
           >
+            <CodiconIcon :name="HEADER_ICON[a.kind]" :size="13" />
             {{ a.label }}
           </Button>
         </template>
@@ -508,15 +512,15 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
             intoNote(i)
           }}</span>
           <Button
-            variant="dialog"
+            variant="toolbar"
             v-if="canMerge && i.status !== 'merged'"
             size="kira"
-            class="shrink-0 "
-            :class="ACTION_CLASS[i.status === 'stale' ? 'amber' : 'agent']"
+            class="shrink-0"
             :pending="dialogs.pending.has(`merge:${branch.id}:${i.target}`)"
             data-testid="ade-branch-merge"
             @click="dialogs.merge(branch.id, i.target)"
           >
+            <CodiconIcon name="git-merge" :size="13" />
             {{
               i.status === 'stale'
                 ? t('space.ade.needs.action.reMerge.label')

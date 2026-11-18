@@ -41,7 +41,7 @@ function warm(): void {
     <TextTooltip v-else :text="action.tip">
       <Button
         variant="dialog"
-        size="kira-lg"
+        size="kira"
         class="shrink-0"
         :class="ACTION_CLASS[action.tone]"
         :pending="busy"

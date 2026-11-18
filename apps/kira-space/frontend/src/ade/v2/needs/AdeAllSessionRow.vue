@@ -8,7 +8,6 @@ import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { activityLabel, shortId } from '../activity';
 import type { SessionView } from '../sessions/sessionView';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
-import { ACTION_CLASS } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
 // One session row of All sessions (mockup `agents`): glyph, state, age, button, id, repo, step and
@@ -66,10 +65,9 @@ function open(): void {
     <span class="w-19 shrink-0 text-kira-md text-muted-foreground">{{ ago }}</span>
     <Button
       v-if="!archived"
-      size="kira-lg"
+      size="kira"
       variant="dialog"
-      class="w-23 shrink-0 "
-      :class="opens ? undefined : ACTION_CLASS.agent"
+      class="w-23 shrink-0"
       :pending="takeOver.pending.has(view.session.id)"
       data-testid="ade-all-action"
       @click.stop="opens ? open() : takeOver.request(view.session.id)"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import ScriptProgress from '@theme/components/ScriptProgress.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -8,7 +9,6 @@ import { computed, ref } from 'vue';
 import { useRepos } from '../../../repo/state/reposQueries';
 import { setupStatus } from '../board/setupStatus';
 import { useRetrySetup } from '../queries';
-import { ACTION_CLASS } from '../tones';
 import type { Branch } from '../wire';
 import AdeRunLog from './AdeRunLog.vue';
 
@@ -48,16 +48,15 @@ async function onRetry(): Promise<void> {
     <ScriptProgress v-bind="status">
       <template #actions>
         <Button
-          variant="dialog"
+          variant="toolbar"
           v-if="status.state === 'failed'"
           size="kira"
           class="shrink-0"
-          :class="ACTION_CLASS.amber"
           :pending="retry.isPending.value"
           data-testid="ade-setup-retry"
           @click="onRetry"
         >
-          {{ t('space.ade.setup.retry.label') }}
+          <CodiconIcon name="refresh" :size="13" />{{ t('space.ade.setup.retry.label') }}
         </Button>
       </template>
       <AdeRunLog

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -22,7 +23,7 @@ import { useAdeOpsStore } from '../state/adeOps';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { runsTarget } from '../state/opTarget';
-import { ACTION_CLASS, TONE_TEXT_CLASS } from '../tones';
+import { TONE_TEXT_CLASS } from '../tones';
 import AdeRow from './AdeRow.vue';
 import AdeRowDetail from './AdeRowDetail.vue';
 import AdeRunLog from './AdeRunLog.vue';
@@ -280,7 +281,6 @@ function logToggleLabel(runId: string): string {
             variant="dialog-approve"
             size="kira"
             class="shrink-0"
-            :class="ACTION_CLASS.amber"
             data-testid="ade-step-approve"
             @click="onApprove(block.step.id)"
           >
@@ -326,35 +326,36 @@ function logToggleLabel(runId: string): string {
           <template #actions>
             <Button
               v-if="rl.hasLog"
-              variant="dialog"
+              variant="toolbar"
               size="kira"
               class="shrink-0"
               data-testid="ade-run-log-toggle"
               @click="openLog = openLog === rl.run.runId ? null : rl.run.runId"
             >
+              <CodiconIcon :name="openLog === rl.run.runId ? 'eye-closed' : 'eye'" :size="13" />
               {{ logToggleLabel(rl.run.runId) }}
             </Button>
             <TextTooltip v-if="rl.canResume" :text="t('space.ade.stepBlock.resume.tooltip')">
               <Button
-                variant="dialog"
+                variant="toolbar"
                 size="kira"
                 class="shrink-0"
-                :class="ACTION_CLASS.agent"
                 :pending="resume.isPending.value"
                 data-testid="ade-run-resume"
                 @click="onResume(rl.run.runId)"
               >
-                {{ t('common.action.resume.label') }}
+                <CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
               </Button>
             </TextTooltip>
             <Button
               v-if="rl.canReview"
-              variant="dialog"
+              variant="toolbar"
               size="kira"
               class="shrink-0"
               data-testid="ade-run-review"
               @click="onReview(rl.run.branchId)"
             >
+              <CodiconIcon name="git-compare" :size="13" />
               {{ t('space.ade.board.branchTag.review.label') }}
             </Button>
             <TextTooltip
@@ -366,27 +367,25 @@ function logToggleLabel(runId: string): string {
               "
             >
               <Button
-                variant="dialog"
+                variant="toolbar"
                 size="kira"
                 class="shrink-0"
-                :class="ACTION_CLASS.agent"
                 :pending="takeOver.pending.has(rl.run.sessionId)"
                 data-testid="ade-run-takeover"
                 @click="takeOver.request(rl.run.sessionId)"
               >
-                {{ t('common.action.takeOver.label') }}
+                <CodiconIcon name="terminal" :size="13" />{{ t('common.action.takeOver.label') }}
               </Button>
             </TextTooltip>
             <Button
               v-if="rl.canRetry"
-              variant="dialog"
+              variant="toolbar"
               size="kira"
               class="shrink-0"
-              :class="ACTION_CLASS.red"
               data-testid="ade-run-retry"
               @click="onRetry(rl.run.runId)"
             >
-              {{ t('common.action.retry.label') }}
+              <CodiconIcon name="refresh" :size="13" />{{ t('common.action.retry.label') }}
             </Button>
           </template>
         </AdeRow>

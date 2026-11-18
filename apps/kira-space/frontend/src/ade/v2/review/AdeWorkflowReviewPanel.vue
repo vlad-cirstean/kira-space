@@ -25,7 +25,6 @@ import {
 } from '../queries';
 import { reviewPhaseLabel } from '../runState';
 import { useAdeOpsStore } from '../state/adeOps';
-import { ACTION_CLASS } from '../tones';
 import type { ReviewPhase, ReviewWindowTarget } from '../wire';
 import { useReviewComments } from './useReviewComments';
 
@@ -306,10 +305,10 @@ const stateLabel = (c: ReviewComment): string =>
       </NativeSelect>
       <TextTooltip :text="sendTip">
         <span class="inline-flex">
+          <!-- conventions-allow N17: send commits the panel; outline primary, not approve (RB.2) -->
           <Button
-            variant="dialog-approve"
+            variant="dialog-primary"
             size="kira"
-            :class="ACTION_CLASS.agent"
             :disabled="sendTip !== ''"
             :pending="ops.isRunning(`sendReview:${target.branchId}`)"
             data-testid="ade-review-send-agent"
@@ -380,7 +379,6 @@ const stateLabel = (c: ReviewComment): string =>
           :key="r.id"
           variant="dialog"
           size="kira"
-          :class="ACTION_CLASS[r.ok ? 'green' : 'amber']"
           :disabled="live || !waiting"
           :pending="ops.isRunning(`finishReview:${target.branchId}`)"
           :data-testid="`ade-review-finish-${r.id}`"

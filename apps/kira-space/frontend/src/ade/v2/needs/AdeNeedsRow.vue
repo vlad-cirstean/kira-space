@@ -6,7 +6,7 @@ import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
 import AdeRunLog from '../panel/AdeRunLog.vue';
-import { ACTION_CLASS, TONE_TAG_CLASS } from '../tones';
+import { TONE_TAG_CLASS } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
 // One needs-you item (mockup `needs`): kind chip, age, its one action, scope, what, over the task.
@@ -19,11 +19,6 @@ const hasLog = computed(
     (props.item.kind === 'stuck run' || props.item.kind === 'failed') &&
     props.item.runIds.length > 0,
 );
-const buttonClass = computed(() => {
-  if (props.item.action === 'Take over' || props.item.action === 'Resume')
-    return ACTION_CLASS.agent;
-  return ACTION_CLASS[props.item.tone];
-});
 const ROW_BG_CLASS: Record<Tone, string> = {
   amber: '',
   red: '',
@@ -55,9 +50,8 @@ const ROW_BG_CLASS: Record<Tone, string> = {
       }}</span>
       <Button
         variant="dialog"
-        size="kira-lg"
+        size="kira"
         class="w-23 shrink-0"
-        :class="buttonClass"
         :pending="busy"
         data-testid="ade-needs-action"
         @click="perform(item)"
