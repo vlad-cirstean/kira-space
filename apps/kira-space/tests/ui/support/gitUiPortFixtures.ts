@@ -410,7 +410,7 @@ export const REVIEW_FILE_NONE = 'src/pending.ts';
 export const REVIEW_FILE_PARTIAL = 'src/halfway.ts';
 export const REVIEW_FILE_FULL = 'src/done.ts';
 
-const reviewFile = (path: string, kind: 'none' | 'partial' | 'full') => ({
+export const reviewFile = (path: string, kind: 'none' | 'partial' | 'full') => ({
   change: {
     kind: 'modified',
     path,
@@ -424,6 +424,12 @@ const reviewFile = (path: string, kind: 'none' | 'partial' | 'full') => ({
     reviewedAtSha: kind === 'none' ? undefined : SHA_A,
   },
 });
+
+/** Enough changed files to scroll the review Files tree. */
+export const manyReviewFiles = (n: number) =>
+  Array.from({ length: n }, (_, i) =>
+    reviewFile(`src/file-${String(i).padStart(2, '0')}.ts`, 'none'),
+  );
 
 export const REVIEW_RESULTS = {
   'refs.list': {
