@@ -3,7 +3,7 @@ import type { CustomScript } from '@shared/domain/scripts';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { FieldDescription } from '@theme/components/ui/field';
+import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed, ref } from 'vue';
 import { useAsyncAction } from '../behaviour/asyncAction';
@@ -35,8 +35,8 @@ const apply = action.run;
 </script>
 
 <template>
-  <section v-if="secretParams.length > 0" class="flex flex-col gap-2" data-testid="run-secrets">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('automations.file.secrets.title') }}</h3>
+  <FieldSet v-if="secretParams.length > 0" data-testid="run-secrets">
+    <FieldLegend>{{ t('automations.file.secrets.title') }}</FieldLegend>
     <FieldDescription>{{ t('automations.file.secrets.hint') }}</FieldDescription>
     <FieldDescription v-if="storageOff" data-testid="run-secrets-off">{{
       t('automations.params.secretValue.storageOff.description')
@@ -85,5 +85,5 @@ const apply = action.run;
     <Alert v-if="error" variant="error" data-testid="run-secrets-error">
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
-  </section>
+  </FieldSet>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiSecret } from '@shared/domain/apiConfig';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -74,7 +75,7 @@ const refExample = '$' + '{secret:name}';
 
 <template>
   <section class="flex min-w-0 flex-col gap-2 p-2" data-testid="api-secrets">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('studio.api.config.secrets.title') }}</h3>
+    <SectionHeading flush :label="t('studio.api.config.secrets.title')" />
     <FieldDescription>
       {{ t('studio.api.config.secrets.hint', { ref: refExample }) }}
     </FieldDescription>

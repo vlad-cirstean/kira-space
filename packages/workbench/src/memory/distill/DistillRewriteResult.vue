@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DistillRewrite } from '@shared/domain/memoryDistill';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import type { MessageKey } from '@theme/i18n';
@@ -73,7 +74,7 @@ function copy(): void {
       class="flex flex-col gap-1"
       data-testid="distill-rewrite-dropped"
     >
-      <h3 class="m-0 text-kira-lg font-medium">{{ t('memory.distill.rewrite.dropped.title') }}</h3>
+      <SectionHeading flush :label="t('memory.distill.rewrite.dropped.title')" />
       <ul class="m-0 flex list-none flex-col gap-1 p-0">
         <li
           v-for="(item, i) in rewrite.dropped"

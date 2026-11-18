@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -177,7 +178,7 @@ function importDocument(): void {
       class="flex flex-col gap-1"
       data-testid="distill-unresolved"
     >
-      <h3 class="m-0 text-kira-lg font-medium">{{ t('memory.distill.unresolved.title') }}</h3>
+      <SectionHeading flush :label="t('memory.distill.unresolved.title')" />
       <ul class="m-0 flex list-none flex-col gap-1 p-0">
         <li
           v-for="(item, i) in unresolved"

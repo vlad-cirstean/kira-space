@@ -11,7 +11,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
@@ -253,10 +260,8 @@ async function confirmRemove(): Promise<void> {
       </div>
     </Field>
 
-    <Field>
-      <h4 class="m-0 text-kira-lg font-medium text-fg">
-        {{ t('space.ade.statuses.defaults.title') }}
-      </h4>
+    <FieldSet>
+      <FieldLegend>{{ t('space.ade.statuses.defaults.title') }}</FieldLegend>
       <FieldDescription>{{ t('space.ade.statuses.defaults.description') }}</FieldDescription>
       <div class="@container flex flex-col gap-2" data-testid="ade-status-defaults">
         <Field v-for="slot in SLOTS" :key="slot" orientation="responsive">
@@ -276,7 +281,7 @@ async function confirmRemove(): Promise<void> {
           <FieldDescription>{{ t(SLOT_HINT[slot]) }}</FieldDescription>
         </Field>
       </div>
-    </Field>
+    </FieldSet>
 
     <Dialog :open="removing !== null" @update:open="(o) => !o && (removing = null)">
       <DialogContent size="sm" :dirty="false" data-testid="ade-status-delete-dialog">

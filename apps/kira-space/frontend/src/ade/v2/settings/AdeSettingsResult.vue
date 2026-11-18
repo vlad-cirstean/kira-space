@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
@@ -48,7 +49,7 @@ const backupsOpen = computed({
 
 <template>
   <div class="flex min-w-0 flex-col gap-3" data-testid="ade-settings-result">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('common.field.result.label') }}</h3>
+    <SectionHeading flush :label="t('common.field.result.label')" />
     <FieldDescription>{{ t('space.ade.settings.result.hint') }}</FieldDescription>
     <SecondaryTabs
       v-if="providers.length > 1"

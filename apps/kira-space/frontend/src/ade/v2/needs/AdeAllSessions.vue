@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { type MessageKey, t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
@@ -126,9 +127,12 @@ const summary = computed(() => {
       class="flex flex-col gap-0.5"
       data-testid="ade-all-group"
     >
-      <div class="mb-1 flex items-center gap-2 px-3 pb-1.5">
-        <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
-        <h3 class="m-0 truncate text-kira-lg font-medium">{{ g.title }}</h3>
+      <div class="px-1.5 pb-1">
+        <SectionHeading :label="g.title">
+          <template #leading>
+            <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
+          </template>
+        </SectionHeading>
       </div>
       <AdeAllSessionRow v-for="r in g.rows" :key="r.session.id" :view="r" :archived="g.archived" />
     </section>

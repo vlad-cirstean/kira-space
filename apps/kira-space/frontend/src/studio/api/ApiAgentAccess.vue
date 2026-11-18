@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -25,9 +26,7 @@ const rows = computed(() =>
 
 <template>
   <section class="flex min-w-0 flex-col gap-2 p-2" data-testid="api-agent-access">
-    <h3 class="m-0 text-kira-lg font-medium">{{
-      t('studio.project.connectionDialog.mcp.access.label')
-    }}</h3>
+    <SectionHeading flush :label="t('studio.project.connectionDialog.mcp.access.label')" />
     <FieldDescription>{{ t('studio.api.agentAccess.overview.body') }}</FieldDescription>
     <FieldDescription v-if="rows.length === 0" data-testid="api-agent-access-none">
       {{ t('studio.api.agentAccess.none.hint') }}

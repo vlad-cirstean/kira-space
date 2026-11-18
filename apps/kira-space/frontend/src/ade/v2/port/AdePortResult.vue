@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import type { PortResult } from './types';
 
@@ -11,7 +12,7 @@ const base = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 
 <template>
   <div class="flex min-w-0 flex-col gap-3 text-kira-md" data-testid="ade-port-result">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('common.done.status') }}</h3>
+    <SectionHeading flush :label="t('common.done.status')" />
     <section v-if="showWritten && result.written?.length" class="flex flex-col gap-0.5">
       <div class="text-kira-sm text-subtle">{{ t('space.ade.port.written.label') }}</div>
       <ul class="m-0 list-none p-0 font-data text-kira-sm" data-testid="ade-port-written">

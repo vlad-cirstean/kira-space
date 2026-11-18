@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -72,7 +73,7 @@ const refExample = '$' + '{secret:name}';
 
 <template>
   <section class="flex min-w-0 flex-col gap-2" data-testid="ade-settings-secrets">
-    <h3 class="m-0 text-kira-lg font-medium">{{ t('space.ade.settings.secrets.title') }}</h3>
+    <SectionHeading flush :label="t('space.ade.settings.secrets.title')" />
     <FieldDescription>
       {{ t('space.ade.settings.secrets.hint', { ref: refExample }) }}
     </FieldDescription>
