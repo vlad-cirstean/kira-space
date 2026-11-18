@@ -1166,7 +1166,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
   viewState.ts`) through `useKeptState`, `useKeptScroll` and `useVirtualRows({ keepScroll })`.
   Keys `<mode>:<surface>[:<id>]` or `tab:<tabId>:<surface>`; session-only; LRU 400 keys; tab keys
   drop on tab close. Guard U109. No KeepAlive: hidden subtrees would keep queries, watchers and
-  commands live and retain DOM (P660).
+  commands live and retain DOM (P660). The git-ui review mount reads the store through
+  `KEPT_VIEW_STATE_KEY` (its app has no Pinia).
 - views/shared/viewOp.ts's beginOp/applyLoadFailure are the one load-op preamble and load-failure tail behind every view's load() except Browse, which supersedes by loadSeq, not opId, and has no E_CANCELLED branch.
 - views/shared/page/store.ts is the one two-level page-cache implementation behind all five page modules (grid, documents, keyvalue, stream, console).
 - Visible-window pruning of the page cache is wired into the view side of all five page modules (P5 C3); documents also prunes the parsed-tree cache in views/shared/document/rows.ts to the same window.
@@ -1434,7 +1435,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
 - UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U132) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
-- check-ui-primitives.sh keeps 50 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
+- check-ui-primitives.sh keeps 49 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
 
 ### Shared pickers (P398)
@@ -2075,8 +2076,8 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 ### Code review, ported natively (C11)
 
 - In Kira Space, the review panel is a third left-panel segment (Repos/Files/Review) in GitPanel.vue, not a tab. A repo-review tab kind mirroring repo-graph was rejected because the review workflow (pick a file, read its diff, mark it, pick the next) would cost two tab switches per file and hide the diff being reviewed.
-- ReviewView.vue is built for sidebar width and persists no per-mount viewState (it takes NullViewStateStore).
-- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Files/Review/Search within the same repo keeps it mounted (v-show), while switching repo workspace remounts it, relying on session resume.
+- ReviewView.vue is built for sidebar width and takes NullViewStateStore for the graph-shaped viewState. Filter, filter bar, selected file, expanded rows and pane scrolls survive an unmount through MountOptions.keep (the host's useViewStateStore, provided as KEPT_VIEW_STATE_KEY); keys `git:review:<codeRepoId>` plus `:b:<branch>:<surface>`, dropped on workspace close and on back to branch selection (P660 Part 2).
+- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Files/Review/Search within the same repo keeps it mounted (v-show), while switching repo workspace or module remounts it, relying on session resume and the kept view state.
 - The chosen Repos/Files/Review tab persists in localStorage key kira.git.panelTab (shared by all windows, last write wins) and defaults to Repos; opening a repo never switches it, and the panel shows Repos without writing it while no repo workspace is active.
 - The thirteen review.* methods never touch the user's repository: their only persistence is review.db (INSERT/UPDATE/DELETE on review_session/review_file/review_range/review_comment), and internal/gitreview has no exec.Command, os.WriteFile or git invocation.
 - The git work review.* handlers perform is read-only porcelain (cat-file, merge-base --is-ancestor, diff), with no update-index, write-tree, commit-tree or ref update.
