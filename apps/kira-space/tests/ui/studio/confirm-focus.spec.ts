@@ -39,6 +39,9 @@ const DETAIL: ConnectionFileDetail = {
   secrets: [SECRET],
 };
 
+// biome-ignore lint/suspicious/noTemplateCurlyInString: a secret reference in file text
+const PASSWORD_REF = '${secret:focus.password}';
+
 const dialog = '[data-testid="confirm-dialog"]';
 
 test('danger confirm opens with Cancel focused; Enter declines', async ({ relaunch }) => {
@@ -66,6 +69,14 @@ test('primary confirm opens with the confirm button focused; Enter accepts', asy
       { channel: IPC.connectionConfigView, response: VIEW },
       { channel: IPC.connectionConfigFile, response: DETAIL },
       {
+        channel: IPC.connectionConfigForm,
+        response: {
+          text: DETAIL.text,
+          problem: null,
+          value: { name: CONN.name, kind: 'postgres', mode: 'fields', password: PASSWORD_REF },
+        },
+      },
+      {
         channel: IPC.connectionsReveal,
         args: { id: CONN.id, confirmed: false },
         response: { password: null, error: null, outcome: 'confirmation-required' },
@@ -82,13 +93,13 @@ test('primary confirm opens with the confirm button focused; Enter accepts', asy
     .filter({ hasText: CONN.name })
     .click({ button: 'right' });
   await page.click('[data-testid="menu-item-edit"]');
-  await page.click('[data-testid="connection-secret-value-reveal"]');
+  await page.click('[data-testid="connection-password-reveal"]');
 
   await expect(page.locator(dialog)).toBeVisible();
   await expect(page.locator('[data-testid="confirm-dialog-confirm"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator(dialog)).toHaveCount(0);
-  await expect(page.locator('[data-testid="connection-secret-value"]')).toHaveValue('hunter2');
+  await expect(page.locator('[data-testid="connection-password"]')).toHaveValue('hunter2');
   expect(
     control
       .log()
