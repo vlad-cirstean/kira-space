@@ -45,7 +45,7 @@ export interface StepBlock {
 
 const RUN_GLYPH: Record<StepRun['state'], { glyph: string; tone: Tone }> = {
   done: { glyph: '✓', tone: 'green' },
-  running: { glyph: '●', tone: 'amber' },
+  running: { glyph: '●', tone: 'blue' },
   back: { glyph: '↩', tone: 'amber' },
   stuck: { glyph: '!', tone: 'red' },
   failed: { glyph: '✕', tone: 'red' },
@@ -55,7 +55,7 @@ const RUN_GLYPH: Record<StepRun['state'], { glyph: string; tone: Tone }> = {
 
 const STEP_TONE: Record<StepState, Tone> = {
   done: 'green',
-  running: 'amber',
+  running: 'blue',
   review: 'blue',
   stuck: 'red',
   failed: 'red',

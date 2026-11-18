@@ -4,7 +4,7 @@ import { logWarn } from '@workbench/bridge/log';
 import { computed, type MaybeRefOrGetter, ref, toValue } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenChangeRequest, useOpenHostView } from '../../../hostview/queries';
-import type { Tone } from '../board/actions';
+import { issueCategoryTone } from '../artifacts/status';
 import { taskPatch } from '../board/panelFacts';
 import {
   useAddLink,
@@ -24,8 +24,6 @@ export interface LinkGroup {
   id: LinkCategory;
   items: LinkItem[];
 }
-
-const CATEGORY_TONE: Record<string, Tone> = { new: 'grey', indeterminate: 'blue', done: 'green' };
 
 /** The task's links as category groups (non-empty only) plus every change to them. */
 export function useTaskLinks(
@@ -73,7 +71,7 @@ export function useTaskLinks(
           return {
             ...item,
             status: i.status || undefined,
-            tone: i.status ? (CATEGORY_TONE[i.statusCategory] ?? 'grey') : undefined,
+            tone: i.status ? issueCategoryTone(i.statusCategory) : undefined,
           };
         }),
       })),

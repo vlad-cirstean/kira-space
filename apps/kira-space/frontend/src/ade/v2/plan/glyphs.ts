@@ -94,17 +94,17 @@ export function rowActionSplit(actions: readonly BranchAction[]): {
 export const CHECKS_GLYPH: Record<string, { icon: string; class: string; tip: MessageKey }> = {
   SUCCESS: {
     icon: ICON.success,
-    class: 'text-tone-green',
+    class: 'text-ok',
     tip: 'space.ade.mainTab.checksSuccess.tooltip',
   },
   FAILURE: {
     icon: ICON.error,
-    class: 'text-tone-red',
+    class: 'text-error',
     tip: 'space.ade.mainTab.checksFailure.tooltip',
   },
   ERROR: {
     icon: ICON.error,
-    class: 'text-tone-red',
+    class: 'text-error',
     tip: 'space.ade.mainTab.checksFailure.tooltip',
   },
   PENDING: {

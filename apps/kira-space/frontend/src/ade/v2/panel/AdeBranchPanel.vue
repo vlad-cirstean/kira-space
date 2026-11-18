@@ -7,9 +7,11 @@ import KeyValueList from '@theme/components/KeyValueList.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
+import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
@@ -20,10 +22,8 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
-import AdeChip from '../AdeChip.vue';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
-import type { Tone } from '../board/actions';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
 import { baseNameOf } from '../board/reviewCode';
 import { type CardModel, type PlanModel, usePlanModel } from '../plan/usePlanModel';
@@ -33,6 +33,7 @@ import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
 import { useAdePanelTabsStore } from '../state/adePanelTabs';
+import { THEME_TONE } from '../tones';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ChangeRequest, Deployment, Integration, Run } from '../wire';
@@ -40,7 +41,7 @@ import AdePanelFrame from './AdePanelFrame.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
 import AdeWorktreeSetup from './AdeWorktreeSetup.vue';
 import { type HeaderAction, headerActions } from './headerActions';
-import { PR_TONE, prStateLabel } from './prState';
+import { prStateLabel } from './prState';
 
 // Branch mode: header (back link, git status, name, facts, Force push), Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; row: CardModel['rows'][number]; model: PlanModel }>();
@@ -248,10 +249,10 @@ const deployRows = computed((): Deployment[] => {
 /** Merging acts on a created branch of mine. */
 const canMerge = computed(() => branch.value.kind === 'mine' && branch.value.name !== '');
 
-const INTO_TONE: Record<Integration['status'], Tone> = {
-  merged: 'green',
-  stale: 'amber',
-  'not merged': 'grey',
+const INTO_TONE: Record<Integration['status'], StatusTone> = {
+  merged: 'ok',
+  stale: 'warn',
+  'not merged': 'neutral',
 };
 const INTO_STATUS = {
   merged: 'common.merged.status',
@@ -266,11 +267,11 @@ function intoNote(i: Integration): string {
     : '';
 }
 
-const DEPLOY_TONE: Record<Deployment['status'], Tone> = {
-  deployed: 'green',
-  stale: 'amber',
-  'not deployed': 'grey',
-  unknown: 'grey',
+const DEPLOY_TONE: Record<Deployment['status'], StatusTone> = {
+  deployed: 'ok',
+  stale: 'warn',
+  'not deployed': 'neutral',
+  unknown: 'neutral',
 };
 const DEPLOY_STATUS = {
   deployed: 'space.ade.branchPanel.state.deployed.status',
@@ -321,12 +322,12 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         <template #leading>
           <span
             class="box-border size-3 shrink-0 rounded-kira-sm border-2"
-            :class="card.review && 'border-tone-blue-solid'"
+            :class="card.review && 'border-info'"
             :style="card.review ? undefined : { borderColor: card.color }"
             data-testid="ade-panel-dot"
           />
           <TextTooltip :text="row.tag.tip">
-            <AdeChip :label="chipLabel" :tone="row.tag.tone" />
+            <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]">{{ chipLabel }}</Badge>
           </TextTooltip>
           <TextTooltip v-if="branch.origin === 'agent'" :text="t('space.ade.agentOrigin.tooltip')">
             <span class="inline-flex shrink-0 text-subtle" data-testid="ade-panel-agent">
@@ -338,7 +339,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           <div
             v-if="checkout"
             class="truncate"
-            :class="checkout.mismatch && 'text-tone-amber'"
+            :class="checkout.mismatch && 'text-warn'"
             :data-mismatch="checkout.mismatch || undefined"
             data-testid="ade-panel-checkout"
             >{{
@@ -432,7 +433,9 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
       <KeyValueList>
         <dt>{{ t('common.field.branch.label') }}</dt>
         <dd class="flex min-w-0 items-center gap-2">
-          <AdeChip :label="chipLabel" :tone="row.tag.tone" wide />
+          <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]" class="min-w-21 justify-center">{{
+            chipLabel
+          }}</Badge>
           <template v-if="branch.name">
             <TextTooltip :text="branch.name">
               <a
@@ -455,13 +458,13 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         </dd>
         <dt>{{ words.changeRequestShort }}</dt>
         <dd class="flex min-w-0 items-center gap-2" data-testid="ade-branch-pr">
-          <AdeChip
-            :label="
+          <Badge
+            :variant="TONE_BADGE[changeRequestTone(changeRequest?.state ?? '')]"
+            class="min-w-21 justify-center"
+            >{{
               changeRequest ? prStateLabel(changeRequest.state) : t('common.state.none.option')
-            "
-            :tone="changeRequest ? (PR_TONE[changeRequest.state] ?? 'grey') : 'grey'"
-            wide
-          />
+            }}</Badge
+          >
           <template v-if="changeRequest">
             <a
               :href="changeRequest.url"
@@ -508,7 +511,9 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           data-testid="ade-branch-into"
           :data-target="i.target"
         >
-          <AdeChip :label="t(INTO_STATUS[i.status])" :tone="INTO_TONE[i.status]" wide />
+          <Badge :variant="TONE_BADGE[INTO_TONE[i.status]]" class="min-w-21 justify-center">{{
+            t(INTO_STATUS[i.status])
+          }}</Badge>
           <Identifier :value="i.target" />
           <span class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground">{{
             intoNote(i)
@@ -546,7 +551,9 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           data-testid="ade-branch-deploy"
           :data-env="d.env"
         >
-          <AdeChip :label="t(DEPLOY_STATUS[d.status])" :tone="DEPLOY_TONE[d.status]" wide />
+          <Badge :variant="TONE_BADGE[DEPLOY_TONE[d.status]]" class="min-w-21 justify-center">{{
+            t(DEPLOY_STATUS[d.status])
+          }}</Badge>
           <Identifier :value="d.env" />
           <span class="min-w-0 truncate text-kira-sm text-muted-foreground">{{
             deployNote(d)

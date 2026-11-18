@@ -4,6 +4,7 @@ import DetailHeader from '@theme/components/DetailHeader.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
@@ -71,9 +72,6 @@ const titleEdit = useInlineEdit({
   },
 });
 
-const chip = computed(() =>
-  props.card.parked ? { tone: 'grey' as const } : { color: props.card.status.color },
-);
 const label = computed(() =>
   props.card.parked ? t('space.ade.board.notMerging.label') : props.card.status.name,
 );
@@ -121,14 +119,12 @@ const label = computed(() =>
             :style="card.parked ? { borderColor: card.color } : { background: card.color }"
             data-testid="ade-panel-dot"
           />
-          <AdeChip :label="label" v-bind="chip" />
+          <Badge v-if="card.parked" variant="default">{{ label }}</Badge>
+          <AdeChip v-else :label="label" :color="card.status.color" />
           <AdeOrchestratorBadge v-if="card.orchestrator" />
-          <AdeChip
-            v-if="card.blocked"
-            :label="t('space.common.status.blocked.status')"
-            tone="red"
-            data-testid="ade-panel-blocked"
-          />
+          <Badge v-if="card.blocked" variant="error" data-testid="ade-panel-blocked">{{
+            t('space.common.status.blocked.status')
+          }}</Badge>
         </template>
         <template #control>
           <Input

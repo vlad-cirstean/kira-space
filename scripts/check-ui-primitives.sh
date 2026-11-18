@@ -158,10 +158,6 @@ U114 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 
 U114 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/needs/AdeAllSessionRow.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/needs/AdeNeedsPage.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/panel/AdeBranchPanel.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/panel/AdeRunOutcome.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/panel/AdeStepBlock.vue # 2026-11-18 P672 Part 7
-U114 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskIssueLine.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/review/AdeReviewSync.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsRow.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/settings/AdeSettingsPane.vue # 2026-11-18 P672 Part 7

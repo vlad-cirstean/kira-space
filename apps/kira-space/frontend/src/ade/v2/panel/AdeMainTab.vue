@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
@@ -12,7 +13,6 @@ import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref, useTemplateRef } from 'vue';
-import AdeChip from '../AdeChip.vue';
 import AdeParentChip from '../AdeParentChip.vue';
 import { orchestratorToggle } from '../board/kind';
 import { statusWhy, taskPatch } from '../board/panelFacts';
@@ -75,12 +75,9 @@ useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
         <FieldLabel>{{ t('common.field.status.label') }}</FieldLabel>
         <div class="flex min-w-0 items-center gap-1.5">
           <AdeStatusPicker :card="card" />
-          <AdeChip
-            v-if="card.blocked"
-            :label="t('space.common.status.blocked.status')"
-            tone="red"
-            data-testid="ade-task-blocked"
-          />
+          <Badge v-if="card.blocked" variant="error" data-testid="ade-task-blocked">{{
+            t('space.common.status.blocked.status')
+          }}</Badge>
           <span class="truncate" :class="rowMeta" data-testid="ade-task-status-why">{{ why }}</span>
         </div>
       </Field>

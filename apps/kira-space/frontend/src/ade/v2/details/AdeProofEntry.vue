@@ -3,6 +3,7 @@ import type { ProofView } from '@shared/domain/proof';
 import { useMutation } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { toast } from '@theme/components/ui/sonner';
@@ -13,7 +14,6 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
 import { control as studioControl } from '../../../studio/bridge/control';
 import { proofViewIcon } from '../../../studio/proof/viewIcon';
-import AdeChip from '../AdeChip.vue';
 import { useDeleteProof } from '../queries';
 import type { TaskProof } from '../wire';
 import AdeOriginSession from './AdeOriginSession.vue';
@@ -57,12 +57,9 @@ async function askDelete(): Promise<void> {
         ><span class="truncate">{{ proof.name }}</span></Button
       >
       <span class="text-subtle" data-testid="ade-proof-path">{{ folderPath }}</span>
-      <AdeChip
-        v-if="proof.pending"
-        :label="t('space.ade.proof.entry.pending.status')"
-        tone="amber"
-        data-testid="ade-proof-pending"
-      />
+      <Badge v-if="proof.pending" variant="warn" data-testid="ade-proof-pending">{{
+        t('space.ade.proof.entry.pending.status')
+      }}</Badge>
       <span class="ml-auto text-subtle">{{ formatRelative(proof.closedAt) }}</span>
       <AdeOriginSession
         :task-id="taskId"

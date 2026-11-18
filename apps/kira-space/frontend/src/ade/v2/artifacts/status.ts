@@ -23,6 +23,15 @@ const LABEL: Record<string, MessageKey> = {
   local: 'space.ade.artifacts.status.local.status',
 };
 
+const ISSUE_CATEGORY_TONE: Record<string, Tone> = {
+  new: 'grey',
+  indeterminate: 'blue',
+  done: 'green',
+};
+
+export const issueCategoryTone = (category: string): Tone =>
+  ISSUE_CATEGORY_TONE[category] ?? 'grey';
+
 export const artifactStatusTone = (status: string): Tone => TONE[status] ?? 'grey';
 
 /** A known status in words; a tracker's own status name (In Review) shows as sent. */

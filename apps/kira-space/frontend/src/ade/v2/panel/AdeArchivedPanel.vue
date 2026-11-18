@@ -4,8 +4,10 @@ import DetailHeader from '@theme/components/DetailHeader.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { changeRequestTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
@@ -27,7 +29,7 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { type TaskPanelTab, useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { ArchivedBranch, ArchivedComment, ArchivedTask } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
-import { PR_TONE, prStateLabel } from './prState';
+import { prStateLabel } from './prState';
 
 // An archived task, read-only, with everything it kept. Restore brings it back to the Plan; edits
 // need that first.
@@ -137,7 +139,7 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
           <DetailHeader wrap :title="titleOf(a)" title-testid="ade-panel-title">
             <template #leading>
               <span class="box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
-              <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
+              <Badge variant="default">{{ t('space.ade.panel.archived.label') }}</Badge>
               <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
               <AdeParentChip
                 v-if="parentOf(a)"
@@ -203,7 +205,7 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
             <template v-if="a.task.hostLink">
               <dt>{{ t('space.ade.taskTab.pr.label') }}</dt>
               <dd class="flex items-center gap-2">
-                <AdeChip :label="hostLabels.chipOf(a.task.hostLink)" tone="grey" />
+                <Badge variant="default">{{ hostLabels.chipOf(a.task.hostLink) }}</Badge>
                 <a
                   :href="a.task.hostUrl"
                   class="text-info"
@@ -261,8 +263,8 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
                 <span v-if="kindLabel(b)" class="shrink-0 text-kira-sm text-muted-foreground">{{
                   kindLabel(b)
                 }}</span>
-                <AdeChip v-if="b.mergedAt" :label="t('common.merged.status')" tone="purple" />
-                <AdeChip v-if="b.removed" :label="t('common.removed.status')" tone="grey" />
+                <Badge v-if="b.mergedAt" variant="ok">{{ t('common.merged.status') }}</Badge>
+                <Badge v-if="b.removed" variant="default">{{ t('common.removed.status') }}</Badge>
               </div>
               <div v-if="b.base" class="text-kira-sm text-muted-foreground">{{
                 t('space.ade.review.header.base.label', { base: b.base })
@@ -272,10 +274,9 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
                 class="flex min-w-0 items-center gap-2"
                 data-testid="ade-archived-pr"
               >
-                <AdeChip
-                  :label="prStateLabel(b.changeRequest.state)"
-                  :tone="PR_TONE[b.changeRequest.state] ?? 'grey'"
-                />
+                <Badge :variant="TONE_BADGE[changeRequestTone(b.changeRequest.state)]">{{
+                  prStateLabel(b.changeRequest.state)
+                }}</Badge>
                 <a
                   :href="b.changeRequest.url"
                   class="shrink-0 font-data text-kira-md text-info"
