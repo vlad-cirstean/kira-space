@@ -3,7 +3,7 @@ import type { CommitStore } from '@kira/git-core';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Label } from '@theme/components/ui/label';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { computed, useId } from 'vue';
@@ -48,8 +48,8 @@ const parentSelectId = useId();
 </script>
 
 <template>
-  <div v-if="parents.length > 1" class="flex flex-col gap-0.5 px-3 pb-2 text-graph-md">
-    <Label :for="parentSelectId">{{ t('git.fileTree.diffAgainst.label') }}</Label>
+  <Field v-if="parents.length > 1" class="gap-0.5 px-3 pb-2 text-graph-md">
+    <FieldLabel :for="parentSelectId">{{ t('git.fileTree.diffAgainst.label') }}</FieldLabel>
     <NativeSelect
       :id="parentSelectId"
       :model-value="String(parentIndex)"
@@ -61,7 +61,7 @@ const parentSelectId = useId();
         {{ option.label }}
       </option>
     </NativeSelect>
-  </div>
+  </Field>
 
   <div v-if="showToolbar !== false" class="flex gap-1 px-2 pb-1">
     <div class="min-w-0 flex-1">

@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
@@ -85,7 +84,7 @@ function onSave(): void {
             data-testid="kube-mcp-enabled"
             @update:model-value="(v) => (draft!.enabled = v === true)"
           />
-          <Label for="kube-mcp-enabled">{{ t('kubernetes.mcp.enable.label') }}</Label>
+          <FieldLabel for="kube-mcp-enabled">{{ t('kubernetes.mcp.enable.label') }}</FieldLabel>
         </Field>
         <FieldDescription>{{ t('kubernetes.mcp.enable.hint') }}</FieldDescription>
         <template v-if="draft.enabled">

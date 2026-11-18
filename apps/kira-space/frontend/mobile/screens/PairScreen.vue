@@ -2,9 +2,8 @@
 import { Alert } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
-import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { storeToRefs } from 'pinia';
 import { computed, ref, useId } from 'vue';
@@ -83,8 +82,8 @@ const notice = computed(() => {
 
     <template v-else>
       <Alert v-if="notice" variant="error" data-testid="pair-notice">{{ notice }}</Alert>
-      <div class="flex flex-col gap-1">
-        <Label :for="labelId">{{ t('mobile.pair.name.label') }}</Label>
+      <Field>
+        <FieldLabel :for="labelId">{{ t('mobile.pair.name.label') }}</FieldLabel>
         <Input
           :id="labelId"
           v-model="label"
@@ -93,7 +92,7 @@ const notice = computed(() => {
           autocomplete="off"
           data-testid="pair-label"
         />
-      </div>
+      </Field>
       <Button
         variant="dialog-primary"
         size="kira-lg"
