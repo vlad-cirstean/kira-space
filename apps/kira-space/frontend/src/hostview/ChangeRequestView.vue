@@ -84,9 +84,9 @@ function copyLink(): void {
       </Badge>
     </template>
     <div v-if="detail" class="flex min-h-0 flex-1" data-testid="host-view-body">
-      <main class="min-w-0 flex-1 overflow-y-auto p-3">
+      <main class="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
         <div
-          class="mb-3 flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
+          class="flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
           data-testid="host-view-meta"
         >
           <CodiconIcon name="git-pull-request" :size="13" />
@@ -111,7 +111,7 @@ function copyLink(): void {
           :query-key="queryKey"
           :provider="target.provider"
         />
-        <section v-if="compose" class="mt-4 flex flex-col gap-2" data-testid="host-view-compose">
+        <section v-if="compose" class="flex flex-col gap-2" data-testid="host-view-compose">
           <SectionHeading :label="t('space.hostView.compose.heading.title')" />
           <CommentComposer
             kind="changeRequest"

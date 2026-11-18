@@ -157,7 +157,7 @@ const label = (id: SectionId): string => LABELS[id]();
           @click="copyText(describe.data.value?.manifest ?? '')"
         />
       </div>
-      <div class="min-h-0 flex-1 overflow-auto p-2">
+      <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
         <EmptyState
           v-if="needle !== '' && shown.length === 0"
           :icon="ICON.search"
@@ -165,7 +165,7 @@ const label = (id: SectionId): string => LABELS[id]();
           :title="t('common.state.noMatches.empty')"
         />
         <template v-for="id in shown" :key="id">
-          <section class="mb-3" :data-testid="`kube-describe-section-${id}`">
+          <section :data-testid="`kube-describe-section-${id}`">
             <SectionHeading :label="label(id)" />
             <KeyValueList
               v-if="id === 'overview' || id === 'labels' || id === 'annotations' || id === 'owners'"

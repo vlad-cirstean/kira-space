@@ -45,7 +45,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
 </script>
 
 <template>
-  <section class="mt-6 flex flex-col gap-3" data-testid="host-view-conversation">
+  <section class="flex flex-col gap-3" data-testid="host-view-conversation">
     <SectionHeading :label="t('space.hostView.conversation.heading.title')" />
     <FieldDescription v-if="threads.length === 0" data-testid="host-view-no-threads">{{
       t('space.hostView.conversation.empty.empty')
