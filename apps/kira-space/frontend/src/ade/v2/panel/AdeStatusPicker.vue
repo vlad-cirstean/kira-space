@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
@@ -57,14 +59,19 @@ async function move(statusId: string): Promise<void> {
           <PickerTrigger size="kira" :label="card.status.name" data-testid="ade-status-pick" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" data-testid="ade-status-menu">
-          <DropdownMenuItem
-            v-for="s in statuses"
-            :key="s.id"
-            :data-testid="`ade-status-option-${s.id}`"
-            @select="move(s.id)"
-          >
-            <AdeChip :label="s.name" :color="s.color" />
-          </DropdownMenuItem>
+          <!-- radio: MenuItem has no radio kind -->
+          <DropdownMenuRadioGroup :model-value="card.status.id">
+            <DropdownMenuRadioItem
+              v-for="s in statuses"
+              :key="s.id"
+              :value="s.id"
+              :data-testid="`ade-status-option-${s.id}`"
+              @select="move(s.id)"
+            >
+              <AdeChip :label="s.name" :color="s.color" />
+              <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <TooltipIconButton

@@ -4,14 +4,15 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
+import { computed } from 'vue';
 import { useStepMoves } from '../panel/useStepMoves';
 import type { CardModel } from './usePlanModel';
 
@@ -20,6 +21,26 @@ import type { CardModel } from './usePlanModel';
 const props = defineProps<{ card: CardModel }>();
 
 const { options, at, prev, next, live, reason, move } = useStepMoves(() => props.card);
+
+const moveItems = computed<MenuItem[]>(() => [
+  ...(live.value ? [{ type: 'label' as const, label: reason.value }] : []),
+  {
+    type: 'item',
+    id: 'back',
+    label: t('space.ade.stepMover.back.tooltip'),
+    icon: 'arrow-left',
+    disabled: live.value || !prev.value,
+    run: () => move(prev.value?.id ?? ''),
+  },
+  {
+    type: 'item',
+    id: 'next',
+    label: t('space.ade.stepMover.next.tooltip'),
+    icon: 'arrow-right',
+    disabled: live.value || !next.value,
+    run: () => move(next.value?.id ?? ''),
+  },
+]);
 </script>
 
 <template>
@@ -40,14 +61,9 @@ const { options, at, prev, next, live, reason, move } = useStepMoves(() => props
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" data-testid="ade-row-step-menu" @click.stop>
-      <DropdownMenuLabel v-if="live">{{ reason }}</DropdownMenuLabel>
-      <DropdownMenuItem :disabled="live || !prev" @select="move(prev?.id ?? '')">
-        {{ t('space.ade.stepMover.back.tooltip') }}
-      </DropdownMenuItem>
-      <DropdownMenuItem :disabled="live || !next" @select="move(next?.id ?? '')">
-        {{ t('space.ade.stepMover.next.tooltip') }}
-      </DropdownMenuItem>
+      <MenuItems :items="moveItems" />
       <DropdownMenuSeparator />
+      <!-- radio: MenuItem has no radio kind -->
       <DropdownMenuRadioGroup :model-value="options[at]?.id ?? ''">
         <DropdownMenuRadioItem
           v-for="o in options"

@@ -4,13 +4,13 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
 import type { BranchRowModel } from '../plan/usePlanModel';
 import { useRemoveTaskBranch, useRemoveTaskRepo } from '../queries';
@@ -38,6 +38,57 @@ const formOpen = ref(false);
 const menuOpen = ref(false);
 const mode = ref<'branch' | 'repo'>('branch');
 const label = computed(() => props.row.name || props.row.repo);
+
+const menuItems = computed<MenuItem[]>(() => [
+  ...(props.row.draft
+    ? ([
+        {
+          type: 'item',
+          id: 'add',
+          testId: 'ade-task-branch-add',
+          label: t('space.ade.taskTab.branchMenu.addBranch.label'),
+          icon: 'git-branch',
+          run: () => openForm('branch'),
+        },
+        {
+          type: 'item',
+          id: 'repo-change',
+          testId: 'ade-task-repo-change',
+          label: t('space.ade.taskTab.branchMenu.changeRepo.label'),
+          icon: 'repo',
+          run: () => openForm('repo'),
+        },
+      ] satisfies MenuItem[])
+    : ([
+        {
+          type: 'item',
+          id: 'change',
+          testId: 'ade-task-branch-change',
+          label: t('space.ade.taskTab.branchMenu.changeBranch.label'),
+          icon: 'git-branch',
+          run: () => openForm('branch'),
+        },
+        {
+          type: 'item',
+          id: 'remove',
+          testId: 'ade-task-branch-remove',
+          label: t('space.ade.taskTab.branchMenu.removeBranch.label'),
+          icon: 'trash',
+          danger: true,
+          run: () => remove('branch'),
+        },
+      ] satisfies MenuItem[])),
+  { type: 'separator' },
+  {
+    type: 'item',
+    id: 'repo-remove',
+    testId: 'ade-task-repo-remove',
+    label: t('space.ade.taskTab.branchMenu.removeRepo.label'),
+    icon: 'trash',
+    danger: true,
+    run: () => remove('repo'),
+  },
+]);
 
 function openForm(next: 'branch' | 'repo'): void {
   mode.value = next;
@@ -109,26 +160,7 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
         data-testid="ade-task-branch-menu-content"
         @close-auto-focus.prevent
       >
-        <template v-if="row.draft">
-          <DropdownMenuItem data-testid="ade-task-branch-add" @select="openForm('branch')">{{
-            t('space.ade.taskTab.branchMenu.addBranch.label')
-          }}</DropdownMenuItem>
-          <DropdownMenuItem data-testid="ade-task-repo-change" @select="openForm('repo')">{{
-            t('space.ade.taskTab.branchMenu.changeRepo.label')
-          }}</DropdownMenuItem>
-        </template>
-        <template v-else>
-          <DropdownMenuItem data-testid="ade-task-branch-change" @select="openForm('branch')">{{
-            t('space.ade.taskTab.branchMenu.changeBranch.label')
-          }}</DropdownMenuItem>
-          <DropdownMenuItem data-testid="ade-task-branch-remove" @select="remove('branch')">{{
-            t('space.ade.taskTab.branchMenu.removeBranch.label')
-          }}</DropdownMenuItem>
-        </template>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem data-testid="ade-task-repo-remove" @select="remove('repo')">{{
-          t('space.ade.taskTab.branchMenu.removeRepo.label')
-        }}</DropdownMenuItem>
+        <MenuItems :items="menuItems" />
       </DropdownMenuContent>
     </DropdownMenu>
   </AdeTaskBranchForm>

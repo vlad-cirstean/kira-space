@@ -4,12 +4,13 @@ import { Card } from '@theme/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { FieldDescription } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import AdeChip from '../AdeChip.vue';
 import { useLeases } from '../leases/queries';
 import { useAdeLeasesStore } from '../state/adeLeases';
@@ -17,6 +18,31 @@ import { useAdeLeasesStore } from '../state/adeLeases';
 // Every lease queue: its holder (menu: request or force release) and the waiters in grant order.
 const store = useAdeLeasesStore();
 const { data } = useLeases();
+
+type Queue = NonNullable<typeof data.value>['queues'][number];
+function holderItems(q: Queue): MenuItem[] {
+  return [
+    {
+      type: 'item',
+      id: 'request',
+      testId: 'ade-lease-request',
+      label: t('space.ade.leases.requestRelease.label'),
+      icon: 'bell',
+      disabled: !!q.holder?.releaseAsked || store.leaseBusy(q.name),
+      run: () => store.requestRelease(q.name),
+    },
+    {
+      type: 'item',
+      id: 'force',
+      testId: 'ade-lease-force',
+      label: t('space.ade.leases.forceRelease.label'),
+      icon: 'debug-disconnect',
+      danger: true,
+      disabled: store.leaseBusy(q.name),
+      run: () => store.forceRelease(q),
+    },
+  ];
+}
 </script>
 
 <template>
@@ -79,20 +105,7 @@ const { data } = useLeases();
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem
-                :disabled="q.holder.releaseAsked || store.leaseBusy(q.name)"
-                data-testid="ade-lease-request"
-                @select="store.requestRelease(q.name)"
-              >
-                {{ t('space.ade.leases.requestRelease.label') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                :disabled="store.leaseBusy(q.name)"
-                data-testid="ade-lease-force"
-                @select="store.forceRelease(q)"
-              >
-                {{ t('space.ade.leases.forceRelease.label') }}
-              </DropdownMenuItem>
+              <MenuItems :items="holderItems(q)" />
             </DropdownMenuContent>
           </DropdownMenu>
           <span v-else class="text-muted-foreground" :data-testid="`ade-lease-free-${q.name}`">{{

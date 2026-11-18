@@ -7,14 +7,12 @@ import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import '@vue-flow/core/dist/style.css';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Input } from '@theme/components/ui/input';
@@ -23,6 +21,7 @@ import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { type Connection, type Edge, type Node, useVueFlow, VueFlow } from '@vue-flow/core';
 import { useElementSize } from '@vueuse/core';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { kindLabel, PLACEHOLDER_TOKENS, STEP_KINDS } from '../board/workflowForm';
 import {
@@ -57,6 +56,28 @@ const workflows = useWorkflows();
 const library = computed(() =>
   (workflows.data.value?.steps ?? []).flatMap((e) => (e.step ? [e.step] : [])),
 );
+const addStepItems = computed<MenuItem[]>(() => [
+  ...STEP_KINDS.map((k) => ({
+    type: 'item' as const,
+    id: k,
+    testId: `ade-wf-add-step-${k}`,
+    label: kindLabel(k),
+    run: () => draft.createStep(k),
+  })),
+  ...(library.value.length
+    ? [
+        { type: 'separator' as const },
+        { type: 'label' as const, label: t('space.ade.workflows.library.add.label') },
+        ...library.value.map((s) => ({
+          type: 'item' as const,
+          id: `library-${s.id}`,
+          testId: `ade-wf-add-library-${s.id}`,
+          label: s.name,
+          run: () => draft.createFromLibrary(s),
+        })),
+      ]
+    : []),
+]);
 const { confirmRemoveStep } = useStepRemoval();
 const { setViewport } = useVueFlow();
 
@@ -354,28 +375,7 @@ onBeforeUnmount(() => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center">
-                <DropdownMenuItem
-                  v-for="k in STEP_KINDS"
-                  :key="k"
-                  :data-testid="`ade-wf-add-step-${k}`"
-                  @select="draft.createStep(k)"
-                >
-                  {{ kindLabel(k) }}
-                </DropdownMenuItem>
-                <template v-if="library.length">
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>{{
-                    t('space.ade.workflows.library.add.label')
-                  }}</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    v-for="s in library"
-                    :key="s.id"
-                    :data-testid="`ade-wf-add-library-${s.id}`"
-                    @select="draft.createFromLibrary(s)"
-                  >
-                    {{ s.name }}
-                  </DropdownMenuItem>
-                </template>
+                <MenuItems :items="addStepItems" />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

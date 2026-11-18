@@ -6,16 +6,18 @@ import { Card } from '@theme/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { plainText } from '@theme/varText';
 import { formatPercent } from '@workbench/behaviour/format';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useApprovalsStore } from '@workbench/state/approvals';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, useTemplateRef } from 'vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeParentChip from '../AdeParentChip.vue';
@@ -81,6 +83,18 @@ const baseChoices = computed(() => {
   const board = boardQuery.data.value;
   return v && board ? changeBaseChoices(props.card, { graph: v.graph, after: v.after, board }) : [];
 });
+
+const baseItems = computed<MenuItem[]>(() =>
+  baseChoices.value.map((c) => ({
+    type: 'item',
+    id: c.branchId,
+    testId: 'ade-card-change-base-item',
+    label: plainText(c.parts),
+    parts: c.parts,
+    disabled: c.disabled,
+    run: () => dialogs.act(c.act),
+  })),
+);
 
 const draftRepoIds = computed(() =>
   props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
@@ -166,15 +180,7 @@ const boxClass = computed(() => {
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
-                  <DropdownMenuItem
-                    v-for="c in baseChoices"
-                    :key="c.branchId"
-                    :disabled="c.disabled"
-                    data-testid="ade-card-change-base-item"
-                    @select="dialogs.act(c.act)"
-                  >
-                    <VarText :parts="c.parts" />
-                  </DropdownMenuItem>
+                  <MenuItems :items="baseItems" />
                 </DropdownMenuContent>
               </DropdownMenu>
               <TooltipIconButton

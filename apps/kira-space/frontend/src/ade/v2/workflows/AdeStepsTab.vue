@@ -7,7 +7,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
@@ -15,8 +14,10 @@ import { paneFrame } from '@theme/lib/frames';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { KIND_TONE, kindLabel, STEP_KINDS } from '../board/workflowForm';
@@ -32,6 +33,15 @@ const workflows = useWorkflows();
 const newStep = useNewStep();
 const listError = ref('');
 
+const newStepItems = computed<MenuItem[]>(() =>
+  STEP_KINDS.map((k) => ({
+    type: 'item',
+    id: k,
+    testId: `ade-step-new-${k}`,
+    label: kindLabel(k),
+    run: () => createNew(k),
+  })),
+);
 const entries = computed(() => workflows.data.value?.steps ?? []);
 const current = computed(
   () => entries.value.find((e) => e.fileName === wfUi.stepFile) ?? entries.value[0] ?? null,
@@ -89,14 +99,7 @@ async function createNew(kind: StepKind): Promise<void> {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                v-for="k in STEP_KINDS"
-                :key="k"
-                :data-testid="`ade-step-new-${k}`"
-                @select="createNew(k)"
-              >
-                {{ kindLabel(k) }}
-              </DropdownMenuItem>
+              <MenuItems :items="newStepItems" />
             </DropdownMenuContent>
           </DropdownMenu>
         </template>

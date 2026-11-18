@@ -6,12 +6,13 @@ import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 import {
   ACCESS_MODES,
@@ -88,6 +89,15 @@ const PRESET_LABEL = {
 const preset = (paths: readonly string[]): void => {
   set({ allow: addPaths(props.sandbox.allow, paths) });
 };
+const presetItems = computed<MenuItem[]>(() =>
+  TOOLCHAINS.map((c) => ({
+    type: 'item',
+    id: c.id,
+    testId: `ade-wf-sandbox-preset-${c.id}`,
+    label: t(PRESET_LABEL[c.id]),
+    run: () => preset(c.paths),
+  })),
+);
 </script>
 
 <template>
@@ -153,15 +163,7 @@ const preset = (paths: readonly string[]): void => {
             >
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              v-for="c in TOOLCHAINS"
-              :key="c.id"
-              :data-testid="`ade-wf-sandbox-preset-${c.id}`"
-              @select="preset(c.paths)"
-              >{{
-                t(PRESET_LABEL[c.id])
-              }}</DropdownMenuItem
-            >
+            <MenuItems :items="presetItems" />
           </DropdownMenuContent>
         </DropdownMenu>
         <FieldError v-if="allowInvalid">

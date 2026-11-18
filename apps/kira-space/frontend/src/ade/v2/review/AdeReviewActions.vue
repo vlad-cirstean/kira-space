@@ -5,7 +5,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import {
@@ -18,6 +17,8 @@ import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { useTimeoutFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
 import type { ReviewWindowTarget } from '../wire';
 import AdeReviewSubmitDialog from './AdeReviewSubmitDialog.vue';
@@ -40,9 +41,23 @@ const EVENTS: readonly { event: ChangeRequestReviewEvent; label: MessageKey }[] 
   { event: 'approve', label: 'common.action.approve.label' },
   { event: 'requestChanges', label: 'space.ade.review.actions.requestChanges.label' },
 ];
-const items = computed(() => {
+const items = computed<MenuItem[]>(() => {
   const s = ok.value;
-  return s ? EVENTS.map((e) => ({ ...e, gate: reviewGate(s, e.event) })) : [];
+  if (!s) return [];
+  return EVENTS.map((e) => {
+    const gate = reviewGate(s, e.event);
+    return {
+      type: 'item',
+      id: e.event,
+      testId: `ade-review-action-${e.event}`,
+      label: t(e.label),
+      disabled: !gate.enabled,
+      hint: gate.enabled ? undefined : gate.reason,
+      run: () => {
+        mode.value = e.event;
+      },
+    };
+  });
 });
 
 const mode = ref<ChangeRequestReviewEvent | 'conversation' | null>(null);
@@ -112,22 +127,7 @@ function done(kind: 'review' | 'comment'): void {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <template v-for="i in items" :key="i.event">
-            <DropdownMenuItem
-              :disabled="!i.gate.enabled"
-              :data-testid="`ade-review-action-${i.event}`"
-              @select="mode = i.event"
-            >
-              {{ t(i.label) }}
-            </DropdownMenuItem>
-            <div
-              v-if="!i.gate.enabled"
-              class="max-w-64 px-1.5 pb-1 text-kira-sm text-muted-foreground"
-              :data-testid="`ade-review-action-${i.event}-reason`"
-            >
-              {{ i.gate.reason }}
-            </div>
-          </template>
+          <MenuItems :items="items" />
         </DropdownMenuContent>
       </DropdownMenu>
       <Button

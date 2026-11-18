@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@theme/components/ui/field';
@@ -42,18 +44,23 @@ const { options, at, prev, next, live, reason, move } = useStepMoves(() => props
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" data-testid="ade-step-menu">
-          <DropdownMenuItem
-            v-for="o in options"
-            :key="o.id"
-            :data-testid="`ade-step-option-${o.id}`"
-            :disabled="o.skipped"
-            @select="move(o.id)"
-          >
-            {{ o.name
-            }}<span v-if="o.skipped" class="text-muted-foreground">
-              {{ t('common.skipped.status') }}</span
+          <!-- radio: MenuItem has no radio kind -->
+          <DropdownMenuRadioGroup :model-value="options[at]?.id ?? ''">
+            <DropdownMenuRadioItem
+              v-for="o in options"
+              :key="o.id"
+              :value="o.id"
+              :data-testid="`ade-step-option-${o.id}`"
+              :disabled="o.skipped"
+              @select="move(o.id)"
             >
-          </DropdownMenuItem>
+              {{ o.name
+              }}<span v-if="o.skipped" class="text-muted-foreground">
+                {{ t('common.skipped.status') }}</span
+              >
+              <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>
       <TooltipIconButton

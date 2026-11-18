@@ -6,11 +6,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import VarText from '@theme/components/VarText.vue';
@@ -19,6 +14,8 @@ import { ICON } from '@theme/icons';
 import { Handle, Position } from '@vue-flow/core';
 import { useEventListener } from '@vueuse/core';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { promptParts } from '../automation/smartStepBody';
@@ -34,6 +31,72 @@ const props = defineProps<{ data: StepNodeData }>();
 const draft = useAdeWorkflowDraftStore();
 const { confirmRemoveStep } = useStepRemoval();
 const menuOpen = ref(false);
+const menuItems = computed<MenuItem[]>(() => [
+  {
+    type: 'submenu',
+    id: 'add-after',
+    testId: 'ade-wf-step-add-after',
+    label: t('space.ade.workflows.graph.addStepAfter.label'),
+    icon: 'add',
+    items: STEP_KINDS.map((k) => ({
+      type: 'item',
+      id: `add-after-${k}`,
+      testId: `ade-wf-step-add-after-${k}`,
+      label: kindLabel(k),
+      run: () => draft.createStep(k, step.value.id),
+    })),
+  },
+  { type: 'separator' },
+  {
+    type: 'item',
+    id: 'up',
+    testId: 'ade-wf-step-up',
+    label: t('common.moveUp.tooltip'),
+    icon: 'arrow-up',
+    disabled: !props.data.canUp,
+    run: () => draft.moveStepBy(step.value.id, -1),
+  },
+  {
+    type: 'item',
+    id: 'down',
+    testId: 'ade-wf-step-down',
+    label: t('common.moveDown.tooltip'),
+    icon: 'arrow-down',
+    disabled: !props.data.canDown,
+    run: () => draft.moveStepBy(step.value.id, 1),
+  },
+  {
+    type: 'item',
+    id: 'start',
+    testId: 'ade-wf-step-start',
+    label: t('space.ade.workflows.stepInspector.makeStart.label'),
+    icon: 'debug-start',
+    disabled: props.data.start,
+    run: () => draft.makeStart(step.value.id),
+  },
+  {
+    type: 'item',
+    id: 'skip',
+    testId: 'ade-wf-step-skip',
+    label: step.value.skip
+      ? t('space.ade.workflows.stepInspector.unskip.label')
+      : t('space.ade.stepBlock.skipThis.label'),
+    icon: 'debug-step-over',
+    disabled: !step.value.skip && !props.data.canSkip,
+    run: () => draft.patchStep(step.value.id, { skip: !step.value.skip }),
+  },
+  { type: 'separator' },
+  {
+    type: 'item',
+    id: 'remove',
+    testId: 'ade-wf-step-remove',
+    label: t('common.action.remove.label'),
+    icon: 'trash',
+    danger: true,
+    disabled: !props.data.canRemove,
+    run: () => fireAndForget(confirmRemoveStep(step.value.id), 'adeWorkflows'),
+  },
+]);
 const root = useTemplateRef<HTMLElement>('root');
 useEventListener(root, 'contextmenu', (e: MouseEvent) => {
   e.preventDefault();
@@ -175,63 +238,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger data-testid="ade-wf-step-add-after">
-              {{ t('space.ade.workflows.graph.addStepAfter.label') }}
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              <DropdownMenuItem
-                v-for="k in STEP_KINDS"
-                :key="k"
-                :data-testid="`ade-wf-step-add-after-${k}`"
-                @select="draft.createStep(k, step.id)"
-              >
-                {{ kindLabel(k) }}
-              </DropdownMenuItem>
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            :disabled="!data.canUp"
-            data-testid="ade-wf-step-up"
-            @select="draft.moveStepBy(step.id, -1)"
-          >
-            {{ t('common.moveUp.tooltip') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            :disabled="!data.canDown"
-            data-testid="ade-wf-step-down"
-            @select="draft.moveStepBy(step.id, 1)"
-          >
-            {{ t('common.moveDown.tooltip') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            :disabled="data.start"
-            data-testid="ade-wf-step-start"
-            @select="draft.makeStart(step.id)"
-          >
-            {{ t('space.ade.workflows.stepInspector.makeStart.label') }}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            :disabled="!step.skip && !data.canSkip"
-            data-testid="ade-wf-step-skip"
-            @select="draft.patchStep(step.id, { skip: !step.skip })"
-          >
-            {{
-              step.skip
-                ? t('space.ade.workflows.stepInspector.unskip.label')
-                : t('space.ade.stepBlock.skipThis.label')
-            }}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            class="text-error"
-            :disabled="!data.canRemove"
-            data-testid="ade-wf-step-remove"
-            @select="fireAndForget(confirmRemoveStep(step.id), 'adeWorkflows')"
-          >
-            {{ t('common.action.remove.label') }}
-          </DropdownMenuItem>
+          <MenuItems :items="menuItems" />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
