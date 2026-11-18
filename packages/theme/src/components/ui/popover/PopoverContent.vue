@@ -11,16 +11,23 @@ defineOptions({
 });
 
 const props = withDefaults(
-  defineProps<PopoverContentProps & { class?: HTMLAttributes['class']; destructive?: boolean }>(),
+  defineProps<
+    PopoverContentProps & {
+      class?: HTMLAttributes['class'];
+      destructive?: boolean;
+      flush?: boolean;
+    }
+  >(),
   {
     align: 'center',
     sideOffset: 4,
     destructive: false,
+    flush: false,
   },
 );
 const emits = defineEmits<PopoverContentEmits>();
 
-const delegatedProps = reactiveOmit(props, 'class', 'destructive');
+const delegatedProps = reactiveOmit(props, 'class', 'destructive', 'flush');
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
@@ -46,6 +53,8 @@ function onOpenAutoFocus(event: Event): void {
         cn(
           floatingSurface,
           'data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 flex flex-col gap-2.5 p-2.5 text-kira-md duration-100 z-(--kira-z-popover) w-72 max-w-(--reka-popover-content-available-width) origin-(--reka-popover-content-transform-origin) outline-hidden',
+          // List popover with its own header, scroll list and footer rows.
+          props.flush && 'gap-0 overflow-hidden p-0',
           props.class,
         )
       "

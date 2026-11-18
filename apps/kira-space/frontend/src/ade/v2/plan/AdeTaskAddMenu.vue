@@ -56,12 +56,7 @@ function addBranch(): void {
         <CodiconIcon name="add" :size="13" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent
-      align="start"
-      class="w-80 gap-0 overflow-hidden p-0"
-      data-testid="ade-card-add-menu"
-      @click.stop
-    >
+    <PopoverContent align="start" flush class="w-80" data-testid="ade-card-add-menu" @click.stop>
       <ProjectPicker
         inline
         testid="ade-card-add-repo"

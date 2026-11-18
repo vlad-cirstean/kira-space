@@ -67,7 +67,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
         <CodiconIcon name="sparkle" :size="12" />{{ t('space.ade.agentOrigin.tooltip') }}
       </span>
       <Separator v-if="hasDetails" />
-      <KeyValueList v-if="hasDetails" class="text-kira-sm">
+      <KeyValueList v-if="hasDetails" density="compact">
         <template v-if="row.base">
           <dt>{{ t('space.common.base.label') }}</dt>
           <dd class="flex items-center gap-1">
