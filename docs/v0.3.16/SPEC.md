@@ -20,7 +20,7 @@ Release retention deletes whole releases instead of their assets; git tags stay.
 | P667 | Single-select cards | Done |
 | P668 | Single-select toggle groups | Done |
 | P669 | Drop move up/down from left-panel menus | Done |
-| P670 | Remove connection Secrets section | Planned |
+| P670 | Remove connection Secrets section | Done |
 | P671 | Terminal links: copy via right click and reliable file paths | Planned |
 | P672 Part 1 | UI inventory and uniformity rules | Planned |
 | P672 Part 2 | Apply uniformity (cut into Parts 2..n after Part 1) | Planned |
@@ -191,6 +191,8 @@ Result: Option A. Removed Move up/down menu items and Alt+Up/Down bindings from 
 Connection edit dialog shows a Secrets block on every tab; user finds it confusing and does not know its purpose. Planner first establishes what it does (`apps/kira-space/frontend/src/studio/project/connection/ConnectionSecrets.vue`, `ConnectionSecret` in `packages/shared/domain/connectionConfig.ts`, `revealConnectionSecret`, `deleteSecret`, their Go side) and whether any user flow depends on it (how passwords/URIs are stored, where else they are edited). Then remove the UI block and every code path only it used, keeping whatever stores/edits the connection password elsewhere. If removal loses a capability users need (no other way to set/clear a password or URI secret), the plan says so prominently and proposes the minimal alternative; the orchestrator confirms with the user before implementation. Acceptance: Secrets block gone from every tab; connections still save and connect with and without password; specs updated (credential-reveal, confirm-focus etc.); docs updated. UI specs plus flow tests where backend code is removed (planner states if none needed).
 
 Plan: `plans/P670.md`.
+
+Result: Done. Option A, user confirmed: `ConnectionSecrets.vue` removed from every tab, with `useDeleteConnectionSecret`, `connectionConfigDeleteSecret`, Go `ConnectionConfigService.DeleteSecret` and `ConnectionSecretNameArgs`, five i18n keys. Clear is lost; no UI deletes a connection secret. General tab gains a storage-off hint (`connection-secret-storage-off`). Password and URI entry, reveal and set state stay on the General tab. Known open item added: orphaned sealed values. Flow `TestConnectionSecrets` calls `Loader.DeleteSecret` directly; contract keys unchanged. Specs: `secrets.spec.ts` rewritten for General tab, `credential-reveal`, `secret-reveal`, `confirm-focus`, `connection-form` retargeted. Ran: `go test ./internal/flows/dbflow -run 'TestConnectionSecrets|TestSecretsStatusAndReveal'` ok, `go vet` bridge and dbflow clean, `lint:dead` clean, Playwright `ui` five specs 20 passed, pre-commit full lint and typecheck green. Deviations: flow test edit shipped in commit 1 (keeps Go tests compiling); `golangci-lint` not run (binary built with go1.25, repo targets newer Go); `wails3 task common:generate:bindings` regenerated bindings (gitignored).
 
 ## P671 Terminal links: copy via right click and reliable file paths
 
