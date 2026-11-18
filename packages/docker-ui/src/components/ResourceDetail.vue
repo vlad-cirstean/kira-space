@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
@@ -118,29 +118,24 @@ const usedByRows = computed(() =>
     data-testid="docker-resource-detail"
     :data-kind="kind"
   >
-    <div class="flex shrink-0 items-center gap-2 px-3 py-2">
-      <CodiconIcon :name="ICONS[kind]" :size="16" class="text-muted-foreground" />
-      <span class="min-w-0 truncate text-kira-lg font-medium" data-testid="docker-resource-title">{{
-        title
-      }}</span>
-      <TooltipIconButton
-        v-if="registry.url.value"
-        icon="link-external"
-        :label="t('docker.detail.openRegistry.tooltip')"
-        :disabled="registry.checking.value"
-        data-testid="docker-resource-registry"
-        @click="registry.open()"
-      />
-      <span
-        v-if="registry.missing.value"
-        class="text-kira-sm text-muted-foreground"
-        data-testid="docker-registry-missing"
-        >{{
+    <DetailHeader :title="title" :icon="ICONS[kind]" title-testid="docker-resource-title">
+      <template #meta>
+        <span v-if="registry.missing.value" data-testid="docker-registry-missing">{{
           t('docker.detail.registryMissing.status')
-        }}</span
-      >
-      <Badge>{{ t(KIND_LABELS[kind]) }}</Badge>
-    </div>
+        }}</span>
+        <Badge>{{ t(KIND_LABELS[kind]) }}</Badge>
+      </template>
+      <template #actions>
+        <TooltipIconButton
+          v-if="registry.url.value"
+          icon="link-external"
+          :label="t('docker.detail.openRegistry.tooltip')"
+          :disabled="registry.checking.value"
+          data-testid="docker-resource-registry"
+          @click="registry.open()"
+        />
+      </template>
+    </DetailHeader>
     <div class="@container p-3">
       <div class="grid grid-cols-1 items-start gap-3 @3xl:grid-cols-2">
         <DetailSection :title="t('common.details.title')">
