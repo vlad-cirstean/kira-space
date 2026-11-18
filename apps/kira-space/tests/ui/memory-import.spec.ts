@@ -247,6 +247,10 @@ test('contract: import: the confirm dialog sends the chosen provenance and doc w
   const start = dialog.locator('[data-testid="import-confirm-start"]');
   const tag = dialog.locator('[data-testid="import-source-tag"]');
   await expect(tag).toHaveValue('doc');
+  // Origin is a form value: `choice` variant, selected item filled.
+  const external = dialog.locator('[data-testid="import-origin-external"]');
+  await expect(external).toHaveAttribute('data-state', 'on');
+  await expect(external).toHaveClass(/data-\[state=on\]:bg-select/);
   await tag.fill('Not A Tag');
   await expect(dialog.locator('[data-testid="import-source-tag-error"]')).toBeVisible();
   await expect(start).toBeDisabled();

@@ -103,7 +103,17 @@ test('connection menu and lifecycle over files', async ({ relaunch }) => {
   // New connection: engine and name only; the file dialog opens next.
   await page.click('[data-testid="add-connection"]');
   await expect(page.locator('[data-testid="new-connection-dialog"]')).toBeVisible();
-  await page.click('[data-testid="connection-kind-postgres"]');
+  // Engine picker: whole card is the radio (RadioGroupCard), icon 16, postgres checked on open.
+  const pgCard = page.locator('[data-testid="connection-kind-postgres"]');
+  await expect(pgCard).toHaveAttribute('data-slot', 'radio-group-card');
+  await expect(pgCard).toHaveAttribute('role', 'radio');
+  await expect(pgCard).toHaveAttribute('data-state', 'checked');
+  await expect(page.locator('[data-testid="connection-kind-mysql"]')).toHaveAttribute(
+    'data-state',
+    'unchecked',
+  );
+  await expect(pgCard.locator('svg.icon')).toHaveAttribute('width', '16');
+  await pgCard.click();
   await page.fill('[data-testid="new-connection-name"]', 'Test PG');
   await page.click('[data-testid="new-connection-create"]');
   await expect(page.locator('[data-testid="new-connection-dialog"]')).toHaveCount(0);

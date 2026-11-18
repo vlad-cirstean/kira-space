@@ -114,10 +114,11 @@ test('Merge from the fix menu: path, push line, recorded only after a Stop', asy
   await expect(page.locator(t('ade-dialog-push-label'))).toHaveText('Also push develop');
   await page.locator(t('ade-dialog-push')).click();
   await expect(message).toHaveValue(/git push origin develop/);
-  await page
-    .locator(t('ade-dialog-target-0'))
-    .locator('button', { hasText: 'new session' })
-    .click();
+  const target = page.locator(t('ade-dialog-target-0'));
+  await expect(target).toHaveAttribute('data-slot', 'secondary-tabs');
+  const newSession = target.locator('button', { hasText: 'new session' });
+  await newSession.click();
+  await expect(newSession).toHaveClass(/data-\[state=on\]:bg-select/);
   await page.locator(t('ade-dialog-send')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartBranch)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRecordMerge)).toHaveLength(0);
