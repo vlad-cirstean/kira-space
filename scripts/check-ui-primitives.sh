@@ -21,6 +21,7 @@
 # Guard U126: docs/v0.3.17/plans/P672-part8.md.
 # Guards U127-U132 and U88 steps 5-12: docs/v0.3.17/plans/P672-part9.md.
 # Guards U91, U110, U116, U123 (extended): docs/v0.3.17/plans/P672-part2-iter2.md.
+# Guard U133: docs/v0.3.17/plans/P672-part3-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -287,6 +288,7 @@ U129@@vt@@@@arbitrary shadow (shadows come from the elevation tiers, RBo.3)@@${T
 U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|VariableRow.vue|VariableHistoryMenu.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
 U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
 U132@@vt@@/ade/v2/plan/|AdeShelfRow.vue|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
+U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
 GUARDS
 
 # hits: "U<n> path"
