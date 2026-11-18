@@ -4,9 +4,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
@@ -40,6 +37,22 @@ const moveItems = computed<MenuItem[]>(() => [
     disabled: live.value || !next.value,
     run: () => move(next.value?.id ?? ''),
   },
+  { type: 'separator' },
+  {
+    type: 'radio',
+    id: 'step',
+    value: options.value[at.value]?.id ?? null,
+    items: options.value.map((o) => ({
+      type: 'option',
+      id: o.id,
+      testId: `ade-row-step-option-${o.id}`,
+      value: o.id,
+      label: o.name,
+      disabled: live.value || o.skipped,
+      hint: o.skipped ? t('common.skipped.status') : undefined,
+      run: () => move(o.id),
+    })),
+  },
 ]);
 </script>
 
@@ -62,24 +75,6 @@ const moveItems = computed<MenuItem[]>(() => [
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" data-testid="ade-row-step-menu" @click.stop>
       <MenuItems :items="moveItems" />
-      <DropdownMenuSeparator />
-      <!-- radio: MenuItem has no radio kind -->
-      <DropdownMenuRadioGroup :model-value="options[at]?.id ?? ''">
-        <DropdownMenuRadioItem
-          v-for="o in options"
-          :key="o.id"
-          :value="o.id"
-          :disabled="live || o.skipped"
-          :data-testid="`ade-row-step-option-${o.id}`"
-          @select="move(o.id)"
-        >
-          {{ o.name
-          }}<span v-if="o.skipped" class="text-muted-foreground">
-            {{ t('common.skipped.status') }}</span
-          >
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-        </DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>

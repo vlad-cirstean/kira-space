@@ -7,7 +7,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
@@ -44,7 +43,7 @@ const statusFilterOptions = computed(() => [
   { value: 'error', label: t('workbench.opLog.errors.option'), testid: 'ops-tab-error' },
 ]);
 
-const allItems = computed<MenuItem[]>(() => [
+const facetItems = computed<MenuItem[]>(() => [
   {
     type: 'item',
     id: 'facet-all',
@@ -53,6 +52,17 @@ const allItems = computed<MenuItem[]>(() => [
     run: () => emit('update:facetValues', []),
   },
   { type: 'separator' },
+  ...(props.facet?.options ?? []).map(
+    (option): MenuItem => ({
+      type: 'checkbox',
+      id: `facet-${option.value}`,
+      testId: `ops-facet-${option.value}`,
+      label: option.label,
+      checked: props.facetValues.includes(option.value),
+      keepOpen: true,
+      run: () => toggleFacet(option.value),
+    }),
+  ),
 ]);
 
 function toggleFacet(value: string): void {
@@ -92,18 +102,7 @@ function toggleFacet(value: string): void {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <MenuItems :items="allItems" />
-        <!-- checkbox: MenuItem has no checkbox kind -->
-        <DropdownMenuCheckboxItem
-          v-for="option in facet.options"
-          :key="option.value"
-          :model-value="facetValues.includes(option.value)"
-          :data-testid="`ops-facet-${option.value}`"
-          @select.prevent
-          @update:model-value="toggleFacet(option.value)"
-        >
-          {{ option.label }}
-        </DropdownMenuCheckboxItem>
+        <MenuItems :items="facetItems" />
       </DropdownMenuContent>
     </DropdownMenu>
     <slot />

@@ -4,17 +4,14 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
-import TruncatedText from '@theme/components/TruncatedText.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
-import { rowMeta } from '@theme/lib/rowVariants';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed } from 'vue';
 import { useDocker } from '../context';
 import { useDockerStatus } from '../queries';
@@ -37,12 +34,39 @@ const selected = computed(() =>
   endpoint.value?.source === 'selected' ? endpoint.value.context : AUTOMATIC,
 );
 
-async function onSelect(value: unknown): Promise<void> {
-  const name = value === AUTOMATIC ? '' : String(value);
+async function useContext(name: string): Promise<void> {
   const next = await control.useContext(name);
   qc.setQueryData<DockerStatus>(['docker', 'status'], next);
   await qc.invalidateQueries({ queryKey: ['docker', 'contexts'] });
 }
+
+const contextItems = computed<MenuItem[]>(() => [
+  {
+    type: 'radio',
+    id: 'docker-context',
+    value: selected.value,
+    items: [
+      {
+        type: 'option',
+        id: 'docker-context-automatic',
+        testId: 'docker-context-automatic',
+        value: AUTOMATIC,
+        label: t('docker.endpoint.automatic.option'),
+        run: () => useContext(''),
+      },
+      { type: 'separator' },
+      ...(contexts.data.value ?? []).map((c) => ({
+        type: 'option' as const,
+        id: `docker-context-${c.name}`,
+        testId: 'docker-context-option',
+        value: c.name,
+        label: c.name,
+        detail: c.host,
+        run: () => useContext(c.name),
+      })),
+    ],
+  },
+]);
 </script>
 
 <template>
@@ -65,32 +89,7 @@ async function onSelect(value: unknown): Promise<void> {
       </PickerTrigger>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="start" data-testid="docker-context-menu">
-      <!-- radio: MenuItem has no radio kind -->
-      <DropdownMenuRadioGroup :model-value="selected" @update:model-value="onSelect">
-        <DropdownMenuRadioItem
-          :value="AUTOMATIC"
-          class="h-auto min-h-control py-1"
-          data-testid="docker-context-automatic"
-        >
-          <TruncatedText class="flex-1" :text="t('docker.endpoint.automatic.option')" />
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-        </DropdownMenuRadioItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuRadioItem
-          v-for="c in contexts.data.value ?? []"
-          :key="c.name"
-          :value="c.name"
-          class="h-auto min-h-control py-1"
-          data-testid="docker-context-option"
-          :data-value="c.name"
-        >
-          <span class="flex min-w-0 flex-1 flex-col">
-            <TruncatedText :text="c.name" />
-            <TruncatedText :text="c.host" :class="rowMeta" />
-          </span>
-          <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-        </DropdownMenuRadioItem>
-      </DropdownMenuRadioGroup>
+      <MenuItems :items="contextItems" />
     </DropdownMenuContent>
   </DropdownMenu>
   <TextTooltip v-if="endpoint && !endpoint.secure" :text="t('docker.endpoint.insecure.tooltip')"

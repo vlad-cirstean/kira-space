@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@theme/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import MenuItems from '@workbench/components/MenuItems.vue';
+import type { MenuItem } from '@workbench/state/contextMenu';
+import { computed } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useStepMoves } from './useStepMoves';
 
@@ -19,6 +19,24 @@ import { useStepMoves } from './useStepMoves';
 // stage dialog, where the handover notes go.
 const props = defineProps<{ card: CardModel }>();
 const { options, at, prev, next, live, reason, move } = useStepMoves(() => props.card);
+
+const stepItems = computed<MenuItem[]>(() => [
+  {
+    type: 'radio',
+    id: 'step',
+    value: options.value[at.value]?.id ?? null,
+    items: options.value.map((o) => ({
+      type: 'option',
+      id: o.id,
+      testId: `ade-step-option-${o.id}`,
+      value: o.id,
+      label: o.name,
+      disabled: o.skipped,
+      hint: o.skipped ? t('common.skipped.status') : undefined,
+      run: () => move(o.id),
+    })),
+  },
+]);
 </script>
 
 <template>
@@ -44,23 +62,7 @@ const { options, at, prev, next, live, reason, move } = useStepMoves(() => props
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" data-testid="ade-step-menu">
-          <!-- radio: MenuItem has no radio kind -->
-          <DropdownMenuRadioGroup :model-value="options[at]?.id ?? ''">
-            <DropdownMenuRadioItem
-              v-for="o in options"
-              :key="o.id"
-              :value="o.id"
-              :data-testid="`ade-step-option-${o.id}`"
-              :disabled="o.skipped"
-              @select="move(o.id)"
-            >
-              {{ o.name
-              }}<span v-if="o.skipped" class="text-muted-foreground">
-                {{ t('common.skipped.status') }}</span
-              >
-              <template #indicator-icon><CodiconIcon name="check" :size="13" /></template>
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
+          <MenuItems :items="stepItems" />
         </DropdownMenuContent>
       </DropdownMenu>
       <TooltipIconButton
