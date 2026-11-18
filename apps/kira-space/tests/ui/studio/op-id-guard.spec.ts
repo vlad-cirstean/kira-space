@@ -2,6 +2,7 @@ import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
+import { dbOp, unmaskedOps } from '../support/dbOps';
 import { IPC } from '../support/ipcChannels';
 import { connectAndExpand, connectionCreateArgs, openConsoleFromMenu } from './support/connect';
 import { typeInto } from './support/editor';
@@ -22,7 +23,9 @@ test('a refused op shows the error, leaves no running row, and history keeps the
 }) => {
   const summary = postgresConnectionSummary(ID, 'Guard DB', 'green');
   const fixture = orderItemsFixture(ID);
-  const history = { ...recorded, id: '0192f0a8-1b2c-7000-8000-00000000aaaa', connectionId: ID };
+  const [history] = unmaskedOps([
+    dbOp({ ...recorded, id: '0192f0a8-1b2c-7000-8000-00000000aaaa', connectionId: ID }),
+  ]);
   const control: ControlSnapshot[] = [
     { channel: IPC.connectionsList, response: [] },
     {
