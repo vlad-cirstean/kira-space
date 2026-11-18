@@ -1,5 +1,7 @@
 import { type MessageKey, t } from '@theme/i18n';
+import { issueTone } from '@theme/lib/statusTone';
 import type { Tone } from '../board/actions';
+import { PASTEL } from '../tones';
 import type { Artifact } from '../wire';
 
 const TONE: Record<string, Tone> = {
@@ -23,14 +25,7 @@ const LABEL: Record<string, MessageKey> = {
   local: 'space.ade.artifacts.status.local.status',
 };
 
-const ISSUE_CATEGORY_TONE: Record<string, Tone> = {
-  new: 'grey',
-  indeterminate: 'blue',
-  done: 'green',
-};
-
-export const issueCategoryTone = (category: string): Tone =>
-  ISSUE_CATEGORY_TONE[category] ?? 'grey';
+export const issueCategoryTone = (category: string): Tone => PASTEL[issueTone(category)];
 
 export const artifactStatusTone = (status: string): Tone => TONE[status] ?? 'grey';
 

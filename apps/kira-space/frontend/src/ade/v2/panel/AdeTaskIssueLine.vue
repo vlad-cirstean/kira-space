@@ -3,15 +3,13 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
-import { TONE_BADGE } from '@theme/lib/statusTone';
+import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
 import { useOpenHostView } from '../../../hostview/queries';
 import { gapText } from '../artifacts/gapText';
-import { issueCategoryTone } from '../artifacts/status';
 import { useTaskIssue } from '../queries';
-import { THEME_TONE } from '../tones';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ArtifactGap } from '../wire';
@@ -71,7 +69,7 @@ function viewIssue(): void {
       >
       <Badge
         v-if="issue.title && issue.status"
-        :variant="TONE_BADGE[THEME_TONE[issueCategoryTone(issue.statusCategory)]]"
+        :variant="TONE_BADGE[issueTone(issue.statusCategory)]"
         data-testid="ade-task-issue-status"
         >{{
           issue.status

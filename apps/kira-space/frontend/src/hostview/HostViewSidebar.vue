@@ -5,6 +5,7 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { checkTone, type StatusTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { control } from '../bridge/control';
 import type { ChangeRequestDetail, Check, CheckState, ReviewerState } from './wire';
@@ -17,6 +18,13 @@ const REVIEWER_ICON: Record<ReviewerState, string> = {
   rejected: 'error',
   commented: 'comment',
   pending: 'clock',
+};
+const REVIEWER_TONE: Record<ReviewerState, StatusTone> = {
+  approved: 'ok',
+  changesRequested: 'warn',
+  rejected: 'error',
+  commented: 'neutral',
+  pending: 'neutral',
 };
 const CHECK_ICON: Record<CheckState, string> = {
   success: 'check',
@@ -80,17 +88,18 @@ function openCheck(c: Check): void {
           deletions: detail.stats.deletions,
         })
       }}</p>
-      <p
-        v-if="detail.mergeable"
-        class="m-0 text-kira-sm"
-        :data-mergeable="detail.mergeable"
-        data-testid="host-view-mergeable"
-        >{{
-          detail.mergeable === 'conflicting'
-            ? t('space.hostView.mergeable.conflicting.status')
-            : t('space.hostView.mergeable.clean.status')
-        }}</p
-      >
+      <div v-if="detail.mergeable">
+        <Badge
+          :variant="detail.mergeable === 'conflicting' ? 'error' : 'ok'"
+          :data-mergeable="detail.mergeable"
+          data-testid="host-view-mergeable"
+          >{{
+            detail.mergeable === 'conflicting'
+              ? t('space.hostView.mergeable.conflicting.status')
+              : t('space.hostView.mergeable.clean.status')
+          }}</Badge
+        >
+      </div>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-reviewers">
@@ -105,7 +114,11 @@ function openCheck(c: Check): void {
         :data-state="r.state"
         data-testid="host-view-reviewer"
       >
-        <CodiconIcon :name="REVIEWER_ICON[r.state]" :size="13" />
+        <CodiconIcon
+          :name="REVIEWER_ICON[r.state]"
+          :size="13"
+          :class="TONE_TEXT[REVIEWER_TONE[r.state]]"
+        />
         <span class="min-w-0 flex-1 truncate">{{ r.person.name || r.person.login }}</span>
         <Badge v-if="r.required" variant="chip">{{ t('common.required.label') }}</Badge>
         <span class="shrink-0 text-muted-foreground">{{ reviewerLabel(r.state) }}</span>
@@ -124,7 +137,11 @@ function openCheck(c: Check): void {
         :data-state="c.state"
         data-testid="host-view-check"
       >
-        <CodiconIcon :name="CHECK_ICON[c.state]" :size="13" />
+        <CodiconIcon
+          :name="CHECK_ICON[c.state]"
+          :size="13"
+          :class="TONE_TEXT[checkTone(c.state)]"
+        />
         <button
           v-if="c.url"
           type="button"

@@ -1,5 +1,6 @@
 import type { MessageKey } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { checkTone, TONE_TEXT } from '@theme/lib/statusTone';
 import type {
   BranchAction,
   BranchActionKind,
@@ -94,27 +95,27 @@ export function rowActionSplit(actions: readonly BranchAction[]): {
 export const CHECKS_GLYPH: Record<string, { icon: string; class: string; tip: MessageKey }> = {
   SUCCESS: {
     icon: ICON.success,
-    class: 'text-ok',
+    class: TONE_TEXT[checkTone('SUCCESS')],
     tip: 'space.ade.mainTab.checksSuccess.tooltip',
   },
   FAILURE: {
     icon: ICON.error,
-    class: 'text-error',
+    class: TONE_TEXT[checkTone('FAILURE')],
     tip: 'space.ade.mainTab.checksFailure.tooltip',
   },
   ERROR: {
     icon: ICON.error,
-    class: 'text-error',
+    class: TONE_TEXT[checkTone('ERROR')],
     tip: 'space.ade.mainTab.checksFailure.tooltip',
   },
   PENDING: {
     icon: 'watch',
-    class: 'text-muted-foreground',
+    class: TONE_TEXT[checkTone('PENDING')],
     tip: 'space.ade.mainTab.checksPending.tooltip',
   },
   EXPECTED: {
     icon: 'watch',
-    class: 'text-muted-foreground',
+    class: TONE_TEXT[checkTone('EXPECTED')],
     tip: 'space.ade.mainTab.checksPending.tooltip',
   },
 };

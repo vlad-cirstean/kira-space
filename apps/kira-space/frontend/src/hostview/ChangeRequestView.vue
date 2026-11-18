@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
+import { changeRequestTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
@@ -47,18 +48,6 @@ const stateLabel = computed(() => {
       return t('common.action.open.label');
   }
 });
-const stateVariant = computed(() => {
-  switch (detail.value?.state) {
-    case 'merged':
-      return 'info' as const;
-    case 'closed':
-      return 'error' as const;
-    case 'draft':
-      return 'chip' as const;
-    default:
-      return 'ok' as const;
-  }
-});
 
 function refresh(): void {
   void query.refetch();
@@ -85,7 +74,12 @@ function copyLink(): void {
     @open="openOnHost"
   >
     <template #badge>
-      <Badge v-if="detail" :variant="stateVariant" class="shrink-0" data-testid="host-view-state">
+      <Badge
+        v-if="detail"
+        :variant="TONE_BADGE[changeRequestTone(detail.state)]"
+        class="shrink-0"
+        data-testid="host-view-state"
+      >
         {{ stateLabel }}
       </Badge>
     </template>

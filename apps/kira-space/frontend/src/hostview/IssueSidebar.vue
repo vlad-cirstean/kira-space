@@ -5,16 +5,17 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
-import { initials, statusVariant } from './issueFormat';
+import { initials } from './issueFormat';
 import { useOpenHostView } from './queries';
 import RelativeTime from './RelativeTime.vue';
 import type { IssueDetail } from './wire';
 
 const props = defineProps<{ detail: IssueDetail; stacked: boolean }>();
 const open = useOpenHostView();
-const tone = computed(() => statusVariant(props.detail.statusCategory));
+const tone = computed(() => TONE_BADGE[issueTone(props.detail.statusCategory)]);
 
 function openView(urlOrKey: string): void {
   fireAndForget(open.mutateAsync(urlOrKey), 'hostView.issue');
