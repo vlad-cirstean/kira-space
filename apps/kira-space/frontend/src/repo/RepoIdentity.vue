@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PALETTE_COLOR_CHOICES, type PaletteColor } from '@shared/domain/color';
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Field, FieldError, FieldSet } from '@theme/components/ui/field';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
@@ -65,23 +66,23 @@ const source = computed(() =>
       </fieldset>
       <FieldError v-if="colorError" data-testid="repo-color-error">{{ colorError }}</FieldError>
     </Field>
-    <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-kira-md">
-      <dt class="text-muted-foreground">{{ t('space.repo.config.repository.label') }}</dt>
-      <dd class="m-0 min-w-0">
+    <KeyValueList>
+      <dt>{{ t('space.repo.config.repository.label') }}</dt>
+      <dd>
         <span class="block min-w-0 font-data" data-testid="repo-full"
           ><TruncatedText :text="repo.name" /></span
         >
       </dd>
-      <dt class="text-muted-foreground">{{ t('common.path.label') }}</dt>
-      <dd class="m-0 min-w-0">
+      <dt>{{ t('common.path.label') }}</dt>
+      <dd>
         <span class="block min-w-0 font-data" data-testid="repo-path"
           ><TruncatedText :text="repo.path" /></span
         >
       </dd>
-      <dt class="text-muted-foreground">{{ t('common.field.source.label') }}</dt>
-      <dd class="m-0" data-testid="repo-source">
+      <dt>{{ t('common.field.source.label') }}</dt>
+      <dd data-testid="repo-source">
         {{ source }}
       </dd>
-    </dl>
+    </KeyValueList>
   </FieldSet>
 </template>

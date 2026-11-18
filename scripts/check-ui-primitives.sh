@@ -151,16 +151,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U113 apps/kira-space/frontend/src/hostview/IssueSidebar.vue # 2026-11-18 P672 Part 6
-U113 apps/kira-space/frontend/src/repo/RepoIdentity.vue # 2026-11-18 P672 Part 6
-U113 apps/kira-space/frontend/src/studio/approvals/ProofReviewBody.vue # 2026-11-18 P672 Part 6
-U113 apps/kira-space/frontend/src/studio/views/httprequest/TimelinePane.vue # 2026-11-18 P672 Part 6
-U113 packages/git-ui/src/components/CommitMeta.vue # 2026-11-18 P672 Part 6
-U113 packages/theme/src/components/TooltipDetails.vue # 2026-11-18 P672 Part 6
-U113 packages/workbench/src/approvals/ApprovalDetails.vue # 2026-11-18 P672 Part 6
-U113 packages/workbench/src/approvals/ApprovalPairs.vue # 2026-11-18 P672 Part 6
-U113 packages/workbench/src/components/OpLogDetail.vue # 2026-11-18 P672 Part 6
-U113 packages/workbench/src/memory/MemoryStart.vue # 2026-11-18 P672 Part 6
 U114 apps/kira-space/frontend/src/ade/v2/AdeActivityIcon.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/context/AdeContextPane.vue # 2026-11-18 P672 Part 7
 U114 apps/kira-space/frontend/src/ade/v2/dialog/AdeAgentDialog.vue # 2026-11-18 P672 Part 7

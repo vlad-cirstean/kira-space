@@ -170,9 +170,7 @@ const label = (id: SectionId): string => LABELS[id]();
             >
               <template v-for="[ k, v ] in sections![id]" :key="k">
                 <dt><HighlightedText :parts="parts(k)" /></dt>
-                <dd class="break-all font-data text-kira-sm"
-                  ><HighlightedText :parts="parts(v)" /></dd
-                >
+                <dd class="break-all font-data"><HighlightedText :parts="parts(v)" /></dd>
               </template>
             </KeyValueList>
             <ul v-else-if="id === 'conditions'" class="m-0 list-none p-0 text-kira-md">

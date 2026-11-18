@@ -27,7 +27,7 @@ function openView(urlOrKey: string): void {
     :class="stacked ? '' : 'w-72'"
     data-testid="issue-sidebar"
   >
-    <KeyValueList class="items-baseline gap-y-2">
+    <KeyValueList density="compact">
       <dt>{{ t('common.field.status.label') }}</dt>
       <dd>
         <Badge :variant="tone" data-testid="issue-side-status">{{ detail.status }}</Badge>

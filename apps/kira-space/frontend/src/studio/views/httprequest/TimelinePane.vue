@@ -327,10 +327,10 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
             :label="t('studio.http.timeline.responseHeaders.label')"
             trigger-class="text-kira-sm text-subtle"
           >
-            <KeyValueList class="py-0.5 text-kira-sm font-data">
+            <KeyValueList density="compact">
               <template v-for="(h, i) in hopHeaders(hop)" :key="i">
-                <dt>{{ h.name }}</dt>
-                <dd class="wrap-anywhere">{{ h.value }}</dd>
+                <dt class="font-data">{{ h.name }}</dt>
+                <dd class="font-data wrap-anywhere">{{ h.value }}</dd>
               </template>
             </KeyValueList>
           </Disclosure>

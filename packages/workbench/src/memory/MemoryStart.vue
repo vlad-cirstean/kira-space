@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -98,27 +99,27 @@ function eventsFor(id: string) {
           <FieldDescription data-testid="memory-detail-grade">{{
             t(GRADE_TEXT[selected.origin])
           }}</FieldDescription>
-          <dl class="m-0 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 text-kira-sm">
-            <dt class="text-muted-foreground">{{ t('memory.start.id.label') }}</dt>
-            <dd class="m-0 min-w-0">
+          <KeyValueList density="compact">
+            <dt>{{ t('memory.start.id.label') }}</dt>
+            <dd>
               <Identifier :value="selected.lineageId" copyable data-testid="memory-detail-id" />
             </dd>
             <template v-if="selected.project">
-              <dt class="text-muted-foreground">{{ t('memory.common.project.label') }}</dt>
-              <dd class="m-0 min-w-0">
+              <dt>{{ t('memory.common.project.label') }}</dt>
+              <dd>
                 <span class="font-data" data-testid="memory-detail-project"
                   ><TruncatedText :text="selected.project" /></span
                 >
               </dd>
             </template>
-            <dt class="text-muted-foreground">{{ t('memory.start.session.label') }}</dt>
-            <dd class="m-0 min-w-0" data-testid="memory-detail-session">
+            <dt>{{ t('memory.start.session.label') }}</dt>
+            <dd data-testid="memory-detail-session">
               <Identifier v-if="selected.sessionId" :value="selected.sessionId" copyable />
               <span v-else class="text-muted-foreground">{{
                 t('memory.start.noSession.description')
               }}</span>
             </dd>
-          </dl>
+          </KeyValueList>
         </div>
         <MemoryContext :memory-id="selected.id" @select="selectedId = $event" />
         <div v-if="trail.length > 1" class="flex flex-col gap-1.5" data-testid="memory-trail">
