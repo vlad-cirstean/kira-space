@@ -11,6 +11,7 @@ import {
   SHA_B,
   singleRowChunks,
 } from './support/gitUiPortFixtures';
+import { pressArrow } from './support/radioKeys';
 
 // P667: single-choice dialogs render their options as cards (whole card is the radio). UI half
 // only: the dialogs' op arguments are asserted on the wire; the backend ops have their own tests.
@@ -118,14 +119,14 @@ test('reset mode cards select by click and arrows, and run the chosen mode', asy
   await checked(mixed, false);
 
   await soft.focus();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await pressArrow(page, 'ArrowDown');
+  await pressArrow(page, 'ArrowDown');
   await checked(hard, true);
   await expect(hard).toBeFocused();
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
 
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
+  await pressArrow(page, 'ArrowUp');
+  await pressArrow(page, 'ArrowUp');
   await checked(soft, true);
 
   await tid(page, 'reset-confirm').click();
@@ -176,7 +177,7 @@ test('revert mainline cards pick by keyboard and send the chosen parent', async 
   await expect(first).toBeFocused();
   await page.keyboard.press('Space');
   await checked(first, true);
-  await page.keyboard.press('ArrowDown');
+  await pressArrow(page, 'ArrowDown');
   await checked(second, true);
   await expect
     .poll(async () => gitStreamParams(page, 'preflight.revert'))

@@ -13,6 +13,7 @@ import { type AdeBoardFx, adeBoard, openPlan } from './support/adeV2';
 import { gitStreamParams } from './support/gitStreamMock';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
+import { pressArrow } from './support/radioKeys';
 import type { ControlSnapshot } from './support/types';
 
 // The review step: the board chip and Needs-you item, and the Workflow review tab of the review
@@ -146,7 +147,7 @@ reviewTest('route cards select by keyboard and send route new', async ({ relaunc
   await expect(fresh).toContainText('Start a dedicated review agent session');
 
   await implementer.focus();
-  await page.keyboard.press('ArrowDown');
+  await pressArrow(page, 'ArrowDown');
   await expect(fresh).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator(t('ade-review-target'))).toBeHidden();
   await page.locator(t('ade-review-send-agent')).click();
