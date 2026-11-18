@@ -13,7 +13,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 5 | UI uniformity: menus, popovers, tooltips | Done |
 | P672 Part 6 | UI uniformity: headings, detail headers, key-value, cards | Done |
 | P672 Part 7 | UI uniformity: status, tones, colours | Done |
-| P672 Part 8 | UI uniformity: tabs, segmented, choice | Planned |
+| P672 Part 8 | UI uniformity: tabs, segmented, choice | Done |
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Planned |
 | P660 Part 2 | Git review panel state across module switches | Planned |
 | P672 Part 10 | Second pass over Parts 2..9 (iter2 plans) | Planned |
@@ -86,6 +86,12 @@ Deviations: `AdeActivityIcon` unseen ring spelled `bg-info outline-1 outline-off
 Apply RTa.1-RTa.2 (§17, M28-M29): `SecondaryTabs` variant by role (form value `choice`: 9 form `segmented` uses move; content `tabs` at default size; bar view switch `segmented@kira`), `ConnectionEnginePicker` onto `RadioGroupCard` (engine icon 16) and its U36 PERMANENT line deleted. Files: A.8. Tests: UI specs updated; visual baselines in PR CI; no new unit tests.
 
 Plan: `plans/P672-part8.md`.
+
+Result: Done. Commits C1-C8 (`54e41b1ea`, `8cd1a2525`, `25e2e1783`, `bfd33da0f`, `1b2e4eb1f`, `2e91e008f`, `b318ec387`, and this close) plus one `test:` commit (`6cf08026c`, before C7). Pieces: 12 value pickers moved from `segmented` to `choice` (Studio: `ConnectionGeneralTab`, `ConnectionMcpMasked`, `ConnectionMcpReview`, `ConnectionMcpTab`; workbench: `ParamsEditor`, `ImportConfirmDialog`, `ScopeField`, `RowDensityField`; ADE and review: `AdeAgentDialog`, `AdeEstimateField`, `AdeLinkCard`, `ReviewThread`), each with an aria-label; `ImportConfirmDialog`, `ScopeField`, `RowDensityField` and `AdeStageDialog` labels now `Field` + `FieldLabel` (`Label` imports dropped). Row density and the estimate unit grow 22px to 26px (`kira-lg`). 5 size drops to the default: `AdeAddPopover` tabs, `AdeWorkflowsPage`, `AdeWorkflowEditor`, `AdeLibraryStepEditor`, `AdeAllSessions`. `ConnectionEnginePicker` on `RadioGroupCard` (icon 16, name in the title slot, `TextTooltip` only for an unsupported kind); its U36 PERMANENT line removed (PERMANENT block now 50 lines; ARCHITECTURE count fixed from the stale 53). Guard U126 (`SecondaryTabs` size outside `choice`), zero offenders, no TEMPORARY line; checked by adding `size="kira"` to a tabs strip (U126 named the file), reverted. All 7 Part 8 U117 baselines deleted (5 TEMPORARY left, Part 9 U115). ARCHITECTURE updated (RadioGroup exception, RadioGroupCard hosts, tabs-by-role sizing, guard ranges). 25 files touched.
+
+Deliberate visual changes: connection form, MCP, import, scope, params, estimate, link-kind and review-kind pickers get the solid `bg-select` choice look; engine cards are icon 16 left of the name, title weight 500, selected card filled `bg-select`; ADE workflow, library step, all-sessions and add-popover strips lose the lg size.
+
+Verification: typecheck, lint (guard, conventions, copy, docs) green at each commit; `build:test` then ui project, 52 spec files (plan list plus every spec naming a changed testid): 576 passed, no failures. Spec edits: `connections` (engine card slot, role, state, icon width), `memory-import` (origin choice marker), `control-sizing` (row-density choice marker, 26px), `ade-v2-dialogs` (target group slot, choice marker). Deviations: none. Not verified: visual and screenshot suites, ui-timing, mobile specs (no `SecondaryTabs` under `mobile/`). Visual baselines for PR CI to re-record: `new-connection-dialog`, `settings-appearance`, `ade-links-card`, `workflow-graph*`, `connection-privacy-*` and MCP choice rows, plus any shot CI flags.
 
 ## P672 Part 9: UI uniformity: states, icons, type, spacing
 
