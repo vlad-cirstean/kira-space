@@ -93,6 +93,7 @@ onUnmounted(() => {
     <div v-if="isMarkdown" class="flex flex-col h-full w-full">
       <ViewToolbar>
         <SecondaryTabs
+          variant="segmented"
           :model-value="view"
           :items="viewOptions"
           data-testid="local-file-view-toggle"

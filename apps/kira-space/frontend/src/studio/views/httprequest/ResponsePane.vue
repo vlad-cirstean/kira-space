@@ -309,6 +309,7 @@ onUnmounted(() => {
           formatBytes(response.bodyBytes)
         }}</span>
         <SecondaryTabs
+          variant="segmented"
           :model-value="tab.state.responseView"
           :items="RESPONSE_VIEW_OPTIONS"
           data-testid="http-response-view-toggle"

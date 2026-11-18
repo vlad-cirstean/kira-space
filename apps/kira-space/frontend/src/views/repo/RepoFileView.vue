@@ -200,6 +200,7 @@ onUnmounted(teardownEditor);
     <ViewToolbar v-if="isMarkdown || canEdit">
       <SecondaryTabs
         v-if="isMarkdown && !edit.editing.value"
+        variant="segmented"
         :model-value="view"
         :items="viewOptions"
         data-testid="repo-file-view-toggle"

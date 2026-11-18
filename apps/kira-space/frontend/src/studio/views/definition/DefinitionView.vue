@@ -287,6 +287,7 @@ const breadcrumb = computed(() => {
       <ToolbarSeparator />
       <div class="flex items-center gap-1.5 min-w-0">
         <SecondaryTabs
+          variant="segmented"
           :model-value="pane"
           :items="PANE_OPTIONS"
           data-testid="definition-pane"

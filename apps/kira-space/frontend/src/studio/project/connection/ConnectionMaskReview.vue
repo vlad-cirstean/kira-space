@@ -11,13 +11,13 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import DetailSection from '@theme/components/DetailSection.vue';
 import SearchField from '@theme/components/SearchField.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { type MessageKey, t } from '@theme/i18n';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
@@ -76,6 +76,18 @@ const needReview = computed(() => allRows.value.filter((r) => r.state === 'pendi
 const search = ref('');
 const filterChoice = ref<'all' | 'pending' | null>(null);
 const filter = computed(() => filterChoice.value ?? (needReview.value > 0 ? 'pending' : 'all'));
+const filterItems = computed(() => [
+  {
+    value: 'pending',
+    label: t('studio.project.connectionDialog.privacy.reviewFilterWaiting.option'),
+    testid: 'connection-privacy-review-filter-pending',
+  },
+  {
+    value: 'all',
+    label: t('studio.project.connectionDialog.privacy.reviewFilterAll.option'),
+    testid: 'connection-privacy-review-filter-all',
+  },
+]);
 const rows = computed(() =>
   allRows.value.filter(
     (r) =>
@@ -221,20 +233,14 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
               :placeholder="t('studio.project.connectionDialog.privacy.reviewSearch.placeholder')"
               data-testid="connection-privacy-review-search"
             />
-            <NativeSelect
+            <SecondaryTabs
+              variant="segmented"
               :aria-label="t('common.action.filter.label')"
-              variant="bordered"
               :model-value="filter"
+              :items="filterItems"
               data-testid="connection-privacy-review-filter"
               @update:model-value="(v) => (filterChoice = v === 'all' ? 'all' : 'pending')"
-            >
-              <option value="pending">
-                {{ t('studio.project.connectionDialog.privacy.reviewFilterWaiting.option') }}
-              </option>
-              <option value="all">
-                {{ t('studio.project.connectionDialog.privacy.reviewFilterAll.option') }}
-              </option>
-            </NativeSelect>
+            />
             <Button
               variant="dialog"
               size="kira"
