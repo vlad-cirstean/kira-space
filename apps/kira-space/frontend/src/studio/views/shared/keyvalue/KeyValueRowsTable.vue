@@ -236,7 +236,7 @@ function cellClass(row: number, col: 'field' | 'value') {
                 <TextTooltip
                   v-if="rowAt(entry.i)?.isTruncated"
                   :text="t('studio.common.cellTruncated.tooltip', { size: formatBytes(64 * 1024) })"
-                  ><Badge variant="chip" class="bg-field text-subtle ml-1.5 shrink-0">{{
+                  ><Badge class="ml-1.5 shrink-0">{{
                     t('studio.common.truncated.status')
                   }}</Badge></TextTooltip
                 >

@@ -27,10 +27,10 @@ const showRaw = computed(() => props.documentSchema?.validator != null && fields
 <template>
   <section class="flex flex-col gap-1.5" data-testid="definition-validation">
     <SectionHeading :label="t('studio.definition.validation.heading.label')">
-      <Badge v-if="documentSchema?.validationLevel" variant="chip" data>
+      <Badge v-if="documentSchema?.validationLevel" class="font-data">
         {{ documentSchema.validationLevel }}
       </Badge>
-      <Badge v-if="documentSchema?.validationAction" variant="chip" data>
+      <Badge v-if="documentSchema?.validationAction" class="font-data">
         {{ documentSchema.validationAction }}
       </Badge>
     </SectionHeading>

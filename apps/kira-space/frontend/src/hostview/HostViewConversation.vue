@@ -64,14 +64,9 @@ function reviewLabel(state: ReviewerState | undefined): string {
         v-if="thread.kind !== 'comment' || thread.resolved"
         class="flex flex-wrap items-center gap-2 px-3 py-1.5 text-kira-sm"
       >
-        <Badge
-          v-if="thread.kind === 'review'"
-          variant="chip"
-          data-testid="host-view-thread-review"
-          >{{
-            reviewLabel(thread.reviewState)
-          }}</Badge
-        >
+        <Badge v-if="thread.kind === 'review'" data-testid="host-view-thread-review">{{
+          reviewLabel(thread.reviewState)
+        }}</Badge>
         <span v-if="thread.path" class="font-data" data-testid="host-view-thread-path">{{
           thread.line ? `${thread.path}:${thread.line}` : thread.path
         }}</span>

@@ -103,9 +103,7 @@ function openView(urlOrKey: string): void {
         t('space.hostView.labels.empty.empty')
       }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge v-for="l in detail.labels" :key="l" variant="chip" data-testid="issue-side-label">{{
-          l
-        }}</Badge>
+        <Badge v-for="l in detail.labels" :key="l" data-testid="issue-side-label">{{ l }}</Badge>
       </div>
     </section>
 
@@ -115,15 +113,9 @@ function openView(urlOrKey: string): void {
         t('space.hostView.issue.components.empty.empty')
       }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge
-          v-for="c in detail.components"
-          :key="c"
-          variant="chip"
-          data-testid="issue-side-component"
-          >{{
-            c
-          }}</Badge
-        >
+        <Badge v-for="c in detail.components" :key="c" data-testid="issue-side-component">{{
+          c
+        }}</Badge>
       </div>
     </section>
 

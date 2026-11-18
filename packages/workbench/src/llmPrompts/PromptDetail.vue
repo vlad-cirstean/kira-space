@@ -132,7 +132,7 @@ const literal = computed(() => props.view.vars.length === 0);
             >
               {{ v.name }}
             </Button>
-            <Badge v-if="v.required" variant="info">{{ t('common.required.label') }}</Badge>
+            <Badge v-if="v.required">{{ t('common.required.label') }}</Badge>
             <FieldDescription>{{ t(llmPromptVarKey(v.name) as MessageKey) }}</FieldDescription>
           </li>
         </ul>

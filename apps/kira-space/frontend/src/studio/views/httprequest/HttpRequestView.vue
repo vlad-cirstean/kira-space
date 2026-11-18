@@ -331,7 +331,7 @@ onUnmounted(() => {
         }}</Badge></TextTooltip
       >
       <TextTooltip v-if="incognito" :text="t('studio.api.common.incognitoChip.tooltip')"
-        ><Badge variant="chip" data-testid="http-incognito-chip">{{
+        ><Badge data-testid="http-incognito-chip">{{
           t('studio.tabs.incognito.label')
         }}</Badge></TextTooltip
       >

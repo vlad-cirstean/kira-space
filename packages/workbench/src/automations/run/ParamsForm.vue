@@ -54,11 +54,8 @@ function toggle(p: ScriptParam, option: string, on: boolean): void {
 <template>
   <div class="flex flex-col gap-3" data-testid="run-params">
     <Field v-for="p in params" :key="p.name" :data-testid="`run-param-${p.name}`">
-      <FieldLabel :for="`${idBase}-${p.name}`">
-        <span class="font-data">{{ p.name }}</span
-        ><span v-if="p.required && !isSaved(p)" class="text-error">
-          *<span class="sr-only"> {{ t('common.required.label') }}</span></span
-        >
+      <FieldLabel :for="`${idBase}-${p.name}`" :required="p.required && !isSaved(p)">
+        <span class="font-data">{{ p.name }}</span>
       </FieldLabel>
       <SecretInput
         v-if="p.type === 'text' && p.secret"

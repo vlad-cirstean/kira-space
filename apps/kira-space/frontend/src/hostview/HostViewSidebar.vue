@@ -121,7 +121,7 @@ function openCheck(c: Check): void {
           :class="TONE_TEXT[REVIEWER_TONE[r.state]]"
         />
         <span class="min-w-0 flex-1 truncate">{{ r.person.name || r.person.login }}</span>
-        <Badge v-if="r.required" variant="chip">{{ t('common.required.label') }}</Badge>
+        <Badge v-if="r.required">{{ t('common.required.label') }}</Badge>
         <span class="shrink-0 text-muted-foreground">{{ reviewerLabel(r.state) }}</span>
       </div>
     </section>
@@ -153,7 +153,7 @@ function openCheck(c: Check): void {
           }}</button
         >
         <span v-else class="min-w-0 flex-1 truncate">{{ c.name }}</span>
-        <Badge v-if="c.required" variant="chip">{{ t('common.required.label') }}</Badge>
+        <Badge v-if="c.required">{{ t('common.required.label') }}</Badge>
         <span class="shrink-0 text-muted-foreground">{{ checkLabel(c.state) }}</span>
       </div>
       <FieldDescription v-if="detail.checksTruncated" data-testid="host-view-checks-truncated">{{
@@ -167,12 +167,7 @@ function openCheck(c: Check): void {
         t('space.hostView.labels.empty.empty')
       }}</InlineState>
       <div class="flex flex-wrap gap-1">
-        <Badge
-          v-for="l in detail.labels"
-          :key="l.name"
-          variant="chip"
-          data-testid="host-view-label"
-        >
+        <Badge v-for="l in detail.labels" :key="l.name" data-testid="host-view-label">
           <StatusDot v-if="l.color" :color="`#${l.color}`" />
           {{ l.name }}
         </Badge>
