@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -20,7 +21,6 @@ import {
 import { type EditFailure, useDockerEditStore } from '../state/dockerEdit';
 import { useDockerExecSessionsStore } from '../state/dockerExec';
 import { useDockerUiStore } from '../state/dockerUi';
-import DetailSection from './DetailSection.vue';
 import EditInPlaceSection from './EditInPlaceSection.vue';
 import EditPendingSummary from './EditPendingSummary.vue';
 import EditRecreateSection from './EditRecreateSection.vue';

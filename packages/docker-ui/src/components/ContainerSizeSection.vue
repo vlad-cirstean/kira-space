@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -9,7 +10,6 @@ import { t } from '@theme/i18n';
 import { formatBytes, formatDateTime, useRelativeTime } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { useContainerSize } from '../queries';
-import DetailSection from './DetailSection.vue';
 
 const props = defineProps<{ id: string }>();
 

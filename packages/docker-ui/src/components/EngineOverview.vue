@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -21,7 +22,6 @@ import { useDockerStatsStore } from '../state/dockerStats';
 import { type DockerSection, useDockerUiStore } from '../state/dockerUi';
 import type { DockerStatsSample } from '../wire';
 import ContainerTable from './ContainerTable.vue';
-import DetailSection from './DetailSection.vue';
 import EndpointChip from './EndpointChip.vue';
 import EngineDiskSection from './EngineDiskSection.vue';
 import StatsSparkline from './StatsSparkline.vue';

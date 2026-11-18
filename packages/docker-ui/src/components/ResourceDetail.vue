@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -20,7 +21,6 @@ import {
 } from '../queries';
 import { useDockerUiStore } from '../state/dockerUi';
 import type { InspectKind } from '../wire';
-import DetailSection from './DetailSection.vue';
 import InspectView from './InspectView.vue';
 
 const props = defineProps<{ kind: InspectKind; id: string }>();

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@theme/components/ui/card';
 
+// Titled section card (Card variant="section").
 defineProps<{ title: string; flush?: boolean }>();
 </script>
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { t } from '@theme/i18n';
 import { formatBytes, formatPercent } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import { useDockerStatsStore } from '../state/dockerStats';
 import ContainerSizeSection from './ContainerSizeSection.vue';
-import DetailSection from './DetailSection.vue';
 import StatsSparkline from './StatsSparkline.vue';
 
 const props = defineProps<{ containerId: string; running: boolean }>();

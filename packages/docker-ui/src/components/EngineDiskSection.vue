@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -24,7 +25,6 @@ import {
 import Identifier from '@workbench/components/Identifier.vue';
 import { computed } from 'vue';
 import { useEngineDiskUsage } from '../queries';
-import DetailSection from './DetailSection.vue';
 
 const VOLUME_LIMIT = 10;
 
