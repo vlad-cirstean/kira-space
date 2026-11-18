@@ -224,7 +224,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
     </div>
 
     <div class="@container min-h-0 flex-1 overflow-auto px-3 pt-2 pb-3">
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-4">
         <AdeInspectorSection name="what" :title="t('space.ade.workflows.stepInspector.what.title')">
           <AdeStepAgentFields v-if="step.kind === 'agent'" :step="step" @patch="patch" />
           <AdeStepScriptFields v-else-if="step.kind === 'script'" :step="step" @patch="patch" />

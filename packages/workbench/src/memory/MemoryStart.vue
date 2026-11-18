@@ -58,7 +58,7 @@ function eventsFor(id: string) {
           <AlertDescription>{{ message }}</AlertDescription>
         </Alert>
       </template>
-      <div v-if="selected" class="flex flex-col gap-3 p-4" data-testid="memory-detail">
+      <div v-if="selected" class="flex flex-col gap-3 p-3" data-testid="memory-detail">
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center gap-1">
             <Badge

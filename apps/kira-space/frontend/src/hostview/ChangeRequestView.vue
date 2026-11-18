@@ -90,7 +90,7 @@ function copyLink(): void {
       </Badge>
     </template>
     <div v-if="detail" class="flex min-h-0 flex-1" data-testid="host-view-body">
-      <main class="min-w-0 flex-1 overflow-y-auto p-4">
+      <main class="min-w-0 flex-1 overflow-y-auto p-3">
         <div
           class="mb-3 flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"
           data-testid="host-view-meta"

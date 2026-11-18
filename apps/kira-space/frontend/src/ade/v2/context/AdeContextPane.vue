@@ -34,7 +34,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-auto p-4" data-testid="ade-context">
+  <div class="min-h-0 flex-1 overflow-auto p-3" data-testid="ade-context">
     <div v-if="view" ref="root" class="flex max-w-4xl flex-col gap-3">
       <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="ade-context-none">
         {{ t('space.ade.context.none.hint') }}

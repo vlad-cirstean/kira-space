@@ -127,7 +127,7 @@ async function run(): Promise<void> {
       <SecondaryTabs v-model="source" variant="segmented" :items="SOURCES" />
       <SecondaryTabs v-if="source === 'text'" v-model="mode" variant="segmented" :items="MODES" />
     </PanelBar>
-    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
       <FieldDescription data-testid="distill-hint">{{
         t(rewriting ? 'memory.distill.rewrite.hint' : 'memory.distill.hint')
       }}</FieldDescription>

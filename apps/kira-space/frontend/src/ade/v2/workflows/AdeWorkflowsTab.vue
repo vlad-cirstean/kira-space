@@ -205,7 +205,7 @@ async function createNew(): Promise<void> {
           (current ? configName(current.fileName) : t('space.common.workflow.label'))
         "
       />
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <div class="min-h-0 flex-1 overflow-auto p-3">
         <AdeWorkflowEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>
     </div>

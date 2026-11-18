@@ -81,8 +81,8 @@ function copyLink(): void {
       :class="stacked ? 'flex-col overflow-y-auto' : 'flex-row'"
       data-testid="issue-view"
     >
-      <main class="min-w-0 flex-1 p-4" :class="stacked ? '' : 'overflow-y-auto'">
-        <div class="mx-auto flex w-full max-w-[760px] flex-col gap-6">
+      <main class="min-w-0 flex-1 p-3" :class="stacked ? '' : 'overflow-y-auto'">
+        <div class="mx-auto flex w-full max-w-[760px] flex-col gap-4">
           <div class="flex flex-col gap-2">
             <div
               class="flex flex-wrap items-center gap-x-2 text-kira-sm text-muted-foreground"

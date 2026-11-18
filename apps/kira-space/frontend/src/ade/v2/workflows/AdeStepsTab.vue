@@ -159,7 +159,7 @@ async function createNew(kind: StepKind): Promise<void> {
           (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
         "
       />
-      <div class="min-h-0 flex-1 overflow-auto p-4">
+      <div class="min-h-0 flex-1 overflow-auto p-3">
         <AdeLibraryStepEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>
     </div>

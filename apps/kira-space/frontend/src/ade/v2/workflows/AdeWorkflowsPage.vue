@@ -49,7 +49,7 @@ useKeptScroll('ade:workflows', bodyEl);
     <AdeStepsTab v-else-if="wfUi.tab === 'steps'" />
     <div v-else :class="cn(paneFrame, 'flex flex-1 flex-col')">
       <PanelHeader>{{ t('space.ade.workflows.page.statuses.label') }}</PanelHeader>
-      <div ref="bodyEl" class="min-h-0 flex-1 overflow-auto p-4">
+      <div ref="bodyEl" class="min-h-0 flex-1 overflow-auto p-3">
         <AdeTaskStatuses />
       </div>
     </div>

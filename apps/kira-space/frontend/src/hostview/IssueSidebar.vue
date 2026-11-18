@@ -23,7 +23,7 @@ function openView(urlOrKey: string): void {
 
 <template>
   <aside
-    class="flex shrink-0 flex-col gap-5 overflow-y-auto p-4"
+    class="flex shrink-0 flex-col gap-3 overflow-y-auto p-3"
     :class="stacked ? '' : 'w-72'"
     data-testid="issue-sidebar"
   >

@@ -36,8 +36,8 @@ useShortcut(root, ['form.save'], () => void saveNow());
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-auto p-4" data-testid="ade-settings">
-    <div v-if="view" ref="root" class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
+  <div class="min-h-0 flex-1 overflow-auto p-3" data-testid="ade-settings">
+    <div v-if="view" ref="root" class="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
       <div class="flex min-w-0 flex-col gap-3">
         <div v-if="!view.exists" class="text-kira-sm text-subtle" data-testid="ade-settings-none">
           {{ t('space.ade.settings.none.hint') }}
