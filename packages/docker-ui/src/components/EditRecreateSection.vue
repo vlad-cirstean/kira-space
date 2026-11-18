@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Input } from '@theme/components/ui/input';
 import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -22,6 +22,12 @@ const props = defineProps<{
 
 const PROTOCOLS = ['tcp', 'udp', 'sctp'] as const;
 const MOUNT_TYPES = ['volume', 'bind'] as const;
+const toItems = (values: readonly string[], testid: string) =>
+  computed(() =>
+    values.map((v) => ({ value: v, label: v, disabled: props.disabled, testid: `${testid}-${v}` })),
+  );
+const PROTOCOL_ITEMS = toItems(PROTOCOLS, 'docker-edit-port-proto');
+const MOUNT_TYPE_ITEMS = toItems(MOUNT_TYPES, 'docker-edit-mount-type');
 
 const rc = computed(() => props.draft.recreate);
 const base = computed(() => props.draft.base.recreate);
@@ -274,15 +280,13 @@ function addMount(): void {
             @update:model-value="item.containerPort = toNumber($event)"
             v-bind="invalid"
           />
-          <NativeSelect
-            :aria-label="t('docker.edit.protocol.label')"
+          <SecondaryTabs
             v-model="item.proto"
-            class="w-24"
-            :disabled="disabled"
+            variant="choice"
+            :aria-label="t('docker.edit.protocol.label')"
+            :items="PROTOCOL_ITEMS"
             data-testid="docker-edit-port-proto"
-          >
-            <option v-for="p in PROTOCOLS" :key="p" :value="p">{{ p }}</option>
-          </NativeSelect>
+          />
           <Input
             :aria-label="t('docker.edit.hostIp.placeholder')"
             class="w-40"
@@ -324,16 +328,14 @@ function addMount(): void {
         @remove="rc.mounts.splice($event, 1)"
       >
         <template #row="{ item }">
-          <NativeSelect
+          <SecondaryTabs
             v-model="item.type"
-            class="w-24"
+            variant="choice"
             :aria-label="t('docker.edit.mountType.label')"
-            :disabled="disabled"
+            :items="MOUNT_TYPE_ITEMS"
             data-testid="docker-edit-mount-type"
             v-bind="invalid"
-          >
-            <option v-for="m in MOUNT_TYPES" :key="m" :value="m">{{ m }}</option>
-          </NativeSelect>
+          />
           <Input
             :aria-label="t('docker.edit.mountSource.label')"
             class="min-w-0 flex-1"

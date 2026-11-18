@@ -5,6 +5,7 @@ import {
   type KibanaField,
   type KibanaSort,
 } from '@shared/domain/kibana';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
@@ -32,6 +33,12 @@ function flip(): void {
   const c = current.value;
   if (c) sort.value = [{ ...c, order: c.order === 'asc' ? 'desc' : 'asc' }];
 }
+
+const SAMPLE_SIZE_ITEMS = KIBANA_SAMPLE_SIZES.map((n) => ({
+  value: String(n),
+  label: formatCount(n),
+  testid: `kibana-sample-size-${n}`,
+}));
 
 function onSize(value: unknown): void {
   const n = Number(value);
@@ -73,16 +80,15 @@ function onSize(value: unknown): void {
       @click="flip"
     />
     <Field orientation="horizontal" class="ml-auto w-auto">
-      <FieldLabel :for="`${idBase}-size`">{{ t('studio.kibana.sampleSize.label') }}</FieldLabel>
-      <NativeSelect
-        :id="`${idBase}-size`"
-        variant="bordered"
-        :model-value="sampleSize"
+      <FieldLabel>{{ t('studio.kibana.sampleSize.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
+        :aria-label="t('studio.kibana.sampleSize.label')"
+        :model-value="String(sampleSize)"
+        :items="SAMPLE_SIZE_ITEMS"
         data-testid="kibana-sample-size"
         @update:model-value="onSize"
-      >
-        <option v-for="s in KIBANA_SAMPLE_SIZES" :key="s" :value="s">{{ formatCount(s) }}</option>
-      </NativeSelect>
+      />
     </Field>
   </div>
 </template>

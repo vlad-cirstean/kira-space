@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -62,6 +63,14 @@ function setCpus(v: string | number): void {
   res.value.nanoCpus = n > 0 ? Math.round(n * 1e9) : 0;
 }
 
+const RESTART_ITEMS = computed(() =>
+  RESTARTS.map((r) => ({
+    value: r,
+    label: r,
+    disabled: props.disabled,
+    testid: `docker-edit-restart-${r}`,
+  })),
+);
 function setRestart(v: unknown): void {
   ip.value.restart.name = v as RestartPolicyName;
   if (ip.value.restart.name !== 'on-failure') ip.value.restart.maxRetries = 0;
@@ -128,16 +137,17 @@ const netChanged = (name: string): boolean => {
       v-slot="{ invalid, id }"
     >
       <div class="flex items-center gap-2">
-        <NativeSelect
+        <SecondaryTabs
           :id="id"
+          variant="choice"
+          size="kira-lg"
+          :aria-label="t('docker.field.restartPolicy.label')"
           :model-value="ip.restart.name"
-          :disabled="disabled"
+          :items="RESTART_ITEMS"
           data-testid="docker-edit-restart"
           @update:model-value="setRestart"
           v-bind="invalid"
-        >
-          <option v-for="r in RESTARTS" :key="r" :value="r">{{ r }}</option>
-        </NativeSelect>
+        />
         <Input
           :aria-label="t('docker.edit.retries.placeholder')"
           v-if="ip.restart.name === 'on-failure'"

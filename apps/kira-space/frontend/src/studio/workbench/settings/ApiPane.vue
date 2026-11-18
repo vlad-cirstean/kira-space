@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import {
@@ -9,7 +10,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@theme/components/ui/field';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
@@ -91,7 +91,13 @@ props.registerFieldError('api.maxRedirects', maxRedirectsError);
 
 // P110 I2-26: `for`/`id` preserves the old label-wraps-control implicit association (see
 // FontSizeField.vue's own precedent comment) now that the field wrapper is a plain <Field> div.
-const httpVersionId = useId();
+const HTTP_VERSION_ITEMS = computed(() =>
+  HTTP_VERSIONS.map((v) => ({
+    value: v,
+    label: t('studio.http.settings.versionOption.option', { version: v }),
+    testid: `settings-api-httpVersion-${v}`,
+  })),
+);
 const requestTimeoutMsId = useId();
 const maxResponseMbId = useId();
 const sslVerifyId = useId();
@@ -104,7 +110,7 @@ const disableCookieJarId = useId();
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <FieldLabel :for="httpVersionId">{{ t('studio.http.settings.version.label') }}</FieldLabel>
+        <FieldLabel>{{ t('studio.http.settings.version.label') }}</FieldLabel>
         <TooltipIconButton
           icon="discard"
           :label="t('common.action.resetToDefault.label')"
@@ -114,18 +120,15 @@ const disableCookieJarId = useId();
           @click="resetLeaf('api', 'httpVersion')"
         />
       </div>
-      <NativeSelect
-        :id="httpVersionId"
-        variant="bordered"
-        class="self-start"
+      <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('studio.http.settings.version.label')"
         data-testid="settings-api-httpVersion"
         :model-value="draft.api.httpVersion"
+        :items="HTTP_VERSION_ITEMS"
         @update:model-value="onHttpVersionChange"
-      >
-        <option v-for="v in HTTP_VERSIONS" :key="v" :value="v">{{
-          t('studio.http.settings.versionOption.option', { version: v })
-        }}</option>
-      </NativeSelect>
+      />
     </Field>
 
     <Field>

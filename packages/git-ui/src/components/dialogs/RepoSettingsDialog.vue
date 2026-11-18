@@ -24,6 +24,7 @@
  */
 import { SETTINGS } from '@kira/git-core';
 import type { RepoSettingsPatch, RepoSettingsSnapshot } from '@kira/git-ipc';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -172,9 +173,13 @@ const autoStashId = useId();
 const showInGraphId = useId();
 const includeUntrackedId = useId();
 const hostProviderId = useId();
-const graphScopeId = useId();
 const baseCandidatesId = useId();
-const pullStrategyId = useId();
+const graphScopeItems = computed(() =>
+  graphScopeOptions.map((o) => ({ value: o.value, label: t(o.label) })),
+);
+const pullStrategyItems = computed(() =>
+  pullStrategyOptions.map((o) => ({ value: o.value, label: t(o.label) })),
+);
 
 function close(): void {
   emit('close');
@@ -250,18 +255,15 @@ async function save(): Promise<void> {
             </FieldError>
           </Field>
           <Field>
-            <FieldLabel :for="graphScopeId">{{ t('common.field.scope.label') }}</FieldLabel>
-            <NativeSelect
-              :id="graphScopeId"
+            <FieldLabel>{{ t('common.field.scope.label') }}</FieldLabel>
+            <SecondaryTabs
+              variant="choice"
+              size="kira-lg"
+              :aria-label="t('common.field.scope.label')"
               :model-value="draft['kiraSpace.graph.scope']"
-              variant="bordered"
-              class="w-full"
-              @update:model-value="(v) => onGraphScopeChange(v as string)"
-            >
-              <option v-for="opt in graphScopeOptions" :key="opt.value" :value="opt.value">
-                {{ t(opt.label) }}
-              </option>
-            </NativeSelect>
+              :items="graphScopeItems"
+              @update:model-value="onGraphScopeChange"
+            />
           </Field>
         </FieldSet>
 
@@ -330,20 +332,15 @@ async function save(): Promise<void> {
         <FieldSet>
           <FieldLegend>{{ t('git.toolbar.pull.label') }}</FieldLegend>
           <Field>
-            <FieldLabel :for="pullStrategyId">{{
-              t('git.dialog.repoSettings.strategy.label')
-            }}</FieldLabel>
-            <NativeSelect
-              :id="pullStrategyId"
+            <FieldLabel>{{ t('git.dialog.repoSettings.strategy.label') }}</FieldLabel>
+            <SecondaryTabs
+              variant="choice"
+              size="kira-lg"
+              :aria-label="t('git.dialog.repoSettings.strategy.label')"
               :model-value="draft['kiraSpace.pull.strategy']"
-              variant="bordered"
-              class="w-full"
-              @update:model-value="(v) => onPullStrategyChange(v as string)"
-            >
-              <option v-for="opt in pullStrategyOptions" :key="opt.value" :value="opt.value">
-                {{ t(opt.label) }}
-              </option>
-            </NativeSelect>
+              :items="pullStrategyItems"
+              @update:model-value="onPullStrategyChange"
+            />
           </Field>
         </FieldSet>
 

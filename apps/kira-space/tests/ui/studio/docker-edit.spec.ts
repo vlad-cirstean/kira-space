@@ -199,7 +199,7 @@ test('contract: in-place apply sends the recorded args and keeps recreate edits'
   await tid(page, 'docker-edit-cpus').fill('0.5');
   await tid(page, 'docker-edit-cpu-shares').fill('512');
   await tid(page, 'docker-edit-pids').fill('64');
-  await tid(page, 'docker-edit-restart').selectOption('unless-stopped');
+  await tid(page, 'docker-edit-restart-unless-stopped').click();
   const aliases = page.locator(
     '[data-testid="docker-edit-network"][data-name="kira-flow-edit"] [data-testid="docker-edit-network-aliases"]',
   );
@@ -399,7 +399,7 @@ test('contract: a stopped container applies in place and recreate keeps it stopp
 
   await tid(page, 'docker-edit-memory').fill(String(sent.spec.resources.memory / 1024 ** 2));
   await tid(page, 'docker-edit-swap').fill(String(sent.spec.resources.memorySwap / 1024 ** 2));
-  await tid(page, 'docker-edit-restart').selectOption(sent.spec.restart.name);
+  await tid(page, `docker-edit-restart-${sent.spec.restart.name}`).click();
   await tid(page, 'docker-edit-apply-now').click();
   await expect.poll(() => docker.calls('UpdateContainer').length).toBe(1);
   expect(withoutIdentity(calls[0])).toEqual(withoutIdentity(sent));

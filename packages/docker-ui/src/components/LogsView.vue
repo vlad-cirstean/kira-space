@@ -2,9 +2,9 @@
 import { newUuid } from '@shared/ids';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
-import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -41,6 +41,9 @@ const lines = shallowRef<Line[]>([]);
 const follow = ref(true);
 const timestamps = ref(false);
 const wrap = ref(false);
+const TAIL_ITEMS = computed(() =>
+  TAILS.map((n) => ({ value: String(n), label: tailLabel(n), testid: `docker-logs-tail-${n}` })),
+);
 const tail = ref<number>(1000);
 const findOpen = useKeptState(() => `docker:logs:${props.containerId}:findOpen`, false);
 const query = useKeptState(() => `docker:logs:${props.containerId}:query`, '');
@@ -215,13 +218,14 @@ function clear(): void {
           t('docker.logs.wrap.label')
         }}</Toggle
       >
-      <NativeSelect
-        v-model="tail"
+      <SecondaryTabs
+        variant="segmented"
         :aria-label="t('docker.logs.tail.aria')"
         data-testid="docker-logs-tail"
-      >
-        <option v-for="n in TAILS" :key="n" :value="n">{{ tailLabel(n) }}</option>
-      </NativeSelect>
+        :model-value="String(tail)"
+        :items="TAIL_ITEMS"
+        @update:model-value="(v) => (tail = Number(v))"
+      />
       <TooltipIconButton
         class="ml-auto"
         icon="search"

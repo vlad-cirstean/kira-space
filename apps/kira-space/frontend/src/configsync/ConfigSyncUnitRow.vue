@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { FieldError } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
-import { NativeSelect } from '@theme/components/ui/native-select';
 
 import { type MessageKey, t } from '@theme/i18n';
 import { CHANGE_TONE, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
@@ -21,6 +21,19 @@ const emit = defineEmits<{
   'update:choice': [choice: ConfigSyncChoice];
   deactivate: [off: boolean];
 }>();
+
+const CHOICE_ITEMS = computed(() => [
+  {
+    value: 'mine',
+    label: t('space.configSync.row.mine.option'),
+    testid: `config-sync-choice-${props.row.id}-mine`,
+  },
+  {
+    value: 'shared',
+    label: t('space.configSync.row.shared.option'),
+    testid: `config-sync-choice-${props.row.id}-shared`,
+  },
+]);
 
 const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   add: 'common.action.add.label',
@@ -87,17 +100,15 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
       </span>
     </button>
     <div class="flex items-center gap-3">
-      <NativeSelect
-        :aria-label="t('space.configSync.row.choice.label')"
+      <SecondaryTabs
         v-if="row.kind === 'conflict'"
-        variant="bordered"
+        variant="choice"
+        :aria-label="t('space.configSync.row.choice.label')"
         :model-value="choice"
+        :items="CHOICE_ITEMS"
         :data-testid="`config-sync-choice-${row.id}`"
         @update:model-value="(v) => emit('update:choice', v === 'shared' ? 'shared' : 'mine')"
-      >
-        <option value="mine">{{ t('space.configSync.row.mine.option') }}</option>
-        <option value="shared">{{ t('space.configSync.row.shared.option') }}</option>
-      </NativeSelect>
+      />
       <span v-if="row.kind !== 'unmatched'" class="ml-auto flex items-center gap-1.5">
         <Checkbox
           :id="switchId"
