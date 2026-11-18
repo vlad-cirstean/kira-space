@@ -25,6 +25,7 @@
 # Guards U134-U140: docs/v0.3.17/plans/P672-part4-iter2.md.
 # Guards U146, U13, U36, U124 (extended): docs/v0.3.17/plans/P672-part6-iter2.md. U124 exempts AdeTaskCard: D1 board card tone, rail and selected fill.
 # Guards U141-U145, U123 extended: docs/v0.3.17/plans/P672-part5-iter2.md.
+# Guards U117 (extended), U152: docs/v0.3.17/plans/P672-part8-iter2.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -276,7 +277,7 @@ U113@@v@@KeyValueList.vue@@hand key-value grid or raw <dl> (use KeyValueList)@@$
 U114@@v@@/ade/v2/plan/@@ADE tone class off the plan board (theme tones and Badge elsewhere, P672 D1)@@${TOK}(?:text|bg|border)-tone-[a-z]
 U115@@vt@@@@font-mono (use font-data)@@${TOK}font-mono(?![\w-])
 U116@@v@@@@toned icon in a hand menu entry (menu icons stay muted)@@(?s)<DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)\b(?:(?!</DropdownMenu(?:RadioItem|CheckboxItem|Label|SubTrigger)>).)*?<CodiconIcon\b(?&t)\s:?class="[^"]*${TOK}text-(?:ok|warn|error|info|tone-)
-U117@@v@@@@segmented SecondaryTabs inside a form (a form value is variant choice)@@(?s)<(?:Field|FieldSet|DialogBody)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet|DialogBody)>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
+U117@@v@@@@tabs or segmented SecondaryTabs inside a form field (a form value is variant choice)@@(?s)<(?:Field|FieldSet)\b(?&t)(?<!/)>(?:(?!</(?:Field|FieldSet)>).)*?<SecondaryTabs\b(?!(?&t)\svariant="choice")|(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<SecondaryTabs\b(?&t)\svariant="segmented"
 U118@@v@@@@DialogBody class other than min-h-* (only flush and min-h-*, RD.5); flush body never re-adds p-3@@<DialogBody\b(?&t)\s:?class="(?!min-h-[\w.\[\]-]+")|<DialogBody\b(?=(?&t)\sflush\b)(?&t)>\s*(?:<template\b(?&t)>\s*)?<div\b(?=(?&t)\sclass="[^"]*${TOK}p-3\b)
 U120@@v@@@@link Button not size inline (RB.1)@@<Button\b(?=(?&t)\svariant="link")(?!(?&t)\ssize="inline")
 U121@@v@@@@DialogDescription inside DialogBody (intro text is the header description, RD.4)@@(?s)<DialogBody\b(?&t)(?<!/)>(?:(?!</DialogBody>).)*?<DialogDescription\b
@@ -305,6 +306,7 @@ U142@@v@@@@disabled Tooltip wrapper (render the trigger bare, RT.1)@@<Tooltip\b(
 U143@@v@@@@TextTooltip around an icon-only Button (use TooltipIconButton, RT.1)@@(?s)<TextTooltip\b(?&t)(?<!/)>\s*<Button\b(?&t)\ssize="(?:kira-icon|icon-sm|touch-icon|title)"
 U144@@v@@@@Kbd inside a TooltipIconButton body (use :kbd, RT.1)@@(?s)<TooltipIconButton\b(?&t)(?<!/)>(?:(?!</TooltipIconButton>).)*?<Kbd\b
 U145@@v@@@@margin or padding class on a popover bar control (use PopoverBar, RP.1)@@(?s)\A(?=.*<PopoverContent\b).*?<(?:SecondaryTabs|SearchField)\b(?&t)\s:?class="[^"]*${TOK}(?:m|mx|my|mt|mb|ml|mr|p|px|py)-
+U152@@v@@@@hand toggle (icon toggle is TooltipIconButton :pressed, text toggle is Toggle default variant, a single pick is SecondaryTabs or a rowVariants list)@@<Button\b(?=(?&t)\svariant="toolbar")(?&t)\s:?aria-pressed=|<Toggle\b(?&t)\s:?variant=
 GUARDS
 
 # hits: "U<n> path"
