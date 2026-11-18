@@ -9,6 +9,7 @@ import { Checkbox } from '@theme/components/ui/checkbox';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { computed, useId } from 'vue';
 import { KEEP_HINT_LABEL, MASK_KIND_OPTIONS, maskExample } from './maskKinds';
 
@@ -67,7 +68,7 @@ function onToggle(field: 'keep_hint' | 'correlate'): void {
         }}</option>
       </NativeSelect>
       <TooltipIconButton
-        icon="trash"
+        :icon="ICON.remove"
         :label="t('studio.project.connectionDialog.removeRule.tooltip')"
         tone="error"
         data-testid="mask-rule-remove"

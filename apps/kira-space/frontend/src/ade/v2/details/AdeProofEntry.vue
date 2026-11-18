@@ -8,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { formatRelative } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -69,7 +70,7 @@ async function askDelete(): Promise<void> {
       />
       <TooltipIconButton
         v-if="!readonly"
-        icon="close"
+        :icon="ICON.delete"
         :label="t('space.ade.proof.entry.delete.tooltip')"
         data-testid="ade-proof-remove"
         @click="askDelete()"

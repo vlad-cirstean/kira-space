@@ -94,7 +94,7 @@ function toggleFacet(value: string): void {
     <DropdownMenu v-if="facet">
       <DropdownMenuTrigger as-child>
         <Button variant="toolbar" size="status" data-testid="ops-facet">
-          <CodiconIcon name="filter" :size="13" />
+          <CodiconIcon name="filter" :size="12" />
           {{ facet.label }}
           <Badge v-if="facetValues.length > 0" data-testid="ops-facet-count">{{
             facetValues.length

@@ -125,7 +125,7 @@ async function onClear(): Promise<void> {
         data-testid="grpc-history-clear"
         @click="onClear"
       >
-        <CodiconIcon :name="ICON.delete" :size="13" />
+        <CodiconIcon :name="ICON.clearAll" :size="13" />
         {{ t('common.action.clearHistory.label') }}
       </Button>
     </ViewToolbar>

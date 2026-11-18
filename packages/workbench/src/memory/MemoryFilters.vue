@@ -88,7 +88,7 @@ function clear(): void {
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button variant="toolbar" size="status" data-testid="memory-filter">
-          <CodiconIcon name="filter" :size="13" />
+          <CodiconIcon name="filter" :size="12" />
           {{ t('memory.panel.filter.label') }}
           <Badge v-if="active > 0" data-testid="memory-filter-count">{{ active }}</Badge>
         </Button>

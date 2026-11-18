@@ -21,7 +21,7 @@ const emit = defineEmits<{ add: []; remove: [index: number] }>();
         <slot name="row" :item="item" :index="index" />
       </div>
       <TooltipIconButton
-        icon="trash"
+        :icon="ICON.remove"
         :label="t('common.action.remove.label')"
         :disabled="disabled"
         data-testid="docker-edit-row-remove"

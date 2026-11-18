@@ -21,6 +21,7 @@ import {
 } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useId } from 'vue';
 import SecretInput from '../../components/SecretInput.vue';
 
@@ -175,7 +176,7 @@ function toggleDefault(i: number, option: string, on: boolean): void {
             @update:model-value="(v) => setType(i, v as ScriptParamType)"
           />
           <TooltipIconButton
-            icon="trash"
+            :icon="ICON.remove"
             :label="t('automations.params.remove.tooltip', { name: p.name })"
             @click="remove(i)"
           />

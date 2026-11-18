@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useDebounceFn, useEventListener, useResizeObserver } from '@vueuse/core';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -152,7 +153,7 @@ function leave(): void {
           data-testid="term-back"
           @click="leave"
         >
-          <CodiconIcon name="chevron-left" :size="16" />
+          <CodiconIcon :name="ICON.back" :size="16" />
         </Button>
       </template>
       <template #meta>

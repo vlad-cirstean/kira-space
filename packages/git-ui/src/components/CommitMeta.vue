@@ -339,7 +339,7 @@ const changeRequestIcon = computed(() => {
             data-testid="commit-meta-change-request-icon"
             @click="openChangeRequest(changeRequestIcon!.number)"
           >
-            <CodiconIcon name="git-pull-request" :size="13" />
+            <CodiconIcon name="git-pull-request" :size="12" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>

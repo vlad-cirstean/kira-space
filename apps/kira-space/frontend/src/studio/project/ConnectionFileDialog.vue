@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
@@ -386,7 +387,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             data-testid="connection-duplicate"
             @click="onDuplicate"
           >
-            <CodiconIcon name="copy" :size="13" />
+            <CodiconIcon :name="ICON.duplicate" :size="13" />
             {{ t('common.action.duplicate.label') }}
           </Button>
           <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->

@@ -13,6 +13,7 @@ import { Button } from '@theme/components/ui/button';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useEventListener, useFocus, useResizeObserver, useTextareaAutosize } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -214,7 +215,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
             }}
           </Button>
           <Button variant="toolbar" size="kira" data-testid="review-thread-edit" @click="startEdit">
-            <CodiconIcon name="pencil" :size="13" />
+            <CodiconIcon :name="ICON.edit" :size="13" />
             {{ t('common.action.edit.label') }}
           </Button>
           <Button variant="toolbar" size="kira" @click="emit('close')">
