@@ -369,6 +369,14 @@ test('contract: image detail registry button asks Hub only on click, then opens 
 
   await alpine.click();
   await expect(page.locator('[data-testid="docker-resource-registry"]')).toBeVisible();
+  const header = page.locator('[data-testid="docker-resource-detail"] [data-slot="detail-header"]');
+  await expect(header.getByRole('heading', { level: 2 })).toHaveText(IMAGES[0].tags[0]);
+  await expect(header.locator('[data-testid="docker-resource-registry"]')).toBeVisible();
+  await expect(
+    page
+      .locator('[data-testid="docker-resource-detail"]')
+      .getByRole('heading', { level: 3, name: 'Details' }),
+  ).toBeVisible();
   expect(confirms).toBe(0);
   await page.locator('[data-testid="docker-resource-registry"]').click();
   await expect

@@ -46,6 +46,9 @@ test('the card add button adds a repo and opens the attach dialog', async ({ rel
   const { window: page, control } = await openPlan(relaunch, [candidates]);
   await revealHead(page, 'T_bill', 'ade-card-add');
   await page.locator(`${card('T_bill')} ${t('ade-card-add')}`).click();
+  // PopoverContent flush: no padding or row gap of its own.
+  await expect(page.locator(t('ade-card-add-menu'))).toHaveCSS('padding-top', '0px');
+  await expect(page.locator(t('ade-card-add-menu'))).toHaveCSS('row-gap', '0px');
   await page.locator(t('ade-card-add-repo-option-repo-mobile')).click();
   await expect.poll(() => calls(control, IPC.adeTaskAddTaskRepo)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskAddTaskRepo)[0]?.args).toEqual({

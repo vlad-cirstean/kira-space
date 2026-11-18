@@ -622,6 +622,9 @@ test('branch tooltip shows plan colours', async ({ relaunch }) => {
   await expect(tip).toBeVisible();
   await expect(tip.locator('[data-testid="ade-chip"]').first()).toBeVisible();
   await expect(tip.locator('[data-var="base"]').first()).toBeVisible();
+  const list = tip.locator('[data-slot="key-value-list"]');
+  await expect(list).toHaveAttribute('data-density', 'compact');
+  await expect(list).toHaveCSS('row-gap', '2px');
 });
 
 // Contract ade-board. Backend half: adeflow TestRefreshDefaultSettings (one repo with a remote that
