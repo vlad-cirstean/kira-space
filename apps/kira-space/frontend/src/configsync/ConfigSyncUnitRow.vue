@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
+import { FieldError } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 
@@ -74,13 +75,9 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
       >
         {{ repoLine }}
       </span>
-      <span
-        v-if="row.problem"
-        class="text-kira-sm text-error"
-        :data-testid="`config-sync-row-problem-${row.id}`"
-      >
+      <FieldError v-if="row.problem" :data-testid="`config-sync-row-problem-${row.id}`">
         {{ row.problem }}
-      </span>
+      </FieldError>
       <span v-if="row.unsetSecrets.length > 0" class="text-kira-sm text-muted-foreground">
         {{ t('space.configSync.row.unsetSecrets.hint', { names: row.unsetSecrets.join(', ') }) }}
       </span>

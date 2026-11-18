@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { FieldDescription } from '@theme/components/ui/field';
+import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
@@ -167,7 +167,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
               <li v-for="s in preview.sources" :key="s.role" class="flex items-center gap-2">
                 <span class="min-w-0 flex-1 truncate font-data">{{ s.path }}</span>
                 <Badge v-if="!s.exists">{{ t('space.ade.port.missing.status') }}</Badge>
-                <span v-if="s.problem" class="text-error">{{ s.problem }}</span>
+                <FieldError v-if="s.problem">{{ s.problem }}</FieldError>
               </li>
             </ul>
             <ul

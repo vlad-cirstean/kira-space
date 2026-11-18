@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
@@ -80,10 +81,12 @@ async function copyForAgent(): Promise<void> {
         {{ run.outcome.outputTail }}
       </span>
     </template>
-    <span v-if="copyError" class="text-error">{{ copyError }}</span>
-    <span v-if="resumeError" class="text-error" data-testid="run-resume-error">{{
-      resumeError
-    }}</span>
+    <Alert v-if="copyError" variant="error"
+      ><AlertDescription>{{ copyError }}</AlertDescription></Alert
+    >
+    <Alert v-if="resumeError" variant="error" data-testid="run-resume-error"
+      ><AlertDescription>{{ resumeError }}</AlertDescription></Alert
+    >
     <div v-if="run.state !== 'running' && run.state !== 'waiting'" class="flex gap-1">
       <Button variant="dialog" size="kira-lg" data-testid="run-copy" @click="copyForAgent">
         {{ copied ? t('common.copy.copied.announce') : t('common.copyForAgent.label') }}
