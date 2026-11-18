@@ -607,8 +607,10 @@ Artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (DMG, bundle
 DMG ships as `kira-space-macos-arm64.dmg`; `release.yml` builds one app, one tag, one release (§7).
 
 **ONNX Runtime (P210).** `darwin:package` and `darwin:package:universal` depend on `fetch:onnxruntime`
-(`scripts/fetch-onnxruntime.sh osx-arm64`: MIT release tgz, SHA-256 pinned, extracted to the gitignored
-`apps/kira-space/build/onnxruntime/osx-arm64/`). `create:app:bundle` copies `libonnxruntime.1.31.1.dylib`
+(`scripts/fetch-onnxruntime.sh osx-arm64`: the MIT `Microsoft.ML.OnnxRuntime` 1.31.1 NuGet package from
+`api.nuget.org`, package SHA-256 pinned, library extracted to the gitignored
+`apps/kira-space/build/onnxruntime/osx-arm64/`). Source is NuGet, not the GitHub release tgz, since that
+asset returned 404 for the v0.3.16 release (P673); nuget.org never replaces a published version. `create:app:bundle` copies `libonnxruntime.1.31.1.dylib`
 into `Contents/Frameworks/` and its LICENSE and ThirdPartyNotices into `Contents/Resources/`, before
 `codesign:adhoc`, and fails loudly if the dylib is missing. The dylib is arm64-only (ORT 1.31.1 has no
 x86_64 macOS build); the universal bundle's x86_64 slice reports embeddings unavailable. Adds about

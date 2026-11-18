@@ -17,7 +17,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Done |
 | P660 Part 2 | Git review panel state across module switches | Done |
 | P672 Part 10 | Second pass over Parts 2..9 (iter2 plans) | Planned |
-| P673 | Re-pin ONNX Runtime, pinned release asset is gone | Planned |
+| P673 | Re-pin ONNX Runtime, pinned release asset is gone | Done |
 
 ## P672 Part 1: UI inventory and uniformity rules
 
@@ -136,3 +136,5 @@ Release `v0.3.16` failed twice (run 44253115581, attempts 1 and 2): `build (macO
 Scope: confirm the asset state on the upstream release page first. Then pin an available ONNX Runtime version or host the archive ourselves, whichever the plan finds sound. Update `ORT_VERSION` and both SHA256s in `scripts/fetch-onnxruntime.sh` and `internal/memory/embed/paths.go` (`verify-packaging.sh` S12 keeps them equal), re-check the `linux-x64` slice and the embeddings tests against the new version. `v0.3.16` stays unreleased until the v0.3.17 merge cuts a release; this phase must be Done before the chapter closes. Changes touching package integrity (checksum, source) need explicit plan rationale.
 
 Plan: `plans/P673.md`.
+
+Result: Done. Source moved from the GitHub release tgz (404 in run 44253115581, both attempts) to the official `Microsoft.ML.OnnxRuntime` 1.31.1 NuGet package on `api.nuget.org`; version kept (onnxruntime_go v1.38.0 needs ORT_API_VERSION 31). The row's "both SHA256s" became one package SHA-256, since one archive serves both platforms. `scripts/fetch-onnxruntime.sh` pins `6871ccbc97f3d5bdb4095a1dcec33aa78d56f6ed8de5980ef5fa1d9f2e7c679a`, extracts `runtimes/<platform>/native/` to the old file names and prints the URL on a failed download. Hash provenance: re-downloaded in the sandbox by the implementer (159,626,394 bytes), SHA-256 equals the planner's value; the planner's SHA-512 equals the nuget.org catalog `packageHash`. paths.go, S12 and the darwin Taskfile unchanged (same version). User decision: no `checks (macOS)` fetch step in `pr.yml`, so no macOS runner proof. Docs: PACKAGING, DEV_ENVIRONMENT, ARCHITECTURE. Tests: linux-x64 fetch (lib `a96f132e…0f4ea`) and osx-arm64 fetch on Linux (dylib `2685dc29…26fdc`), LICENSE and ThirdPartyNotices present; idempotent rerun skips the download; wrong-hash scratch copy exits 1 with the mismatch line and leaves the destination untouched; embedsmoke with `KIRA_ORT_LIB` on the linux-x64 lib 9/10 top-1 (miss: "what hardware does the user work on"); embed unit tests pass; `verify:packaging` green (S12 included); `lint:dead` clean; `sh -n` ok. Not verified: upstream GitHub asset state (sandbox gets 404 for every version and 403 on the API), NuGet signature (no dotnet), bit equality with the old dylib, shellcheck (not installed), the macOS fetch and `lipo` arm64 on a real macOS runner.
