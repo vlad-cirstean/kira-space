@@ -28,7 +28,7 @@ Plan: `plans/P674.md`.
 
 ## P675: JS engine for the API MCP
 
-Add an embedded JavaScript engine in Go, used by the API MCP (P676 to P679) and later the DB MCP (P680); no UI-facing scripting. Design the interface for both from the start. Candidate: `dop251/goja` (pure Go); the plan must verify licence, maintenance, and compare alternatives. Requirements: hard CPU time limit and interrupt, memory ceiling, output size cap, no filesystem, network, process, timers or `require`; deterministic globals only (JSON, Math, Date, string and array builtins); big-integer handling documented (JSON numbers above 2^53); errors returned as structured messages with line and column. One engine package with a narrow interface so later features reuse it. Not in scope: jq or gojq filters.
+Add an embedded JavaScript engine in Go, used by the API MCP (P676 to P679) and later the DB MCP (P680); no UI-facing scripting. Design the interface for both from the start. Engine: `dop251/goja` (pure Go, MIT; user decision); the plan verifies licence of every linked module and maintenance, records the alternatives compared, and decides how the memory ceiling and CPU limit hold given goja has no memory limit API. Requirements: hard CPU time limit and interrupt, memory ceiling, output size cap, no filesystem, network, process, timers or `require`; deterministic globals only (JSON, Math, Date, string and array builtins); big-integer handling documented (JSON numbers above 2^53); errors returned as structured messages with line and column. One engine package with a narrow interface so later features reuse it. Not in scope: jq or gojq filters.
 
 Plan: `plans/P675.md`.
 
