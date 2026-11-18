@@ -2,10 +2,11 @@
 import type { ProofDetail, ProofDiff } from '@shared/domain/proof';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Badge, type BadgeVariants } from '@theme/components/ui/badge';
+import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
+import { CHANGE_TONE, TONE_BADGE } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { computed } from 'vue';
@@ -43,12 +44,6 @@ const DIFF_LABEL: Record<ProofDiff, () => string> = {
   changed: () => t('common.changed.status'),
   removed: () => t('common.removed.status'),
   unchanged: () => t('studio.http.diff.unchangedRow.status'),
-};
-const DIFF_VARIANT: Record<ProofDiff, BadgeVariants['variant']> = {
-  added: 'ok',
-  changed: 'warn',
-  removed: 'error',
-  unchanged: 'default',
 };
 
 const rows = computed(() => [
@@ -106,7 +101,9 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
         >
           <span :class="cn(rowMeta, 'w-6 shrink-0')">{{ `#${row.meta.ordinal}` }}</span>
           <span class="min-w-0 flex-1 truncate">{{ row.meta.description }}</span>
-          <Badge :variant="DIFF_VARIANT[row.meta.diff]">{{ DIFF_LABEL[row.meta.diff]() }}</Badge>
+          <Badge :variant="TONE_BADGE[CHANGE_TONE[row.meta.diff]]">{{
+            DIFF_LABEL[row.meta.diff]()
+          }}</Badge>
         </button>
       </li>
     </ul>

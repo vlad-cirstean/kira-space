@@ -26,6 +26,7 @@ import {
 } from '@theme/components/ui/table';
 import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
+import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import {
   displayValue,
@@ -167,12 +168,8 @@ const HEADER_STATUS_KEYS: Record<HeaderRow['status'], MessageKey> = {
 function headerStatusText(status: HeaderRow['status']): string {
   return t(HEADER_STATUS_KEYS[status]);
 }
-const HEADER_STATUS_CLASS: Record<HeaderRow['status'], string> = {
-  added: 'text-ok',
-  removed: 'text-error',
-  changed: 'text-warn',
-  unchanged: '',
-};
+const headerStatusClass = (status: HeaderRow['status']): string =>
+  status === 'unchanged' ? '' : TONE_TEXT[CHANGE_TONE[status]];
 const headerRows = computed<HeaderRow[]>(() => {
   if (!snapA.value || !snapB.value) return [];
   const order: string[] = [];
@@ -333,7 +330,7 @@ onUnmounted(() => {
                   :key="row.name"
                   data-testid="http-diff-header-row"
                 >
-                  <TableCell class="text-kira-sm" :class="HEADER_STATUS_CLASS[row.status]">{{
+                  <TableCell class="text-kira-sm" :class="headerStatusClass(row.status)">{{
                     headerStatusText(row.status)
                   }}</TableCell>
                   <TableCell class="font-data text-muted-foreground">{{ row.name }}</TableCell>
@@ -354,7 +351,7 @@ onUnmounted(() => {
                     :key="row.name"
                     data-testid="http-diff-header-row-unchanged"
                   >
-                    <TableCell class="w-18 text-kira-sm" :class="HEADER_STATUS_CLASS[row.status]">{{
+                    <TableCell class="w-18 text-kira-sm" :class="headerStatusClass(row.status)">{{
                       headerStatusText(row.status)
                     }}</TableCell>
                     <TableCell class="w-40 font-data text-muted-foreground">{{
@@ -406,7 +403,7 @@ onUnmounted(() => {
 
 <style scoped>
 @reference "@theme/base.css";
-/* P110 I2-17: header status colors moved to HEADER_STATUS_CLASS lookup map on the status span.
+/* P110 I2-17: header status colors moved to headerStatusClass (CHANGE_TONE) on the status span.
    `.diff-merge-host` stays a bare marker to anchor this :deep() rule -- can't be expressed as a
    template utility since it targets a child Monaco renders into the ref'd div. */
 .diff-merge-host :deep(.monaco-diff-editor) {

@@ -6,6 +6,7 @@ import { Label } from '@theme/components/ui/label';
 import { NativeSelect } from '@theme/components/ui/native-select';
 
 import { type MessageKey, t } from '@theme/i18n';
+import { CHANGE_TONE, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { computed, useId } from 'vue';
 import type { ConfigSyncChoice, ConfigSyncKind, ConfigSyncRow } from './domain';
 import { unitKey } from './domain';
@@ -30,14 +31,14 @@ const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   unchanged: 'studio.http.diff.unchangedRow.status',
   unmatched: 'space.configSync.kind.unmatched.label',
 };
-const KIND_TONE: Record<ConfigSyncKind, 'ok' | 'info' | 'warn' | 'error' | 'default'> = {
-  add: 'ok',
-  modify: 'info',
-  delete: 'warn',
-  conflict: 'warn',
+const KIND_TONE: Record<ConfigSyncKind, StatusTone> = {
+  add: CHANGE_TONE.added,
+  modify: CHANGE_TONE.changed,
+  delete: CHANGE_TONE.removed,
+  conflict: 'error',
   blocked: 'error',
-  unchanged: 'default',
-  unmatched: 'default',
+  unchanged: CHANGE_TONE.unchanged,
+  unmatched: 'neutral',
 };
 
 const switchId = useId();
@@ -64,7 +65,10 @@ const repoLine = computed(() => props.row.repo || props.row.origin || '');
         <Badge v-if="row.runsCommands" variant="warn" data-testid="config-sync-row-runs">
           {{ t('space.configSync.row.runsCommands.label') }}
         </Badge>
-        <Badge :variant="KIND_TONE[row.kind]" :data-testid="`config-sync-row-kind-${row.id}`">
+        <Badge
+          :variant="TONE_BADGE[KIND_TONE[row.kind]]"
+          :data-testid="`config-sync-row-kind-${row.id}`"
+        >
           {{ t(KIND_LABEL[row.kind]) }}
         </Badge>
       </span>

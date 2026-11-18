@@ -6,6 +6,7 @@
  * pure model from its DOM-touching renderer (`refBadges.ts`).
  */
 import type { FileChange, FileChangeKind } from '@kira/git-ipc';
+import { CHANGE_TONE, type ChangeKind, TONE_TEXT } from '@theme/lib/statusTone';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 
 /** §6.4's per-file status letter — the letter is always shown (§6.1: no colour-only meaning). */
@@ -19,23 +20,21 @@ export const STATUS_LETTERS: Readonly<Record<FileChangeKind, string>> = {
   unmerged: 'U',
 };
 
-/** The `--color-diff-*` (`--kira-ok`/`--kira-warn`/`--kira-error`) Tailwind text-colour class per kind (§6.1: "the same
- *  colour as in the Explorer"), applied by `FileTree.vue`'s template — never a colour value
- *  computed or read here.
- *
- *  P110 A15 (§1.3): a lookup map, not string interpolation — every `text-diff-*` class
- *  Tailwind must scan appears as a complete literal below. Replaces the old bespoke
- *  `status-*` rules (`FileTree.vue`'s own deleted `<style>`); the `diff-*` colour tokens were
- *  already mapped in A1's `tailwind.css`. */
-export const STATUS_COLOR_CLASS: Readonly<Record<FileChangeKind, string>> = {
-  added: 'text-ok',
-  modified: 'text-warn',
-  deleted: 'text-error',
-  renamed: 'text-ok',
-  copied: 'text-ok',
-  typeChanged: 'text-warn',
-  unmerged: 'text-error',
+const KIND_CHANGE: Readonly<Record<FileChangeKind, ChangeKind>> = {
+  added: 'added',
+  renamed: 'added',
+  copied: 'added',
+  modified: 'changed',
+  typeChanged: 'changed',
+  deleted: 'removed',
+  unmerged: 'removed',
 };
+
+/** Text colour class per kind (§6.1: "the same colour as in the Explorer"), from CHANGE_TONE.
+ *  Unmerged is a conflict: error, same as removed. */
+export const STATUS_COLOR_CLASS: Readonly<Record<FileChangeKind, string>> = Object.fromEntries(
+  Object.entries(KIND_CHANGE).map(([k, v]) => [k, TONE_TEXT[CHANGE_TONE[v]]]),
+) as Record<FileChangeKind, string>;
 
 export interface FileTreeFileNode {
   readonly kind: 'file';

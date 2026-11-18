@@ -2,6 +2,7 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
+import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, type HTMLAttributes } from 'vue';
@@ -29,19 +30,19 @@ const emit = defineEmits<{
 // to port, so none is invented here). A file's own icon comes from fileIconStyle below instead.
 const dirIcon = computed(() => (props.row.expanded ? 'folder-opened' : 'folder'));
 
-// The four-value status glyph — 'M'/'A' amber-ish/green-ish, 'D' struck, '?' muted, matching
-// the connection tree's own status-color convention. data-status stays on the row for tests/
+// The four-value status glyph: 'A' added, 'M' changed, 'D' removed and struck (CHANGE_TONE), '?' muted. data-status stays on the row for tests/
 // styling hooks; the label's own colour is now a direct computed class rather than an
 // attribute-selector CSS rule keyed off it.
 const statusAttr = computed(() => props.row.status);
 
 const labelStatusClass = computed(() => {
   switch (statusAttr.value) {
-    case 'M':
     case 'A':
-      return 'text-warn';
+      return TONE_TEXT[CHANGE_TONE.added];
+    case 'M':
+      return TONE_TEXT[CHANGE_TONE.changed];
     case 'D':
-      return 'text-error line-through';
+      return `${TONE_TEXT[CHANGE_TONE.removed]} line-through`;
     case '?':
       return 'text-muted-foreground';
     default:
