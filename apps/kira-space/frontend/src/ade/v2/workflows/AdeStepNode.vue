@@ -200,7 +200,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       </TextTooltip>
       <span
         v-if="step.before === 'approval'"
-        class="shrink-0 text-warn-text"
+        class="shrink-0 text-warn"
         data-testid="ade-wf-node-gate"
         >{{
           t('space.ade.needs.kind.approval.label')
@@ -245,7 +245,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
       <span
         v-if="!isDefaultSandbox(step.sandbox)"
         class="shrink-0"
-        :class="step.sandbox.access === 'off' ? 'text-warn-text' : ''"
+        :class="step.sandbox.access === 'off' ? 'text-warn' : ''"
         data-testid="ade-wf-node-sandbox"
         >{{
           t(SANDBOX_CHIP[step.sandbox.access])

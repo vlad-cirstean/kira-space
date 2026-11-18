@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MemoryOrigin, MemoryScope } from '@shared/domain/memory';
-import type { ImportAction } from '@shared/domain/memoryImport';
+import type { ImportAction, ImportJobState } from '@shared/domain/memoryImport';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
@@ -13,6 +13,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Progress } from '@theme/components/ui/progress';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { storeToRefs } from 'pinia';
 import { computed, useTemplateRef } from 'vue';
@@ -27,6 +28,15 @@ import { useImportAction, useImportJob, useRetryImportFile, useStartImport } fro
 import { useImportUiStore } from './importStore';
 
 // P211: one import — state, totals, job actions and its virtualized file list.
+const JOB_TONE: Record<ImportJobState, StatusTone> = {
+  scanning: 'info',
+  awaiting: 'warn',
+  running: 'info',
+  paused: 'warn',
+  done: 'ok',
+  cancelled: 'neutral',
+  failed: 'error',
+};
 const props = defineProps<{ jobId: string }>();
 const ui = useImportUiStore();
 const { selectedFileId } = storeToRefs(ui);
@@ -89,7 +99,9 @@ async function discard(): Promise<void> {
         </TextTooltip>
       </template>
       <template #meta>
-        <span data-testid="import-job-state">{{ t(JOB_STATE_LABEL[job.state]) }}</span>
+        <Badge :variant="TONE_BADGE[JOB_TONE[job.state]]" data-testid="import-job-state">{{
+          t(JOB_STATE_LABEL[job.state])
+        }}</Badge>
         <TextTooltip
           :text="
             job.sessionId

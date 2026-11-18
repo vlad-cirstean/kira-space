@@ -7,6 +7,7 @@ import {
   TooltipDisabledTrigger,
   TooltipTrigger,
 } from '@theme/components/ui/tooltip';
+import { TONE_TEXT } from '@theme/lib/statusTone';
 import { computed, useSlots, useTemplateRef } from 'vue';
 
 // The one status bar item shape: icon, label, optional tooltip body (slot `tip`). Muted unless
@@ -24,8 +25,7 @@ const props = withDefaults(
   { tone: undefined, as: 'button', disabled: false },
 );
 
-const TONE_CLASS = { info: 'text-info', warn: 'text-warn', error: 'text-error' } as const;
-const toneClass = computed(() => (props.tone ? TONE_CLASS[props.tone] : undefined));
+const toneClass = computed(() => (props.tone ? TONE_TEXT[props.tone] : undefined));
 
 const slots = useSlots();
 const hasTip = computed(() => Boolean(slots.tip));

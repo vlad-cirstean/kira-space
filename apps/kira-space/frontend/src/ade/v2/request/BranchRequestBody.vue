@@ -170,7 +170,7 @@ function rowRisks(it: BranchRequestItem): { text: string; testid?: string }[] {
           <span
             v-for="risk in rowRisks(it)"
             :key="risk.text"
-            class="inline-flex items-baseline gap-1 whitespace-nowrap text-kira-md text-warn-text"
+            class="inline-flex items-baseline gap-1 whitespace-nowrap text-kira-md text-warn"
             :data-testid="risk.testid"
           >
             <CodiconIcon name="warning" :size="13" class="self-center text-warn" />

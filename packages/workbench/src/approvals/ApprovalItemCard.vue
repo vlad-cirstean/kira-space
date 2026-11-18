@@ -4,6 +4,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass, connBgClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
+import { type StatusTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, ref, watch } from 'vue';
 import { logWarn } from '../bridge/log';
@@ -18,22 +19,11 @@ const def = useApprovalKind(props.item.kind);
 const remaining = useCountdown(() => props.item.expiresAt || null);
 const error = computed(() => store.errors[props.item.id]);
 
-// Tailwind emits only scanned literals: each class is spelled in full.
-const TONE_TEXT = {
-  neutral: 'text-muted-foreground',
-  caution: 'text-warn',
-  danger: 'text-error',
-} as const;
-const RISK_TEXT = {
-  warn: 'text-warn-text',
-  neutral: 'text-muted-foreground',
-  error: 'text-error',
-} as const;
-const RISK_ICON = {
-  warn: 'text-warn',
-  neutral: 'text-muted-foreground',
-  error: 'text-error',
-} as const;
+const OP_TONE: Record<'neutral' | 'caution' | 'danger', StatusTone> = {
+  neutral: 'neutral',
+  caution: 'warn',
+  danger: 'error',
+};
 const RISK_GLYPH = { warn: 'warning', neutral: 'info', error: 'error' } as const;
 
 const fallbackOperation = props.item.operation.class;
@@ -115,7 +105,7 @@ const risks = computed<ApprovalRisk[]>(() => {
         <span
           v-if="item.operation.class"
           class="text-kira-lg font-medium"
-          :class="TONE_TEXT[item.operation.tone]"
+          :class="TONE_TEXT[OP_TONE[item.operation.tone]]"
           data-testid="approval-operation"
         >
           {{ operation.value }}
@@ -140,7 +130,7 @@ const risks = computed<ApprovalRisk[]>(() => {
             <span
               class="inline-flex items-baseline gap-1 text-kira-md"
               :class="[
-                RISK_TEXT[risk.tone],
+                TONE_TEXT[risk.tone],
                 risk.testid === 'approval-error' || 'whitespace-nowrap',
               ]"
               :data-testid="risk.testid"
@@ -150,7 +140,7 @@ const risks = computed<ApprovalRisk[]>(() => {
                 :name="RISK_GLYPH[risk.tone]"
                 :size="13"
                 class="self-center"
-                :class="RISK_ICON[risk.tone]"
+                :class="TONE_TEXT[risk.tone]"
               />
               {{ risk.text }}
             </span>

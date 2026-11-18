@@ -45,7 +45,7 @@ const label = computed(() => {
 });
 const tone = computed(() => {
   const b = props.badge;
-  if (b.denials > 0 || b.access === 'off') return 'text-warn-text';
+  if (b.denials > 0 || b.access === 'off') return 'text-warn';
   return b.enforced ? 'text-muted-foreground' : 'text-subtle';
 });
 const d = computed(() => detail.value.data.value ?? null);
@@ -116,7 +116,7 @@ const lists = computed(() =>
             data-testid="ade-run-sandbox-denial"
           >
             <span class="shrink-0 text-subtle">{{ formatClockTime(x.at) }}</span>
-            <span class="shrink-0 text-warn-text">{{ x.op }}</span>
+            <span class="shrink-0 text-warn">{{ x.op }}</span>
             <span class="min-w-0 flex-1 truncate">{{ x.target }}</span>
             <span class="shrink-0 text-subtle">{{ x.process }}</span>
           </div>
