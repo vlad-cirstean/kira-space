@@ -1,6 +1,6 @@
 # v0.3.17
 
-UI uniformity across all modules. Continues from chapter v0.3.16 (P672 moved here, keeps its number).
+UI uniformity across all modules. Continues from chapter v0.3.16 (P672 and P660 Part 2 moved here, keep their numbers).
 Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `P673`. Branch
 `chapter/v0.3.17`.
 
@@ -15,6 +15,7 @@ Phases from `P672` (highest shipped: `P671`, chapter v0.3.16). Next new phase: `
 | P672 Part 7 | UI uniformity: status, tones, colours | Planned |
 | P672 Part 8 | UI uniformity: tabs, segmented, choice | Planned |
 | P672 Part 9 | UI uniformity: states, icons, type, spacing | Planned |
+| P660 Part 2 | Git review panel state across module switches | Planned |
 
 ## P672 Part 1: UI inventory and uniformity rules
 
@@ -71,3 +72,11 @@ Plan: `plans/P672-part8.md`.
 Apply RE.1-RE.4 (toast item needs decision D3), RI.1, RTy.1-RTy.3, RSp.1-RSp.2, RBo.1-RBo.3 (§10, §13-§16, M30-M36): `EmptyState` shape and no toned media, three skeleton shapes, toasts only for off-screen outcomes, icon 13 in labelled buttons, size roles, `font-mono` to `font-data`, pane roots `p-3`, radii, borders, shadows. Deletes every remaining temporary guard baseline from Part 2. Files: A.10, class-token offenders by fresh scan. Tests: UI specs updated; visual baselines in PR CI; no new unit tests.
 
 Plan: `plans/P672-part9.md`.
+
+## P660 Part 2: Git review panel state across module switches
+
+Git review segment (`RepoReviewView.vue` hosting git-ui `ReviewView`) loses its in-flight review, file filter and scroll on module switch. git-ui is its own Vue app with no Pinia (`packages/git-ui/src/main.ts` `mount`, `NullViewStateStore`). Fix changes git-ui's mount contract so it keeps view state across module switches. Part 1 passes `stateKey: null` for git-ui's `usePanelHeaderSearch` callers (`ReviewView.vue`, `FileTree.vue`). Acceptance: after switching away and back, review segment restores in-flight review, file filter and scroll; own plan `plans/P660-part2.md`, UI spec, same rules as Part 1.
+
+Continues P660 from chapter v0.3.16 (Part 1 Done there); keeps its number.
+
+Plan: `plans/P660-part2.md`.
