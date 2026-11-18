@@ -769,7 +769,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 
 - Dialogs use DialogContent with a required size (sm|md|lg|xl|2xl, plus fixed-height), DialogHeader, DialogBody and DialogFooter; the header close button is on by default and closable=false only while a blocking op runs.
 - CommandDialog is the one dialog surface exempt from the DialogContent convention and renders reka content directly.
-- Use SecondaryTabs (variant tabs|segmented|choice) for secondary tabs and segmented pickers, never raw ToggleGroup/TabsList; primary tab bars keep tabChipVariants. `choice` is a form single-select: selected item `bg-select`, a click on the selected item changes nothing, arrows move focus, Space/Enter select. `wrap` breaks it into spaced chips. It replaces round RadioGroup except ConnectionEnginePicker, AdeTaskStatuses colours, EnvironmentsView active env and card radios.
+- Use SecondaryTabs (variant tabs|segmented|choice) for secondary tabs and segmented pickers, never raw ToggleGroup/TabsList; primary tab bars keep tabChipVariants. `choice` is a form single-select: selected item `bg-select`, a click on the selected item changes nothing, arrows move focus, Space/Enter select. `wrap` breaks it into spaced chips. It replaces round RadioGroup except AdeTaskStatuses colours, EnvironmentsView active env and card radios.
 - Runs params `select` renders `choice` up to 5 choices (None counted), NativeSelect past that.
 - Dialog and form controls are size kira-lg (26px); toolbar controls are kira (22px); all use rounded-kira-sm bg-field. font-data is opt-in per control, never part of an InputGroup variant.
 - Use SearchField for search and filter boxes and focus it through its exposed focus(), because biome forbids autofocus.
@@ -780,7 +780,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - The tone vocabulary is ok, warn, error, info (Badge, Alert, StatusDot); neutral is muted text. Chips tint /16, banners /10 with /20 border; app code never writes a tone alpha.
 - Error sentences use FieldError and list/popover lines use InlineState; Alert takes icon and strip and no layout classes.
 - A boolean that applies on flip is a Switch; an option in a form committed by a button is a Checkbox (14px box).
-- A single choice whose options need a description uses RadioGroup with RadioGroupCard: the whole card is the radio (reka item), title plus description, selected `border-focus bg-select` (Reset mode, review route, mainline pickers, P667).
+- A single choice whose options need a description uses RadioGroup with RadioGroupCard: the whole card is the radio (reka item), title plus description, selected `border-focus bg-select` (Reset mode, review route, mainline pickers, P667; Studio engine picker with icon 16 and name as the title, no description).
 - Use Tooltip for hints, never native title; the theme provider owns the 400ms delay. Shortcuts use Kbd. A tooltip with several facts uses TooltipDetails (title, label/value rows, hint); a joined sentence of facts is not allowed. A plain-text hint uses TextTooltip.
 - Loading uses Spinner; Skeleton only where the layout is known.
 - Grey has three roles: text-muted-foreground for secondary content, text-subtle for tertiary chrome and absence markers.
@@ -1432,9 +1432,9 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U125) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U126) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
-- check-ui-primitives.sh keeps 53 named PERMANENT lines, each with a reason, plus a dated TEMPORARY block for the P672 guards; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
+- check-ui-primitives.sh keeps 50 named PERMANENT lines, each with a reason, plus a dated TEMPORARY block for the P672 guards; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
 
 ### Shared pickers (P398)
@@ -1466,8 +1466,8 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Type roles: xl landing hero, lg detail and dialog titles, md body and controls (no class), sm meta, badges, section labels; font-data for data only, never font-mono.
 - Spacing: bar px-1.5 gap-1; row from rowVariants gap-1.5; content pane p-3, gap-3 between blocks, gap-2 inside; dialog body p-3 gap-3; card, popover, radio card keep the primitive 2.5 inset with gap-1.5 inside; inline icon and text gap-1, chips gap-1.5. Icons 13 in buttons, menus, rows, bars; 12 in Badge or inline text; 16 DetailHeader or card tile; 24 empty state.
 - Radii: rounded-kira-sm controls, rows, chips, inset blocks; rounded-kira containers; rounded-full dots, avatars, count badges. Dividers 1px border-border; border-l-2 only for quotes; shadows only from elevation tiers.
-- Tabs by role: a form value is SecondaryTabs `choice` (or RadioGroupCard for up to 6 options with descriptions); content sections `tabs`; view switch in a bar `segmented`.
-- Guards U110-U125 in check-ui-primitives.sh hold these rules; current offenders sit in its dated TEMPORARY block, one line per file naming the P672 Part that fixes it, never PERMANENT. U118-U125 landed with zero offenders and have no TEMPORARY line. A fixed entry left behind fails as stale; Part 9 removes the block.
+- Tabs by role: a form value is SecondaryTabs `choice` (or RadioGroupCard for up to 6 options with descriptions); content sections `tabs`; view switch in a bar `segmented`. Bar-hosted controls stay `segmented`. Size: `choice` kira-lg beside form controls, default in a row or composer; `tabs` and `segmented` take no size (U126). A `choice` label is Field + FieldLabel with the same text as its aria-label.
+- Guards U110-U126 in check-ui-primitives.sh hold these rules; current offenders sit in its dated TEMPORARY block, one line per file naming the P672 Part that fixes it, never PERMANENT. U118-U126 landed with zero offenders and have no TEMPORARY line. A fixed entry left behind fails as stale; Part 9 removes the block.
 
 ## Process model
 
