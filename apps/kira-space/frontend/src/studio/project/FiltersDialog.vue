@@ -22,7 +22,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
-import { rowMeta } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta } from '@theme/lib/rowVariants';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useCappedList } from '@workbench/behaviour/cappedList';
 import { revealElement } from '@workbench/behaviour/focus';
@@ -273,7 +273,7 @@ const connectionName = computed(
               data-testid="filter-object-row"
               :data-path="row.path"
               :data-state="row.state"
-              :style="{ paddingLeft: `${8 + row.depth * 14}px` }"
+              :style="rowIndent(row.depth)"
             >
               <TreeTwisty
                 :expanded="expandedPaths.has(row.path)"

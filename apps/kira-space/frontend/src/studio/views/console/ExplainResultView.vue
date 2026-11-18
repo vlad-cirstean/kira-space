@@ -5,7 +5,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Card } from '@theme/components/ui/card';
 import { type MessageKey, t } from '@theme/i18n';
-import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatCount } from '@workbench/behaviour/format';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
@@ -162,7 +162,7 @@ const rawLanguage = computed(() =>
             )
           "
           data-testid="explain-plan-node"
-          :style="{ paddingLeft: `${row.depth * 18 + 4}px` }"
+          :style="rowIndent(row.depth)"
         >
           <TreeTwisty
             :expanded="!collapsedIds.has(row.id)"

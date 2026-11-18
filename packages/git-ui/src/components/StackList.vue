@@ -22,7 +22,7 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { rowMeta } from '@theme/lib/rowVariants';
+import { rowIndent, rowMeta } from '@theme/lib/rowVariants';
 import { changeRequestBadgeClass, refBadgeClass } from '../lib/badgeClass.ts';
 import type { PickerList, PickerStackGroup } from '../lib/pickerModel.ts';
 import {
@@ -114,8 +114,8 @@ async function removeFromStack(branch: string): Promise<void> {
         data-testid="branch-row"
         v-for="row in rowsFor(group.branches)"
         :key="row.name"
-        class="flex items-center gap-0.5 px-1"
-        :style="{ paddingLeft: `${4 + row.depth * 8}px` }"
+        class="flex items-center gap-0.5 pr-1"
+        :style="rowIndent(row.depth)"
         :data-row-id="`stack:${row.name}`"
         :tabindex="focusedRowId === `stack:${row.name}` ? 0 : -1"
       >

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { rowIndent } from '@theme/lib/rowVariants';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { wheelToHorizontal } from '@workbench/lib/wheelScroll';
 import { computed, ref } from 'vue';
@@ -54,7 +55,7 @@ const TOKEN_CLASS: Record<'string' | 'number' | 'keyword' | 'bson', string> = {
       v-for="line in lines"
       :key="line.node.path"
       class="flex items-center whitespace-nowrap w-max min-w-full gap-0.5 pr-2 h-4.5"
-      :style="{ paddingLeft: `${line.depth * 16 + 4}px` }"
+      :style="rowIndent(line.depth)"
       data-testid="document-tree-line"
       :data-path="line.node.path"
       :data-depth="line.depth"
