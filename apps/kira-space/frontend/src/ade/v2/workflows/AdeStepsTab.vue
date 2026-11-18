@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -152,10 +153,12 @@ async function createNew(kind: StepKind): Promise<void> {
       </div>
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
-      <PanelHeader>{{
-        current?.step?.name ??
-        (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
-      }}</PanelHeader>
+      <DetailHeader
+        :title="
+          current?.step?.name ??
+          (current ? configName(current.fileName) : t('space.ade.workflows.tabs.steps.label'))
+        "
+      />
       <div class="min-h-0 flex-1 overflow-auto p-4">
         <AdeLibraryStepEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>

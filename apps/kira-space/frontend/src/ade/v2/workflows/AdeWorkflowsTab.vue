@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -198,10 +199,12 @@ async function createNew(): Promise<void> {
       </div>
     </div>
     <div :class="cn(paneFrame, 'flex flex-1 flex-col')">
-      <PanelHeader>{{
-        current?.workflow?.name ??
-        (current ? configName(current.fileName) : t('space.common.workflow.label'))
-      }}</PanelHeader>
+      <DetailHeader
+        :title="
+          current?.workflow?.name ??
+          (current ? configName(current.fileName) : t('space.common.workflow.label'))
+        "
+      />
       <div class="min-h-0 flex-1 overflow-auto p-4">
         <AdeWorkflowEditor v-if="current" :key="current.fileName" :entry="current" />
       </div>

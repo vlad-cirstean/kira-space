@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import DetailHeader from '@theme/components/DetailHeader.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -134,60 +134,49 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
     <template #default="{ data: a }">
       <AdePanelFrame v-model="tab" :tabs="tabs">
         <template #header>
-          <div class="flex items-start gap-2">
-            <span class="mt-1 box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
-            <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
-            <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
-            <AdeParentChip
-              v-if="parentOf(a)"
-              :parent="parentOf(a)!"
-              @select="boardUi.select(a.task.parentId ?? '')"
-            />
-            <AdeChip
-              v-if="status(a)"
-              :label="status(a)!.name"
-              :color="status(a)!.color"
-              data-testid="ade-archived-status"
-            />
-            <TextTooltip :text="titleOf(a)">
-              <h3
-                class="m-0 line-clamp-2 min-w-0 flex-1 break-words text-kira-lg font-medium text-fg"
-                data-testid="ade-panel-title"
-              >
-                {{ titleOf(a) }}
-              </h3>
-            </TextTooltip>
-          </div>
-          <div class="flex items-center gap-2">
-            <span
-              class="min-w-0 flex-1 truncate text-kira-sm text-muted-foreground"
-              data-testid="ade-panel-facts"
-              >{{
+          <DetailHeader wrap :title="titleOf(a)" title-testid="ade-panel-title">
+            <template #leading>
+              <span class="box-border size-3 shrink-0 rounded-kira-sm bg-subtle" />
+              <AdeChip :label="t('space.ade.panel.archived.label')" tone="grey" />
+              <AdeOrchestratorBadge v-if="a.task.kind === 'orchestrator'" />
+              <AdeParentChip
+                v-if="parentOf(a)"
+                :parent="parentOf(a)!"
+                @select="boardUi.select(a.task.parentId ?? '')"
+              />
+              <AdeChip
+                v-if="status(a)"
+                :label="status(a)!.name"
+                :color="status(a)!.color"
+                data-testid="ade-archived-status"
+              />
+            </template>
+            <template #description>
+              <div class="truncate" data-testid="ade-panel-facts">{{
                 [repos(a), formatDateTime(a.archivedAt)].filter(Boolean).join(' · ')
-              }}</span
+              }}</div>
+              <div>{{ t('space.ade.archived.restore.hint') }}</div>
+            </template>
+            <Alert v-if="restoreError" variant="error" data-testid="ade-archived-restore-error"
+              ><AlertDescription>{{ restoreError }}</AlertDescription></Alert
             >
-            <span class="shrink-0 text-kira-sm text-subtle">{{
-              t('space.ade.archived.restore.hint')
-            }}</span>
-            <Button
-              variant="toolbar"
-              size="kira"
-              class="shrink-0"
-              :pending="restore.isPending.value"
-              data-testid="ade-archived-restore"
-              @click="onRestore"
-              ><CodiconIcon name="discard" :size="13" />{{ t('common.action.restore.label') }}
-            </Button>
-          </div>
-          <Alert v-if="restoreError" variant="error" data-testid="ade-archived-restore-error"
-            ><AlertDescription>{{ restoreError }}</AlertDescription></Alert
-          >
-          <Alert
-            v-if="boardUi.actionError[taskId]"
-            variant="error"
-            data-testid="ade-archived-resume-error"
-            ><AlertDescription>{{ boardUi.actionError[taskId] }}</AlertDescription></Alert
-          >
+            <Alert
+              v-if="boardUi.actionError[taskId]"
+              variant="error"
+              data-testid="ade-archived-resume-error"
+              ><AlertDescription>{{ boardUi.actionError[taskId] }}</AlertDescription></Alert
+            >
+          </DetailHeader>
+        </template>
+        <template #actions>
+          <Button
+            variant="toolbar"
+            size="kira"
+            :pending="restore.isPending.value"
+            data-testid="ade-archived-restore"
+            @click="onRestore"
+            ><CodiconIcon name="discard" :size="13" />{{ t('common.action.restore.label') }}
+          </Button>
         </template>
 
         <div
@@ -196,10 +185,10 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
           class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-3 pb-3 pt-3 text-kira-md"
           data-testid="ade-archived-task-tab"
         >
-          <KeyValueList class="items-center">
+          <KeyValueList>
             <template v-if="a.task.jira">
               <dt>{{ t('space.ade.taskTab.issue.label') }}</dt>
-              <dd class="min-h-row">
+              <dd>
                 <a
                   :href="a.task.jira.url"
                   class="text-info"
@@ -213,7 +202,7 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
             </template>
             <template v-if="a.task.hostLink">
               <dt>{{ t('space.ade.taskTab.pr.label') }}</dt>
-              <dd class="flex min-h-row items-center gap-2">
+              <dd class="flex items-center gap-2">
                 <AdeChip :label="hostLabels.chipOf(a.task.hostLink)" tone="grey" />
                 <a
                   :href="a.task.hostUrl"
@@ -228,14 +217,14 @@ useKeptScroll(() => `ade:archived:${props.taskId}`, bodyEl);
             </template>
             <template v-if="a.task.est">
               <dt>{{ t('space.ade.estimate.field.label') }}</dt>
-              <dd class="min-h-row">{{ a.task.est }}</dd>
+              <dd>{{ a.task.est }}</dd>
             </template>
             <template v-if="a.task.workflow">
               <dt>{{ t('space.common.workflow.label') }}</dt>
-              <dd class="min-h-row" data-testid="ade-archived-workflow">{{ stepText(a) }}</dd>
+              <dd data-testid="ade-archived-workflow">{{ stepText(a) }}</dd>
             </template>
             <dt>{{ t('common.created.label') }}</dt>
-            <dd class="min-h-row">{{ formatDateTime(a.task.createdAt) }}</dd>
+            <dd>{{ formatDateTime(a.task.createdAt) }}</dd>
           </KeyValueList>
 
           <div class="flex flex-col gap-1">
