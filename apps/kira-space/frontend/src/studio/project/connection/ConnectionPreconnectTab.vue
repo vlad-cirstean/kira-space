@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import { PRECONNECT_DELAY_RANGE } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { computed } from 'vue';
-import CheckboxRow from './CheckboxRow.vue';
+import { computed, useId } from 'vue';
+
+const connectionPreconnectSidecarId = useId();
 
 // The command run before a connect. An emptied command removes the whole preconnect mapping.
 const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
@@ -68,14 +76,22 @@ function setDelay(value: string): void {
       }}</FieldError>
     </Field>
 
-    <CheckboxRow
-      v-if="command"
-      :model-value="file.preconnect?.sidecar ?? false"
-      :label="t('studio.project.connectionDialog.sidecar.label')"
-      :description="t('studio.project.connectionDialog.sidecar.description')"
-      testid="connection-preconnect-sidecar"
-      @update:model-value="(v) => patch({ sidecar: v })"
-    />
+    <Field v-if="command" orientation="horizontal">
+      <Checkbox
+        :id="connectionPreconnectSidecarId"
+        :model-value="file.preconnect?.sidecar ?? false"
+        data-testid="connection-preconnect-sidecar"
+        @update:model-value="(v) => patch({ sidecar: v === true })"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionPreconnectSidecarId">{{
+          t('studio.project.connectionDialog.sidecar.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.sidecar.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
 
     <Field v-if="command" class="flex-1">
       <FieldLabel>{{ t('studio.project.connectionDialog.preconnectDelay.label') }}</FieldLabel>

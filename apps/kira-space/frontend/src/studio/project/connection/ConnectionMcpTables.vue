@@ -5,16 +5,17 @@ import { useQuery } from '@tanstack/vue-query';
 import SearchField from '@theme/components/SearchField.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
 import { t } from '@theme/i18n';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
-import CheckboxRow from './CheckboxRow.vue';
+
+const connectionMcpTablesAllId = useId();
 
 const props = defineProps<{
   mcp: ConnectionFileMcp;
@@ -99,14 +100,23 @@ function toggleShown(on: boolean): void {
       {{ t('studio.project.connectionDialog.mcp.tablesNa.body') }}
     </FieldDescription>
     <template v-else>
-      <CheckboxRow
-        :model-value="allTables"
-        :disabled="!enabled"
-        :label="t('studio.project.connectionDialog.mcp.tablesAll.label')"
-        :description="t('studio.project.connectionDialog.mcp.tablesAll.description')"
-        testid="connection-mcp-tables-all"
-        @update:model-value="setAllTables"
-      />
+      <Field orientation="horizontal">
+        <Checkbox
+          :id="connectionMcpTablesAllId"
+          :model-value="allTables"
+          :disabled="!enabled"
+          data-testid="connection-mcp-tables-all"
+          @update:model-value="(v) => setAllTables(v === true)"
+        />
+        <FieldContent>
+          <FieldLabel :for="connectionMcpTablesAllId">{{
+            t('studio.project.connectionDialog.mcp.tablesAll.label')
+          }}</FieldLabel>
+          <FieldDescription>{{
+            t('studio.project.connectionDialog.mcp.tablesAll.description')
+          }}</FieldDescription>
+        </FieldContent>
+      </Field>
       <template v-if="!allTables">
         <FieldDescription
           v-if="!props.connectionId"

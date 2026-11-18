@@ -13,18 +13,27 @@ import {
   statementTimeoutEnforcementOf,
 } from '@shared/domain/dbmcp';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { formatCount } from '@workbench/behaviour/format';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
-import CheckboxRow from './CheckboxRow.vue';
 import ConnectionMcpMasked from './ConnectionMcpMasked.vue';
 import ConnectionMcpReview from './ConnectionMcpReview.vue';
 import ConnectionMcpTables from './ConnectionMcpTables.vue';
+
+const connectionMcpEnabledId = useId();
+const connectionMcpAutoExplainId = useId();
 
 // What an AI client may do through the database MCP server. A key left out takes its default.
 const props = defineProps<{
@@ -169,13 +178,22 @@ const timeoutThrottled = computed(
 
 <template>
   <div class="flex flex-col gap-3 p-3" data-testid="connection-section-mcp">
-    <CheckboxRow
-      :model-value="enabled"
-      :label="t('studio.project.connectionDialog.mcp.expose.label')"
-      :description="t('studio.project.connectionDialog.mcp.expose.description')"
-      testid="connection-mcp-enabled"
-      @update:model-value="(v) => setMcp({ enabled: v })"
-    />
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="connectionMcpEnabledId"
+        :model-value="enabled"
+        data-testid="connection-mcp-enabled"
+        @update:model-value="(v) => setMcp({ enabled: v === true })"
+      />
+      <FieldContent>
+        <FieldLabel :for="connectionMcpEnabledId">{{
+          t('studio.project.connectionDialog.mcp.expose.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.project.connectionDialog.mcp.expose.description')
+        }}</FieldDescription>
+      </FieldContent>
+    </Field>
 
     <Field class="flex-1">
       <FieldLabel
@@ -200,13 +218,18 @@ const timeoutThrottled = computed(
       }}</FieldError>
     </Field>
 
-    <CheckboxRow
-      :model-value="mcp.auto_explain ?? true"
-      :disabled="!enabled || !explainSupported"
-      :label="t('studio.project.connectionDialog.mcp.plan.label')"
-      testid="connection-mcp-auto-explain"
-      @update:model-value="(v) => setMcp({ auto_explain: v })"
-    />
+    <Field orientation="horizontal">
+      <Checkbox
+        :id="connectionMcpAutoExplainId"
+        :model-value="mcp.auto_explain ?? true"
+        :disabled="!enabled || !explainSupported"
+        data-testid="connection-mcp-auto-explain"
+        @update:model-value="(v) => setMcp({ auto_explain: v === true })"
+      />
+      <FieldLabel :for="connectionMcpAutoExplainId">{{
+        t('studio.project.connectionDialog.mcp.plan.label')
+      }}</FieldLabel>
+    </Field>
     <template v-if="enabled">
       <template v-if="rowCheck === 'plan'">
         <FieldDescription class="w-full" data-testid="connection-mcp-rows-who">

@@ -4,12 +4,16 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { computed } from 'vue';
-import CheckboxRow from './CheckboxRow.vue';
+import { computed, useId } from 'vue';
 import { KEEP_HINT_LABEL, MASK_KIND_OPTIONS, maskExample } from './maskKinds';
+
+const maskRuleKeepHintId = useId();
+const maskRuleCorrelateId = useId();
 
 // One masking rule: the column name it matches, its kind, its options and what the agent sees.
 const rule = defineModel<ConnectionFileMask>({ required: true });
@@ -72,24 +76,29 @@ function onToggle(field: 'keep_hint' | 'correlate'): void {
       />
     </div>
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-kira-sm">
-      <CheckboxRow
-        v-if="keepHintLabel"
-        class="flex-none"
-        :model-value="rule.keep_hint ?? true"
-        :label="keepHintLabel"
-        testid="mask-rule-keep-hint"
-        @update:model-value="onToggle('keep_hint')"
-      />
+      <Field v-if="keepHintLabel" class="flex-none" orientation="horizontal">
+        <Checkbox
+          :id="maskRuleKeepHintId"
+          :model-value="rule.keep_hint ?? true"
+          data-testid="mask-rule-keep-hint"
+          @update:model-value="onToggle('keep_hint')"
+        />
+        <FieldLabel :for="maskRuleKeepHintId">{{ keepHintLabel }}</FieldLabel>
+      </Field>
       <Tooltip>
         <TooltipTrigger as-child>
-          <CheckboxRow
-            class="flex-none"
-            :model-value="!isNumber && (rule.correlate ?? true)"
-            :disabled="isNumber"
-            :label="t('studio.project.connectionDialog.privacy.tag.label')"
-            testid="mask-rule-correlate"
-            @update:model-value="onToggle('correlate')"
-          />
+          <Field class="flex-none" orientation="horizontal">
+            <Checkbox
+              :id="maskRuleCorrelateId"
+              :model-value="!isNumber && (rule.correlate ?? true)"
+              :disabled="isNumber"
+              data-testid="mask-rule-correlate"
+              @update:model-value="onToggle('correlate')"
+            />
+            <FieldLabel :for="maskRuleCorrelateId">{{
+              t('studio.project.connectionDialog.privacy.tag.label')
+            }}</FieldLabel>
+          </Field>
         </TooltipTrigger>
         <TooltipContent>{{
           t(

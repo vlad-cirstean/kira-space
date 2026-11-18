@@ -15,7 +15,8 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@theme/components/ui/card';
-import { FieldDescription } from '@theme/components/ui/field';
+import { Checkbox } from '@theme/components/ui/checkbox';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { type MessageKey, t } from '@theme/i18n';
 import { matchesQuery } from '@workbench/behaviour/match';
@@ -23,10 +24,11 @@ import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualR
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, ref } from 'vue';
+import { computed, ref, useId } from 'vue';
 import { control } from '../../bridge/control';
-import CheckboxRow from './CheckboxRow.vue';
 import MaskKindMenu from './MaskKindMenu.vue';
+
+const connectionPrivacyReviewOnId = useId();
 
 // New columns (P534, named in the UI "New columns"): live columns no rule masks and the user did not allow
 // are hidden from the MCP agent. "Allowed" is `mask_review.columns`, part of the file draft; the live
@@ -147,14 +149,23 @@ const STATE_VARIANT = { masked: 'ok', reviewed: 'default', pending: 'warn' } as 
         {{ t('studio.project.connectionDialog.privacy.reviewNa.body') }}
       </FieldDescription>
       <template v-else>
-        <CheckboxRow
-          :model-value="on"
-          :disabled="!on && (!loaded || !connectionId)"
-          :label="t('studio.project.connectionDialog.privacy.reviewSwitch.label')"
-          :description="t('studio.project.connectionDialog.privacy.reviewSwitch.description')"
-          testid="connection-privacy-review-on"
-          @update:model-value="setOn"
-        />
+        <Field orientation="horizontal">
+          <Checkbox
+            :id="connectionPrivacyReviewOnId"
+            :model-value="on"
+            :disabled="!on && (!loaded || !connectionId)"
+            data-testid="connection-privacy-review-on"
+            @update:model-value="(v) => setOn(v === true)"
+          />
+          <FieldContent>
+            <FieldLabel :for="connectionPrivacyReviewOnId">{{
+              t('studio.project.connectionDialog.privacy.reviewSwitch.label')
+            }}</FieldLabel>
+            <FieldDescription>{{
+              t('studio.project.connectionDialog.privacy.reviewSwitch.description')
+            }}</FieldDescription>
+          </FieldContent>
+        </Field>
         <div class="flex items-center gap-2">
           <span
             class="flex-1 text-kira-sm text-subtle"

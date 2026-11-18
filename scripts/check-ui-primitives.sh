@@ -150,7 +150,6 @@ PERMANENT
 # fixes it. Never PERMANENT. An entry that stops matching fails the run, so the block only shrinks;
 # P672 Part 9 deletes the block and this mechanism once it is empty.
 cat >"$TMP/temp" <<'TEMPORARY'
-U110 apps/kira-space/frontend/src/studio/project/connection/CheckboxRow.vue # 2026-11-18 P672 Part 3
 U111 apps/kira-space/frontend/src/ade/v2/AdeAddPopover.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/ade/v2/links/AdeLinkAdd.vue # 2026-11-18 P672 Part 5
 U111 apps/kira-space/frontend/src/ade/v2/panel/AdeTaskBranchForm.vue # 2026-11-18 P672 Part 5
