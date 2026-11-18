@@ -4,6 +4,27 @@ import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { useFocusReturn } from '../behaviour/focus';
 
+/** One option of a `radio`; selecting it runs `run`, reselecting the current one is a no-op. */
+export interface MenuRadioOption {
+  type: 'option';
+  id: string;
+  /** Host `data-testid`; defaults to `menu-item-${id}`. */
+  testId?: string;
+  /** Compared with the radio's `value`; unique within the radio. `null` is the "none" option. */
+  value: string | null;
+  label: string;
+  /** Rich label (VarText) rendered in place of `label`; `label` carries its plain text. */
+  parts?: readonly TextPart[];
+  /** A second, muted line under the label. */
+  detail?: string;
+  /** Renders a small color swatch in the icon column. */
+  swatch?: string;
+  disabled?: boolean;
+  /** Hover explanation, also the reason a `disabled` option is blocked. */
+  hint?: string | readonly TextPart[];
+  run(): void | Promise<void>;
+}
+
 export type MenuItem =
   | {
       type: 'item';
@@ -40,6 +61,28 @@ export type MenuItem =
       items: MenuItem[];
     }
   | { type: 'separator' }
+  /** One group of mutually exclusive options; `value` (null: none) marks the current one. Draws the
+   *  primitive's check on it. Separators between option runs stay inside the group. */
+  | {
+      type: 'radio';
+      id: string;
+      value: string | null;
+      items: readonly (MenuRadioOption | { type: 'separator' })[];
+    }
+  /** An on/off row; draws the primitive's check when `checked`. */
+  | {
+      type: 'checkbox';
+      id: string;
+      testId?: string;
+      label: string;
+      icon?: string;
+      checked: boolean;
+      disabled?: boolean;
+      hint?: string | readonly TextPart[];
+      /** Keeps the menu open on toggle (a facet list toggled several times in a row). */
+      keepOpen?: boolean;
+      run(): void | Promise<void>;
+    }
   /** A non-interactive heading row above the items that follow it (P129 Part 5 §0.10's day
    *  context menu: the day's own `dayLong` above its one toggle). */
   | { type: 'label'; label: string };

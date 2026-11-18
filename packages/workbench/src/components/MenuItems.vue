@@ -4,9 +4,12 @@
 // DropdownMenu/DropdownMenuContent.
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import {
+  DropdownMenuCheckboxItem,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuSub,
@@ -19,7 +22,8 @@ import { colorMarkClass } from '@theme/connColor';
 import { plainText, type TextPart } from '@theme/varText';
 import { useId } from 'vue';
 import { formatShortcut } from '../shortcuts/keys';
-import type { MenuItem } from '../state/contextMenu';
+import type { MenuItem, MenuRadioOption } from '../state/contextMenu';
+import MenuRowLabel from './MenuRowLabel.vue';
 
 defineProps<{ items: readonly MenuItem[] }>();
 
@@ -43,6 +47,27 @@ function tidOf(item: { id: string; testId?: string }): string {
 
 function swatchClass(swatch: string): string {
   return colorMarkClass('swatch', swatch === 'none' ? null : swatch);
+}
+
+// The radio group's model is a string; the "none" option (value null) maps to this.
+const NONE = '__none';
+
+function radioKey(value: string | null): string {
+  return value ?? NONE;
+}
+
+async function onOptionSelect(opt: MenuRadioOption, current: string | null): Promise<void> {
+  if (opt.disabled || opt.value === current) return;
+  await opt.run();
+}
+
+async function onCheckboxSelect(
+  ev: Event,
+  item: Extract<MenuItem, { type: 'checkbox' }>,
+): Promise<void> {
+  if (item.keepOpen) ev.preventDefault();
+  if (item.disabled) return;
+  await item.run();
 }
 
 async function onItemClick(item: MenuItem): Promise<void> {
@@ -76,6 +101,64 @@ async function onItemClick(item: MenuItem): Promise<void> {
       </DropdownMenuPortal>
     </DropdownMenuSub>
 
+    <DropdownMenuRadioGroup
+      v-else-if="item.type === 'radio'"
+      :model-value="radioKey(item.value)"
+      :data-testid="`menu-radio-${item.id}`"
+    >
+      <template
+        v-for="(opt, oidx) in item.items"
+        :key="opt.type === 'separator' ? `separator-${oidx}` : opt.id"
+      >
+        <DropdownMenuSeparator v-if="opt.type === 'separator'" />
+        <Tooltip v-else :disabled="!opt.hint">
+          <TooltipTrigger as-child>
+            <DropdownMenuRadioItem
+              :value="radioKey(opt.value)"
+              :disabled="!!opt.disabled"
+              :class="[opt.hint && HINT_WHEN_DISABLED, opt.detail && DETAIL_ROW]"
+              :data-testid="tidOf(opt)"
+              :data-value="opt.value ?? ''"
+              @select="onOptionSelect(opt, item.value)"
+            >
+              <span class="flex items-center justify-center shrink-0 size-4">
+                <span
+                  v-if="opt.swatch"
+                  data-testid="menu-swatch"
+                  :class="swatchClass(opt.swatch)"
+                />
+              </span>
+              <MenuRowLabel :label="opt.label" :parts="opt.parts" :detail="opt.detail" />
+            </DropdownMenuRadioItem>
+          </TooltipTrigger>
+          <TooltipContent v-if="opt.hint"><VarText :parts="hintParts(opt.hint)" /></TooltipContent>
+        </Tooltip>
+      </template>
+    </DropdownMenuRadioGroup>
+
+    <Tooltip v-else-if="item.type === 'checkbox'" :disabled="!item.hint">
+      <TooltipTrigger as-child>
+        <DropdownMenuCheckboxItem
+          :model-value="item.checked"
+          :disabled="!!item.disabled"
+          :class="item.hint && HINT_WHEN_DISABLED"
+          :data-testid="tidOf(item)"
+          @select="onCheckboxSelect($event, item)"
+        >
+          <span class="flex items-center justify-center shrink-0 size-4">
+            <CodiconIcon
+              v-if="item.icon"
+              :name="item.icon"
+              :size="13"
+              class="text-muted-foreground"
+            />
+          </span>
+          <MenuRowLabel :label="item.label" />
+        </DropdownMenuCheckboxItem>
+      </TooltipTrigger>
+      <TooltipContent v-if="item.hint"><VarText :parts="hintParts(item.hint)" /></TooltipContent>
+    </Tooltip>
+
     <Tooltip v-else :disabled="!item.hint">
       <TooltipTrigger as-child>
         <DropdownMenuItem
@@ -87,7 +170,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
           @select="onItemClick(item)"
         >
           <span class="flex items-center justify-center shrink-0 size-4">
-            <span v-if="item.swatch" :class="swatchClass(item.swatch)" />
+            <span v-if="item.swatch" data-testid="menu-swatch" :class="swatchClass(item.swatch)" />
             <CodiconIcon
               v-else-if="item.icon"
               :name="item.icon"
@@ -95,15 +178,7 @@ async function onItemClick(item: MenuItem): Promise<void> {
               :class="item.danger ? undefined : 'text-muted-foreground'"
             />
           </span>
-          <span class="flex-1 min-w-0">
-            <span class="block truncate">
-              <VarText v-if="item.parts" :parts="item.parts" />
-              <template v-else>{{ item.label }}</template>
-            </span>
-            <span v-if="item.detail" class="block truncate text-kira-sm text-muted-foreground">{{
-              item.detail
-            }}</span>
-          </span>
+          <MenuRowLabel :label="item.label" :parts="item.parts" :detail="item.detail" />
           <span
             v-if="item.hint"
             :id="`${uid}-${item.id}-hint`"
