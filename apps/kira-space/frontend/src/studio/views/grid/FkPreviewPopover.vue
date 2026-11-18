@@ -3,7 +3,6 @@ import type { ForeignKeyMeta } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Table, TableBody, TableCell, TableRow } from '@theme/components/ui/table';
@@ -126,15 +125,14 @@ onUnmounted(() => {
         <InlineState v-else-if="state.status === 'error'" kind="error">{{
           state.message
         }}</InlineState>
-        <Alert
+        <InlineState
           v-else-if="state.status === 'ready' && state.rows.length === 0"
-          variant="info"
+          kind="empty"
           data-testid="fk-preview-empty"
-        >
-          <AlertDescription>{{
+          >{{
             t('studio.grid.fkPreview.noMatch.empty', { table: tableLabel })
-          }}</AlertDescription>
-        </Alert>
+          }}</InlineState
+        >
         <!-- `header-key` marker; look matches SlickGridHost header badges. -->
         <Table v-else-if="state.status === 'ready'" columns>
           <TableBody>

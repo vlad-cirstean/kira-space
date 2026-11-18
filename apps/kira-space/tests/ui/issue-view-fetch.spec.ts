@@ -63,5 +63,7 @@ test('a failed fresh read keeps the saved copy with the failure in the note', as
   });
   await expect(page.locator(t('host-view-title'))).toHaveText('Export report as CSV');
   await expect(page.locator(t('issue-stale'))).toContainText('Couldn’t update it');
-  await expect(page.locator(t('host-view-failure-reason'))).toHaveCount(0);
+  await expect(
+    page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
+  ).toHaveCount(0);
 });

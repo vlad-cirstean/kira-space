@@ -3,7 +3,6 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import Spinner from '@theme/components/Spinner.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -109,13 +108,13 @@ function act(action: ContainerAction): void {
 
 <template>
   <div class="flex h-full flex-col" data-testid="docker-container-detail">
-    <div
+    <EmptyState
       v-if="recreating"
-      class="flex items-center gap-2 p-4 text-muted-foreground"
+      fill
+      loading
       data-testid="docker-detail-recreating"
-    >
-      <Spinner label="" />{{ t('docker.detail.recreating.loading') }}
-    </div>
+      :title="t('docker.detail.recreating.loading')"
+    />
     <QueryState v-else :query="detail" :is-empty="() => false">
       <template #error>
         <EmptyState

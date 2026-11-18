@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ReviewComment } from '@kira/git-ipc';
 import type { MountHandle, ReviewApi } from '@kira/git-ui';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { useTimeoutFn, useWindowFocus } from '@vueuse/core';
@@ -220,7 +221,11 @@ onUnmounted(() => {
     </Alert>
     <div ref="container" class="min-h-0 w-full flex-auto" data-testid="ade-review-files" />
   </div>
-  <Alert v-else variant="info">
-    <AlertDescription>{{ errorMessage }}</AlertDescription>
-  </Alert>
+  <EmptyState
+    v-else
+    fill
+    icon="warning"
+    :title="t('common.state.loadFailed.title')"
+    :description="errorMessage"
+  />
 </template>

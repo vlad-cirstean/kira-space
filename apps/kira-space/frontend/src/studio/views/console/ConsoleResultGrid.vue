@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { ColumnDescriptor } from '@shared/protocol/page';
 import type { VirtualItem } from '@tanstack/vue-virtual';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -444,22 +446,20 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
     <Alert strip v-if="copyError" variant="error" data-testid="console-copy-error">
       <AlertDescription>{{ copyError }}</AlertDescription>
     </Alert>
-    <div
-      v-if="!page || page.rowCount === 0"
-      class="no-rows absolute inset-0 h-full flex items-center justify-center text-muted-foreground text-kira-sm"
-      >{{
-        page ? t('studio.common.noRows.empty') : ''
-      }}</div
-    >
-    <!-- P31 D19/P24 D8 precedent: filtering to zero matches is a distinct empty state from "no
-         data loaded" — same discipline as KeyValueView.vue's own EmptyState pair. -->
-    <div
+    <EmptyState
+      v-if="page?.rowCount === 0"
+      class="no-rows absolute inset-0"
+      icon="table"
+      :title="t('studio.common.noRows.empty')"
+    />
+    <div v-else-if="!page" class="no-rows absolute inset-0" />
+    <EmptyState
       v-else-if="rowIndices.length === 0"
-      class="no-rows absolute inset-0 h-full flex items-center justify-center text-muted-foreground text-kira-sm"
+      class="no-rows absolute inset-0"
       data-testid="console-no-matching-rows"
-    >
-      {{ t('studio.common.noMatchingRows.empty') }}
-    </div>
+      :icon="ICON.search"
+      :title="t('studio.common.noMatchingRows.empty')"
+    />
     <ConsoleSlickGrid
       v-else-if="page.kind === 'tabular'"
       :key="pageKey"

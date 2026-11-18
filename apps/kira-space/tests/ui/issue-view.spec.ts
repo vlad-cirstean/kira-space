@@ -124,7 +124,9 @@ test('comments from the list and omitted comments show their notes', async ({ re
 
 test('unauthenticated shows the reason and Retry asks again', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: issueControl(issueUnauthenticated) });
-  await expect(page.locator(t('host-view-failure-reason'))).toContainText('Jira');
+  await expect(
+    page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
+  ).toContainText('Jira');
   expect(calls(control, IPC.hostViewIssue)).toHaveLength(1);
   await page.locator(t('host-view-retry')).click();
   await expect.poll(() => calls(control, IPC.hostViewIssue)).toHaveLength(2);
@@ -132,7 +134,9 @@ test('unauthenticated shows the reason and Retry asks again', async ({ relaunch 
 
 test('gone shows the not-found reason', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: issueControl(issueGone) });
-  await expect(page.locator(t('host-view-failure-reason'))).toContainText('Jira');
+  await expect(
+    page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
+  ).toContainText('Jira');
 });
 
 test('Refresh fetches the issue again', async ({ relaunch }) => {

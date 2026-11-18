@@ -2,10 +2,10 @@
 import type { EditorLanguageId } from '@shared/domain/editor';
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import {
   Tooltip,
@@ -544,20 +544,17 @@ const statusLine = computed(() => {
               @ready="markDecodedReady"
             />
           </div>
-          <Alert
-            v-else
-            variant="info"
-            class="flex-1 basis-5/12 min-h-0 overflow-auto items-center text-subtle"
-            data-testid="cell-editor-decoded-empty"
-          >
-            <AlertDescription>
-              {{
+          <div v-else class="min-h-0 flex-1 basis-5/12" data-testid="cell-editor-decoded-empty">
+            <EmptyState
+              fill
+              icon="warning"
+              :title="
                 t('studio.cellEditor.decoded.invalid.hint', {
                   format: formatLabel(effectiveFormat),
                 })
-              }}
-            </AlertDescription>
-          </Alert>
+              "
+            />
+          </div>
         </template>
 
         <!-- The three timestamp formats: TimestampPane owns its own readings, zone switch, editable

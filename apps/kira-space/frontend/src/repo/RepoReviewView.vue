@@ -6,7 +6,7 @@
 // `NullViewStateStore` — `ReviewView.vue` never reads it, so there is no per-mount state to persist
 // through a TabViewStateStore the way the graph needs one.
 import type { MountHandle } from '@kira/git-ui';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useCodeReposStore } from '../state/coderepos';
@@ -69,7 +69,11 @@ onUnmounted(() => {
 
 <template>
   <div v-if="!errorMessage" ref="container" class="h-full w-full" data-testid="repo-review-host" />
-  <Alert v-else variant="error">
-    <AlertDescription>{{ errorMessage }}</AlertDescription>
-  </Alert>
+  <EmptyState
+    v-else
+    fill
+    icon="warning"
+    :title="t('common.state.loadFailed.title')"
+    :description="errorMessage"
+  />
 </template>

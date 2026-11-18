@@ -131,7 +131,9 @@ test('unavailable shows the reason and Retry asks again', async ({ relaunch }) =
   const { window: page, control } = await relaunch({
     control: hostViewControl(azureTarget, unavailable),
   });
-  await expect(page.locator(t('host-view-failure-reason'))).toContainText('az login');
+  await expect(
+    page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
+  ).toContainText('az login');
   expect(calls(control, IPC.hostViewChangeRequest)).toHaveLength(1);
   await page.locator(t('host-view-retry')).click();
   await expect.poll(() => calls(control, IPC.hostViewChangeRequest)).toHaveLength(2);
@@ -140,9 +142,9 @@ test('unavailable shows the reason and Retry asks again', async ({ relaunch }) =
 
 test('gone shows the host reason', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: hostViewControl(azureTarget, gone) });
-  await expect(page.locator(t('host-view-failure-reason'))).toHaveText(
-    'not found, or you cannot see it',
-  );
+  await expect(
+    page.locator(`${t('host-view-failure')} [data-slot="empty-description"]`),
+  ).toHaveText('not found, or you cannot see it');
 });
 
 test('Refresh fetches the detail again', async ({ relaunch }) => {

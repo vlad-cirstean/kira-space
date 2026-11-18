@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import EmptyState from '@theme/components/EmptyState.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
@@ -47,13 +48,12 @@ useKeptScroll('ade:needs', bodyEl);
           :task-title="taskOf(n.taskId).title"
           :task-color="taskOf(n.taskId).color"
         />
-        <div
+        <EmptyState
           v-if="needs.empty"
-          class="px-3 py-6 text-kira-lg text-ok"
+          icon="check"
           data-testid="ade-needs-empty"
-        >
-          {{ t('space.ade.needsPage.empty.emptyHint') }}
-        </div>
+          :title="t('space.ade.needsPage.empty.emptyHint')"
+        />
         <div class="flex items-center gap-3 px-3 py-2 text-kira-md text-muted-foreground">
           <span class="flex-1" data-testid="ade-needs-footer">{{ needs.footer }}</span>
           <Button

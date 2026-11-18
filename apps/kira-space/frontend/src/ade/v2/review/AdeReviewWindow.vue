@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
@@ -137,9 +138,12 @@ const left = useLiveSize(
         <div class="min-h-0 flex-1">
           <MainView>
             <template #empty>
-              <p class="m-0 p-4 text-muted-foreground" data-testid="ade-review-empty">{{
-                t('space.ade.review.window.emptyHint.emptyHint')
-              }}</p>
+              <EmptyState
+                fill
+                icon="diff"
+                data-testid="ade-review-empty"
+                :title="t('space.ade.review.window.emptyHint.emptyHint')"
+              />
             </template>
           </MainView>
         </div>

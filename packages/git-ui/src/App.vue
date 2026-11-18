@@ -1718,18 +1718,18 @@ onBeforeUnmount(() => {
     />
     <!-- G12 D6: outside the v-if="repoState" gate below, since bootError means bootstrap() never
          got that far — a blank panel is never an acceptable rendering of a failure. -->
-    <div
+    <EmptyState
       v-if="bootError && !repoState"
-      class="flex flex-col items-center justify-center gap-2 h-full p-4 text-center text-fg"
+      fill
+      icon="warning"
       data-testid="boot-error"
+      :title="t('common.state.loadFailed.title')"
+      :description="t('git.app.bootError.error', { error: bootError })"
     >
-      <p class="max-w-120 text-muted-foreground">{{
-        t('git.app.bootError.error', { error: bootError })
-      }}</p>
-      <Button variant="dialog" size="kira" data-testid="boot-retry" @click="retryBootstrap">
+      <Button variant="toolbar" size="kira" data-testid="boot-retry" @click="retryBootstrap">
         {{ t('common.action.retry.label') }}
       </Button>
-    </div>
+    </EmptyState>
     <template v-else-if="repoState">
       <!-- bootstrap() keeps going after repoState is set — through persisted repo.open,
            the auto-open candidate loop and openStream — so a rejection from any of those must
