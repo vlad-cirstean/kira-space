@@ -105,6 +105,9 @@ const presetItems = computed<MenuItem[]>(() =>
     <Field orientation="responsive">
       <FieldLabel>{{ t('space.ade.workflows.sandbox.access.label') }}</FieldLabel>
       <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('space.ade.workflows.sandbox.access.label')"
         :model-value="sandbox.access"
         :items="items"
         data-testid="ade-wf-sandbox-access"

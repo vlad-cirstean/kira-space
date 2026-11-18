@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
@@ -16,6 +17,18 @@ const implementers = computed(() => {
     .slice(0, Math.max(at, 0))
     .filter((s) => s.kind === 'agent' && s.smartScript === '');
 });
+const sendToItems = [
+  {
+    value: 'implementer',
+    label: t('space.ade.reviewStep.route.implementer.label'),
+    testid: 'ade-wf-step-review-send-to-implementer',
+  },
+  {
+    value: 'new',
+    label: t('space.ade.reviewStep.route.new.label'),
+    testid: 'ade-wf-step-review-send-to-new',
+  },
+];
 function patchReview(p: Partial<ReviewStepConfig>): void {
   if (props.step.review) emit('patch', { review: { ...props.step.review, ...p } });
 }
@@ -25,20 +38,16 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 <template>
   <div v-if="step.review" class="flex flex-col gap-3" data-testid="ade-wf-step-review">
     <Field orientation="responsive">
-      <FieldLabel :for="id('review-send-to')">{{
-        t('space.ade.workflows.stepInspector.reviewSendTo.label')
-      }}</FieldLabel>
-      <NativeSelect
-        :id="id('review-send-to')"
-        variant="bordered"
-        class="w-full"
+      <FieldLabel>{{ t('space.ade.workflows.stepInspector.reviewSendTo.label') }}</FieldLabel>
+      <SecondaryTabs
+        variant="choice"
+        size="kira-lg"
+        :aria-label="t('space.ade.workflows.stepInspector.reviewSendTo.label')"
         :model-value="step.review.sendTo"
+        :items="sendToItems"
         data-testid="ade-wf-step-review-send-to"
         @update:model-value="(v) => patchReview({ sendTo: v === 'new' ? 'new' : 'implementer' })"
-      >
-        <option value="implementer">{{ t('space.ade.reviewStep.route.implementer.label') }}</option>
-        <option value="new">{{ t('space.ade.reviewStep.route.new.label') }}</option>
-      </NativeSelect>
+      />
     </Field>
     <Field v-if="!library && step.review.sendTo === 'implementer'" orientation="responsive">
       <FieldLabel :for="id('review-implementer')">{{

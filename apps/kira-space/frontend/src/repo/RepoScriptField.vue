@@ -55,6 +55,8 @@ const items = computed(() => [
 <template>
   <div class="flex min-w-0 flex-1 flex-col gap-2">
     <SecondaryTabs
+      variant="choice"
+      size="kira-lg"
       :model-value="mode"
       :items="items"
       :aria-label="t('space.repo.config.scriptRef.mode.aria')"

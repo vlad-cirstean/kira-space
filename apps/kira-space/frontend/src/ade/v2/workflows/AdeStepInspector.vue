@@ -216,6 +216,8 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
         @update:model-value="(v: string | number) => patch({ name: String(v) })"
       />
       <SecondaryTabs
+        variant="choice"
+        :aria-label="t('common.field.kind.label')"
         :model-value="step.kind"
         :items="kindItems"
         data-testid="ade-wf-step-kind"

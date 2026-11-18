@@ -55,12 +55,18 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 </script>
 
 <template>
-  <SecondaryTabs
-    :model-value="smart ? 'smart' : 'prompt'"
-    :items="modeItems"
-    data-testid="ade-wf-step-mode"
-    @update:model-value="setMode"
-  />
+  <Field orientation="responsive">
+    <FieldLabel>{{ t('common.mode.label') }}</FieldLabel>
+    <SecondaryTabs
+      variant="choice"
+      size="kira-lg"
+      :aria-label="t('common.mode.label')"
+      :model-value="smart ? 'smart' : 'prompt'"
+      :items="modeItems"
+      data-testid="ade-wf-step-mode"
+      @update:model-value="setMode"
+    />
+  </Field>
   <div v-if="smart" class="flex flex-col gap-3" data-testid="ade-wf-step-smart">
     <Field orientation="responsive">
       <FieldLabel :for="id('script')">{{ t('common.smartScript.label') }}</FieldLabel>

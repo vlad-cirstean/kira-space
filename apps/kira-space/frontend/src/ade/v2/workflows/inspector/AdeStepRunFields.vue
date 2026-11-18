@@ -98,6 +98,8 @@ function setScope(v: string): void {
   <Field v-if="showRepos" orientation="responsive">
     <FieldLabel>{{ t('space.ade.workflows.field.runsOn.label') }}</FieldLabel>
     <SecondaryTabs
+      variant="choice"
+      size="kira-lg"
       :model-value="scope"
       :aria-label="t('space.ade.workflows.field.runsOn.label')"
       :items="scopes"
@@ -123,6 +125,9 @@ function setScope(v: string): void {
   <Field orientation="responsive">
     <FieldLabel>{{ t('common.action.start.label') }}</FieldLabel>
     <SecondaryTabs
+      variant="choice"
+      size="kira-lg"
+      :aria-label="t('common.action.start.label')"
       :model-value="step.before || 'auto'"
       :items="gates"
       data-testid="ade-wf-step-gate"
