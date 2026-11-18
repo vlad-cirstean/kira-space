@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { reactive, toRefs } from 'vue';
 import { useFocusReturn } from '../behaviour/focus';
 
-/** One option of a `radio`; selecting it runs `run`, reselecting the current one is a no-op. */
+/** One option of a `radio`; selecting it runs `run`. Reselecting the current one is a no-op unless `rerun`. */
 export interface MenuRadioOption {
   type: 'option';
   id: string;
@@ -20,6 +20,8 @@ export interface MenuRadioOption {
   /** Renders a small color swatch in the icon column. */
   swatch?: string;
   disabled?: boolean;
+  /** Run even when this option is the radio's current value. */
+  rerun?: boolean;
   /** Hover explanation, also the reason a `disabled` option is blocked. */
   hint?: string | readonly TextPart[];
   run(): void | Promise<void>;

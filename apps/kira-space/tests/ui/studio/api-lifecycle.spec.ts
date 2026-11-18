@@ -190,6 +190,34 @@ test('a folder moves to another collection from its menu, and its open request t
   await expect(page.locator('[data-testid="tab"]')).toHaveCount(1);
 });
 
+test('a nested request moves to its own collection root from the menu', async ({ relaunch }) => {
+  const orders = idOf(nested.collections, 'Orders v2');
+  const folder = idOf(nested.items, 'Operations');
+  const request = idOf(nested.items, 'List all orders');
+  const { window: page, control } = await relaunch({
+    control: [
+      ...list(nested, nested),
+      { channel: IPC.collectionsMoveItems, response: contract(KEY, 'result#before') },
+    ],
+  });
+  await openHttpMode(page);
+  await twisty(page, orders).click();
+  await twisty(page, folder).click();
+
+  await collectionRow(page, request).click({ button: 'right' });
+  await menuItem(page, 'move-to-collection').hover();
+  await page
+    .locator(`[data-testid="context-submenu"] [data-testid="menu-item-move-to-${orders}"]`)
+    .click();
+  await expect.poll(() => calls(control, IPC.collectionsMoveItems)).toHaveLength(1);
+  expect(calls(control, IPC.collectionsMoveItems)[0].args).toMatchObject({
+    itemIds: [request],
+    collectionId: orders,
+    parentId: null,
+    beforeId: null,
+  });
+});
+
 test('Delete on a mixed selection counts the topmost rows and confirms before one call', async ({
   relaunch,
 }) => {

@@ -58,7 +58,7 @@ function radioKey(value: string | null): string {
 }
 
 async function onOptionSelect(opt: MenuRadioOption, current: string | null): Promise<void> {
-  if (opt.disabled || opt.value === current) return;
+  if (opt.disabled || (opt.value === current && !opt.rerun)) return;
   await opt.run();
 }
 

@@ -25,6 +25,7 @@ export function moveToCollectionMenu(opts: {
       value: null,
       label: t('automations.dialog.script.noCollection.option'),
       disabled: !canMoveTo(null),
+      rerun: true,
       run: () => opts.onMove(null),
     });
   }
@@ -35,6 +36,7 @@ export function moveToCollectionMenu(opts: {
       value: c.id,
       label: c.name,
       disabled: !canMoveTo(c.id),
+      rerun: true,
       run: () => opts.onMove(c.id),
     });
   }
