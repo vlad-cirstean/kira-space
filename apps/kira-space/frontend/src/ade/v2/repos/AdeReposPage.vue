@@ -428,7 +428,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
           <div
             v-for="(f, i) in folders"
             :key="f.path"
-            class="flex items-center gap-2 rounded-kira bg-field px-2 py-1"
+            class="flex items-center gap-2 rounded-kira-sm bg-field px-2 py-1"
             data-testid="ade-repos-folder"
             :data-path="f.path"
           >

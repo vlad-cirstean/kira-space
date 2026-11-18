@@ -282,7 +282,7 @@ function onToggleWorkingReviewed(path: string): void {
       >
       <section
         v-if="workingFiles.length > 0"
-        class="flex flex-col min-h-0 border-l-2 border-l-warn"
+        class="flex flex-col min-h-0"
         :class="committed ? 'max-h-[40%] shrink-0' : 'flex-auto'"
         data-testid="review-working"
       >

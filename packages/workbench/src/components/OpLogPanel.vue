@@ -395,8 +395,7 @@ function alignClass(column: OpLogColumn): string {
                   VIRTUAL_ROW_CLASS,
                   tableRowClass,
                   'group/row grid items-center gap-2 px-2 select-text h-4.5',
-                  entry.item.row.record.status === 'error' &&
-                    'bg-error/15 shadow-[inset_2px_0_0_var(--color-error)]',
+                  entry.item.row.record.status === 'error' && 'bg-error/15',
                 )
               "
               data-testid="op-row"

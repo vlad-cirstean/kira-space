@@ -60,8 +60,7 @@ watch(
 function rowClass(selected: boolean): string {
   return cn(
     rowVariants({ layout: 'double', selected }),
-    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal rounded-kira border-0 border-l-3 border-solid px-2 py-2 text-left',
-    selected ? 'border-l-tone-amber-solid' : 'border-l-transparent',
+    'box-border w-full flex-col items-stretch gap-0.5 whitespace-normal px-2 py-2 text-left',
   );
 }
 

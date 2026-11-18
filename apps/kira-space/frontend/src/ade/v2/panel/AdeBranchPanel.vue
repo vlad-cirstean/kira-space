@@ -507,7 +507,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         <div
           v-for="i in intoRows"
           :key="i.target"
-          class="flex min-h-row items-center gap-2 rounded-kira bg-elevated px-1.5"
+          class="flex min-h-row items-center gap-2 rounded-kira-sm bg-elevated px-1.5"
           data-testid="ade-branch-into"
           :data-target="i.target"
         >
@@ -547,7 +547,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
         <div
           v-for="d in deployRows"
           :key="d.env"
-          class="flex min-h-row items-center gap-2 rounded-kira bg-elevated px-1.5"
+          class="flex min-h-row items-center gap-2 rounded-kira-sm bg-elevated px-1.5"
           data-testid="ade-branch-deploy"
           :data-env="d.env"
         >

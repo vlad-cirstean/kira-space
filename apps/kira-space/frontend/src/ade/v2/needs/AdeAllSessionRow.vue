@@ -46,7 +46,7 @@ function open(): void {
   <div
     role="button"
     tabindex="0"
-    class="flex items-center gap-3 rounded-kira px-3 py-1.5"
+    class="flex items-center gap-3 rounded-kira-sm px-3 py-1.5"
     data-testid="ade-all-session"
     :data-session-id="view.session.id"
     @click="open"

@@ -109,7 +109,7 @@ function copy(): void {
 
 <template>
   <div
-    class="flex flex-col gap-1.5 rounded-kira bg-elevated p-2"
+    class="flex flex-col gap-1.5 rounded-kira-sm bg-elevated p-2"
     data-testid="ade-run-outcome"
     :data-run-id="run.id"
   >
