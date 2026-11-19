@@ -2,10 +2,10 @@ import type { EditContent } from '@shared/domain/repo';
 import { useMutation } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { useWindowFocus } from '@vueuse/core';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, type Ref, ref, watch } from 'vue';
+import { computed, type Ref, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useFileTreeStore } from '../../repo/state/fileTree';
 import { useFileEditStore } from '../../state/fileEdit';
@@ -54,7 +54,8 @@ export function useFileEdit(o: FileEditOptions) {
   const NO_SUGGEST_ACTION = 'kira.noSuggest'; // doubles as the required label; never shown
   let contentSub: { dispose(): void } | null = null;
   let noSuggestSub: { dispose(): void } | null = null;
-  const errorMessage = ref('');
+  const surface = useTaskAction();
+  const errorMessage = surface.error;
 
   const editing = computed(() => store.isEditing(o.tabId));
   const dirty = computed(() => store.isDirty(o.tabId));
@@ -95,7 +96,7 @@ export function useFileEdit(o: FileEditOptions) {
     try {
       return await readMutation.mutateAsync(repoId);
     } catch (err) {
-      errorMessage.value = errorText(err);
+      surface.fail(err);
       return null;
     }
   }
@@ -146,13 +147,13 @@ export function useFileEdit(o: FileEditOptions) {
   }
 
   async function enter(): Promise<void> {
-    errorMessage.value = '';
+    surface.reset();
     if (!editor || editing.value || busy.value) return;
     const fresh = await readFresh();
     const m = model();
     if (!fresh || !m) return;
     if (fresh.kind !== 'found') {
-      errorMessage.value = failureText(fresh);
+      surface.fail(failureText(fresh));
       return;
     }
     if (m.getValue() !== fresh.text) m.setValue(fresh.text);
@@ -184,7 +185,7 @@ export function useFileEdit(o: FileEditOptions) {
     const versionId = m.getAlternativeVersionId();
     // preserveBOM: Monaco strips a leading BOM from the model; without it a save would drop it.
     const text = m.getValue(undefined, true);
-    errorMessage.value = '';
+    surface.reset();
     try {
       const res = await writeMutation.mutateAsync({ repoId, text, baseHash: session.baseHash });
       store.markSaved(o.tabId, res.hash, versionId);
@@ -197,7 +198,7 @@ export function useFileEdit(o: FileEditOptions) {
         store.setConflict(o.tabId, probe?.kind === 'missing' ? 'gone' : 'changed');
         return;
       }
-      errorMessage.value = errorText(err);
+      surface.fail(err);
     }
   }
 
@@ -208,7 +209,7 @@ export function useFileEdit(o: FileEditOptions) {
     const fresh = await readFresh();
     if (!fresh) return;
     if (fresh.kind !== 'found' && fresh.kind !== 'missing') {
-      errorMessage.value = failureText(fresh);
+      surface.fail(failureText(fresh));
       return;
     }
     const s = store.sessions[o.tabId];
@@ -228,11 +229,11 @@ export function useFileEdit(o: FileEditOptions) {
       return;
     }
     if (fresh.kind !== 'found') {
-      errorMessage.value = failureText(fresh);
+      surface.fail(failureText(fresh));
       return;
     }
     syncBuffer(fresh.text, fresh.hash);
-    errorMessage.value = '';
+    surface.reset();
   }
 
   async function done(): Promise<void> {
@@ -257,7 +258,7 @@ export function useFileEdit(o: FileEditOptions) {
       leave();
       o.onGone();
     } else {
-      errorMessage.value = failureText(fresh);
+      surface.fail(failureText(fresh));
     }
   }
 
