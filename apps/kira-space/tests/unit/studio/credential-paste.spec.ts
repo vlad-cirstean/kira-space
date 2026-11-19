@@ -153,6 +153,22 @@ const ROWS: Row[] = [
     expect: { username: ['u'] },
   },
   {
+    name: 'CLI line cut at a bare pipe',
+    input: 'psql -h h -U u | tee log',
+    expect: { host: ['h'], username: ['u'] },
+  },
+  {
+    name: 'dollar variable kept literal',
+    input: 'psql -h h -U u -d db -W $PGPASSWORD',
+    expect: { host: ['h'], username: ['u'], database: ['db', '$PGPASSWORD'] },
+  },
+  {
+    name: 'unterminated quote reads to end of line',
+    kind: 'mysql',
+    input: "mysql -u u -p'pa ss",
+    expect: { username: ['u'], password: ['pa ss'] },
+  },
+  {
     name: 'redis-cli',
     kind: 'redis',
     input: 'redis-cli -h r -p 6380 -a "pw 1" -n 2',

@@ -1,7 +1,7 @@
 import type { ConnectionKind } from '@shared/domain/connection';
 import { AWS_STYLE_KINDS, FILE_KINDS } from '@shared/domain/connection';
 import { t } from '@theme/i18n';
-import { parse as shellParse } from 'shell-quote';
+import { split } from 'shlex';
 
 export type PasteField =
   | 'host'
@@ -372,16 +372,25 @@ function clientOf(line: string): { prefix: string; rest: string; name: string | 
   return null;
 }
 
-function tokenize(text: string): string[] {
-  // Return the literal `$NAME` so nothing is ever substituted from an environment.
-  const entries = shellParse(text, (key: string) => `$${key}`);
-  const tokens: string[] = [];
-  for (const e of entries) {
-    if (typeof e === 'string') tokens.push(e);
-    else if ('pattern' in e) tokens.push(e.pattern);
-    else break;
+// Bare operators end the command; shlex splits words only, so a quoted `;` stays inside its word.
+const SHELL_OPERATORS = new Set(['|', '||', '&', '&&', ';', '>', '>>', '<', '#']);
+
+/** shlex throws on an unterminated quote; shell-quote read it to end of line. Keep that. */
+function splitLenient(text: string): string[] {
+  for (const tail of ['', "'", '"']) {
+    try {
+      return split(text + tail);
+    } catch {
+      // try the next closing quote
+    }
   }
-  return tokens;
+  return [];
+}
+
+function tokenize(text: string): string[] {
+  const argv = splitLenient(text);
+  const stop = argv.findIndex((t) => SHELL_OPERATORS.has(t));
+  return stop === -1 ? argv : argv.slice(0, stop);
 }
 
 function splitFlag(t: string): { flag: string; attached: string | undefined } {
