@@ -6,7 +6,7 @@ Phases from `P690` (highest shipped: `P689`, chapter v0.3.18). Next new phase: `
 
 | # | Phase | Status |
 |---|-------|--------|
-| P690 | Remove the memory module; keep it on an archive tag | Planned |
+| P690 | Remove the memory module; keep it on an archive tag | Done |
 | P691 | Project file view moves from the Git module into agent tasks; Reveal in file manager, Open in VS Code | Planned |
 | P692 | Agents module: color-coded task Start and Finish buttons | Done |
 | P693 Part 1 | Agents module RAM: measure and audit | Planned |
@@ -54,6 +54,8 @@ Open design questions for the planner:
 Done when: tag (or branch) exists on `origin` and restores the module; `rg -i "memory"` outside `docs/history/`, `docs/PERF.md` historical rows and unrelated RAM wording returns no module reference; `internal/memory`, `memoryflow`, `bridge/memory*`, the frontend `memory/` tree, the memory specs, contracts, goldens, visual PNGs and site pages are gone; `go build ./...`, `go vet`, `go mod tidy` (no diff), typecheck, lint, knip, `verify:packaging`, `check-conventions`, `check-ui-primitives`, `check-copy` pass; JS worker and `docshistory` still work (`jsengine` tests, `scripts/docshistory` tests); settings JSON with the old keys loads; ARCHITECTURE, DEV_ENVIRONMENT, README and site have no memory-module text; screenshot and visual lists updated. No flow or UI half (removal only); the plan says which existing specs prove the rest of the app is unchanged.
 
 Plan: `plans/P690.md`.
+
+Result: memory module, ONNX runtime, tokenizer and memory-only harness and op-log paths removed; `workerproc` and `StripMarkup` relocated; settings keep loading with legacy `memory.*`/`experimental.memory` rows (flow and UI spec). Archive tag `archive/memory-v0.3.18` on `a08665c6a` exists locally; push to origin answered HTTP 403, so it must be pushed before the chapter PR. Details in the plan's Result.
 
 ## P691: Project file view moves into agent tasks
 
