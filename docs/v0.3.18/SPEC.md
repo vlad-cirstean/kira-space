@@ -6,7 +6,10 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 
 | # | Phase | Status |
 |---|-------|--------|
-| P674 | Full-app UI uniformity audit | Planned |
+| P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Planned |
+| P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Planned |
+| P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
+| P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Planned |
 | P676 | API MCP: scripted request preparation and result transform | Planned |
 | P677 | API MCP: result review with raw and transformed views | Planned |
@@ -20,7 +23,7 @@ Chapter end (unasked, per working agreement, after the last implementation phase
 
 Standing rules for every phase below: new feature tests split at the IPC boundary (flow test plus UI spec, same scenario); UI follows `docs/ARCHITECTURE.md` uniformity rules and the guard script; no secret ever reaches an agent, a log or the op log; open-source licences only (check package and feature level).
 
-## P674: Full-app UI uniformity audit
+## P674 Parts 1 to 4: Full-app UI uniformity audit
 
 Same method as v0.3.17 P672, but whole app with no subject list: the earlier pass was organised by subject (forms, buttons, menus, headings, status, tabs, states). This pass finds reimplementations and variation the subject list could not name. Scope is every module (Studio, Space, git-ui, ADE, docker-ui, mobile, capture, settings, approvals, site where it shares theme).
 
