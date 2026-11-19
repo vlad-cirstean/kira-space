@@ -37,6 +37,7 @@
 # Guards U191-U203: docs/HISTORY.md (v0.3.18).
 # Guard U204: docs/HISTORY.md (v0.3.18).
 # Guards U205-U207: docs/HISTORY.md (v0.3.18).
+# Guards U208-U209: docs/v0.3.19/plans/P692.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -304,7 +305,7 @@ U121@@v@@@@DialogDescription inside DialogBody (intro text is the header descrip
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
 U124@@v@@CodeBlock.vue|AdeTaskCard.vue@@Card class sets padding, gap, type, fill, border, opacity or row layout, or binds :class (variant inset, section or list; state shows through a Badge; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle|border|opacity-|bg-|rounded|shadow)|<Card\b(?&t)\s:class=
 U123@@v@@@@plain-text Tooltip triple (use TextTooltip; text and kbd: TextTooltip :kbd, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*(?:<Kbd>\{\{(?:(?!\}\}).)*\}\}</Kbd>\s*)?</TooltipContent>\s*</Tooltip>
-U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
+U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
 U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
 U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl off the landing hero (detail values are text-kira-lg, RTy.1)@@${TOK}text-kira-xl(?![\w-])
@@ -386,6 +387,8 @@ U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand
 U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
 U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
 U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
+U208@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
+U209@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
 GUARDS
 
 # hits: "U<n> path"
