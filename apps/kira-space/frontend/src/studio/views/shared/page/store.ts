@@ -194,3 +194,33 @@ export function createPageStore<P extends { rowCount: number; byteSize: number }
 
   return store;
 }
+
+export interface PageModuleApi<P> {
+  pageVersion: { n: number };
+  bumpPageVersion(): void;
+  setPage(scope: string, page: P): void;
+  getPage(scope: string): P | null;
+  drop(scope: string): void;
+  dropForPrefix(prefix: string): void;
+  totalRetainedBytes(): number;
+  setVisibleWindow(scope: string, startRow: number, endRow: number): void;
+  /** Playwright-only (main.ts's `window.__kiraRetention`, C1). */
+  pageStoreEntries(): RetentionEntry<P>[];
+}
+
+/** The public surface every page module re-exports; `cached`/`cachedView` stay private to it. */
+export function pageModuleApi<P extends { rowCount: number; byteSize: number }>(
+  store: PageStore<P>,
+): PageModuleApi<P> {
+  return {
+    pageVersion: store.pageVersion,
+    bumpPageVersion: store.bumpPageVersion,
+    setPage: store.setPage,
+    getPage: store.getPage,
+    drop: store.drop,
+    dropForPrefix: store.dropForPrefix,
+    totalRetainedBytes: store.totalRetainedBytes,
+    setVisibleWindow: store.setVisibleWindow,
+    pageStoreEntries: () => retentionEntries(store),
+  };
+}
