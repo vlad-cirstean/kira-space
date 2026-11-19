@@ -187,7 +187,6 @@ test('a repo workspace: the panel has two top-level tabs (Repos/Review), no File
   await expect(topTabs).toHaveCount(2);
   const labels = await topTabs.allTextContents();
   expect(labels.map((l) => l.trim())).toEqual(['Repositories', 'Review']);
-  await expect(page.locator('[data-testid="git-panel-tab-files"]')).toHaveCount(0);
 
   // Review shows the real ReviewView.vue bundle, not an empty container.
   await page.locator('[data-testid="git-panel-tab-review"]').click();

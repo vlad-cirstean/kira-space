@@ -120,8 +120,8 @@ const SPACE_TAB_KINDS: TabKindRegistry<SpaceTabKind, TabRecord, TabIcon, Palette
     pinned: true,
     keepMounted: true,
   },
-  // One opened repository file, rendered by Monaco (read-only). The same seti icon the file tree
-  // already shows for this path (RepoTreeRow.vue's own fileIconStyle, repo/fileIcon.ts).
+  // One opened repository file, rendered by Monaco (read-only). The same seti icon the task Files
+  // tree shows for this path (AdeFileTreeRow.vue's fileIconStyle, repo/fileIcon.ts).
   'repo-file': {
     mode: SPACE_TAB_KIND_MODE['repo-file'],
     title: repoFileTitle,

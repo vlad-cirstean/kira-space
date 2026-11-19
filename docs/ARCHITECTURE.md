@@ -88,7 +88,7 @@ whatever sandbox a session happens to be in),
 - scripts/check-theme-classes.sh guards retired class names (the p-* family, legacy text-muted/bg-input names, retired kui-* selectors) from returning, and runs as part of bun run lint.
 - Fetch a new shadcn-vue component set by direct-registry pull, not by shadcn-vue add; the procedure is in docs/DEV_ENVIRONMENT.md's shadcn-vue section.
 - Empty/EmptyMedia/EmptyTitle/EmptyDescription (components/ui/empty/) is the one empty-state component; Alert with class empty-state (role=alert on a merely empty list) was a misuse and was converted.
-- Row components (TreeRow, CollectionRow, RepoTreeRow, RepoSearchRow) take a class prop and own their selection ternary instead of using a shared .tree-row/.selected/.sticky CSS rule.
+- Row components (TreeRow, CollectionRow, AdeFileTreeRow, AdeFileSearchRow) take a class prop and own their selection ternary instead of using a shared .tree-row/.selected/.sticky CSS rule.
 - Row state class is selected ? 'bg-select' : sticky ? 'bg-bg hover:bg-field' : 'hover:bg-field'; sticky is a prop so a row in a sticky layer paints its own background, and selected beats hover by ternary order, not CSS specificity.
 - In git-ui dialogs, pair every control that is not natively input-like with an explicit useId()-driven for/id, because biome's noLabelWithoutControl can't see through a wrapped component's inheritAttrs: false to the native element.
 - Pass prioritize-position on a point-anchored DropdownMenu so reka's Popper flips before it shifts, since shift alone can clamp overflow to zero against a 0×0 anchor and starve flip of a signal.
@@ -1437,7 +1437,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every useSortableReorder caller outside the left panel passes keyboard: true; left-panel lists reorder by drag only. Explicit-Save surfaces bind form.save.
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
-- In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
+- In-memory trees (Studio collections) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree, Space task Files tree) do not restore.
 - UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U207) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 55 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
@@ -1845,7 +1845,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - The reader/writer gate is unchanged from the single-client design but now lives on the shared RepoEntry, so it serializes across connections instead of within one.
 - There is one git watcher per repository, fanned out to subscribers. It covers HEAD, refs/**, packed-refs, index, FETCH_HEAD, MERGE_HEAD, rebase-*, CHERRY_PICK_HEAD, REVERT_HEAD and sequencer in commonDir/gitDir only, never the worktree.
 - A source file saved by an editor produces no event on the git watcher, and its output (chan Signal) carries no path.
-- Nothing else in the app watches the worktree; the native code workspace's project tree and search are refresh-on-demand by design, not backed by a second watcher.
+- Nothing else in the app watches the worktree; the task Files tab's tree and search are refresh-on-demand by design, not backed by a second watcher.
 - Watcher events are debounced 200 ms and delivered to each subscriber over its own coalescing buffered channel, so one slow client cannot stall the watcher for others.
 - The darwin watcher backend is FSEvents (gitclient/watcher_fsevents_darwin.go, darwin && cgo); the fsnotify implementation remains the !darwin || !cgo companion used by Linux dev/test.
 - FSEvents was chosen over fsnotify on macOS because kqueue needs one open file descriptor per watched directory under commonDir/refs, a cost against kern.maxfilesperproc on repositories with many loose refs; FSEvents watches recursively through one stream.
@@ -1970,9 +1970,13 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - openTab's previewCohort flag (P74 §5.2) lets a bulk opener such as "Open all changes" join several tabs into one replaceable batch: the first file evicts, later files join with the flag set.
 - Pinning is a property of tab kind (TabKindDef.pinned); repo-graph is the only pinned kind: permanently first, unclosable, un-reorderable, un-duplicable.
 - C10 replaced the TAB_VIEWS['repo-graph'] placeholder view (RepoGraphView.vue) in workbench/tabViews.ts with the real packages/git-ui mount (RepoGraphTabView).
+- The project file view lives in agent tasks, not the Git module (P691): the task panel's Files tab (ade/v2/files/) lists, searches and reads a task branch's worktree through AdeTaskService.TaskFiles, TaskFileRead, TaskFilesSearch, TaskFilesCancelSearch and TaskFilesClose. The Git panel has two tabs, Repos and Review; a stored 'files' choice reads as Repos.
+- The client sends a branch row id and a repository-relative path, never a filesystem path. ade.TaskBoard resolves the worktree root from the branch row and keeps one codeworkspace.Session per branch row id (internal/ade/taskfiles.go), opened lazily and dropped by TaskFilesClose, which the Files tab calls on a branch switch and on unmount. A branch without a worktree has an empty Files tab.
+- The Files tab is read-only. A file opens in a viewer inside the panel, not a tab; edit mode, saves and blame stay with the repo-file tabs of the Git module. Editing a task's worktree belongs to the agent, and Open in VS Code covers the user's own edits.
+- Reveal in file manager and Open in VS Code go through AdeTaskService.TaskFileReveal and TaskFileOpenInEditor, with path "" meaning the worktree root. The bridge defines the seams (TaskRevealer, EditorLauncher); internal/editorlaunch locates VS Code (PATH, then the per-platform install locations) on every call and starts it detached, never waited on. TaskFilesLaunchers reports what a build offers (reveal: finder, explorer, fileManager or none; editor: bool) and the UI hides an action the build lacks. The server build wires neither.
 - The file list comes from codeworkspace.EnumerateAll (internal/codeworkspace/enumerate.go), using git ls-files -z --cached --others --exclude-standard (same argv as the search scanner), unfiltered by extension, capped at 200,000 paths as an IPC-payload limit.
-- The tree view virtualizes rendered rows with @tanstack/vue-virtual (P104's replacement for the deleted hand-rolled tree-host component).
-- The file list refreshes only on workspace open and explicit Refresh; there is no worktree watcher, so outside changes appear only then.
+- The tree virtualizes rendered rows with @tanstack/vue-virtual. The first load of a branch opens the root's own directories; a later Refresh never re-expands what the user collapsed.
+- The file list refreshes only when the Files tab loads and on explicit Refresh; there is no worktree watcher, so outside changes appear only then.
 - Worktree files are editable only through CodeWorkspaceService.WriteFile (P419); every git invocation stays ReadOnly: true. Monaco opens readOnly and domReadOnly and switches to EDIT_OPTIONS (useReadonlyFileViewer.ts) only in edit mode; only repo-file tabs on the worktree (no revision pin) define a dirty flag and badge. Diff, local-file and revision-pinned tabs never edit.
 - WriteFile is guarded by a base hash: it takes the SHA-256 of the bytes ReadFileForEdit returned, and a file whose current hash differs (or is gone) answers E_CONFLICT with disk untouched. A hash of "" expects the file absent, which recreates a deleted file. A mutex serializes saves inside the process; an external writer racing the microseconds between hash compare and replace is not guarded.
 - WriteFile replaces the file atomically with renameio, keeping its mode; this breaks hard links, and a symlinked leaf keeps its link while the target is replaced. Text over MaxReadBytes is refused.
@@ -1996,7 +2000,6 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - The diff editor is mounted readOnly/domReadOnly with renderMarginRevertIcon false and renderGutterMenu false, which is not cosmetic: both widgets surface revert/apply affordances that would let a user trigger a write.
 - Keep the diff editor's diffAlgorithm at its pinned default; never use 'advanced-wasm' or 'advanced-external', because they resolve an external computer this bundle doesn't ship.
 - The repo-diff tab has no session state (repoDiffTabStateSchema is {}); a restored diff tab re-reads both sides and opens at Monaco's first change.
-- "Open changes" in the tree's context menu is gated on the tree's status glyph and opens the diff as a permanent tab, never the preview slot.
 - The diff editor is the first real consumer of editor.worker; the Monaco chunk size was unchanged by the diff phase because the diff contribution was already inside register.all.js.
 - A reveal (e.g. a search result) applies to a tab whose editor is already mounted and active: openRepoFileTab's reveal option calls requestReveal, which moves the cursor immediately if the editor is live and otherwise stores the request for the next mount.
 - Code search uses no search library: RE2 (stdlib regexp), git ls-files and a bounded worker pool, with a hand-rolled scanner in internal/codeworkspace/search.go applying binary/size/long-line gates, UTF-16 columns and preview windowing. RE2 is linear time so user patterns can't hang the app.
@@ -2007,8 +2010,8 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - A NUL found later in a file is checked once per matching line and drops the whole file, including matches already collected; the skip count (FilesSkipped) is always reported, never silent.
 - Match columns are computed by utf16Units, extracted from LineIndex.Position (internal/codeworkspace/textpos.go), so they follow the same UTF-16 rules and a click doesn't land a column off on non-ASCII lines; it is LineIndex's sole surviving consumer since P97 removed native code navigation.
 - Search results stream over the coalescing push channel kira:code:search, flushing on 60 ms, an accumulated match count, or the terminal event (which always fires, even on cancel), emitted only to the window that asked.
-- Only one search runs per workspace (Session.BeginSearch/CancelSearch): a new search cancels the previous one and Session.Close cancels it too; it is not a queue because the UI has one query box per workspace.
-- Search results live in the repo panel's left-panel Files/Search switch rather than a new tab kind, so the result list stays visible while opened files take over the main area.
+- Only one search runs per session (Session.BeginSearch/CancelSearch), so one per task branch: a new search cancels the previous one and Session.Close cancels it too; it is not a queue because the Files tab has one query box per branch.
+- Search results live in the Files tab's Files/Search switch, beside the viewer, so the result list stays visible while a match shows in the viewer.
 - In-file search uses Monaco's built-in find widget via the view.find command registered in RepoFileView.vue and RepoDiffView.vue; in the diff editor it runs against getModifiedEditor() because IStandaloneDiffEditor has no getAction and the worktree pane matches the file on disk.
 - Only a true markdown file (monacoLanguageFor in views/repo/language.ts returning 'markdown') gets the Source/Reading toggle; .mdx is excluded because it colors as its own Monaco language, and every other file type is unchanged with no wrapper element or toolbar.
 - Markdown files open on Source like every other file type; the reading view is opt-in. The choice persists per tab via repoFileTabStateSchema's markdownReading field (.default(false)) so tabs saved before the field existed still restore.
@@ -2110,10 +2113,10 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 
 ### Code review, ported natively (C11)
 
-- In Kira Space, the review panel is a third left-panel segment (Repos/Files/Review) in GitPanel.vue, not a tab. A repo-review tab kind mirroring repo-graph was rejected because the review workflow (pick a file, read its diff, mark it, pick the next) would cost two tab switches per file and hide the diff being reviewed.
+- In Kira Space, the review panel is the second left-panel segment (Repos/Review) in GitPanel.vue, not a tab. A repo-review tab kind mirroring repo-graph was rejected because the review workflow (pick a file, read its diff, mark it, pick the next) would cost two tab switches per file and hide the diff being reviewed.
 - ReviewView.vue is built for sidebar width and takes NullViewStateStore for the graph-shaped viewState. Filter, filter bar, selected file, expanded rows and pane scrolls survive an unmount through MountOptions.keep (the host's useViewStateStore, provided as KEPT_VIEW_STATE_KEY); keys `git:review:<codeRepoId>` plus `:b:<branch>:<surface>`, dropped on workspace close and on back to branch selection (P660 Part 2).
-- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Files/Review/Search within the same repo keeps it mounted (v-show), while switching repo workspace or module remounts it, relying on session resume and the kept view state.
-- The chosen Repos/Files/Review tab persists in localStorage key kira.git.panelTab (shared by all windows, last write wins) and defaults to Repos; opening a repo never switches it, and the panel shows Repos without writing it while no repo workspace is active.
+- GitPanel.vue is one persistent instance across repo workspaces, so its review mount is tracked per repoId (reviewActivatedRepoIds); switching Repos/Review within the same repo keeps it mounted (v-show), while switching repo workspace or module remounts it, relying on session resume and the kept view state.
+- The chosen Repos/Review tab persists in localStorage key kira.git.panelTab (shared by all windows, last write wins) and defaults to Repos; opening a repo never switches it, and the panel shows Repos without writing it while no repo workspace is active.
 - The thirteen review.* methods never touch the user's repository: their only persistence is review.db (INSERT/UPDATE/DELETE on review_session/review_file/review_range/review_comment), and internal/gitreview has no exec.Command, os.WriteFile or git invocation.
 - The git work review.* handlers perform is read-only porcelain (cat-file, merge-base --is-ancestor, diff), with no update-index, write-tree, commit-tree or ref update.
 - "Open in graph" from a review row is graph.revealCommit ({repoId, sha} -> {revealed}), answered locally by repo/git/hostHandlers.ts and never reaching the Go server; the status-bar blame item click reuses it.
@@ -4373,8 +4376,8 @@ workspace and git module both moved there in full, unchanged, so each limitation
 it describes. The items after it are Kira Studio's own (or, for the workflow-coverage item,
 repo-wide).
 
-- **C5's native project tree does not follow the filesystem** (§7.1). It refreshes on workspace
-  open and on an explicit Refresh action only — a file created, deleted or modified outside the app
+- **The task Files tab's tree does not follow the filesystem** (§7.1). It refreshes when the tab
+  loads and on an explicit Refresh action only — a file created, deleted or modified outside the app
   is not reflected until one of those happens. There is no worktree watcher of any kind (P97 removed
   the only one this app ever had), so a live-refreshing tree needs one built for this purpose alone —
   a watcher's worth of complexity on a button.
@@ -4382,15 +4385,15 @@ repo-wide).
   exists for either, so a `<script>` block's contents color as HTML text, not as TypeScript/
   JavaScript — the alternative is a hand-written SFC Monarch grammar, which
   `docs/WORKING_AGREEMENT.md`'s library-reuse-first rule declines.
-- **C7's repository-wide search has no include/exclude filter.** A repository that commits its
+- **The task Files tab's search has no include/exclude filter.** A repository that commits its
   dependencies (a vendored `vendor/` tree) searches them, because enumeration is unchanged
   `codeworkspace.EnumerateAll` — the right answer is a glob library (`bmatcuk/doublestar` or
   `gobwas/glob`, both MIT, since `path.Match` has no `**`) plus a two-field UI, deferred whole
   rather than half-built.
-- **C7's search results are a point-in-time snapshot with no live update.** A file changed,
-  created or deleted after a search ran is not reflected until the search is re-run — the same
-  posture C5's project tree already takes for its own listing.
-- **C7's search cannot match a pattern spanning multiple lines.** The scanner hands the matcher one
+- **The task Files tab's search results are a point-in-time snapshot with no live update.** A file
+  changed, created or deleted after a search ran is not reflected until the search is re-run — the
+  same posture the tab's tree takes for its own listing.
+- **The task Files tab's search cannot match a pattern spanning multiple lines.** The scanner hands the matcher one
   line at a time (`^`/`$` anchor per line, D5); a `--multiline`-equivalent search is out of scope.
 - **Native `review.session.save`/`.load` (`repo/git/reviewSession.ts`, backed by the pinned
   repo-graph tab's own persisted state) has no expiry**, unlike `gitreview`'s own `IdleTTL` reaper window. A native resume point can
@@ -4407,11 +4410,6 @@ repo-wide).
   phase actually asks for it.
 
 Performance:
-- **`repo/state/fileTree.ts`'s `useFileTreeStore` (Pinia now, same file) tree-filter computed has
-  per-row reactive dependency tracking** costing 3-3.5x at the 200,000-file cap (C13-6's `markRaw`
-  covered the tree structure but not the `status`/`expanded` reactive lookups inside the filter,
-  still true post-Pinia: `state.status`/`state.expanded` stay reactive fields the filter reads per
-  row).
 - **One comment mutation with N open review diff tabs on the same branch triggers N+1 redundant
   `review.comment.list` re-anchoring passes** (a server-side cost) — C13-12 fixed the diff-reload
   fan-out (C14-2 fixed a regression in that same split) but not the comment-reload fan-out.

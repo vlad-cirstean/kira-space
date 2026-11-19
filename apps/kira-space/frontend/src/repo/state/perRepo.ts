@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 
 /**
  * "One entry per open repo workspace", get-or-create, the same reactive-`Map` pattern
- * `search.ts`/`fileTree.ts`/`worktrees.ts` each implemented on their own: the Map itself is
+ * `worktrees.ts` and the task Files tab's search state each implemented on their own: the Map itself is
  * wrapped in `reactive()`, not just each value, so a computed/template that reads `stateFor(id)`
  * (or `all.get(id)`) before an entry exists still reruns once one is later created — a plain Map
  * makes that first `.get()` untracked (Vue 3's native Map/Set reactivity needs the Map itself to
