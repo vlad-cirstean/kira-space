@@ -3,11 +3,10 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { usePersistedState } from '@workbench/behaviour/persisted';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
@@ -183,18 +182,17 @@ onUnmounted(() => {
     data-testid="kibana-discover"
     :data-path="tab.path"
   >
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span class="flex size-4 shrink-0 items-center justify-center">
-        <EngineIcon kind="kibana" :size="13" />
-      </span>
-      <DataViewPicker
-        :model-value="d.state.value.dataViewId"
-        :connection-id="tab.connectionId"
-        :enabled="connected"
-        :fallback-label="d.state.value.dataViewName"
-        @select="d.selectDataView"
-      />
+    <ViewHead :color="railColor" icon="search">
+      <template #lead><EngineIcon kind="kibana" :size="13" /></template>
+      <template #title>
+        <DataViewPicker
+          :model-value="d.state.value.dataViewId"
+          :connection-id="tab.connectionId"
+          :enabled="connected"
+          :fallback-label="d.state.value.dataViewName"
+          @select="d.selectDataView"
+        />
+      </template>
       <DiscoverSavedControls
         ref="savedControls"
         :d="d"
@@ -202,8 +200,7 @@ onUnmounted(() => {
         @run="onRun"
         @error="(m) => (savedError = m)"
       />
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" />
+    </ViewHead>
 
     <QueryBar
       ref="queryBar"

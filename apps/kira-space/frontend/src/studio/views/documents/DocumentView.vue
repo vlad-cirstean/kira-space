@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
-import { colorMarkClass, connIconClass } from '@theme/connColor';
+import { connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { errorText } from '@workbench/bridge/codedError';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
@@ -346,22 +345,19 @@ onUnmounted(() => {
 
 <template>
   <div class="h-full flex flex-col min-h-0" data-testid="document-view" :data-path="tab.path">
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0">
-        <EngineIcon :kind="connRecord.kind" :size="13" />
-      </span>
-      <span class="size-4 flex items-center justify-center shrink-0" :class="iconClass">
-        <CodiconIcon name="json" :size="13" />
-      </span>
-      <span class="text-kira-md text-fg truncate" data-testid="document-target"
-        ><span v-if="pathPrefix" class="text-subtle">{{ pathPrefix }}</span>
-        {{ targetTail?.name ?? tab.path }}</span
+    <ViewHead
+      :color="railColor"
+      icon="json"
+      :icon-class="iconClass"
+      :prefix="pathPrefix || undefined"
+      :title="targetTail?.name ?? tab.path"
+      title-testid="document-target"
+    >
+      <template v-if="connRecord?.kind" #lead
+        ><EngineIcon :kind="connRecord.kind" :size="13" /></template
       >
       <Badge>{{ nodeKindLabel('collection') }}</Badge>
-    </ViewToolbar>
-
-    <div :class="colorMarkClass('band', railColor)" />
+    </ViewHead>
     <DocumentToolbar
       :tab="tab"
       :caps="caps"

@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
-import { colorMarkClass, connIconClass } from '@theme/connColor';
+import { connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { errorText } from '@workbench/bridge/codedError';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -238,22 +238,20 @@ function onCloseSearch(): void {
 
 <template>
   <div class="h-full flex flex-col min-h-0">
-    <ViewToolbar data-testid="view-head">
-      <span
-        v-if="railColor !== undefined"
-        :class="colorMarkClass('dot', railColor)"
-        data-testid="conn-dot"
-      />
-      <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0"
-        ><EngineIcon :kind="connRecord.kind" :size="13" /></span
+    <ViewHead
+      testid="view-head"
+      dot-testid="conn-dot"
+      band-testid="toolbar-rail"
+      :color="railColor"
+      :icon="targetIcon"
+      :icon-class="iconClass"
+      :prefix="pathPrefix || undefined"
+      :title="targetTail?.name ?? tab.path"
+      title-testid="grid-target"
+    >
+      <template v-if="connRecord?.kind" #lead
+        ><EngineIcon :kind="connRecord.kind" :size="13" /></template
       >
-      <span class="size-4 flex items-center justify-center shrink-0" :class="iconClass"
-        ><CodiconIcon :name="targetIcon" :size="13" /></span
-      >
-      <span class="text-kira-md text-fg truncate" data-testid="grid-target">
-        <span v-if="pathPrefix" class="text-subtle">{{ pathPrefix }}</span>
-        {{ targetTail?.name ?? tab.path }}
-      </span>
       <Badge v-if="targetTail?.kind" data-testid="grid-kind-badge">{{
         nodeKindLabel(targetTail.kind)
       }}</Badge>
@@ -266,14 +264,12 @@ function onCloseSearch(): void {
       <Badge v-if="rt?.count" data-testid="grid-row-count-badge">{{
         t('studio.grid.rowCount.status', { count: rt.count.value })
       }}</Badge>
-      <span class="ml-auto flex items-center gap-1">
+      <template #actions>
         <Badge data v-if="primaryKeyLabel" variant="info" data-testid="grid-pk-chip">{{
           primaryKeyLabel
         }}</Badge>
-      </span>
-    </ViewToolbar>
-
-    <div :class="colorMarkClass('band', railColor)" data-testid="toolbar-rail" />
+      </template>
+    </ViewHead>
     <ViewToolbar data-testid="data-toolbar">
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton

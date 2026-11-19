@@ -10,7 +10,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
@@ -22,6 +21,7 @@ import { matchesQuery } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
@@ -337,22 +337,17 @@ onMounted(() => {
     :data-path="tab.path"
     :data-level="currentLevelPath"
   >
-    <!-- P104 §3: ViewChrome/ViewHeader/RunState inlined -- no component wraps this chrome anymore. -->
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0">
-        <EngineIcon :kind="connRecord.kind" :size="13" />
-      </span>
-      <span class="size-4 flex items-center justify-center shrink-0">
-        <CodiconIcon :name="headerIcon" :size="13" />
-      </span>
-      <span class="text-kira-md text-fg truncate" data-testid="browse-target"
-        ><span v-if="pathPrefix" class="text-subtle">{{ pathPrefix }}</span>{{ targetName }}</span
+    <ViewHead
+      :color="railColor"
+      :icon="headerIcon"
+      :prefix="pathPrefix || undefined"
+      :title="targetName"
+      title-testid="browse-target"
+    >
+      <template v-if="connRecord?.kind" #lead
+        ><EngineIcon :kind="connRecord.kind" :size="13" /></template
       >
-      <span class="ml-auto flex items-center gap-1"></span>
-    </ViewToolbar>
-
-    <div :class="colorMarkClass('band', railColor)" />
+    </ViewHead>
     <ViewToolbar>
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton

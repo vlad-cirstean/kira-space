@@ -10,7 +10,6 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
@@ -18,6 +17,7 @@ import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { tabViewKey } from '@workbench/state/viewState';
@@ -251,28 +251,22 @@ const breadcrumb = computed(() => {
     :data-source="rt?.source ?? ''"
     data-read-only-reason="definition-not-editable"
   >
-    <!-- P104 §3: ViewChrome/ViewHeader inlined (no library counterpart) — Tailwind utilities over
-         components/ui parts, the same view-head/toolbar chrome utility set every other view uses
-         (P110 B28). -->
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0"
-        ><EngineIcon :kind="connRecord.kind" :size="13" /></span
+    <ViewHead
+      :color="railColor"
+      icon="code"
+      :prefix="breadcrumb || undefined"
+      :title="targetLabel"
+      title-testid="definition-target"
+    >
+      <template v-if="connRecord?.kind" #lead
+        ><EngineIcon :kind="connRecord.kind" :size="13" /></template
       >
-      <span class="size-4 flex items-center justify-center shrink-0"
-        ><CodiconIcon name="code" :size="13" /></span
-      >
-      <span class="text-kira-md text-fg truncate" data-testid="definition-target">
-        <span v-if="breadcrumb" class="text-subtle">{{ breadcrumb }}</span>{{ targetLabel }}
-      </span>
       <Badge v-if="targetTail">{{ nodeKindLabel(targetTail.kind) }}</Badge>
       <Badge>
         <CodiconIcon name="lock" :size="13" />
         {{ readOnlyLabel }}
       </Badge>
-      <span class="ml-auto flex items-center gap-1" />
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" />
+    </ViewHead>
     <ViewToolbar>
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton

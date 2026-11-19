@@ -7,12 +7,12 @@ import SearchField from '@theme/components/SearchField.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { tableHeadClass, tableHeadRowClass } from '@theme/components/ui/table';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { cn } from '@theme/lib/utils';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { computed } from 'vue';
@@ -102,20 +102,12 @@ function onHistoryClickFor(row: ApiVariable): void {
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="variables-dialog" :data-scope="scope">
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span class="size-4 flex items-center justify-center shrink-0">
-        <CodiconIcon
-          :name="scope === 'environment' ? ICON.environments : ICON.variables"
-          :size="13"
-        />
-      </span>
-      <span class="text-kira-md text-fg truncate" data-testid="variable-set-target">{{
-        tab.state.name || t('common.module.variables.label')
-      }}</span>
-      <span class="ml-auto flex items-center gap-1" />
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" />
+    <ViewHead
+      :color="railColor === null ? 'none' : railColor"
+      :icon="scope === 'environment' ? ICON.environments : ICON.variables"
+      :title="tab.state.name || t('common.module.variables.label')"
+      title-testid="variable-set-target"
+    />
     <div v-if="ownerExists && fileName && fileInfo?.problem" class="shrink-0 p-2">
       <ConfigFileProblem
         :error="fileInfo.problem"

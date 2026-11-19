@@ -15,6 +15,7 @@ import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { tabViewKey } from '@workbench/state/viewState';
@@ -122,17 +123,12 @@ async function onSetActive(id: string): Promise<void> {
 
 <template>
   <div class="flex h-full min-h-0 flex-col" data-testid="environments-dialog">
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span class="size-4 flex items-center justify-center shrink-0"
-        ><CodiconIcon :name="ICON.environments" :size="13" /></span
-      >
-      <span class="text-kira-md text-fg truncate" data-testid="environments-target">{{
-        t('studio.api.common.environments.label')
-      }}</span>
-      <span class="ml-auto flex items-center gap-1" />
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" />
+    <ViewHead
+      :color="railColor"
+      :icon="ICON.environments"
+      :title="t('studio.api.common.environments.label')"
+      title-testid="environments-target"
+    />
     <ViewToolbar>
       <div v-if="variablesStore.environments.length > 0" class="w-64"
         ><SearchField

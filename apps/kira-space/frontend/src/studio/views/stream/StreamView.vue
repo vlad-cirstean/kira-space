@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { pathTail } from '@shared/domain/tree';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connIconClass } from '@theme/connColor';
+import { connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted } from 'vue';
 import type { StreamTabRecord } from '../../../state/tabDomain';
@@ -74,19 +73,18 @@ onUnmounted(() => {
   <div class="h-full flex flex-col min-h-0" data-testid="stream-view" :data-path="tab.path">
     <div class="flex flex-1 min-h-0 flex-col">
       <div class="flex min-h-0 flex-1 flex-col">
-        <ViewToolbar>
-          <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-          <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0">
-            <EngineIcon :kind="connRecord.kind" :size="13" />
-          </span>
-          <span class="size-4 flex items-center justify-center shrink-0" :class="iconClass">
-            <CodiconIcon name="broadcast" :size="13" />
-          </span>
-          <span class="text-kira-md text-fg truncate"
-            ><span v-if="pathPrefix" class="text-subtle">{{ pathPrefix }}</span
-            ><span data-testid="stream-target">{{ targetTail?.name ?? tab.path }}</span></span
+        <ViewHead
+          :color="railColor"
+          icon="broadcast"
+          :icon-class="iconClass"
+          :prefix="pathPrefix || undefined"
+          :title="targetTail?.name ?? tab.path"
+          title-testid="stream-target"
+        >
+          <template v-if="connRecord?.kind" #lead
+            ><EngineIcon :kind="connRecord.kind" :size="13" /></template
           >
-          <span class="ml-auto flex items-center gap-1">
+          <template #actions>
             <Badge
               v-if="
                 page?.visibilityTimeoutSeconds !== null &&
@@ -107,10 +105,8 @@ onUnmounted(() => {
                 )
               }}
             </Badge>
-          </span>
-        </ViewToolbar>
-
-        <div :class="colorMarkClass('band', railColor)" />
+          </template>
+        </ViewHead>
         <StreamToolbar :tab="tab" @refresh="onRefresh" />
         <StreamFilterRow v-if="isKafka" :tab="tab" />
 
