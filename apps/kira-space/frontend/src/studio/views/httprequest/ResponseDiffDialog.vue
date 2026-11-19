@@ -29,13 +29,9 @@ import { type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import {
-  displayValue,
-  formatBytes,
-  formatDuration,
-  formatRelative,
-} from '@workbench/behaviour/format';
+import { displayValue, formatBytes, formatDuration } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { KIRA_EDITOR_THEME, loadMonaco } from '@workbench/editor/monaco';
 import { monacoLanguageIdFor } from '@workbench/editor/monacoLanguages';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
@@ -273,11 +269,9 @@ onUnmounted(() => {
         <div v-else-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
           <div class="flex shrink-0 items-center gap-2 px-2 py-1.5" data-testid="http-diff-summary">
             <div class="flex flex-col gap-0.5">
-              <TextTooltip :text="snapA.entry.sentAt">
-                <span :class="[rowMeta, 'self-start']">{{
-                  formatRelative(snapA.entry.sentAt)
-                }}</span>
-              </TextTooltip>
+              <span :class="[rowMeta, 'self-start']"
+                ><RelativeTime :at="snapA.entry.sentAt" /></span
+              >
               <div class="flex items-center gap-1">
                 <TextTooltip :text="statusHint(snapA.entry.status)">
                   <Badge
@@ -294,11 +288,9 @@ onUnmounted(() => {
             </div>
             <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
             <div class="flex flex-col gap-0.5">
-              <TextTooltip :text="snapB.entry.sentAt">
-                <span :class="[rowMeta, 'self-start']">{{
-                  formatRelative(snapB.entry.sentAt)
-                }}</span>
-              </TextTooltip>
+              <span :class="[rowMeta, 'self-start']"
+                ><RelativeTime :at="snapB.entry.sentAt" /></span
+              >
               <div class="flex items-center gap-1">
                 <TextTooltip :text="statusHint(snapB.entry.status)">
                   <Badge
