@@ -6,7 +6,7 @@
 // emit the size on release; a drag previews through local state, so the parent store sees one write.
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { t } from '@theme/i18n';
-import { paneFrame, windowBody } from '@theme/lib/frames';
+import { paneFrame, windowBody, windowTabStrip } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { computed, ref } from 'vue';
 import MainView from './MainView.vue';
@@ -92,11 +92,7 @@ function commitOps(size: number): void {
           <!-- Taller than a tab (--kira-h-md, 26px) by design (h-tabbar) — the extra height is
                the tab's own breathing room within the chrome row, not a margin tacked
                on after it. -->
-          <div
-            v-if="tabStripVisible"
-            class="h-tabbar min-h-0 overflow-hidden shrink-0 bg-chrome"
-            data-testid="tab-strip"
-          >
+          <div v-if="tabStripVisible" :class="windowTabStrip" data-testid="tab-strip">
             <slot name="tab-strip"><TabStrip /></slot>
           </div>
           <div class="flex-1 min-h-0" data-testid="main-view">
