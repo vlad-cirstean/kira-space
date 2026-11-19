@@ -13,9 +13,8 @@ const payload = computed(() => proofReviewPayloadSchema.parse(props.item.payload
 
 <template>
   <Button
-    variant="link"
+    variant="link-meta"
     size="inline"
-    class="text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
     data-testid="proof-review-open"
     @click="control.proofOpenWindow(payload.taskId, payload.slug)"
   >

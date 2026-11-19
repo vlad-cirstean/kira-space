@@ -260,9 +260,9 @@ const padBottom = computed(() => {
             </div>
             <CollapsibleTrigger v-if="hiddenRows > 0 && !open" as-child>
               <Button
-                variant="link"
+                variant="link-meta"
                 size="inline"
-                class="self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
+                class="self-start"
                 data-testid="db-mcp-preview-more"
               >
                 {{ t('studio.dbMcp.preview.moreRows.label', { count: hiddenRows }) }}
