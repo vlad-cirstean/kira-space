@@ -10,7 +10,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Planned |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
 | P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
-| P675 | JS engine for the API MCP | Planned |
+| P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Planned |
 | P677 | API MCP: result review with raw and transformed views | Planned |
 | P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Planned |
@@ -38,6 +38,18 @@ Add an embedded JavaScript engine in Go, used by the API MCP (P676 to P679) and 
 User accepted MPL-2.0 for goja's `ftoa` package (Rhino DToA port; open source, file-level copyleft): use unmodified, keep headers, NOTICES points to the public source at the pinned commit; any patch to those files must be published. Engine stays goja in a per-run child worker process.
 
 Plan: `plans/P675.md`.
+
+Result: package `apps/kira-space/internal/jsengine`, goja per run in child `kira-space js-worker` (`appwire.RunArgvShim`, `workerproc`). Guards G1 to G10, limits, structured errors, source checks, lossless big ints, fixed clock and seeded PRNG, 4 run slots. Docs: `docs/ARCHITECTURE.md` "JS engine (P675)" plus Known open items; `NOTICES.md` entry incl. MPL-2.0 `ftoa`.
+Deviations from plan:
+- `Check` validates and parses only. goja folds constants at compile (`2n ** (2n ** 30n)` allocates gigabytes), so compile runs in the worker under the watchdog.
+- Deadline counts from slot acquisition, not `Exec` start.
+- Crash pipe on fd 3 (`debug.SetCrashOutput`): `GOTRACEBACK=none` does not shorten fatal dumps, so OOM mapped to `internal`. `exitError` also matches frame markers.
+- Regexp match timeout is half the remaining time, so an uncaught one ends before the deadline.
+- Hard ceiling, `SetMemoryLimit` and RSS limit are relative to the worker's post-VM baseline.
+- Guards in Go. `%TypedArray%.slice/map/filter` and `ArrayBuffer.slice` unguarded (derive from an existing buffer). G7 counts indent depth-aware and emulates array replacers.
+- Empty `for(;;){}` timeout has no position (maps to wrapper line).
+- Commit 1 also holds `json.go` and `bindings.go`; code did not compile without them.
+Measured: worker round trip about 70 ms (app, linux dev build), 12 ms (test binary): under 100 ms, no warm spare. Binary +8.8 MB (plan probe said +4.6 MB). Race run: timing assertions scaled by `timeScale` (spawn about 1 s under `-race` and load). `govulncheck` not installed, not run. Darwin: `CGO_ENABLED=0 GOOS=darwin GOARCH=arm64` builds `jsengine`; the full app needs cgo (wails buildguard), as before this phase.
 
 ## P676: API MCP: scripted request preparation and result transform
 
