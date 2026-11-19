@@ -19,6 +19,7 @@ import { methodTextClass } from '@theme/methodColor';
 import { formatBytes, formatDuration, formatRelative } from '@workbench/behaviour/format';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
@@ -224,9 +225,7 @@ async function onClear(): Promise<void> {
         />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
-            <TextTooltip :text="entry.sentAt">
-              <span :class="[rowMeta, 'min-w-16']">{{ formatRelative(entry.sentAt) }}</span>
-            </TextTooltip>
+            <span :class="[rowMeta, 'min-w-16']"><RelativeTime :at="entry.sentAt" /></span>
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
             }}</Badge>

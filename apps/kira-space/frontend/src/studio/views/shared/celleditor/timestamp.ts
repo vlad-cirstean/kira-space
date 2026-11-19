@@ -1,4 +1,4 @@
-import { t } from '@theme/i18n';
+import { formatRelative } from '@theme/format';
 import type { CellFormat } from './formats';
 
 // P24 D17: everything timestamp-shaped moved out of detect.ts, which is about *detection* and
@@ -268,34 +268,12 @@ function formatUtcAndLocal(d: Date): { local: string; utc: string } {
   return { local, utc };
 }
 
-const RELATIVE_STEPS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
-  { unit: 'year', ms: 365.25 * 86_400_000 },
-  { unit: 'month', ms: 30.44 * 86_400_000 },
-  { unit: 'week', ms: 7 * 86_400_000 },
-  { unit: 'day', ms: 86_400_000 },
-  { unit: 'hour', ms: 3_600_000 },
-  { unit: 'minute', ms: 60_000 },
-];
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
-
-/** "3 days ago" / "in 2 hours" / "just now" — Intl.RelativeTimeFormat, no dependency (D18). */
-function relativeTime(date: Date, now: Date): string {
-  const diffMs = date.getTime() - now.getTime();
-  if (Math.abs(diffMs) < 45_000) return t('format.relative.justNow');
-  for (const { unit, ms } of RELATIVE_STEPS) {
-    if (Math.abs(diffMs) >= ms || unit === 'minute') {
-      return relativeFormatter.format(Math.round(diffMs / ms), unit);
-    }
-  }
-  return relativeFormatter.format(Math.round(diffMs / 60_000), 'minute'); // unreachable, kept total
-}
-
 /** D15's translate-pane reading — CellEditorView calls this separately from describeValue. */
 export function describeTimestamp(format: CellFormat, text: string): TimestampReading | null {
   const parsed = parseTimestamp(format, text);
   if (!parsed) return null;
   const { local, utc } = formatUtcAndLocal(parsed.date);
-  return { local, utc, relative: relativeTime(parsed.date, new Date()) };
+  return { local, utc, relative: formatRelative(parsed.date) };
 }
 
 /** 'YYYY-MM-DD HH:mm:ss[.fff]' in the chosen zone — the translate pane's editable field text. */

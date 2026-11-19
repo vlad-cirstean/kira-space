@@ -19,6 +19,7 @@ import { cn } from '@theme/lib/utils';
 import { formatRelative } from '@workbench/behaviour/format';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
@@ -176,9 +177,7 @@ async function onClear(): Promise<void> {
           <Badge data :variant="grpcCodeClass(entry.code)">{{ entry.codeName }}</Badge>
         </TextTooltip>
         <span class="text-kira-sm font-data">{{ entry.method }}</span>
-        <TextTooltip :text="entry.calledAt">
-          <span :class="rowMeta">{{ formatRelative(entry.calledAt) }}</span>
-        </TextTooltip>
+        <span :class="rowMeta"><RelativeTime :at="entry.calledAt" /></span>
         <span class="ml-auto" />
         <TooltipIconButton
           :icon="ICON.delete"

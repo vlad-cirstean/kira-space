@@ -4,7 +4,7 @@ import type {
   ProofChartViewState,
   ProofPieChart,
 } from '@shared/domain/proof';
-import { formatDateTime, formatWeekdayDate } from '@theme/format';
+import { displayValue, formatDateTime, formatWeekdayDate } from '@theme/format';
 import { formatCount } from '@theme/i18n/number';
 import type { EChartsOption } from 'echarts';
 import { format } from 'echarts/core';
@@ -211,7 +211,7 @@ function yOf(chart: ProofCartesianChart, p: TooltipParam): Cell {
 function cartesianTooltip(chart: ProofCartesianChart) {
   const row = (p: TooltipParam) => {
     const y = yOf(chart, p);
-    return `${p.marker ?? ''}${esc(p.seriesName ?? '')}: ${y === null ? '–' : esc(withUnit(y, chart.y.unit))}`;
+    return `${p.marker ?? ''}${esc(p.seriesName ?? '')}: ${y === null ? displayValue(null) : esc(withUnit(y, chart.y.unit))}`;
   };
   return (raw: unknown): string => {
     const params = (Array.isArray(raw) ? raw : [raw]) as TooltipParam[];

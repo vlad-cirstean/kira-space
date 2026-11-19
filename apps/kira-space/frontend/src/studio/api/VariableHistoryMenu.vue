@@ -7,7 +7,7 @@ import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { formatRelative } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { reactive } from 'vue';
 import { useVariableSetStore } from './state/variables';
 
@@ -63,7 +63,7 @@ function onEye(entry: ApiVariableHistoryEntry): void {
         data-testid="variable-history-entry"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span class="text-subtle text-kira-sm">{{ formatRelative(entry.recordedAt) }}</span>
+          <span class="text-subtle text-kira-sm"><RelativeTime :at="entry.recordedAt" /></span>
           <!-- tracking-widest (0.1em) is the widest step Tailwind's default scale has; at this
                span's inherited font-size (text-kira-md, 12px) that is 1.2px. -->
           <span

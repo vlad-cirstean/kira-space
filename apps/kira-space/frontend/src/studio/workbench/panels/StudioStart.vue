@@ -9,9 +9,9 @@ import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { formatRelative } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
 import ModuleStart from '@workbench/components/ModuleStart.vue';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { useConnectionDialogStore } from '../../state/connectionDialogs';
@@ -129,7 +129,7 @@ function openRecent(entry: RecentTableEntry): void {
           <Identifier :value="entry.path" />
           <span :class="[rowMeta, 'ml-auto']"
             >{{ connectionFor(entry)?.name }}
-            · {{ formatRelative(entry.openedAt) }}</span
+            · <RelativeTime :at="entry.openedAt" /></span
           >
         </button>
       </div>
