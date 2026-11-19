@@ -8,6 +8,7 @@ import { Textarea } from '@theme/components/ui/textarea';
 import { formatBytes } from '@theme/format';
 import { t } from '@theme/i18n';
 import { useSessionStorage } from '@vueuse/core';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { windowKey } from '@workbench/bridge/rpc';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -36,14 +37,17 @@ const body = useSessionStorage(
   '',
 );
 const mode = ref('write');
-const error = ref('');
 
 const post = usePostComment({ windowKey, kind: props.kind, queryKey: () => props.queryKey });
+const posting = useMutationAction(post, { describe: failureText });
+const error = posting.error;
 
 const bytes = computed(() => new TextEncoder().encode(body.value).length);
 const overCap = computed(() => bytes.value > props.compose.maxBodyBytes);
 const nearCap = computed(() => bytes.value > props.compose.maxBodyBytes * 0.8);
-const canPost = computed(() => !post.isPending.value && !overCap.value && body.value.trim() !== '');
+const canPost = computed(
+  () => !posting.pending.value && !overCap.value && body.value.trim() !== '',
+);
 
 function failureText(err: unknown): string {
   if (!(err instanceof PostRejected)) return errorText(err);
@@ -59,15 +63,10 @@ function failureText(err: unknown): string {
 
 async function submit(): Promise<void> {
   if (!canPost.value) return;
-  error.value = '';
-  try {
-    await post.mutateAsync({ body: body.value, replyTo: props.replyTo ?? '' });
-    body.value = '';
-    mode.value = 'write';
-    emit('posted');
-  } catch (err) {
-    error.value = failureText(err);
-  }
+  if (!(await posting.run({ body: body.value, replyTo: props.replyTo ?? '' }))) return;
+  body.value = '';
+  mode.value = 'write';
+  emit('posted');
 }
 
 const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
@@ -136,7 +135,7 @@ const modes = computed(() => [
           <Button
             variant="dialog-primary"
             size="kira"
-            :pending="post.isPending.value"
+            :pending="posting.pending.value"
             :disabled="!canPost"
             data-testid="comment-post"
             @click="submit"

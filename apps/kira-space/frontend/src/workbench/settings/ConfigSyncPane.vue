@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@theme/components/ui/table';
 import { type MessageKey, t } from '@theme/i18n';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import { errorText } from '@workbench/bridge/codedError';
@@ -40,7 +41,6 @@ const url = ref('');
 const branch = ref('main');
 const editing = ref(false);
 const conflictHint = ref(false);
-const pullError = ref<unknown>(null);
 
 const data = computed(() => status.data.value);
 const showForm = computed(() => !data.value?.configured || editing.value);
@@ -52,7 +52,7 @@ const failure = computed(
     m.removeRepo.error.value ??
     m.setMode.error.value ??
     m.setFetchMinutes.error.value ??
-    pullError.value,
+    pull.cause.value,
 );
 
 const MODE_LABEL: Record<string, MessageKey> = {
@@ -100,22 +100,17 @@ function onReview(): void {
 }
 
 // A pull without conflicts applies in place; with conflicts the choices need the review window.
-async function onPull(): Promise<void> {
-  pullError.value = null;
+const pull = useAsyncAction(async () => {
   conflictHint.value = false;
-  try {
-    const preview = await control.configSyncPreview();
-    if (preview.rows.some((r) => r.kind === 'conflict')) {
-      conflictHint.value = true;
-      await control.configSyncOpenReview();
-      return;
-    }
-    await m.apply.mutateAsync({ token: preview.token, choices: {} });
-    announceApp(t('space.settings.configSync.pulled.announce'));
-  } catch (err) {
-    pullError.value = err;
+  const preview = await control.configSyncPreview();
+  if (preview.rows.some((r) => r.kind === 'conflict')) {
+    conflictHint.value = true;
+    await control.configSyncOpenReview();
+    return;
   }
-}
+  await m.apply.mutateAsync({ token: preview.token, choices: {} });
+  announceApp(t('space.settings.configSync.pulled.announce'));
+});
 </script>
 
 <template>
@@ -221,7 +216,7 @@ async function onPull(): Promise<void> {
             size="kira-lg"
             :pending="m.apply.isPending.value"
             data-testid="config-sync-pull"
-            @click="onPull"
+            @click="pull.run()"
           >
             {{ t('common.action.pull.label') }}
           </Button>
