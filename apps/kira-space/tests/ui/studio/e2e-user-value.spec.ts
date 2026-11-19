@@ -47,6 +47,8 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual(answer);
+  // The typed value clears when the answer settles, which is after the IPC call leaves.
+  await expect(field).toHaveValue('');
   await expectNoLeak(page, VALUE(), logs);
 });
 
@@ -59,11 +61,13 @@ test('contract: Don’t send never carries the value', async ({ relaunch }) => {
   const logs: string[] = [];
   page.on('console', (m) => logs.push(m.text()));
   await pushApprovals(page, [liveItem(it)]);
-  await page.locator('[data-testid="api-input-apikey"]').fill(VALUE());
+  const field = page.locator('[data-testid="api-input-apikey"]');
+  await field.fill(VALUE());
   await page.click(`[data-testid="approval-deny-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual(deny);
+  await expect(field).toHaveValue('');
   await expectNoLeak(page, VALUE(), logs);
 });
 
