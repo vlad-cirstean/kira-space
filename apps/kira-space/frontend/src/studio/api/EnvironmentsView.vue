@@ -9,7 +9,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@theme/components/ui/radio-group';
 import { colorMarkClass } from '@theme/connColor';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { matchesQuery } from '@workbench/behaviour/match';
@@ -96,10 +96,10 @@ function onEditVariables(id: string, name: string): void {
 async function onDelete(id: string, name: string): Promise<void> {
   const confirmed = await confirmDialogStore.confirm({
     title: t('studio.api.environments.deleteConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.api.environments.deleteConfirm.body', { name }),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
   });

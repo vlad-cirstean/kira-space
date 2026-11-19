@@ -9,7 +9,7 @@ import type {
 } from '@shared/domain/collections';
 import { defaultGrpcSavedRequest, defaultHttpSavedRequest } from '@shared/domain/collections';
 import { useMutation, useQuery } from '@tanstack/vue-query';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { refDebounced } from '@vueuse/core';
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { matchesQuery } from '@workbench/behaviour/match';
@@ -804,7 +804,7 @@ export const useCollectionsStore = defineStore('collections', () => {
             t('studio.api.collections.exportSkippedGrpc.body', { count: report.skippedGrpc }),
           );
         }
-        state.exportWarning = notes.length > 0 ? notes.join(' ') : null;
+        state.exportWarning = notes.length > 0 ? joinSentences(...notes) : null;
         exported = true;
       });
     } finally {

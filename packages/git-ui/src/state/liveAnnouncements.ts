@@ -18,7 +18,7 @@ import type {
   ResetMode,
   StashEntry,
 } from '@kira/git-ipc';
-import { type MessageKey, t } from '@theme/i18n';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import { formatCount } from '@workbench/behaviour/format';
 import { customRef, type Ref } from 'vue';
 import { originLabel, stashLabel } from '../lib/stashListModel.ts';
@@ -267,7 +267,7 @@ export function composeOpFailureParts(
 ): { readonly title: string; readonly detail: string | undefined } {
   const what = opFailedTitle(action);
   if (!error) return { title: what, detail: undefined };
-  const title = `${what} ${t(OP_ERROR_REASON[error.kind])}`;
+  const title = joinSentences(what, t(OP_ERROR_REASON[error.kind]));
   const detail =
     error.kind === 'HookRejected'
       ? error.remoteMessage
@@ -280,7 +280,7 @@ export function composeOpFailureParts(
 /** Why auto-fetch stopped, in the same wording the failure announcements use. */
 export function composeAutoFetchStoppedAnnouncement(kind: OpErrorKind): string {
   const stopped = t('git.op.autoFetchStopped.error', { reason: t(OP_ERROR_REASON[kind]) });
-  return `${stopped} ${t('git.op.autoFetchResume.hint')}`;
+  return joinSentences(stopped, t('git.op.autoFetchResume.hint'));
 }
 
 const MAX_DETAIL_LENGTH = 200;
@@ -406,10 +406,11 @@ export function composeStashAnnouncement(
   const origin = currentBranch === undefined ? undefined : originLabel(entry, currentBranch);
   if (mismatch) {
     const key = STASH_MISMATCH[verb][mismatch.predicted][mismatch.actual];
-    const parts = [key === undefined ? t('common.done.status') : t(key)];
+    const parts = key === undefined ? [] : [t(key)];
     if (origin !== undefined) parts.push(t('git.op.mismatchOrigin.body', { origin }));
     if (mismatch.stashKept) parts.push(t('git.op.mismatchKept.body'));
-    return parts.join(' ');
+    // A bare "Done" is no sentence: it stands alone only when no sentence follows.
+    return parts.length === 0 ? t('common.done.status') : joinSentences(...parts);
   }
   if (!result.ok)
     return composeOpFailureAnnouncement(verb === 'apply' ? 'stashApply' : 'stashPop', result.error);

@@ -1,4 +1,4 @@
-import { type MessageKey, t } from '@theme/i18n';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import { copyOrReportError as sharedCopyOrReportError } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import { errorText } from '@workbench/bridge/codedError';
@@ -27,10 +27,10 @@ function copyOrReportError(tabId: string, text: string, announce: MessageKey): P
 export function confirmDeleteDocument(id: string): Promise<boolean> {
   return useConfirmDialogStore().confirm({
     title: t('studio.documents.deleteConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.documents.deleteConfirm.body', { id }),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
   });

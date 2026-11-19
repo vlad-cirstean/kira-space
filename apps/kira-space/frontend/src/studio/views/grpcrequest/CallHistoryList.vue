@@ -9,7 +9,7 @@ import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -99,10 +99,10 @@ function onDelete(id: string): void {
 async function onClear(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.grpc.history.clearConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.grpc.history.clearConfirm.body'),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.clear.label'),
     tone: 'danger',
   });

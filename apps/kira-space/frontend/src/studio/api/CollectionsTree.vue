@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ShortcutId } from '@shared/domain/shortcuts';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -184,7 +184,10 @@ async function confirmAndDeleteRows(rows: readonly CollectionRowVm[]): Promise<v
     const [row] = plan.top;
     const keys = DELETE_CONFIRM[row.kind];
     title = t(keys.title);
-    message = [t(keys.body, { name: row.name }), t('common.confirm.irreversible.body')].join(' ');
+    message = joinSentences(
+      t(keys.body, { name: row.name }),
+      t('common.confirm.irreversible.body'),
+    );
   } else {
     const counts = (['request', 'folder', 'collection'] as const)
       .map((kind) => [kind, plan.top.filter((r) => r.kind === kind).length] as const)

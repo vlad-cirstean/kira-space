@@ -6,7 +6,7 @@ import { Button } from '@theme/components/ui/button';
 import { Card, CardContent } from '@theme/components/ui/card';
 import { Textarea } from '@theme/components/ui/textarea';
 import { formatBytes } from '@theme/format';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
@@ -58,7 +58,7 @@ function failureText(err: unknown): string {
       : err.reason;
   const timedOut =
     props.kind === 'issue' ? err.reason === 'timeout' : /may have been recorded/.test(err.reason);
-  return timedOut ? `${text} ${t('space.hostView.compose.mayHavePosted.hint')}` : text;
+  return timedOut ? joinSentences(text, t('space.hostView.compose.mayHavePosted.hint')) : text;
 }
 
 async function submit(): Promise<void> {

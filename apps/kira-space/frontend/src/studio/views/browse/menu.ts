@@ -1,5 +1,5 @@
 import type { TreeNode } from '@shared/domain/tree';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import { errorText } from '@workbench/bridge/codedError';
@@ -118,10 +118,10 @@ function objectRowMenu(
         if (
           !(await useConfirmDialogStore().confirm({
             title: t('studio.browse.deleteObjectConfirm.title'),
-            message: [
+            message: joinSentences(
               t('studio.browse.deleteObjectConfirm.body', { name: node.name }),
               t('common.confirm.irreversible.body'),
-            ].join(' '),
+            ),
             confirmLabel: t('common.action.delete.label'),
             tone: 'danger',
           }))

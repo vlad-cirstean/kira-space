@@ -1,6 +1,6 @@
 import { pathParent } from '@shared/domain/tree';
 import type { ColumnDescriptor } from '@shared/protocol/page';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -120,7 +120,7 @@ export function useKeyValueActions(
           ? 'studio.browse.deleteObjectConfirm.title'
           : 'studio.keyValue.deleteKeyConfirm.title',
       ),
-      message: [
+      message: joinSentences(
         t(
           isObject
             ? 'studio.browse.deleteObjectConfirm.body'
@@ -128,7 +128,7 @@ export function useKeyValueActions(
           { name },
         ),
         t('common.confirm.irreversible.body'),
-      ].join(' '),
+      ),
       confirmLabel: t('common.action.delete.label'),
       tone: 'danger',
     });

@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -51,7 +51,9 @@ const incognito = computed(() => tabIncognitoStore.isIncognito(props.tab.id));
 const emptyDescription = computed(() => {
   if (incognito.value) return t('studio.http.history.incognito.description');
   const hint = t('studio.http.history.recordHint.description');
-  return isScratch.value ? `${hint} ${t('studio.http.history.scratchHint.description')}` : hint;
+  return isScratch.value
+    ? joinSentences(hint, t('studio.http.history.scratchHint.description'))
+    : hint;
 });
 // The list is ≤ HISTORY_PER_SCOPE_LIMIT by construction (Record's own trim), so "the list is full"
 // is exactly this predicate — not a stored eviction count (List can never say more than "the list
@@ -128,10 +130,10 @@ function onCompare(): void {
 async function onClear(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.http.history.clearConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.http.history.clearConfirm.body'),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.clear.label'),
     tone: 'danger',
   });

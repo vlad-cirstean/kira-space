@@ -4,7 +4,7 @@ import Disclosure from '@theme/components/Disclosure.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
@@ -23,10 +23,10 @@ const regenerate = useAsyncAction(() => regenerateMaskKey(props.connectionId));
 async function onRegenerateKey(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.project.connectionDialog.regenerateConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.project.connectionDialog.regenerateConfirm.body'),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('studio.common.regenerate.label'),
     tone: 'danger',
   });

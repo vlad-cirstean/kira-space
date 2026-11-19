@@ -8,7 +8,7 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -91,10 +91,10 @@ async function onClearAll(): Promise<void> {
   if (
     !(await confirmDialogStore.confirm({
       title: t('studio.http.cookies.clearConfirm.title'),
-      message: [
+      message: joinSentences(
         t('studio.http.cookies.clearConfirm.body'),
         t('common.confirm.irreversible.body'),
-      ].join(' '),
+      ),
       confirmLabel: t('common.action.clear.label'),
       tone: 'danger',
     }))
