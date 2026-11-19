@@ -23,10 +23,6 @@ func (i installer) Install(context.Context, string, string, string) harness.Inst
 	return i.manual()
 }
 
-func (i installer) InstallStdio(context.Context, string, string, []string) harness.InstallResult {
-	return i.manual()
-}
-
 func (i installer) manual() harness.InstallResult {
 	_, probed, found := i.p.find()
 	if !found {
@@ -45,10 +41,6 @@ func (installer) Command(name, url, helperPath string) string {
 		"type": "remote", "url": url, "enabled": true,
 		"headers": map[string]string{"Authorization": "Bearer <token printed by " + helperPath + ">"},
 	})
-}
-
-func (installer) StdioCommand(name, command string, args []string) string {
-	return snippet(name, map[string]any{"type": "local", "command": append([]string{command}, args...), "enabled": true})
 }
 
 func snippet(name string, entry map[string]any) string {

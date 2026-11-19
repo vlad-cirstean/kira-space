@@ -98,10 +98,8 @@ func (e ErrServerGone) Error() string {
 type MCPInstaller interface {
 	Status() InstallStatus
 	Install(ctx context.Context, name, url, helperPath string) InstallResult
-	InstallStdio(ctx context.Context, name, command string, args []string) InstallResult
-	// Command and StdioCommand render the copy-paste text of the install, never executed.
+	// Command renders the copy-paste text of the install, never executed.
 	Command(name, url, helperPath string) string
-	StdioCommand(name, command string, args []string) string
 }
 
 // JSONInstaller is an MCPInstaller that registers a server from the CLI's own JSON document,
@@ -149,14 +147,6 @@ func (a activeInstaller) Install(ctx context.Context, name, url, helperPath stri
 	return a.inst().Install(ctx, name, url, helperPath)
 }
 
-func (a activeInstaller) InstallStdio(ctx context.Context, name, command string, args []string) InstallResult {
-	return a.inst().InstallStdio(ctx, name, command, args)
-}
-
 func (a activeInstaller) Command(name, url, helperPath string) string {
 	return a.inst().Command(name, url, helperPath)
-}
-
-func (a activeInstaller) StdioCommand(name, command string, args []string) string {
-	return a.inst().StdioCommand(name, command, args)
 }

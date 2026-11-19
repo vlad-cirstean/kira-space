@@ -372,16 +372,8 @@ func (m *McpInstaller) Registered(_ context.Context, name string) (bool, error) 
 	return m.Known[name], nil
 }
 
-func (m *McpInstaller) InstallStdio(context.Context, string, string, []string) harness.InstallResult {
-	return harness.InstallResult{}
-}
-
 func (m *McpInstaller) Command(name, url, helperPath string) string {
 	return claude.New().MCPInstaller().Command(name, url, helperPath)
-}
-
-func (m *McpInstaller) StdioCommand(name, command string, args []string) string {
-	return claude.New().MCPInstaller().StdioCommand(name, command, args)
 }
 
 // OSAuth scripts the OS authentication prompt. By default it is unavailable, so a reveal needs the

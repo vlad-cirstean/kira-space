@@ -1,7 +1,6 @@
 package harnessflow_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,7 +113,7 @@ func openAgent(t *testing.T, app *flowharness.App, l adewire.Launch) {
 // headless ADE steps and smart scripts. Frontend half: ade-agent-context.spec.ts.
 func TestAgentContextReachesEveryLaunch(t *testing.T) {
 	const marker1, marker2 = "CONTEXT-MARKER-ONE\n", "CONTEXT-MARKER-TWO\n"
-	fake := fakeprovider.New(map[string]json.RawMessage{})
+	fake := fakeprovider.New()
 	sbx := &sandboxtest.Fake{Dir: t.TempDir()}
 	hold := filepath.Join(t.TempDir(), "hold")
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second), flowharness.WithSandbox(sbx))

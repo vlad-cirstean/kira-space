@@ -93,7 +93,7 @@ func TestStageSettingsEditor(t *testing.T) {
 }
 
 func TestStageSettingsOtherProvider(t *testing.T) {
-	fake := fakeprovider.New(nil)
+	fake := fakeprovider.New()
 	f := newRunFixtureWith(t, nil, agentStep("tuned", ssBlock), flowharness.WithProvider(fake))
 	id := fakeprovider.ID
 	patch := model.SettingsPatch{Agent: &model.AgentPatch{AgentPatch: appsettings.AgentPatch{Provider: &id}}}

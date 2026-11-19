@@ -21,7 +21,7 @@ const LeanID = "fake-lean"
 // LeanEnv is the env entry every lean launch carries; the persona records it.
 const LeanEnv = fakeagent.EnvPersonaConfig + "=lean-config"
 
-// Lean is a provider with only the roles a minimal agent needs: no structured or headless role, no
+// Lean is a provider with only the roles a minimal agent needs: no headless role, no
 // hooks, no usage. Its launches carry env, and its agent assigns its own session id, which
 // FindSession reads back. MCP wiring and sandbox rules are Claude's.
 type Lean struct {

@@ -196,28 +196,6 @@ func (i *Installer) Install(ctx context.Context, name, url, helperPath string) h
 	return i.register(ctx, name, httpServer(url, helperPath), nil)
 }
 
-// stdioServerJSON is add-json's shape for a stdio server: a command and its argv.
-type stdioServerJSON struct {
-	Type    string   `json:"type"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-}
-
-// StdioCommand renders the same remove-then-add-json pair for a stdio server, as copy-paste text.
-func (*Installer) StdioCommand(name, command string, args []string) string {
-	payload, _ := json.Marshal(stdioServerJSON{Type: "stdio", Command: command, Args: args})
-	return "claude mcp remove --scope user " + loginshell.Quote(name) + " 2>/dev/null; claude mcp add-json --scope user " +
-		loginshell.Quote(name) + " " + loginshell.Quote(string(payload))
-}
-
-// InstallStdio registers a stdio MCP server with Claude Code, replacing any registration of name.
-func (i *Installer) InstallStdio(ctx context.Context, name, command string, args []string) harness.InstallResult {
-	if !filepath.IsAbs(command) {
-		return harness.InstallResult{Outcome: harness.OutcomeInstallFailed, Detail: "internal error: server command path is not absolute"}
-	}
-	return i.register(ctx, name, stdioServerJSON{Type: "stdio", Command: command, Args: args}, nil)
-}
-
 // InstallJSON registers a server from its own add-json document, replacing any registration of name.
 // extraEnv is added to the process environment of both spawns (CLAUDE_CONFIG_DIR, so the CLI edits the
 // file a caller backed up). A caller never puts a secret value in server: references only.

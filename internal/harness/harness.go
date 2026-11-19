@@ -17,8 +17,8 @@ import (
 // DefaultProvider is the provider used when none is configured or the configured one is unknown.
 const DefaultProvider = "claude"
 
-// Provider is one agent harness. ID is the agent.provider setting value. Structured and Headless
-// are optional roles: reach them through StructuredOf and HeadlessOf.
+// Provider is one agent harness. ID is the agent.provider setting value. Headless is an optional
+// role: reach it through HeadlessOf.
 type Provider interface {
 	ID() string
 	// Label is the display name in Go-rendered text ("Claude").
@@ -153,15 +153,7 @@ func (s Selector) For(id string) (Provider, error) {
 
 // Failure kinds a provider reports; match with errors.Is.
 var (
-	ErrNotFound    = errors.New("harness: not found")
-	ErrAuth        = errors.New("harness: auth")
-	ErrBudget      = errors.New("harness: budget")
-	ErrMaxTurns    = errors.New("harness: max turns")
-	ErrTimeout     = errors.New("harness: timeout")
-	ErrOutput      = errors.New("harness: output")
-	ErrOutdated    = errors.New("harness: outdated")
-	ErrRateLimited = errors.New("harness: rate limited")
-	ErrUsageLimit  = errors.New("harness: usage limit")
+	ErrNotFound = errors.New("harness: not found")
 	// ErrUnsupported: the provider does not implement an optional role.
 	ErrUnsupported = errors.New("harness: unsupported")
 )
@@ -175,12 +167,6 @@ func (e *MissingRole) Error() string {
 
 // Is matches ErrUnsupported.
 func (e *MissingRole) Is(target error) bool { return target == ErrUnsupported }
-
-// StructuredOf is p's Structured role, if it has one.
-func StructuredOf(p Provider) (Structured, bool) {
-	s, ok := p.(Structured)
-	return s, ok
-}
 
 // HeadlessOf is p's Headless role, if it has one.
 func HeadlessOf(p Provider) (Headless, bool) {

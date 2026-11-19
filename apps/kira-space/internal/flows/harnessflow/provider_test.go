@@ -74,7 +74,7 @@ func wantGone(t *testing.T, err error) {
 // conversation keeps its provider; an unknown id falls back; an unregistered provider is reported.
 // Frontend half: agent-provider.spec.ts.
 func TestSecondProviderRegistered(t *testing.T) {
-	fake := fakeprovider.New(map[string]json.RawMessage{})
+	fake := fakeprovider.New()
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))
 	app.SetHermetic(t, true) // the fake's --hermetic flag is judged below; off by default since P588
 	usage := app.W.AgentUsage.Get()
@@ -328,7 +328,7 @@ func personaArgs(t *testing.T, app *flowharness.App) string {
 // optional role falls back or refuses per caller.
 func TestLeanProviderSeams(t *testing.T) {
 	lean := fakeprovider.NewLean()
-	full := fakeprovider.New(map[string]json.RawMessage{})
+	full := fakeprovider.New()
 	app := flowharness.New(t, flowharness.WithProvider(full, lean), flowharness.WithTrackerGrace(time.Second))
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
@@ -469,7 +469,7 @@ func TestLeanProviderSeams(t *testing.T) {
 // headless smart script, the headless ADE step and the interactive step command. Earlier launches
 // keep what they got.
 func TestHermeticToggleReachesEveryLaunch(t *testing.T) {
-	fake := fakeprovider.New(map[string]json.RawMessage{})
+	fake := fakeprovider.New()
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))
 	setProvider(t, app, fakeprovider.ID)
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
