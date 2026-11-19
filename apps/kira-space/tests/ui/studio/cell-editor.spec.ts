@@ -427,7 +427,7 @@ test('cell editor — autodetect, beautify, override, NULL/empty/truncated, read
   await scrollColumnIntoView(page, 'bytea_a');
   await selectCell(page, 0, 'bytea_a');
   await expect(panel).toHaveAttribute('data-detected', 'hex');
-  await expect(page.locator('[data-testid="cell-editor-status"]')).toContainText('bytes');
+  await expect(page.locator('[data-testid="cell-editor-status"]')).toContainText('8 B of data');
   await scrollColumnIntoView(page, 'int_a');
   await selectCell(page, 0, 'int_a');
   await expect(panel).toHaveAttribute('data-detected', 'text');

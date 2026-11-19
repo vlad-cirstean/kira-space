@@ -9,7 +9,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Done |
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Done |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Done |
-| P674 Part 4 | Full-app UI uniformity audit: iteration 3 | Planned |
+| P674 Part 4 | Full-app UI uniformity audit: iteration 3 | Done |
 | P674 Part 5 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Done |
@@ -76,6 +76,12 @@ Result, Part 3 (iteration 2, `plans/P674-iter2.md`): 11 findings (F2.1-F2.11: 5 
 Visible changes: check feedback and error tone on 9 more copy buttons; masks on kept, ADE port and run preview go from 4 to 8 bullets, subtle wide tracking on kept, ADE port and docker env; run file dialog secrets section (list, set dialog, Delete); tooltips on ADE shelf and all-sessions ages and kept ages; pairing expiry clock; Retry beside retryable inline load errors, memory panel and start failure block, settings and dialog load errors as InlineState; kept retention reset button and description swap.
 
 Iteration gate: findings remain after this iteration, so iteration 3 runs as Part 4 and the final whole-app scan is Part 5. Parked, still Planned: P687 (hash-guarded draft and save-conflict model).
+
+Result, Part 4 (iteration 3, `plans/P674-iter3.md`): 6 findings (F3.1-F3.6: 3 EXTRACT, 1 MERGE, 1 MIGRATE, 1 GUARD-GAP MIGRATE) landed in three waves. New shared pieces: `HttpStatusBadge` (Studio: `statusClass` tone, `statusHint` tooltip, data font; the approval response status now uses it), `MeasuredSection` (docker-ui: loading and not-measured as InlineState, first failure InlineState error, failed re-measure Alert error with data kept; `useContainerSize` and `useEngineDiskUsage` drop `refresh`), `KeptNameMark` (kept name in its mark, then type), `indentJson` and `prettyJson` in `beautify.ts` (lossless; the three old `prettyJson` copies, `prettyPlain` and `formatHoverValue` are gone). 42 borrowed catalog keys moved to `common.*` or the owner's namespace (including two `llmPrompts` keys found by U182), English unchanged. Byte sizes read through `formatBytes` and `{size}`; the HTTP pane and the approval card share the binary and cut-body wording. Guards U177-U181 added (range now U83-U181) and U182 in `scripts/copy/ownership.ts` (called from `check-copy.ts`; 4 named pairs in `exemptions.ts`); each fails on a planted offender and sits at zero offenders; PERMANENT count stays 53. U177 regex matches `statusClass(...status)`, an import of `statusClass` from `@shared/domain/http` and `>= 500` (bare `statusClass(` also hit step-state and git-ui helpers of that name). U182 lets Studio's sources read `studio` and `kubernetes`. Deviations: `hexBytes.status` reads "{size} of data" (bare "{size}" is a C4 near-duplicate); `workbench.tabStrip.discard.*` became `common.tab.discard.*` (C7). Bigint fix covered by `hover-value-caption.spec.ts` (unit) and `approvals-api-response.spec.ts` (UI).
+
+Visible changes: approval response status badge tone (4xx red, 3xx amber, 1xx info), data font and hint tooltip; docker container size loading and not-measured lines and a disk first-measure failure as InlineState; HTTP binary note ("Binary body, 12.0 KB not shown"), approval binary and truncation wording, cell editor decoded sizes; "Will keep" type text takes the card body size; integers above 2^53 and escaped JSON now indent in the approval review, kept values and variable hover (request body digits exact).
+
+Iteration gate: no iteration 4 (`P674.md` caps iterations at 3). Part 5 (final scan) runs next, covers P679 and P680 Part 2 files and rechecks status chips, JSON display and catalog ownership tree-wide, including `src/workbench/` and the shell dirs outside U182's table. Parked, still Planned: P682, P683, P684, P685, P687.
 
 ## P675: JS engine for the API MCP
 
