@@ -4,9 +4,10 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, useTemplateRef, watch } from 'vue';
 import { shelfIds } from '../board/shelf';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -16,7 +17,8 @@ import AdeShelfSection from './AdeShelfSection.vue';
 // work that may never be picked up. The task panel opens beside the lists.
 const ui = useAdeBoardUiStore();
 const { model } = usePlanModel();
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 
 function cardsOf(shelf: 'later' | 'backlog') {
   const m = model.value;
@@ -51,8 +53,8 @@ useKeptScroll('ade:later', bodyEl);
       >
     </div>
     <div ref="bodyEl" class="flex min-h-0 flex-1 flex-col overflow-auto pb-3">
-      <AdeShelfSection shelf="later" :cards="later" @error="error = $event" />
-      <AdeShelfSection shelf="backlog" :cards="backlog" @error="error = $event" />
+      <AdeShelfSection shelf="later" :cards="later" @run="surface.run" />
+      <AdeShelfSection shelf="backlog" :cards="backlog" @run="surface.run" />
     </div>
   </div>
 </template>

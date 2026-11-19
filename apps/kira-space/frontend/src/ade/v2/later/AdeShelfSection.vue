@@ -3,7 +3,6 @@ import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
-import { errorText } from '@workbench/bridge/codedError';
 import { computed, useTemplateRef } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useShelveTask } from '../queries';
@@ -13,19 +12,15 @@ import AdeShelfRow from './AdeShelfRow.vue';
 // One shelf of the Later tab: a heading and a drag list. Both shelves share a Sortable group, so a
 // drop from the other shelf lands here.
 const props = defineProps<{ shelf: Shelf; cards: readonly CardModel[] }>();
-const emit = defineEmits<{ error: [message: string] }>();
+// The parent runs the write on its error surface.
+const emit = defineEmits<{ run: [task: () => Promise<unknown>] }>();
 
 const shelve = useShelveTask();
 const list = useTemplateRef<HTMLElement>('list');
 const ids = computed(() => props.cards.map((c) => c.task.id));
 
-async function put(taskId: string, beforeId: string): Promise<void> {
-  emit('error', '');
-  try {
-    await shelve.mutateAsync({ taskId, shelf: props.shelf, beforeId });
-  } catch (err) {
-    emit('error', errorText(err));
-  }
+function put(taskId: string, beforeId: string): void {
+  emit('run', () => shelve.mutateAsync({ taskId, shelf: props.shelf, beforeId }));
 }
 
 useSortableReorder(
@@ -33,7 +28,7 @@ useSortableReorder(
   () => ids.value,
   (fromId, toId) => {
     const next = moveId(ids.value, fromId, toId);
-    void put(fromId, next[next.indexOf(fromId) + 1] ?? '');
+    put(fromId, next[next.indexOf(fromId) + 1] ?? '');
   },
   {
     draggable: '[data-shelf-row]',
@@ -42,7 +37,7 @@ useSortableReorder(
     keyboard: true,
     group: 'ade-shelf',
     itemId: (el) => el.dataset.taskId ?? null,
-    onAdd: (id, beforeId) => void put(id, beforeId ?? ''),
+    onAdd: (id, beforeId) => put(id, beforeId ?? ''),
   },
 );
 </script>

@@ -4,7 +4,6 @@ import { Input } from '@theme/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { errorText } from '@workbench/bridge/codedError';
 import { ref, watch } from 'vue';
 import type { LinkResult } from '../wire';
 
@@ -16,7 +15,6 @@ const props = defineProps<{ add: (line: string) => Promise<LinkResult> }>();
 const open = defineModel<boolean>('open', { default: false });
 
 const text = ref('');
-const error = ref('');
 const known = ref(false);
 
 watch(text, (value) => {
@@ -25,7 +23,7 @@ watch(text, (value) => {
 watch(open, (isOpen) => {
   if (isOpen) return;
   text.value = '';
-  error.value = '';
+  submitting.reset();
   known.value = false;
 });
 
@@ -35,7 +33,6 @@ async function submit(raw: string): Promise<void> {
     .map((l) => l.trim())
     .filter(Boolean);
   if (lines.length === 0) return;
-  error.value = '';
   let allKnown = true;
   for (const [i, line] of lines.entries()) {
     try {
@@ -43,8 +40,7 @@ async function submit(raw: string): Promise<void> {
       if (res.filed !== 'known') allKnown = false;
     } catch (err) {
       text.value = lines.slice(i).join('\n');
-      error.value = errorText(err);
-      return;
+      throw err;
     }
   }
   text.value = '';
@@ -52,6 +48,7 @@ async function submit(raw: string): Promise<void> {
 }
 
 const submitting = useAsyncAction(submit);
+const error = submitting.error;
 function run(raw: string): void {
   if (!submitting.pending.value) void submitting.run(raw);
 }
