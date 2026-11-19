@@ -1645,6 +1645,9 @@
       "dbMcpAPI": {
         "title": "Send {method} request to {host}"
       },
+      "dbMcpAPIResponse": {
+        "title": "Response from {host}: {method}"
+      },
       "dbMcpExemption": {
         "title": "Lift a limit for one query · {name}"
       },
@@ -7177,6 +7180,13 @@
         "title": "Studio MCP instructions",
         "usedBy": {
           "body": "Sent to {agent} when it connects to the Studio MCP server."
+        }
+      },
+      "dbmcpToolApiRequestReview": {
+        "description": "Tells the agent that the user may hold an API response for review and what a withheld response means.",
+        "title": "API response review notice",
+        "usedBy": {
+          "body": "Always added to the api_request tool description."
         }
       },
       "dbmcpToolApiRequestScripts": {

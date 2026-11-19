@@ -1451,7 +1451,7 @@ var (
 // DbmcpToolAPIListEnvironments describes the api_list_environments tool.
 var DbmcpToolAPIListEnvironments = define(Entry{
 	ID: "dbmcp.tool.api_list_environments", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_list_environments",
-	Default: "List environments that share variables with agents: id, name, whether reads skip approval, and variable names. A secret lists its allowed hosts. Values are never shown. Requests without an environment are allowed.",
+	Default: "List environments that share variables with agents: id, name, whether reads skip approval, and variable names. A secret lists its allowed hosts. Values are never shown. Requests without an environment are allowed. reviewResults true: the user holds that class's responses (read: GET, HEAD, OPTIONS without body).",
 }, NoVars{})
 
 // DbmcpToolAPIRequest describes the api_request tool.
@@ -1497,6 +1497,15 @@ var DbmcpToolAPIRequestScripts = define(Entry{
 	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestScripts.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestScripts.usedBy.body",
 	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each is a function body that ends with return. The user sees both scripts. script.prepare runs before approval and returns request fields that replace yours. script.transform runs on the response; you receive only {result: <its return value>}, never the raw response unless it returns it.",
+}, NoVars{})
+
+// DbmcpToolAPIRequestReview is always added to api_request's description.
+var DbmcpToolAPIRequestReview = define(Entry{
+	ID: "dbmcp.tool.api_request.reviewSuffix", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolApiRequestReview.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestReview.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestReview.usedBy.body",
+	Default:    "The user may hold the response for review before you get it (reviewResults in api_list_environments). A withheld response is an error that says the request was sent; do not resend it.",
 }, NoVars{})
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.

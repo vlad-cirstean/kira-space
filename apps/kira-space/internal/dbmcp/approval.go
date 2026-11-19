@@ -127,15 +127,27 @@ const (
 	ApprovalStageResponse ApprovalStage = "response"
 )
 
-// ApprovalResponse is the held run_query result a response-stage request asks about. Text is the
+// ApprovalResponse is the held result a response-stage request asks about. Text is the
 // exact TextContent the client receives on Send; it stays out of queue snapshots (which fan out to
 // every window) and is fetched by request id through ResponseFor.
 type ApprovalResponse struct {
 	Text    string
 	IsError bool
-	Bytes   int
+	// Bytes is what the held-result caps count: Text, Raw and the script source.
+	Bytes int
 	// Requested says the approver asked for the review on the pre-run item, not a connection setting.
 	Requested bool
+	// Raw is the response the script read, set only when a script produced Text.
+	Raw string
+	// Script is the script that produced Text from Raw; nil without one.
+	Script *HeldScript
+}
+
+// HeldScript is the script a held result came from.
+type HeldScript struct {
+	Source string
+	// Hash is jsengine.SourceHash of Source.
+	Hash string
 }
 
 // ApprovalPlanIssue is one Issue as the dialog renders it — plan evidence, never the whole tree.
@@ -230,6 +242,8 @@ type ApprovalRequest struct {
 	API *agentapi.Planned
 	// APIScript is the scripts of an api.request, shown beside the request.
 	APIScript *apiScripts
+	// APIReview is set for the api.response subject: what the item shows beside the held response.
+	APIReview *apiReviewMeta
 	// Exemption is set for the db.exemption subject.
 	Exemption *ApprovalExemption
 	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the
@@ -309,7 +323,7 @@ func newApprovalBrokerCaps(now func() time.Time, q *approvals.Queue, perResult, 
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b

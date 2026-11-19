@@ -326,9 +326,23 @@ func responseBinding(r agentapi.Result) (json.RawMessage, error) {
 	}{r.Status, r.StatusText, nonNilNV(r.Headers), r.ContentType, r.Body, parsed, r.BodyBytes, r.Truncated, r.Binary, r.FinalURL, r.Redirects})
 }
 
-// deliverAPI is the one point where the agent-bound result is final: later phases review and commit
-// here. Without a transform the agent gets the masked response as is.
-func (s *Server) deliverAPI(_ context.Context, _ agentapi.Planned, sc *apiScripts, o apiOutcome) (*mcp.CallToolResult, any, error) {
+// deliverAPI is the one point where the agent-bound result is final: the response review runs first,
+// and later phases commit here. requested says the user asked for the review on the approval card.
+func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts, o apiOutcome, requested bool) (*mcp.CallToolResult, any, error) {
+	res, out, err := apiAgentResult(sc, o)
+	// Read after the send: the user may change the setting while the request runs.
+	if rv := s.apiReviewFor(plan, sc, requested); rv.On {
+		if refusal := s.reviewAPI(ctx, plan, sc, o, rv, res, err); refusal != "" {
+			return errResult(refusal)
+		}
+	}
+	// Final point: the agent gets res.
+	return res, out, err
+}
+
+// apiAgentResult is what the agent receives: the failure text, the transform's result, or the masked
+// response as is.
+func apiAgentResult(sc *apiScripts, o apiOutcome) (*mcp.CallToolResult, any, error) {
 	switch {
 	case o.Failure != "":
 		return errResult(o.Failure)

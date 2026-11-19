@@ -100,9 +100,30 @@ func (s *Server) apiListEnvironments(_ context.Context, _ *mcp.CallToolRequest, 
 		return errResult("the environments could not be read")
 	}
 	return jsonResult(map[string]any{
-		"environments": envs,
+		"environments": s.envListing(envs),
 		"note":         "Requests without environmentId are allowed; they can use no variables.",
 	})
+}
+
+// apiEnvListing is one api_list_environments entry: the view plus which request classes hold their
+// responses for the user.
+type apiEnvListing struct {
+	agentapi.EnvView
+	ReviewResults struct {
+		Read  bool `json:"read"`
+		Write bool `json:"write"`
+	} `json:"reviewResults"`
+}
+
+func (s *Server) envListing(envs []agentapi.EnvView) []apiEnvListing {
+	out := make([]apiEnvListing, len(envs))
+	for i, v := range envs {
+		info := agentapi.EnvInfo{Review: v.Review}
+		out[i].EnvView = v
+		out[i].ReviewResults.Read = s.apiReviewSetting(info, true)
+		out[i].ReviewResults.Write = s.apiReviewSetting(info, false)
+	}
+	return out
 }
 
 func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRequestArgs) (*mcp.CallToolResult, any, error) {
@@ -128,8 +149,11 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if err != nil {
 		return errResult(err.Error())
 	}
+	requested := false
 	if needsAPIApproval(settings, plan) {
-		if res, err := s.approveAPI(ctx, plan, sc); res != nil || err != nil {
+		var res *mcp.CallToolResult
+		var err error
+		if res, requested, err = s.approveAPI(ctx, plan, sc); res != nil || err != nil {
 			return res, nil, err
 		}
 	}
@@ -144,7 +168,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if sc.hasTransform() {
 		o = s.transformAPI(ctx, plan, sc, raw)
 	}
-	return s.deliverAPI(ctx, plan, sc, o)
+	return s.deliverAPI(ctx, plan, sc, o, requested)
 }
 
 // openScripts validates the script argument and syntax-checks both scripts before anything runs.
@@ -190,24 +214,26 @@ func needsAPIApproval(st APISettings, p agentapi.Planned) bool {
 
 func isReadMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPTIONS" }
 
-// approveAPI asks the user. A non-nil result stops the call.
-func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (*mcp.CallToolResult, error) {
+// approveAPI asks the user. A non-nil result stops the call; requested says the user ticked "review the
+// response" on the card.
+func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (res *mcp.CallToolResult, requested bool, err error) {
 	ctx, stop := s.watchKept(ctx, plan.Kept)
 	defer stop()
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
 		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan, APIScript: sc,
+		OfferReview: true, ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)),
 	})
 	if outcome != ApprovalApproved {
 		var gone *keptGoneError
 		if errors.As(context.Cause(ctx), &gone) {
 			res, _, err := errResult(gone.Error())
-			return res, err
+			return res, false, err
 		}
 		res, _, err := approvalOutcomeError(outcome, "request")
-		return res, err
+		return res, false, err
 	}
-	return nil, nil
+	return nil, choice.ReviewResult, nil
 }
 
 // addAPITools registers api_list_environments and api_request.
@@ -222,9 +248,9 @@ func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[apiRequestArgs](src, llmprompts.DbmcpToolAPIRequest.ID(), limits), "method", "url")
 	fixScriptSchema(sch)
 	sch.Properties["method"].Enum = []any{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"}
-	scriptNote := ""
+	scriptNote := " " + llmprompts.DbmcpToolAPIRequestReview.Text(src, llmprompts.NoVars{})
 	if s.scriptsOn() {
-		scriptNote = " " + llmprompts.DbmcpToolAPIRequestScripts.Text(src, llmprompts.NoVars{})
+		scriptNote += " " + llmprompts.DbmcpToolAPIRequestScripts.Text(src, llmprompts.NoVars{})
 	} else {
 		delete(sch.Properties, "script")
 	}
@@ -285,11 +311,69 @@ type apiPayload struct {
 	TimeoutSeconds  int                   `json:"timeoutSeconds"`
 	Kept            []agentapi.KeptUse    `json:"kept,omitempty"`
 	Script          *apiScriptPayload     `json:"script"`
+	// ReviewOffered shows "review the response"; ReviewResult says the settings already hold it.
+	ReviewOffered bool `json:"reviewOffered"`
+	ReviewResult  bool `json:"reviewResult"`
+}
+
+// apiResponsePayload is the review item's snapshot payload. It fans out to every Studio window, so it
+// carries no body, text, raw response or script.
+type apiResponsePayload struct {
+	Method      string         `json:"method"`
+	URL         string         `json:"url"`
+	Host        string         `json:"host"`
+	Environment *apiEnvPayload `json:"environment"`
+	Status      int            `json:"status"`
+	StatusText  string         `json:"statusText"`
+	IsError     bool           `json:"isError"`
+	Scripted    bool           `json:"scripted"`
+	Bytes       int            `json:"bytes"`
+	RawBytes    int            `json:"rawBytes"`
+	Class       string         `json:"class"`
+	Reason      string         `json:"reason"`
+}
+
+func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
+	p, held, meta := r.API, r.Response, r.APIReview
+	if p == nil {
+		p = &agentapi.Planned{}
+	}
+	if held == nil {
+		held = &ApprovalResponse{}
+	}
+	if meta == nil {
+		meta = &apiReviewMeta{}
+	}
+	out := apiResponsePayload{
+		Method: p.Method, URL: p.URL, Host: p.Host, Status: meta.Status, StatusText: meta.StatusText,
+		IsError: held.IsError, Scripted: held.Script != nil, Bytes: len(held.Text), RawBytes: len(held.Raw),
+		Class: "write", Reason: meta.Reason,
+	}
+	if meta.Read {
+		out.Class = "read"
+	}
+	if p.Env.ID != "" {
+		out.Environment = &apiEnvPayload{ID: p.Env.ID, Name: p.Env.Name, Color: p.Env.Color}
+	}
+	return out
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds
 // no secret value.
-func apiItemParts(p *agentapi.Planned, sc *apiScripts) (approvals.Target, approvals.Operation, []byte) {
+func apiItemParts(r ApprovalRequest) (approvals.Target, approvals.Operation, []byte) {
+	p := r.API
+	if p == nil {
+		p = &agentapi.Planned{}
+	}
+	target, op := apiTargetOp(p)
+	payload := apiPayloadOf(p)
+	payload.Script = apiScriptPayloadOf(r.APIScript)
+	payload.ReviewOffered, payload.ReviewResult = r.OfferReview, r.ReviewOn
+	return target, op, mustJSON(payload)
+}
+
+// apiTargetOp is the host, environment and method an API item shows in its header.
+func apiTargetOp(p *agentapi.Planned) (approvals.Target, approvals.Operation) {
 	if p == nil {
 		p = &agentapi.Planned{}
 	}
@@ -299,10 +383,7 @@ func apiItemParts(p *agentapi.Planned, sc *apiScripts) (approvals.Target, approv
 		location, color = p.Env.Name, p.Env.Color
 	}
 	target := approvals.Target{Name: p.Host, Kind: "http", Color: color, Location: location}
-	op := approvals.Operation{Class: "request", Tone: methodTone(p.Method)}
-	payload := apiPayloadOf(p)
-	payload.Script = apiScriptPayloadOf(sc)
-	return target, op, mustJSON(payload)
+	return target, approvals.Operation{Class: "request", Tone: methodTone(p.Method)}
 }
 
 func methodTone(m string) string {

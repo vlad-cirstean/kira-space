@@ -25,6 +25,7 @@ const (
 	KindDetailsEdit   = "details.edit"
 	KindScriptRun     = "script.run"
 	KindAPIRequest    = "api.request"
+	KindAPIResponse   = "api.response"
 )
 
 // Item is one pending approval as the window renders it. Payload is per kind, validated by the client.

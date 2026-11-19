@@ -159,7 +159,11 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Params: valuePayloads(sc.Params), Env: valuePayloads(sc.Env),
 		})
 	case approvals.KindAPIRequest:
-		it.Target, it.Operation, it.Payload = apiItemParts(r.API, r.APIScript)
+		it.Target, it.Operation, it.Payload = apiItemParts(r)
+	case approvals.KindAPIResponse:
+		it.Reason = "preview"
+		it.Target, it.Operation = apiTargetOp(r.API)
+		it.Payload = mustJSON(apiResponsePayloadOf(r))
 	case approvals.KindDbExemption:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(exemptionPayloadOf(r))
@@ -249,6 +253,8 @@ func promptTitle(req ApprovalRequest) string {
 	switch {
 	case req.Subject == approvals.KindAPIRequest && req.API != nil:
 		return i18n.T("backend.prompt.dbMcpAPI.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
+	case req.Subject == approvals.KindAPIResponse && req.API != nil:
+		return i18n.T("backend.prompt.dbMcpAPIResponse.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
 	case req.Subject == approvals.KindScriptRun:
 		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
 	case req.Subject == approvals.KindDbExemption:

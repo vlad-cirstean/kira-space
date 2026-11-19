@@ -407,6 +407,16 @@ type DbMcpPendingResponse struct {
 	RequestID string `json:"requestId"`
 	Text      string `json:"text"`
 	IsError   bool   `json:"isError"`
+	// Raw is the response a script read; empty without a script.
+	Raw string `json:"raw"`
+	// Script is the script that produced Text from Raw; nil without one.
+	Script *DbMcpPendingScript `json:"script"`
+}
+
+// DbMcpPendingScript is the script of a held result.
+type DbMcpPendingScript struct {
+	Source string `json:"source"`
+	Hash   string `json:"hash"`
 }
 
 // PendingResponse returns the exact text the AI client receives if the user sends the result of
@@ -419,5 +429,9 @@ func (s *DbMcpService) PendingResponse(args DbMcpApprovalArgs) (DbMcpPendingResp
 	if !ok {
 		return DbMcpPendingResponse{}, ipcerr.NotFoundNamed("result under review")
 	}
-	return DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError}, nil
+	out := DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError, Raw: r.Raw}
+	if r.Script != nil {
+		out.Script = &DbMcpPendingScript{Source: r.Script.Source, Hash: r.Script.Hash}
+	}
+	return out, nil
 }
