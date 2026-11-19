@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P686`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P688`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -9,7 +9,8 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Done |
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Done |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
-| P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
+| P674 Part 4 | Full-app UI uniformity audit: iteration 3 | Planned |
+| P674 Part 5 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Done |
 | P677 | API MCP: result review with raw and transformed views | Done |
@@ -24,6 +25,11 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
 | P685 | Shared shell for the config-file dialogs | Planned |
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Planned |
+| P687 | Shared hash-guarded draft and save-conflict model across modules | Planned |
+
+## P687: Shared draft and save-conflict model
+
+Parked by P674 Part 3. About 10 copies of a hash-guarded draft with save-conflict handling across modules (ADE workflow and step editors, repo file, API and connection config dialogs). Design one shared model; overlaps P685, plan them together. See `plans/P674-iter2.md` PARK.
 
 ## P682: Async action error state
 
@@ -51,7 +57,7 @@ Chapter end (unasked, per working agreement, after the last implementation phase
 
 Standing rules for every phase below: new feature tests split at the IPC boundary (flow test plus UI spec, same scenario); UI follows `docs/ARCHITECTURE.md` uniformity rules and the guard script; no secret ever reaches an agent, a log or the op log; open-source licences only (check package and feature level).
 
-## P674 Parts 1 to 4: Full-app UI uniformity audit
+## P674 Parts 1 to 5: Full-app UI uniformity audit
 
 Same method as v0.3.17 P672, but whole app with no subject list: the earlier pass was organised by subject (forms, buttons, menus, headings, status, tabs, states). This pass finds reimplementations and variation the subject list could not name. Scope is every module (Studio, Space, git-ui, ADE, docker-ui, mobile, capture, settings, approvals, site where it shares theme).
 
