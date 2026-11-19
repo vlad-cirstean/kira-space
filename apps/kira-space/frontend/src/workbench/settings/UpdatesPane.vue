@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import {
   Field,
   FieldContent,
@@ -40,12 +40,9 @@ function toggle(kind: TrackedKind, id: string, value: boolean): void {
       <FieldLegend>
         {{ t(`space.settings.updates.${group.kind}.title`) }}
         <template #actions>
-          <TooltipIconButton
-            icon="discard"
-            :label="t('common.action.resetToDefault.label')"
+          <ResetToDefaultButton
             :data-testid="`settings-reset-tracking-${group.kind}`"
-            :disabled-trigger="isAtDefault('tracking', group.kind)"
-            :disabled="isAtDefault('tracking', group.kind)"
+            :at-default="isAtDefault('tracking', group.kind)"
             @click="resetLeaf('tracking', group.kind)"
           />
         </template>

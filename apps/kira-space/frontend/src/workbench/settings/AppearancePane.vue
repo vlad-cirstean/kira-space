@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import {
   Field,
   FieldContent,
@@ -96,13 +96,10 @@ const rowColoringId = useId();
             }}</FieldDescription>
           </FieldContent>
         </Field>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           class="ml-auto"
           data-testid="settings-reset-appearance-rowColoring"
-          :disabled-trigger="isAtDefault('appearance', 'rowColoring')"
-          :disabled="isAtDefault('appearance', 'rowColoring')"
+          :at-default="isAtDefault('appearance', 'rowColoring')"
           @click="resetLeaf('appearance', 'rowColoring')"
         />
       </FieldGroup>
@@ -124,13 +121,10 @@ const rowColoringId = useId();
             }}</FieldDescription>
           </FieldContent>
         </Field>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           class="ml-auto"
           data-testid="settings-reset-appearance-inlineBlame"
-          :disabled-trigger="isAtDefault('appearance', 'inlineBlame')"
-          :disabled="isAtDefault('appearance', 'inlineBlame')"
+          :at-default="isAtDefault('appearance', 'inlineBlame')"
           @click="resetLeaf('appearance', 'inlineBlame')"
         />
       </FieldGroup>

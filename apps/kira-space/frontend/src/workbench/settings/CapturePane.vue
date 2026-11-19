@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { Switch } from '@theme/components/ui/switch';
@@ -63,25 +63,19 @@ const statusText = computed(() => {
         <FieldLabel :for="switchId">{{ t('space.settings.capture.enabled.label') }}</FieldLabel>
         <FieldDescription>{{ t('space.settings.capture.enabled.description') }}</FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         data-testid="settings-reset-capture-enabled"
-        :disabled-trigger="isAtDefault('capture', 'enabled')"
-        :disabled="isAtDefault('capture', 'enabled')"
+        :at-default="isAtDefault('capture', 'enabled')"
         @click="resetLeaf('capture', 'enabled')"
       />
     </Field>
     <Field>
       <div class="flex items-center justify-between gap-1">
         <FieldLabel :for="hotkeyId">{{ t('space.settings.capture.hotkey.label') }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-capture-hotkey"
-          :disabled-trigger="isAtDefault('capture', 'hotkey')"
-          :disabled="isAtDefault('capture', 'hotkey')"
+          :at-default="isAtDefault('capture', 'hotkey')"
           @click="resetLeaf('capture', 'hotkey')"
         />
       </div>

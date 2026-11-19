@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import {
   Field,
   FieldContent,
@@ -99,13 +99,10 @@ const expensiveQueryRowsId = useId();
           t('space.settings.advanced.ignoreRepoSettings.description')
         }}</FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         data-testid="settings-reset-ade-headlessSettingSources"
-        :disabled-trigger="isAtDefault('ade', 'headlessSettingSources')"
-        :disabled="isAtDefault('ade', 'headlessSettingSources')"
+        :at-default="isAtDefault('ade', 'headlessSettingSources')"
         @click="resetLeaf('ade', 'headlessSettingSources')"
       />
     </Field>
@@ -114,12 +111,9 @@ const expensiveQueryRowsId = useId();
         <FieldLabel :for="opLogRetentionDaysId">{{
           t('studio.settings.advanced.opLogRetention.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-advanced-opLogRetentionDays"
-          :disabled-trigger="isAtDefault('advanced', 'opLogRetentionDays')"
-          :disabled="isAtDefault('advanced', 'opLogRetentionDays')"
+          :at-default="isAtDefault('advanced', 'opLogRetentionDays')"
           @click="resetLeaf('advanced', 'opLogRetentionDays')"
         />
       </div>
@@ -142,12 +136,9 @@ const expensiveQueryRowsId = useId();
         <FieldLabel :for="expensiveQueryRowsId">{{
           t('studio.settings.advanced.expensiveRows.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-advanced-expensiveQueryRows"
-          :disabled-trigger="isAtDefault('advanced', 'expensiveQueryRows')"
-          :disabled="isAtDefault('advanced', 'expensiveQueryRows')"
+          :at-default="isAtDefault('advanced', 'expensiveQueryRows')"
           @click="resetLeaf('advanced', 'expensiveQueryRows')"
         />
       </div>

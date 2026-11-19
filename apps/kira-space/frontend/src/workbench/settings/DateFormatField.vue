@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -40,12 +40,9 @@ function onDateFormatChange(value: unknown): void {
   <Field>
     <div class="flex items-center justify-between gap-1">
       <FieldLabel>{{ t('space.settings.appearance.commitDate.label') }}</FieldLabel>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         data-testid="settings-reset-appearance-dateFormat"
-        :disabled-trigger="isAtDefault('appearance', 'dateFormat')"
-        :disabled="isAtDefault('appearance', 'dateFormat')"
+        :at-default="isAtDefault('appearance', 'dateFormat')"
         @click="resetLeaf('appearance', 'dateFormat')"
       />
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
@@ -91,12 +91,9 @@ function setKeepAwake(on: boolean): void {
     <Field>
       <div class="flex items-center justify-between gap-1">
         <FieldLabel :for="providerId">{{ t('memory.common.origin.agent.label') }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-agent-provider"
-          :disabled-trigger="isAtDefault('agent', 'provider')"
-          :disabled="isAtDefault('agent', 'provider')"
+          :at-default="isAtDefault('agent', 'provider')"
           @click="resetLeaf('agent', 'provider')"
         />
       </div>
@@ -140,13 +137,10 @@ function setKeepAwake(on: boolean): void {
           {{ t('space.settings.agent.hermetic.description') }}
         </FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         data-testid="settings-reset-agent-hermetic"
-        :disabled-trigger="isAtDefault('agent', 'hermetic')"
-        :disabled="isAtDefault('agent', 'hermetic')"
+        :at-default="isAtDefault('agent', 'hermetic')"
         @click="resetLeaf('agent', 'hermetic')"
       />
     </Field>
@@ -164,13 +158,10 @@ function setKeepAwake(on: boolean): void {
           {{ t('space.settings.agent.keepAwake.description') }}
         </FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         data-testid="settings-reset-agent-keepAwakeWithAgents"
-        :disabled-trigger="isAtDefault('agent', 'keepAwakeWithAgents')"
-        :disabled="isAtDefault('agent', 'keepAwakeWithAgents')"
+        :at-default="isAtDefault('agent', 'keepAwakeWithAgents')"
         @click="resetLeaf('agent', 'keepAwakeWithAgents')"
       />
     </Field>
@@ -194,13 +185,10 @@ function setKeepAwake(on: boolean): void {
           {{ t('space.settings.agent.notify.description') }}
         </FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         :data-testid="`settings-reset-agent-${n.leaf}`"
-        :disabled-trigger="isAtDefault('agent', n.leaf)"
-        :disabled="isAtDefault('agent', n.leaf)"
+        :at-default="isAtDefault('agent', n.leaf)"
         @click="resetLeaf('agent', n.leaf)"
       />
     </Field>
@@ -233,13 +221,10 @@ function setKeepAwake(on: boolean): void {
           {{ t('space.settings.agent.usage.description') }}
         </FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         data-testid="settings-reset-agent-usageEnabled"
-        :disabled-trigger="isAtDefault('agent', 'usageEnabled')"
-        :disabled="isAtDefault('agent', 'usageEnabled')"
+        :at-default="isAtDefault('agent', 'usageEnabled')"
         @click="resetLeaf('agent', 'usageEnabled')"
       />
     </Field>

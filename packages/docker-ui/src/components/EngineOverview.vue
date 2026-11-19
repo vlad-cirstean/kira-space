@@ -241,7 +241,7 @@ function refresh(): Promise<void> {
                     formatPercent(totals.cpu)
                   }}</span>
                   <span class="text-muted-foreground">{{
-                    t('docker.engine.of.label', { total: `${engine.cpus * 100}%` })
+                    t('docker.engine.of.label', { total: formatPercent(engine.cpus * 100) })
                   }}</span>
                 </div>
                 <UsageBar :percent="cpuPercentOfCapacity" />
