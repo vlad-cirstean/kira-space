@@ -1,5 +1,5 @@
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { computed, onBeforeUnmount, type Ref, ref, watch } from 'vue';
+import { useGuardedDraft } from '@workbench/behaviour/guardedDraft';
+import { computed, onBeforeUnmount, type Ref, watch } from 'vue';
 import { useAdeAgentsUiStore } from '../state/adeAgentsUi';
 
 interface FileView {
@@ -18,27 +18,24 @@ interface SaveArgs {
 // from; a file changed elsewhere is refused with Reload and Overwrite.
 export function useAgentFileEditor<V extends FileView>(
   query: { data: Ref<V | undefined>; refetch: () => Promise<{ data: V | undefined }> },
-  save: { mutateAsync: (args: SaveArgs) => Promise<V>; isPending: Ref<boolean> },
+  save: { mutateAsync: (args: SaveArgs) => Promise<V> },
 ) {
   const agentsUi = useAdeAgentsUiStore();
 
-  const draft = ref('');
-  const dirty = ref(false);
-  const baseHash = ref('');
-
   const view = computed(() => query.data.value);
+  const core = useGuardedDraft<string>({
+    initial: '',
+    source: () => (view.value ? { value: view.value.text, hash: view.value.hash } : undefined),
+    refetch: async () => {
+      const v = (await query.refetch()).data;
+      return v ? { value: v.text, hash: v.hash } : undefined;
+    },
+    write: (text, baseHash) => save.mutateAsync({ text, baseHash }),
+  });
+  const { draft, dirty } = core;
   const bytes = computed(() => new TextEncoder().encode(draft.value).length);
   const over = computed(() => view.value !== undefined && bytes.value > view.value.maxBytes);
 
-  watch(
-    view,
-    (v) => {
-      if (!v || dirty.value) return;
-      draft.value = v.text;
-      baseHash.value = v.hash;
-    },
-    { immediate: true },
-  );
   watch(dirty, (v) => {
     agentsUi.dirty = v;
   });
@@ -46,58 +43,27 @@ export function useAgentFileEditor<V extends FileView>(
     agentsUi.dirty = false;
   });
 
-  const saving = useAsyncAction(async (text: string) => {
-    const next = await save.mutateAsync({ text, baseHash: baseHash.value });
-    baseHash.value = next.hash;
-    if (draft.value === text) dirty.value = false;
-  });
-  const saveError = saving.error;
-  const conflict = computed(() => saving.cause.value?.code === 'E_CONFLICT');
-
   async function saveNow(): Promise<void> {
-    if (!dirty.value) return;
-    await saving.run(draft.value);
-  }
-
-  function resetTo(v: { text: string; hash: string } | undefined): void {
-    draft.value = v?.text ?? '';
-    baseHash.value = v?.hash ?? '';
-    dirty.value = false;
-    saving.reset();
-  }
-
-  function discard(): void {
-    resetTo(view.value);
-  }
-
-  async function reload(): Promise<void> {
-    resetTo((await query.refetch()).data);
-  }
-
-  async function overwrite(): Promise<void> {
-    const fresh = (await query.refetch()).data;
-    if (!fresh) return;
-    baseHash.value = fresh.hash;
-    await saveNow();
+    await core.save();
   }
 
   function onInput(v: string | number): void {
-    draft.value = String(v);
-    dirty.value = true;
+    core.edit(String(v));
   }
 
   return {
     view,
     draft,
     dirty,
-    saveError,
-    conflict,
+    saving: core.saving,
+    saveError: core.saveError,
+    conflict: core.conflict,
     bytes,
     over,
     saveNow,
-    discard,
-    reload,
-    overwrite,
+    discard: core.discard,
+    reload: core.reload,
+    overwrite: core.overwrite,
     onInput,
   };
 }

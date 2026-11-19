@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { errorText } from '@workbench/bridge/codedError';
+import { useGuardedDraft } from '@workbench/behaviour/guardedDraft';
 import SaveBar from '@workbench/components/SaveBar.vue';
 import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
+import { storeToRefs } from 'pinia';
 import { onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { libraryWorkflow } from '../board/stepLibrary';
+import { cloneWorkflow } from '../board/workflowForm';
 import { useSaveStep } from '../queries';
 import { useAdeWorkflowDraftStore } from '../state/adeWorkflowDraft';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
-import type { StepEntry } from '../wire';
+import type { StepEntry, Workflow, WorkflowStep } from '../wire';
 import AdeStepInspector from './AdeStepInspector.vue';
 
 // Form mode of a library step: the step inspector over a one-step draft; Save writes the step whole,
@@ -24,17 +25,36 @@ const wfUi = useAdeWorkflowsUiStore();
 const draft = useAdeWorkflowDraftStore();
 const save = useSaveStep();
 
-function load(e: StepEntry, hard: boolean): void {
-  const wf = e.step ? libraryWorkflow(e.step) : null;
-  if (hard) draft.open(wf, e.hash);
-  else draft.push(wf, e.hash);
-  if (e.step && hard) draft.select({ stepId: e.step.id });
+function load(e: StepEntry): void {
+  draft.open(e.step ? libraryWorkflow(e.step) : null, e.hash);
+  if (e.step) draft.select({ stepId: e.step.id });
 }
-load(props.entry, true);
-watch(
-  () => props.entry,
-  (e) => load(e, false),
-);
+const { draft: draftRef, baseHash, dirty } = storeToRefs(draft);
+const guard = useGuardedDraft<Workflow | null>({
+  state: { draft: draftRef, baseHash, dirty },
+  source: () =>
+    props.entry.step
+      ? { value: libraryWorkflow(props.entry.step), hash: props.entry.hash }
+      : undefined,
+  clone: (w) => (w ? cloneWorkflow(w) : null),
+  key: (w) => JSON.stringify(w),
+  adopt: (s) => {
+    const step = s?.value?.steps[0];
+    draft.open(s?.value ?? null, s?.hash ?? '');
+    if (step) draft.select({ stepId: step.id });
+  },
+  onSaved: draft.markSaved,
+  write: async (wf, hash) => {
+    const entry = await save.mutateAsync({
+      fileName: props.entry.fileName,
+      step: (wf as Workflow).steps[0] as WorkflowStep,
+      baseHash: hash,
+    });
+    if (entry.fileName !== props.entry.fileName) wfUi.stepFile = entry.fileName;
+    return entry;
+  },
+});
+load(props.entry);
 watch(
   () => draft.dirty,
   (v) => {
@@ -42,28 +62,7 @@ watch(
   },
 );
 
-async function saveNow(): Promise<void> {
-  const step = draft.draft?.steps[0];
-  if (!draft.dirty || !step) return;
-  const sent = JSON.stringify(draft.draft);
-  try {
-    const entry = await save.mutateAsync({
-      fileName: props.entry.fileName,
-      step,
-      baseHash: draft.baseHash,
-    });
-    draft.saved(sent, entry.hash);
-    if (entry.fileName !== props.entry.fileName) wfUi.stepFile = entry.fileName;
-  } catch (err) {
-    draft.error = errorText(err);
-    draft.conflict = (err as { code?: string }).code === 'E_CONFLICT';
-  }
-}
-const discard = (): void => load(props.entry, true);
-function overwrite(): void {
-  draft.rebase(props.entry.hash);
-  void saveNow();
-}
+const saveNow = (): Promise<boolean> => guard.save();
 
 const root = useTemplateRef<HTMLElement>('root');
 useShortcut(root, ['form.save'], () => void saveNow());
@@ -83,10 +82,10 @@ onBeforeUnmount(() => {
   >
     <SaveBar
       :dirty="draft.dirty"
-      :saving="save.isPending.value"
+      :saving="guard.saving.value"
       testid-prefix="ade-wf"
       @save="saveNow"
-      @discard="discard"
+      @discard="guard.discard"
     >
       <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
     </SaveBar>
@@ -99,16 +98,13 @@ onBeforeUnmount(() => {
       />
     </div>
     <SaveConflictAlert
-      v-if="draft.error && draft.conflict"
-      :error="draft.error"
-      conflict
+      :error="guard.saveError.value ?? ''"
+      :conflict="guard.conflict.value"
       testid-prefix="ade-wf"
-      @reload="discard"
-      @overwrite="overwrite"
-    />
-    <Alert v-else-if="draft.error" variant="error" data-testid="ade-wf-save-error">
-      <AlertDescription>{{ draft.error }}</AlertDescription>
-      <AlertAction>
+      @reload="guard.reload"
+      @overwrite="guard.overwrite"
+    >
+      <template #action>
         <Button
           variant="link"
           size="inline"
@@ -117,8 +113,8 @@ onBeforeUnmount(() => {
         >
           {{ t('space.ade.workflows.graph.switchYaml.label') }}
         </Button>
-      </AlertAction>
-    </Alert>
+      </template>
+    </SaveConflictAlert>
   </div>
   <EmptyState
     v-else

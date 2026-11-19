@@ -2,7 +2,7 @@
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useGuardedDraft } from '@workbench/behaviour/guardedDraft';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import SaveBar from '@workbench/components/SaveBar.vue';
@@ -40,20 +40,18 @@ const yaml = isStep ? useStepYaml(() => props.fileName) : useWorkflowYaml(() => 
 const validate = isStep ? useValidateStepYaml() : useValidateWorkflowYaml();
 const save = isStep ? useSaveStepYaml() : useSaveWorkflowYaml();
 
-const draft = ref('');
-const dirty = ref(false);
-const baseHash = ref('');
 const checked = ref<{ error: WorkflowError | null } | null>(null);
-
-watch(
-  () => yaml.data.value,
-  (data) => {
-    if (!data || dirty.value) return;
-    draft.value = data.yaml;
-    baseHash.value = data.hash;
+const guard = useGuardedDraft<string>({
+  initial: '',
+  source: () =>
+    yaml.data.value ? { value: yaml.data.value.yaml, hash: yaml.data.value.hash } : undefined,
+  refetch: async () => {
+    const d = (await yaml.refetch()).data;
+    return d ? { value: d.yaml, hash: d.hash } : undefined;
   },
-  { immediate: true },
-);
+  write: (text, baseHash) => save.mutateAsync({ fileName: props.fileName, yaml: text, baseHash }),
+});
+const { draft, dirty } = guard;
 
 const error = computed(() => (checked.value ? checked.value.error : props.entryError));
 const message = computed(() => {
@@ -86,49 +84,20 @@ watch(dirty, (v) => {
   wfUi.dirty = v;
 });
 
-const saving = useAsyncAction(async (text: string) => {
-  const entry = await save.mutateAsync({
-    fileName: props.fileName,
-    yaml: text,
-    baseHash: baseHash.value,
-  });
-  baseHash.value = entry.hash;
-  if (draft.value === text) dirty.value = false;
-});
-const saveError = saving.error;
-const conflict = computed(() => saving.cause.value?.code === 'E_CONFLICT');
+const saveNow = (): Promise<boolean> => guard.save();
 
-async function saveNow(): Promise<void> {
-  if (!dirty.value) return;
-  await saving.run(draft.value);
-}
-
-function resetTo(data: { yaml: string; hash: string } | undefined): void {
-  draft.value = data?.yaml ?? '';
-  baseHash.value = data?.hash ?? '';
-  dirty.value = false;
-  saving.reset();
+function discard(): void {
+  guard.discard();
   checked.value = null;
 }
 
-function discard(): void {
-  resetTo(yaml.data.value);
-}
-
 async function reload(): Promise<void> {
-  resetTo((await yaml.refetch()).data);
-}
-
-async function overwrite(): Promise<void> {
-  const fresh = (await yaml.refetch()).data;
-  if (!fresh) return;
-  baseHash.value = fresh.hash;
-  await saveNow();
+  await guard.reload();
+  checked.value = null;
 }
 
 function onInput(v: string | number): void {
-  draft.value = String(v);
-  dirty.value = true;
+  guard.edit(String(v));
   void runValidate();
 }
 
@@ -144,7 +113,7 @@ onBeforeUnmount(() => {
   <div class="flex flex-col gap-1.5" ref="root" :data-testid="`${testidPrefix}-pane`">
     <SaveBar
       :dirty="dirty"
-      :saving="save.isPending.value"
+      :saving="guard.saving.value"
       testid-prefix="ade-wf"
       @save="saveNow"
       @discard="discard"
@@ -175,11 +144,11 @@ onBeforeUnmount(() => {
       }}</FieldError
     >
     <SaveConflictAlert
-      :error="saveError ?? ''"
-      :conflict="conflict"
+      :error="guard.saveError.value ?? ''"
+      :conflict="guard.conflict.value"
       testid-prefix="ade-wf"
       @reload="reload"
-      @overwrite="overwrite"
+      @overwrite="guard.overwrite"
     />
   </div>
 </template>

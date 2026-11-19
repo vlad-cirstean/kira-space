@@ -1,3 +1,4 @@
+import { guardedDraftState } from '@workbench/behaviour/guardedDraft';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { detachedStep, type Overridable, referenceStep, resetKey } from '../board/stepLibrary';
@@ -26,13 +27,9 @@ export interface Selection {
 // edit changes. Save writes it whole (with the file hash it was built on, so a change made elsewhere
 // is refused), Discard drops it; a pushed workflow never replaces unsaved edits.
 export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
-  const draft = ref<Workflow | null>(null);
-  const dirty = ref(false);
-  const error = ref('');
-  /** The file hash the draft was built on. */
-  const baseHash = ref('');
-  /** The last save was refused because the file changed since `baseHash`. */
-  const conflict = ref(false);
+  // Draft, the file hash it was built on and dirty live here; `useGuardedDraft` in the saving
+  // component drives them (save, Discard, Reload, push, conflict).
+  const { draft, baseHash, dirty } = guardedDraftState<Workflow | null>(null);
   const selection = ref<Selection | null>(null);
   /** Bumped when another step is selected, not when the selected step's id follows its name. */
   const selectionKey = ref(0);
@@ -47,27 +44,10 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
   function open(wf: Workflow | null, hash = ''): void {
     draft.value = wf ? cloneWorkflow(wf) : null;
     baseHash.value = hash;
-    conflict.value = false;
     dirty.value = false;
-    error.value = '';
     selection.value = null;
     selectionKey.value++;
     fresh.value = new Set();
-  }
-  /** A pushed workflow: taken only while nothing is unsaved. */
-  function push(wf: Workflow | null, hash: string): void {
-    if (dirty.value || !wf) return;
-    draft.value = cloneWorkflow(wf);
-    baseHash.value = hash;
-  }
-  function discard(wf: Workflow | null, hash: string): void {
-    open(wf, hash);
-  }
-  /** Overwrite: rebuild on the file as it is now while keeping the draft's edits. */
-  function rebase(hash: string): void {
-    baseHash.value = hash;
-    conflict.value = false;
-    error.value = '';
   }
   function edit(next: Workflow): void {
     const wf = clearStaleImplementers(next);
@@ -76,13 +56,9 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
     const sel = selection.value;
     if (sel && !wf.steps.some((s) => s.id === sel.stepId)) selection.value = null;
   }
-  /** After a save: clean only when nothing changed while it was in flight. */
-  function saved(sent: string, hash: string): void {
-    error.value = '';
-    conflict.value = false;
-    baseHash.value = hash;
+  /** After a save: ids of added steps stop following their name. */
+  function markSaved(): void {
     fresh.value = new Set();
-    if (JSON.stringify(draft.value) === sent) dirty.value = false;
   }
   function select(sel: Selection | null): void {
     selection.value = sel;
@@ -192,18 +168,13 @@ export const useAdeWorkflowDraftStore = defineStore('adeWorkflowDraft', () => {
   return {
     draft,
     dirty,
-    error,
     baseHash,
-    conflict,
     selection,
     selectionKey,
     step,
     canSkip,
     open,
-    push,
-    discard,
-    saved,
-    rebase,
+    markSaved,
     select,
     patchWorkflow,
     patchStep,

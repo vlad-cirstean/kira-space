@@ -2,13 +2,12 @@
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
-import { errorText } from '@workbench/bridge/codedError';
+import { useGuardedDraft } from '@workbench/behaviour/guardedDraft';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import SaveBar from '@workbench/components/SaveBar.vue';
@@ -27,8 +26,9 @@ import { type Connection, type Edge, type Node, useVueFlow, VueFlow } from '@vue
 import { useElementSize } from '@vueuse/core';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import type { MenuItem } from '@workbench/state/contextMenu';
+import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
-import { kindLabel, PLACEHOLDER_TOKENS, STEP_KINDS } from '../board/workflowForm';
+import { cloneWorkflow, kindLabel, PLACEHOLDER_TOKENS, STEP_KINDS } from '../board/workflowForm';
 import {
   canMove,
   type EdgeData,
@@ -85,11 +85,26 @@ const addStepItems = computed<MenuItem[]>(() => [
 const { confirmRemoveStep } = useStepRemoval();
 const { setViewport } = useVueFlow();
 
+const { draft: draftRef, baseHash, dirty } = storeToRefs(draft);
+const guard = useGuardedDraft<Workflow | null>({
+  state: { draft: draftRef, baseHash, dirty },
+  source: () =>
+    props.entry.workflow ? { value: props.entry.workflow, hash: props.entry.hash } : undefined,
+  clone: (w) => (w ? cloneWorkflow(w) : null),
+  key: (w) => JSON.stringify(w),
+  adopt: (s) => draft.open(s?.value ?? null, s?.hash ?? ''),
+  onSaved: draft.markSaved,
+  write: async (workflow, hash) => {
+    const entry = await save.mutateAsync({
+      fileName: props.entry.fileName,
+      workflow: workflow as Workflow,
+      baseHash: hash,
+    });
+    if (entry.fileName !== props.entry.fileName) wfUi.workflowFile = entry.fileName;
+    return entry;
+  },
+});
 draft.open(props.entry.workflow, props.entry.hash);
-watch(
-  () => props.entry,
-  (e) => draft.push(e.workflow, e.hash),
-);
 watch(
   () => draft.dirty,
   (v) => {
@@ -97,28 +112,7 @@ watch(
   },
 );
 
-async function saveNow(): Promise<void> {
-  const current = draft.draft;
-  if (!draft.dirty || !current) return;
-  const sent = JSON.stringify(current);
-  try {
-    const entry = await save.mutateAsync({
-      fileName: props.entry.fileName,
-      workflow: current,
-      baseHash: draft.baseHash,
-    });
-    draft.saved(sent, entry.hash);
-    if (entry.fileName !== props.entry.fileName) wfUi.workflowFile = entry.fileName;
-  } catch (err) {
-    draft.error = errorText(err);
-    draft.conflict = (err as { code?: string }).code === 'E_CONFLICT';
-  }
-}
-const discard = (): void => draft.discard(props.entry.workflow, props.entry.hash);
-function overwrite(): void {
-  draft.rebase(props.entry.hash);
-  void saveNow();
-}
+const saveNow = (): Promise<boolean> => guard.save();
 
 // Layout runs only when the topology changes: typing in a step's prompt must not re-run dagre or move
 // a node. The watcher reads the draft untracked, so only the key triggers it.
@@ -293,10 +287,10 @@ onBeforeUnmount(() => {
   >
     <SaveBar
       :dirty="draft.dirty"
-      :saving="save.isPending.value"
+      :saving="guard.saving.value"
       testid-prefix="ade-wf"
       @save="saveNow"
-      @discard="discard"
+      @discard="guard.discard"
     >
       <template #start>{{ t('space.ade.workflows.saveBar.applies.hint') }}</template>
     </SaveBar>
@@ -412,16 +406,13 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <SaveConflictAlert
-      v-if="draft.error && draft.conflict"
-      :error="draft.error"
-      conflict
+      :error="guard.saveError.value ?? ''"
+      :conflict="guard.conflict.value"
       testid-prefix="ade-wf"
-      @reload="discard"
-      @overwrite="overwrite"
-    />
-    <Alert v-else-if="draft.error" variant="error" data-testid="ade-wf-save-error">
-      <AlertDescription>{{ draft.error }}</AlertDescription>
-      <AlertAction>
+      @reload="guard.reload"
+      @overwrite="guard.overwrite"
+    >
+      <template #action>
         <Button
           variant="link"
           size="inline"
@@ -430,8 +421,8 @@ onBeforeUnmount(() => {
         >
           {{ t('space.ade.workflows.graph.switchYaml.label') }}
         </Button>
-      </AlertAction>
-    </Alert>
+      </template>
+    </SaveConflictAlert>
   </div>
   <EmptyState
     v-else

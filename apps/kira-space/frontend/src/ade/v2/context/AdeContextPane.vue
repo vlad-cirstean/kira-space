@@ -17,6 +17,7 @@ const {
   view,
   draft,
   dirty,
+  saving,
   saveError,
   conflict,
   bytes,
@@ -72,7 +73,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
         />
         <SaveBar
           :dirty="dirty"
-          :saving="save.isPending.value"
+          :saving="saving"
           :can-save="dirty"
           testid-prefix="ade-context"
           @save="saveNow"
