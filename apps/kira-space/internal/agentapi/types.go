@@ -64,6 +64,13 @@ type EnvInfo struct {
 	Color string
 	// AutoApproveReads is the environment's agentAutoApproveReads.
 	AutoApproveReads bool
+	// Review is the environment's agentReview: inherit, review or send per class; "" is inherit.
+	Review ReviewSetting
+}
+
+// ReviewSetting is an environment's response review per request class.
+type ReviewSetting struct {
+	Read, Write string
 }
 
 // Planned is a request checked against the policy but not yet sent. It holds no secret value: URL,
@@ -151,6 +158,8 @@ type EnvView struct {
 	Color            string    `json:"color"`
 	AutoApproveReads bool      `json:"autoApproveReads"`
 	Variables        []VarView `json:"variables"`
+	// Review stays off the wire of ApiConfigService.AgentAccess; dbmcp resolves it for agents.
+	Review ReviewSetting `json:"-"`
 }
 
 // Globals are the user's own API settings an agent request inherits.

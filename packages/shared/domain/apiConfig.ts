@@ -1,6 +1,8 @@
 // Mirrors internal/apifiles View: the Api module's config files and the secret names they reference.
 // Never holds a secret value; SetSecret is write-only.
 
+import type { McpReviewResults } from './connection';
+
 export interface ApiFileProblem {
   /** 0 when the problem has no single line (a file over the size cap). */
   line: number;
@@ -74,6 +76,7 @@ export interface ApiEnvironmentFileModel {
   description?: string;
   color?: string;
   agentAutoApproveReads?: boolean;
+  agentReview?: { read?: McpReviewResults; write?: McpReviewResults };
   variables?: ApiFileVariable[];
 }
 

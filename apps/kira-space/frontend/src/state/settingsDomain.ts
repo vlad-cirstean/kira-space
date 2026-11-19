@@ -145,6 +145,8 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   keptRetentionMinutes: z.number().int().min(5).max(240).default(60),
   // Agents may attach JavaScript to api_request (prepare the request, transform the result).
   apiScripts: z.boolean().default(true),
+  // Hold each API response for the user's review before the agent gets it.
+  apiReviewResponses: z.boolean().default(false),
 });
 
 // advanced carries just gitLogLevel here — this app's own diagnostic log verbosity, its entire
@@ -352,6 +354,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRulesInvalid: false,
     keptRetentionMinutes: 60,
     apiScripts: true,
+    apiReviewResponses: false,
   }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -461,5 +464,6 @@ export const defaultSettings: Settings = {
     apiRulesInvalid: false,
     keptRetentionMinutes: 60,
     apiScripts: true,
+    apiReviewResponses: false,
   },
 };

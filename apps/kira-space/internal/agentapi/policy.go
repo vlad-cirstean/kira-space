@@ -53,7 +53,14 @@ func availableOf(ref apifiles.EnvironmentRef) map[string]available {
 }
 
 func envInfoOf(ref apifiles.EnvironmentRef) EnvInfo {
-	return EnvInfo{ID: ref.ID, Name: ref.Name, Color: ref.Color, AutoApproveReads: ref.File.AgentAutoApproveReads}
+	return EnvInfo{ID: ref.ID, Name: ref.Name, Color: ref.Color, AutoApproveReads: ref.File.AgentAutoApproveReads, Review: reviewOf(ref.File)}
+}
+
+func reviewOf(f apifiles.EnvironmentFile) ReviewSetting {
+	if f.AgentReview == nil {
+		return ReviewSetting{}
+	}
+	return ReviewSetting{Read: f.AgentReview.Read, Write: f.AgentReview.Write}
 }
 
 // Environments lists the environments that share at least one variable with agents. It never
@@ -69,7 +76,7 @@ func (s *Service) Environments() ([]EnvView, error) {
 		if len(avail) == 0 {
 			continue
 		}
-		v := EnvView{ID: ref.ID, Name: ref.Name, Description: ref.Description, Color: ref.Color, AutoApproveReads: ref.File.AgentAutoApproveReads, Variables: []VarView{}}
+		v := EnvView{ID: ref.ID, Name: ref.Name, Description: ref.Description, Color: ref.Color, AutoApproveReads: ref.File.AgentAutoApproveReads, Variables: []VarView{}, Review: reviewOf(ref.File)}
 		names := make([]string, 0, len(avail))
 		for n := range avail {
 			names = append(names, n)

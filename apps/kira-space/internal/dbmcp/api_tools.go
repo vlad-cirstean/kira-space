@@ -38,6 +38,9 @@ type APISettings struct {
 	// Scripts lets agents attach JavaScript to api_request (dbMcp.apiScripts). Listed in the schema only
 	// while the server also has an engine.
 	Scripts bool
+	// ReviewResponses holds API responses for the user's review (dbMcp.apiReviewResponses); an environment's
+	// agentReview overrides it per request class.
+	ReviewResponses bool
 }
 
 func (s *Server) apiSettings() APISettings {
