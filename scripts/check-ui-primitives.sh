@@ -29,6 +29,7 @@
 # Guards U153-U156, U73/U88/U90 extensions: docs/HISTORY.md (v0.3.17).
 # Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
 # Guards U162-U170: docs/HISTORY.md (v0.3.18).
+# Guards U171-U176: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -339,6 +340,12 @@ U167@@vt@@ConfigFormProblemAlert.vue@@hand config form problem alert (use Config
 U168@@vt@@ResetToDefaultButton.vue|PromptDetail.vue@@hand reset-to-default button (use ResetToDefaultButton)@@common\.action\.resetToDefault\.label
 U169@@vt@@frames.ts@@hand drop indicator (use dropIndicator)@@['"](?=[^'"]*${TOK}h-0\.5(?![\w-]))(?=[^'"]*${TOK}bg-focus(?![\w-]))
 U170@@vt@@frames.ts@@hand window tab strip (use windowTabStrip)@@['"](?=[^'"]*${TOK}h-tabbar(?![\w-]))(?=[^'"]*${TOK}min-h-0(?![\w-]))(?=[^'"]*${TOK}bg-chrome(?![\w-]))
+U171@@v@@CopyIconButton.vue@@hand copy icon button (use CopyIconButton)@@(?<![\w:-])icon="copy"|:icon="(?:ICON\.copy|copied\b[^"]*)"
+U172@@vt@@format.ts@@hand masked value (use MaskedValue, MASKED_TEXT)@@(?:•){4}|'•'\.repeat\(
+U173@@v@@RelativeTime.vue|AdeReviewSync.vue|AdeSessionTabTip.vue|AdeAgentsStatusRow.vue@@standalone instant via useRelativeTime (use RelativeTime)@@\buseRelativeTime\(
+U174@@v@@HighlightedText.vue@@hand mark element (use HighlightedText)@@<mark[\s>]
+U175@@vt@@@@hand meta link classes (use Button variant link-meta)@@${TOK}decoration-border(?![\w-])
+U176@@v@@@@QueryState error slot with hand Retry or Alert (use QueryState errorLabel, errorTestid)@@#error="\{[^"]*\bretry\b|#error="[^"]*"\s*>\s*<Alert\b
 GUARDS
 
 # hits: "U<n> path"

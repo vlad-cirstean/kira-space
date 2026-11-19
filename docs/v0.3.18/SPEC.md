@@ -8,7 +8,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 |---|-------|--------|
 | P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Done |
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Done |
-| P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
+| P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Done |
 | P674 Part 4 | Full-app UI uniformity audit: iteration 3 | Planned |
 | P674 Part 5 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
@@ -70,6 +70,12 @@ Result, Part 2 (iteration 1, `plans/P674-iter1.md`): 17 findings (11 EXTRACT, 3 
 Visible changes: relative times gain forms ("in 5m" for future instants, "4mo ago", "1y ago" past 30 days), show an absolute tooltip on mobile, settings and Studio rows, and tick; the cell editor relative line is terse; ApiSecrets Clear becomes Delete (danger confirm) and secrets copy is unified across Studio and ADE; Studio view-head kind icon is muted without `iconClass`, head titles get an overflow tooltip, KeyValuePane prefix space is gone; kube logs toolbar order is follow, timestamps, wrap, tail and kube bold weight changes; displayed percentages show one decimal under 100% ("75.0%"); countdown above one hour reads h:mm:ss; chart tooltip null reads an em dash; changed ICON glyphs (resume, takeOver, openInNewTab, stop, remove, push).
 
 Parked, still Planned: P682, P683, P684, P685.
+
+Result, Part 3 (iteration 2, `plans/P674-iter2.md`): 11 findings (F2.1-F2.11: 5 EXTRACT, 5 MIGRATE, 1 GUARD-GAP MIGRATE) landed in three waves. New shared pieces: `CopyIconButton`, `MaskedValue` with `MASKED_TEXT` (8 bullets), `useKeptExpiry`, `QueryState` `errorLabel` and `errorTestid` with inline Retry, Button variant `link-meta`, `RunSecretsSection` onto `ConfigSecretsSection`, `KEPT_RETENTION_MINUTES_RANGE` and `KEPT_RETENTION_MINUTES_DEFAULT` constants. Guards U171-U176 added (range now U83-U176); each fails on a planted offender and sits at zero offenders; U130 exempt names `MaskedValue.vue`; PERMANENT count stays 53. U172 regex is `(?:•){4}` because `LC_ALL=C` makes a bare `•{4}` repeat one byte. Wave 3 swept the whole tree and moved the two leftover `<mark>` sites (`ApiRequestBody` may-keep list, `DbParamsList` ref) onto `HighlightedText`.
+
+Visible changes: check feedback and error tone on 9 more copy buttons; masks on kept, ADE port and run preview go from 4 to 8 bullets, subtle wide tracking on kept, ADE port and docker env; run file dialog secrets section (list, set dialog, Delete); tooltips on ADE shelf and all-sessions ages and kept ages; pairing expiry clock; Retry beside retryable inline load errors, memory panel and start failure block, settings and dialog load errors as InlineState; kept retention reset button and description swap.
+
+Iteration gate: findings remain after this iteration, so iteration 3 runs as Part 4 and the final whole-app scan is Part 5. Parked, still Planned: P687 (hash-guarded draft and save-conflict model).
 
 ## P675: JS engine for the API MCP
 

@@ -365,6 +365,8 @@ Wave 2: done 2efc3aa51
 
 ### Wave 3 (one Sonnet, after rebase onto the chapter branch)
 
+Wave 3: done (guards U171-U176, U172 regex `(?:•){4}` since `LC_ALL=C` makes `•{4}` repeat one byte; leftover offenders `ApiRequestBody.vue` may-keep marks and `DbParamsList.vue` ref mark moved to `HighlightedText`; ARCHITECTURE range U83-U176; PERMANENT 53).
+
 1. Add header `# Guards U171-U176: docs/HISTORY.md (v0.3.18).` and the six lines below to the
    `GUARDS` heredoc (unquoted: `${TOK}` expands; escape a literal `$`; named groups only).
 2. Edit U130's exempt column: `VariableRow.vue|VariableHistoryMenu.vue` becomes `MaskedValue.vue`.
@@ -376,7 +378,7 @@ Wave 2: done 2efc3aa51
 
 ```
 U171@@v@@CopyIconButton.vue@@hand copy icon button (use CopyIconButton)@@(?<![\w:-])icon="copy"|:icon="(?:ICON\.copy|copied\b[^"]*)"
-U172@@vt@@format.ts@@hand masked value (use MaskedValue, MASKED_TEXT)@@•{4}|'•'\.repeat\(
+U172@@vt@@format.ts@@hand masked value (use MaskedValue, MASKED_TEXT)@@(?:•){4}|'•'\.repeat\(
 U173@@v@@RelativeTime.vue|AdeReviewSync.vue|AdeSessionTabTip.vue|AdeAgentsStatusRow.vue@@standalone instant via useRelativeTime (use RelativeTime)@@\buseRelativeTime\(
 U174@@v@@HighlightedText.vue@@hand mark element (use HighlightedText)@@<mark[\s>]
 U175@@vt@@@@hand meta link classes (use Button variant link-meta)@@${TOK}decoration-border(?![\w-])

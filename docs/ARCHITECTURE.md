@@ -1440,7 +1440,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U170) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U176) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 53 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1492,7 +1492,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A QueryState inline load failure shows Retry when retryable; `errorLabel` and `errorTestid` replace the text and testid; an `error` slot only for a host that draws the failure in its own frame (log views) (U176).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U170 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U176 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
