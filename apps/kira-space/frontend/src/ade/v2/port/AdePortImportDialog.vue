@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -26,7 +27,7 @@ import { useCancelPort, useImportApply, useImportPreview } from './queries';
 import type { ImportPreview, PortItem, PortProvider, PortResult } from './types';
 
 // Reads the provider's own files on open and lists what an import would bring in. Secret values never
-// reach this page: a slot shows its name and ••••.
+// reach this page: a slot shows its name and the mask.
 const props = defineProps<{ provider: PortProvider }>();
 const open = defineModel<boolean>('open', { required: true });
 
@@ -249,7 +250,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
                       data-testid="ade-port-secret"
                     >
                       {{ t('space.ade.port.secret.label', { name: s.name }) }}
-                      ••••
+                      <MaskedValue />
                     </li>
                   </ul>
                   <Disclosure v-if="item.current" :label="t('space.ade.port.current.label')">

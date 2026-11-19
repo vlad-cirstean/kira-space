@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import { t } from '@theme/i18n';
-import { useCopy } from '@workbench/behaviour/clipboard';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import FlushEditor from '../approvals/FlushEditor.vue';
@@ -55,20 +55,16 @@ const fullDoc = computed(() => {
   return prettyJson(json) ?? json;
 });
 
-const { copy, copied } = useCopy();
-async function copyValue() {
-  const text = props.entry.previewTruncated
+async function valueText(): Promise<string> {
+  return props.entry.previewTruncated
     ? plainText((await control.keptValue(props.entry.id)).json)
     : plainText(props.entry.preview);
-  await copy(text, { message: t('common.copy.copiedValue.announce') });
 }
 </script>
 
 <template>
   <div class="flex min-w-0 flex-col gap-1" data-testid="kept-value">
-    <span v-if="entry.secret" class="font-data text-subtle" data-testid="kept-value-secret"
-      >••••</span
-    >
+    <MaskedValue v-if="entry.secret" class="font-data" data-testid="kept-value-secret" />
     <template v-else>
       <div class="flex min-w-0 items-start gap-1">
         <div
@@ -76,12 +72,12 @@ async function copyValue() {
           data-testid="kept-value-preview"
           v-text="preview"
         />
-        <TooltipIconButton
+        <CopyIconButton
           v-if="!staged || !entry.previewTruncated"
-          :icon="copied ? 'check' : 'copy'"
+          :text="valueText"
           :label="t('common.action.copyValue.label')"
+          :message="t('common.copy.copiedValue.announce')"
           data-testid="kept-value-copy"
-          @click="copyValue"
         />
       </div>
       <Disclosure

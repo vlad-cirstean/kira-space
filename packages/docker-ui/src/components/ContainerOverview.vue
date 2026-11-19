@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { copyText } from '@workbench/behaviour/clipboard';
 import { displayValue, formatDateTime } from '@workbench/behaviour/format';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { reactive } from 'vue';
 import type { DockerContainerDetail } from '../wire';
 
@@ -136,9 +137,15 @@ const rows = (): Array<[string, string]> => [
             data-testid="docker-env-row"
           >
             <span class="shrink-0 text-muted-foreground">{{ splitEnv(entry).key }}=</span>
-            <span class="min-w-0 flex-1 break-all" data-testid="docker-env-value">{{
-              revealed.has(i) ? splitEnv(entry).value : '••••••••'
-            }}</span>
+            <span
+              v-if="revealed.has(i)"
+              class="min-w-0 flex-1 break-all"
+              data-testid="docker-env-value"
+              >{{
+                splitEnv(entry).value
+              }}</span
+            >
+            <MaskedValue v-else class="min-w-0 flex-1 break-all" data-testid="docker-env-value" />
             <TooltipIconButton
               :icon="revealed.has(i) ? 'eye-closed' : 'eye'"
               :label="
@@ -147,10 +154,9 @@ const rows = (): Array<[string, string]> => [
               data-testid="docker-env-reveal"
               @click="toggle(i)"
             />
-            <TooltipIconButton
-              icon="copy"
+            <CopyIconButton
+              :text="splitEnv(entry).value"
               :label="t('common.action.copyValue.label')"
-              @click="copyText(splitEnv(entry).value)"
             />
           </div>
         </DetailSection>

@@ -60,7 +60,7 @@ test('contract: a secret shows dots and no copy', async ({ relaunch }) => {
   });
   await open(page);
   const token = entry(page, 'token');
-  await expect(token.locator('[data-testid="kept-value-secret"]')).toHaveText('••••');
+  await expect(token.locator('[data-testid="kept-value-secret"]')).toHaveText('••••••••');
   await expect(token.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
   await expect(token.locator('[data-testid="kept-value-preview"]')).toHaveCount(0);
 });
@@ -147,4 +147,55 @@ test('contract: retention patches the setting and refuses a value out of range',
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(set);
+});
+
+test('contract: a failed load shows the error with Retry, which reloads the list', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({
+    control: [
+      { channel: IPC.keptList, error: { code: 'E_INTERNAL', message: 'memory store is busy' } },
+    ],
+  });
+  await open(page);
+  await expect(page.locator('[data-testid="settings-kept-error"]')).toContainText(
+    'memory store is busy',
+  );
+  control.respond(IPC.keptList, liveList());
+  await page.locator('[data-testid="query-retry"]').click();
+  await expect(page.locator('[data-testid="settings-kept-entry"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid="settings-kept-error"]')).toHaveCount(0);
+});
+
+test('contract: the retention reset button restores the default of 60 minutes', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({
+    control: [
+      {
+        channel: IPC.settingsSet,
+        response: {
+          ...defaultSettings,
+          dbMcp: { ...defaultSettings.dbMcp, keptRetentionMinutes: 10 },
+        },
+      },
+    ],
+  });
+  await open(page);
+  const reset = page.locator('[data-testid="settings-reset-dbMcp-keptRetentionMinutes"]');
+  await expect(reset).toBeDisabled();
+  await page.locator('[data-testid="settings-kept-retention"]').fill('10');
+  await expect(reset).toBeEnabled();
+  control.respond(IPC.settingsSet, defaultSettings);
+  await reset.click();
+  await expect
+    .poll(
+      () =>
+        control
+          .log()
+          .filter((e) => e.channel === IPC.settingsSet)
+          .at(-1)?.args,
+    )
+    .toEqual({ patch: { dbMcp: { keptRetentionMinutes: 60 } } });
+  await expect(page.locator('[data-testid="settings-kept-retention"]')).toHaveValue('60');
 });

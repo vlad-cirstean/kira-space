@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ApiVariableHistoryEntry } from '@shared/domain/variables';
 import InlineState from '@theme/components/InlineState.vue';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
@@ -64,15 +65,11 @@ function onEye(entry: ApiVariableHistoryEntry): void {
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <span class="text-subtle text-kira-sm"><RelativeTime :at="entry.recordedAt" /></span>
-          <!-- tracking-widest (0.1em) is the widest step Tailwind's default scale has; at this
-               span's inherited font-size (text-kira-md, 12px) that is 1.2px. -->
-          <span
+          <MaskedValue
             v-if="isMasked(entry)"
-            class="truncate text-subtle tracking-widest"
+            class="truncate"
             data-testid="variable-history-masked"
-          >
-            ••••••••
-          </span>
+          />
           <span v-else class="min-w-0 font-data" data-testid="variable-history-value"
             ><TruncatedText :text="displayValue(entry)" /></span
           >
