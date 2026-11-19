@@ -23,7 +23,6 @@ import { configName } from '@workbench/config/configName';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
-import { useAsyncAction } from '../behaviour/asyncAction';
 import { errorText } from '../bridge/codedError';
 import ConfigFileProblem from '../config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '../config/ConfigFormProblemAlert.vue';
@@ -83,7 +82,7 @@ const liveSecrets = computed<SecretValues>(() => {
   );
   return Object.fromEntries(Object.entries(secretDraft.value).filter(([n]) => live.has(n)));
 });
-const hasSecrets = computed(() => Object.keys(liveSecrets.value).length > 0);
+const hasSecrets = computed<boolean>(() => Object.keys(liveSecrets.value).length > 0);
 
 async function flushSecrets(): Promise<void> {
   const id = view.value?.id;
@@ -102,7 +101,7 @@ const draft = useConfigFormDraft<RunFile>({
     return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
   },
   fields: RUN_FIELDS,
-  afterSave: flushSecrets,
+  secrets: { pending: (): boolean => hasSecrets.value, flush: flushSecrets },
 });
 
 // A change on disk refreshes the file while no edits are pending.
@@ -219,19 +218,7 @@ const items = computed(() =>
   sections.value.map((id) => ({ value: id, label: LABEL[id](), testid: `run-file-tab-${id}` })),
 );
 
-const saveBusy = computed(() => draft.saving.value);
-const canSave = computed(() => draft.canSave.value || hasSecrets.value);
-const secrets = useAsyncAction(flushSecrets);
-const saveError = computed(() => draft.saveError.value || (secrets.error.value ?? ''));
-
-async function saveNow(): Promise<void> {
-  secrets.reset();
-  await draft.saveNow();
-  if (draft.dirty.value || draft.saveError.value) return;
-  await secrets.run();
-}
-
-const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
+const onSubmitKey = shortcutKeydown(['form.submit'], () => void draft.saveNow());
 </script>
 
 <template>
@@ -374,15 +361,15 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 class="h-64"
                 data-testid="run-file-text"
                 @update:model-value="draft.onYamlInput"
-                @save="saveNow"
-                @submit="saveNow"
+                @save="draft.saveNow"
+                @submit="draft.saveNow"
               />
               <RunSecretsSection v-if="script" :script="script" />
             </template>
           </template>
           <SaveConflictAlert
-            v-if="saveError"
-            :error="saveError"
+            v-if="draft.saveError.value"
+            :error="draft.saveError.value"
             :conflict="draft.conflict.value"
             testid-prefix="run-file"
             @reload="draft.reload"
@@ -409,10 +396,10 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :disabled="!canSave"
-          :pending="saveBusy"
+          :disabled="!draft.canSave.value"
+          :pending="draft.saving.value"
           data-testid="run-file-save"
-          @click="saveNow"
+          @click="draft.saveNow"
         >
           {{ t('common.action.save.label') }}
         </Button>

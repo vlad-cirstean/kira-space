@@ -16,7 +16,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
@@ -76,8 +75,6 @@ async function flushSecrets(): Promise<void> {
   }
 }
 
-const secrets = useAsyncAction(flushSecrets);
-
 const draft = useConfigFormDraft<FileModel>({
   file: () => (detail.value ? { text: detail.value.text, hash: detail.value.hash } : undefined),
   form: applyForm,
@@ -87,7 +84,7 @@ const draft = useConfigFormDraft<FileModel>({
     return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
   },
   fields: FILE_FIELDS,
-  afterSave: flushSecrets,
+  secrets: { pending: () => hasTyped.value, flush: flushSecrets },
 });
 
 const section = ref<VariablesSection>('variables');
@@ -100,7 +97,6 @@ watch(
   () => [dialogStore.file, detail.value?.kind] as const,
   () => {
     typed.value = {};
-    secrets.reset();
     bulk.value = false;
     section.value =
       dialogStore.tab === 'yaml' || (isEnvironment.value && dialogStore.tab !== 'variables')
@@ -136,21 +132,12 @@ const variables = computed<ApiFileVariable[]>({
 });
 
 const hasTyped = computed(() => Object.values(typed.value).some((v) => v !== ''));
-const canSave = computed(() => draft.canSave.value || hasTyped.value);
-const saveError = computed(() => draft.saveError.value || (secrets.error.value ?? ''));
-
-async function saveNow(): Promise<void> {
-  secrets.reset();
-  await draft.saveNow();
-  if (draft.dirty.value || draft.saveError.value) return;
-  await secrets.run();
-}
 
 function close(): void {
   dialogStore.close();
 }
 
-const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
+const onSubmitKey = shortcutKeydown(['form.submit'], () => void draft.saveNow());
 </script>
 
 <template>
@@ -263,13 +250,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               class="h-72"
               data-testid="api-variables-text"
               @update:model-value="draft.onYamlInput"
-              @save="saveNow"
-              @submit="saveNow"
+              @save="draft.saveNow"
+              @submit="draft.saveNow"
             />
           </template>
           <SaveConflictAlert
-            v-if="saveError"
-            :error="saveError"
+            v-if="draft.saveError.value"
+            :error="draft.saveError.value"
             :conflict="draft.conflict.value"
             testid-prefix="api-variables"
             @reload="draft.reload"
@@ -292,10 +279,10 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :disabled="!canSave"
+          :disabled="!draft.canSave.value"
           :pending="draft.saving.value"
           data-testid="api-variables-save"
-          @click="saveNow"
+          @click="draft.saveNow"
         >
           {{ t('common.action.save.label') }}
         </Button>

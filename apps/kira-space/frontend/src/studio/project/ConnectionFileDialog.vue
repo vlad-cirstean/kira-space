@@ -15,7 +15,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { useAsyncAction, useTaskAction } from '@workbench/behaviour/asyncAction';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
@@ -84,7 +84,6 @@ async function flushSecrets(): Promise<void> {
   }
 }
 
-const flushing = useAsyncAction(flushSecrets);
 const lifecycle = useTaskAction();
 
 const draft = useConfigFormDraft<ConnectionFileModel>({
@@ -96,7 +95,7 @@ const draft = useConfigFormDraft<ConnectionFileModel>({
     return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
   },
   fields: CONNECTION_FIELDS,
-  afterSave: flushSecrets,
+  secrets: { pending: () => hasTyped.value, flush: flushSecrets },
 });
 
 const section = ref<ConnectionSection>('general');
@@ -108,7 +107,6 @@ watch(
   () => {
     testResult.value = null;
     secrets.value = { password: '', uri: '' };
-    flushing.reset();
     section.value = 'general';
   },
 );
@@ -159,17 +157,7 @@ const savedSecret = (kind: 'password' | 'uri'): boolean => {
   return !!name && !!detail.value?.secrets.some((s) => s.kind === kind && s.name === name && s.set);
 };
 const hasTyped = computed(() => !!secrets.value.password || !!secrets.value.uri);
-const canSave = computed(() => draft.canSave.value || hasTyped.value);
-const saveError = computed(
-  () => draft.saveError.value || flushing.error.value || lifecycle.error.value || '',
-);
-
-async function saveNow(): Promise<void> {
-  flushing.reset();
-  await draft.saveNow();
-  if (draft.dirty.value || draft.saveError.value) return;
-  await flushing.run();
-}
+const saveError = computed(() => draft.saveError.value || lifecycle.error.value || '');
 
 function close(): void {
   dialogStore.closeFile();
@@ -217,7 +205,7 @@ async function onTest(): Promise<void> {
     : { ok: false, message: result.error ?? '' };
 }
 
-const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
+const onSubmitKey = shortcutKeydown(['form.submit'], () => void draft.saveNow());
 </script>
 
 <template>
@@ -330,8 +318,8 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               class="h-72"
               data-testid="connection-file-text"
               @update:model-value="draft.onYamlInput"
-              @save="saveNow"
-              @submit="saveNow"
+              @save="draft.saveNow"
+              @submit="draft.saveNow"
             />
           </template>
           <SaveConflictAlert
@@ -404,10 +392,10 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :disabled="!canSave"
+          :disabled="!draft.canSave.value"
           :pending="draft.saving.value"
           data-testid="connection-file-save"
-          @click="saveNow"
+          @click="draft.saveNow"
         >
           {{ t('common.action.save.label') }}
         </Button>
