@@ -68,6 +68,12 @@ func (e *keptChangedError) Error() string {
 	return fmt.Sprintf("kept variable %q changed after the statement was checked; nothing ran. Produce it again, then repeat the query.", e.name)
 }
 
+// noParamsText is the refusal for params on a kind that has no bind parameters. It needs the kind only, so
+// run_query raises it before it connects.
+func noParamsText(summary model.ConnectionSummary) string {
+	return fmt.Sprintf("connection %q (%s) takes no params; kept variables bind into SQL statements only (postgres, mysql, mariadb, sqlite, clickhouse)", summary.Name, summary.Kind)
+}
+
 func unknownKeptText(name string) string {
 	return fmt.Sprintf("no kept variable %q (it may have expired or been cleared); call list_kept_variables", name)
 }
@@ -85,7 +91,7 @@ func (s *Server) resolveParams(ctx context.Context, args runQueryArgs, rv *query
 	}
 	style, dialect, ok := adapters.ParamDialectOf(rv.summary.Kind)
 	if !ok {
-		return refuse("connection %q (%s) takes no params; kept variables bind into SQL statements only (postgres, mysql, mariadb, sqlite, clickhouse)", rv.summary.Name, rv.summary.Kind)
+		return refuse("%s", noParamsText(rv.summary))
 	}
 	if len(args.Params) > maxParamEntries {
 		return refuse("params lists %d names; the most is %d", len(args.Params), maxParamEntries)

@@ -594,6 +594,11 @@ func (s *Server) resolveVerdict(ctx context.Context, args runQueryArgs) (rv quer
 	// Read once per call, not per use: the threshold is read fresh on every call, never cached.
 	rv.threshold = s.thresholdFor(rv.summary)
 
+	if _, _, ok := adapters.ParamDialectOf(rv.summary.Kind); len(args.Params) > 0 && !ok {
+		res, out, err = errResult(noParamsText(rv.summary))
+		return rv, res, out, err, true
+	}
+
 	state, cerr := s.connectForQuery(ctx, args.ConnectionID)
 	if cerr != nil {
 		res, out, err = toolError(cerr)
