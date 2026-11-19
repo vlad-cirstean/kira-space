@@ -116,7 +116,7 @@ const refExample = '$' + '{secret:name}';
           t('common.configSecrets.unused.status')
         }}</Badge>
         <Badge :variant="row.set ? 'ok' : 'warn'" :data-testid="tid('state')">{{
-          row.set ? t('common.configSecrets.set.status') : t('docker.edit.unset.status')
+          row.set ? t('common.configSecrets.set.status') : t('common.unset.status')
         }}</Badge>
         <Button
           variant="toolbar"

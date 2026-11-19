@@ -155,7 +155,7 @@ function mapChanges(
       out.push({
         field: `${prefix}.${k}`,
         label: label(k),
-        from: base[k] ?? t('docker.edit.unset.status'),
+        from: base[k] ?? t('common.unset.status'),
         to: draft[k] ?? t('common.removed.status'),
         mode: 'recreate',
       });

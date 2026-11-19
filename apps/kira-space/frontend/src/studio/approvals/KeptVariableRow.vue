@@ -2,12 +2,10 @@
 import type { KeptUse } from '@shared/domain/kept';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { formatCompactDuration } from '@theme/format';
 import { t } from '@theme/i18n';
-import { useCountdown } from '@workbench/approvals/useCountdown';
 import { useRelativeTime } from '@workbench/behaviour/format';
-import { computed } from 'vue';
 import KeptValueView from '../kept/KeptValueView.vue';
+import { useKeptExpiry } from '../kept/keptExpiry';
 import { keptTypeLabel } from '../kept/keptFormat';
 import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 
@@ -17,14 +15,7 @@ import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 const props = defineProps<{ use: KeptUse; usedIn: string }>();
 
 const age = useRelativeTime(() => props.use.createdAt);
-const left = useCountdown(() => new Date(props.use.expiresAt).getTime());
-const expiry = computed(() =>
-  left.value === null || left.value <= 0
-    ? t('workbench.approvals.expired.status')
-    : t('common.expires.status', {
-        time: formatCompactDuration(left.value * 1000, { ceil: true }),
-      }),
-);
+const expiry = useKeptExpiry(() => props.use.expiresAt);
 </script>
 
 <template>

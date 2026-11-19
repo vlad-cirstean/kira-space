@@ -52,7 +52,7 @@ const shown = computed(() => (typed.value !== '' ? typed.value : (savedPlain.val
 const placeholder = computed(() => {
   if (props.placeholder !== undefined) return props.placeholder;
   if (props.set === undefined) return undefined;
-  return props.set ? t('common.secret.saved.placeholder') : t('docker.edit.unset.status');
+  return props.set ? t('common.secret.saved.placeholder') : t('common.unset.status');
 });
 const notRevealable = computed(
   () => props.set === true && typed.value === '' && savedPlain.value === null && !props.reveal,

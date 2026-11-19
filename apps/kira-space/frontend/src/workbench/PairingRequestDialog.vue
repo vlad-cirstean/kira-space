@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
+import { formatElapsed } from '@theme/format';
 import { t } from '@theme/i18n';
 import { usePendingDecision } from '@workbench/behaviour/pendingDecision';
 import { formatShortcut } from '@workbench/shortcuts/keys';
@@ -46,7 +47,7 @@ const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
       <DialogBody>
         <slot />
         <p class="m-0 text-subtle" :data-testid="`${testidPrefix}-expires`">
-          {{ t('common.expiresIn.status', { seconds: remainingSeconds }) }}
+          {{ t('common.expires.status', { time: formatElapsed(remainingSeconds * 1000) }) }}
         </p>
       </DialogBody>
 

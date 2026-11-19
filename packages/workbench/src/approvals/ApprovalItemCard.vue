@@ -51,7 +51,7 @@ const countdown = computed(() => {
   const left = remaining.value;
   if (left === null) return '';
   return left === 0
-    ? t('workbench.approvals.expired.status')
+    ? t('common.expired.status')
     : t('workbench.approvals.left.status', { time: formatElapsed(left * 1000) });
 });
 

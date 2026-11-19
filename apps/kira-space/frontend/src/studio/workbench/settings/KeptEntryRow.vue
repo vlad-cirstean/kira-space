@@ -2,15 +2,13 @@
 import type { KeptEntry } from '@shared/domain/kept';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { formatCompactDuration } from '@theme/format';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { useCountdown } from '@workbench/approvals/useCountdown';
 import { useRelativeTime } from '@workbench/behaviour/format';
-import { computed } from 'vue';
 import KeptValueView from '../../kept/KeptValueView.vue';
+import { useKeptExpiry } from '../../kept/keptExpiry';
 import { keptTypeLabel } from '../../kept/keptFormat';
 
 // One live kept variable: what it is, who kept it, how long it has left, its value, Clear.
@@ -18,14 +16,7 @@ const props = defineProps<{ entry: KeptEntry }>();
 defineEmits<{ clear: [] }>();
 
 const age = useRelativeTime(() => props.entry.createdAt);
-const left = useCountdown(() => new Date(props.entry.expiresAt).getTime());
-const expiry = computed(() =>
-  left.value === null || left.value <= 0
-    ? t('workbench.approvals.expired.status')
-    : t('common.expires.status', {
-        time: formatCompactDuration(left.value * 1000, { ceil: true }),
-      }),
-);
+const expiry = useKeptExpiry(() => props.entry.expiresAt);
 </script>
 
 <template>

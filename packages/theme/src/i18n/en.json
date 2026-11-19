@@ -3535,11 +3535,11 @@
         "announce": "Couldn’t open the link"
       }
     },
+    "expired": {
+      "status": "Expired"
+    },
     "expires": {
       "status": "Expires in {time}"
-    },
-    "expiresIn": {
-      "status": "Expires in {seconds}s"
     },
     "failedCount": {
       "label": "{count} failed"
@@ -3978,6 +3978,9 @@
     "unresolved": {
       "label": "{count} unresolved"
     },
+    "unset": {
+      "status": "Not set"
+    },
     "user": {
       "label": "User"
     },
@@ -4382,9 +4385,6 @@
       },
       "unlimited": {
         "label": "Unlimited"
-      },
-      "unset": {
-        "status": "Not set"
       },
       "variable": {
         "label": "Variable {key}"
@@ -18528,9 +18528,6 @@
       },
       "dialog": {
         "title": "Awaiting your approval"
-      },
-      "expired": {
-        "status": "Expired"
       },
       "left": {
         "status": "{time} left"
