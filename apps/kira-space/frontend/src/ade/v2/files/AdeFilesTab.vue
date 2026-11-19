@@ -179,7 +179,7 @@ const pane = useLiveSize(
       ><AlertDescription>{{ t('space.ade.files.truncated.hint') }}</AlertDescription></Alert
     >
     <div ref="body" class="flex min-h-0 flex-1">
-      <div class="min-h-0 shrink-0" :style="{ width: `${pane.size}px` }">
+      <div class="min-h-0 shrink-0" :style="{ width: `${pane.size.value}px` }">
         <AdeFileTree
           v-if="mode === 'files'"
           :branch-id="branchId"

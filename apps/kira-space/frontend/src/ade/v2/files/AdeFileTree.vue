@@ -35,11 +35,14 @@ const tree = computed(() => buildTree(listing.data.value?.paths ?? []));
 // whatever the user has since collapsed.
 watch(
   tree,
-  (nodes) =>
+  (nodes) => {
+    // An empty tree is the not-yet-loaded state; seeding then would freeze an empty set.
+    if (!listing.data.value) return;
     filesUi.initExpanded(
       props.branchId,
       nodes.filter((n) => n.isDir).map((n) => n.path),
-    ),
+    );
+  },
   { immediate: true },
 );
 
