@@ -36,6 +36,7 @@ func TestSqlite_AuthMatrix(t *testing.T) {
 			Name:   "the seeded file, read-write",
 			Config: func(c model.ResolvedConnectionConfig) model.ResolvedConnectionConfig { return c },
 			Expect: testsupport.Outcome{Succeed: true},
+			Then:   []testsupport.Scenario{sqliteBoundParams(f.Config.ID, true)},
 		},
 		{
 			Name: "the seeded file, read-only",
@@ -75,6 +76,7 @@ func TestSqlite_AuthMatrix(t *testing.T) {
 					},
 				}),
 				sqliteExplainPlan(f.Config.ID),
+				sqliteBoundParams(f.Config.ID, false),
 			},
 		},
 		{

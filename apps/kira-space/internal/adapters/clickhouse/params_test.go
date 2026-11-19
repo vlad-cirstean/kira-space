@@ -10,9 +10,9 @@ import (
 
 func TestBoundParamsEncoding(t *testing.T) {
 	cases := []struct{ raw, want string }{
-		{`[1,2]`, `[1,2]`},
-		{`["a","it's","b\\c","line\nbreak","é"]`, "['a','it\\'s','b\\\\c','line\nbreak','é']"},
-		{`[true,false]`, `[true,false]`},
+		{`[1,2]`, paramRaw + `[1,2]`},
+		{`["a","it's","b\\c","line\nbreak","é"]`, paramRaw + "['a','it\\'s','b\\\\c','line\nbreak','é']"},
+		{`[true,false]`, paramRaw + `[true,false]`},
 		{`12.50`, `12.50`},
 		{`"x"`, `x`},
 		{`null`, paramNull},

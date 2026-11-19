@@ -1794,3 +1794,48 @@ func pgLaneStatementTimeout(fixture *testsupport.PgFixture) testsupport.Scenario
 		Baseline: "SHOW statement_timeout", BaselineWant: "0", Lifted: "SELECT pg_sleep(2)",
 	})
 }
+
+// P680: bound parameters on the console path. The probes need no table beyond the seeded app.regions.
+func TestPostgres_BoundParams(t *testing.T) {
+	fixture := testsupport.StartPostgres(t)
+	a := connectedAdapter(t, fixture)
+	testsupport.RunScenarios(t, a, fixture.Config, pgBoundParams(fixture, true))
+}
+
+func pgBoundParams(fixture *testsupport.PgFixture, scratch bool) testsupport.Scenario {
+	b := testsupport.Bind
+	c := testsupport.BoundParamsCase{
+		Path: nodePath(fixture, seg("database", "kira_test")),
+		Probes: []testsupport.BoundProbe{
+			{Name: "int", SQL: "SELECT name FROM app.regions WHERE id = $1", Params: []model.BindParam{b("{{kept.id}}", "", "2")}, Want: []string{"APAC"}},
+			{Name: "text with quote", SQL: "SELECT $1::text", Params: []model.BindParam{b("{{kept.s}}", "", `"it's -- ; x"`)}, Want: []string{"it's -- ; x"}},
+			{Name: "big integer", SQL: "SELECT $1::int8 + 0", Params: []model.BindParam{b("{{kept.n}}", "", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
+			{Name: "integer past int64 as numeric", SQL: "SELECT $1::numeric", Params: []model.BindParam{b("{{kept.n}}", "", "18446744073709551616")}, Want: []string{"18446744073709551616"}},
+			{Name: "exact decimal", SQL: "SELECT $1::numeric", Params: []model.BindParam{b("{{kept.d}}", "", "12.50")}, Want: []string{"12.50"}},
+			{Name: "bool", SQL: "SELECT $1::bool", Params: []model.BindParam{b("{{kept.b}}", "", "true")}, Want: []string{"t"}},
+			{Name: "null", SQL: "SELECT $1::int IS NOT DISTINCT FROM NULL", Params: []model.BindParam{b("{{kept.z}}", "", "null")}, Want: []string{"t"}},
+			{Name: "int list", SQL: "SELECT name FROM app.regions WHERE id = ANY($1) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "", "[1,2]")}, Want: []string{"EMEA", "APAC"}},
+			{Name: "text list on the lane", Lane: true, SQL: "SELECT id FROM app.regions WHERE name = ANY($1) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.names}}", "", `["APAC","EMEA"]`)}, Want: []string{"1", "2"}},
+			{Name: "list with quote and backslash", SQL: "SELECT unnest($1::text[])",
+				Params: []model.BindParam{b("{{kept.l}}", "", `["a\"b","c\\d"]`)}, Want: []string{`a"b`, `c\d`}},
+			{Name: "empty list", SQL: "SELECT count(*) FROM app.regions WHERE id = ANY($1)", Params: []model.BindParam{b("{{kept.ids}}", "", "[]")}, Want: []string{"0"}},
+			{Name: "two values in order", SQL: "SELECT $1::text || '-' || $2::text", Params: []model.BindParam{b("{{kept.a}}", "", `"a"`), b("{{kept.b}}", "", `"b"`)}, Want: []string{"a-b"}},
+			{Name: "a value is not spliced into the text", SQL: "SELECT count(*) FROM app.regions WHERE name = $1",
+				Params: []model.BindParam{b("{{kept.s}}", "", `"EMEA' OR '1'='1"`)}, Want: []string{"0"}},
+			{Name: "too many values", SQL: "SELECT 1", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "expected 0 arguments"},
+			{Name: "a second statement", SQL: "SELECT $1::int; SELECT 2", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "multiple commands"},
+		},
+	}
+	if scratch {
+		c.Setup = []string{"CREATE TABLE app.p680_bound (id int8 PRIMARY KEY, label text, qty numeric(10,2))"}
+		c.Teardown = []string{"DROP TABLE app.p680_bound"}
+		c.Writes = []testsupport.BoundProbe{
+			{Name: "insert", SQL: "INSERT INTO app.p680_bound (id, label, qty) VALUES ($1, $2, $3)",
+				Params: []model.BindParam{b("{{kept.id}}", "", "1152921504606846976"), b("{{kept.l}}", "", `"x'; DROP TABLE app.p680_bound; --"`), b("{{kept.q}}", "", "12.50")}},
+		}
+		c.Verify = testsupport.BoundProbe{Name: "read back", SQL: "SELECT id, label, qty FROM app.p680_bound", Want: []string{"1152921504606846976|x'; DROP TABLE app.p680_bound; --|12.50"}}
+	}
+	return testsupport.BoundParams(c)
+}

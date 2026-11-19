@@ -84,6 +84,10 @@ func buildURL(h *Handle, queryID string, settings, extraParams map[string]string
 			q.Set("param_"+k, `\N`)
 			continue
 		}
+		if raw, ok := strings.CutPrefix(v, paramRaw); ok {
+			q.Set("param_"+k, raw)
+			continue
+		}
 		q.Set("param_"+k, escapeParamValue(v))
 	}
 	return h.URL + "/?" + q.Encode()

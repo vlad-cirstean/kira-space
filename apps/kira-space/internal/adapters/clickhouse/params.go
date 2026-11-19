@@ -17,6 +17,10 @@ const maxBoundParamBytes = 256 << 10
 // buildURL sends it raw where it escapes every other value.
 const paramNull = "\x00null"
 
+// paramRaw marks a value buildURL must not escape: ClickHouse parses an array parameter as quoted text
+// directly, where it unescapes a scalar one first, so escapeParamValue would double its backslashes.
+const paramRaw = "\x00raw:"
+
 // boundParams encodes bound values into ClickHouse parameter text, keyed by placeholder name. The
 // server parses each as the type the placeholder declares.
 func boundParams(params []model.BindParam) (map[string]string, error) {
@@ -66,7 +70,7 @@ func paramText(v adapters.ParamValue) string {
 			}
 		}
 		b.WriteByte(']')
-		return b.String()
+		return paramRaw + b.String()
 	}
 	return v.Text
 }
