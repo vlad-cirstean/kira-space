@@ -322,6 +322,8 @@ it (no ordering dependency, disjoint files).
 
 ### Wave 1 (one Sonnet, sequential, commits per finding group)
 
+Wave 1: done cfd18dda3
+
 1. `packages/theme`: `icons.ts` (`ICON.copied`, F2.1), `format.ts` (`MASKED_TEXT`, F2.2),
    `components/MaskedValue.vue` (F2.2), `components/ui/button/index.ts` (`link-meta`, F2.9),
    `i18n/en.json` (F2.5 `common.expired.status` add plus `workbench.approvals.expired.status` remove,
