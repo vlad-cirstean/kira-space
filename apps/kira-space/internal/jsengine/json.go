@@ -18,7 +18,7 @@ const maxSafeInt = 1<<53 - 1
 
 // nestingExceeds reports whether JSON text nests deeper than limit. It does not validate; strings
 // are skipped so brackets inside them do not count.
-func nestingExceeds(b []byte, limit int) bool {
+func nestingExceeds[T ~string | ~[]byte](b T, limit int) bool {
 	depth := 0
 	inStr := false
 	for i := 0; i < len(b); i++ {

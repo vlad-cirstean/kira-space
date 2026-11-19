@@ -13,10 +13,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
@@ -124,11 +126,27 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 	cmd := e.command()
 	cmd.Env = []string{"GOTRACEBACK=none", "GOMAXPROCS=2", "TZ=UTC"}
 	cmd.Dir = os.TempDir()
+	// The runtime prints a fatal error's header before a goroutine dump larger than workerproc's
+	// stderr tail, so the worker also writes crashes to fd 3, read here (head only).
+	crashR, crashW, perr := os.Pipe()
+	if perr != nil {
+		<-e.sem
+		return Result{}, fmt.Errorf("jsengine: crash pipe: %w", perr)
+	}
+	cmd.ExtraFiles = []*os.File{crashW}
 	p, serr := workerproc.Start(cmd)
+	_ = crashW.Close()
 	if serr != nil {
+		_ = crashR.Close()
 		<-e.sem
 		return Result{}, fmt.Errorf("jsengine: start worker: %w", serr)
 	}
+	crash := &headBuffer{limit: 4096}
+	go func() {
+		_, _ = io.Copy(crash, crashR)
+		_ = crashR.Close()
+	}()
+	diag := func() string { <-p.Done(); return p.Diagnostics() + crash.String() }
 	stop := make(chan struct{})
 	defer func() {
 		close(stop)
@@ -146,7 +164,7 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 		case errors.Is(herr, workerproc.ErrHelloTimeout):
 			return Result{}, newError(KindInternal, "script worker did not start")
 		}
-		return Result{}, exitError(p.Diagnostics())
+		return Result{}, exitError(diag())
 	}
 	var baseRSS uint64
 	var proc *process.Process
@@ -167,7 +185,7 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 	}
 	if _, werr := p.Stdin.Write(append(line, '\n')); werr != nil {
 		<-p.Done()
-		return Result{}, exitError(p.Diagnostics())
+		return Result{}, exitError(diag())
 	}
 
 	lines := make(chan workerMsg)
@@ -199,7 +217,7 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 		case m, ok := <-lines:
 			if !ok {
 				<-p.Done()
-				return Result{}, exitError(p.Diagnostics())
+				return Result{}, exitError(diag())
 			}
 			switch {
 			case m.Call != nil:
@@ -251,4 +269,26 @@ func newMarker(bs []Binding) (string, *Error) {
 		}
 	}
 	return "", newError(KindInternal, "internal error")
+}
+
+// headBuffer keeps the first limit bytes written and discards the rest.
+type headBuffer struct {
+	mu    sync.Mutex
+	buf   []byte
+	limit int
+}
+
+func (h *headBuffer) Write(p []byte) (int, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if room := h.limit - len(h.buf); room > 0 {
+		h.buf = append(h.buf, p[:min(room, len(p))]...)
+	}
+	return len(p), nil
+}
+
+func (h *headBuffer) String() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return string(h.buf)
 }

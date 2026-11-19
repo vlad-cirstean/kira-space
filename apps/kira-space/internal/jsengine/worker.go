@@ -36,6 +36,8 @@ type runState struct {
 // protocol lines reaches stdout.
 func RunWorker(args []string) int {
 	debug.SetMaxStack(maxGoStack)
+	// fd 3 is the parent's crash pipe; absent when run by hand, then the call just fails.
+	_ = debug.SetCrashOutput(os.NewFile(3, "crash"), debug.CrashOptions{})
 	time.Local = time.UTC
 	enc := json.NewEncoder(os.Stdout)
 	dec := json.NewDecoder(os.Stdin)
@@ -70,8 +72,9 @@ func RunWorker(args []string) int {
 			}
 		}
 	}()
-	// Catastrophic regexps surface as a catchable RangeError instead of never returning.
-	regexp2.DefaultMatchTimeout = max(time.Until(st.deadline), time.Millisecond)
+	// Catastrophic regexps surface as a catchable RangeError instead of never returning; half the
+	// time left, so an uncaught one ends the run before the deadline interrupt.
+	regexp2.DefaultMatchTimeout = max(time.Until(st.deadline)/2, time.Millisecond)
 
 	prg, cerr := compileSource(req.Source)
 	if cerr != nil {

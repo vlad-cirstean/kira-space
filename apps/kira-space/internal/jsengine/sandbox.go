@@ -47,6 +47,7 @@ func (st *runState) newVM(req *workerRequest) *Error {
 	if err := st.blockDynamicCode(); err != nil {
 		return newError(KindInternal, "cannot block dynamic code: %v", err)
 	}
+	st.installGuards()
 	if err := st.installBigIntJSON(); err != nil {
 		return newError(KindInternal, "cannot install BigInt hook: %v", err)
 	}

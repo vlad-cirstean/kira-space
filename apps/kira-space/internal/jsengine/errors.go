@@ -181,19 +181,29 @@ func syntaxError(syn *goja.CompilerSyntaxError, src srcInfo) *Error {
 	return e
 }
 
+func containsAny(s string, subs ...string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+	return false
+}
+
 var exitStatusRE = regexp.MustCompile(`exit status (\d+)`)
 
 // exitError maps a worker that ended without a final line. diag is workerproc's Diagnostics text;
-// it is parsed, never returned: a Go panic value could carry script data.
+// it is parsed, never returned: a Go panic value could carry script data. The crash dump head
+// has no "fatal error:" line (the runtime prints that to stderr only), so frames also count.
 func exitError(diag string) *Error {
 	code := -1
 	if m := exitStatusRE.FindStringSubmatch(diag); m != nil {
 		fmt.Sscanf(m[1], "%d", &code)
 	}
 	switch {
-	case code == exitMemory, strings.Contains(diag, "out of memory"):
+	case code == exitMemory, containsAny(diag, "out of memory", "runtime.sysMap", "runtime.(*mheap).grow"):
 		return newError(KindMemory, "script exceeded its memory limit")
-	case strings.Contains(diag, "stack exceeds"), strings.Contains(diag, "stack overflow"):
+	case containsAny(diag, "stack exceeds", "stack overflow", "runtime.newstack"):
 		return newError(KindStack, "script recursed too deeply in a built-in")
 	}
 	return newError(KindInternal, "script worker failed")
