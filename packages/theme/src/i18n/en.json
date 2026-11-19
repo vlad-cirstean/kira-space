@@ -3740,8 +3740,14 @@
       "label": "Later"
     },
     "logs": {
+      "filter": {
+        "placeholder": "Filter lines"
+      },
       "follow": {
         "label": "Follow"
+      },
+      "matches": {
+        "status": "{shown} of {total} lines"
       },
       "tail": {
         "aria": "Lines to show",
@@ -6996,14 +7002,8 @@
       "ended": {
         "status": "Stream ended"
       },
-      "filter": {
-        "placeholder": "Filter lines"
-      },
       "initContainer": {
         "option": "{name} (init)"
-      },
-      "matches": {
-        "status": "{shown} of {total} lines"
       }
     },
     "mcp": {

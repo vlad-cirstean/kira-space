@@ -8,12 +8,12 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { matchesQuery } from '@workbench/behaviour/match';
+import { useLogFilter } from '@workbench/behaviour/logFilter';
 import { useKeptState } from '@workbench/behaviour/viewState';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { appendCapped, plainText, tailItems } from '@workbench/lib/logTail';
+import { appendCapped, tailItems } from '@workbench/lib/logTail';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { kubeControl } from '../control';
 import type { KubeContainerRef, KubeLogLine, KubeLogsOpen } from '../wire';
@@ -28,7 +28,6 @@ const props = defineProps<{
 interface Line extends KubeLogLine {
   id: number;
   stream: string;
-  plain: string;
 }
 
 const logKey = (field: string): string =>
@@ -40,8 +39,11 @@ const tail = ref<number>(1000);
 const timestamps = ref(false);
 const follow = ref(true);
 const wrap = ref(false);
-const filter = useKeptState(() => logKey('filter'), '');
 const lines = shallowRef<Line[]>([]);
+const { filter, needle, shown, status } = useLogFilter(
+  () => lines.value,
+  () => logKey('filter'),
+);
 const ended = ref(false);
 const streamError = ref('');
 
@@ -50,20 +52,13 @@ let opening: Promise<unknown> = Promise.resolve();
 let seq = 0;
 let off: (() => void) | null = null;
 
-const needle = computed(() => filter.value.trim().toLowerCase());
-const shown = computed(() =>
-  needle.value === ''
-    ? lines.value
-    : lines.value.filter((l) => matchesQuery(l.plain, needle.value)),
-);
-
 // A copy takes what the filter leaves, the same lines the pane shows.
 const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 
 function append(batch: KubeLogLine[]): void {
   lines.value = appendCapped(
     lines.value,
-    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout', plain: plainText(l.text) })),
+    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout' })),
   );
 }
 
@@ -192,7 +187,7 @@ onBeforeUnmount(() => {
       <SearchField
         v-model="filter"
         class="ml-auto w-48"
-        :placeholder="t('kubernetes.logs.filter.placeholder')"
+        :placeholder="t('common.logs.filter.placeholder')"
         data-testid="kube-logs-filter"
       />
       <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
@@ -211,9 +206,7 @@ onBeforeUnmount(() => {
     <div
       class="flex shrink-0 items-center gap-2 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
     >
-      <span v-if="needle !== ''" data-testid="kube-logs-matches">{{
-        t('kubernetes.logs.matches.status', { shown: shown.length, total: lines.length })
-      }}</span>
+      <span v-if="status" data-testid="kube-logs-matches">{{ status }}</span>
       <span v-if="ended" data-testid="kube-logs-ended">{{
         t('kubernetes.logs.ended.status')
       }}</span>
