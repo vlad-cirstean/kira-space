@@ -56,7 +56,6 @@ test('Automations: Cmd+F reveals and focuses the search', async ({ relaunch }) =
   await expectPanelFind(page, page.locator(t('toggle-search')), page.locator(t('tree-search')));
 });
 
-
 test('Git Repos tab: Cmd+F focuses the repo filter', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: GIT_CONTROL });
   await expectPanelFind(
