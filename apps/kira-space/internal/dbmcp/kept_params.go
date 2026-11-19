@@ -184,57 +184,79 @@ type paramPosition struct {
 // ClickHouse. msg is the refusal text; it names no value.
 func matchPlaceholders(statement string, params []string, sites []adapters.PlaceholderSite, style adapters.ParamStyle) (pos []paramPosition, msg string) {
 	pos = make([]paramPosition, len(params))
-	text := func(s adapters.PlaceholderSite) string { return statement[s.From:s.To] }
 	switch style {
 	case adapters.ParamDollar:
-		used := map[int]bool{}
-		for _, st := range sites {
-			used[st.Index] = true
-			if st.Index <= len(params) {
-				pos[st.Index-1].sites = append(pos[st.Index-1].sites, st)
-			}
-		}
-		for i := range params {
-			pos[i].display = "$" + strconv.Itoa(i+1)
-			if !used[i+1] {
-				return nil, fmt.Sprintf("params lists %d names but the statement does not use %s; every $1 to $%d must appear", len(params), pos[i].display, len(params))
-			}
-		}
-		for _, st := range sites {
-			if st.Index > len(params) {
-				return nil, fmt.Sprintf("the statement uses %s but params lists %d names", text(st), len(params))
-			}
-		}
+		msg = matchDollar(statement, params, sites, pos)
 	case adapters.ParamQuestion:
-		if len(sites) != len(params) {
-			return nil, fmt.Sprintf("the statement has %d placeholders but params lists %d names; one ? per entry, in order", len(sites), len(params))
-		}
-		for i, st := range sites {
-			pos[i] = paramPosition{display: "? " + strconv.Itoa(i+1), sites: []adapters.PlaceholderSite{st}}
-		}
+		msg = matchQuestion(params, sites, pos)
 	case adapters.ParamBraces:
-		for i, name := range params {
-			if slices.Contains(params[:i], name) {
-				return nil, fmt.Sprintf("params lists %q twice; a ClickHouse placeholder is named once", name)
-			}
-		}
-		for _, st := range sites {
-			i := slices.Index(params, st.Name)
-			if i < 0 {
-				return nil, fmt.Sprintf("placeholder %s names no entry of params; the placeholder name must be a kept variable name", text(st))
-			}
-			if pos[i].display == "" {
-				pos[i].display = text(st)
-			}
-			pos[i].sites = append(pos[i].sites, st)
-		}
-		for i, name := range params {
-			if pos[i].display == "" {
-				return nil, fmt.Sprintf("params lists %q but the statement has no {%s:Type} placeholder for it", name, name)
-			}
-		}
+		msg = matchBraces(statement, params, sites, pos)
+	}
+	if msg != "" {
+		return nil, msg
 	}
 	return pos, ""
+}
+
+func siteText(statement string, s adapters.PlaceholderSite) string { return statement[s.From:s.To] }
+
+// matchDollar fills pos for `$n` placeholders; every $1 to $len(params) must appear.
+func matchDollar(statement string, params []string, sites []adapters.PlaceholderSite, pos []paramPosition) string {
+	used := map[int]bool{}
+	for _, st := range sites {
+		used[st.Index] = true
+		if st.Index <= len(params) {
+			pos[st.Index-1].sites = append(pos[st.Index-1].sites, st)
+		}
+	}
+	for i := range params {
+		pos[i].display = "$" + strconv.Itoa(i+1)
+		if !used[i+1] {
+			return fmt.Sprintf("params lists %d names but the statement does not use %s; every $1 to $%d must appear", len(params), pos[i].display, len(params))
+		}
+	}
+	for _, st := range sites {
+		if st.Index > len(params) {
+			return fmt.Sprintf("the statement uses %s but params lists %d names", siteText(statement, st), len(params))
+		}
+	}
+	return ""
+}
+
+// matchQuestion fills pos for `?` placeholders, one per entry in order.
+func matchQuestion(params []string, sites []adapters.PlaceholderSite, pos []paramPosition) string {
+	if len(sites) != len(params) {
+		return fmt.Sprintf("the statement has %d placeholders but params lists %d names; one ? per entry, in order", len(sites), len(params))
+	}
+	for i, st := range sites {
+		pos[i] = paramPosition{display: "? " + strconv.Itoa(i+1), sites: []adapters.PlaceholderSite{st}}
+	}
+	return ""
+}
+
+// matchBraces fills pos for ClickHouse `{name:Type}` placeholders, matched by name.
+func matchBraces(statement string, params []string, sites []adapters.PlaceholderSite, pos []paramPosition) string {
+	for i, name := range params {
+		if slices.Contains(params[:i], name) {
+			return fmt.Sprintf("params lists %q twice; a ClickHouse placeholder is named once", name)
+		}
+	}
+	for _, st := range sites {
+		i := slices.Index(params, st.Name)
+		if i < 0 {
+			return fmt.Sprintf("placeholder %s names no entry of params; the placeholder name must be a kept variable name", siteText(statement, st))
+		}
+		if pos[i].display == "" {
+			pos[i].display = siteText(statement, st)
+		}
+		pos[i].sites = append(pos[i].sites, st)
+	}
+	for i, name := range params {
+		if pos[i].display == "" {
+			return fmt.Sprintf("params lists %q but the statement has no {%s:Type} placeholder for it", name, name)
+		}
+	}
+	return ""
 }
 
 // bind returns the binds with live values. Every name must still be the entry the statement was checked
