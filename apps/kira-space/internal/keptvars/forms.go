@@ -49,6 +49,10 @@ func forms(text string) []string {
 	return out
 }
 
+// Spellings lists the forms a server may echo text back in: raw and JSON-escaped, and from 8 bytes also
+// QueryEscape, PathEscape, base64 std and raw-URL. A masker of any secret uses it, so every secret kind shares one rule.
+func Spellings(text string) []string { return forms(text) }
+
 // SecretPairs is the replacer argument list that maps each secret entry's forms to {{kept.<name>}},
 // longest form first so a value that is a prefix of another cannot shadow it.
 func SecretPairs(entries []Entry) []string {

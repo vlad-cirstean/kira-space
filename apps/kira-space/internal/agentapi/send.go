@@ -201,11 +201,26 @@ func (s *Service) keptSecrets() []keptvars.Entry {
 // One replacer holds every pattern, longest first, so the httpclient wire capture masks with it too.
 func newMask(opened *apifiles.Opened, used []apivars.UsedSecret, kept []keptvars.Entry, extra []string) mask {
 	values := append(append(opened.Values(), keptvars.SecretRaw(kept)...), extra...)
-	m := mask{repl: mergedReplacer(apivars.ReplacerPairs(used), keptvars.SecretPairs(kept)), all: secrets.NewMasker(values...)}
+	m := mask{repl: mergedReplacer(apivars.ReplacerPairs(used), secretSpellings(used), keptvars.SecretPairs(kept)), all: secrets.NewMasker(values...)}
 	for _, v := range values {
 		m.maxLen = max(m.maxLen, len(v))
 	}
 	return m
+}
+
+// secretSpellings maps every echoable spelling of a used API secret to its placeholder (apivars covers only
+// the query and path escapes), so a secret masks like a kept one.
+func secretSpellings(used []apivars.UsedSecret) []string {
+	var out []string
+	for _, u := range used {
+		if u.Rendered == "" {
+			continue
+		}
+		for _, f := range keptvars.Spellings(u.Rendered) {
+			out = append(out, f, u.Placeholder)
+		}
+	}
+	return out
 }
 
 // mergedReplacer joins pattern lists (old, new pairs) into one replacer, longest pattern first; nil when empty.
