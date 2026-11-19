@@ -6,7 +6,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 
 | # | Phase | Status |
 |---|-------|--------|
-| P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Planned |
+| P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Done |
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Planned |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
 | P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
