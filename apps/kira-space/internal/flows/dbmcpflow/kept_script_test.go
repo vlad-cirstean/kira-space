@@ -192,10 +192,13 @@ func TestKeptScriptSecret(t *testing.T) {
 		t.Fatalf("prepare read = %q, want a refusal without the value", text(res))
 	}
 
-	pending := callToolAsync(sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL),
+	// A transform reading a secret is always reviewed, whatever the review settings say.
+	h := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", usersURL(srv.URL),
 		map[string]any{"transform": `kept.set("copy", kept.get("tok")); return {t: kept.get("tok")};`}))
-	f.answer(t, true, f.pending(t).RequestID)
-	out := wait(t, pending)
+	if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
+		t.Fatalf("held reason = %q, want userValue", p.Reason)
+	}
+	out := f.finish(t, h, true)
 	if out.IsError || strings.Contains(text(out), secret) {
 		t.Fatalf("result = %q, want the secret masked", text(out))
 	}
