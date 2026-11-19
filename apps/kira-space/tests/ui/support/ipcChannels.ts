@@ -526,6 +526,7 @@ export const IPC = {
   dbMcpTables: 'kira:dbmcp:tables',
   keptList: 'kira:kept:list',
   keptValue: 'kira:kept:value',
+  keptReveal: 'kira:kept:reveal',
   keptClear: 'kira:kept:clear',
   keptClearAll: 'kira:kept:clearAll',
   // P439: the Kubernetes module's bound surface; log batches are events, no entry.

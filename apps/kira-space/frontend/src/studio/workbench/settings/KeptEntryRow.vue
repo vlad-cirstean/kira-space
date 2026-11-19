@@ -2,6 +2,7 @@
 import type { KeptEntry } from '@shared/domain/kept';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
@@ -34,7 +35,16 @@ const expiry = useKeptExpiry(() => props.entry.expiresAt);
       />
     </div>
     <div class="flex w-full min-w-0 items-baseline gap-1.5 text-muted-foreground text-kira-sm">
-      <TruncatedText class="font-data" :text="entry.source.request" />
+      <Badge v-if="entry.source.kind === 'user'" variant="info" data-testid="kept-entry-supplied">{{
+        t('studio.kept.supplied.status')
+      }}</Badge>
+      <TruncatedText v-else class="font-data" :text="entry.source.request" />
+      <TruncatedText
+        v-if="entry.origin"
+        class="font-data"
+        :text="`${t('studio.kept.origin.label')} ${entry.origin}`"
+        data-testid="kept-entry-origin"
+      />
       <span class="shrink-0" data-testid="kept-entry-age"
         ><RelativeTime :at="entry.createdAt" /></span
       >

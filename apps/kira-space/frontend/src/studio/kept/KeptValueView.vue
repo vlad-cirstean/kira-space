@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
 import MaskedValue from '@theme/components/MaskedValue.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -9,9 +11,11 @@ import FlushEditor from '../approvals/FlushEditor.vue';
 import { prettyJson } from '../approvals/prettyJson';
 import { control } from '../bridge/control';
 import { useKeptValue } from './keptQueries';
+import { useKeptReveal } from './useKeptReveal';
 
 // A kept value as the user sees it: a preview in the data font, the whole value on demand. A secret
-// shows dots and offers no copy. The agent never gets any of this. `staged` is a value not stored yet
+// shows dots; Reveal asks the OS gate, shows the value for a minute and only then offers Copy. The
+// agent never gets any of this. `staged` is a value not stored yet
 // (a held result's "Will keep"): only its preview exists, so nothing offers the whole value.
 const props = defineProps<{
   entry: { id: string; type: string; secret: boolean; preview: string; previewTruncated: boolean };
@@ -55,6 +59,8 @@ const fullDoc = computed(() => {
   return prettyJson(json) ?? json;
 });
 
+const secretReveal = useKeptReveal(() => props.entry.id);
+
 async function valueText(): Promise<string> {
   return props.entry.previewTruncated
     ? plainText((await control.keptValue(props.entry.id)).json)
@@ -64,8 +70,39 @@ async function valueText(): Promise<string> {
 
 <template>
   <div class="flex min-w-0 flex-col gap-1" data-testid="kept-value">
-    <MaskedValue v-if="entry.secret" class="font-data" data-testid="kept-value-secret" />
-    <template v-else>
+    <div v-if="entry.secret" class="flex min-w-0 items-start gap-1">
+      <div
+        v-if="secretReveal.value.value !== null"
+        class="min-w-0 flex-1 whitespace-pre-wrap break-all font-data text-kira-md"
+        data-testid="kept-value-revealed"
+        v-text="secretReveal.value.value"
+      />
+      <MaskedValue v-else class="font-data" data-testid="kept-value-secret" />
+      <template v-if="!staged">
+        <CopyIconButton
+          v-if="secretReveal.value.value !== null"
+          :text="secretReveal.value.value"
+          :label="t('common.action.copyValue.label')"
+          :message="t('common.copy.copiedValue.announce')"
+          data-testid="kept-value-copy"
+        />
+        <TooltipIconButton
+          :icon="secretReveal.value.value !== null ? 'eye-closed' : 'eye'"
+          :label="
+            secretReveal.value.value !== null
+              ? t('common.action.hide.label')
+              : t('common.action.reveal.label')
+          "
+          :disabled="secretReveal.busy.value"
+          data-testid="kept-value-reveal"
+          @click="secretReveal.value.value !== null ? secretReveal.hide() : secretReveal.reveal()"
+        />
+      </template>
+    </div>
+    <FieldError v-if="secretReveal.error.value" data-testid="kept-value-reveal-error">{{
+      secretReveal.error.value
+    }}</FieldError>
+    <template v-if="!entry.secret">
       <div class="flex min-w-0 items-start gap-1">
         <div
           class="min-w-0 flex-1 whitespace-pre-wrap break-all font-data text-kira-md"

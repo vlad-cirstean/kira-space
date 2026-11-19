@@ -15880,6 +15880,15 @@
       "expiry": {
         "label": "Expiry"
       },
+      "input": {
+        "hint": "Kira keeps these values for you and never shows them to the agent. A value goes only to {origin}.",
+        "replace": {
+          "label": "Enter a new value"
+        },
+        "title": {
+          "label": "Values you supply"
+        }
+      },
       "keptAt": {
         "label": "Kept"
       },
@@ -15889,6 +15898,9 @@
       "mayKeep": {
         "label": "This script may keep:"
       },
+      "origin": {
+        "label": "Goes only to"
+      },
       "panel": {
         "query": {
           "label": "Kept variables this query uses"
@@ -15897,15 +15909,26 @@
           "label": "Kept variables this request uses"
         }
       },
+      "reveal": {
+        "body": "Show a value you supplied to an agent request."
+      },
       "risk": {
         "expiring": {
           "status": "Expires before you answer"
+        },
+        "input": {
+          "status": "Needs a value from you",
+          "tooltip": "The agent asked for a value only you can give. Kira keeps it and never shows it to the agent"
         },
         "keeps": {
           "status": "May keep: {names}"
         },
         "source": {
           "label": "{name}, kept by {request}"
+        },
+        "userValue": {
+          "status": "Reads a value you supplied",
+          "tooltip": "A script reads a value you supplied. Check what it returns before you send, because it goes to the agent"
         },
         "uses": {
           "status": "Uses kept: {names}"
@@ -15930,6 +15953,9 @@
       },
       "source": {
         "label": "Kept by"
+      },
+      "supplied": {
+        "status": "Supplied by you"
       },
       "type": {
         "array": {
@@ -18528,6 +18554,11 @@
       },
       "dialog": {
         "title": "Awaiting your approval"
+      },
+      "input": {
+        "required": {
+          "tooltip": "Enter {label} to send"
+        }
       },
       "left": {
         "status": "{time} left"

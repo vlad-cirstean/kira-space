@@ -83,6 +83,7 @@ import type { ConnectionDdl } from '@shared/domain/schema';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ObjectMeta, RelationColumns, TreeNode } from '@shared/domain/tree';
 import type { TreeVisibility } from '@shared/domain/treeFilter';
+import type { RevealResult } from '@shared/domain/variables';
 import {
   CHANNEL,
   type FilterHistoryChangedEvent,
@@ -373,6 +374,9 @@ const studioControl = {
     unwrap(KeptVarsService.List()).then((r) => keptListSchema.parse(r)),
   keptValue: (id: string): Promise<KeptValue> =>
     unwrap(KeptVarsService.Value({ id })).then((r) => keptValueSchema.parse(r)),
+  // Never rejects on a refusal: the outcome names it (revealed | cancelled | confirmation-required | error).
+  keptReveal: (id: string, confirmed: boolean): Promise<RevealResult> =>
+    unwrap(KeptVarsService.Reveal({ id, confirmed })).then((r) => trust<RevealResult>(r)),
   keptClear: (ids: string[]): Promise<number> => unwrap(KeptVarsService.Clear({ ids })),
   keptClearAll: (): Promise<number> => unwrap(KeptVarsService.ClearAll()),
   onKeptChanged: (cb: () => void): (() => void) => on(CHANNEL.keptChanged, () => cb()),

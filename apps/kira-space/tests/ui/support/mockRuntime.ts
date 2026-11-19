@@ -470,6 +470,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpTables: 'DbMcpService.Tables',
   keptList: 'KeptVarsService.List',
   keptValue: 'KeptVarsService.Value',
+  keptReveal: 'KeptVarsService.Reveal',
   keptClear: 'KeptVarsService.Clear',
   keptClearAll: 'KeptVarsService.ClearAll',
   maskReviewColumns: 'MaskRulesService.ReviewColumns',

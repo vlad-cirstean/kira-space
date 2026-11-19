@@ -3,6 +3,7 @@ import type { KeptUse } from '@shared/domain/kept';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import KeptValueView from '../kept/KeptValueView.vue';
@@ -28,7 +29,10 @@ const expiry = useKeptExpiry(() => props.use.expiresAt);
     <dt>{{ t('common.field.value.label') }}</dt>
     <dd><KeptValueView :entry="use" /></dd>
     <dt>{{ t('studio.kept.source.label') }}</dt>
-    <dd class="font-data">
+    <dd v-if="use.source.kind === 'user'" data-testid="kept-supplied">
+      <Badge variant="info">{{ t('studio.kept.supplied.status') }}</Badge>
+    </dd>
+    <dd v-else class="font-data">
       <TruncatedText :text="use.source.request" />
       <span v-if="use.source.client" class="text-muted-foreground">{{ use.source.client }}</span>
     </dd>

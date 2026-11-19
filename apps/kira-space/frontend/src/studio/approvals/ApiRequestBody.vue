@@ -19,6 +19,7 @@ import {
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
+import UserInputsPanel from './UserInputsPanel.vue';
 
 // What the agent would send: path and query, then the body. Host, headers and variables sit on
 // line 1 and in the details. A credential's value never reaches this view. Kept variables list
@@ -26,7 +27,9 @@ import KeptVariablesPanel from './KeptVariablesPanel.vue';
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload));
+// Every use marks its places in the request; a pending one (a value still to type) has no row to show.
 const kept = computed(() => payload.value.kept);
+const keptRows = computed(() => kept.value.filter((u) => !u.pending));
 
 // Sliced after the authority, not through `new URL()`: that would percent-encode the braces of a
 // reference and move the offsets the sites carry.
@@ -84,7 +87,8 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
 
 <template>
   <div class="flex flex-col gap-1" data-testid="api-approval-body">
-    <KeptVariablesPanel v-if="kept.length" :uses="kept" :pair-name="pairName" />
+    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
+    <KeptVariablesPanel v-if="keptRows.length" :uses="keptRows" :pair-name="pairName" />
     <ApprovalCode data-testid="api-approval-url"
       ><HighlightedText v-if="kept.length" :parts="urlParts" :mark-class="KEPT_MARK_CLASS" />
       <template v-else>{{ pathAndQuery }}</template></ApprovalCode

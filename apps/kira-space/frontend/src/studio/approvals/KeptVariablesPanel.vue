@@ -41,7 +41,7 @@ function usedIn(u: KeptUse): string {
       </Button>
     </SectionHeading>
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
-      <li v-for="u in uses" :key="u.id" :data-testid="`${testidPrefix}-kept-${u.name}`">
+      <li v-for="u in uses" :key="u.id || u.name" :data-testid="`${testidPrefix}-kept-${u.name}`">
         <KeptVariableRow :use="u" :used-in="usedIn(u)" />
       </li>
     </ul>

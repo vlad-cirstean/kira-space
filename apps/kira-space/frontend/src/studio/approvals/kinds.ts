@@ -178,7 +178,21 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
         .join('\n'),
     });
   }
-  out.push(...keptRisks(p.kept, item.expiresAt, 'api-approval'));
+  if (p.inputs.some((i) => i.state === 'needed')) {
+    out.push({
+      text: t('studio.kept.risk.input.status'),
+      tone: 'warn',
+      testid: 'api-approval-input',
+      tooltip: t('studio.kept.risk.input.tooltip'),
+    });
+  }
+  out.push(
+    ...keptRisks(
+      p.kept.filter((u) => !u.pending),
+      item.expiresAt,
+      'api-approval',
+    ),
+  );
   if (p.script?.transform?.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {
@@ -222,6 +236,14 @@ function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
       text: t('studio.dbMcp.approval.risk.requestSent.status'),
       tone: 'warn',
       testid: 'api-review-sent',
+    });
+  }
+  if (p.reason === 'userValue') {
+    out.push({
+      text: t('studio.kept.risk.userValue.status'),
+      tone: 'warn',
+      testid: 'api-review-user-value',
+      tooltip: t('studio.kept.risk.userValue.tooltip'),
     });
   }
   if (p.isError) {
@@ -319,6 +341,11 @@ export function studioApprovalKinds(): ApprovalKinds {
         t('studio.api.environments.none.option'),
       targetData: true,
       risks: apiRisks,
+      requiredInputs: (item) =>
+        apiRequestPayloadSchema
+          .parse(item.payload)
+          .inputs.filter((i) => i.state === 'needed')
+          .map((i) => ({ name: i.name, label: i.label })),
       labels: () => ({
         approve: t('common.action.send.label'),
         deny: t('studio.dbMcp.approval.api.dontSend.label'),
