@@ -13,8 +13,6 @@ import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
 
-const errMessage = (err: unknown): string => errorText(err);
-
 /** The one action behind a needs-you item: the Needs you row button and the `!` circle share it. */
 export function useNeedsAction() {
   const ui = useAdeBoardUiStore();
@@ -75,7 +73,7 @@ export function useNeedsAction() {
         ui.focusSetup = true;
       } else dialogs.merge(n.branchId, n.target);
     } catch (err) {
-      ui.actionError[n.taskId] = errMessage(err);
+      ui.actionError[n.taskId] = errorText(err);
       ui.select(n.taskId);
     }
   }

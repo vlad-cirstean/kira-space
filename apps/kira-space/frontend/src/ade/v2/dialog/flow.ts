@@ -61,12 +61,10 @@ const BLOCKED_REASON = {
 export const blockedReason = (reason: string): string =>
   reason in BLOCKED_REASON ? t(BLOCKED_REASON[reason as keyof typeof BLOCKED_REASON]) : reason;
 
-const errMessage = (err: unknown): string => errorText(err);
-
 /** A launch failure shown in the dialog; a worktree still being prepared holds it open instead. */
 function failInDialog(deps: FlowDeps, err: unknown): void {
   if (isPreparing(err)) deps.waitForSetup();
-  else deps.setError(errMessage(err));
+  else deps.setError(errorText(err));
 }
 
 function messageOf(deps: FlowDeps, spec: DialogSpec, state: DialogState): string {
@@ -141,7 +139,7 @@ async function sendRebase(deps: FlowDeps, spec: DialogSpec, state: DialogState):
     }
     deps.closeDialog();
   } catch (err) {
-    deps.setError(errMessage(err));
+    deps.setError(errorText(err));
   } finally {
     deps.pending.remove(key);
   }
@@ -166,7 +164,7 @@ async function sendMerge(deps: FlowDeps, spec: DialogSpec, state: DialogState): 
           await deps.recordMerge({ branchId, target });
         }
       } catch (err) {
-        deps.setActionError(taskId, errMessage(err));
+        deps.setActionError(taskId, errorText(err));
       } finally {
         deps.pending.remove(key);
       }
@@ -215,7 +213,7 @@ async function onArchiveTurns(
     }
     await archiveIfClear(deps, taskId);
   } catch (err) {
-    deps.setActionError(taskId, errMessage(err));
+    deps.setActionError(taskId, errorText(err));
   } finally {
     deps.pending.remove(key);
   }
@@ -254,7 +252,7 @@ async function sendArchive(deps: FlowDeps, spec: DialogSpec, state: DialogState)
       t('space.ade.flow.archivePartial.error', {
         sent,
         count: spec.targets.length,
-        error: errMessage(err),
+        error: errorText(err),
       }),
     );
     deps.closeDialog();
@@ -299,7 +297,7 @@ export async function requestArchive(deps: FlowDeps, taskId: string): Promise<vo
   try {
     await archiveIfClear(deps, taskId, true);
   } catch (err) {
-    deps.setActionError(taskId, errMessage(err));
+    deps.setActionError(taskId, errorText(err));
   } finally {
     deps.pending.remove(key);
   }
@@ -311,7 +309,7 @@ export async function deleteAnyway(deps: FlowDeps, spec: DialogSpec): Promise<vo
     deps.closeDialog();
     await deps.archiveTask({ taskId: spec.taskId ?? '' });
   } catch (err) {
-    deps.setError(errMessage(err));
+    deps.setError(errorText(err));
   }
 }
 

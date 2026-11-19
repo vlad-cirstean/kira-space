@@ -13,8 +13,6 @@ export interface TakeOverConfirm {
   text: string;
 }
 
-const errMessage = (err: unknown): string => errorText(err);
-
 // Take over: continue a session in an interactive Claude Code terminal. One store so every surface
 // (Sessions tab, step run lines, task action, Needs you, `!`) shares the confirm for a run that is
 // still going and the launch behind it.
@@ -70,7 +68,7 @@ export const useAdeTakeOverStore = defineStore('adeTakeOver', () => {
         setupWait.start();
         return null;
       }
-      return errMessage(err);
+      return errorText(err);
     } finally {
       pending.delete(sessionId);
     }
@@ -103,7 +101,7 @@ export const useAdeTakeOverStore = defineStore('adeTakeOver', () => {
     try {
       await restoreM.mutateAsync({ taskId });
     } catch (err) {
-      ui.actionError[taskId] = errMessage(err);
+      ui.actionError[taskId] = errorText(err);
       return;
     } finally {
       pending.delete(sessionId);

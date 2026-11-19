@@ -17,6 +17,7 @@ import {
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import { computed, ref } from 'vue';
@@ -32,7 +33,10 @@ import { composeDialog, isRebaseKind } from './compose';
 // The one Claude dialog every opener shares (mockup `dlg`): kind-specific title, busy alert, targets,
 // editable message, push switch and archive risk, then Cancel and the kind's send button.
 const dialogs = useAdeDialogsStore();
-const sending = ref(false);
+// The dialogs store owns the failure text; these only track pending.
+const sendAction = useAsyncAction(() => dialogs.send());
+const discardAction = useAsyncAction(() => dialogs.discardAnyway());
+const sending = computed(() => sendAction.pending.value || discardAction.pending.value);
 // The rebase kinds show the server's own prompt; a pick or a switch asks for it again.
 const previewArgs = computed(() => {
   const s = dialogs.spec;
@@ -112,21 +116,11 @@ const setups = computed(() => {
 });
 
 async function send(): Promise<void> {
-  sending.value = true;
-  try {
-    await dialogs.send();
-  } finally {
-    sending.value = false;
-  }
+  await sendAction.run();
 }
 
 async function discard(): Promise<void> {
-  sending.value = true;
-  try {
-    await dialogs.discardAnyway();
-  } finally {
-    sending.value = false;
-  }
+  await discardAction.run();
 }
 </script>
 

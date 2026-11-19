@@ -8,6 +8,7 @@ import { t } from '@theme/i18n';
 import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { useElementSize, useIntersectionObserver, useScroll } from '@vueuse/core';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
@@ -44,7 +45,8 @@ const { height: headerHeight } = useElementSize(headerEl);
 const { y: scrollY } = useScroll(scrollEl);
 
 // ---- refresh
-const refreshingAll = ref(false);
+const refreshing = useAsyncAction(refreshAll);
+const refreshingAll = refreshing.pending;
 // Repos whose facts are past the deadline; the flag arrives on a board push (P622).
 const updatingRepos = computed(
   () =>
@@ -57,18 +59,20 @@ function failRefresh(codeRepoId: string, message: string): void {
   toast.error(t('common.dashPair.label', { first: repoLabel(codeRepoId), second: message }));
 }
 
-async function runRefresh(): Promise<void> {
+// Failures are per-repo toasts, so the action itself never fails.
+async function refreshAll(): Promise<void> {
   const ids = model.value?.board.repos.map((r) => r.codeRepoId) ?? [];
-  refreshingAll.value = true;
   try {
     const res = await refresh.mutateAsync({ codeRepoIds: ids });
     for (const r of res.repos) if (r.error) failRefresh(r.codeRepoId, remoteErrorText(r.error));
   } catch (err) {
     const msg = errorText(err);
     for (const id of ids) failRefresh(id, msg);
-  } finally {
-    refreshingAll.value = false;
   }
+}
+
+async function runRefresh(): Promise<void> {
+  await refreshing.run();
 }
 
 // ---- bands

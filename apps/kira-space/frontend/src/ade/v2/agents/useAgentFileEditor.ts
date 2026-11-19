@@ -1,4 +1,4 @@
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed, onBeforeUnmount, type Ref, ref, watch } from 'vue';
 import { useAdeAgentsUiStore } from '../state/adeAgentsUi';
 
@@ -25,8 +25,6 @@ export function useAgentFileEditor<V extends FileView>(
   const draft = ref('');
   const dirty = ref(false);
   const baseHash = ref('');
-  const saveError = ref('');
-  const conflict = ref(false);
 
   const view = computed(() => query.data.value);
   const bytes = computed(() => new TextEncoder().encode(draft.value).length);
@@ -48,27 +46,24 @@ export function useAgentFileEditor<V extends FileView>(
     agentsUi.dirty = false;
   });
 
+  const saving = useAsyncAction(async (text: string) => {
+    const next = await save.mutateAsync({ text, baseHash: baseHash.value });
+    baseHash.value = next.hash;
+    if (draft.value === text) dirty.value = false;
+  });
+  const saveError = saving.error;
+  const conflict = computed(() => saving.cause.value?.code === 'E_CONFLICT');
+
   async function saveNow(): Promise<void> {
     if (!dirty.value) return;
-    const text = draft.value;
-    try {
-      const next = await save.mutateAsync({ text, baseHash: baseHash.value });
-      saveError.value = '';
-      conflict.value = false;
-      baseHash.value = next.hash;
-      if (draft.value === text) dirty.value = false;
-    } catch (err) {
-      saveError.value = errorText(err);
-      conflict.value = (err as { code?: string }).code === 'E_CONFLICT';
-    }
+    await saving.run(draft.value);
   }
 
   function resetTo(v: { text: string; hash: string } | undefined): void {
     draft.value = v?.text ?? '';
     baseHash.value = v?.hash ?? '';
     dirty.value = false;
-    saveError.value = '';
-    conflict.value = false;
+    saving.reset();
   }
 
   function discard(): void {
@@ -83,7 +78,6 @@ export function useAgentFileEditor<V extends FileView>(
     const fresh = (await query.refetch()).data;
     if (!fresh) return;
     baseHash.value = fresh.hash;
-    conflict.value = false;
     await saveNow();
   }
 
