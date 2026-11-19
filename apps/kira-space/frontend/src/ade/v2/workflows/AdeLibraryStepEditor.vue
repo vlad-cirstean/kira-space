@@ -15,7 +15,7 @@ import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
 import type { StepEntry } from '../wire';
 import AdeLibraryStepForm from './AdeLibraryStepForm.vue';
-import AdeLibraryStepYaml from './AdeLibraryStepYaml.vue';
+import AdeYamlPane from './AdeYamlPane.vue';
 
 // One library step: Form or YAML mode, the config file bar in YAML mode (the file's problem in Form mode), Copy YAML and Delete. A step that
 // workflows use cannot be deleted; the workflows are listed instead.
@@ -112,7 +112,13 @@ async function remove(): Promise<void> {
       :show-yaml="wfUi.stepMode !== 'yaml' ? () => void setMode('yaml') : undefined"
       class="shrink-0"
     />
-    <AdeLibraryStepYaml v-if="wfUi.stepMode === 'yaml'" :entry="entry" />
+    <AdeYamlPane
+      v-if="wfUi.stepMode === 'yaml'"
+      kind="step"
+      :file-name="entry.fileName"
+      :entry-error="entry.error"
+      testid-prefix="ade-step-yaml"
+    />
     <AdeLibraryStepForm v-else :entry="entry" />
   </div>
 </template>
