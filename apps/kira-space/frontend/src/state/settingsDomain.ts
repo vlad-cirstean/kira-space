@@ -45,6 +45,8 @@ const gitSettingsSchema = /*#__PURE__*/ z.object({
 // validity check read one number each, not three hard-coded copies.
 export const CACHE_L2_BUDGET_MB_RANGE = { min: 8, max: 1024 } as const;
 export const OP_LOG_RETENTION_DAYS_RANGE = { min: 1, max: 365 } as const;
+export const KEPT_RETENTION_MINUTES_RANGE = { min: 5, max: 240 } as const;
+export const KEPT_RETENTION_MINUTES_DEFAULT = 60;
 // The "expensive query" threshold is an estimated-*rows-read* number, never a
 // cost unit — the two dialects that report a same-named `cost` field disagree by three orders of
 // magnitude for a comparable scan, so no cost-based number could be shared
@@ -142,7 +144,12 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   // Read-only: stored rules could not be read, so every API request is refused.
   apiRulesInvalid: z.boolean().default(false),
   // Minutes a kept variable lives, fixed when it is stored.
-  keptRetentionMinutes: z.number().int().min(5).max(240).default(60),
+  keptRetentionMinutes: z
+    .number()
+    .int()
+    .min(KEPT_RETENTION_MINUTES_RANGE.min)
+    .max(KEPT_RETENTION_MINUTES_RANGE.max)
+    .default(KEPT_RETENTION_MINUTES_DEFAULT),
   // Agents may attach JavaScript to api_request (prepare the request, transform the result).
   apiScripts: z.boolean().default(true),
   // Hold each API response for the user's review before the agent gets it.
@@ -352,7 +359,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRules: [],
     apiDefault: 'ask',
     apiRulesInvalid: false,
-    keptRetentionMinutes: 60,
+    keptRetentionMinutes: KEPT_RETENTION_MINUTES_DEFAULT,
     apiScripts: true,
     apiReviewResponses: false,
   }),
@@ -462,7 +469,7 @@ export const defaultSettings: Settings = {
     apiRules: [],
     apiDefault: 'ask',
     apiRulesInvalid: false,
-    keptRetentionMinutes: 60,
+    keptRetentionMinutes: KEPT_RETENTION_MINUTES_DEFAULT,
     apiScripts: true,
     apiReviewResponses: false,
   },
