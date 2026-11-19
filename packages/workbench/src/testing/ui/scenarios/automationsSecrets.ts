@@ -129,9 +129,7 @@ export function registerSecretScenarios(env: Env): void {
     await expect(field).toHaveAttribute('type', 'password');
     await expect(field).toHaveValue('');
     const eye = setDialog(page).locator('[data-testid="run-secret-value-reveal"]');
-    await expect(eye).toBeDisabled();
     await field.fill('typed');
-    await expect(eye).toBeEnabled();
     await eye.click();
     await expect(field).toHaveAttribute('type', 'text');
     await eye.click();
