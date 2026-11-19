@@ -64,8 +64,9 @@ test('contract: a scripted response shows the result, the raw response and the s
   await pushApprovals(page, [liveItem(item('scripted'))]);
   const source = held('scripted').script?.source ?? '';
   const result = page.locator('[data-testid="api-review-result"]');
-  // A big integer would change on re-indent, so the text shows verbatim.
-  await expect(result).toContainText('{"id":9007199254740993,"domain":"x.test"}');
+  // A big integer keeps its digits through the re-indent.
+  await expect(result).toContainText('"id": 9007199254740993');
+  await expect(result).toContainText('"domain": "x.test"');
   await expect(page.locator('[data-testid="api-review-script"]')).toContainText(
     source.split('\n')[0] ?? '',
   );
