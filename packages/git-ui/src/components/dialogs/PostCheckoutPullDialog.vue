@@ -62,7 +62,7 @@ function pullNow(): void {
           data-testid="post-checkout-pull-not-now"
           @click="notNow"
         >
-          {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
+          {{ t('common.action.notNow.label') }}
         </Button>
         <Button
           variant="dialog-primary"

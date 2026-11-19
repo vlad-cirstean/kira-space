@@ -3176,6 +3176,9 @@
       "nextPage": {
         "label": "Next page"
       },
+      "notNow": {
+        "label": "Not now"
+      },
       "open": {
         "label": "Open"
       },
@@ -3265,6 +3268,9 @@
       },
       "showAll": {
         "label": "Show all"
+      },
+      "showChanges": {
+        "label": "Show changes"
       },
       "showLess": {
         "label": "Show less"
@@ -5102,9 +5108,6 @@
       "postCheckoutPullConfirm": {
         "body": "{branch} is {count} commit behind {upstream}. | {branch} is {count} commits behind {upstream}.",
         "confirm": "Pull now",
-        "notNow": {
-          "label": "Not now"
-        },
         "title": "Pull the latest changes?"
       },
       "preflight": {
@@ -5666,9 +5669,6 @@
       },
       "stashDrop": {
         "label": "Drop"
-      },
-      "stashShow": {
-        "label": "Show changes"
       }
     },
     "noRepository": {

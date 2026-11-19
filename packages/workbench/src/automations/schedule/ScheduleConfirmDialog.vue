@@ -240,7 +240,7 @@ function onChord(event: KeyboardEvent): void {
           :kbd="formatShortcut('prompt.deny')"
           @click="declineOrClose"
         >
-          {{ t('git.dialog.postCheckoutPullConfirm.notNow.label') }}
+          {{ t('common.action.notNow.label') }}
         </Button>
         <Button
           variant="dialog-approve"

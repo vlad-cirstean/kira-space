@@ -370,7 +370,7 @@ export function buildStashMenu(
       'git-branch',
     ),
     plainItem('stashSaveGlobal', t('git.stash.saveGlobal.tooltip'), 'archive'),
-    plainItem('stashShow', t('git.menu.stashShow.label'), 'eye'),
+    plainItem('stashShow', t('common.action.showChanges.label'), 'eye'),
   );
   return [{ items }];
 }
@@ -405,7 +405,7 @@ export function buildGlobalStashMenu(
           inProgress,
           'git-branch',
         ),
-        plainItem('stashShow', t('git.menu.stashShow.label'), 'eye'),
+        plainItem('stashShow', t('common.action.showChanges.label'), 'eye'),
         gatedItem(
           'globalStashRemove',
           t('git.menu.globalStashRemove.label'),
