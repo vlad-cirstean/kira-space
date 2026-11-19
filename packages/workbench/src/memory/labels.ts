@@ -27,7 +27,7 @@ export const SCOPE_LABEL = {
 
 export const GROUP_KIND_LABEL = {
   session: 'common.field.session.label',
-  request: 'studio.http.raw.requestPending.label',
+  request: 'common.field.request.label',
   task: 'common.task.label',
   document: 'memory.common.groupKind.document.label',
   thread: 'memory.common.groupKind.thread.label',

@@ -3492,6 +3492,11 @@
     "copyForAgent": {
       "label": "Copy for agent"
     },
+    "copyFormat": {
+      "json": {
+        "label": "JSON"
+      }
+    },
     "cost": {
       "label": "Cost {value}"
     },
@@ -3513,6 +3518,11 @@
       },
       "resizeWidth": {
         "label": "Resize dialog width"
+      }
+    },
+    "diff": {
+      "unchangedRow": {
+        "status": "Unchanged"
       }
     },
     "discard": {
@@ -3620,6 +3630,9 @@
       },
       "reason": {
         "label": "Reason"
+      },
+      "request": {
+        "label": "Request"
       },
       "result": {
         "label": "Result"
@@ -14444,9 +14457,6 @@
         "csv": {
           "label": "CSV"
         },
-        "json": {
-          "label": "JSON"
-        },
         "tsv": {
           "label": "TSV"
         }
@@ -15606,9 +15616,6 @@
         "title": "Compare responses",
         "unchanged": {
           "status": "{count} unchanged"
-        },
-        "unchangedRow": {
-          "status": "Unchanged"
         }
       },
       "editRaw": {
@@ -15708,9 +15715,6 @@
         },
         "requestCaption": {
           "label": "→ {method} {url}"
-        },
-        "requestPending": {
-          "label": "Request"
         },
         "unavailable": {
           "empty": "The raw exchange couldn’t be rendered"

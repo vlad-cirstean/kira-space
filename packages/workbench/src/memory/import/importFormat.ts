@@ -38,7 +38,7 @@ export const FILE_STATE_LABEL = {
 export const FILE_KIND_LABEL = {
   markdown: 'memory.import.file.kind.markdown.label',
   text: 'common.field.text.label',
-  json: 'studio.copy.format.json.label',
+  json: 'common.copyFormat.json.label',
   jsonl: 'memory.import.file.kind.jsonl.label',
   memdoc: 'memory.import.file.kind.memdoc.label',
 } as const satisfies Record<ImportFile['kind'], MessageKey>;

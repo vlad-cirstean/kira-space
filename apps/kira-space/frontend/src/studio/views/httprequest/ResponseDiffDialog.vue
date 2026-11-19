@@ -160,7 +160,7 @@ const HEADER_STATUS_KEYS: Record<HeaderRow['status'], MessageKey> = {
   added: 'common.added.status',
   removed: 'common.removed.status',
   changed: 'common.changed.status',
-  unchanged: 'studio.http.diff.unchangedRow.status',
+  unchanged: 'common.diff.unchangedRow.status',
 };
 function headerStatusText(status: HeaderRow['status']): string {
   return t(HEADER_STATUS_KEYS[status]);

@@ -494,7 +494,7 @@ export function rowMenu(ctx: RowMenuContext): MenuItem[] {
         {
           type: 'item',
           id: 'copy-rows-json',
-          label: t('studio.copy.format.json.label'),
+          label: t('common.copyFormat.json.label'),
           run: () =>
             void copyAndAnnounce(
               rowsText(snapshots(), 'json'),

@@ -129,7 +129,7 @@ export function tabularRowMenu(ctx: TabularMenuContext): MenuItem[] {
         {
           type: 'item',
           id: 'copy-rows-json',
-          label: t('studio.copy.format.json.label'),
+          label: t('common.copyFormat.json.label'),
           run: () =>
             copyOrReportError(ctx.copy('json'), ctx.onError, () =>
               announceApp(t('common.copy.copiedJson.announce')),

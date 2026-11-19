@@ -13,7 +13,7 @@ const payload = computed(() => apiResponsePayloadSchema.parse(props.item.payload
 
 <template>
   <ApprovalDetails>
-    <dt>{{ t('studio.http.raw.requestPending.label') }}</dt>
+    <dt>{{ t('common.field.request.label') }}</dt>
     <dd data-testid="api-review-request">
       <TruncatedText class="font-data" :text="`${payload.method} ${payload.url}`" />
     </dd>

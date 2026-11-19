@@ -118,7 +118,7 @@ const requestCaption = computed(() => {
   const e = viewingStored.value?.snapshot.entry;
   if (e) return t('studio.http.raw.requestCaption.label', { method: e.method, url: e.url });
   const r = rt.value;
-  return r ? `→ ${t('studio.http.raw.requestPending.label')}` : '';
+  return r ? `→ ${t('common.field.request.label')}` : '';
 });
 
 // D8: the unified document each editor renders — the live wire's own text, or the reconstruction,
