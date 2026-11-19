@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"golang.org/x/net/http/httpguts"
 )
@@ -39,7 +40,10 @@ type credential struct {
 
 // Plan checks in against the policy without sending it. A problem is returned as an error the
 // agent can act on; it never carries a secret value.
-func (s *Service) Plan(in Input) (Planned, error) {
+func (s *Service) Plan(in Input) (Planned, error) { return s.plan(in, false) }
+
+// plan is Plan; withValues also holds the kept values for the send that follows.
+func (s *Service) plan(in Input, withValues bool) (Planned, error) {
 	env, avail, err := s.environmentOf(in.EnvironmentID)
 	if err != nil {
 		return Planned{}, err
@@ -52,10 +56,15 @@ func (s *Service) Plan(in Input) (Planned, error) {
 		return Planned{}, err
 	}
 	resolved, used := resolvePlain(norm, avail)
+	kept, err := s.checkKept(resolved)
+	if err != nil {
+		return Planned{}, err
+	}
 	p, err := buildPlanned(env, resolved, avail, used)
 	if err != nil {
 		return Planned{}, err
 	}
+	kept.apply(&p, withValues)
 	if err := s.checkAccess(&p); err != nil {
 		return Planned{}, err
 	}
@@ -204,7 +213,7 @@ func checkNames(in Input, env EnvInfo, avail map[string]available) error {
 	in.texts(func(s *string) {
 		for _, n := range apivars.Names(*s) {
 			switch {
-			case err != nil:
+			case err != nil, keptvars.IsKeptName(n):
 			case apivars.IsDynamicReference(n):
 				err = errors.New("dynamic values are not supported here; send the literal value")
 			default:

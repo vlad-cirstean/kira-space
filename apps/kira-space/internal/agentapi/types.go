@@ -34,6 +34,8 @@ type Input struct {
 	TimeoutSeconds   int
 	MaxResponseBytes int
 	FollowRedirects  *bool
+	// Scope is the kept-variable scope of the caller; empty means none.
+	Scope string
 }
 
 // Credential is a secret a request uses, with the hosts it may go to. Never a value.
@@ -73,6 +75,8 @@ type Planned struct {
 	Form        []NameValue
 	Variables   []VarUse
 	Credentials []Credential
+	// Kept lists the kept variables the request uses, as they stood at plan time.
+	Kept []KeptUse
 
 	// AllowedByRule: an allow rule matched, so the request needs no approval.
 	AllowedByRule bool
@@ -85,6 +89,8 @@ type Planned struct {
 	base  string
 	extra []NameValue
 	creds []credential
+	// keptValues holds the kept values for one send; set only by Send's own plan.
+	keptValues map[string]keptValue
 }
 
 // sameRequest reports whether o would send the same method, URL, headers, query, body and form.
@@ -166,4 +172,6 @@ type Service struct {
 	Globals func() (Globals, error)
 	// Access is the user's API access rules, read fresh per plan; nil means no rules.
 	Access func() (apiaccess.Policy, error)
+	// Kept resolves {{kept.<name>}} references; nil refuses them all.
+	Kept KeptReader
 }

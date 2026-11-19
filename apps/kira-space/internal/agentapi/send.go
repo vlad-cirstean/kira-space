@@ -31,12 +31,18 @@ var ErrPlanChanged = errors.New("environment changed while waiting for approval;
 // the request must still plan to the same method, URL, headers, query, body and form. The result is
 // masked and capped.
 func (s *Service) Send(ctx context.Context, in Input, approved *Planned) (Result, error) {
-	p, err := s.Plan(in)
+	p, err := s.plan(in, true)
 	if err != nil {
 		return Result{}, err
 	}
 	if approved != nil && !p.sameRequest(*approved) {
 		return Result{}, ErrPlanChanged
+	}
+	// The values this plan read are the ones sent: an id that moved means a new value.
+	if approved != nil {
+		if err := p.checkKeptCurrent(*approved); err != nil {
+			return Result{}, err
+		}
 	}
 	// An allow rule removed since the plan would turn an unprompted send into one that needs a prompt.
 	if approved != nil && approved.AllowedByRule && !p.AllowedByRule {
@@ -56,7 +62,7 @@ func (s *Service) Send(ctx context.Context, in Input, approved *Planned) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	m := newMask(opened, used)
+	m := newMask(opened, used, p.secretKeptTexts())
 	return s.run(ctx, p, req, optionsFor(p, g, m), m)
 }
 
@@ -67,27 +73,46 @@ func buildRequest(p Planned, opened *apifiles.Opened) (httpclient.Request, []api
 		refs[c.name] = c.secretName
 	}
 	r := apivars.NewResolverFor(refs, opened.Source())
-	target := r.URLText(p.base)
+	kr := p.keptResolver()
+	var keptErr error
+	field := func(text string, mode insertMode, lit func(string) string) string {
+		out, err := kr.text(text, mode, lit)
+		if err != nil && keptErr == nil {
+			keptErr = err
+		}
+		return out
+	}
+	target := field(p.base, insertURL, r.URLText)
 	extra := make([]NameValue, len(p.extra))
 	for i, e := range p.extra {
-		extra[i] = NameValue{Name: r.Text(e.Name), Value: r.Text(e.Value)}
+		extra[i] = NameValue{Name: field(e.Name, insertScalar, r.Text), Value: field(e.Value, insertScalar, r.Text)}
 	}
 	req := httpclient.Request{Method: p.Method, URL: withQuery(target, extra, false)}
 	for _, h := range p.Headers {
-		req.Headers = append(req.Headers, httpclient.Header{Name: r.Text(h.Name), Value: r.Text(h.Value)})
+		req.Headers = append(req.Headers, httpclient.Header{Name: field(h.Name, insertScalar, r.Text), Value: field(h.Value, insertScalar, r.Text)})
 	}
 	if p.ContentType != "" {
-		req.Headers = append(req.Headers, httpclient.Header{Name: "Content-Type", Value: r.Text(p.ContentType)})
+		req.Headers = append(req.Headers, httpclient.Header{Name: "Content-Type", Value: field(p.ContentType, insertScalar, r.Text)})
 	}
 	switch {
 	case p.Body != "":
-		req.Body = httpclient.Body{Mode: string(httpclient.BodyRaw), Raw: r.Text(p.Body)}
+		mode := insertRaw
+		if isJSONType(requestContentType(p.ContentType, p.Headers)) {
+			mode = insertJSON
+		}
+		req.Body = httpclient.Body{Mode: string(httpclient.BodyRaw), Raw: field(p.Body, mode, r.Text)}
 	case len(p.Form) > 0:
 		fields := make([]httpclient.Field, len(p.Form))
 		for i, f := range p.Form {
-			fields[i] = httpclient.Field{Name: r.Text(f.Name), Value: r.Text(f.Value)}
+			fields[i] = httpclient.Field{Name: field(f.Name, insertScalar, r.Text), Value: field(f.Value, insertScalar, r.Text)}
 		}
 		req.Body = httpclient.Body{Mode: string(httpclient.BodyURLEncoded), URLEncoded: fields}
+	}
+	if keptErr == nil && kr != nil {
+		keptErr = checkFinal(req)
+	}
+	if keptErr != nil {
+		return req, nil, keptErr
 	}
 	if err := r.Err(); err != nil {
 		return req, nil, err
@@ -151,8 +176,8 @@ type mask struct {
 	maxLen int
 }
 
-func newMask(opened *apifiles.Opened, used []apivars.UsedSecret) mask {
-	values := opened.Values()
+func newMask(opened *apifiles.Opened, used []apivars.UsedSecret, extra []string) mask {
+	values := append(opened.Values(), extra...)
 	m := mask{repl: apivars.Replacer(used), all: secrets.NewMasker(values...)}
 	for _, v := range values {
 		m.maxLen = max(m.maxLen, len(v))
