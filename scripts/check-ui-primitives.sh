@@ -34,6 +34,7 @@
 # Guards U183-U187: docs/HISTORY.md (v0.3.18).
 # Guards U188-U189, U51 extended: docs/HISTORY.md (v0.3.18).
 # Guard U190: docs/HISTORY.md (v0.3.18).
+# Guards U191-U203: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -366,6 +367,19 @@ U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@
 U188@@vt@@/behaviour/!|/testing/!@@hand async error ref (use useAsyncAction, useMutationAction, useTaskAction)@@(?<!this\.)\b\w+\.value\s*=\s*errorText\(|\b\w*(?:[Ee]rror|[Ff]ailure)\.value\s*=\s*err\s*;
 U189@@vt@@/behaviour/!|/testing/!@@errorText alias (call errorText, or let the action describe)@@\bconst \w+ = \(\w+: unknown\): string => errorText\(\w+\);
 U190@@vt@@queryClient.ts|asyncAction.ts@@per-call TanStack networkMode (set it in createQueryClient defaultOptions)@@\bnetworkMode\s*:\s*['"]
+U191@@vt@@@@hand page module re-export (use pageModuleApi)@@\bexport const \w+ = store\.(?:pageVersion|bumpPageVersion|setPage|getPage|drop|dropForPrefix|totalRetainedBytes|setVisibleWindow)\b
+U192@@vt@@shared/page/search.ts|shared/page/scan.ts@@hand runSearch progress signature (use RunSearch)@@onProgress:\s*\(\s*found: number,\s*rowsScanned: number
+U193@@vt@@shared/page/scan.ts@@inline regex scan cap (use regexTextCap)@@\.regex \? REGEX_SCAN_TEXT_CAP\b
+U194@@vt@@@@hand cell match builder (use cellMatch)@@\(row, col, start, end\) => \(\{\s*row,\s*col,\s*start,\s*end,?\s*\}\)
+U195@@vt@@shared/viewOp.ts@@hand count reset (use clearCount)@@\.count = null;\s*\w+\.countOpId = null;
+U196@@vt@@shared/page/navigation.ts@@hand query-change restart (use restart)@@const prevIndex = [^;\n]*\.pageIndex;\s*resetTokens\(
+U197@@vt@@shared/viewOp.ts@@runtime cleanup beside createRuntimeStore (use its onClose)@@(?s:createRuntimeStore<.*?registerTabRuntimeCleanup\()
+U198@@vt@@shared/viewOp.ts@@hand count request (use runTabCount)@@\bdata\.count\(
+U199@@vt@@shared/request/resolve.ts@@hand dynamic second pass (use resolveWithDynamic)@@\.refs\.some\(\(\w+\) => \w+\.kind === 'dynamic'\)
+U200@@vt@@shared/request/requestOp.ts@@hand request preflight state (use beginRequest, stopRequest)@@\.preflight = true;|\.preflight = false;\s*\w+\.opId = null;\s*\w+\.status = 'cancelled'
+U201@@vt@@shared/page/visibleRows.ts@@hand visible window math (use pageRowWindow)@@const from = \w+\[\w+\[0\]\.index\]
+U202@@vt@@shared/page/navigation.ts@@offset cursor literal (use pageOffsetCursor, firstPageCursor)@@\{\s*mode: 'offset',\s*offset:
+U203@@vt@@shared/page/rowViews.ts@@hand page row decode (use the rowViews builders)@@store\.cached\(\w+, row, '(?:id|body|field|value)'
 GUARDS
 
 # hits: "U<n> path"
