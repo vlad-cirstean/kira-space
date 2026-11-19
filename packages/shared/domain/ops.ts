@@ -32,6 +32,9 @@ export const opKindSchema = /*#__PURE__*/ z.enum([
   'kubernetes',
   // P532: the table allow list's catalog probe, a throttled catalog query before an MCP statement runs.
   'tables',
+  // P676: a script an agent attached to an API request, run in the JS engine before or after it.
+  'jsPrepare',
+  'jsTransform',
 ]);
 export type OpKind = z.infer<typeof opKindSchema>;
 

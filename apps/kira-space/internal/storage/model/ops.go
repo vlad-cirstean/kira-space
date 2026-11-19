@@ -22,6 +22,8 @@ var opKinds = map[string]bool{
 	"preconnect": true,
 	// P532: the table allow list's catalog probe (Router.StatementTables).
 	"tables": true,
+	// P676: a script an agent attached to an API request, run in the JS engine (prepare, transform).
+	"jsPrepare": true, "jsTransform": true,
 }
 
 var opStatuses = map[string]bool{

@@ -37,6 +37,8 @@ type DbMcpSettings struct {
 	APIRulesInvalid bool `json:"apiRulesInvalid"`
 	// KeptRetentionMinutes is how long a kept variable lives, 5 to 240. It applies to values kept later.
 	KeptRetentionMinutes int `json:"keptRetentionMinutes"`
+	// APIScripts lets agents attach JavaScript to api_request (prepare the request, transform the result).
+	APIScripts bool `json:"apiScripts"`
 }
 
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
@@ -86,7 +88,8 @@ type DbMcpPatch struct {
 	APIRules         *[]apiaccess.Rule `json:"apiRules,omitempty"`
 	APIDefault       *string           `json:"apiDefault,omitempty"`
 	// KeptRetentionMinutes is range checked, 5 to 240.
-	KeptRetentionMinutes *int `json:"keptRetentionMinutes,omitempty"`
+	KeptRetentionMinutes *int  `json:"keptRetentionMinutes,omitempty"`
+	APIScripts           *bool `json:"apiScripts,omitempty"`
 }
 
 // ValidHTTPVersion mirrors settings.ts's HTTP_VERSIONS — Go's HTTP/1 *is* 1.1, so "1" is never a

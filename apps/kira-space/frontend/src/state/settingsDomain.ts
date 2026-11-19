@@ -143,6 +143,8 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   apiRulesInvalid: z.boolean().default(false),
   // Minutes a kept variable lives, fixed when it is stored.
   keptRetentionMinutes: z.number().int().min(5).max(240).default(60),
+  // Agents may attach JavaScript to api_request (prepare the request, transform the result).
+  apiScripts: z.boolean().default(true),
 });
 
 // advanced carries just gitLogLevel here — this app's own diagnostic log verbosity, its entire
@@ -349,6 +351,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiDefault: 'ask',
     apiRulesInvalid: false,
     keptRetentionMinutes: 60,
+    apiScripts: true,
   }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -457,5 +460,6 @@ export const defaultSettings: Settings = {
     apiDefault: 'ask',
     apiRulesInvalid: false,
     keptRetentionMinutes: 60,
+    apiScripts: true,
   },
 };
