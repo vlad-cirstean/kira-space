@@ -19,7 +19,7 @@ export interface AgentSettingsView {
   secrets: AgentSecretView[];
   providers: AgentProviderView[];
 }
-export interface AgentSecretView {
+interface AgentSecretView {
   name: string;
   set: boolean;
   referenced: boolean;

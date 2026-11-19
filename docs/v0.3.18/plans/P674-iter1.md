@@ -77,6 +77,7 @@ files are the known hits.
   `keyvalue-target`, `data-*`, `http-*`, `grpc-*`, `console-*`, `stream-*`, `definition-*`).
 - Wave 1 creates; wave 2 A (12 Studio), B (`AdeReposPage`, `GitViewHead`).
 - Wave 1: done 5de5f67c7 (ViewHead created; migrations in wave 2).
+- Wave 2 A: done a3359c47c (12 Studio heads). Wave 2 B: done 629b6c0d4 (`AdeReposPage`, `GitViewHead`; `ViewHead` forwards attrs to its toolbar for `data-repo-id`).
 
 ### F1.2 [DUP] MERGE: RelativeTime component
 
@@ -105,6 +106,7 @@ files are the known hits.
   `grpc-stream-terminal-race.spec.ts`, mobile Later specs, hostview issue specs.
 - Wave 1 (component, five import swaps, deletions); wave 2 A (4), B (3).
 - Wave 1: done d4f4d18dd (component, five importers, deletions); mustache sites in wave 2.
+- Wave 2 A: done f24f00e37, 2a5f5f294 (4 sites plus `ResponseDiffDialog`, a multi-line `{{ formatRelative(` the ledger missed). Wave 2 B: done 629b6c0d4.
 
 ### F1.3 [DRIFT] MERGE: one relative-time vocabulary
 
@@ -130,6 +132,7 @@ files are the known hits.
 - Specs: `format.spec.ts`; cell editor timestamp specs (grep `celleditor`, `timestamp`).
 - Wave 1; wave 2 A (`timestamp.ts`).
 - Wave 1: done f11055965; `timestamp.ts` in wave 2.
+- Wave 2 A: done f24f00e37 (`timestamp.ts` calls `formatRelative(date)`; non-component, no shared clock).
 
 ### F1.4 [DUP] EXTRACT (promote): VirtualList
 
@@ -160,6 +163,7 @@ files are the known hits.
 - Wave 1 (move, docker imports, side_panels); wave 2 A (BrowseView, ResourceTable), B
   (RepoSearchView).
 - Wave 1: done 0b871ba51; hand copies in wave 2.
+- Wave 2 A: done ff480beca (BrowseView, ResourceTable; `VirtualList` gains `visible` emit and exposes `focusKey`). Wave 2 B: done 9e990b59d (RepoSearchView).
 
 ### F1.5 [DUP] EXTRACT: config secrets section
 
@@ -181,6 +185,7 @@ files are the known hits.
 - Specs: `api-agent-access.spec.ts`, `ade-agent-settings.spec.ts`.
 - Wave 1 creates; wave 2 A (ApiSecrets), B (AdeSettingsSecrets).
 - Wave 1: done 519a7699b (component, `common.configSecrets.*`; host key swaps for duplicate English); host swaps in wave 2.
+- Wave 2 A: done 447dbea4b (ApiSecrets; `p-2` moved to `EnvironmentsView`). Wave 2 B: done c1fd19dda (AdeSettingsSecrets keeps only `space.ade.settings.secrets.hint` via the description slot).
 
 ### F1.6 [DUP] EXTRACT: log tail model and line rendering
 
@@ -204,6 +209,7 @@ files are the known hits.
 - Wave 1 (`logTail.ts`, `LogLines`, key move with both call sites' key swap); wave 2 A (kube), C
   (docker).
 - Wave 1: done 6b286fb2e (logTail, LogLines, key move, `#line` slot dropped in both views); toolbar order and logTail adoption in wave 2.
+- Wave 2 A: done ff480beca (kube). Wave 2 C: done ee9e93be1 (docker; toolbar already in order).
 
 ### F1.7 [DUP] EXTRACT: save-conflict alert
 
@@ -225,6 +231,7 @@ files are the known hits.
 - Wave 1 creates (and migrates `RunFileDialog`); wave 2 A (2 plus key swap), B (7; the two YAML
   sites go with F1.10).
 - Wave 1: done 6cc6dba71 (component, RunFileDialog, key move and all 11 key swaps); component adoption in wave 2.
+- Wave 2 A: done 447dbea4b. Wave 2 B: done c1fd19dda (`SaveConflictAlert` gains `variant`; AdeWorkflowGraph and AdeLibraryStepForm keep a plain Alert for the non-conflict Switch to YAML action).
 
 ### F1.8 [DUP] EXTRACT: config form problem alert
 
@@ -240,6 +247,7 @@ files are the known hits.
 - Specs: `repo-config-form.spec.ts`, `http-variables.spec.ts`, connection dialog specs.
 - Wave 1 creates (and migrates `RunFileDialog`); wave 2 A (4), B (1).
 - Wave 1: done 6cc6dba71 (component, RunFileDialog); adoption in wave 2.
+- Wave 2 A: done 447dbea4b. Wave 2 B: done c1fd19dda.
 
 ### F1.9 [DUP] EXTRACT: reset-to-default button
 
@@ -265,6 +273,7 @@ files are the known hits.
   `settings-reset-*` hits, `settings-llm-prompts.spec.ts`, `ade-v2-dialogs.spec.ts`.
 - Wave 1 creates and migrates the 7 workbench sites; wave 2 A (10), B (2), C (20).
 - Wave 1: done 619c786b2 (component, 7 workbench sites).
+- Wave 2 A: done b6bed38f3. Wave 2 B: done b42cd0e94. Wave 2 C: done d069444cb (20 sites).
 
 ### F1.10 [DUP] EXTRACT: ADE YAML pane
 
@@ -306,6 +315,7 @@ files are the known hits.
 - Specs: `connection-order.spec.ts`, `api-order.spec.ts`, `kubernetes-order.spec.ts`.
 - Wave 1 adds the constant; wave 2 A (3).
 - Wave 1: done e6cf0e865 (constant); sites in wave 2.
+- Wave 2 A: done b6bed38f3.
 
 ### F1.13 [DUP] EXTRACT: window tab strip
 
@@ -320,6 +330,7 @@ files are the known hits.
 - Specs: window specs (grep `opened-files`, `ade-review-window`, `proof-window`), `tabs.spec.ts`.
 - Wave 1 (constant, WorkbenchShell); wave 2 A (1), B (2).
 - Wave 1: done e6cf0e865 (constant, WorkbenchShell); sites in wave 2.
+- Wave 2 A: done b6bed38f3. Wave 2 B: done b42cd0e94.
 
 ### F1.14 [DRIFT] MIGRATE: icon per concept
 
@@ -350,6 +361,7 @@ files are the known hits.
 - Wave 1 (`icons.ts`, workbench sites `panelMenus.ts`, `RunOutcomeBlock.vue`,
   `ImportJobDetail.vue`); wave 2 A (2), B (7).
 - Wave 1: done 336ba652a (icons, workbench sites); rest in wave 2.
+- Wave 2 A: done b6bed38f3. Wave 2 B: done b42cd0e94.
 
 ### F1.15 [DUP] MERGE: countdown clock into formatElapsed
 
@@ -373,6 +385,7 @@ files are the known hits.
 - Visible change: yes (one decimal under 100%).
 - Specs: cache settings specs, `docker-module.spec.ts`.
 - Wave 2 A (1), C (1).
+- Wave 2 A: done f24f00e37. Wave 2 C: done d069444cb.
 
 ### F1.17 [DRIFT] MIGRATE: chart missing value
 
@@ -382,6 +395,7 @@ files are the known hits.
 - Visible change: yes (chart tooltip null reads `—`).
 - Specs: proof chart specs (grep `proof-chart`).
 - Wave 2 A.
+- Wave 2 A: done f24f00e37.
 
 ## PARK (orchestrator adds SPEC rows, numbers fixed here)
 
