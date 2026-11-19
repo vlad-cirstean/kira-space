@@ -1,22 +1,21 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useDebounceFn } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { matchesQuery } from '@workbench/behaviour/match';
+import { useLogFilter } from '@workbench/behaviour/logFilter';
 import { TIMING } from '@workbench/behaviour/timing';
-import { useKeptState } from '@workbench/behaviour/viewState';
-import FindBar from '@workbench/components/FindBar.vue';
+import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { appendCapped, plainText, tailItems } from '@workbench/lib/logTail';
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { appendCapped, tailItems } from '@workbench/lib/logTail';
+import { computed, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDocker } from '../context';
 import type { DockerLogLine } from '../wire';
 
@@ -24,8 +23,6 @@ const props = defineProps<{ containerId: string }>();
 
 interface Line extends DockerLogLine {
   id: number;
-  /** ANSI-stripped text, filled on first find scan so later batches parse only new lines. */
-  plain?: string;
 }
 
 const { control } = useDocker();
@@ -36,14 +33,13 @@ const timestamps = ref(false);
 const wrap = ref(false);
 const TAIL_ITEMS = computed(() => tailItems('docker-logs-tail'));
 const tail = ref<number>(1000);
-const findOpen = useKeptState(() => `docker:logs:${props.containerId}:findOpen`, false);
-const query = useKeptState(() => `docker:logs:${props.containerId}:query`, '');
-const needle = useKeptState(() => `docker:logs:${props.containerId}:needle`, '');
-const current = ref(0);
+const { filter, needle, shown, status } = useLogFilter(
+  () => lines.value,
+  () => `docker:logs:${props.containerId}:filter`,
+);
 const ended = ref(false);
 const streamError = ref('');
 const logsEl = useTemplateRef<{
-  scrollToIndex: (index: number) => void;
   atBottom: () => boolean;
   jumpToLatest: () => void;
 }>('logsEl');
@@ -52,48 +48,6 @@ let streamId = '';
 let opening: Promise<unknown> = Promise.resolve();
 let seq = 0;
 let off: (() => void) | null = null;
-
-const matchLines = computed<number[]>(() => {
-  const q = needle.value;
-  if (q === '') return [];
-  const out: number[] = [];
-  lines.value.forEach((l, i) => {
-    l.plain ??= plainText(l.text);
-    if (matchesQuery(l.plain, q)) out.push(i);
-  });
-  return out;
-});
-const currentLine = computed(() => matchLines.value[current.value]);
-
-function onQuery(q: string): void {
-  needle.value = q.trim().toLowerCase();
-  current.value = 0;
-  void nextTick(revealCurrent);
-}
-
-function step(delta: number): void {
-  const n = matchLines.value.length;
-  if (n === 0) return;
-  current.value = (current.value + delta + n) % n;
-  void nextTick(revealCurrent);
-}
-
-function closeFind(): void {
-  findOpen.value = false;
-  query.value = '';
-  needle.value = '';
-}
-
-function revealCurrent(): void {
-  const index = currentLine.value;
-  if (index === undefined) return;
-  follow.value = false;
-  logsEl.value?.scrollToIndex(index);
-}
-
-watch(matchLines, (m) => {
-  if (current.value >= m.length) current.value = Math.max(0, m.length - 1);
-});
 
 function append(batch: DockerLogLine[]): void {
   lines.value = appendCapped(
@@ -165,6 +119,9 @@ function jumpFollow(): void {
 function clear(): void {
   lines.value = [];
 }
+
+// A copy takes what the filter leaves, the same lines the pane shows.
+const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 </script>
 
 <template>
@@ -205,41 +162,32 @@ function clear(): void {
         :items="TAIL_ITEMS"
         @update:model-value="(v) => (tail = Number(v))"
       />
-      <TooltipIconButton
-        class="ml-auto"
-        icon="search"
-        :label="t('common.action.find.label')"
-        :pressed="findOpen"
-        data-testid="docker-logs-find"
-        @click="findOpen = !findOpen"
+      <SearchField
+        v-model="filter"
+        class="ml-auto w-48"
+        :placeholder="t('common.logs.filter.placeholder')"
+        data-testid="docker-logs-filter"
+      />
+      <CopyLogButton
+        :load="loadCopy"
+        :disabled="shown.length === 0"
+        data-testid="docker-logs-copy"
       />
       <Button variant="toolbar" size="kira" data-testid="docker-logs-clear" @click="clear"
         ><CodiconIcon :name="ICON.clearAll" :size="13" />
         {{ t('common.action.clear.label') }}</Button
       >
     </ViewToolbar>
-    <FindBar
-      v-if="findOpen"
-      v-model="query"
-      testid-prefix="docker-logs-find-"
-      :position="matchLines.length === 0 ? 0 : current + 1"
-      :total="matchLines.length"
-      @query="onQuery"
-      @next="step(1)"
-      @prev="step(-1)"
-      @close="closeFind"
-    />
     <LogLines
       ref="logsEl"
       testid="docker-log"
       max-height="none"
       class="rounded-none border-0"
       v-model:follow="follow"
-      :lines="lines"
+      :lines="shown"
       :wrap="wrap"
       :show-timestamps="timestamps"
       :needle="needle"
-      :current-line="currentLine"
       :error="errorMessage || undefined"
     />
     <Button
@@ -253,11 +201,13 @@ function clear(): void {
       {{ t('docker.logs.jumpToLatest.label') }}
     </Button>
     <div
-      v-if="ended && !errorMessage"
-      class="shrink-0 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
-      data-testid="docker-logs-ended"
+      v-if="status || (ended && !errorMessage)"
+      class="flex shrink-0 items-center gap-2 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
     >
-      {{ t('docker.logs.stopped.status') }}
+      <span v-if="status" data-testid="docker-logs-matches">{{ status }}</span>
+      <span v-if="ended && !errorMessage" data-testid="docker-logs-ended">{{
+        t('docker.logs.stopped.status')
+      }}</span>
     </div>
   </div>
 </template>

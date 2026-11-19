@@ -154,11 +154,10 @@ test('logs: stream args, appended lines, filter, stderr styling, timestamps reop
   await expect(lines.nth(1)).toHaveAttribute('data-stream', 'stderr');
   await expect(lines.nth(1)).toHaveClass(/text-error/);
 
-  await page.locator('[data-testid="docker-logs-find"]').click();
-  await page.locator('[data-testid="docker-logs-find-input"]').fill('boom');
-  await expect(lines).toHaveCount(2);
-  await expect(page.locator('[data-testid="docker-logs-find-count"]')).toContainText('1');
-  await expect(lines.nth(1).locator('mark')).toHaveText('boom');
+  await page.locator('[data-testid="docker-logs-filter"]').fill('boom');
+  await expect(lines).toHaveCount(1);
+  await expect(page.locator('[data-testid="docker-logs-matches"]')).toHaveText('1 of 2 lines');
+  await expect(lines.first().locator('mark')).toHaveText('boom');
 
   await page.locator('[data-testid="docker-logs-timestamps"]').click();
   await expect.poll(() => docker.calls('LogsOpen').length).toBe(2);

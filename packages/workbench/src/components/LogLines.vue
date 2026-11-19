@@ -15,7 +15,7 @@ import { type AnsiSegment, parseAnsi } from '../lib/ansi';
 // follows the tail until the reader scrolls up. Text selects (body is select-none); rows outside the
 // window are unmounted, so a whole-log copy goes through the caller's data (CopyLogButton).
 // Callers own loading and fetching; `testid` keeps each caller's own locator ids. `needle` (lower-cased)
-// marks matches and `currentLine` (an index into `lines`) gets the stronger mark.
+// marks matches.
 export interface LogLine {
   id: string | number;
   text: string;
@@ -34,7 +34,6 @@ const props = defineProps<{
   wrap?: boolean;
   showTimestamps?: boolean;
   needle?: string;
-  currentLine?: number;
 }>();
 
 const scrollEl = useTemplateRef<HTMLElement>('scrollEl');
@@ -106,10 +105,6 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
   };
 }
 
-function currentPart(text: string): number {
-  return splitMatches(text, props.needle ?? '').findIndex((p) => p.match);
-}
-
 function streamClass(stream: string): string {
   if (stream === 'stderr') return 'text-error';
   return stream === 'event' ? 'text-muted-foreground' : 'text-fg';
@@ -161,10 +156,7 @@ function streamClass(stream: string): string {
             :key="i"
             :class="seg.bold && 'font-bold'"
             :style="segmentStyle(seg)"
-            ><HighlightedText
-              :parts="splitMatches(seg.text, needle ?? '')"
-              :current="item.index === currentLine ? currentPart(seg.text) : undefined"
-            /></span
+            ><HighlightedText :parts="splitMatches(seg.text, needle ?? '')" /></span
           >
         </div>
       </div>
