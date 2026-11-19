@@ -12,8 +12,8 @@ import {
 } from '@theme/components/ui/collapsible';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed, ref } from 'vue';
-import RelativeTime from '../../../hostview/RelativeTime.vue';
 import type { ReviewWindowTarget } from '../wire';
 import { useReviewRemoved } from './useReviewRemoved';
 

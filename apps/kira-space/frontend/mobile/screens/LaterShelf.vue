@@ -6,8 +6,8 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import { errorText } from '@workbench/bridge/codedError';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import RelativeTime from '@/components/RelativeTime.vue';
 import { newIntentKey, useAdeWrites } from '../state/useAdeWrites';
 
 // One shelf of the Later screen: drag a row by its handle to reorder or to drop it on the other

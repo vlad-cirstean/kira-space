@@ -5,10 +5,10 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { control } from '../bridge/control';
 import { initials } from './issueFormat';
 import MarkdownBody from './MarkdownBody.vue';
-import RelativeTime from './RelativeTime.vue';
 import type { IssueComment } from './wire';
 
 // Read-only comments, oldest first, with a note when the list is partial.
