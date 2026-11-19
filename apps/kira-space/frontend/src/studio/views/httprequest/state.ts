@@ -1,4 +1,4 @@
-import { loadDynamicGenerator, type ResolvedRequest, substituteBody } from '@kira/api-core';
+import { type ResolvedRequest, substituteBody } from '@kira/api-core';
 import type {
   HttpBodyWire,
   HttpMethod,
@@ -22,7 +22,7 @@ import {
   settleRequestFailure,
   stopRequest,
 } from '../shared/request/requestOp';
-import { createSubstituter, resolvePairs } from '../shared/request/resolve';
+import { createSubstituter, resolvePairs, resolveWithDynamic } from '../shared/request/resolve';
 import { unresolvedOf } from '../shared/request/unresolved';
 import { createRuntimeStore, stopOp } from '../shared/viewOp';
 import { invalidateJarCookies } from './cookies';
@@ -168,10 +168,9 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
         tab.state.itemId,
       );
       // P6 D7: no {{$...}} reference means no await and no dynamic-generators chunk fetch.
-      const first = resolveTabState(tab.state, values, secretNames);
-      const resolved = first.refs.some((r) => r.kind === 'dynamic')
-        ? resolveTabState(tab.state, values, secretNames, await loadDynamicGenerator())
-        : first;
+      const resolved = await resolveWithDynamic((dynamic) =>
+        resolveTabState(tab.state, values, secretNames, dynamic),
+      );
       // Tab closed or Stop pressed during pre-flight: Go never saw this op, so never send it.
       if (!findHttpRequestTab(tabId) || rt.opId !== opId) return;
       rt.preflight = false;
@@ -285,10 +284,9 @@ export async function resolveForExport(tabId: string): Promise<ExportResolution 
   if (!tab) return null;
 
   const { values, secretNames } = await variablesForSend(tabId, tab.state.itemId);
-  const first = resolveTabState(tab.state, values, secretNames);
-  const resolved = first.refs.some((r) => r.kind === 'dynamic')
-    ? resolveTabState(tab.state, values, secretNames, await loadDynamicGenerator())
-    : first;
+  const resolved = await resolveWithDynamic((dynamic) =>
+    resolveTabState(tab.state, values, secretNames, dynamic),
+  );
 
   const deferredNames: string[] = [];
   for (const ref of resolved.refs) {

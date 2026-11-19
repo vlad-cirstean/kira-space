@@ -1,4 +1,3 @@
-import { loadDynamicGenerator } from '@kira/api-core';
 import type {
   GrpcCallEvent,
   GrpcCallResultWire,
@@ -21,6 +20,7 @@ import {
   settleRequestFailure,
   stopRequest,
 } from '../shared/request/requestOp';
+import { resolveWithDynamic } from '../shared/request/resolve';
 import { createRuntimeStore, stopOp } from '../shared/viewOp';
 import { useGrpcCallHistoryStore } from './history';
 import { resolveGrpcTabState } from './resolve';
@@ -203,10 +203,9 @@ export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
         tabId,
         tab.state.itemId,
       );
-      const first = resolveGrpcTabState(tab.state, values, secretNames);
-      const resolved = first.refs.some((r) => r.kind === 'dynamic')
-        ? resolveGrpcTabState(tab.state, values, secretNames, await loadDynamicGenerator())
-        : first;
+      const resolved = await resolveWithDynamic((dynamic) =>
+        resolveGrpcTabState(tab.state, values, secretNames, dynamic),
+      );
       // Tab closed or Stop pressed during pre-flight: Go never saw this op, so never call it.
       if (!findGrpcRequestTab(tabId) || rt.opId !== opId) return;
       rt.preflight = false;
