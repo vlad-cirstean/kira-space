@@ -79,9 +79,14 @@ defineSlots<{
   'footer-start'(): unknown;
 }>();
 
-watch(section, (s) => {
-  void props.draft.showTab(s === 'yaml' ? 'yaml' : 'form');
-});
+// A host may open straight on YAML: the draft starts on its form tab.
+watch(
+  section,
+  (s) => {
+    void props.draft.showTab(s === 'yaml' ? 'yaml' : 'form');
+  },
+  { immediate: section.value === 'yaml' },
+);
 
 function errorCount(s: S): number {
   if (s === 'yaml') return 0;

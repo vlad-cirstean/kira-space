@@ -215,13 +215,13 @@ export function registerTabScenarios(env: Env, options: Options): void {
 
     await row(page, PLAIN.id).dblclick();
     await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
-    await page.locator('[data-testid="run-file-cancel"]').click();
+    await page.locator('[data-testid="run-file-close"]').click();
     await expect(page.locator('[data-testid="run-file-dialog"]')).toHaveCount(0);
 
     await row(page, PLAIN.id).focus();
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-testid="run-file-dialog"]')).toBeVisible();
-    await page.locator('[data-testid="run-file-cancel"]').click();
+    await page.locator('[data-testid="run-file-close"]').click();
 
     expect(opens(control)).toHaveLength(0);
     expect(starts(control)).toBe(0);

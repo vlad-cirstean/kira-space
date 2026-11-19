@@ -1,32 +1,12 @@
 <script setup lang="ts">
 import type { RunFile, ScriptParam, SecretValues } from '@shared/domain/scripts';
-import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Badge } from '@theme/components/ui/badge';
-import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import {
-  Dialog,
-  DialogBody,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@theme/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { configName } from '@workbench/config/configName';
-import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
-import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
-import { errorText } from '../bridge/codedError';
-import ConfigFileProblem from '../config/ConfigFileProblem.vue';
-import ConfigFormProblemAlert from '../config/ConfigFormProblemAlert.vue';
-import SaveConflictAlert from '../config/SaveConflictAlert.vue';
+import ConfigFileDialog from '../config/ConfigFileDialog.vue';
 import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
 import ParamsEditor from './form/ParamsEditor.vue';
@@ -117,9 +97,6 @@ watch(
 );
 
 const section = ref<Section>('script');
-watch(section, (s) => {
-  void draft.showTab(s === 'yaml' ? 'yaml' : 'form');
-});
 
 const isSmart = computed(() => draft.model.value?.kind === 'smart');
 const sections = computed<Section[]>(() => [
@@ -201,209 +178,102 @@ const errs = computed(() => {
   );
 });
 
-function serverCount(section: keyof typeof RUN_TAB_POINTERS): number {
-  return RUN_TAB_POINTERS[section].some((p) => draft.errorFor(p)) ? 1 : 0;
-}
-function errorCount(s: Section): number {
-  if (s === 'yaml') return 0;
+const POINTERS = { ...RUN_TAB_POINTERS, folder: ['/dir', '/path'] } as const;
+// Client-side checks, on top of the server problem's pointer count.
+function clientErrors(s: Section): number {
   const e = errs.value;
-  if (s === 'smart') return e?.budget ? 1 : 0;
-  if (s === 'folder') return ['/dir', '/path'].some((p) => draft.errorFor(p)) ? 1 : 0;
-  if (s === 'script') return serverCount('script');
-  if (s === 'mcp') return serverCount('mcp');
-  if (s === 'params') return (e ? tabErrorCount(e, 'params') : 0) + serverCount('params');
-  return (e ? tabErrorCount(e, 'schedule') : 0) + serverCount('schedule');
+  if (!e) return 0;
+  if (s === 'smart') return e.budget ? 1 : 0;
+  if (s === 'params') return tabErrorCount(e, 'params');
+  if (s === 'schedule') return tabErrorCount(e, 'schedule');
+  return 0;
 }
 const items = computed(() =>
   sections.value.map((id) => ({ value: id, label: LABEL[id](), testid: `run-file-tab-${id}` })),
 );
-
-const onSubmitKey = shortcutKeydown(['form.submit'], () => void draft.saveNow());
 </script>
 
 <template>
-  <Dialog :open="true" @update:open="(v) => !v && emit('close')">
-    <DialogContent
-      size="lg"
-      data-testid="run-file-dialog"
-      :dirty="draft.dirty.value"
-      @keydown="onSubmitKey"
-    >
-      <DialogHeader close-testid="run-file-close">
-        <DialogTitle>{{ title }}</DialogTitle>
-        <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
-      </DialogHeader>
-      <ViewToolbar v-if="view?.editable" class="px-3">
-        <SecondaryTabs
-          :model-value="section"
-          :items="items"
-          :aria-label="t('automations.form.tabs.aria')"
-          @update:model-value="(v) => (section = v as Section)"
-        >
-          <template #item="{ item }">
-            {{ item.label }}
-            <Badge
-              v-if="errorCount(item.value as Section) > 0"
-              variant="error"
-              :data-testid="`run-file-tab-${item.value}-errors`"
-              >{{
-                errorCount(item.value as Section)
-              }}</Badge
-            >
-          </template>
-        </SecondaryTabs>
-      </ViewToolbar>
-      <DialogBody class="min-h-80">
-        <div v-if="view" class="flex min-w-0 flex-col gap-3">
-          <ConfigFileProblem v-if="!view.editable || section === 'yaml'" :error="view.problem" />
-          <div
-            v-if="view.lastGood"
-            class="text-kira-sm text-subtle"
-            data-testid="run-file-last-good"
-          >
-            {{ t('automations.file.lastGood.hint') }}
-          </div>
-          <div
-            v-if="!view.editable"
-            class="text-kira-sm text-subtle"
-            data-testid="run-file-read-only"
-          >
-            {{ t('common.content.readOnly.hint') }}
-          </div>
-          <template v-else>
-            <template v-if="section !== 'yaml'">
-              <ConfigFileProblem
-                :error="view.problem"
-                :shown="draft.problem.value"
-                :show-yaml="() => (section = 'yaml')"
-              />
-              <ConfigFormProblemAlert
-                v-if="draft.problem.value"
-                :problem="draft.problem.value"
-                testid="run-form-problem"
-                show-yaml
-                show-yaml-testid="run-form-show-yaml"
-                @show-yaml="section = 'yaml'"
-              />
-              <fieldset
-                v-if="draft.model.value"
-                :disabled="draft.formDisabled.value"
-                class="m-0 flex min-w-0 flex-col gap-3 border-0 p-0"
-              >
-                <RunScriptTab
-                  v-show="section === 'script'"
-                  v-model="draft.model.value"
-                  :saved="willBeSaved"
-                  :error-for="draft.errorFor"
-                />
-                <div v-if="isSmart" v-show="section === 'smart'" class="flex flex-col gap-3">
-                  <SmartSettingsFields v-model="smart" />
-                  <FieldError v-if="errs?.budget" data-testid="script-dialog-budget-error">{{
-                    errs.budget
-                  }}</FieldError>
-                  <ToolsField v-model="smart" />
-                  <McpToolsField v-model="smart" />
-                </div>
-                <RunFolderTab
-                  v-show="section === 'folder'"
-                  v-model="draft.model.value"
-                  :id="view.id"
-                  :error-for="draft.errorFor"
-                />
-                <RunMcpTab
-                  v-if="ctx.mcp && !isSmart"
-                  v-show="section === 'mcp'"
-                  v-model="draft.model.value"
-                  :error-for="draft.errorFor"
-                />
-                <div v-show="section === 'schedule'" class="flex flex-col gap-3">
-                  <Field orientation="horizontal">
-                    <Checkbox
-                      id="script-schedule"
-                      v-model="scheduleOn"
-                      data-testid="script-schedule"
-                    />
-                    <FieldLabel for="script-schedule">{{
-                      t('automations.schedule.enable.label')
-                    }}</FieldLabel>
-                  </Field>
-                  <ScheduleFields
-                    v-if="schedule"
-                    v-model="schedule"
-                    :script-id="view.id"
-                    :kind="isSmart ? 'smart' : 'script'"
-                    :params="params"
-                    :saved-secrets="willBeSaved"
-                    @valid="(ok) => (scheduleOk = ok)"
-                  />
-                  <FieldError v-if="errs?.cron" data-testid="script-dialog-cron-error">{{
-                    errs.cron
-                  }}</FieldError>
-                </div>
-                <div v-show="section === 'params'" class="flex flex-col gap-3">
-                  <ParamsEditor
-                    v-model="params"
-                    v-model:secret-values="secretDraft"
-                    :kind="isSmart ? 'smart' : 'script'"
-                    :errors="errs?.params"
-                    :saved-secrets="savedSecrets"
-                    :storage-off="storageOff"
-                  />
-                </div>
-              </fieldset>
-            </template>
-            <template v-else>
-              <CodeTextEditor
-                :model-value="draft.draft.value"
-                language="yaml"
-                :problem="draft.problem.value"
-                :ariaLabel="t('automations.file.field.aria')"
-                class="h-64"
-                data-testid="run-file-text"
-                @update:model-value="draft.onYamlInput"
-                @save="draft.saveNow"
-                @submit="draft.saveNow"
-              />
-              <RunSecretsSection v-if="script" :script="script" />
-            </template>
-          </template>
-          <SaveConflictAlert
-            v-if="draft.saveError.value"
-            :error="draft.saveError.value"
-            :conflict="draft.conflict.value"
-            testid-prefix="run-file"
-            @reload="draft.reload"
-            @overwrite="draft.overwrite"
+  <ConfigFileDialog
+    v-model:section="section"
+    :draft="draft"
+    :query="query"
+    :title="title"
+    testid-prefix="run-file"
+    :sections="items"
+    :tabs-aria="t('automations.form.tabs.aria')"
+    :yaml-aria="t('automations.file.field.aria')"
+    :pointers="POINTERS"
+    :extra-errors="clientErrors"
+    :last-good="view?.lastGood"
+    :last-good-hint="t('automations.file.lastGood.hint')"
+    :problem="view?.problem"
+    :editable="view?.editable ?? true"
+    @close="emit('close')"
+  >
+    <template v-if="isSmart" #description><SmartBadge /></template>
+    <template #form>
+      <template v-if="view && draft.model.value">
+        <RunScriptTab
+          v-show="section === 'script'"
+          v-model="draft.model.value"
+          :saved="willBeSaved"
+          :error-for="draft.errorFor"
+        />
+        <div v-if="isSmart" v-show="section === 'smart'" class="flex flex-col gap-3">
+          <SmartSettingsFields v-model="smart" />
+          <FieldError v-if="errs?.budget" data-testid="script-dialog-budget-error">{{
+            errs.budget
+          }}</FieldError>
+          <ToolsField v-model="smart" />
+          <McpToolsField v-model="smart" />
+        </div>
+        <RunFolderTab
+          v-show="section === 'folder'"
+          v-model="draft.model.value"
+          :id="view.id"
+          :error-for="draft.errorFor"
+        />
+        <RunMcpTab
+          v-if="ctx.mcp && !isSmart"
+          v-show="section === 'mcp'"
+          v-model="draft.model.value"
+          :error-for="draft.errorFor"
+        />
+        <div v-show="section === 'schedule'" class="flex flex-col gap-3">
+          <Field orientation="horizontal">
+            <Checkbox id="script-schedule" v-model="scheduleOn" data-testid="script-schedule" />
+            <FieldLabel for="script-schedule">{{
+              t('automations.schedule.enable.label')
+            }}</FieldLabel>
+          </Field>
+          <ScheduleFields
+            v-if="schedule"
+            v-model="schedule"
+            :script-id="view.id"
+            :kind="isSmart ? 'smart' : 'script'"
+            :params="params"
+            :saved-secrets="willBeSaved"
+            @valid="(ok) => (scheduleOk = ok)"
+          />
+          <FieldError v-if="errs?.cron" data-testid="script-dialog-cron-error">{{
+            errs.cron
+          }}</FieldError>
+        </div>
+        <div v-show="section === 'params'" class="flex flex-col gap-3">
+          <ParamsEditor
+            v-model="params"
+            v-model:secret-values="secretDraft"
+            :kind="isSmart ? 'smart' : 'script'"
+            :errors="errs?.params"
+            :saved-secrets="savedSecrets"
+            :storage-off="storageOff"
           />
         </div>
-        <Alert v-else-if="query.error.value" variant="error" data-testid="run-file-error">
-          <AlertDescription>{{ errorText(query.error.value) }}</AlertDescription>
-        </Alert>
-      </DialogBody>
-      <DialogFooter>
-        <DialogClose as-child>
-          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-dialog-dismiss
-            data-testid="run-file-cancel"
-            >{{
-              draft.dirty.value ? t('common.action.discard.label') : t('common.action.close.label')
-            }}</Button
-          >
-        </DialogClose>
-        <Button
-          variant="dialog-primary"
-          size="kira-lg"
-          :disabled="!draft.canSave.value"
-          :pending="draft.saving.value"
-          data-testid="run-file-save"
-          @click="draft.saveNow"
-        >
-          {{ t('common.action.save.label') }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+      </template>
+    </template>
+    <template #yaml-after>
+      <RunSecretsSection v-if="script" :script="script" />
+    </template>
+  </ConfigFileDialog>
 </template>

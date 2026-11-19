@@ -128,6 +128,7 @@ test('contract: bad YAML disables the form and names the line', async ({ relaunc
   await expect(page.locator('[data-testid="api-variables-error"]')).toContainText(
     `Line ${form('bad').problem?.line}`,
   );
+  await expect(page.locator('[data-testid="api-tab-variables-errors"]')).toBeVisible();
   await expect(page.locator('[data-testid="api-variable-name-0"]')).toBeDisabled();
   await expect(page.locator('[data-testid="api-variables-save"]')).toBeDisabled();
 });

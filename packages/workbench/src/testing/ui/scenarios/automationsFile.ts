@@ -151,7 +151,7 @@ export function registerFileScenarios(env: Env, options: Options): void {
     const row = page.locator('[data-testid="script-broken-Bad Name.yaml"]');
     await expect(row).toBeVisible();
     await row.dblclick();
-    await expect(dialog(page).locator('[data-testid="run-form-problem"]')).toContainText(
+    await expect(dialog(page).locator('[data-testid="run-file-problem"]')).toContainText(
       'Invalid file name.',
     );
     await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toHaveCount(0);
@@ -159,6 +159,19 @@ export function registerFileScenarios(env: Env, options: Options): void {
     await expect(dialog(page).locator('[data-testid="config-file-problem"]')).toContainText(
       'Can’t be read',
     );
+  });
+
+  test('a file that fails to load shows the load error with Retry', async ({ relaunch }) => {
+    const { window: page } = await relaunch({
+      control: [
+        ...base(snapshot('valid')),
+        { channel: IPC.customScriptsFile, error: { code: 'E_INTERNAL', message: 'disk gone' } },
+      ],
+    });
+    await openPanel(page);
+    await page.locator('[data-testid="script-deploy"]').dblclick();
+    await expect(dialog(page).locator('[data-testid="run-file-error"]')).toContainText('disk gone');
+    await expect(dialog(page).locator('[data-testid="query-retry"]')).toHaveText('Retry');
   });
 
   test('a valid script shows no notice on any tab', async ({ relaunch }) => {
