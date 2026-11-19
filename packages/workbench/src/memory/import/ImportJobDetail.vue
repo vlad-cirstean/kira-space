@@ -112,7 +112,7 @@ async function discard(): Promise<void> {
           <Badge variant="default" data-testid="import-job-channel">{{
             t(
               job.channel === 'mcp'
-                ? 'memory.common.origin.agent.label'
+                ? 'common.origin.agent.label'
                 : 'memory.import.channel.ui.label',
             )
           }}</Badge>

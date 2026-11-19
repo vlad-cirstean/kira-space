@@ -142,7 +142,7 @@ async function dismiss(): Promise<void> {
           <p class="m-0 text-muted-foreground">
             {{
               t('memory.import.confirm.cost.description', {
-                skipped: t('memory.import.confirm.skipped.label', {
+                skipped: t('common.files.skipped.label', {
                   count: job.totals.skippedFiles,
                 }),
                 ignored: t('memory.import.confirm.ignored.label', { count: job.ignoredCount }),

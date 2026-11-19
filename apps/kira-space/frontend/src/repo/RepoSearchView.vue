@@ -46,7 +46,7 @@ const statusLine = computed(() => {
   if (s.filesSkipped > 0) {
     line = t('common.dashPair.label', {
       first: line,
-      second: t('memory.import.confirm.skipped.label', { count: s.filesSkipped }),
+      second: t('common.files.skipped.label', { count: s.filesSkipped }),
     });
   }
   return line;

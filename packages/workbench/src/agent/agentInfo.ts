@@ -27,7 +27,7 @@ const LIST_KEY = ['agent', 'list'];
 
 /** Shown until the bound call answers: a neutral name, no models. */
 export function pendingAgent(): AgentInfo {
-  const name = t('memory.common.origin.agent.label');
+  const name = t('common.origin.agent.label');
   return {
     id: '',
     label: name,

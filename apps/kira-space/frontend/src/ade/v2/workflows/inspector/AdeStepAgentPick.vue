@@ -14,7 +14,7 @@ const id = (k: string): string => `ade-wf-step-${k}-${props.step.id}`;
 
 <template>
   <Field orientation="responsive">
-    <FieldLabel :for="id('agent')">{{ t('memory.common.origin.agent.label') }}</FieldLabel>
+    <FieldLabel :for="id('agent')">{{ t('common.origin.agent.label') }}</FieldLabel>
     <NativeSelect
       :id="id('agent')"
       variant="bordered"

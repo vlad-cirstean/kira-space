@@ -3646,6 +3646,11 @@
     "fileCount": {
       "label": "{count} file | {count} files"
     },
+    "files": {
+      "skipped": {
+        "label": "{count} file skipped | {count} files skipped"
+      }
+    },
     "forcePush": {
       "label": "Force push"
     },
@@ -3832,6 +3837,11 @@
     },
     "openElsewhere": {
       "tooltip": "Open in another window"
+    },
+    "origin": {
+      "agent": {
+        "label": "Agent"
+      }
     },
     "path": {
       "label": "Path"
@@ -7677,9 +7687,6 @@
         }
       },
       "origin": {
-        "agent": {
-          "label": "Agent"
-        },
         "external": {
           "label": "External"
         },
@@ -7886,9 +7893,6 @@
         },
         "scanning": {
           "loading": "Scanning files…"
-        },
-        "skipped": {
-          "label": "{count} file skipped | {count} files skipped"
         },
         "sourceTag": {
           "error": "Use 1 to 32 lowercase letters, digits or dashes.",

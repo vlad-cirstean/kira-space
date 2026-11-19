@@ -90,7 +90,7 @@ function setKeepAwake(on: boolean): void {
   <div class="contents" v-show="active">
     <Field>
       <div class="flex items-center justify-between gap-1">
-        <FieldLabel :for="providerId">{{ t('memory.common.origin.agent.label') }}</FieldLabel>
+        <FieldLabel :for="providerId">{{ t('common.origin.agent.label') }}</FieldLabel>
         <ResetToDefaultButton
           data-testid="settings-reset-agent-provider"
           :at-default="isAtDefault('agent', 'provider')"

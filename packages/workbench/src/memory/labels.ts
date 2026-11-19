@@ -10,7 +10,7 @@ import { type MessageKey, t } from '@theme/i18n';
 
 export const ORIGIN_LABEL = {
   user: 'common.user.label',
-  agent: 'memory.common.origin.agent.label',
+  agent: 'common.origin.agent.label',
   external: 'memory.common.origin.external.label',
 } as const satisfies Record<MemoryOrigin, MessageKey>;
 
