@@ -3636,6 +3636,11 @@
     "later": {
       "label": "Later"
     },
+    "logs": {
+      "tail": {
+        "option": "{count} line | {count} lines"
+      }
+    },
     "main": {
       "label": "Main"
     },
@@ -4477,8 +4482,7 @@
         "status": "Container stopped"
       },
       "tail": {
-        "aria": "Lines to show",
-        "option": "{count} line | {count} lines"
+        "aria": "Lines to show"
       },
       "timestamps": {
         "label": "Timestamps"

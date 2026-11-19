@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import HighlightedText from '@theme/components/HighlightedText.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
@@ -9,14 +8,14 @@ import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useDebounceFn } from '@vueuse/core';
-import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
+import { matchesQuery } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
 import { useKeptState } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import FindBar from '@workbench/components/FindBar.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { type AnsiSegment, parseAnsi } from '@workbench/lib/ansi';
+import { parseAnsi } from '@workbench/lib/ansi';
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDocker } from '../context';
 import type { DockerLogLine } from '../wire';
@@ -27,7 +26,7 @@ const MAX_LINES = 20_000;
 const TAILS = [100, 1000, 5000, -1] as const;
 
 const tailLabel = (n: number): string =>
-  n === -1 ? t('common.state.all.option') : t('docker.logs.tail.option', { count: n });
+  n === -1 ? t('common.state.all.option') : t('common.logs.tail.option', { count: n });
 
 interface Line extends DockerLogLine {
   id: number;
@@ -170,14 +169,6 @@ onBeforeUnmount(() => {
 
 const errorMessage = computed(() => failure.value || (ended.value ? streamError.value : ''));
 
-function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
-  if (!seg.color && !seg.background) return undefined;
-  return {
-    ...(seg.color && { color: seg.color }),
-    ...(seg.background && { backgroundColor: seg.background }),
-  };
-}
-
 function jumpFollow(): void {
   follow.value = true;
   logsEl.value?.jumpToLatest();
@@ -258,28 +249,11 @@ function clear(): void {
       v-model:follow="follow"
       :lines="lines"
       :wrap="wrap"
+      :show-timestamps="timestamps"
+      :needle="needle"
+      :current-line="currentLine"
       :error="errorMessage || undefined"
-    >
-      <template #line="{ segments, index }">
-        <span v-if="timestamps && lines[index]?.ts" class="mr-2 text-muted-foreground">{{
-          lines[index]?.ts
-        }}</span>
-        <span
-          v-for="(seg, i) in segments"
-          :key="i"
-          :class="seg.bold && 'font-bold'"
-          :style="segmentStyle(seg)"
-          ><HighlightedText
-            :parts="splitMatches(seg.text, needle)"
-            :current="
-              index === currentLine
-                ? splitMatches(seg.text, needle).findIndex((p) => p.match)
-                : undefined
-            "
-          /></span
-        >
-      </template>
-    </LogLines>
+    />
     <Button
       v-if="!follow && logsEl && !logsEl.atBottom()"
       variant="toolbar"

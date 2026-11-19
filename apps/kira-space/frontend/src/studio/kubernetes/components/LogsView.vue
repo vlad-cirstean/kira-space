@@ -1,20 +1,19 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import HighlightedText from '@theme/components/HighlightedText.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
-import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
+import { matchesQuery } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
 import { errorText } from '@workbench/bridge/codedError';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { type AnsiSegment, parseAnsi } from '@workbench/lib/ansi';
+import { parseAnsi } from '@workbench/lib/ansi';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { kubeControl } from '../control';
 import type { KubeContainerRef, KubeLogLine } from '../wire';
@@ -29,7 +28,7 @@ const props = defineProps<{
 const MAX_LINES = 20_000;
 const TAILS = [100, 1000, 5000, -1] as const;
 const tailLabel = (n: number): string =>
-  n === -1 ? t('common.state.all.option') : t('docker.logs.tail.option', { count: n });
+  n === -1 ? t('common.state.all.option') : t('common.logs.tail.option', { count: n });
 
 interface Line extends KubeLogLine {
   id: number;
@@ -161,14 +160,6 @@ onBeforeUnmount(() => {
   generation++;
   void close();
 });
-
-function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
-  if (!seg.color && !seg.background) return undefined;
-  return {
-    ...(seg.color && { color: seg.color }),
-    ...(seg.background && { backgroundColor: seg.background }),
-  };
-}
 </script>
 
 <template>
@@ -219,21 +210,10 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       class="rounded-none border-0"
       :lines="shown"
       :wrap="wrap"
+      :show-timestamps="timestamps"
+      :needle="needle"
       :error="failure || undefined"
-    >
-      <template #line="{ segments, index }">
-        <span v-if="timestamps && shown[index]?.ts" class="mr-2 text-muted-foreground">{{
-          shown[index]?.ts
-        }}</span>
-        <span
-          v-for="(seg, i) in segments"
-          :key="i"
-          :class="seg.bold && 'font-medium'"
-          :style="segmentStyle(seg)"
-          ><HighlightedText :parts="splitMatches(seg.text, needle)" /></span
-        >
-      </template>
-    </LogLines>
+    />
     <div
       class="flex shrink-0 items-center gap-2 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
     >

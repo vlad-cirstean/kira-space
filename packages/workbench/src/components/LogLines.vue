@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import HighlightedText from '@theme/components/HighlightedText.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { cardVariants } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
@@ -6,17 +7,21 @@ import { cn } from '@theme/lib/utils';
 import { useEventListener } from '@vueuse/core';
 import { computed, useTemplateRef } from 'vue';
 import { useFollowTail } from '../behaviour/followTail';
+import { splitMatches } from '../behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
 import { type AnsiSegment, parseAnsi } from '../lib/ansi';
 
 // The one log viewer (run logs, worktree setup, container logs): virtualized, ANSI-coloured,
 // follows the tail until the reader scrolls up. Text selects (body is select-none); rows outside the
 // window are unmounted, so a whole-log copy goes through the caller's data (CopyLogButton).
-// Callers own loading and fetching; `testid` keeps each caller's own locator ids. The `line` slot replaces a line's content (match highlighting).
+// Callers own loading and fetching; `testid` keeps each caller's own locator ids. `needle` (lower-cased)
+// marks matches and `currentLine` (an index into `lines`) gets the stronger mark.
 export interface LogLine {
   id: string | number;
   text: string;
   stream: string;
+  /** Source timestamp, shown before the text when `showTimestamps` is on. */
+  ts?: string;
 }
 
 const props = defineProps<{
@@ -27,6 +32,9 @@ const props = defineProps<{
   maxHeight?: string;
   /** Wrap long lines (default); false keeps one row per line and scrolls sideways. */
   wrap?: boolean;
+  showTimestamps?: boolean;
+  needle?: string;
+  currentLine?: number;
 }>();
 
 const scrollEl = useTemplateRef<HTMLElement>('scrollEl');
@@ -76,8 +84,7 @@ function measure(el: unknown): void {
   if (el instanceof Element) virtualizer.value.measureElement(el);
 }
 
-// ANSI parse once per line object: the slot and the default row both ask, and every scroll or push
-// re-renders the visible rows.
+// ANSI parse once per line object: every scroll or push re-renders the visible rows.
 const parsed = new WeakMap<LogLine, AnsiSegment[]>();
 function segmentsOf(index: number): AnsiSegment[] {
   const line = props.lines[index];
@@ -97,6 +104,10 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
     ...(seg.background && { backgroundColor: seg.background }),
     ...(seg.faint && { opacity: '0.6' }),
   };
+}
+
+function currentPart(text: string): number {
+  return splitMatches(text, props.needle ?? '').findIndex((p) => p.match);
 }
 
 function streamClass(stream: string): string {
@@ -142,22 +153,19 @@ function streamClass(stream: string): string {
           :data-testid="`${testid}-line`"
           :data-stream="lines[item.index]?.stream"
         >
-          <slot
-            name="line"
-            :line="lines[item.index]"
-            :segments="segmentsOf(item.index)"
-            :index="item.index"
+          <span v-if="showTimestamps && lines[item.index]?.ts" class="mr-2 text-muted-foreground">{{
+            lines[item.index]?.ts
+          }}</span>
+          <span
+            v-for="(seg, i) in segmentsOf(item.index)"
+            :key="i"
+            :class="seg.bold && 'font-bold'"
+            :style="segmentStyle(seg)"
+            ><HighlightedText
+              :parts="splitMatches(seg.text, needle ?? '')"
+              :current="item.index === currentLine ? currentPart(seg.text) : undefined"
+            /></span
           >
-            <span
-              v-for="(seg, i) in segmentsOf(item.index)"
-              :key="i"
-              :class="seg.bold && 'font-bold'"
-              :style="segmentStyle(seg)"
-              >{{
-                seg.text
-              }}</span
-            >
-          </slot>
         </div>
       </div>
     </template>

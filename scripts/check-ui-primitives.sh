@@ -145,7 +145,6 @@ U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain(
 U47 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # Up/Down jump between the wrapping pill lines of a roving-focus strip; useListNavigation is one vertical list
 U62 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # focus moves between pills and to the + after a removal; reka's roving group owns Left/Right only
 # C (rest)
-U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome
 U41 packages/git-ui/src/App.vue # git engine host reads modifier keys
 U41 apps/kira-space/frontend/src/capture/chord.ts # chord recorder reads modifier flags to build an accelerator string, not a shortcut
 U62 packages/git-ui/src/components/CommitGrid.vue # SlickGrid engine host owns row focus
