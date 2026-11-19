@@ -13,10 +13,10 @@ import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, watch } from 'vue';
 import { logWarn } from '../bridge/log';
+import { approvalLabels, approvalRequester } from './approvalFooter';
 import { useApprovalActions } from './approvalsQueries';
 import { blankInput } from './blankInput';
 import { useApprovalKind } from './registry';
-import { safeKind } from './safeKind';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
@@ -24,14 +24,8 @@ const store = useApprovalsStore();
 const { answer } = useApprovalActions();
 const def = useApprovalKind(props.item.kind);
 const busy = computed(() => store.answering.includes(props.item.id));
-const labels = computed(() =>
-  safeKind(props.item.kind, () => def?.labels?.(props.item), undefined),
-);
-const requester = computed(() => {
-  const o = props.item.origin;
-  const origin = [o.client, o.cwd, o.task, o.step, o.source].filter(Boolean).join(' · ');
-  return safeKind(props.item.kind, () => def?.requester?.(props.item) ?? origin, origin);
-});
+const labels = computed(() => approvalLabels(def, props.item));
+const requester = computed(() => approvalRequester(def, props.item));
 // Approve waits for every value the agent asked the person to type.
 const blank = computed(() => blankInput(def, props.item, store.inputs[props.item.id]));
 const unreadable = computed(
