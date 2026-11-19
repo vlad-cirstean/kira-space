@@ -247,14 +247,69 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
     .nullish()
     .transform((v) => v ?? []),
   script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
+  // "Review the response" on the card (P677): offered, and already on by settings.
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type ApiRequestPayload = z.infer<typeof apiRequestPayloadSchema>;
+
+// The review fields every pre-run kind carries (db.query, db.exemption, api.request); the db kinds add a mode.
+export const reviewOptionPayloadSchema = /*#__PURE__*/ z.object({
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
+  mode: z.string().default(''),
+});
+
+// api.response item payload (dbmcp apiResponsePayload): no body, text, raw or script; those come from
+// the pending-response query.
+export const apiResponsePayloadSchema = /*#__PURE__*/ z.object({
+  method: z.string(),
+  url: z.string(),
+  host: z.string(),
+  environment: z.object({ id: z.string(), name: z.string(), color: z.string() }).nullable(),
+  status: z.number(),
+  statusText: z.string(),
+  isError: z.boolean(),
+  scripted: z.boolean(),
+  bytes: z.number(),
+  rawBytes: z.number(),
+  class: z.enum(['read', 'write']),
+  reason: z.string(),
+});
+export type ApiResponsePayload = z.infer<typeof apiResponsePayloadSchema>;
+
+// agentapi.Result as the review shows it: the masked response a transform read.
+export const agentApiResultSchema = /*#__PURE__*/ z.object({
+  status: z.number(),
+  statusText: z.string().default(''),
+  headers: z
+    .array(apiPairSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  contentType: z.string().default(''),
+  body: z.string().default(''),
+  binary: z.boolean().default(false),
+  bodyBytes: z.number().default(0),
+  truncated: z.boolean().default(false),
+  finalUrl: z.string().default(''),
+  redirects: z
+    .array(z.object({ status: z.number(), url: z.string() }))
+    .nullish()
+    .transform((v) => v ?? []),
+});
+export type AgentApiResult = z.infer<typeof agentApiResultSchema>;
 
 // bridge/dbmcp.go's DbMcpPendingResponse: the exact text the AI client receives if the user sends.
 export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({
   requestId: z.string(),
   text: z.string(),
   isError: z.boolean(),
+  // The response a script read, and the script that turned it into text (P677); empty without one.
+  raw: z.string().default(''),
+  script: z
+    .object({ source: z.string(), hash: z.string() })
+    .nullish()
+    .transform((v) => v ?? null),
 });
 export type DbMcpPendingResponse = z.infer<typeof dbMcpPendingResponseSchema>;
 

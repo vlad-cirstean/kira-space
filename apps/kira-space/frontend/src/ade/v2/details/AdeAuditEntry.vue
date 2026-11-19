@@ -74,6 +74,8 @@ function subjectLabel(a: DbAuditApproval): string {
       return t('space.ade.details.dbAudit.subjectScript.label');
     case 'api.request':
       return t('space.ade.details.dbAudit.subjectApi.label');
+    case 'api.response':
+      return t('space.ade.details.dbAudit.subjectApiResponse.label');
     default:
       return a.subject;
   }

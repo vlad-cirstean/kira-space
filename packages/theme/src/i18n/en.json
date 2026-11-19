@@ -9289,6 +9289,9 @@
           "subjectApi": {
             "label": "API request"
           },
+          "subjectApiResponse": {
+            "label": "API response"
+          },
           "subjectExemption": {
             "label": "Exemption"
           },
@@ -13244,6 +13247,18 @@
         "overview": {
           "body": "Variables that AI agents can use in API requests through the Studio MCP server. Agents see names, never values."
         },
+        "reviewIntro": {
+          "body": "Hold an agent’s API response for your review before the agent gets it. Inherit follows Kira’s Studio MCP setting."
+        },
+        "reviewLegend": {
+          "label": "Response review"
+        },
+        "reviewRead": {
+          "label": "Reads"
+        },
+        "reviewWrite": {
+          "label": "Writes"
+        },
         "tab": {}
       },
       "collections": {
@@ -14596,6 +14611,24 @@
           "redirectsOnTimeout": {
             "status": "Redirects on · {seconds} s"
           },
+          "responseBinary": {
+            "status": "Binary body, {bytes} not shown"
+          },
+          "responseCut": {
+            "status": "Cut at {bytes}"
+          },
+          "responseRaw": {
+            "label": "Response"
+          },
+          "responseResult": {
+            "label": "Agent gets"
+          },
+          "responseViews": {
+            "aria": "Response views"
+          },
+          "reviewResultOn": {
+            "body": "Already on by this environment’s settings or Kira’s."
+          },
           "scriptChanged": {
             "label": "Set by script"
           },
@@ -14678,8 +14711,14 @@
           "credentialSent": {
             "status": "Credential sent"
           },
+          "requestSent": {
+            "status": "Request already sent"
+          },
           "rows": {
             "status": "~{rows} rows"
+          },
+          "scriptFailed": {
+            "status": "Script failed"
           },
           "scriptResult": {
             "status": "Agent gets script result"
@@ -17622,6 +17661,10 @@
             "body": "A request that matches no rule is refused. Add an allow rule for each host agents may reach."
           },
           "label": "When no rule matches"
+        },
+        "apiReview": {
+          "description": "Hold each API response for your review before the agent gets it. An environment can override this for reads and writes.",
+          "label": "Review responses"
         },
         "apiRules": {
           "add": {

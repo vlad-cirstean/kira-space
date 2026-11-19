@@ -2,6 +2,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { connectionKindSchema } from '@shared/domain/connection';
 import {
   apiRequestPayloadSchema,
+  apiResponsePayloadSchema,
   type DbMcpApprovalPlan,
   dbExemptionPayloadSchema,
   dbQueryPayloadSchema,
@@ -16,6 +17,8 @@ import { markRaw } from 'vue';
 import { KIND_LABEL } from '../project/connection/kinds';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ApiRequestDetails from './ApiRequestDetails.vue';
+import ApiResponseBody from './ApiResponseBody.vue';
+import ApiResponseDetails from './ApiResponseDetails.vue';
 import DbExemptionBody from './DbExemptionBody.vue';
 import DbExemptionDetails from './DbExemptionDetails.vue';
 import DbQueryBody from './DbQueryBody.vue';
@@ -190,6 +193,26 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   return out;
 }
 
+function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
+  const p = apiResponsePayloadSchema.parse(item.payload);
+  const out: ApprovalRisk[] = [];
+  if (p.class === 'write') {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.requestSent.status'),
+      tone: 'warn',
+      testid: 'api-review-sent',
+    });
+  }
+  if (p.isError) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.scriptFailed.status'),
+      tone: 'warn',
+      testid: 'api-review-script-failed',
+    });
+  }
+  return out;
+}
+
 // P520: Studio's approval kinds (internal/approvals Kind* constants). Each maps a subject to its
 // renderers; the shared surface supplies the chrome.
 export function studioApprovalKinds(): ApprovalKinds {
@@ -268,6 +291,7 @@ export function studioApprovalKinds(): ApprovalKinds {
       content: markRaw(ApiRequestBody),
       monaco: true,
       details: markRaw(ApiRequestDetails),
+      footerAction: markRaw(ReviewResultOption),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
       where: (item) =>
         apiRequestPayloadSchema.parse(item.payload).environment?.name ??
@@ -277,6 +301,21 @@ export function studioApprovalKinds(): ApprovalKinds {
       labels: () => ({
         approve: t('common.action.send.label'),
         deny: t('studio.dbMcp.approval.api.dontSend.label'),
+      }),
+    },
+    'api.response': {
+      content: markRaw(ApiResponseBody),
+      monaco: true,
+      details: markRaw(ApiResponseDetails),
+      operation: () => t('common.field.result.label'),
+      where: (item) =>
+        apiResponsePayloadSchema.parse(item.payload).environment?.name ??
+        t('studio.api.environments.none.option'),
+      targetData: true,
+      risks: apiResponseRisks,
+      labels: () => ({
+        approve: t('studio.dbMcp.preview.send.label'),
+        deny: t('studio.dbMcp.preview.withhold.label'),
       }),
     },
     'proof.review': {

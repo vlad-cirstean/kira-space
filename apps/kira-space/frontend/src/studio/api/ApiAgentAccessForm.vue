@@ -3,7 +3,14 @@ import type { ApiEnvironmentFileModel, ApiFileVariable } from '@shared/domain/ap
 import InlineState from '@theme/components/InlineState.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@theme/components/ui/field';
 import {
   TagsInput,
   TagsInputInput,
@@ -13,6 +20,8 @@ import {
 } from '@theme/components/ui/tags-input';
 import { t } from '@theme/i18n';
 import { useId } from 'vue';
+import { useSettingsStore } from '../../state/settings';
+import ReviewChoiceField from '../components/ReviewChoiceField.vue';
 import { cleanVariable, defaultAgentHosts } from './variablesForm';
 
 // Which variables of this environment an agent may use through the API request tools, and where a
@@ -20,6 +29,28 @@ import { cleanVariable, defaultAgentHosts } from './variablesForm';
 const props = defineProps<{ errorFor: (pointer: string) => string | undefined }>();
 const env = defineModel<ApiEnvironmentFileModel>({ required: true });
 const readsId = useId();
+const settingsStore = useSettingsStore();
+
+// A class left out of agentReview is inherit; the object is dropped once both are.
+const REVIEW_CLASSES = [
+  { cls: 'read', label: 'studio.api.agentAccess.reviewRead.label' },
+  { cls: 'write', label: 'studio.api.agentAccess.reviewWrite.label' },
+] as const;
+type ReviewClass = (typeof REVIEW_CLASSES)[number]['cls'];
+
+function reviewOf(cls: ReviewClass): string {
+  return env.value.agentReview?.[cls] ?? 'inherit';
+}
+
+function setReview(cls: ReviewClass, value: string): void {
+  const next: Record<string, string> = {};
+  for (const c of REVIEW_CLASSES) {
+    const v = c.cls === cls ? value : reviewOf(c.cls);
+    if (v !== 'inherit') next[c.cls] = v;
+  }
+  env.value.agentReview =
+    Object.keys(next).length > 0 ? (next as ApiEnvironmentFileModel['agentReview']) : undefined;
+}
 
 function setVariable(index: number, next: ApiFileVariable): void {
   env.value.variables = (env.value.variables ?? []).map((v, i) =>
@@ -71,6 +102,23 @@ function hostsError(index: number, v: ApiFileVariable): string | undefined {
     </Field>
     <FieldError v-if="props.errorFor('/agentAutoApproveReads')">{{
       props.errorFor('/agentAutoApproveReads')
+    }}</FieldError>
+
+    <FieldSet data-testid="api-agent-review">
+      <FieldLegend>{{ t('studio.api.agentAccess.reviewLegend.label') }}</FieldLegend>
+      <FieldDescription>{{ t('studio.api.agentAccess.reviewIntro.body') }}</FieldDescription>
+      <ReviewChoiceField
+        v-for="c in REVIEW_CLASSES"
+        :key="c.cls"
+        :label="t(c.label)"
+        :app-on="settingsStore.dbMcp.apiReviewResponses"
+        :testid="`api-agent-review-${c.cls}`"
+        :model-value="reviewOf(c.cls)"
+        @update:model-value="(v) => setReview(c.cls, v)"
+      />
+    </FieldSet>
+    <FieldError v-if="props.errorFor('/agentReview')">{{
+      props.errorFor('/agentReview')
     }}</FieldError>
 
     <ul class="m-0 flex list-none flex-col gap-2 p-0" data-testid="api-agent-variables">

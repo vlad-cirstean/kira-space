@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { BROWSE_KINDS } from '@shared/domain/dbmcp';
-import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from '@theme/components/ui/field';
+import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { computed } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
+import ReviewChoiceField from '../../components/ReviewChoiceField.vue';
 
 // Result review per mode: which run_query results Kira holds for the user before the agent gets them.
 const props = defineProps<{
@@ -31,28 +24,11 @@ const MODES = [
 ] as const;
 type Mode = (typeof MODES)[number]['cls'];
 
-// Inherit's label shows the current app setting.
-const items = computed(() => [
-  {
-    value: 'inherit',
-    label: t(
-      settingsStore.dbMcp.previewResponses
-        ? 'studio.project.connectionDialog.mcp.reviewInheritOn.option'
-        : 'studio.project.connectionDialog.mcp.reviewInheritOff.option',
-    ),
-  },
-  { value: 'review', label: t('studio.project.connectionDialog.mcp.reviewAlways.option') },
-  { value: 'send', label: t('studio.project.connectionDialog.mcp.reviewNever.option') },
-]);
-
-function optionsOf(cls: Mode) {
-  return items.value.map((i) => ({
-    ...i,
-    testid: `connection-mcp-review-${cls}-${i.value}`,
-    disabled:
-      !props.enabled ||
-      (cls === 'masked' ? !BROWSE_KINDS.has(props.kind) : cls !== 'read' && !props.writeConsole),
-  }));
+function isDisabled(cls: Mode): boolean {
+  return (
+    !props.enabled ||
+    (cls === 'masked' ? !BROWSE_KINDS.has(props.kind) : cls !== 'read' && !props.writeConsole)
+  );
 }
 
 // A mode left out of mcp.review is inherit.
@@ -77,18 +53,16 @@ function setValue(cls: Mode, value: string): void {
     <FieldDescription class="w-full">{{
       t('studio.project.connectionDialog.mcp.reviewNote.label')
     }}</FieldDescription>
-    <Field v-for="m in MODES" :key="m.cls">
-      <FieldLabel>{{ t(m.label) }}</FieldLabel>
-      <SecondaryTabs
-        variant="choice"
-        size="kira-lg"
-        :aria-label="t(m.label)"
-        :model-value="reviewOf(m.cls)"
-        :items="optionsOf(m.cls)"
-        :data-testid="`connection-mcp-review-${m.cls}`"
-        @update:model-value="(v) => setValue(m.cls, String(v))"
-      />
-    </Field>
+    <ReviewChoiceField
+      v-for="m in MODES"
+      :key="m.cls"
+      :label="t(m.label)"
+      :app-on="settingsStore.dbMcp.previewResponses"
+      :disabled="isDisabled(m.cls)"
+      :testid="`connection-mcp-review-${m.cls}`"
+      :model-value="reviewOf(m.cls)"
+      @update:model-value="(v) => setValue(m.cls, v)"
+    />
     <FieldDescription class="w-full">{{
       t('studio.project.connectionDialog.mcp.review.description')
     }}</FieldDescription>

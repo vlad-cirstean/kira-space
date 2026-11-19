@@ -25,13 +25,25 @@ const apiApproval = useAsyncAction((mode: 'always' | 'never') =>
 const apiScripts = useAsyncAction((enabled: boolean) =>
   settingsStore.patchSettings({ dbMcp: { apiScripts: enabled } }),
 );
+const apiReview = useAsyncAction((enabled: boolean) =>
+  settingsStore.patchSettings({ dbMcp: { apiReviewResponses: enabled } }),
+);
 const actionError = computed(
-  () => apiRequests.error.value ?? apiApproval.error.value ?? apiScripts.error.value,
+  () =>
+    apiRequests.error.value ??
+    apiApproval.error.value ??
+    apiScripts.error.value ??
+    apiReview.error.value,
 );
 function clearActionErrors(): void {
   apiRequests.error.value = null;
   apiApproval.error.value = null;
   apiScripts.error.value = null;
+  apiReview.error.value = null;
+}
+async function onToggleApiReview(enabled: boolean): Promise<void> {
+  clearActionErrors();
+  await apiReview.run(enabled);
 }
 async function onToggleApiScripts(enabled: boolean): Promise<void> {
   clearActionErrors();
@@ -52,6 +64,7 @@ const sharedVariableCount = computed(() =>
 
 // `for`/`id` keeps the label-to-control association now that the field wrapper is a plain <Field> div.
 const dbMcpApiScriptsId = useId();
+const dbMcpApiReviewId = useId();
 const dbMcpApiId = useId();
 const approvalItems = computed(() => [
   {
@@ -122,6 +135,21 @@ const approvalItems = computed(() => [
           t('studio.settings.dbMcp.apiScripts.label')
         }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.apiScripts.description') }}</FieldDescription>
+      </FieldContent>
+    </Field>
+    <Field v-if="settingsStore.dbMcp.apiRequests" orientation="horizontal">
+      <Switch
+        :id="dbMcpApiReviewId"
+        :model-value="settingsStore.dbMcp.apiReviewResponses"
+        :disabled="apiReview.pending.value"
+        data-testid="settings-db-mcp-api-review"
+        @update:model-value="(v) => onToggleApiReview(v === true)"
+      />
+      <FieldContent>
+        <FieldLabel :for="dbMcpApiReviewId">{{
+          t('studio.settings.dbMcp.apiReview.label')
+        }}</FieldLabel>
+        <FieldDescription>{{ t('studio.settings.dbMcp.apiReview.description') }}</FieldDescription>
       </FieldContent>
     </Field>
     <ApiAccessRulesSection v-if="settingsStore.dbMcp.apiRequests" />

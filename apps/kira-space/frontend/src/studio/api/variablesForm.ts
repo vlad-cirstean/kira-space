@@ -17,6 +17,9 @@ export const FILE_FIELDS: readonly FieldSpec[] = [
   { path: ['description'], unsetWhenEmpty: true },
   { path: ['color'], unsetWhenEmpty: true, unsetWhen: 'none' },
   { path: ['agentAutoApproveReads'], unsetWhen: false },
+  { path: ['agentReview'], presence: true },
+  { path: ['agentReview', 'read'], unsetWhen: 'inherit' },
+  { path: ['agentReview', 'write'], unsetWhen: 'inherit' },
   { path: ['variables'], unsetWhenEmpty: true },
 ];
 
@@ -26,7 +29,7 @@ export type VariablesSection = 'environment' | 'variables' | 'agent' | 'yaml';
 export const VARIABLES_SECTION_POINTERS = {
   environment: ['/name', '/description', '/color'],
   variables: ['/variables'],
-  agent: ['/agentAutoApproveReads'],
+  agent: ['/agentAutoApproveReads', '/agentReview'],
 } as const satisfies Record<Exclude<VariablesSection, 'yaml'>, readonly string[]>;
 
 const SECRET_REF = /^\$\{secret:([^}]+)\}$/;

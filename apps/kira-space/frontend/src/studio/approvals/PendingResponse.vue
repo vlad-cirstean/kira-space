@@ -22,9 +22,9 @@ import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref } from 'vue';
-import { control } from '../bridge/control';
 import { loadMaskRules, maskRulesQueryKey } from '../state/maskRules';
 import FlushEditor from './FlushEditor.vue';
+import { usePendingResponse } from './pendingResponse';
 import TabbedContent from './TabbedContent.vue';
 
 // The held run_query result of a response-stage approval: the table is a view of the exact bytes
@@ -32,11 +32,7 @@ import TabbedContent from './TabbedContent.vue';
 // re-renders or re-masks them.
 const props = defineProps<{ requestId: string; connectionId: string }>();
 
-const response = useQuery({
-  queryKey: computed(() => ['dbMcpPendingResponse', props.requestId] as const),
-  queryFn: () => control.dbMcpPendingResponse(props.requestId),
-  gcTime: 0, // MB-sized text, immutable per request id: drop on close
-});
+const response = usePendingResponse(() => props.requestId);
 const maskRules = useQuery({
   queryKey: computed(() => maskRulesQueryKey(props.connectionId)),
   queryFn: () => loadMaskRules(props.connectionId),
