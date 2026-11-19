@@ -3,6 +3,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass, connBgClass } from '@theme/connColor';
+import { formatElapsed } from '@theme/format';
 import { t } from '@theme/i18n';
 import { type StatusTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { useApprovalsStore } from '@workbench/state/approvals';
@@ -10,7 +11,7 @@ import { computed, onErrorCaptured, ref, watch } from 'vue';
 import { logWarn } from '../bridge/log';
 import { type ApprovalRisk, useApprovalKind } from './registry';
 import { safeKind } from './safeKind';
-import { formatClock, useCountdown } from './useCountdown';
+import { useCountdown } from './useCountdown';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
@@ -51,7 +52,7 @@ const countdown = computed(() => {
   if (left === null) return '';
   return left === 0
     ? t('workbench.approvals.expired.status')
-    : t('workbench.approvals.left.status', { time: formatClock(left) });
+    : t('workbench.approvals.left.status', { time: formatElapsed(left * 1000) });
 });
 
 const kindRisks = computed(() =>

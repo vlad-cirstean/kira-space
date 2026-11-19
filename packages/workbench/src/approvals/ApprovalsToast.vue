@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
-import { Button } from '@theme/components/ui/button';
+import { formatElapsed } from '@theme/format';
 import { t } from '@theme/i18n';
-import { floatingSurface } from '@theme/lib/frames';
+import PendingToast from '@workbench/components/PendingToast.vue';
 import { computed } from 'vue';
-import { formatClock, useCountdown } from './useCountdown';
+import { useCountdown } from './useCountdown';
 
 const props = defineProps<{ items: ApprovalItem[]; deferred?: boolean }>();
 const emit = defineEmits<{ show: [] }>();
@@ -17,38 +17,23 @@ const remaining = useCountdown(() => soonest.value);
 </script>
 
 <template>
-  <div
-    role="status"
-    aria-live="polite"
-    :class="[floatingSurface, 'flex items-center gap-3 p-3']"
-    data-testid="approvals-toast"
-  >
-    <div class="flex flex-col">
-      <span data-testid="approvals-toast-count">
-        {{ t('workbench.approvals.toast.count.status', { count: items.length }) }}
-      </span>
-      <span
-        v-if="deferred"
-        class="text-kira-sm text-muted-foreground"
-        data-testid="approvals-toast-typing"
-      >
-        {{ t('workbench.prompts.toast.typing.status') }}
-      </span>
-      <span
-        v-if="remaining !== null"
-        class="text-kira-sm text-muted-foreground"
-        data-testid="approvals-toast-expires"
-      >
-        {{ t('workbench.approvals.toast.expires.status', { time: formatClock(remaining) }) }}
-      </span>
-    </div>
-    <Button
-      variant="dialog-primary"
-      size="kira-lg"
-      data-testid="approvals-toast-review"
-      @click="emit('show')"
+  <PendingToast testid="approvals-toast" show-testid="approvals-toast-review" @show="emit('show')">
+    <span data-testid="approvals-toast-count">
+      {{ t('workbench.approvals.toast.count.status', { count: items.length }) }}
+    </span>
+    <span
+      v-if="deferred"
+      class="text-kira-sm text-muted-foreground"
+      data-testid="approvals-toast-typing"
     >
-      {{ t('common.action.show.label') }}
-    </Button>
-  </div>
+      {{ t('workbench.prompts.toast.typing.status') }}
+    </span>
+    <span
+      v-if="remaining !== null"
+      class="text-kira-sm text-muted-foreground"
+      data-testid="approvals-toast-expires"
+    >
+      {{ t('workbench.approvals.toast.expires.status', { time: formatElapsed(remaining * 1000) }) }}
+    </span>
+  </PendingToast>
 </template>
