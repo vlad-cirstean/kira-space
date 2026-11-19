@@ -21,7 +21,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P680 Part 2 | DB MCP: JS result transform, raw and transformed review, `kept.set`; runs after P675, P676, P677, P678 Part 2 | Done |
 | P681 | Dependency cleanup | Done |
 | P682 | Async action error state: one owner for a write's pending and error | Done |
-| P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Planned |
+| P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Done |
 | P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
 | P685 | Shared shell for the config-file dialogs | Planned |
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Done |
@@ -56,6 +56,10 @@ Result: TanStack mutation state owns every write's pending and error. `useAsyncA
 ## P683: Studio view-store script dedup
 
 Parked by P674 Part 2. `search.ts`, `page.ts` and `state.ts` repeat across grid, documents, keyvalue, stream and grpc/http `state.ts`. Per-kind store design, not UI. See `plans/P674-iter1.md` PARK.
+
+Plan: `plans/P683.md`.
+
+Result: shared bodies extended, no new library, no new Pinia store. TanStack Query declined for the view runtime and page cache (op-id supersession with backend `opsCancel`, decode cache pruned to the visible window, per-tab keyed status and error outliving the component); VueUse not applicable; `stream/search.ts` stays its own substring store. New shared pieces: `pageModuleApi`, `shared/page/rowViews.ts` (`tabularCell`, `documentIdOf`, `documentRowOf`, `keyValueRowOf`), `regexTextCap`, `cellMatch`, `RunSearch`, `createSinglePageSearch`, `pageRowWindow`, `reportVisibleWindow`, `pageOffsetCursor`, `firstPageCursor`, `createPageNavigation.restart`, `clearCount`, `runTabCount`, `isTabStale`, `createRuntimeStore` `onClose`, `shared/request/requestOp.ts` (`RequestViewRuntime`, `beginRequest`, `stopRequest`, `settleRequestFailure`, `createRequestFieldFilter`), `resolveWithDynamic`; `runPagedLoad` stamps the op and checks the mount; `applyPagePosition` serves grid and stream. 112 sites across 37 source files. Guards U191-U203 (plan ids shifted by one: P689 took U190); each fails on a planted offender (U200 and U202 per alternative and the multi-line cursor) and sits at zero offenders; PERMANENT stays 55; guard range U110-U203. `retentionEntries` and `setVisibleRows` are module-private. Audit rerun: no listed cluster remains except dismissed ones; left in P683 files, each per-kind by design: `runCount` preamble across grid, documents, stream (`a04e1c60b2`, different tab finders), `runPagedLoad` call args grid and documents (`e6a1fa9c22`, per-kind read request), grid and keyvalue `Match` comment (`f28ac88597`), console and grid search import comment (`f7d97c8d11`). No `pageModuleApi` destructure cluster remains. Visible change: none. Behaviour changes: console `documentRow`, `documentId` and `keyValueRow` bound-check the row (out of range returns `null`); grid `load()` checks the strategy before `setPage` and `applyPagePosition`, so an invalid page reaches the error state instead of leaving the tab idle (unreachable for current adapters); grid `clearCellFocus` runs before the record delete on tab close.
 
 ## P684: One log find model
 
