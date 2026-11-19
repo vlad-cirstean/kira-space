@@ -16,7 +16,17 @@ const keptSourceSchema = /*#__PURE__*/ z.object({
 // `script`, `part` is the stage (`prepare` or `transform`) and the offsets index its source.
 export const keptSiteSchema = /*#__PURE__*/ z.object({
   // statement and param belong to a SQL run_query: the placeholder in the statement, and the params entry.
-  field: z.enum(['url', 'header', 'query', 'form', 'body', 'contentType', 'script', 'statement', 'param']),
+  field: z.enum([
+    'url',
+    'header',
+    'query',
+    'form',
+    'body',
+    'contentType',
+    'script',
+    'statement',
+    'param',
+  ]),
   index: z.number(),
   part: z.string(),
   from: z.number(),
