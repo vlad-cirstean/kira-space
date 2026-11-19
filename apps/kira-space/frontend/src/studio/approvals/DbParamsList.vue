@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { KeptUse } from '@shared/domain/kept';
-import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
+import KeptNameMark from '../kept/KeptNameMark.vue';
 import { keptTypeLabel } from '../kept/keptFormat';
-import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 
 // Which kept variable fills each placeholder of a statement: `$1`, `? 1` or `{ids:Array(UInt64)}` on
 // the left, the variable inside the same mark as in the statement on the right. Names and types only.
@@ -35,12 +34,8 @@ const rows = computed(() =>
         <dt class="font-data" :data-testid="`db-approval-param-${i}-placeholder`">
           {{ row.placeholder }}
         </dt>
-        <dd class="font-data" :data-testid="`db-approval-param-${i}-value`">
-          <HighlightedText
-            :parts="[{ text: row.ref, match: true }]"
-            :mark-class="KEPT_MARK_CLASS"
-          />
-          <span class="text-muted-foreground"> · {{ row.type }}</span>
+        <dd :data-testid="`db-approval-param-${i}-value`">
+          <KeptNameMark :name="row.ref" :type="row.type" />
         </dd>
       </template>
     </KeyValueList>

@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { agentApiResultSchema, apiResponsePayloadSchema } from '@shared/domain/dbmcp';
-import HighlightedText from '@theme/components/HighlightedText.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
+import KeptNameMark from '../kept/KeptNameMark.vue';
 import KeptValueView from '../kept/KeptValueView.vue';
 import { keptTypeLabel } from '../kept/keptFormat';
-import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
@@ -82,11 +81,7 @@ const parsedRaw = computed(() => {
             <SectionHeading flush :label="t('studio.kept.willKeep.label')" />
             <ul class="m-0 flex list-none flex-col gap-2 p-0">
               <li v-for="k in keep" :key="k.name" :data-testid="`api-review-keep-${k.name}`">
-                <HighlightedText
-                  :parts="[{ text: k.name, match: true }]"
-                  :mark-class="`font-data ${KEPT_MARK_CLASS}`"
-                />
-                <span class="text-kira-sm text-muted-foreground"> · {{ keptTypeLabel(k) }}</span>
+                <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" />
                 <KeptValueView :entry="{ ...k, id: '' }" staged />
               </li>
             </ul>
