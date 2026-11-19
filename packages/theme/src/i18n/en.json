@@ -4576,11 +4576,6 @@
         "label": "{version} (API {api})"
       }
     },
-    "env": {
-      "revealValue": {
-        "tooltip": "Reveal value"
-      }
-    },
     "exec": {
       "none": {
         "empty": "No terminal session",

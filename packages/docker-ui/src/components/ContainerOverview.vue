@@ -2,7 +2,7 @@
 import DetailSection from '@theme/components/DetailSection.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import MaskedValue from '@theme/components/MaskedValue.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -146,11 +146,8 @@ const rows = (): Array<[string, string]> => [
               }}</span
             >
             <MaskedValue v-else class="min-w-0 flex-1 break-all" data-testid="docker-env-value" />
-            <TooltipIconButton
-              :icon="revealed.has(i) ? 'eye-closed' : 'eye'"
-              :label="
-                revealed.has(i) ? t('common.hideValue.label') : t('docker.env.revealValue.tooltip')
-              "
+            <ValueRevealButton
+              :shown="revealed.has(i)"
               data-testid="docker-env-reveal"
               @click="toggle(i)"
             />
