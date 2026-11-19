@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kirathecat/kira-studio/internal/memory/workerproc"
+	"github.com/kirathecat/kira-studio/internal/workerproc"
 )
 
 // State is the client's coarse availability.

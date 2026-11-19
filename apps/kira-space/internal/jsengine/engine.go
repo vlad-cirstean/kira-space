@@ -23,7 +23,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/process"
 
-	"github.com/kirathecat/kira-studio/internal/memory/workerproc"
+	"github.com/kirathecat/kira-studio/internal/workerproc"
 )
 
 // Run is one script execution.

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/filelock"
-	"github.com/kirathecat/kira-studio/internal/memory/workerproc"
+	"github.com/kirathecat/kira-studio/internal/workerproc"
 )
 
 const (
