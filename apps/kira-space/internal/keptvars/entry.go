@@ -59,6 +59,8 @@ type Meta struct {
 	Source    Source    `json:"source"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiresAt time.Time `json:"expiresAt"`
+	// Origin is scheme://host[:port] of the request a user value was supplied for; empty for other kinds.
+	Origin string `json:"origin,omitempty"`
 }
 
 // Entry is a Meta with its compact JSON value. Store reads return a copy.

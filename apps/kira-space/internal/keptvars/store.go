@@ -43,6 +43,8 @@ type Put struct {
 	Value       json.RawMessage
 	Secret      bool
 	Source      Source
+	// Origin binds a SourceUser value to the origin it was supplied for.
+	Origin string
 	// TTL of zero means Options.Retention; it never exceeds MaxTTL.
 	TTL time.Duration
 }
@@ -220,7 +222,7 @@ func (s *Store) Put(p Put) (Meta, error) {
 	now := s.now()
 	it := &item{value: value, index: -1, meta: Meta{
 		ID: newID(), Scope: p.Scope, Name: p.Name, Type: typ, Bytes: len(value), Items: items,
-		Secret: p.Secret, Source: p.Source, CreatedAt: now, ExpiresAt: now.Add(ttl),
+		Secret: p.Secret, Source: p.Source, Origin: p.Origin, CreatedAt: now, ExpiresAt: now.Add(ttl),
 	}}
 	s.byID[it.meta.ID] = it
 	if s.byScope[p.Scope] == nil {
@@ -280,6 +282,19 @@ func (s *Store) ByID(id string) (Entry, bool) {
 		return Entry{}, false
 	}
 	return it.entry(), true
+}
+
+// Secrets returns copies of the live secret entries of every scope, for building response masks.
+func (s *Store) Secrets() []Entry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var out []Entry
+	for _, it := range s.byID {
+		if it.meta.Secret && s.live(it) {
+			out = append(out, it.entry())
+		}
+	}
+	return out
 }
 
 // List returns the live entries of a scope, newest first; scope "" lists every scope.
