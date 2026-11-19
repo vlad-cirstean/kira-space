@@ -147,52 +147,89 @@ func PlaceholderSites(statement string, d SQLDialect, style ParamStyle) ([]Place
 		if !mask[i] {
 			continue
 		}
-		c := r[i]
+		var site PlaceholderSite
+		var end int
+		var ok bool
 		switch style {
 		case ParamDollar:
-			if c != '$' || i > 0 && isParamIdentRune(r[i-1]) {
-				continue
-			}
-			j := i + 1
-			for j < len(r) && r[j] >= '0' && r[j] <= '9' {
-				j++
-			}
-			if j == i+1 {
-				continue
-			}
-			n, perr := strconv.Atoi(string(r[i+1 : j]))
-			if perr != nil || n < 1 || n > MaxPostgresParams {
-				return nil, paramSyntax("placeholder %s is outside $1 to $%d", string(r[i:j]), MaxPostgresParams)
-			}
-			sites = append(sites, PlaceholderSite{From: byteAt[i], To: byteAt[j], Index: n})
-			i = j - 1
+			site, end, ok, err = dollarSite(r, i, byteAt)
 		case ParamQuestion:
-			switch {
-			case c == '?':
-				if d == SQLiteDialect && i+1 < len(r) && r[i+1] >= '0' && r[i+1] <= '9' {
-					return nil, paramSyntax("numbered placeholders are not supported; use plain ? placeholders")
-				}
-				occurrence++
-				sites = append(sites, PlaceholderSite{From: byteAt[i], To: byteAt[i+1], Index: occurrence})
-			case d == SQLiteDialect && (c == ':' || c == '@' || c == '$') && i+1 < len(r) && isParamIdentRune(r[i+1]) &&
-				(i == 0 || !isParamIdentRune(r[i-1]) && r[i-1] != ':'):
-				return nil, paramSyntax("named placeholders are not supported; use plain ? placeholders")
-			}
+			site, end, ok, err = questionSite(r, i, d, byteAt, occurrence+1)
 		case ParamBraces:
-			if c != '{' {
-				continue
-			}
-			site, end, ok := braceSite(r, i)
-			if !ok {
-				continue
-			}
-			occurrence++
-			site.From, site.To, site.Index = byteAt[i], byteAt[end], occurrence
-			sites = append(sites, site)
-			i = end - 1
+			site, end, ok = bracedSite(r, i, byteAt, occurrence+1)
 		}
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			continue
+		}
+		if style != ParamDollar {
+			occurrence++
+		}
+		sites = append(sites, site)
+		i = end - 1
 	}
 	return sites, nil
+}
+
+// dollarSite parses `$n` at r[i]; end is the rune index after it.
+func dollarSite(r []rune, i int, byteAt []int) (site PlaceholderSite, end int, ok bool, err error) {
+	if r[i] != '$' || i > 0 && isParamIdentRune(r[i-1]) {
+		return site, 0, false, nil
+	}
+	j := i + 1
+	for j < len(r) && r[j] >= '0' && r[j] <= '9' {
+		j++
+	}
+	if j == i+1 {
+		return site, 0, false, nil
+	}
+	n, perr := strconv.Atoi(string(r[i+1 : j]))
+	if perr != nil || n < 1 || n > MaxPostgresParams {
+		return site, 0, false, paramSyntax("placeholder %s is outside $1 to $%d", string(r[i:j]), MaxPostgresParams)
+	}
+	return PlaceholderSite{From: byteAt[i], To: byteAt[j], Index: n}, j, true, nil
+}
+
+// questionSite parses a plain `?` at r[i] (index is its occurrence number) and refuses the SQLite
+// forms that are not plain `?`.
+func questionSite(r []rune, i int, d SQLDialect, byteAt []int, index int) (site PlaceholderSite, end int, ok bool, err error) {
+	c := r[i]
+	if c == '?' {
+		if d == SQLiteDialect && i+1 < len(r) && r[i+1] >= '0' && r[i+1] <= '9' {
+			return site, 0, false, paramSyntax("numbered placeholders are not supported; use plain ? placeholders")
+		}
+		return PlaceholderSite{From: byteAt[i], To: byteAt[i+1], Index: index}, i + 1, true, nil
+	}
+	if d == SQLiteDialect && isSQLiteNamedStart(r, i) {
+		return site, 0, false, paramSyntax("named placeholders are not supported; use plain ? placeholders")
+	}
+	return site, 0, false, nil
+}
+
+func isSQLiteNamedStart(r []rune, i int) bool {
+	c := r[i]
+	if c != ':' && c != '@' && c != '$' {
+		return false
+	}
+	if i+1 >= len(r) || !isParamIdentRune(r[i+1]) {
+		return false
+	}
+	return i == 0 || !isParamIdentRune(r[i-1]) && r[i-1] != ':'
+}
+
+// bracedSite parses `{name:Type}` at r[i] into a site with its byte span and occurrence index.
+func bracedSite(r []rune, i int, byteAt []int, index int) (site PlaceholderSite, end int, ok bool) {
+	if r[i] != '{' {
+		return site, 0, false
+	}
+	site, end, ok = braceSite(r, i)
+	if !ok {
+		return site, 0, false
+	}
+	site.From, site.To, site.Index = byteAt[i], byteAt[end], index
+	return site, end, true
 }
 
 // braceSite parses `{name:Type}` at r[i]; ok is false when r[i] opens something else.
