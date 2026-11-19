@@ -3,7 +3,6 @@ import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -19,7 +18,9 @@ import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
 import { configName } from '@workbench/config/configName';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -281,24 +282,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               :shown="unclaimed"
               :show-yaml="() => (section = 'yaml')"
             />
-            <Alert v-if="unclaimed" variant="error" data-testid="connection-form-problem">
-              <AlertDescription>{{
-                t('common.configForm.problem.status', {
-                  line: unclaimed.line,
-                  message: unclaimed.message,
-                })
-              }}</AlertDescription>
-              <AlertAction>
-                <Button
-                  variant="link"
-                  size="inline"
-                  data-testid="connection-form-show-yaml"
-                  @click="section = 'yaml'"
-                >
-                  {{ t('common.configForm.showYaml.label') }}
-                </Button>
-              </AlertAction>
-            </Alert>
+            <ConfigFormProblemAlert
+              v-if="unclaimed"
+              :problem="unclaimed"
+              testid="connection-form-problem"
+              show-yaml
+              @show-yaml="section = 'yaml'"
+            />
             <fieldset
               v-if="model"
               :disabled="draft.formDisabled.value"
@@ -354,27 +344,14 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               @submit="saveNow"
             />
           </template>
-          <Alert v-if="saveError" variant="error" data-testid="connection-file-save-error">
-            <AlertDescription>{{ saveError }}</AlertDescription>
-            <AlertAction v-if="draft.conflict.value">
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="connection-file-reload"
-                @click="draft.reload"
-              >
-                {{ t('common.action.refresh.label') }}
-              </Button>
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="connection-file-overwrite"
-                @click="draft.overwrite"
-              >
-                {{ t('common.action.overwrite.label') }}
-              </Button>
-            </AlertAction>
-          </Alert>
+          <SaveConflictAlert
+            v-if="saveError"
+            :error="saveError"
+            :conflict="draft.conflict.value"
+            testid-prefix="connection-file"
+            @reload="draft.reload"
+            @overwrite="draft.overwrite"
+          />
         </div>
       </DialogBody>
 

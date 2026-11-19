@@ -145,11 +145,11 @@ test('api config files — the tree shows the file, a bad edit shows its line, E
   await page.click('[data-testid="api-environments"]');
   const name = broken.secrets[0].name;
   const secret = page.locator(`[data-testid="api-secret-${name}"]`);
-  await expect(secret.locator('[data-testid="api-secret-state"]')).toHaveText('No value');
+  await expect(secret.locator('[data-testid="api-secret-state"]')).toHaveText('Not set');
   await secret.locator('[data-testid="api-secret-set"]').click();
   await page.fill('[data-testid="api-secret-value"]', 'tok-123');
   await page.click('[data-testid="api-secret-save"]');
-  await expect(secret.locator('[data-testid="api-secret-state"]')).toHaveText('Value set');
+  await expect(secret.locator('[data-testid="api-secret-state"]')).toHaveText('Set');
   const set = control.log().filter((e) => e.channel === IPC.apiConfigSetSecret);
   expect(set).toHaveLength(1);
   expect(set[0].args).toMatchObject({ name, value: 'tok-123' });

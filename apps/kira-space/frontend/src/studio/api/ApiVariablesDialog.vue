@@ -5,7 +5,6 @@ import type {
   ApiFileVariable,
 } from '@shared/domain/apiConfig';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
@@ -20,7 +19,9 @@ import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
 import { configName } from '@workbench/config/configName';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -195,24 +196,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               :shown="unclaimed"
               :show-yaml="() => (section = 'yaml')"
             />
-            <Alert v-if="unclaimed" variant="error" data-testid="api-variables-problem">
-              <AlertDescription>{{
-                t('common.configForm.problem.status', {
-                  line: unclaimed.line,
-                  message: unclaimed.message,
-                })
-              }}</AlertDescription>
-              <AlertAction>
-                <Button
-                  variant="link"
-                  size="inline"
-                  data-testid="api-variables-show-yaml"
-                  @click="section = 'yaml'"
-                >
-                  {{ t('common.configForm.showYaml.label') }}
-                </Button>
-              </AlertAction>
-            </Alert>
+            <ConfigFormProblemAlert
+              v-if="unclaimed"
+              :problem="unclaimed"
+              testid="api-variables-problem"
+              show-yaml
+              @show-yaml="section = 'yaml'"
+            />
             <fieldset
               v-if="model"
               :disabled="draft.formDisabled.value"
@@ -233,14 +223,11 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 class="flex flex-col gap-2"
                 data-testid="api-section-variables"
               >
-                <Alert v-if="variablesProblem" variant="error" data-testid="api-variables-error">
-                  <AlertDescription>{{
-                    t('common.configForm.problem.status', {
-                      line: variablesProblem.line,
-                      message: variablesProblem.message,
-                    })
-                  }}</AlertDescription>
-                </Alert>
+                <ConfigFormProblemAlert
+                  v-if="variablesProblem"
+                  :problem="variablesProblem"
+                  testid="api-variables-error"
+                />
                 <div class="flex justify-end px-1.5">
                   <Toggle v-model="bulk" size="kira" data-testid="api-variables-bulk-toggle">
                     {{ t('studio.api.variablesDialog.bulk.toggle.label') }}
@@ -283,27 +270,14 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               @submit="saveNow"
             />
           </template>
-          <Alert v-if="saveError" variant="error" data-testid="api-variables-save-error">
-            <AlertDescription>{{ saveError }}</AlertDescription>
-            <AlertAction v-if="draft.conflict.value">
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="api-variables-reload"
-                @click="draft.reload"
-              >
-                {{ t('common.action.refresh.label') }}
-              </Button>
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="api-variables-overwrite"
-                @click="draft.overwrite"
-              >
-                {{ t('common.action.overwrite.label') }}
-              </Button>
-            </AlertAction>
-          </Alert>
+          <SaveConflictAlert
+            v-if="saveError"
+            :error="saveError"
+            :conflict="draft.conflict.value"
+            testid-prefix="api-variables"
+            @reload="draft.reload"
+            @overwrite="draft.overwrite"
+          />
         </div>
       </DialogBody>
 

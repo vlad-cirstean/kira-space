@@ -266,7 +266,7 @@ async function onSetActive(id: string): Promise<void> {
         </div>
       </RadioGroup>
       <ApiAgentAccess />
-      <ApiSecrets />
+      <div class="p-2"><ApiSecrets /></div>
     </div>
     <ApiConfigProblems />
   </div>

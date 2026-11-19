@@ -13372,31 +13372,7 @@
           "aria": "Config problems"
         },
         "secrets": {
-          "clear": {
-            "label": "Clear value"
-          },
-          "clearConfirm": {
-            "body": "Requests that use this secret fail to send until you set it again.",
-            "title": "Clear {name}?"
-          },
-          "dialog": {
-            "hint": "The value goes to secret storage once and is never shown again.",
-            "title": "Value of {name}"
-          },
-          "none": {
-            "hint": "No secrets yet. Reference one in a collection or environment to see it here."
-          },
-          "set": {
-            "label": "Enter value",
-            "status": "Value set"
-          },
-          "title": "API secrets",
-          "unset": {
-            "status": "No value"
-          },
-          "unused": {
-            "status": "Unused"
-          }
+          "title": "API secrets"
         },
         "skipped": {
           "hint": "The rest of the collection is loaded. An item that loaded before keeps its last good version. Fix the items to load them.",
