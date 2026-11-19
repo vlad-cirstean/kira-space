@@ -32,6 +32,7 @@
 # Guards U171-U176: docs/HISTORY.md (v0.3.18).
 # Guards U177-U181: docs/HISTORY.md (v0.3.18).
 # Guards U183-U187: docs/HISTORY.md (v0.3.18).
+# Guards U188-U189, U51 extended: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -164,6 +165,9 @@ U164 apps/kira-space/frontend/src/studio/views/stream/StreamRowsTable.vue # froz
 U164 apps/kira-space/frontend/src/studio/views/documents/DocumentView.vue # variable-height rows, tooltip delegation on the scroller
 U164 apps/kira-space/frontend/src/studio/views/console/ConsoleResultGrid.vue # two virtualizers over mapped indices
 U164 packages/docker-ui/src/components/ContainerTable.vue # header row inside the listbox, sized by container queries
+# P682: synchronous failures, no awaited call
+U188 apps/kira-space/frontend/src/studio/views/shared/page/SearchToolbar.vue # invalid regex thrown synchronously by runSearch; no awaited call
+U188 apps/kira-space/frontend/src/studio/proof/ProofStepView.vue # synchronous payload parse and page mount; no awaited call
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
@@ -226,7 +230,7 @@ U47@@vt@@/behaviour/!|/testing/!@@ArrowUp/ArrowDown, or role listbox/tree withou
 U48@@vt@@/behaviour/!|/testing/!@@RowContextMenu or useRowMenu (use the context menu store)@@<RowContextMenu\b|useRowMenu\(
 U49@@v@@/behaviour/!|/testing/!@@AdeConfirmDialog, window.confirm or a local ConfirmDialog (use the confirm store or ConfirmDialogView)@@<AdeConfirmDialog\b|window\.confirm|import ConfirmDialog from '\.\./components/
 U50@@vt@@/behaviour/!|/testing/!@@input committing on blur and Enter, or useCommitField (use InlineEditInput, useInlineEdit)@@<(?:input|Input|InputGroupInput)\b(?=(?&t)\s@blur=)(?=(?&t)\s@keydown\.enter)|useCommitField\(
-U51@@vt@@/behaviour/!|/testing/!@@hand-rolled pending ref (use useAsyncAction or mutation.isPending)@@const \w*(?:[Bb]usy|[Pp]ending|[Ss]aving|[Ll]oading|[Ss]ubmitting|[Rr]unning|[Dd]eleting|[Rr]etrying|[Cc]opying)\s*=\s*ref\b
+U51@@vt@@/behaviour/!|/testing/!@@hand-rolled pending ref (use useAsyncAction or mutation.isPending)@@const \w*(?:[Bb]usy|[Pp]ending|[Ss]aving|[Ll]oading|[Ss]ubmitting|[Rr]unning|[Dd]eleting|[Rr]etrying|[Cc]opying|[Ss]ending|[Rr]efreshing|[Rr]econnecting)\s*=\s*ref\b
 U52@@vt@@/behaviour/!|/testing/!|/theme/src/format.ts|/theme/src/i18n/number.ts@@locale or Intl formatting, useTimeAgo, local format helper (use behaviour/format)@@toLocaleString\(|toLocaleDateString|toLocaleTimeString|Intl\.(?:NumberFormat|DateTimeFormat|RelativeTimeFormat)|useTimeAgo\(|function (?:plural|formatDuration|formatElapsed|formatSize|formatTime|formatMs)\b
 U53@@vt@@/behaviour/!|/testing/!|queryClient.ts@@own QueryClient or a query option restating the createQueryClient default@@new QueryClient\b|retry:\s*false|refetchOnWindowFocus:\s*false|staleTime:\s*(?:Infinity|Number\.POSITIVE_INFINITY)
 U53@@v@@/behaviour/!|/testing/!@@explicit queryClient argument in a component (inject it with useQueryClient)@@,\s*queryClient\s*,?\s*\)
@@ -358,6 +362,8 @@ U184@@vt@@TransformScriptBlock.vue@@hand transform script kept marks (use Transf
 U185@@v@@GrpcStatusBadge.vue@@hand gRPC status chip (use GrpcStatusBadge)@@\bgrpcCodeClass\(|\bgrpcCodeHint\(
 U186@@vt@@ValueRevealButton.vue@@hand value reveal toggle (use ValueRevealButton)@@common\.secret\.show\.label|common\.hideValue\.label|docker\.env\.revealValue|(?s:import MaskedValue\b.*?(?:icon="eye"|'eye'))
 U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@\.client,\s*\w+\.cwd,\s*\w+\.task\b
+U188@@vt@@/behaviour/!|/testing/!@@hand async error ref (use useAsyncAction, useMutationAction, useTaskAction)@@(?<!this\.)\b\w+\.value\s*=\s*errorText\(|\b\w*(?:[Ee]rror|[Ff]ailure)\.value\s*=\s*err\s*;
+U189@@vt@@/behaviour/!|/testing/!@@errorText alias (call errorText, or let the action describe)@@\bconst \w+ = \(\w+: unknown\): string => errorText\(\w+\);
 GUARDS
 
 # hits: "U<n> path"
