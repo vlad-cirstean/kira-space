@@ -99,7 +99,7 @@ func (f *fixture) connect(t *testing.T, token string) (*mcp.ClientSession, error
 	t.Helper()
 	client := mcp.NewClient(&mcp.Implementation{Name: "flow-client", Version: "1"}, nil)
 	return client.Connect(ctx, &mcp.StreamableClientTransport{
-		Endpoint: f.url, HTTPClient: &http.Client{Transport: bearer{token}, Timeout: 30 * time.Second},
+		Endpoint: f.url, HTTPClient: &http.Client{Transport: bearer{token}, Timeout: clientTimeout},
 	}, nil)
 }
 
@@ -383,7 +383,7 @@ func wait(t *testing.T, ch chan callOutcome) *mcp.CallToolResult {
 			t.Fatalf("run_query = %+v, want a tool result", out)
 		}
 		return out.res
-	case <-time.After(30 * time.Second):
+	case <-time.After(clientTimeout):
 		t.Fatal("run_query did not return")
 		return nil
 	}

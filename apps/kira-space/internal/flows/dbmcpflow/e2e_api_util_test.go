@@ -105,7 +105,7 @@ func (f *fixture) studioGrant(t *testing.T, id string) (*mcp.ClientSession, func
 	client := mcp.NewClient(&mcp.Implementation{Name: "flow-studio-client", Version: "1"}, nil)
 	sess, err := client.Connect(ctx, &mcp.StreamableClientTransport{
 		Endpoint:   entry.URL,
-		HTTPClient: &http.Client{Transport: headers(entry.Headers), Timeout: 30 * time.Second},
+		HTTPClient: &http.Client{Transport: headers(entry.Headers), Timeout: clientTimeout},
 	}, nil)
 	if err != nil {
 		release()
