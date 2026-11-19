@@ -5,7 +5,7 @@ import {
   ROW_ESTIMATE_KINDS,
 } from '@shared/domain/connection';
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Field,
@@ -130,12 +130,9 @@ const idBase = useId();
             @update:model-value="(v: string | number) => setExplainThreshold(String(v))"
           />
         </div>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="connection-explain-threshold-reset"
-          :disabled-trigger="file.explain_threshold_rows === undefined"
-          :disabled="file.explain_threshold_rows === undefined"
+          :at-default="file.explain_threshold_rows === undefined"
           @click="file.explain_threshold_rows = undefined"
         />
       </div>

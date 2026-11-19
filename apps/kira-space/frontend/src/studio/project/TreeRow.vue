@@ -7,6 +7,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
+import { dropIndicator } from '@theme/lib/frames';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { splitMatches } from '@workbench/behaviour/match';
@@ -165,12 +166,7 @@ function onKeydown(e: KeyboardEvent): void {
       v-if="dropEdge"
       aria-hidden="true"
       data-testid="tree-drop-indicator"
-      :class="
-        cn(
-          'pointer-events-none absolute inset-x-0 h-0.5 bg-focus',
-          dropEdge === 'top' ? 'top-0' : 'bottom-0',
-        )
-      "
+      :class="cn(dropIndicator, dropEdge === 'top' ? 'top-0' : 'bottom-0')"
     />
 
     <!-- The twisty is the one control in the app whose entire meaning is already

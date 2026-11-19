@@ -7,6 +7,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { errorText } from '@workbench/bridge/codedError';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
@@ -170,7 +171,7 @@ function onSaveCurrent(): void {
     </template>
     <template #entry-actions="{ entry }">
       <TooltipIconButton
-        icon="empty-window"
+        :icon="ICON.openInNewTab"
         :label="t('common.action.openInNewTab.label')"
         data-testid="kibana-saved-open-new"
         @click.stop="openInNewTab(entry)"

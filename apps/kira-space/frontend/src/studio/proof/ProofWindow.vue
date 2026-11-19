@@ -4,7 +4,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
-import { paneFrame, windowBody } from '@theme/lib/frames';
+import { paneFrame, windowBody, windowTabStrip } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -112,7 +112,7 @@ const right = useLiveSize(
               }}</p
             >
             <div
-              class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
+              :class="windowTabStrip"
               :aria-label="t('studio.proof.tabs.aria')"
               data-testid="proof-tabs"
             >
