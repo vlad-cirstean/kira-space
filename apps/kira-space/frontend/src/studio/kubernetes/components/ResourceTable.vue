@@ -9,10 +9,8 @@ import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useElementSize } from '@vueuse/core';
 import { copyText } from '@workbench/behaviour/clipboard';
-import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
-import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
-import { useRowHeight } from '@workbench/lib/rowHeight';
+import VirtualList from '@workbench/components/VirtualList.vue';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
 import { useKubernetesUiStore } from '../state';
@@ -29,7 +27,6 @@ const props = defineProps<{ data: KubeList; clusterId: string; context: string; 
 const ui = useKubernetesUiStore();
 const tabs = useKubeTabsStore();
 const contextMenu = useContextMenuStore();
-const { single: rowHeight } = useRowHeight();
 
 const sortBy = ref<{ index: number; dir: 1 | -1 } | null>(null);
 const needle = computed(() => ui.listFilter.trim().toLowerCase());
@@ -119,26 +116,7 @@ function menuFor(r: KubeRow): MenuItem[] {
   ];
 }
 
-const scrollEl = ref<HTMLElement | null>(null);
-const activeKey = ref<string | null>(null);
-const activeIndex = computed(() => rows.value.findIndex((r) => rowKey(r) === activeKey.value));
-const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
-  count: () => rows.value.length,
-  rowHeight: () => rowHeight.value,
-  scrollElement: scrollEl,
-  keepScroll: () => `kubernetes:resources:${props.clusterId}:${props.kind}`,
-  pinned: () => (activeIndex.value < 0 ? null : activeIndex.value),
-});
-const nav = useListNavigation<KubeRow>({
-  container: scrollEl,
-  items: () => rows.value,
-  key: rowKey,
-  activeKey,
-  onOpen: (r) => openRow(r, false),
-  onMenu: (r, rect) => contextMenu.openContextMenuAt(rect.left, rect.bottom, menuFor(r)),
-  scrollToIndex: (index) => scrollToIndex(index),
-  rendered: () => virtualItems.value,
-});
+const listRows = computed(() => rows.value.map((row) => ({ key: rowKey(row), row })));
 </script>
 
 <template>
@@ -185,52 +163,41 @@ const nav = useListNavigation<KubeRow>({
           />
         </button>
       </div>
-      <div
-        ref="scrollEl"
-        role="listbox"
-        class="min-h-0 flex-1 overflow-auto"
-        data-testid="kube-rows"
-        @scroll="onScroll"
+      <VirtualList
+        :rows="listRows"
+        :keep-scroll-key="`kubernetes:resources:${clusterId}:${kind}`"
+        testid="kube-rows"
+        :open="(r) => openRow(r.row, false)"
+        :menu="(r, rect) => contextMenu.openContextMenuAt(rect.left, rect.bottom, menuFor(r.row))"
+        :menu-for="(r) => menuFor(r.row)"
       >
-        <div class="relative" :style="{ height: `${totalSize}px` }">
+        <template #row="{ row: item, nav }">
           <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter comes from useListNavigation on the container. -->
           <div
-            v-for="vi in virtualItems"
-            :key="rowKey(rows[vi.index]!)"
             :class="
               cn(
                 tableRowClass,
-                rowVariants({ layout: 'tree', selected: isSelected(rows[vi.index]!) }),
-                VIRTUAL_ROW_CLASS,
-                'grid gap-x-3 px-3',
+                rowVariants({ layout: 'tree', selected: isSelected(item.row) }),
+                'grid h-full gap-x-3 px-3',
               )
             "
-            :style="{
-              ...gridStyle,
-              height: `${vi.size}px`,
-              transform: `translateY(${vi.start}px)`,
-            }"
+            :style="gridStyle"
             role="option"
-            :aria-selected="isSelected(rows[vi.index]!)"
+            :aria-selected="isSelected(item.row)"
             data-testid="kube-row"
-            :data-name="rows[vi.index]!.name"
-            :data-namespace="rows[vi.index]!.namespace"
-            v-bind="nav.rowProps(rowKey(rows[vi.index]!))"
-            :tabindex="nav.tabindexFor(rowKey(rows[vi.index]!))"
-            @click="openRow(rows[vi.index]!, true)"
-            @dblclick="openRow(rows[vi.index]!, false)"
-            @contextmenu.prevent="
-              nav.contextMenu(rows[vi.index]!, $event, menuFor(rows[vi.index]!))
-            "
+            :data-name="item.row.name"
+            :data-namespace="item.row.namespace"
+            v-bind="nav"
+            :tabindex="nav.tabindex"
+            @click="openRow(item.row, true)"
+            @dblclick="openRow(item.row, false)"
           >
             <span v-for="ci in visibleColumns" :key="ci" class="min-w-0 truncate"
-              ><HighlightedText
-                :parts="splitMatches(rows[vi.index]!.cells[ci] ?? '', needle)"
-              /></span
+              ><HighlightedText :parts="splitMatches(item.row.cells[ci] ?? '', needle)" /></span
             >
           </div>
-        </div>
-      </div>
+        </template>
+      </VirtualList>
       <div
         v-if="data.truncated"
         class="shrink-0 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"

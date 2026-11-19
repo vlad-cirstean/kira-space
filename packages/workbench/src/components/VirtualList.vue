@@ -24,6 +24,11 @@ const props = defineProps<{
   keepScrollKey?: string;
 }>();
 
+const emit = defineEmits<{
+  /** The rendered window changed: first index and one past the last. */
+  visible: [range: { start: number; end: number }];
+}>();
+
 defineSlots<{
   row(props: {
     row: T;
@@ -68,6 +73,14 @@ const nav = useListNavigation<T>({
   },
   scrollToIndex: (index) => scrollToIndex(index),
   rendered: () => virtualItems.value,
+});
+
+// A host restores focus to a row after its own menu closes.
+defineExpose({ focusKey: nav.focusKey });
+
+watch(virtualItems, (items) => {
+  if (items.length > 0)
+    emit('visible', { start: items[0].index, end: items[items.length - 1].index + 1 });
 });
 
 // Stable handlers per row key let rows skip re-render when the virtual range changes.

@@ -16,17 +16,22 @@ import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import RunState from '@theme/RunState.vue';
 import { useDebounceFn } from '@vueuse/core';
-import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
 import { useTreeShortcuts } from '@workbench/behaviour/treeShortcuts';
-import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { useRowHeight } from '@workbench/lib/rowHeight';
-import { runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
+import VirtualList from '@workbench/components/VirtualList.vue';
+import { type MenuItem, runMenuShortcut, useContextMenuStore } from '@workbench/state/contextMenu';
 import { tabViewKey } from '@workbench/state/viewState';
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue';
+import {
+  type ComponentPublicInstance,
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  onUnmounted,
+  useTemplateRef,
+} from 'vue';
 import type { BrowseTabRecord } from '../../../state/tabDomain';
 import { useTabsStore } from '../../../state/tabs';
 import { useConnectionsStore } from '../../state/connections';
@@ -210,7 +215,7 @@ function keyType(path: string): string | undefined {
   return rt.value?.keyTypes.get(path);
 }
 
-// VirtualList's own `visible-range` emit fires up to once per animation frame
+// VirtualList's `visible` emit fires up to once per animation frame
 // during a scroll fling — each distinct window used to issue its own IPC round trip even though
 // path-level dedup (ensureKeyTypes' own pending/keyTypes checks) only prevents REPEATING work, not
 // the round trip itself. Debounced by the same 150ms already used elsewhere, so a fling settles on
@@ -235,21 +240,6 @@ function onRowOpen(node: TreeNode): void {
   onRowClick(node);
 }
 
-// The list navigation claims Enter and the arrows; Space mirrors a single click.
-function onRowKeydown(e: KeyboardEvent, node: TreeNode): void {
-  if (e.key === ' ') {
-    e.preventDefault();
-    onRowClick(node);
-  }
-}
-
-// D10: the moved keyMenu/objectMenu/namespaceMenu/prefixMenu bodies, now addressed by node
-// instead of by tree row.
-function onRowContextMenu(e: MouseEvent, node: TreeNode): void {
-  if (!props.tab.connectionId) return;
-  nav.contextMenu(node, e, menuForNode(props.tab.id, props.tab.connectionId, node, stale.value));
-}
-
 // P33 D3: the same caps.fileTransfer + canInsert + not-read-only gate uploadMenuItem applies,
 // surfaced as a toolbar button too (Console.html-style primary action) rather than only reachable
 // through a container row's own context menu.
@@ -266,42 +256,28 @@ function onUploadClick(): void {
   objectStoreStore.openUploadDialog(props.tab.connectionId, currentLevelPath.value, props.tab.id);
 }
 
-const { single: rowHeight } = useRowHeight();
-
-const scrollEl = ref<HTMLElement | null>(null);
-const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
-  count: () => filteredNodes.value.length,
-  rowHeight: () => rowHeight.value,
-  scrollElement: scrollEl,
-  keepScroll: () => tabViewKey(props.tab.id, `browse:${currentLevelPath.value}`),
-});
-
+const listRows = computed(() => filteredNodes.value.map((node) => ({ key: node.path, node })));
+const listRef = useTemplateRef<
+  ComponentPublicInstance & { focusKey: (key: string) => Promise<void> }
+>('listRef');
+const listEl = computed(() => listRef.value?.$el as HTMLElement | undefined);
 const activeKey = computed({
   get: () => rt.value?.selected ?? null,
   set: (path) => {
     if (path !== null) browseViewStore.selectRow(props.tab.id, path);
   },
 });
-const nav = useListNavigation<TreeNode>({
-  container: scrollEl,
-  items: () => filteredNodes.value,
-  key: (node) => node.path,
-  activeKey,
-  onOpen: onRowOpen,
-  onSelect: onRowClick,
-  onMenu: (node, rect) => {
-    const connectionId = props.tab.connectionId;
-    if (!connectionId) return;
-    contextMenuStore.openContextMenuAt(
-      rect.left,
-      rect.bottom,
-      menuForNode(props.tab.id, connectionId, node, stale.value),
-      { onRestoreFocus: () => void nav.focusKey(node.path) },
-    );
-  },
-  scrollToIndex: (index) => scrollToIndex(index),
-  rendered: () => virtualItems.value,
-});
+
+function menuFor(node: TreeNode): MenuItem[] {
+  const connectionId = props.tab.connectionId;
+  return connectionId ? menuForNode(props.tab.id, connectionId, node, stale.value) : [];
+}
+
+function onRowMenu(node: TreeNode, rect: DOMRect): void {
+  contextMenuStore.openContextMenuAt(rect.left, rect.bottom, menuFor(node), {
+    onRestoreFocus: () => void listRef.value?.focusKey(node.path),
+  });
+}
 
 function viaMenu(id: ShortcutId): (path: string) => void {
   return (path) => {
@@ -311,17 +287,17 @@ function viaMenu(id: ShortcutId): (path: string) => void {
       runMenuShortcut(menuForNode(props.tab.id, connectionId, node, stale.value), id);
   };
 }
-useTreeShortcuts(nav, {
-  'tree.copyName': viaMenu('tree.copyName'),
-  'tree.delete': viaMenu('tree.delete'),
-});
+useTreeShortcuts(
+  { container: listEl, activeKey },
+  {
+    'tree.copyName': viaMenu('tree.copyName'),
+    'tree.delete': viaMenu('tree.delete'),
+  },
+);
 
-// VirtualList's own visible-range emit (already used by KeyValuePane's identical need) — windowed
-// per §4.3, never the whole (up to 200 000-key) level.
-watch(virtualItems, (items) => {
-  if (!supportsKeyTypes.value || items.length === 0) return;
-  void ensureKeyTypesDebounced({ start: items[0].index, end: items[items.length - 1].index + 1 });
-});
+function onVisibleRange(range: { start: number; end: number }): void {
+  if (supportsKeyTypes.value) void ensureKeyTypesDebounced(range);
+}
 
 onMounted(() => {
   if (!needsReconnect.value && !browseViewStore.runtime[props.tab.id]) {
@@ -494,75 +470,66 @@ onMounted(() => {
             :icon="ICON.search"
             :title="t('common.state.noMatches.empty')"
           />
-          <div
+          <VirtualList
             v-else
-            ref="scrollEl"
-            class="h-full overflow-auto"
-            data-testid="virtual-list"
-            role="listbox"
+            ref="listRef"
+            v-model:active-key="activeKey"
+            :rows="listRows"
+            :keep-scroll-key="tabViewKey(tab.id, `browse:${currentLevelPath}`)"
+            testid="virtual-list"
             :aria-label="t('studio.browse.list.aria')"
-            @scroll="onScroll"
+            :select="(r) => onRowClick(r.node)"
+            :open="(r) => onRowOpen(r.node)"
+            :menu="(r, rect) => onRowMenu(r.node, rect)"
+            :menu-for="(r) => menuFor(r.node)"
+            @visible="onVisibleRange"
           >
-            <div class="relative" :style="{ height: `${totalSize}px` }">
-              <!-- P110 I2-15/I2-17: `.virtual-row` moved to VIRTUAL_ROW_CLASS (packages/workbench/
-                     src/util/virtualRows.ts) -- see ProjectTree.vue's identical note. -->
+            <template #row="{ row: item, nav }">
+              <!-- biome-ignore lint/a11y/useKeyWithClickEvents: Enter and Space come from useListNavigation on the container. -->
               <div
-                v-for="vi in virtualItems"
-                :key="String(vi.key)"
                 data-testid="browse-row"
-                :data-path="filteredNodes[vi.index]?.path"
-                :data-kind="filteredNodes[vi.index]?.kind"
+                :data-path="item.node.path"
+                :data-kind="item.node.kind"
                 :class="
                   cn(
-                    rowVariants({
-                      layout: 'tree',
-                      selected: rt?.selected === filteredNodes[vi.index]?.path,
-                    }),
-                    'px-2',
-                    VIRTUAL_ROW_CLASS,
+                    rowVariants({ layout: 'tree', selected: rt?.selected === item.node.path }),
+                    'h-full px-2',
                   )
                 "
-                :style="{ height: `${vi.size}px`, transform: `translateY(${vi.start}px)` }"
                 role="option"
-                v-bind="nav.rowProps(filteredNodes[vi.index]!.path)"
-                :tabindex="nav.tabindexFor(filteredNodes[vi.index]!.path)"
-                :aria-selected="rt?.selected === filteredNodes[vi.index]?.path"
-                @click="onRowClick(filteredNodes[vi.index]!)"
-                @dblclick="onRowOpen(filteredNodes[vi.index]!)"
-                @keydown="onRowKeydown($event, filteredNodes[vi.index]!)"
-                @contextmenu.prevent="onRowContextMenu($event, filteredNodes[vi.index]!)"
+                :aria-selected="rt?.selected === item.node.path"
+                v-bind="nav"
+                :tabindex="nav.tabindex"
+                @click="onRowClick(item.node)"
+                @dblclick="onRowOpen(item.node)"
               >
-                <!-- P63 §4.2/§4.3: a redis key's icon becomes its per-type glyph once its TYPE
-                       has arrived (redisTypeIcon falls back to the generic key glyph otherwise —
-                       never a wrong type). S3 objects and every container kind are unaffected. -->
+                <!-- A redis key's icon becomes its per-type glyph once its TYPE has arrived
+                     (redisTypeIcon falls back to the generic key glyph otherwise). -->
                 <span class="size-4 flex items-center justify-center shrink-0 text-muted-foreground"
                   ><CodiconIcon
                     :name="
-                      filteredNodes[vi.index]?.kind === 'key'
-                        ? redisTypeIcon(keyType(filteredNodes[vi.index]!.path))
-                        : nodeIcon(filteredNodes[vi.index]!.kind)
+                      item.node.kind === 'key'
+                        ? redisTypeIcon(keyType(item.node.path))
+                        : nodeIcon(item.node.kind)
                     "
                     :size="13"
                   /></span
                 >
-                <span class="min-w-0 flex-1 truncate">{{ filteredNodes[vi.index]?.name }}</span>
+                <span class="min-w-0 flex-1 truncate">{{ item.node.name }}</span>
                 <Badge
                   data
-                  v-if="
-                    filteredNodes[vi.index]?.kind === 'key' &&
-                    redisTypeLabel(keyType(filteredNodes[vi.index]!.path))
-                  "
+                  v-if="item.node.kind === 'key' && redisTypeLabel(keyType(item.node.path))"
                   data-testid="browse-key-type"
                   >{{
-                    redisTypeLabel(keyType(filteredNodes[vi.index]!.path))
+                    redisTypeLabel(keyType(item.node.path))
                   }}</Badge
                 >
-                <span v-if="filteredNodes[vi.index]?.detail" class="shrink-0" :class="rowMeta">{{
-                  filteredNodes[vi.index]?.detail
+                <span v-if="item.node.detail" class="shrink-0" :class="rowMeta">{{
+                  item.node.detail
                 }}</span>
               </div>
-            </div>
-          </div>
+            </template>
+          </VirtualList>
         </div>
       </div>
 

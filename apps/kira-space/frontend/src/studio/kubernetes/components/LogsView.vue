@@ -13,7 +13,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { parseAnsi } from '@workbench/lib/ansi';
+import { appendCapped, plainText, tailItems } from '@workbench/lib/logTail';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { kubeControl } from '../control';
 import type { KubeContainerRef, KubeLogLine } from '../wire';
@@ -25,11 +25,6 @@ const props = defineProps<{
   containers: readonly KubeContainerRef[];
 }>();
 
-const MAX_LINES = 20_000;
-const TAILS = [100, 1000, 5000, -1] as const;
-const tailLabel = (n: number): string =>
-  n === -1 ? t('common.state.all.option') : t('common.logs.tail.option', { count: n });
-
 interface Line extends KubeLogLine {
   id: number;
   stream: string;
@@ -40,9 +35,7 @@ const logKey = (field: string): string =>
   `kubernetes:logs:${props.clusterId}/${props.namespace}/${props.pod}:${field}`;
 const container = useKeptState(() => logKey('container'), '');
 const previous = ref(false);
-const TAIL_ITEMS = computed(() =>
-  TAILS.map((n) => ({ value: String(n), label: tailLabel(n), testid: `kube-logs-tail-${n}` })),
-);
+const TAIL_ITEMS = computed(() => tailItems('kube-logs-tail'));
 const tail = ref<number>(1000);
 const timestamps = ref(false);
 const follow = ref(true);
@@ -57,11 +50,6 @@ let opening: Promise<unknown> = Promise.resolve();
 let seq = 0;
 let off: (() => void) | null = null;
 
-const plainOf = (text: string): string =>
-  parseAnsi(text)
-    .map((seg) => seg.text)
-    .join('');
-
 const needle = computed(() => filter.value.trim().toLowerCase());
 const shown = computed(() =>
   needle.value === ''
@@ -73,10 +61,10 @@ const shown = computed(() =>
 const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 
 function append(batch: KubeLogLine[]): void {
-  const next = lines.value.concat(
-    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout', plain: plainOf(l.text) })),
+  lines.value = appendCapped(
+    lines.value,
+    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout', plain: plainText(l.text) })),
   );
-  lines.value = next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next;
 }
 
 async function close(): Promise<void> {
@@ -178,6 +166,15 @@ onBeforeUnmount(() => {
       <Toggle v-model="previous" size="kira" data-testid="kube-logs-previous">{{
         t('common.action.previous.label')
       }}</Toggle>
+      <Toggle v-model="follow" size="kira" data-testid="kube-logs-follow">{{
+        t('docker.logs.follow.label')
+      }}</Toggle>
+      <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
+        t('docker.logs.timestamps.label')
+      }}</Toggle>
+      <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
+        t('docker.logs.wrap.label')
+      }}</Toggle>
       <SecondaryTabs
         variant="segmented"
         :aria-label="t('docker.logs.tail.aria')"
@@ -186,22 +183,13 @@ onBeforeUnmount(() => {
         :items="TAIL_ITEMS"
         @update:model-value="(v) => (tail = Number(v))"
       />
-      <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
-        t('docker.logs.timestamps.label')
-      }}</Toggle>
-      <Toggle v-model="follow" size="kira" data-testid="kube-logs-follow">{{
-        t('docker.logs.follow.label')
-      }}</Toggle>
-      <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
-        t('docker.logs.wrap.label')
-      }}</Toggle>
-      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
       <SearchField
         v-model="filter"
         class="ml-auto w-48"
         :placeholder="t('kubernetes.logs.filter.placeholder')"
         data-testid="kube-logs-filter"
       />
+      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
     </ViewToolbar>
     <LogLines
       v-model:follow="follow"
