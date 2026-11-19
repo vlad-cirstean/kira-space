@@ -1,4 +1,4 @@
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { isConflict, toCodedError } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 
@@ -7,7 +7,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 export function confirmOverwrite(detail: string): Promise<boolean> {
   return useConfirmDialogStore().confirm({
     title: t('studio.common.overwriteConfirm.title'),
-    message: `${detail} ${t('studio.common.overwriteConfirm.body')}`,
+    message: joinSentences(detail, t('studio.common.overwriteConfirm.body')),
     confirmLabel: t('common.action.overwrite.label'),
     tone: 'danger',
   });

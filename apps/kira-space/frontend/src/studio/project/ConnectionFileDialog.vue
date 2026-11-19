@@ -4,7 +4,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import ConfigFileDialog from '@workbench/config/ConfigFileDialog.vue';
@@ -155,12 +155,12 @@ async function onDelete(): Promise<void> {
   if (!d) return;
   const ok = await confirmDialogStore.confirm({
     title: t('studio.project.deleteConnectionConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.project.deleteConnectionConfirm.body', {
         name: record.value?.name ?? configName(d.file),
       }),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
   });
