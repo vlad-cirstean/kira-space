@@ -12,9 +12,10 @@ const keptSourceSchema = /*#__PURE__*/ z.object({
   sessionId: z.string().optional(),
 });
 
-// A place a request reads the variable: offsets are UTF-16 units of the field's text.
+// A place a request or script reads the variable: offsets are UTF-16 units of the field's text. For
+// `script`, `part` is the stage (`prepare` or `transform`) and the offsets index its source.
 export const keptSiteSchema = /*#__PURE__*/ z.object({
-  field: z.enum(['url', 'header', 'query', 'form', 'body', 'contentType']),
+  field: z.enum(['url', 'header', 'query', 'form', 'body', 'contentType', 'script']),
   index: z.number(),
   part: z.string(),
   from: z.number(),
@@ -63,3 +64,15 @@ export type KeptList = z.infer<typeof keptListSchema>;
 
 export const keptValueSchema = /*#__PURE__*/ z.object({ json: z.string(), type: z.string() });
 export type KeptValue = z.infer<typeof keptValueSchema>;
+
+// A value a held result will keep (bridge DbMcpPendingKeep): a preview, empty for a secret, never stored yet.
+export const keptStagedSchema = /*#__PURE__*/ z.object({
+  name: z.string(),
+  type: z.string(),
+  items: z.number(),
+  bytes: z.number(),
+  secret: z.boolean(),
+  preview: z.string(),
+  previewTruncated: z.boolean(),
+});
+export type KeptStaged = z.infer<typeof keptStagedSchema>;

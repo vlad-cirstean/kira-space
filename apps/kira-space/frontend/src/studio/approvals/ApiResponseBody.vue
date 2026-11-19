@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { agentApiResultSchema, apiResponsePayloadSchema } from '@shared/domain/dbmcp';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
+import KeptValueView from '../kept/KeptValueView.vue';
+import { keptTypeLabel } from '../kept/keptFormat';
+import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
@@ -25,6 +29,8 @@ const response = usePendingResponse(() => requestId.value);
 const text = computed(() => response.data.value?.text ?? '');
 const raw = computed(() => response.data.value?.raw ?? '');
 const script = computed(() => response.data.value?.script ?? null);
+// Values the script keeps once this result is sent (P678): not stored yet, previews only.
+const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
 const resultJson = computed(() => (failed.value ? null : prettyJson(text.value)));
 // Never hide bytes: an unparseable response falls back to its verbatim text.
@@ -69,6 +75,20 @@ const parsedRaw = computed(() => {
             data-testid="api-review-result"
           />
           <ApprovalCode v-else data-testid="api-review-result">{{ text }}</ApprovalCode>
+        </template>
+        <template #after>
+          <section v-if="keep.length" class="flex flex-col gap-1" data-testid="api-review-keep">
+            <SectionHeading flush :label="t('studio.kept.willKeep.label')" />
+            <ul class="m-0 flex list-none flex-col gap-2 p-0">
+              <li v-for="k in keep" :key="k.name" :data-testid="`api-review-keep-${k.name}`">
+                <mark :class="['rounded-kira-sm font-data text-inherit', KEPT_MARK_CLASS]">{{
+                  k.name
+                }}</mark>
+                <span class="text-kira-sm text-muted-foreground"> · {{ keptTypeLabel(k) }}</span>
+                <KeptValueView :entry="{ ...k, id: '' }" staged />
+              </li>
+            </ul>
+          </section>
         </template>
         <template #script>
           <JsScriptBlock

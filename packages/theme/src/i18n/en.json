@@ -15886,6 +15886,9 @@
       "manage": {
         "label": "Manage kept variables"
       },
+      "mayKeep": {
+        "label": "This script may keep:"
+      },
       "panel": {
         "title": {
           "label": "Kept variables this request uses"
@@ -15895,12 +15898,18 @@
         "expiring": {
           "status": "Expires before you answer"
         },
+        "keeps": {
+          "status": "May keep: {names}"
+        },
         "source": {
           "label": "{name}, kept by {request}"
         },
         "uses": {
           "status": "Uses kept: {names}"
         }
+      },
+      "scriptReads": {
+        "hint": "This script reads kept variables; what it returns goes to the agent."
       },
       "site": {
         "contentType": {
@@ -15935,6 +15944,9 @@
       },
       "usedIn": {
         "label": "Used in"
+      },
+      "willKeep": {
+        "label": "Will keep"
       }
     },
     "keyValue": {

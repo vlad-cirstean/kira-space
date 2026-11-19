@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { type ConnectionKind, ROW_ESTIMATE_KINDS } from './connection';
-import { keptUseSchema } from './kept';
+import { keptSiteSchema, keptStagedSchema, keptUseSchema } from './kept';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -219,7 +219,17 @@ const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
       inputTruncated: z.boolean(),
     })
     .nullable(),
-  transform: z.object({ source: z.string(), hash: z.string() }).nullable(),
+  transform: z
+    .object({
+      source: z.string(),
+      hash: z.string(),
+      // Kept variables the transform may write (P678), with their calls in the source.
+      mayKeep: z
+        .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+        .nullish()
+        .transform((v) => v ?? []),
+    })
+    .nullable(),
 });
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
@@ -310,6 +320,11 @@ export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({
     .object({ source: z.string(), hash: z.string() })
     .nullish()
     .transform((v) => v ?? null),
+  // Values the script keeps once the result is sent (P678).
+  keep: z
+    .array(keptStagedSchema)
+    .nullish()
+    .transform((v) => v ?? []),
 });
 export type DbMcpPendingResponse = z.infer<typeof dbMcpPendingResponseSchema>;
 

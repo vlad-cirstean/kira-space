@@ -59,6 +59,7 @@
           },
           "transform": {
             "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
+            "mayKeep": [],
             "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
           }
         },

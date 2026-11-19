@@ -55,6 +55,19 @@ export function keptRanges(
     .sort((a, b) => a.from - b.from);
 }
 
+/** Monaco ranges of a script's kept.get and kept.set calls for one stage. The sites index the source
+ *  exactly as shown: a script is not reformatted. */
+export function keptScriptRanges(
+  sites: readonly Pick<KeptSite, 'field' | 'part' | 'from' | 'to'>[],
+  stage: 'prepare' | 'transform',
+) {
+  const marks: readonly RangeHighlight[] = sites
+    .filter((s) => s.field === 'script' && s.part === stage)
+    .map((s) => ({ from: s.from, to: s.to, class: KEPT_EDITOR_CLASS }))
+    .sort((a, b) => a.from - b.from);
+  return (): readonly RangeHighlight[] => marks;
+}
+
 /** Splits text on ranges for `HighlightedText`. */
 export function keptParts(
   text: string,

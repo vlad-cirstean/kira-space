@@ -6,13 +6,16 @@ import { useCopy } from '@workbench/behaviour/clipboard';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import FlushEditor from '../approvals/FlushEditor.vue';
+import { prettyJson } from '../approvals/prettyJson';
 import { control } from '../bridge/control';
 import { useKeptValue } from './keptQueries';
 
 // A kept value as the user sees it: a preview in the data font, the whole value on demand. A secret
-// shows dots and offers no copy. The agent never gets any of this.
+// shows dots and offers no copy. The agent never gets any of this. `staged` is a value not stored yet
+// (a held result's "Will keep"): only its preview exists, so nothing offers the whole value.
 const props = defineProps<{
   entry: { id: string; type: string; secret: boolean; preview: string; previewTruncated: boolean };
+  staged?: boolean;
 }>();
 
 const PREVIEW_LINES = 20;
@@ -25,11 +28,12 @@ function parsed(json: string): { ok: true; value: unknown } | { ok: false } {
   }
 }
 
-/** Strings raw, other JSON pretty-printed; the text of a whole value, as copied. */
+/** Strings raw, other JSON pretty-printed; the text of a whole value, as copied. A value that
+ *  re-indenting would change (a big integer) stays as it is. */
 function plainText(json: string): string {
   const p = parsed(json);
   if (!p.ok) return json;
-  return typeof p.value === 'string' ? p.value : JSON.stringify(p.value, null, 2);
+  return typeof p.value === 'string' ? p.value : (prettyJson(json) ?? json);
 }
 
 const lines = computed(() => plainText(props.entry.preview).split('\n'));
@@ -48,8 +52,7 @@ const full = useKeptValue(
 const fullDoc = computed(() => {
   const json = full.data.value?.json;
   if (json === undefined) return '';
-  const p = parsed(json);
-  return p.ok ? JSON.stringify(p.value, null, 2) : json;
+  return prettyJson(json) ?? json;
 });
 
 const { copy, copied } = useCopy();
@@ -74,13 +77,19 @@ async function copyValue() {
           v-text="preview"
         />
         <TooltipIconButton
+          v-if="!staged || !entry.previewTruncated"
           :icon="copied ? 'check' : 'copy'"
           :label="t('common.action.copyValue.label')"
           data-testid="kept-value-copy"
           @click="copyValue"
         />
       </div>
-      <Disclosure v-if="cut" v-model:open="open" :label="t('common.action.showAll.label')" meta>
+      <Disclosure
+        v-if="cut && !staged"
+        v-model:open="open"
+        :label="t('common.action.showAll.label')"
+        meta
+      >
         <QueryState :query="full" variant="inline">
           <FlushEditor :doc="fullDoc" language="json" data-testid="kept-value-full" />
         </QueryState>

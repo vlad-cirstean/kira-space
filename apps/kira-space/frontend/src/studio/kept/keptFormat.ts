@@ -47,6 +47,10 @@ export function keptSiteLabel(
       return t('studio.kept.site.query.label', { name: pairName('query', site.index) });
     case 'form':
       return t('studio.kept.site.form.label', { name: pairName('form', site.index) });
+    case 'script':
+      return site.part === 'transform'
+        ? t('studio.dbMcp.approval.api.scriptTransform.label')
+        : t('studio.dbMcp.approval.api.scriptPrepare.label');
   }
 }
 

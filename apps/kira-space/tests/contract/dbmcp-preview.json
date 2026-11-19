@@ -37,6 +37,7 @@
   ],
   "DbMcpService.PendingResponse": {
     "isError": false,
+    "keep": [],
     "raw": "",
     "requestId": "<id:1>",
     "script": null,

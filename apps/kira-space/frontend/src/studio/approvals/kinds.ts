@@ -167,6 +167,15 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       });
     }
   }
+  if (p.script?.transform?.mayKeep.length) {
+    out.push({
+      text: t('studio.kept.risk.keeps.status', {
+        names: p.script.transform.mayKeep.map((m) => m.name).join(', '),
+      }),
+      tone: 'neutral',
+      testid: 'api-approval-kept-writes',
+    });
+  }
   if (p.script?.prepare) {
     out.push({
       text: t('studio.dbMcp.approval.risk.builtByScript.status'),
