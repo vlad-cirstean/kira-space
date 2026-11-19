@@ -208,7 +208,7 @@ type apiPayload struct {
 	Credentials     []agentapi.Credential `json:"credentials"`
 	FollowRedirects bool                  `json:"followRedirects"`
 	TimeoutSeconds  int                   `json:"timeoutSeconds"`
-	Kept            []agentapi.KeptUse    `json:"kept"`
+	Kept            []agentapi.KeptUse    `json:"kept,omitempty"`
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds
