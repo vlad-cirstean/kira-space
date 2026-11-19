@@ -54,7 +54,7 @@ test('a value copied from a secret shows dots', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: mocks(h) });
   await pushApprovals(page, [liveItem(item())]);
   const row = page.locator('[data-testid="api-review-keep-ids"]');
-  await expect(row.locator('[data-testid="kept-value-secret"]')).toHaveText('••••');
+  await expect(row.locator('[data-testid="kept-value-secret"]')).toHaveText('••••••••');
   await expect(row.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
 });
 
