@@ -60,8 +60,8 @@ const TABS: ReadonlyArray<{
   icon: string;
   needsRunning: boolean;
 }> = [
-  { id: 'overview', label: 'docker.tab.overview.label', icon: 'info', needsRunning: false },
-  { id: 'logs', label: 'docker.tab.logs.label', icon: 'output', needsRunning: false },
+  { id: 'overview', label: 'common.tab.overview.label', icon: 'info', needsRunning: false },
+  { id: 'logs', label: 'common.tab.logs.label', icon: 'output', needsRunning: false },
   { id: 'terminal', label: 'common.module.terminal.label', icon: 'terminal', needsRunning: true },
   { id: 'stats', label: 'docker.tab.stats.label', icon: 'graph', needsRunning: false },
   { id: 'inspect', label: 'docker.tab.inspect.label', icon: 'json', needsRunning: false },

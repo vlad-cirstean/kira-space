@@ -128,8 +128,8 @@ const shown = computed(() => {
   );
 });
 const LABELS: Record<SectionId, () => string> = {
-  overview: () => t('docker.tab.overview.label'),
-  labels: () => t('docker.field.labels.label'),
+  overview: () => t('common.tab.overview.label'),
+  labels: () => t('common.field.labels.label'),
   annotations: () => t('kubernetes.describe.section.annotations.label'),
   owners: () => t('kubernetes.describe.section.owners.label'),
   conditions: () => t('kubernetes.describe.section.conditions.label'),

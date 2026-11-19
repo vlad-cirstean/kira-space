@@ -233,7 +233,7 @@ const originNotice = computed(() => {
         </AlertDescription>
       </Alert>
 
-      <DetailSection v-if="changes.length" :title="t('docker.edit.pending.title')">
+      <DetailSection v-if="changes.length" :title="t('common.changes.pending.title')">
         <EditPendingSummary :changes="changes" />
       </DetailSection>
 

@@ -88,7 +88,7 @@ const item = computed<LinkItem | null>(() => {
           data-testid="ade-link-add"
           @click="emit('add')"
         >
-          {{ attach ? t('docker.edit.attach.label') : t('common.action.add.label') }}
+          {{ attach ? t('common.action.attach.label') : t('common.action.add.label') }}
         </Button>
       </div>
       <span v-if="target.onTaskId" class="text-warn" data-testid="ade-link-on-task">{{

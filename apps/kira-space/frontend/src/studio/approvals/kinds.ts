@@ -45,7 +45,7 @@ const KUBE_OPERATION_LABEL = {
   discover: 'kubernetes.mcp.discover.label',
   list: 'kubernetes.mcp.list.label',
   describe: 'kubernetes.detail.tab.describe.label',
-  logs: 'docker.tab.logs.label',
+  logs: 'common.tab.logs.label',
 } as const satisfies Record<string, MessageKey>;
 
 const RANK: Record<string, number> = { read: 0, write: 1, ddl: 2 };

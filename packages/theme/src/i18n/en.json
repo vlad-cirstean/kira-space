@@ -3035,11 +3035,17 @@
       "add": {
         "label": "Add"
       },
+      "addVariable": {
+        "label": "Add variable"
+      },
       "apply": {
         "label": "Apply"
       },
       "approve": {
         "label": "Approve"
+      },
+      "attach": {
+        "label": "Attach"
       },
       "back": {
         "label": "Back"
@@ -3312,6 +3318,11 @@
     "changed": {
       "status": "Changed"
     },
+    "changes": {
+      "pending": {
+        "title": "Pending changes"
+      }
+    },
     "closed": {
       "status": "Closed"
     },
@@ -3556,8 +3567,14 @@
       "email": {
         "label": "Email"
       },
+      "environment": {
+        "label": "Environment"
+      },
       "file": {
         "label": "File"
+      },
+      "id": {
+        "label": "ID"
       },
       "key": {
         "label": "Key"
@@ -3565,8 +3582,14 @@
       "kind": {
         "label": "Kind"
       },
+      "labels": {
+        "label": "Labels"
+      },
       "name": {
         "label": "Name"
+      },
+      "network": {
+        "label": "Network"
       },
       "noColour": {
         "label": "No colour"
@@ -3659,8 +3682,18 @@
       "label": "Later"
     },
     "logs": {
+      "follow": {
+        "label": "Follow"
+      },
       "tail": {
+        "aria": "Lines to show",
         "option": "{count} line | {count} lines"
+      },
+      "timestamps": {
+        "label": "Timestamps"
+      },
+      "wrap": {
+        "label": "Wrap"
       }
     },
     "main": {
@@ -3972,6 +4005,14 @@
         "status": "Waiting for you"
       }
     },
+    "tab": {
+      "logs": {
+        "label": "Logs"
+      },
+      "overview": {
+        "label": "Overview"
+      }
+    },
     "task": {
       "label": "Task"
     },
@@ -4127,9 +4168,6 @@
       "addPort": {
         "label": "Add port"
       },
-      "addVariable": {
-        "label": "Add variable"
-      },
       "aliases": {
         "placeholder": "Aliases, comma separated"
       },
@@ -4138,9 +4176,6 @@
       },
       "appliesNow": {
         "title": "Applies now"
-      },
-      "attach": {
-        "label": "Attach"
       },
       "attached": {
         "status": "Attached"
@@ -4344,9 +4379,6 @@
           "body": "Created by {tool}. Its session reaper still owns this container and removes it when the session ends."
         }
       },
-      "pending": {
-        "title": "Pending changes"
-      },
       "pids": {
         "label": "PIDs limit"
       },
@@ -4463,9 +4495,6 @@
       "entrypoint": {
         "label": "Entrypoint"
       },
-      "env": {
-        "label": "Environment"
-      },
       "exitCode": {
         "label": "Exit code"
       },
@@ -4477,9 +4506,6 @@
       },
       "image": {
         "label": "Image"
-      },
-      "labels": {
-        "label": "Labels"
       },
       "mounts": {
         "label": "Mounts"
@@ -4513,23 +4539,11 @@
       }
     },
     "logs": {
-      "follow": {
-        "label": "Follow"
-      },
       "jumpToLatest": {
         "label": "Jump to latest"
       },
       "stopped": {
         "status": "Container stopped"
-      },
-      "tail": {
-        "aria": "Lines to show"
-      },
-      "timestamps": {
-        "label": "Timestamps"
-      },
-      "wrap": {
-        "label": "Wrap"
       }
     },
     "measure": {
@@ -4609,9 +4623,6 @@
       "driver": {
         "label": "Driver"
       },
-      "id": {
-        "label": "ID"
-      },
       "internal": {
         "label": "Internal"
       },
@@ -4620,9 +4631,6 @@
       },
       "mountPoint": {
         "label": "Mount point"
-      },
-      "network": {
-        "label": "Network"
       },
       "no": {
         "option": "No"
@@ -4730,12 +4738,6 @@
     "tab": {
       "inspect": {
         "label": "Inspect"
-      },
-      "logs": {
-        "label": "Logs"
-      },
-      "overview": {
-        "label": "Overview"
       },
       "stats": {
         "label": "Stats"

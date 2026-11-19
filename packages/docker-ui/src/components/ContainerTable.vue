@@ -199,7 +199,7 @@ const nav = useListNavigation<DockerContainer>({
             <span v-else :class="cn('flex', rowActions)">
               <TooltipIconButton
                 icon="output"
-                :label="t('docker.tab.logs.label')"
+                :label="t('common.tab.logs.label')"
                 @click.stop="open(c, 'logs')"
               />
               <TooltipIconButton

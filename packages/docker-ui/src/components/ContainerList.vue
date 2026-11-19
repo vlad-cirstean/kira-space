@@ -146,7 +146,7 @@ function menuItems(c: DockerContainer): MenuItem[] {
     {
       type: 'item',
       id: 'logs',
-      label: t('docker.tab.logs.label'),
+      label: t('common.tab.logs.label'),
       icon: 'output',
       run: () => ui.select({ kind: 'container', id: c.id }, 'logs'),
     },

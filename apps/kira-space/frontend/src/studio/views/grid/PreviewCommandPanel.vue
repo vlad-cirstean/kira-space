@@ -103,7 +103,7 @@ function close(): void {
 <template>
   <PopoverContent align="end" flush class="w-120" data-testid="preview-command-panel">
     <div class="max-h-96 flex flex-col">
-      <SectionHeading :label="t('docker.edit.pending.title')">
+      <SectionHeading :label="t('common.changes.pending.title')">
         <TooltipIconButton
           icon="close"
           :label="t('common.action.close.label')"

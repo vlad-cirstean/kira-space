@@ -29,7 +29,7 @@ const props = defineProps<{ kind: InspectKind; id: string }>();
 const KIND_LABELS: Record<InspectKind, MessageKey> = {
   image: 'docker.field.image.label',
   volume: 'docker.resource.volume.label',
-  network: 'docker.resource.network.label',
+  network: 'common.field.network.label',
 };
 
 const ICONS: Record<InspectKind, string> = {
@@ -65,7 +65,7 @@ const facts = computed<Array<[string, string]>>(() => {
     const i = image.value;
     return [
       [t('docker.resource.tags.label'), i.tags.join(', ') || '<none>'],
-      [t('docker.resource.id.label'), i.id],
+      [t('common.field.id.label'), i.id],
       [t('docker.field.size.label'), formatBytes(i.size)],
       [t('common.created.label'), formatDateTime(i.created)],
     ];

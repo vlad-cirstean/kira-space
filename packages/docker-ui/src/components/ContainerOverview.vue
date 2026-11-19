@@ -125,7 +125,7 @@ const rows = (): Array<[string, string]> => [
 
         <DetailSection
           v-if="detail.env.length"
-          :title="t('docker.field.env.label')"
+          :title="t('common.field.environment.label')"
           class="@3xl:col-span-2"
         >
           <div
@@ -163,7 +163,7 @@ const rows = (): Array<[string, string]> => [
 
         <DetailSection
           v-if="Object.keys(detail.labels).length"
-          :title="t('docker.field.labels.label')"
+          :title="t('common.field.labels.label')"
           class="@3xl:col-span-2"
         >
           <div v-for="(v, k) in detail.labels" :key="k" class="break-all font-data">

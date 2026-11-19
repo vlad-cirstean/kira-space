@@ -167,17 +167,17 @@ onBeforeUnmount(() => {
         t('common.action.previous.label')
       }}</Toggle>
       <Toggle v-model="follow" size="kira" data-testid="kube-logs-follow">{{
-        t('docker.logs.follow.label')
+        t('common.logs.follow.label')
       }}</Toggle>
       <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
-        t('docker.logs.timestamps.label')
+        t('common.logs.timestamps.label')
       }}</Toggle>
       <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
-        t('docker.logs.wrap.label')
+        t('common.logs.wrap.label')
       }}</Toggle>
       <SecondaryTabs
         variant="segmented"
-        :aria-label="t('docker.logs.tail.aria')"
+        :aria-label="t('common.logs.tail.aria')"
         data-testid="kube-logs-tail"
         :model-value="String(tail)"
         :items="TAIL_ITEMS"

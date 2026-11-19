@@ -16,7 +16,7 @@ export const CATEGORY_ORDER: readonly KindCategory[] = [
 
 const CATEGORY_LABEL: Record<KindCategory, MessageKey> = {
   workloads: 'kubernetes.kind.category.workloads.label',
-  network: 'docker.resource.network.label',
+  network: 'common.field.network.label',
   config: 'kubernetes.kind.category.config.label',
   storage: 'kubernetes.kind.category.storage.label',
   access: 'kubernetes.kind.category.access.label',

@@ -84,7 +84,7 @@ const grid = computed<{ columns: Column[]; rows: Cell[][] } | null>(() => {
       };
     case 'document':
       return {
-        columns: [plain('docker.resource.id.label'), plain('common.body.label')],
+        columns: [plain('common.field.id.label'), plain('common.body.label')],
         rows: r.documents.map((d) => [d.id, d.body]),
       };
     case 'keyvalue':

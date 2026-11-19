@@ -113,7 +113,7 @@ const sections = computed<VariablesSection[]>(() =>
   isEnvironment.value ? ['environment', 'variables', 'agent', 'yaml'] : ['variables', 'yaml'],
 );
 const LABEL = {
-  environment: () => t('docker.field.env.label'),
+  environment: () => t('common.field.environment.label'),
   variables: () => t('common.module.variables.label'),
   agent: () => t('studio.project.connectionDialog.mcp.access.label'),
   yaml: () => t('common.yaml.label'),
