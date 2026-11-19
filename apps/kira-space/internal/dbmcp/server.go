@@ -174,6 +174,9 @@ type Config struct {
 	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves the tool
 	// unregistered and refuses every {{kept.*}} reference.
 	Kept KeptStore
+	// JS and ScriptOps run and record the scripts agents attach; either nil turns scripts off.
+	JS        ScriptEngine
+	ScriptOps OpRunner
 	// Limits are the limits the server enforces on run_query, beside its built-ins. Nil means none.
 	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
@@ -210,7 +213,7 @@ type Server struct {
 	mcpMu  sync.Mutex
 	mcp    *mcp.Server
 	mcpRev uint64
-	mcpAPI bool
+	mcpKey toolSetKey
 
 	httpState // http.go's own fields (listener, *http.Server)
 
@@ -282,7 +285,7 @@ func New(cfg Config) (*Server, error) {
 		limits:     limits,
 		exemptions: newExemptionStore(cfg.Approvals.now),
 	}
-	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
+	s.mcp, s.mcpRev, s.mcpKey = s.buildMCPServer(), s.prompts().Revision(), s.toolSetKey()
 
 	if err := s.bindHTTP(); err != nil {
 		return nil, err
@@ -351,10 +354,17 @@ func (s *Server) prompts() llmprompts.Source {
 func (s *Server) server() *mcp.Server {
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
-	if rev, api := s.prompts().Revision(), s.apiEnabled(); rev != s.mcpRev || api != s.mcpAPI {
-		s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), rev, api
+	if rev, key := s.prompts().Revision(), s.toolSetKey(); rev != s.mcpRev || key != s.mcpKey {
+		s.mcp, s.mcpRev, s.mcpKey = s.buildMCPServer(), rev, key
 	}
 	return s.mcp
+}
+
+// toolSetKey is the settings the tool list depends on besides the prompts: a change rebuilds it.
+type toolSetKey struct{ api, scripts bool }
+
+func (s *Server) toolSetKey() toolSetKey {
+	return toolSetKey{api: s.apiEnabled(), scripts: s.scriptsOn()}
 }
 
 // buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;

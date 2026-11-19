@@ -3,11 +3,13 @@ package dbmcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
@@ -33,6 +35,9 @@ type APISettings struct {
 	Enabled bool
 	// Approval is "always" (each request waits for the user) or "never".
 	Approval string
+	// Scripts lets agents attach JavaScript to api_request (dbMcp.apiScripts). Listed in the schema only
+	// while the server also has an engine.
+	Scripts bool
 }
 
 func (s *Server) apiSettings() APISettings {
@@ -61,6 +66,8 @@ type apiRequestArgs struct {
 	TimeoutSeconds   int       `json:"timeoutSeconds,omitempty"`
 	MaxResponseBytes int       `json:"maxResponseBytes,omitempty"`
 	FollowRedirects  *bool     `json:"followRedirects,omitempty"`
+	// Script is set by an agent that attaches JavaScript to the request.
+	Script *apiScriptArgs `json:"script,omitempty"`
 }
 
 func pairs(in []apiPair) []agentapi.NameValue {
@@ -101,20 +108,69 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		return errResult(apiRequestsOff)
 	}
 	in := a.input(keptScope(ctx))
+	var sc *apiScripts
+	if a.Script != nil {
+		var refusal string
+		if sc, refusal = s.openScripts(ctx, a.Script); refusal != "" {
+			return errResult(refusal)
+		}
+		if sc.Prepare != "" {
+			var text string
+			if in, text = s.prepareAPI(ctx, in, sc); text != "" {
+				return errResult(text)
+			}
+		}
+	}
 	plan, err := s.cfg.API.Plan(in)
 	if err != nil {
 		return errResult(err.Error())
 	}
 	if needsAPIApproval(settings, plan) {
-		if res, err := s.approveAPI(ctx, plan); res != nil || err != nil {
+		if res, err := s.approveAPI(ctx, plan, sc); res != nil || err != nil {
 			return res, nil, err
 		}
 	}
-	out, err := s.cfg.API.Send(ctx, in, &plan)
+	if sc.hasTransform() {
+		in.ScriptBodyBytes = transformBodyBytes
+	}
+	raw, err := s.cfg.API.Send(ctx, in, &plan)
 	if err != nil {
 		return errResult(err.Error())
 	}
-	return jsonResult(out)
+	o := apiOutcome{Raw: raw}
+	if sc.hasTransform() {
+		o = s.transformAPI(ctx, plan, sc, raw)
+	}
+	return s.deliverAPI(ctx, plan, sc, o)
+}
+
+// openScripts validates the script argument and syntax-checks both scripts before anything runs.
+// A non-empty string is the refusal text.
+func (s *Server) openScripts(ctx context.Context, a *apiScriptArgs) (*apiScripts, string) {
+	if !s.scriptsOn() {
+		return nil, apiScriptsOff
+	}
+	sc := newAPIScripts(a)
+	switch {
+	case sc.Prepare == "" && sc.Transform == "":
+		return nil, apiScriptEmpty
+	case len(sc.Input) > 0 && sc.Prepare == "":
+		return nil, apiScriptNoPrep
+	case len(sc.Input) > apiScriptInputBytes:
+		return nil, fmt.Sprintf("script.input is %d bytes; the limit is %d", len(sc.Input), apiScriptInputBytes)
+	}
+	for _, p := range []struct {
+		stage scriptStage
+		src   string
+	}{{stagePrepare, sc.Prepare}, {stageTransform, sc.Transform}} {
+		if p.src == "" {
+			continue
+		}
+		if text := s.checkScript(ctx, p.stage, p.src); text != "" {
+			return nil, text
+		}
+	}
+	return sc, ""
 }
 
 // needsAPIApproval says whether the request waits for the user: never when an allow rule matched; otherwise
@@ -132,12 +188,12 @@ func needsAPIApproval(st APISettings, p agentapi.Planned) bool {
 func isReadMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPTIONS" }
 
 // approveAPI asks the user. A non-nil result stops the call.
-func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned) (*mcp.CallToolResult, error) {
+func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (*mcp.CallToolResult, error) {
 	ctx, stop := s.watchKept(ctx, plan.Kept)
 	defer stop()
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
-		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan,
+		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan, APIScript: sc,
 	})
 	if outcome != ApprovalApproved {
 		var gone *keptGoneError
@@ -161,10 +217,26 @@ func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
 		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: 512 << 10},
 	}
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[apiRequestArgs](src, llmprompts.DbmcpToolAPIRequest.ID(), limits), "method", "url")
+	fixScriptSchema(sch)
 	sch.Properties["method"].Enum = []any{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"}
+	scriptNote := ""
+	if s.scriptsOn() {
+		scriptNote = " " + llmprompts.DbmcpToolAPIRequestScripts.Text(src, llmprompts.NoVars{})
+	} else {
+		delete(sch.Properties, "script")
+	}
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}), InputSchema: sch,
+		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}) + scriptNote, InputSchema: sch,
 	}, withPanicRecovery(s, "api_request", s.apiRequest))
+}
+
+// fixScriptSchema pins script to an object and makes script.input any JSON: the generated schemas are a
+// nullable object and a byte array.
+func fixScriptSchema(sch *jsonschema.Schema) {
+	script := sch.Properties["script"]
+	script.Type, script.Types = "object", nil
+	input := script.Properties["input"]
+	script.Properties["input"] = &jsonschema.Schema{Description: input.Description}
 }
 
 // --- approval item ---
@@ -209,11 +281,12 @@ type apiPayload struct {
 	FollowRedirects bool                  `json:"followRedirects"`
 	TimeoutSeconds  int                   `json:"timeoutSeconds"`
 	Kept            []agentapi.KeptUse    `json:"kept,omitempty"`
+	Script          *apiScriptPayload     `json:"script"`
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds
 // no secret value.
-func apiItemParts(p *agentapi.Planned) (approvals.Target, approvals.Operation, []byte) {
+func apiItemParts(p *agentapi.Planned, sc *apiScripts) (approvals.Target, approvals.Operation, []byte) {
 	if p == nil {
 		p = &agentapi.Planned{}
 	}
@@ -224,7 +297,9 @@ func apiItemParts(p *agentapi.Planned) (approvals.Target, approvals.Operation, [
 	}
 	target := approvals.Target{Name: p.Host, Kind: "http", Color: color, Location: location}
 	op := approvals.Operation{Class: "request", Tone: methodTone(p.Method)}
-	return target, op, mustJSON(apiPayloadOf(p))
+	payload := apiPayloadOf(p)
+	payload.Script = apiScriptPayloadOf(sc)
+	return target, op, mustJSON(payload)
 }
 
 func methodTone(m string) string {

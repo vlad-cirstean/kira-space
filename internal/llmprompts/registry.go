@@ -1484,7 +1484,20 @@ var (
 	_ = arg(DbmcpToolAPIRequest.id, "timeoutSeconds", studioApp, NextCall, `Request timeout, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 30, Max: 300})
 	_ = arg(DbmcpToolAPIRequest.id, "maxResponseBytes", studioApp, NextCall, `Response body cap in bytes, up to {{.Max}}. Default {{.Default}}.`, LimitVars{Default: 65536, Max: 524288})
 	_ = arg(DbmcpToolAPIRequest.id, "followRedirects", studioApp, NextCall, `Follow redirects. Default true. A redirect that would carry a credential to a host not allowed fails.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this request. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Globals: request (your method, url, headers, query, body, contentType, form, with {{name}} references unresolved) and input. Return an object with any of method, url, headers, query, body (text, or an object or array sent as JSON), contentType, form.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.input", studioApp, NextCall, `Any JSON, up to 1 MiB, given to prepare as input.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: response (status, statusText, headers [{name, value}], contentType, body text with secrets masked up to 2 MiB, json: the parsed body or null, bodyBytes, truncated, binary, finalUrl, redirects) and request (method, url). Integers above 2^53 arrive as BigInt; use kira.parseJSON for exact numbers in nested JSON text. The result is capped at maxResponseBytes.`, NoVars{})
 )
+
+// DbmcpToolAPIRequestScripts is added to api_request's description while scripts are on.
+var DbmcpToolAPIRequestScripts = define(Entry{
+	ID: "dbmcp.tool.api_request.scripts", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolApiRequestScripts.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestScripts.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestScripts.usedBy.body",
+	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each is a function body that ends with return. The user sees both scripts. script.prepare runs before approval and returns request fields that replace yours. script.transform runs on the response; you receive only {result: <its return value>}, never the raw response unless it returns it.",
+}, NoVars{})
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{

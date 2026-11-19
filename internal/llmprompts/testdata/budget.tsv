@@ -137,6 +137,11 @@ dbmcp.tool.api_request.arg.timeoutSeconds	35
 dbmcp.tool.api_request.arg.maxResponseBytes	56
 dbmcp.tool.api_request.arg.followRedirects	101
 dbmcp.tool.list_kept_variables	139
+dbmcp.tool.api_request.arg.script	82
+dbmcp.tool.api_request.arg.script.prepare	279
+dbmcp.tool.api_request.arg.script.input	49
+dbmcp.tool.api_request.arg.script.transform	395
+dbmcp.tool.api_request.scripts	432
 dbmcp.tool.list_children	222
 dbmcp.tool.list_children.arg.connectionId	36
 dbmcp.tool.list_children.arg.path	85

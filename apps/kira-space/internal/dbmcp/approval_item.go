@@ -159,7 +159,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Params: valuePayloads(sc.Params), Env: valuePayloads(sc.Env),
 		})
 	case approvals.KindAPIRequest:
-		it.Target, it.Operation, it.Payload = apiItemParts(r.API)
+		it.Target, it.Operation, it.Payload = apiItemParts(r.API, r.APIScript)
 	case approvals.KindDbExemption:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(exemptionPayloadOf(r))

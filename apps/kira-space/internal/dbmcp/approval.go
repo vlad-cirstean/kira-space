@@ -228,6 +228,8 @@ type ApprovalRequest struct {
 	Script *ApprovalScript
 	// API is set for the api.request subject; Target is then empty.
 	API *agentapi.Planned
+	// APIScript is the scripts of an api.request, shown beside the request.
+	APIScript *apiScripts
 	// Exemption is set for the db.exemption subject.
 	Exemption *ApprovalExemption
 	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the
