@@ -12,7 +12,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Done |
-| P677 | API MCP: result review with raw and transformed views | Planned |
+| P677 | API MCP: result review with raw and transformed views | Done |
 | P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Done |
 | P678 Part 2 | API MCP: kept variables script binding (`kept.get`/`kept.set`), held writes, review-card "Will keep"; runs after P676 and P677 | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
@@ -108,6 +108,8 @@ For P677: insert the review at the top of `deliverAPI` (`o.Raw` masked body up t
 The DB MCP has a review step for results (the approval body for responses). Check whether the API MCP has an equivalent; if not, add it. The user can see, before anything returns to the AI: the raw response (status, headers, body) and the result after the JS transform, as two views of one review, and the script that produced it. The user approves or denies what the agent receives. Follows the shared approvals surface (`Approvals surface`, P520) and its item bodies. Settings: whether results are reviewed, mirroring the DB connection option.
 
 Plan: `plans/P677.md`.
+
+Result: `api_request` responses can be held for review before the agent gets them (none existed). Kind `api.response`; card with Result and Raw views and the transform script (`ResultReview.vue`, generic for P680), raw view alone without a script. Settings: app leaf `dbMcp.apiReviewResponses` (default off), per-environment `agentReview {read, write}` (inherit | review | send), review on request through the card checkbox. Code: `dbmcp/api_review.go`, `deliverAPI`, `approveAPI` choice, `PendingResponse` carries `raw` and `script`. Withheld outcomes give app text only; writes add the effects-stay note. Docs: `docs/ARCHITECTURE.md` "API result review (P677)". Flows `api_review_test.go`, UI `approvals-api-response.spec.ts`. Deviations: `ApprovalRequest.APIReview` (status, class, reason) added so the item builds without parsing held data; TimedOut has no flow (no injectable clock for `ApprovalTimeout`); `ResultReview` uses `TabbedContent` so tabs sit right, as the DB cards do.
 
 ## P678 Part 1 and Part 2: API MCP: kept variables and chained requests
 
