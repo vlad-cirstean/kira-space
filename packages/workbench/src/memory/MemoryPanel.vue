@@ -3,7 +3,6 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
@@ -168,12 +167,11 @@ const historyToggleId = useId();
       <ImportStatus />
     </PanelBar>
     <div ref="resultsEl" class="min-h-0 flex-1 overflow-y-auto" data-testid="memory-results">
-      <QueryState :query="search" :loading-label="t('memory.panel.list.loading')">
-        <template #error="{ message }">
-          <Alert variant="error" strip data-testid="memory-error">
-            <AlertDescription>{{ message }}</AlertDescription>
-          </Alert>
-        </template>
+      <QueryState
+        :query="search"
+        :loading-label="t('memory.panel.list.loading')"
+        error-testid="memory-error"
+      >
         <template #empty>
           <EmptyState
             fill

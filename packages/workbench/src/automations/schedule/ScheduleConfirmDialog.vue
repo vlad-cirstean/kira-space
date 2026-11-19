@@ -203,13 +203,13 @@ function onChord(event: KeyboardEvent): void {
             :params="secretParams"
             :saved="script.savedSecrets"
           />
-          <QueryState :query="preview" variant="inline" :is-empty="() => false">
+          <QueryState
+            :query="preview"
+            variant="inline"
+            :is-empty="() => false"
+            error-testid="schedule-confirm-preview-error"
+          >
             <template #loading />
-            <template #error="{ message }">
-              <Alert variant="error" data-testid="schedule-confirm-preview-error">
-                <AlertDescription>{{ message }}</AlertDescription>
-              </Alert>
-            </template>
             <template #default="{ data }">
               <RunPreview :preview="data" />
             </template>

@@ -234,13 +234,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             :ade="pv.ade"
           />
 
-          <QueryState :query="preview" variant="inline" :is-empty="() => false">
+          <QueryState
+            :query="preview"
+            variant="inline"
+            :is-empty="() => false"
+            error-testid="run-preview-error"
+          >
             <template #loading />
-            <template #error="{ message }">
-              <Alert variant="error" data-testid="run-preview-error">
-                <AlertDescription>{{ message }}</AlertDescription>
-              </Alert>
-            </template>
             <template #default="{ data }">
               <RunPreview :preview="data" />
             </template>

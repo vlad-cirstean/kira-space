@@ -2,7 +2,6 @@
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Card } from '@theme/components/ui/card';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -53,11 +52,6 @@ function eventsFor(id: string) {
       :description="t('memory.start.emptyHint')"
     />
     <QueryState v-else :query="history" :is-empty="() => false">
-      <template #error="{ message }">
-        <Alert variant="error" strip>
-          <AlertDescription>{{ message }}</AlertDescription>
-        </Alert>
-      </template>
       <div v-if="selected" class="flex flex-col gap-3 p-3" data-testid="memory-detail">
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center gap-1">
