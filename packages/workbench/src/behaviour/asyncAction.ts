@@ -44,8 +44,8 @@ export function useAsyncAction<Args extends unknown[]>(
   opts: AsyncActionOptions = {},
 ): AsyncAction<Args> & { fail: (err: unknown) => void } {
   // The variable is a thunk so typed values (secrets) are not kept as plain mutation `variables`.
-  // `online` mode would pause while the webview reports offline; these are local bridge calls that
-  // must fail, not hang.
+  // `always`: this wrapper runs the thunk at once; the calls inside carry the client's network mode.
+  // Paused here instead, the phone's pending state (set by the inner write) would never show.
   const m = useMutation<unknown, unknown, () => Promise<unknown>>(
     { mutationFn: (task) => task(), networkMode: 'always', gcTime: 0 },
     opts.queryClient,

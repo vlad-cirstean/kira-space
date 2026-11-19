@@ -1,8 +1,7 @@
 import type { ApprovalAnswerArgs, ApprovalItem, ApprovalResult } from '@shared/domain/approvals';
-import { useMutation, useQuery } from '@tanstack/vue-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { queryClient } from '@workbench/state/queryClient';
 import { type InjectionKey, inject, onScopeDispose } from 'vue';
 
 // P520: client side of the Go approvals queue (internal/approvals). Items are the whole view; each
@@ -28,10 +27,8 @@ const APPROVALS_KEY = ['approvals'];
 /** Every pending item, oldest first. A push replaces the cache and wins over a fetch still in flight. */
 export function useApprovals() {
   const control = useApprovalsControl();
-  const query = useQuery(
-    { queryKey: APPROVALS_KEY, queryFn: () => control.approvalsList() },
-    queryClient,
-  );
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: APPROVALS_KEY, queryFn: () => control.approvalsList() });
   onScopeDispose(
     control.onApprovalsChanged((items) => {
       // A list fetch that started before the push would resolve later and overwrite it with stale items.
@@ -46,15 +43,12 @@ export function useApprovals() {
 /** Answers ids with one decision. The queue's push removes the settled items. */
 export function useAnswerApprovals() {
   const control = useApprovalsControl();
-  return useMutation(
-    {
-      mutationKey: ['approvals', 'answer'],
-      mutationFn: (args: ApprovalAnswerArgs) => control.approvalsAnswer(args),
-      // The variables can carry typed input values: keep no cached copy.
-      gcTime: 0,
-    },
-    queryClient,
-  );
+  return useMutation({
+    mutationKey: ['approvals', 'answer'],
+    mutationFn: (args: ApprovalAnswerArgs) => control.approvalsAnswer(args),
+    // The variables can carry typed input values: keep no cached copy.
+    gcTime: 0,
+  });
 }
 
 // Typed input values ride the approve answer only: a deny never carries them.

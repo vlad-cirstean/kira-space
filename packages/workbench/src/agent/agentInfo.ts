@@ -1,7 +1,6 @@
 import type { AgentEntry, AgentInfo } from '@shared/domain/agent';
-import { useQuery } from '@tanstack/vue-query';
+import { type QueryClient, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { setMessageDefaults, t } from '@theme/i18n';
-import { queryClient } from '@workbench/state/queryClient';
 import { computed, type InjectionKey, inject, type MaybeRefOrGetter, toValue, watch } from 'vue';
 
 // Client side of the bound AgentService: the names, models and optional roles of the agent
@@ -42,7 +41,7 @@ export function pendingAgent(): AgentInfo {
 }
 
 /** Drops the cached provider facts; the next read asks Go again. */
-export function invalidateAgentInfo(): Promise<void> {
+function invalidateAgentInfo(queryClient: QueryClient): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: ['agent'] });
 }
 
@@ -58,14 +57,14 @@ export function agentMessageParams(info: AgentInfo): Record<string, string> {
 
 /** The active provider. `info` is never undefined: it is pendingAgent() until the first answer. */
 export function useAgentInfo(control: AgentControl = useAgentControl()) {
-  const query = useQuery({ queryKey: INFO_KEY, queryFn: () => control.agentInfo() }, queryClient);
+  const query = useQuery({ queryKey: INFO_KEY, queryFn: () => control.agentInfo() });
   const info = computed(() => query.data.value ?? pendingAgent());
   return { info, query };
 }
 
 /** Every registered provider with its CLI's availability, in registration order. */
 export function useAgentList(control: AgentControl = useAgentControl()) {
-  const query = useQuery({ queryKey: LIST_KEY, queryFn: () => control.agentList() }, queryClient);
+  const query = useQuery({ queryKey: LIST_KEY, queryFn: () => control.agentList() });
   const list = computed(() => query.data.value ?? []);
   return { list, query };
 }
@@ -73,13 +72,10 @@ export function useAgentList(control: AgentControl = useAgentControl()) {
 /** The provider a stored conversation ran under ("" is the default provider). */
 export function useAgentInfoFor(id: MaybeRefOrGetter<string>) {
   const control = useAgentControl();
-  const query = useQuery(
-    {
-      queryKey: computed(() => ['agent', 'infoFor', toValue(id)]),
-      queryFn: () => control.agentInfoFor(toValue(id)),
-    },
-    queryClient,
-  );
+  const query = useQuery({
+    queryKey: computed(() => ['agent', 'infoFor', toValue(id)]),
+    queryFn: () => control.agentInfoFor(toValue(id)),
+  });
   const info = computed(() => query.data.value ?? pendingAgent());
   return { info, query };
 }
@@ -91,7 +87,8 @@ export function useAgentMessageDefaults(
   provider: () => string | undefined,
   control: AgentControl = useAgentControl(),
 ): void {
+  const queryClient = useQueryClient();
   const { info } = useAgentInfo(control);
   watch(info, (i) => setMessageDefaults(agentMessageParams(i)), { immediate: true });
-  watch(provider, () => void invalidateAgentInfo());
+  watch(provider, () => void invalidateAgentInfo(queryClient));
 }
