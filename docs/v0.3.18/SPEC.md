@@ -16,7 +16,8 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Planned |
 | P678 Part 2 | API MCP: kept variables script binding (`kept.get`/`kept.set`), held writes, review-card "Will keep"; runs after P676 and P677 | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
-| P680 | DB MCP: JS scripting and kept variables for SQL | Planned |
+| P680 Part 1 | DB MCP: kept variables as bound SQL parameters | Planned |
+| P680 Part 2 | DB MCP: JS result transform, raw and transformed review, `kept.set`; runs after P675, P676, P677, P678 Part 2 | Planned |
 | P681 | Dependency cleanup | Done |
 
 Chapter end (unasked, per working agreement, after the last implementation phase P681): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
@@ -75,7 +76,7 @@ The agent prepares a request that needs a value only the user has (a token). The
 
 Plan: `plans/P679.md`.
 
-## P680: DB MCP: JS scripting and kept variables for SQL
+## P680 Part 1 and Part 2: DB MCP: JS scripting and kept variables for SQL
 
 Give the SQL (database) MCP the same abilities as the API MCP: the agent prepares a query for the user and can post-process its result with a JS script before the result returns to the AI (parse, pick, anonymise); the script is shown to the user next to the statement in the approval card and the op log; results can be kept in named variables held by Kira (P678 store, same retention and visibility rules) and used by later queries or scripts, for example ids from one query passed as a list into the next. Kept values never return to the AI. Uses the P675 engine and the P678 store without forking either. Interacts with existing connection MCP settings (read, write and DDL modes, review results, masking): the script never widens what a connection allows, runs after masking and redaction, and a query's approval class is decided from the statement, not the script. Review view shows raw rows and transformed result as in P677. The plan decides tool shape, how variables bind into SQL safely (parameters, never string splicing), and per-adapter limits.
 
