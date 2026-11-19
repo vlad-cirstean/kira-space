@@ -11,7 +11,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
 | P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
-| P676 | API MCP: scripted request preparation and result transform | Planned |
+| P676 | API MCP: scripted request preparation and result transform | Done |
 | P677 | API MCP: result review with raw and transformed views | Planned |
 | P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Done |
 | P678 Part 2 | API MCP: kept variables script binding (`kept.get`/`kept.set`), held writes, review-card "Will keep"; runs after P676 and P677 | Planned |
@@ -77,6 +77,18 @@ Measured: worker round trip about 70 ms (app, linux dev build), 12 ms (test bina
 Agents use the engine to prepare an API call for the user and to post-process its result before it returns to the AI: parse, pick fields, or anonymise. The user must see the script: it appears in the approval card next to the request (read-only, syntax highlighted), and in the op log. The AI receives only the script output, never the raw response (unless the script returns it). Script input is the response (status, headers, body text, parsed JSON when valid). A failing or over-limit script returns a clear error to the agent, and the user sees the same error. Approval modes, redaction of credentials and the existing size limits keep applying; the plan decides tool shape (new argument on `api_request` versus new tool), schema docs in the prompt registry, and settings.
 
 Plan: `plans/P676.md`.
+
+Result: `api_request` takes `script: {prepare, input, transform}`. Prepare runs before `Plan` and returns request fields that replace the agent's; transform runs on the masked response and the agent gets `{"result": ...}` only. Code: `dbmcp/api_script.go`, `dbmcp/jsscript.go`, `agentapi` (`Input.ScriptBodyBytes`, `Result.Mask`). Op kinds `jsPrepare` and `jsTransform`; setting `dbMcp.apiScripts` (default on); prompt suffix and four argument entries; `JsScriptBlock.vue`, card tags and rows, settings switch, op log highlighting. Docs: `docs/ARCHITECTURE.md` "API scripts (P676)". Plan defaults held for the four open decisions.
+Tests: `TestApplyPrepared`; flows `TestApiRequestScripted`, `TestApiScriptFailures`, `TestApiScriptApprovalClass`, `TestApiScriptMasking`, `TestApiScriptsToggle`; UI specs `approvals-api-script`, `operations-api-script`, switch case in `dbmcp-api-settings`.
+Deviations from plan:
+- `runScript` is `execScript`: `runScript` is the script-run tool handler. `scriptRun` gains `Validate` (a post-run check whose text fails the run and its op row, so the invalid-return and masking texts also equal the row error).
+- `deliverAPI(ctx, plan, sc, o)` is the final point for every `api_request`, with or without scripts. Prepare-only still returns today's `agentapi.Result`.
+- Scripts off: `script` leaves the schema, so the SDK refuses it with `unexpected additional properties`; the plan's settings text is the backstop only. `script.input` needed a schema fix (`fixScriptSchema`: generated type is a byte array; `script` is a nullable object).
+- `jsengine.New()` is built in `wireEmbedded` beside `dbMcpSvc.API` (not in `wireApp`), no signature change. Shared hunks rebased onto P678 Part 1 (`Input.Scope`, `Kept`, `watchKept`) as additive edits.
+- Catalog keys sit at `studio.dbMcp.approval.api.scriptPrepare.*`, `scriptTransform`, `scriptChanged`, `scriptInput` (depth rule); truncated note reuses `studio.common.truncated.status`; `JavaScript` added to `PROPER_NOUNS`.
+- `bindings/` is generated and gitignored: not committed.
+Measured: flow with prepare and transform, approval included, 0.44 s end to end (two worker spawns); a `while(true){}` transform times out inside the 2 s limit.
+For P677: insert the review at the top of `deliverAPI` (`o.Raw` masked body up to 2 MiB with a transform, `o.Transformed`, `o.Failure`, `sc`). For P678 Part 2: append `keptRun.Bindings()` to `scriptRun.Bindings` in `prepareAPI` and `transformAPI`; commit staged values in `deliverAPI` and add `kept` beside `result`. Prepare output can carry `{{name}}` or `{{kept.x}}` text, which `Plan` resolves as a reference: decide escaping there. `JsScriptBlock` takes no highlight prop yet; add `rangeHighlights` as an optional prop.
 
 ## P677: API MCP: result review with raw and transformed views
 
