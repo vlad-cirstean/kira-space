@@ -10,7 +10,7 @@ import { checkCatalog, type UsedKeys } from './catalogRules';
 const REPO_ROOT = join(import.meta.dir, '..', '..');
 const CATALOG = join(REPO_ROOT, 'packages/theme/src/i18n/en.json');
 const UNUSED_SCAN = ['apps', 'packages', 'internal'];
-const SKIP_DIR = /(?:^|\/)(?:node_modules|dist|dist-test|dist-proto|\.git|tests?|testing)(?:\/|$)/;
+const SKIP_DIR = /(?:^|\/)(?:node_modules|dist|dist-test|\.git|tests?|testing)(?:\/|$)/;
 const SKIP_FILE = /(?:\.spec\.ts|\.test\.ts|_test\.go|\.d\.ts|\.check\.ts)$/;
 const KEY_LITERAL = /["'`]([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9]+){2,5})["'`]/g;
 const KEY_PREFIX = /`([a-z][a-zA-Z0-9]*(?:\.[a-zA-Z0-9]+)*\.)\$\{/g;

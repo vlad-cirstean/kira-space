@@ -3936,7 +3936,7 @@ repo's CI runs.
 
 ## Testing
 
-- Test suites under apps/kira-space/tests/ are unit/, ipc/, ui/, mobile/, e2e-real/, visual/, plus opt-in perf/ and proto/ (playwright.proto.config.ts); fixtures/ and support/ are not suites. unit/, ui/, e2e-real/, visual/, perf/ and screenshots/ each hold a studio/ subdirectory with the Studio modules' specs. Contract JSON sits flat in contract/; one UI harness (tests/ui/fixtures.ts, `studioTest` clicks the Studio mode tab) serves both.
+- Test suites under apps/kira-space/tests/ are unit/, ipc/, ui/, mobile/, e2e-real/, visual/, plus opt-in perf/; fixtures/ and support/ are not suites. unit/, ui/, e2e-real/, visual/, perf/ and screenshots/ each hold a studio/ subdirectory with the Studio modules' specs. Contract JSON sits flat in contract/; one UI harness (tests/ui/fixtures.ts, `studioTest` clicks the Studio mode tab) serves both.
 - One playwright.config.ts defines one project per tier (ui, ui-clipboard, ui-timing, visual, screenshots, e2e-real); only e2e-real-studio stays separate, for its own container fixtures. ui includes studio/ specs. ui-timing grep-selects wall-clock specs and depends on ui.
 - The ipc/ directory holds two suites, a Go backend half and a Playwright frontend half per adapter, sharing one fixture module by design (P50).
 - tests/unit/ and tests/ui/ (bun run test:ui) run against the built bundle; the internal/ Go suite is covered by bun run test:go.

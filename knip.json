@@ -44,10 +44,8 @@
       // src/lib/utils.ts and src/components/ui/** both moved out to packages/theme (P103's
       // byte-identical tier, folded into P100 Part 2) — that workspace's own block below now
       // carries the equivalent ignore.
-      // P165: the dev-only grid prototype's own page scripts (the proto/grid/*.html Vite entries of
-      // vite.proto.config.ts, which knip does not follow), never in the app build.
-      "entry": ["index.html", "mobile/index.html", "proto/grid/main.ts", "proto/grid/slickMain.ts"],
-      "project": ["src/**/*.{ts,vue}", "mobile/**/*.{ts,vue}", "proto/**/*.{ts,vue}"]
+      "entry": ["index.html", "mobile/index.html"],
+      "project": ["src/**/*.{ts,vue}", "mobile/**/*.{ts,vue}"]
     },
     "packages/shared": { "entry": ["**/*.ts"], "project": ["**/*.ts"] },
     "packages/theme": {
