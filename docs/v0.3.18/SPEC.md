@@ -23,6 +23,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Planned |
 | P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
 | P685 | Shared shell for the config-file dialogs | Planned |
+| P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Planned |
 
 ## P682: Async action error state
 
@@ -40,7 +41,13 @@ Parked by P674 Part 2. Kube logs filter lines (`SearchField`) plus `CopyLogButto
 
 Parked by P674 Part 2. `ApiVariablesDialog`, `ConnectionFileDialog` and `RunFileDialog` repeat draft wiring, head toolbar, section tabs and footer. Design a shared shell (sections, secret errors, per-kind forms) over three save flows. See `plans/P674-iter1.md` PARK.
 
-Chapter end (unasked, per working agreement, after the last implementation phase P681): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
+## P686: MCP e2e coverage
+
+Audit and extend end-to-end coverage of all MCP functionality added in this chapter (P675 to P680: JS engine, API scripts, result review, kept variables, user-supplied values, DB MCP parameters, scripts and review). Complex multi-step scenarios, each run as a backend flow test and a matching UI spec (same scenario, same asserted result, split at the IPC boundary): chained requests with kept variables across several calls and sessions; prepare script, approval, transform and review with raw and transformed views; a user-supplied value reused across requests and scripts and never reaching the agent, logs or op log; secret masking when a server echoes a kept or user-supplied value; held writes; retention expiry and clearing mid-chain; script failures, timeouts and crashes at every stage; setting toggles taking effect between calls; DB MCP kept lists bound as parameters on every adapter, script plus review on results, approval class decided from the statement. The plan starts with a coverage audit of existing tests per feature, lists gaps, and keeps `e2e-real` for what cannot be split. Fixes every product bug the scenarios expose.
+
+Plan: `plans/P686.md`.
+
+Chapter end (unasked, per working agreement, after the last implementation phase P686): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
 Standing rules for every phase below: new feature tests split at the IPC boundary (flow test plus UI spec, same scenario); UI follows `docs/ARCHITECTURE.md` uniformity rules and the guard script; no secret ever reaches an agent, a log or the op log; open-source licences only (check package and feature level).
 
