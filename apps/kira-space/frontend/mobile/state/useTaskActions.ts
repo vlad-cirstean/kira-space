@@ -1,12 +1,11 @@
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import { newIntentKey, useAdeWrites } from './useAdeWrites';
 import type { PlanCard } from './useAgentsModel';
 
 export type TaskIntent = 'back' | 'next' | 'start';
 
-const message = (err: unknown): string => errorText(err);
 const currentStepId = (c: PlanCard): string =>
   c.progress.finished ? 'done' : (c.progress.step?.id ?? c.task.entryStepId);
 
@@ -14,7 +13,8 @@ const currentStepId = (c: PlanCard): string =>
 export function useTaskActions(card: () => PlanCard) {
   const writes = useAdeWrites();
   const intent = ref<TaskIntent | null>(null);
-  const error = ref('');
+  const surface = useTaskAction();
+  const error = computed(() => surface.error.value ?? '');
   /** Handover notes for a Back or Next move; empty sends none. */
   const notes = ref('');
   let key = newIntentKey();
@@ -82,7 +82,7 @@ export function useTaskActions(card: () => PlanCard) {
   }
 
   function ask(next: TaskIntent): void {
-    error.value = '';
+    surface.reset();
     notes.value = '';
     key = newIntentKey();
     intent.value = next;
@@ -95,8 +95,7 @@ export function useTaskActions(card: () => PlanCard) {
   async function confirm(): Promise<void> {
     const c = card();
     const from = currentStepId(c);
-    error.value = '';
-    try {
+    await surface.run(async () => {
       if (intent.value === 'back' || intent.value === 'next') {
         const target = intent.value === 'back' ? c.moves.prev : c.moves.next;
         if (!target) return;
@@ -113,9 +112,7 @@ export function useTaskActions(card: () => PlanCard) {
         await writes.launchStep.mutateAsync({ taskId: c.task.id, fromStepId: from, key });
       }
       intent.value = null;
-    } catch (err) {
-      error.value = message(err);
-    }
+    });
   }
 
   return { intent, error, notes, busy, dialog, startKind, ask, cancel, confirm };

@@ -12,7 +12,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { ref, watch } from 'vue';
 import { newIntentKey, useAdeWrites } from '../state/useAdeWrites';
 
@@ -23,7 +23,8 @@ const emit = defineEmits<{ close: [] }>();
 
 const writes = useAdeWrites();
 const message = ref('');
-const error = ref('');
+const replying = useMutationAction(writes.sendReply);
+const error = replying.error;
 let key = newIntentKey();
 
 watch(
@@ -31,7 +32,7 @@ watch(
   (o) => {
     if (!o) return;
     message.value = '';
-    error.value = '';
+    replying.reset();
     key = newIntentKey();
   },
 );
@@ -39,13 +40,7 @@ watch(
 async function send(): Promise<void> {
   const text = message.value.trim();
   if (!text || writes.sendReply.isPending.value) return;
-  error.value = '';
-  try {
-    await writes.sendReply.mutateAsync({ sessionId: props.sessionId, message: text, key });
-    emit('close');
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  if (await replying.run({ sessionId: props.sessionId, message: text, key })) emit('close');
 }
 </script>
 

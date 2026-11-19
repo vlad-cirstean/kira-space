@@ -10,8 +10,8 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { TONE_BADGE } from '@theme/lib/statusTone';
 import { useApprovals } from '@workbench/approvals/approvalsQueries';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
-import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { storeToRefs } from 'pinia';
@@ -34,7 +34,15 @@ const router = useRouter();
 
 const replying = ref<{ sessionId: string; context: string } | null>(null);
 const takingOver = ref<{ sessionId: string; what: string } | null>(null);
-const takeOverError = ref('');
+const takingOverAction = useAsyncAction(async (target: { sessionId: string }) => {
+  const launch = await writes.takeOver.mutateAsync({
+    sessionId: target.sessionId,
+    key: takeOverKey,
+  });
+  takingOver.value = null;
+  void router.push({ name: 'terminal', params: { sessionId: launch.sessionId } });
+});
+const takeOverError = computed(() => takingOverAction.error.value ?? '');
 let takeOverKey = newIntentKey();
 
 const canReply = computed(() => permissions.value.agentInput);
@@ -47,7 +55,7 @@ const needsAgentInput = computed(
 );
 
 function askTakeOver(sessionId: string, what: string): void {
-  takeOverError.value = '';
+  takingOverAction.reset();
   takeOverKey = newIntentKey();
   takingOver.value = { sessionId, what };
 }
@@ -55,17 +63,7 @@ function askTakeOver(sessionId: string, what: string): void {
 async function confirmTakeOver(): Promise<void> {
   const target = takingOver.value;
   if (!target) return;
-  takeOverError.value = '';
-  try {
-    const launch = await writes.takeOver.mutateAsync({
-      sessionId: target.sessionId,
-      key: takeOverKey,
-    });
-    takingOver.value = null;
-    void router.push({ name: 'terminal', params: { sessionId: launch.sessionId } });
-  } catch (err) {
-    takeOverError.value = errorText(err);
-  }
+  await takingOverAction.run(target);
 }
 </script>
 

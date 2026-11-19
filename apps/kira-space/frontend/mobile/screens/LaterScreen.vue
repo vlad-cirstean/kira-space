@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import QueryState from '@workbench/components/QueryState.vue';
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
@@ -20,7 +20,8 @@ const board = useBoard();
 const { permissions } = storeToRefs(useAuthStore());
 const writes = useAdeWrites();
 const text = ref('');
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const canWrite = computed(() => permissions.value.write);
 
 const tasksOf = (shelf: 'later' | 'backlog') => {
@@ -35,13 +36,10 @@ const backlog = computed(() => tasksOf('backlog'));
 async function add(): Promise<void> {
   const value = text.value.trim();
   if (!value || writes.captureTask.isPending.value) return;
-  error.value = '';
-  try {
-    await writes.captureTask.mutateAsync({ title: value, key: newIntentKey() });
+  if (
+    await surface.run(() => writes.captureTask.mutateAsync({ title: value, key: newIntentKey() }))
+  )
     text.value = '';
-  } catch (err) {
-    error.value = errorText(err);
-  }
 }
 </script>
 
@@ -79,13 +77,8 @@ async function add(): Promise<void> {
           t('mobile.later.loadError.error')
         }}</Alert>
       </template>
-      <LaterShelf shelf="later" :tasks="later" :can-write="canWrite" @error="(m) => (error = m)" />
-      <LaterShelf
-        shelf="backlog"
-        :tasks="backlog"
-        :can-write="canWrite"
-        @error="(m) => (error = m)"
-      />
+      <LaterShelf shelf="later" :tasks="later" :can-write="canWrite" @run="surface.run" />
+      <LaterShelf shelf="backlog" :tasks="backlog" :can-write="canWrite" @run="surface.run" />
     </QueryState>
   </section>
 </template>
