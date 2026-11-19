@@ -36,6 +36,7 @@
 # Guard U190: docs/HISTORY.md (v0.3.18).
 # Guards U191-U203: docs/HISTORY.md (v0.3.18).
 # Guard U204: docs/HISTORY.md (v0.3.18).
+# Guards U205-U207: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -382,6 +383,9 @@ U201@@vt@@shared/page/visibleRows.ts@@hand visible window math (use pageRowWindo
 U202@@vt@@shared/page/navigation.ts@@offset cursor literal (use pageOffsetCursor, firstPageCursor)@@\{\s*mode: 'offset',\s*offset:
 U203@@vt@@shared/page/rowViews.ts@@hand page row decode (use the rowViews builders)@@store\.cached\(\w+, row, '(?:id|body|field|value)'
 U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand match beside LogLines)@@(?s)\A(?=.*<LogLines\b).*(?:<FindBar\b|\bmatchesQuery\()
+U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
+U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
+U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
 GUARDS
 
 # hits: "U<n> path"
