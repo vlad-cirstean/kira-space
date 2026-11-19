@@ -7,6 +7,7 @@ import { paneFrame } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { errorText } from '@workbench/bridge/codedError';
 import SaveBar from '@workbench/components/SaveBar.vue';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { onBeforeUnmount, useTemplateRef, watch } from 'vue';
 import { libraryWorkflow } from '../board/stepLibrary';
@@ -97,19 +98,18 @@ onBeforeUnmount(() => {
         library
       />
     </div>
-    <Alert v-if="draft.error" variant="error" data-testid="ade-wf-save-error">
+    <SaveConflictAlert
+      v-if="draft.error && draft.conflict"
+      :error="draft.error"
+      conflict
+      testid-prefix="ade-wf"
+      @reload="discard"
+      @overwrite="overwrite"
+    />
+    <Alert v-else-if="draft.error" variant="error" data-testid="ade-wf-save-error">
       <AlertDescription>{{ draft.error }}</AlertDescription>
       <AlertAction>
-        <template v-if="draft.conflict">
-          <Button variant="link" size="inline" data-testid="ade-wf-reload" @click="discard">
-            {{ t('common.action.refresh.label') }}
-          </Button>
-          <Button variant="link" size="inline" data-testid="ade-wf-overwrite" @click="overwrite">
-            {{ t('common.action.overwrite.label') }}
-          </Button>
-        </template>
         <Button
-          v-else
           variant="link"
           size="inline"
           data-testid="ade-step-switch-yaml"

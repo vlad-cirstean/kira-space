@@ -5,13 +5,22 @@ import { t } from '@theme/i18n';
 
 // A failed save of a config file. On a conflict (the file changed on disk) the alert offers Refresh
 // (`reload`) and Overwrite. `testidPrefix` gives `<prefix>-save-error`, `-reload` and `-overwrite`;
-// the default slot replaces the error text. Attrs (`strip`, class) reach the Alert.
-defineProps<{ error: string; conflict: boolean; testidPrefix: string }>();
+// the default slot replaces the error text; `variant` is `error` unless the host treats it as a
+// warning. Attrs (`strip`, class) reach the Alert.
+withDefaults(
+  defineProps<{
+    error: string;
+    conflict: boolean;
+    testidPrefix: string;
+    variant?: 'error' | 'warn';
+  }>(),
+  { variant: 'error' },
+);
 const emit = defineEmits<{ reload: []; overwrite: [] }>();
 </script>
 
 <template>
-  <Alert v-if="error" variant="error" :data-testid="`${testidPrefix}-save-error`">
+  <Alert v-if="error" :variant="variant" :data-testid="`${testidPrefix}-save-error`">
     <AlertDescription><slot>{{ error }}</slot></AlertDescription>
     <AlertAction v-if="conflict">
       <Button

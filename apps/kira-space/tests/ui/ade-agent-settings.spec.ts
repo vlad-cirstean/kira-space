@@ -136,7 +136,7 @@ test('storage that is unavailable disables Set and shows its reason', async ({ r
       reason: 'No keychain on this computer.',
     },
   });
-  await expect(page.locator(t('ade-settings-storage-off'))).toContainText('No keychain');
+  await expect(page.locator(t('ade-settings-secrets-storage-off'))).toContainText('No keychain');
   await expect(page.locator(t('ade-settings-secret-set'))).toBeDisabled();
 });
 

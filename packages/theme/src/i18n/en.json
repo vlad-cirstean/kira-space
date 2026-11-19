@@ -10923,16 +10923,7 @@
           }
         },
         "secrets": {
-          "deleteConfirm": {
-            "body": "Settings that reference this secret fail to launch until you set it again."
-          },
-          "hint": "Write {ref} in the settings. Values stay sealed on this computer.",
-          "none": {
-            "hint": "No secrets yet. Reference one in the settings to see it here."
-          },
-          "storageOff": {
-            "hint": "Secret storage is not available."
-          }
+          "hint": "Write {ref} in the settings. Values stay sealed on this computer."
         }
       },
       "setup": {

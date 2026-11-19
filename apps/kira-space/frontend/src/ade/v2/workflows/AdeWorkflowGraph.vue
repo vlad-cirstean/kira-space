@@ -12,6 +12,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import SaveBar from '@workbench/components/SaveBar.vue';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import '@vue-flow/core/dist/style.css';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -410,19 +411,18 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-    <Alert v-if="draft.error" variant="error" data-testid="ade-wf-save-error">
+    <SaveConflictAlert
+      v-if="draft.error && draft.conflict"
+      :error="draft.error"
+      conflict
+      testid-prefix="ade-wf"
+      @reload="discard"
+      @overwrite="overwrite"
+    />
+    <Alert v-else-if="draft.error" variant="error" data-testid="ade-wf-save-error">
       <AlertDescription>{{ draft.error }}</AlertDescription>
       <AlertAction>
-        <template v-if="draft.conflict">
-          <Button variant="link" size="inline" data-testid="ade-wf-reload" @click="discard">
-            {{ t('common.action.refresh.label') }}
-          </Button>
-          <Button variant="link" size="inline" data-testid="ade-wf-overwrite" @click="overwrite">
-            {{ t('common.action.overwrite.label') }}
-          </Button>
-        </template>
         <Button
-          v-else
           variant="link"
           size="inline"
           data-testid="ade-wf-switch-yaml"
