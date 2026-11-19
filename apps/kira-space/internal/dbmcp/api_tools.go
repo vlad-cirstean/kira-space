@@ -185,6 +185,10 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		o = s.transformAPI(ctx, plan, sc, raw)
 		o.Inputs = statuses
 	}
+	// The environment's agentReview may have changed while the card waited or the request ran.
+	if fresh, perr := s.cfg.API.Plan(in); perr == nil {
+		plan.Env = fresh.Env
+	}
 	return s.deliverAPI(ctx, plan, sc, o, ap.requested)
 }
 
