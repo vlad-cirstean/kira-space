@@ -45,6 +45,9 @@ type DbMcpService struct {
 	API dbmcp.APIRequester
 	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves them off.
 	Kept dbmcp.KeptStore
+	// JS and ScriptOps run and record the scripts agents attach to API requests (P676); nil turns scripts off.
+	JS        dbmcp.ScriptEngine
+	ScriptOps dbmcp.OpRunner
 	// Limits are extra run_query limits for the embedded server (flow tests); production adds its limits
 	// inside dbmcp.
 	Limits []dbmcp.Limit
@@ -139,6 +142,8 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 		API:              s.API,
 		APISettings:      s.apiSettings,
 		Kept:             s.Kept,
+		JS:               s.JS,
+		ScriptOps:        s.ScriptOps,
 		MaskRules:        s.Deps.MaskRules,
 		ColumnReview:     s.Deps.MaskReview,
 		ExplainThreshold: s.explainThreshold,

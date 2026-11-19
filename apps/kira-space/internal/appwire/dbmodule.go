@@ -30,6 +30,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/jsengine"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
@@ -228,6 +229,8 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	dbMcpSvc.Scripts = bridge.NewScriptControl(w.runs)
 	dbMcpSvc.API = agentAPI
 	dbMcpSvc.Kept = w.Kept
+	dbMcpSvc.JS = jsengine.New()
+	dbMcpSvc.ScriptOps = deps.Router.Host()
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
