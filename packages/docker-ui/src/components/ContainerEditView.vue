@@ -8,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { Tabs, TabsContent } from '@theme/components/ui/tabs';
 import { t } from '@theme/i18n';
+import { isConflict } from '@workbench/bridge/codedError';
 import { computed, ref, watch } from 'vue';
 import { useDocker } from '../context';
 import { fieldErrors, hasNowChanges, inPlaceForApply } from '../lib/editDiff';
@@ -109,7 +110,7 @@ function toFailure(e: unknown): EditFailure {
 function fail(e: unknown): void {
   const f = toFailure(e);
   store.failure[props.containerId] = f;
-  if (f.code === 'E_CONFLICT' && draft.value) draft.value.stale = true;
+  if (isConflict(e) && draft.value) draft.value.stale = true;
 }
 
 async function applyNow(): Promise<void> {
@@ -127,7 +128,7 @@ async function applyNow(): Promise<void> {
     store.expectRebase(cid);
   } catch (e) {
     fail(e);
-    if ((e as { code?: string }).code !== 'E_CONFLICT') store.expectRebase(cid);
+    if (!isConflict(e)) store.expectRebase(cid);
   } finally {
     store.end(cid);
   }

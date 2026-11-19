@@ -7,6 +7,7 @@ import { t } from '@theme/i18n';
 import { useTimeoutFn, useWindowFocus } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
+import { isConflict } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
 import { useWorkbenchHost } from '@workbench/host';
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
@@ -124,7 +125,7 @@ async function toggleWorking(paths: readonly string[], reviewed: boolean): Promi
     });
   } catch (err) {
     logError('adeReviewFiles', 'uncommitted review mark failed', err);
-    if ((err as { code?: string }).code === 'E_CONFLICT') {
+    if (isConflict(err)) {
       markRefused.value = true;
       hideRefused.start();
       void invalidateReviewWorking();

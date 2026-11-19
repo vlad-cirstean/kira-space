@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { useWindowFocus } from '@vueuse/core';
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
+import { isConflict } from '@workbench/bridge/codedError';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, type Ref, watch } from 'vue';
@@ -193,7 +194,7 @@ export function useFileEdit(o: FileEditOptions) {
       store.setDirty(o.tabId, m.getAlternativeVersionId() !== versionId);
       if (fileTree.isRepoTreeLoaded(repoId)) void fileTree.refreshRepoTree(repoId);
     } catch (err) {
-      if ((err as { code?: string }).code === 'E_CONFLICT') {
+      if (isConflict(err)) {
         const probe = await readFresh();
         store.setConflict(o.tabId, probe?.kind === 'missing' ? 'gone' : 'changed');
         return;
