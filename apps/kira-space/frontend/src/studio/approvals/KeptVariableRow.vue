@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { KeptUse } from '@shared/domain/kept';
+import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
-import { useRelativeTime } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import KeptValueView from '../kept/KeptValueView.vue';
 import { useKeptExpiry } from '../kept/keptExpiry';
 import { keptTypeLabel } from '../kept/keptFormat';
@@ -14,7 +15,6 @@ import { KEPT_MARK_CLASS } from '../kept/keptHighlight';
 // decides expiry.
 const props = defineProps<{ use: KeptUse; usedIn: string }>();
 
-const age = useRelativeTime(() => props.use.createdAt);
 const expiry = useKeptExpiry(() => props.use.expiresAt);
 </script>
 
@@ -22,7 +22,7 @@ const expiry = useKeptExpiry(() => props.use.expiresAt);
   <KeyValueList columns="fixed" density="compact">
     <dt>{{ t('common.field.name.label') }}</dt>
     <dd class="font-data">
-      <mark :class="['rounded-kira-sm text-inherit', KEPT_MARK_CLASS]">{{ use.name }}</mark>
+      <HighlightedText :parts="[{ text: use.name, match: true }]" :mark-class="KEPT_MARK_CLASS" />
       <span class="text-muted-foreground"> · {{ keptTypeLabel(use) }}</span>
     </dd>
     <dt>{{ t('common.field.value.label') }}</dt>
@@ -33,7 +33,7 @@ const expiry = useKeptExpiry(() => props.use.expiresAt);
       <span v-if="use.source.client" class="text-muted-foreground">{{ use.source.client }}</span>
     </dd>
     <dt>{{ t('studio.kept.keptAt.label') }}</dt>
-    <dd data-testid="kept-age">{{ age }}</dd>
+    <dd data-testid="kept-age"><RelativeTime :at="use.createdAt" /></dd>
     <dt>{{ t('studio.kept.expiry.label') }}</dt>
     <dd data-testid="kept-expiry">{{ expiry }}</dd>
     <template v-if="usedIn">

@@ -3,7 +3,6 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
@@ -17,13 +16,9 @@ import {
 } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
-import {
-  displayValue,
-  formatBytes,
-  formatDateTime,
-  useRelativeTime,
-} from '@workbench/behaviour/format';
+import { displayValue, formatBytes } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import { useEngineDiskUsage } from '../queries';
 
@@ -33,8 +28,6 @@ const { query, refresh } = useEngineDiskUsage();
 
 const usage = computed(() => query.data.value);
 const measuring = computed(() => query.isFetching.value);
-const takenAt = computed(() => (usage.value ? new Date(usage.value.takenAt) : new Date()));
-const ago = useRelativeTime(takenAt);
 
 const categories = computed(() => {
   const u = usage.value;
@@ -58,8 +51,8 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
   <DetailSection :title="t('docker.disk.title')" class="shrink-0">
     <template #actions>
       <span class="ml-auto flex items-center gap-1">
-        <TextTooltip v-if="usage" :text="formatDateTime(usage.takenAt)"
-          ><span data-testid="docker-disk-taken">{{ ago }}</span></TextTooltip
+        <span v-if="usage" data-testid="docker-disk-taken"
+          ><RelativeTime :at="usage.takenAt" /></span
         >
         <TooltipIconButton
           icon="refresh"

@@ -6,7 +6,7 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { useRelativeTime } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import KeptValueView from '../../kept/KeptValueView.vue';
 import { useKeptExpiry } from '../../kept/keptExpiry';
 import { keptTypeLabel } from '../../kept/keptFormat';
@@ -15,7 +15,6 @@ import { keptTypeLabel } from '../../kept/keptFormat';
 const props = defineProps<{ entry: KeptEntry }>();
 defineEmits<{ clear: [] }>();
 
-const age = useRelativeTime(() => props.entry.createdAt);
 const expiry = useKeptExpiry(() => props.entry.expiresAt);
 </script>
 
@@ -36,7 +35,9 @@ const expiry = useKeptExpiry(() => props.entry.expiresAt);
     </div>
     <div class="flex w-full min-w-0 items-baseline gap-1.5 text-muted-foreground text-kira-sm">
       <TruncatedText class="font-data" :text="entry.source.request" />
-      <span class="shrink-0" data-testid="kept-entry-age">{{ age }}</span>
+      <span class="shrink-0" data-testid="kept-entry-age"
+        ><RelativeTime :at="entry.createdAt" /></span
+      >
       <span class="shrink-0" data-testid="kept-entry-expiry">{{ expiry }}</span>
     </div>
     <KeptValueView class="w-full" :entry="entry" />

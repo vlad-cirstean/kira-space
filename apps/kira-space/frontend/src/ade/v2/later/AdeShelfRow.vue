@@ -3,7 +3,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { useRelativeTime } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
@@ -20,7 +20,6 @@ const props = defineProps<{ card: CardModel }>();
 const ui = useAdeBoardUiStore();
 const selected = computed(() => ui.selectedTaskId === props.card.task.id);
 const menu = useTaskMenu(() => props.card);
-const ago = useRelativeTime(() => props.card.task.createdAt);
 function openMore(ev: MouseEvent): void {
   if (ev.currentTarget instanceof Element) menu.openAt(ev.currentTarget);
 }
@@ -68,7 +67,9 @@ const facts = computed(() =>
         facts
       }}</span
     >
-    <span :class="[rowMeta, 'w-16 shrink-0']" data-testid="ade-shelf-ago">{{ ago }}</span>
+    <span :class="[rowMeta, 'w-16 shrink-0']" data-testid="ade-shelf-ago"
+      ><RelativeTime :at="card.task.createdAt" /></span
+    >
     <TooltipIconButton
       icon="ellipsis"
       :label="t('common.moreActions.tooltip')"

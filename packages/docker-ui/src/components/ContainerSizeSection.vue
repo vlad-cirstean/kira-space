@@ -4,11 +4,11 @@ import DetailSection from '@theme/components/DetailSection.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import Spinner from '@theme/components/Spinner.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { formatBytes, formatDateTime, useRelativeTime } from '@workbench/behaviour/format';
+import { formatBytes } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import { useContainerSize } from '../queries';
 
@@ -18,17 +18,13 @@ const { query, refresh } = useContainerSize(() => props.id);
 
 const size = computed(() => query.data.value);
 const measuring = computed(() => query.isFetching.value);
-const takenAt = computed(() => (size.value ? new Date(size.value.takenAt) : new Date()));
-const ago = useRelativeTime(takenAt);
 </script>
 
 <template>
   <DetailSection :title="t('docker.field.size.label')">
     <template #actions>
       <span class="ml-auto flex items-center gap-1">
-        <TextTooltip v-if="size" :text="formatDateTime(size.takenAt)"
-          ><span data-testid="docker-size-taken">{{ ago }}</span></TextTooltip
-        >
+        <span v-if="size" data-testid="docker-size-taken"><RelativeTime :at="size.takenAt" /></span>
         <TooltipIconButton
           icon="refresh"
           :label="t('docker.size.measure.tooltip')"
