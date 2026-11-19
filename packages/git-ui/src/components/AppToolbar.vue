@@ -422,7 +422,7 @@ const stashDisabled = computed(
       <Spinner label="" />
       <span class="max-w-65 truncate">{{ progressText }}</span>
       <TooltipIconButton
-        icon="close"
+        :icon="ICON.stop"
         :label="cancellable ? t('common.action.cancel.label') : (cancelDisabledReason ?? '')"
         :disabled="!cancellable"
         disabled-trigger

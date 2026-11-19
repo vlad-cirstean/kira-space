@@ -7,6 +7,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { type MessageKey, t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { type StatusTone, TONE_BADGE, TONE_TEXT } from '@theme/lib/statusTone';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
 import { errorText } from '@workbench/bridge/codedError';
@@ -343,7 +344,7 @@ function logToggleLabel(runId: string): string {
                 data-testid="ade-run-resume"
                 @click="onResume(rl.run.runId)"
               >
-                <CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
+                <CodiconIcon :name="ICON.resume" :size="13" />{{ t('common.action.resume.label') }}
               </Button>
             </TextTooltip>
             <Button
@@ -373,7 +374,8 @@ function logToggleLabel(runId: string): string {
                 data-testid="ade-run-takeover"
                 @click="takeOver.request(rl.run.sessionId)"
               >
-                <CodiconIcon name="terminal" :size="13" />{{ t('common.action.takeOver.label') }}
+                <CodiconIcon :name="ICON.takeOver" :size="13" />
+                {{ t('common.action.takeOver.label') }}
               </Button>
             </TextTooltip>
             <Button

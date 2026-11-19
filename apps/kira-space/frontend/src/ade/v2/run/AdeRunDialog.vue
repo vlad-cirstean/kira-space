@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
@@ -247,10 +247,8 @@ async function send(): Promise<void> {
             <FieldLabel for="ade-run-message">{{
               t('space.ade.agentDialog.message.label')
             }}</FieldLabel>
-            <TooltipIconButton
+            <ResetToDefaultButton
               v-if="edited"
-              icon="discard"
-              :label="t('common.action.resetToDefault.label')"
               data-testid="ade-run-reset"
               @click="message = initial"
             />

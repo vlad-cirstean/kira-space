@@ -11,6 +11,7 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { RadioGroup, RadioGroupCard } from '@theme/components/ui/radio-group';
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
@@ -345,7 +346,7 @@ const stateLabel = (c: ReviewComment): string =>
           size="kira"
           data-testid="ade-review-resume"
           @click="act(() => resume.mutateAsync({ runId: round!.run.id }), 'resume')"
-          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
+          ><CodiconIcon :name="ICON.resume" :size="13" />{{ t('common.action.resume.label') }}
         </Button>
         <Button
           variant="toolbar"

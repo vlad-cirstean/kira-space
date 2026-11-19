@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { computed } from 'vue';
 import { useStopRun } from '../queries';
 import { useAdeOpsStore } from '../state/adeOps';
@@ -44,7 +45,7 @@ async function onStop(): Promise<void> {
         data-testid="ade-session-takeover"
         @click="takeOver.request(view.session.id)"
       >
-        <CodiconIcon name="terminal" :size="13" />{{ t('common.action.takeOver.label') }}
+        <CodiconIcon :name="ICON.takeOver" :size="13" />{{ t('common.action.takeOver.label') }}
       </Button>
     </TextTooltip>
     <TextTooltip v-if="view.run?.state === 'running'" :text="t('space.ade.headless.stop.tooltip')">

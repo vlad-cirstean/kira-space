@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -256,10 +256,8 @@ async function discard(): Promise<void> {
             <FieldLabel for="ade-dialog-message">{{
               t('space.ade.agentDialog.message.label')
             }}</FieldLabel>
-            <TooltipIconButton
+            <ResetToDefaultButton
               v-if="view.edited"
-              icon="discard"
-              :label="t('common.action.resetToDefault.label')"
               data-testid="ade-dialog-reset"
               @click="dialogs.msg = null"
             />

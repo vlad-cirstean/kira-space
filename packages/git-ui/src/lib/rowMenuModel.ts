@@ -215,7 +215,7 @@ export function buildRefMenu(ctx: RefMenuContext): MenuSection[] {
         label: t('git.toolbar.push.tooltip', { remote }),
         disabled: true,
         disabledReason: TAG_REMOTE_OPS_UNSUPPORTED,
-        icon: 'cloud',
+        icon: 'repo-push',
       });
       items.push({
         id: `deleteRemoteRef:${remote}`,
