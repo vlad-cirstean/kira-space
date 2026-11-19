@@ -13,7 +13,7 @@ import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import { computed, ref, watch } from 'vue';
 import AdeRunLog from '../panel/AdeRunLog.vue';
@@ -70,7 +70,8 @@ const finish = useFinishReview();
 const stop = useStopRun();
 const resume = useResumeRun();
 const ops = useAdeOpsStore();
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const note = ref('');
 const confirmResult = ref<string | null>(null);
 const showLog = ref(false);
@@ -89,23 +90,21 @@ type ReviewOp = 'sendReview' | 'finishReview' | 'stopRuns' | 'resume';
 
 /** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, toast. */
 async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean> {
-  error.value = '';
+  if (!kind) return surface.run(fn);
+  // The op needs the original failure (an `OpAborted` ends it silently); the surface shows it.
   const capture = async (): Promise<void> => {
-    try {
-      await fn();
-    } catch (err) {
-      error.value = errorText(err);
-      throw err;
-    }
+    let failure: unknown;
+    const ok = await surface.run(async () => {
+      try {
+        await fn();
+      } catch (err) {
+        failure = err;
+        throw err;
+      }
+    });
+    if (!ok) throw failure;
   };
-  if (!kind) {
-    try {
-      await capture();
-      return true;
-    } catch {
-      return false;
-    }
-  }
+  surface.reset();
   const { taskId, branchId, branch } = props.target;
   return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId, name: branch }, capture);
 }

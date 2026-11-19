@@ -20,10 +20,10 @@ import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useKeptState } from '@workbench/behaviour/viewState';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
-import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import ViewHead from '@workbench/components/ViewHead.vue';
 import { configName } from '@workbench/config/configName';
@@ -131,17 +131,13 @@ const title = computed(() =>
       ? t('space.repo.settingsFile.otherFiles.label')
       : t('space.ade.repos.scanFolders.label'),
 );
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const note = ref('');
 
 async function run(task: () => Promise<void>): Promise<void> {
-  error.value = '';
   note.value = '';
-  try {
-    await task();
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await surface.run(task);
 }
 
 const onImport = () => run(async () => void (await codeRepos.importRepoViaDialog()));

@@ -5,8 +5,8 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { useTimeoutFn, useWindowFocus } from '@vueuse/core';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
-import { errorText } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
 import { useWorkbenchHost } from '@workbench/host';
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
@@ -31,7 +31,6 @@ import {
 const props = defineProps<{ target: ReviewWindowTarget }>();
 
 const repoHold = useGitRepoHold(() => props.target.gitRepoId);
-const errorMessage = ref('');
 const container = ref<HTMLElement | null>(null);
 let handle: MountHandle | null = null;
 const api = shallowRef<ReviewApi | null>(null);
@@ -174,37 +173,36 @@ watch(
   },
 );
 
-onMounted(async () => {
+async function mountReview(): Promise<void> {
   if (!container.value) return;
-  try {
-    // The review view only asks about a repo this window already holds.
-    await repoHold.ready();
-    const transport = gitTransportFor(props.target.codeRepoId);
-    const { mount, NullViewStateStore } = await loadGitUi();
-    if (!container.value) return;
-    handle = mount(container.value, {
-      transport,
-      viewState: new NullViewStateStore(),
-      view: 'review',
-      target: {
-        repoId: props.target.gitRepoId,
-        branch: props.target.branch,
-        base: props.target.base,
-        pane: 'files',
-      },
-      lockTarget: true,
-      reviewShortcuts: true,
-      onReviewApi: (a) => {
-        api.value = a;
-        unregisterNavigator?.();
-        unregisterNavigator = navigation.register(props.target.codeRepoId, a);
-      },
-    });
-    pushWorking();
-  } catch (err) {
-    errorMessage.value = errorText(err);
-  }
-});
+  // The review view only asks about a repo this window already holds.
+  await repoHold.ready();
+  const transport = gitTransportFor(props.target.codeRepoId);
+  const { mount, NullViewStateStore } = await loadGitUi();
+  if (!container.value) return;
+  handle = mount(container.value, {
+    transport,
+    viewState: new NullViewStateStore(),
+    view: 'review',
+    target: {
+      repoId: props.target.gitRepoId,
+      branch: props.target.branch,
+      base: props.target.base,
+      pane: 'files',
+    },
+    lockTarget: true,
+    reviewShortcuts: true,
+    onReviewApi: (a) => {
+      api.value = a;
+      unregisterNavigator?.();
+      unregisterNavigator = navigation.register(props.target.codeRepoId, a);
+    },
+  });
+  pushWorking();
+}
+const mounting = useAsyncAction(mountReview);
+const errorMessage = mounting.error;
+onMounted(() => void mounting.run());
 
 onUnmounted(() => {
   unregisterNavigator?.();

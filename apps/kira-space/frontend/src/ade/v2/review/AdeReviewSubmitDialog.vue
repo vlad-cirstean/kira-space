@@ -16,6 +16,7 @@ import {
 import { FieldDescription } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import Identifier from '@workbench/components/Identifier.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
@@ -65,7 +66,8 @@ const SUBMIT: Record<Mode, MessageKey> = {
 
 const short = computed(() => hostWords(live.value.host).changeRequestShort);
 const body = ref('');
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const required = computed(() => props.mode !== 'approve');
 const posting = computed(() => submitReview.isPending.value || comment.isPending.value);
 const refreshing = computed(() => state.isFetching.value);
@@ -81,8 +83,7 @@ const headDiffers = computed(() => props.mode !== 'conversation' && headStale(li
 
 async function submit(): Promise<void> {
   if (!canSubmit.value) return;
-  error.value = '';
-  try {
+  await surface.run(async () => {
     const res =
       props.mode === 'conversation'
         ? await comment.mutateAsync({ number: live.value.number, body: body.value })
@@ -96,13 +97,11 @@ async function submit(): Promise<void> {
       emit('done', props.mode === 'conversation' ? 'comment' : 'review');
       emit('close');
     } else if (res.kind === 'unavailable') {
-      error.value = res.status.reason ?? '';
+      throw new Error(res.status.reason ?? '');
     } else {
-      error.value = t('space.ade.review.actions.errorDisabled.body');
+      throw new Error(t('space.ade.review.actions.errorDisabled.body'));
     }
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
