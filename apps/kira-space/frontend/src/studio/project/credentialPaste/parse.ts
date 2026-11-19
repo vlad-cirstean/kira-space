@@ -375,7 +375,7 @@ function clientOf(line: string): { prefix: string; rest: string; name: string | 
 // Bare operators end the command; shlex splits words only, so a quoted `;` stays inside its word.
 const SHELL_OPERATORS = new Set(['|', '||', '&', '&&', ';', '>', '>>', '<', '#']);
 
-/** shlex throws on an unterminated quote; shell-quote read it to end of line. Keep that. */
+/** shlex throws on an unterminated quote; close it so the text reads to end of line. */
 function splitLenient(text: string): string[] {
   for (const tail of ['', "'", '"']) {
     try {
