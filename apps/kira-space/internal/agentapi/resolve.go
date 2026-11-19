@@ -273,7 +273,7 @@ func buildPlanned(env EnvInfo, in Input, avail map[string]available, usedBefore 
 	}
 	creds := referencedCredentials(in, avail)
 	p := Planned{
-		Env: env, Method: in.Method, URL: display, Host: u.Hostname(), Query: queryOf(u),
+		Env: env, Method: in.Method, URL: display, Host: u.Hostname(), Origin: OriginOf(u), Query: queryOf(u),
 		Headers: in.Headers, Body: in.Body, ContentType: in.ContentType, Form: in.Form,
 		Variables:       variablesUsed(usedBefore, creds, avail),
 		FollowRedirects: followOf(in), TimeoutSeconds: in.TimeoutSeconds, MaxResponseBytes: in.MaxResponseBytes,
@@ -446,11 +446,17 @@ func hostList(rules []apiaccess.HostRule) string {
 // access rules refuse. A hop to a host no rule matches is refused unless the policy allows everything or the
 // request was approved by hand and the hop stays on its host. The hop is checked with the request's own method,
 // even when a 303 turns it into a GET.
-func redirectGuard(method string, creds []credential, access apiaccess.Policy, origin *url.URL, approved bool) func(*url.URL) error {
-	if len(creds) == 0 && access.AllowsAll() {
+//
+// A request that carries a value the user supplied (userOrigin) is bound to that origin: a hop off its scheme, host
+// or port is blocked, whatever the rules say.
+func redirectGuard(method string, creds []credential, access apiaccess.Policy, origin *url.URL, approved bool, userOrigin string) func(*url.URL) error {
+	if len(creds) == 0 && access.AllowsAll() && userOrigin == "" {
 		return nil
 	}
 	return func(next *url.URL) error {
+		if userOrigin != "" && OriginOf(next) != userOrigin {
+			return fmt.Errorf("redirect to %s blocked: a value you supplied is bound to %s", next.Host, userOrigin)
+		}
 		for _, c := range creds {
 			if !allowsAny(c.rules, next) {
 				return fmt.Errorf("redirect to %s blocked: credential %q is not allowed there", next.Host, c.name)

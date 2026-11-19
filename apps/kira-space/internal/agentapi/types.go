@@ -39,6 +39,10 @@ type Input struct {
 	// ScriptBodyBytes is the masked body cap for a response a transform script reads (0: no transform,
 	// MaxResponseBytes applies). Bounded to MaxScriptBodyBytes; not part of sameRequest.
 	ScriptBodyBytes int
+	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
+	Inputs []InputDecl
+	// ScriptReads names the kept variables the request's scripts read by literal kept.get.
+	ScriptReads []string
 }
 
 // MaxScriptBodyBytes bounds ScriptBodyBytes.
@@ -90,6 +94,10 @@ type Planned struct {
 	Credentials []Credential
 	// Kept lists the kept variables the request uses, as they stood at plan time.
 	Kept []KeptUse
+	// Inputs are the declared inputs and whether each has a stored value; Origin is the request's
+	// scheme://host[:port], the key a user value is bound to.
+	Inputs []InputUse
+	Origin string
 
 	// AllowedByRule: an allow rule matched, so the request needs no approval.
 	AllowedByRule bool
@@ -137,10 +145,19 @@ type Result struct {
 	ElapsedMs   int         `json:"elapsedMs"`
 	FinalURL    string      `json:"finalUrl"`
 	Redirects   []Redirect  `json:"redirects"`
+	// Inputs says what happened to each declared input; set by the caller that kept them.
+	Inputs []InputStatus `json:"inputs,omitempty"`
 
 	// Mask is the request's text masker: it removes secrets from anything derived from the response,
 	// such as script output or error text. Nil on a zero Result.
 	Mask func(string) string `json:"-"`
+}
+
+// InputStatus is what became of a declared input: supplied, reused or replaced.
+type InputStatus struct {
+	Name             string `json:"name"`
+	Status           string `json:"status"`
+	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
 
 // VarView is an available variable as the listing shows it. Never a value.

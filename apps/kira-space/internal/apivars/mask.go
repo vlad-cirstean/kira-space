@@ -32,6 +32,16 @@ import (
 // rendered form that contains a shorter one (e.g. two secrets where one's rendered text happens to
 // be a prefix of another's) must be listed first, or the shorter pattern would shadow it.
 func Replacer(used []UsedSecret) *strings.Replacer {
+	pairs := ReplacerPairs(used)
+	if len(pairs) == 0 {
+		return nil
+	}
+	return strings.NewReplacer(pairs...)
+}
+
+// ReplacerPairs is the argument list Replacer builds its strings.Replacer from, for callers that merge it
+// with another pattern list into one replacer. Nil when there is nothing to mask.
+func ReplacerPairs(used []UsedSecret) []string {
 	if len(used) == 0 {
 		return nil
 	}
@@ -62,10 +72,7 @@ func Replacer(used []UsedSecret) *strings.Replacer {
 			pairs = append(pairs, encoded, u.Placeholder)
 		}
 	}
-	if len(pairs) == 0 {
-		return nil
-	}
-	return strings.NewReplacer(pairs...)
+	return pairs
 }
 
 // DistinctNames counts distinct Names in used — D9(e): Wire.MaskedSecrets means "how many

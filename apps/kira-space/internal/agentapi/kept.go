@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,10 @@ const (
 // KeptReader is the store view the service plans against; *keptvars.Store satisfies it.
 type KeptReader interface {
 	Get(scope, name string) (keptvars.Entry, bool)
+	// List is the live entries of a scope (room checks for inputs).
+	List(scope string) []keptvars.Meta
+	// Secrets is the live secret entries of every scope, for response masks.
+	Secrets() []keptvars.Entry
 }
 
 // KeptSite is one {{kept.<name>}} span in a field of the planned request. From and To are UTF-16 code
@@ -52,6 +57,8 @@ type KeptUse struct {
 	Preview          string          `json:"preview"`
 	PreviewTruncated bool            `json:"previewTruncated"`
 	Sites            []KeptSite      `json:"sites"`
+	// Pending marks a use whose value the user has yet to supply: ID is empty.
+	Pending bool `json:"pending,omitempty"`
 }
 
 // keptValue is a value held for one send only.
@@ -98,13 +105,80 @@ func inputKeptTexts(in Input) []keptText {
 type keptPlan struct {
 	order   []string
 	entries map[string]keptvars.Entry
+	// pending are the names of needed inputs: their entries are stand-ins.
+	pending map[string]bool
+	inputs  []InputUse
 }
 
 func keptErr(format string, args ...any) error { return fmt.Errorf(format, args...) }
 
+func (s *Service) lookupKept(scope, name string) (keptvars.Entry, bool) {
+	if s.Kept == nil || scope == "" || keptvars.ValidName(name) != nil {
+		return keptvars.Entry{}, false
+	}
+	return s.Kept.Get(scope, name)
+}
+
+// admit records the entry a reference names: a live entry, or the stand-in of a needed input.
+func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]InputDecl, origin string) error {
+	e, ok := s.lookupKept(in.Scope, name)
+	if d, declared := decls[name]; declared {
+		use, err := judgeInput(d, e, ok, origin)
+		if err != nil {
+			return err
+		}
+		kp.inputs = append(kp.inputs, use)
+		if !ok {
+			e = pendingEntry(name, origin)
+			kp.pending[name] = true
+		}
+	} else if !ok {
+		return keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables"+inputsDeclHint, name)
+	} else if e.Source.Kind == keptvars.SourceUser && origin != "" && e.Origin != origin {
+		return otherOriginError(name, e.Origin, origin)
+	}
+	kp.entries[name] = e
+	kp.order = append(kp.order, name)
+	return nil
+}
+
+// admitUnreferenced judges the declared inputs the request text does not reference: each must be read by a
+// script, else the declaration is dead.
+func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]InputDecl, origin string) error {
+	done := map[string]bool{}
+	for _, u := range kp.inputs {
+		done[u.Name] = true
+	}
+	for _, d := range in.Inputs {
+		if done[d.Name] {
+			continue
+		}
+		e, ok := s.lookupKept(in.Scope, d.Name)
+		use, err := judgeInput(decls[d.Name], e, ok, origin)
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(in.ScriptReads, d.Name) {
+			return keptErr("input %q is declared but not used; write {{kept.%s}} where the value goes", d.Name, d.Name)
+		}
+		kp.inputs = append(kp.inputs, use)
+	}
+	// Declaration order, whatever order the references came in.
+	slices.SortStableFunc(kp.inputs, func(a, b InputUse) int {
+		return slices.IndexFunc(in.Inputs, func(d InputDecl) bool { return d.Name == a.Name }) -
+			slices.IndexFunc(in.Inputs, func(d InputDecl) bool { return d.Name == b.Name })
+	})
+	return nil
+}
+
 // checkKept refuses a reference that cannot be used and returns the entries the request reads.
 func (s *Service) checkKept(in Input) (*keptPlan, error) {
-	kp := &keptPlan{entries: map[string]keptvars.Entry{}}
+	decls, err := checkDecls(in.Inputs)
+	if err != nil {
+		return nil, err
+	}
+	origin := originOfText(in.URL)
+	kp := &keptPlan{entries: map[string]keptvars.Entry{}, pending: map[string]bool{}}
 	texts := inputKeptTexts(in)
 	for _, t := range texts {
 		for _, sp := range keptvars.RefSpans(t.text) {
@@ -114,19 +188,22 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 			if _, seen := kp.entries[sp.Name]; seen {
 				continue
 			}
-			e, ok := keptvars.Entry{}, false
-			if s.Kept != nil && in.Scope != "" && keptvars.ValidName(sp.Name) == nil {
-				e, ok = s.Kept.Get(in.Scope, sp.Name)
+			if err := s.admit(kp, in, sp.Name, decls, origin); err != nil {
+				return nil, err
 			}
-			if !ok {
-				return nil, keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables", sp.Name)
-			}
-			kp.entries[sp.Name] = e
-			kp.order = append(kp.order, sp.Name)
 		}
 	}
+	if err := s.admitUnreferenced(kp, in, decls, origin); err != nil {
+		return nil, err
+	}
+	if err := s.checkRoom(in.Scope, len(kp.pending)+missingUnreferenced(kp)); err != nil {
+		return nil, err
+	}
 	if len(kp.order) == 0 {
-		return nil, nil
+		if len(kp.inputs) == 0 {
+			return nil, nil
+		}
+		return kp, nil
 	}
 	if len(kp.order) > maxKeptNames {
 		return nil, errors.New("a request can use at most 16 kept variables")
@@ -138,6 +215,17 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 		}
 	}
 	return kp, nil
+}
+
+// missingUnreferenced counts needed inputs that only a script reads (they are not in pending).
+func missingUnreferenced(kp *keptPlan) int {
+	n := 0
+	for _, u := range kp.inputs {
+		if u.State == InputNeeded && !kp.pending[u.Name] {
+			n++
+		}
+	}
+	return n
 }
 
 func requestContentType(contentType string, headers []NameValue) string {
@@ -332,6 +420,7 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	if kp == nil {
 		return
 	}
+	p.Inputs = kp.inputs
 	texts := keptTexts(p.URL, p.Headers, p.Query, p.Body, p.Form, p.ContentType)
 	sites := map[string][]KeptSite{}
 	for _, t := range texts {
@@ -348,8 +437,9 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	for _, name := range kp.order {
 		e := kp.entries[name]
 		use := NewKeptUse(e, sites[name])
+		use.Pending = kp.pending[name]
 		p.Kept = append(p.Kept, use)
-		if withValues {
+		if withValues && !use.Pending {
 			p.keptValues[name] = keptValue{raw: e.Value, typ: e.Type, secret: e.Secret}
 		}
 	}

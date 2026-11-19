@@ -147,7 +147,7 @@ func TestKeptSecretValueIsMasked(t *testing.T) {
 		v.secret = true
 		p.keptValues[k] = v
 	}
-	m := newMask(&apifiles.Opened{}, nil, p.secretKeptTexts())
+	m := newMask(&apifiles.Opened{}, nil, nil, p.secretKeptTexts())
 	if got := m.text(`{"echo":"hunter2"}`); strings.Contains(got, "hunter2") {
 		t.Fatalf("masked = %s", got)
 	}
