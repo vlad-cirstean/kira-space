@@ -54,8 +54,13 @@ test('contract: Reveal shows the value in the row with Copy, Hide removes it', a
   });
   await openKeptPane(page);
   const row = page.locator('[data-testid="settings-kept-entry"]');
-  await row.locator('[data-testid="kept-value-reveal"]').click();
+  const eye = row.locator('[data-testid="kept-value-reveal"]');
+  await expect(eye).toHaveAttribute('aria-label', 'Show value');
+  await expect(eye).toHaveAttribute('aria-pressed', 'false');
+  await eye.click();
   await expect(row.locator('[data-testid="kept-value-revealed"]')).toHaveText(TYPED);
+  await expect(eye).toHaveAttribute('aria-label', 'Hide value');
+  await expect(eye).toHaveAttribute('aria-pressed', 'true');
   await expect(row.locator('[data-testid="kept-value-copy"]')).toBeVisible();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.keptReveal)?.args)

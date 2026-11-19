@@ -963,6 +963,8 @@ test('gRPC request — the history list refreshes after a call made while anothe
 
   const rows = page.locator('[data-testid="grpc-history-row"]');
   await expect(rows).toHaveCount(2);
+  // The history chip reads like the pane's: name and code.
+  await expect(rows.first()).toContainText('OK (0)');
 });
 
 test('gRPC request — calling while viewing a stored call shows the new one (P18 D3)', async ({
