@@ -1152,12 +1152,12 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - `MonacoDiff` mounts Monaco on an inner `absolute inset-0` host: Monaco's diff root is `height: 100%` and measures itself, so it collapses to 0 under a parent with only `min-height`. Callers size it with a wrapper block, never a height class on the component.
 - The cell editor is a panel mounted by whichever view owns the tab (grid, documents, key/value, stream, console), not a global singleton; it appears only while the tab has a selected cell, and views like definition tabs never mount it. Its Show changes toggle diffs the buffer against the stored value (`SelectedCell.original` under a staged edit), using the shared `MonacoDiff` and `valueDiffSides`.
 - Redis and S3 are navigated only in a dedicated browse tab, one lazy level per screen over SCAN/ListObjectsV2, never as a recursive tree; their project-tree node is a leaf, and only the Up button and breadcrumb move between levels.
-- The grid, document, key/value and console-result views share the createPageSearch factory and runChunkedScan scanner (views/shared/page/) rather than separate find logic.
+- The grid, document, key/value and console-result views share `createPageSearch` (`createSinglePageSearch` for a one-page module), `RunSearch`, `regexTextCap`, `cellMatch` and the `runChunkedScan` scanner (views/shared/page/) rather than separate find logic. Stream search stays a substring store: one case-insensitive match over five fixed columns, no regex toggles, no chunked scan (U192-U194).
 - A chunked scan can take an optional priority window (rows currently on screen) scanned first, so find on a large loaded dataset highlights visible matches before continuing the ascending pass in the background.
 - Every data view (SQL grid, documents, keyvalue, stream, console, definition) shares one toolbar-mounting shape: badges and PK chip alongside the header, DataToolbar/FilterToolbar in the toolbar rows.
 - P104 (§3) deleted ViewChrome and ViewHeader because there is no components/ui/reka counterpart for a bespoke layout container, and inlined their markup at each call site over components/ui parts and Tailwind utilities.
 - The shared view chrome look is now a convention each view's own template repeats, not a component it mounts; the logic beneath stays shared.
-- The per-tab runtime store (createRuntimeStore) owns setActionError, toggleSearchOpen and setSearchOpen, so views do not re-implement them.
+- The per-tab runtime store (createRuntimeStore) owns setActionError, toggleSearchOpen and setSearchOpen, so views do not re-implement them. It also owns the tab-close cleanup; a view's extra close work goes through `onClose`, which runs before the record is deleted (U197).
 - Saved queries and filter history are cached with `staleTime: Infinity`. Go emits `kira:savedQueries:changed` ({connectionId, kind}) after each Save, SaveConsole, SaveDiscover, Update, UpdateDiscover, Delete and Touch, and `kira:filterHistory:changed` ({connectionId, path}) after each recorded filter, both with Emit; `state/savedQueriesSync.ts` invalidates the matching menu keys. The tree's saved-filters submenu still reads on right-click.
 - Studio tab views unmount on every tab switch (no keepMounted). Per-tab view UI state (filter inputs, open flags, find query and matches, unapplied filter-row drafts) lives in the view's runtime store, session-only and cleared on tab close, never in a component ref. An open find bar keeps its scan across a switch and rescans only when its page changed; closing the bar clears query and filter-rows toggle (P375).
 - Module panels, start views and the ADE full view unmount on every module switch; tab views
@@ -1168,8 +1168,11 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
   drop on tab close. Guard U109. No KeepAlive: hidden subtrees would keep queries, watchers and
   commands live and retain DOM (P660). The git-ui review mount reads the store through
   `KEPT_VIEW_STATE_KEY` (its app has no Pinia).
-- views/shared/viewOp.ts's beginOp/applyLoadFailure are the one load-op preamble and load-failure tail behind every view's load() except Browse, which supersedes by loadSeq, not opId, and has no E_CANCELLED branch.
-- views/shared/page/store.ts is the one two-level page-cache implementation behind all five page modules (grid, documents, keyvalue, stream, console).
+- views/shared/viewOp.ts's beginOp/applyLoadFailure are the one load-op preamble and load-failure tail behind every view's load() except Browse, which supersedes by loadSeq, not opId, and has no E_CANCELLED branch. `runPagedLoad` stamps the op (`beginOp`) and drops a read whose runtime record is gone; `applyPagePosition`, `clearCount` and `runTabCount` are the one position, count-reset and count-request bodies (U195, U198).
+- views/shared/page/store.ts is the one two-level page-cache implementation behind all five page modules (grid, documents, keyvalue, stream, console). Page modules export through `pageModuleApi`; row accessors build on `shared/page/rowViews.ts` (U191, U203).
+- `pageRowWindow` and `reportVisibleWindow` (views/shared/page/visibleRows.ts) are the one visible-window report behind every virtualized data view and both SlickGrid hosts (U201).
+- `createPageNavigation.restart` is the one query-change setter body; `pageOffsetCursor` and `firstPageCursor` (navigation.ts) are the only offset cursors (U196, U202).
+- views/shared/request/requestOp.ts (`RequestViewRuntime`, `beginRequest`, `stopRequest`, `settleRequestFailure`, `createRequestFieldFilter`) and `resolveWithDynamic` (resolve.ts) are the one op frame behind HTTP Send and gRPC Call (U199, U200).
 - Visible-window pruning of the page cache is wired into the view side of all five page modules (P5 C3); documents also prunes the parsed-tree cache in views/shared/document/rows.ts to the same window.
 - views/shared/immediateMutation.ts is the one write body behind the ten immediate-mutation functions of documents, keyvalue and stream.
 - views/shared/page/PagerControls.vue is the one pager behind both the SQL grid and the document list.
@@ -1440,7 +1443,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U189) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U203) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 55 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1504,7 +1507,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A write's pending and error come from its TanStack mutation, never a hand ref: `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other awaited call, `useTaskAction()` for one error surface fed by several writes; `describe` maps or hides the text, `cause` gives the coded error for branching. Overlapping runs: latest wins. Keyed store surfaces, git-ui class state and synchronous failures stay outside (U188, U189, U51).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U190 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U203 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
