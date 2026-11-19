@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@theme/components/ui/input-group';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
 import { useTimeoutFn, useToggle } from '@vueuse/core';
@@ -108,17 +108,9 @@ onBeforeUnmount(drop);
       @update:model-value="(v: string | number) => (value = String(v))"
     />
     <InputGroupAddon align="inline-end">
-      <TooltipIconButton
-        :icon="visible ? 'eye-closed' : 'eye'"
-        :label="
-          notRevealable
-            ? t('common.secret.notRevealable.tooltip')
-            : visible
-              ? t('common.hideValue.label')
-              : t('common.secret.show.label')
-        "
-        :aria-label="visible ? t('common.hideValue.label') : t('common.secret.show.label')"
-        :pressed="visible"
+      <ValueRevealButton
+        :shown="visible"
+        :label="notRevealable ? t('common.secret.notRevealable.tooltip') : undefined"
         :disabled="disabled || notRevealable"
         disabled-trigger
         :data-testid="eyeTestid"
