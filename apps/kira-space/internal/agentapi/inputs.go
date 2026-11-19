@@ -113,12 +113,6 @@ func checkDecls(decls []InputDecl) (map[string]InputDecl, error) {
 	return byName, nil
 }
 
-// inputPlan is what the plan decided for the declared inputs.
-type inputPlan struct {
-	origin string
-	uses   []InputUse
-}
-
 // judgeInput decides one declared input against the live entry, if any.
 func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputUse, error) {
 	use := InputUse{Name: d.Name, Label: d.Label, State: InputNeeded, Origin: origin}

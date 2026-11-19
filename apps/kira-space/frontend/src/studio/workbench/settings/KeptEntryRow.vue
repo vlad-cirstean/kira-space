@@ -39,12 +39,14 @@ const expiry = useKeptExpiry(() => props.entry.expiresAt);
         t('studio.kept.supplied.status')
       }}</Badge>
       <TruncatedText v-else class="font-data" :text="entry.source.request" />
-      <TruncatedText
+      <span
         v-if="entry.origin"
-        class="font-data"
-        :text="`${t('studio.kept.origin.label')} ${entry.origin}`"
+        class="min-w-0 truncate font-data"
         data-testid="kept-entry-origin"
-      />
+        >{{
+          `${t('studio.kept.origin.label')} ${entry.origin}`
+        }}</span
+      >
       <span class="shrink-0" data-testid="kept-entry-age"
         ><RelativeTime :at="entry.createdAt" /></span
       >

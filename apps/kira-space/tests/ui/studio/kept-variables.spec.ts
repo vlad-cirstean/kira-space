@@ -3,7 +3,7 @@ import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
-import { openSettings } from './support/settings';
+import { openKeptPane } from './support/settings';
 
 // Contract kept-vars. Backend half: dbmcpflow TestKeptVarsService and TestKeptVarsRetentionSetting. The
 // Studio MCP variables pane lists live kept variables with value, source and time left, reads a whole
@@ -31,18 +31,13 @@ const entry = (page: import('@playwright/test').Page, name: string) =>
     has: page.locator('[data-testid="kept-entry-name"]', { hasText: new RegExp(`^${name}$`) }),
   });
 
-async function open(page: import('@playwright/test').Page) {
-  await openSettings(page);
-  await page.click('[data-testid="settings-section-Studio MCP variables"]');
-}
-
 test('contract: the pane lists each variable with its type, scope, source and time left', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.keptList, response: liveList() }],
   });
-  await open(page);
+  await openKeptPane(page);
   await expect(page.locator('[data-testid="settings-kept-entry"]')).toHaveCount(3);
   const ids = entry(page, 'ids');
   await expect(ids).toContainText('List of 800');
@@ -58,7 +53,7 @@ test('contract: a secret shows dots and no copy', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.keptList, response: liveList() }],
   });
-  await open(page);
+  await openKeptPane(page);
   const token = entry(page, 'token');
   await expect(token.locator('[data-testid="kept-value-secret"]')).toHaveText('••••••••');
   await expect(token.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
@@ -73,7 +68,7 @@ test('contract: Show all reads the whole value', async ({ relaunch }) => {
       { channel: IPC.keptValue, response: value },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   const ids = entry(page, 'ids');
   await expect(ids.locator('[data-testid="kept-value-full"]')).toHaveCount(0);
   await ids.getByText('Show all').click();
@@ -91,7 +86,7 @@ test('contract: Clear removes one variable', async ({ relaunch }) => {
       { channel: IPC.keptClear, response: 1 },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   await entry(page, 'word').locator('[data-testid="kept-entry-clear"]').click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.keptClear)?.args)
@@ -105,7 +100,7 @@ test('contract: Clear all asks first, then clears everything', async ({ relaunch
       { channel: IPC.keptClearAll, response: 3 },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   await page.click('[data-testid="settings-kept-clear-all"]');
   expect(control.log().some((e) => e.channel === IPC.keptClearAll)).toBe(false);
   await page.locator('[data-testid="confirm-dialog-confirm"]').click();
@@ -114,7 +109,7 @@ test('contract: Clear all asks first, then clears everything', async ({ relaunch
 
 test('contract: nothing kept shows the empty state', async ({ relaunch }) => {
   const { window: page } = await relaunch({});
-  await open(page);
+  await openKeptPane(page);
   await expect(page.locator('[data-testid="settings-kept-empty"]')).toContainText(
     'for up to 60 minutes',
   );
@@ -137,7 +132,7 @@ test('contract: retention patches the setting and refuses a value out of range',
       },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   const field = page.locator('[data-testid="settings-kept-retention"]');
   await expect(field).toHaveValue('60');
   await field.fill('4');
@@ -157,7 +152,7 @@ test('contract: a failed load shows the error with Retry, which reloads the list
       { channel: IPC.keptList, error: { code: 'E_INTERNAL', message: 'memory store is busy' } },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   await expect(page.locator('[data-testid="settings-kept-error"]')).toContainText(
     'memory store is busy',
   );
@@ -181,7 +176,7 @@ test('contract: the retention reset button restores the default of 60 minutes', 
       },
     ],
   });
-  await open(page);
+  await openKeptPane(page);
   const reset = page.locator('[data-testid="settings-reset-dbMcp-keptRetentionMinutes"]');
   await expect(reset).toBeDisabled();
   await page.locator('[data-testid="settings-kept-retention"]').fill('10');
