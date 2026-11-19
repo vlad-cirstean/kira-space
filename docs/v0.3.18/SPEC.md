@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P689`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P690`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -27,6 +27,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Done |
 | P687 | Shared hash-guarded draft and save-conflict model across modules | Planned |
 | P688 | Copy guard gaps: translated text built by joining, English hint text outside the catalog | Planned |
+| P689 | TanStack default network mode: no pause on webview offline event | Planned |
 
 ## P687: Shared draft and save-conflict model
 
@@ -35,6 +36,10 @@ Parked by P674 Part 3. About 10 copies of a hash-guarded draft with save-conflic
 ## P688: Copy guard gaps
 
 Parked by P674 Part 5. `scripts/copy/check-copy.ts` misses translated text built with template literals (29 sites across modules), and English hint text sits outside the catalog in `packages/shared` (`statusHint`, `GRPC_CODE_HINTS`). Decide which joins are allowed, then write the guard and migrate every site. See `plans/P674-final.md` PARK.
+
+## P689: TanStack default network mode
+
+Parked by P682. `createQueryClient` sets no `networkMode`, so queries and raw `useMutation` default to `online`. After the webview window `offline` event, TanStack `onlineManager` pauses them (`fetchStatus: 'paused'`), though desktop calls are local bridge calls. Only `useAsyncAction` sets `networkMode: 'always'` (P682). Fix: `networkMode: 'always'` in `defaultOptions` for the desktop profile in `createQueryClient`; decide the mobile remote profile in the plan. Add a UI spec that simulates the `offline` event. Then delete the ARCHITECTURE "Known open items" entry "TanStack pauses on a webview `offline` event (P682)".
 
 ## P682: Async action error state
 
@@ -72,7 +77,7 @@ Wave 3 verification, all green after fixes: complete engine flow (52 passes; fir
 
 Known unresolved: `TestDbMcpStatementTimeoutExemption`, `Off` and `QueueNotCounted` (pre-existing, not P686) fail under `-race` only. They run an 8M-row SQLite recursive CTE, about 3 s normally; the race detector slows pure-Go SQLite so far that the 30 s client timeout of the flow MCP client (`mcp_test.go`) expires (`Client.Timeout exceeded while awaiting headers`); they pass without `-race`, as does the full non-race run. Root cause is that slowdown. A smaller CTE did not fix it (1.5M rows still timed out) and the statement text sits in the `dbmcp-statement-timeout` contract, so shrinking by build tag drifts the contract; not fixed. Not in the plan's race set, which is clean. A fix needs a race-aware client timeout and contract-neutral sizing: follow-up if the chapter wants `-race` over the whole package.
 
-Chapter end (unasked, per working agreement, after the last implementation phase P686): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
+Chapter end (unasked, per working agreement, after the last implementation phase): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
 Standing rules for every phase below: new feature tests split at the IPC boundary (flow test plus UI spec, same scenario); UI follows `docs/ARCHITECTURE.md` uniformity rules and the guard script; no secret ever reaches an agent, a log or the op log; open-source licences only (check package and feature level).
 
