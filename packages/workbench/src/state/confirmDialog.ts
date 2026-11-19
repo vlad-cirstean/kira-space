@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { reactive, toRefs } from 'vue';
-import { errorText } from '../bridge/codedError';
+import { computed, reactive, toRefs } from 'vue';
+import { useAsyncAction } from '../behaviour/asyncAction';
+import { queryClient } from './queryClient';
 
 export interface ConfirmOptions {
   message: string;
@@ -36,11 +37,21 @@ export const useConfirmDialogStore = defineStore('confirmDialog', () => {
     tone: 'danger' as 'danger' | 'primary',
     confirmLabel: '',
     secondaryLabel: '',
-    busy: false,
-    error: '',
     run: null as (() => Promise<unknown>) | null,
     resolve: null as ((choice: ConfirmChoice) => void) | null,
   });
+
+  // Work to do on confirm: the dialog stays open with a busy button and shows a rejection inline.
+  // queryClient is explicit: the store is built before any component mounts.
+  const runner = useAsyncAction(
+    async () => {
+      await state.run?.();
+      finish('confirm');
+    },
+    { queryClient },
+  );
+  const busy = runner.pending;
+  const error = computed(() => runner.error.value ?? '');
 
   function open(
     options: ConfirmOptions & { secondaryLabel?: string },
@@ -55,8 +66,7 @@ export const useConfirmDialogStore = defineStore('confirmDialog', () => {
     state.confirmLabel = options.confirmLabel;
     state.secondaryLabel = options.secondaryLabel ?? '';
     state.run = options.run ?? null;
-    state.busy = false;
-    state.error = '';
+    runner.reset();
     state.resolve = resolve;
     state.open = true;
   }
@@ -77,32 +87,32 @@ export const useConfirmDialogStore = defineStore('confirmDialog', () => {
   }
 
   async function acceptConfirm(): Promise<void> {
-    if (state.busy) return;
+    if (busy.value) return;
     if (!state.run) {
       finish('confirm');
       return;
     }
-    state.busy = true;
-    state.error = '';
-    try {
-      await state.run();
-      finish('confirm');
-    } catch (err) {
-      state.error = errorText(err);
-    } finally {
-      state.busy = false;
-    }
+    await runner.run();
   }
 
   function cancelConfirm(): void {
-    if (state.busy) return;
+    if (busy.value) return;
     finish('cancel');
   }
 
   function acceptSecondary(): void {
-    if (state.busy) return;
+    if (busy.value) return;
     finish('secondary');
   }
 
-  return { ...toRefs(state), confirm, choose, acceptConfirm, acceptSecondary, cancelConfirm };
+  return {
+    ...toRefs(state),
+    busy,
+    error,
+    confirm,
+    choose,
+    acceptConfirm,
+    acceptSecondary,
+    cancelConfirm,
+  };
 });
