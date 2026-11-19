@@ -1457,7 +1457,13 @@ var DbmcpToolAPIListEnvironments = define(Entry{
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped. Kept variables: Kira holds named values you never see. Use {{kept.name}} in a later url path, query, header, form field or body. In a JSON body write it unquoted; Kira inserts JSON. A list fits only a JSON body. Values expire (default 1 hour) and the user can clear them. list_kept_variables shows what exists.",
+}, NoVars{})
+
+// DbmcpToolListKept describes the list_kept_variables tool.
+var DbmcpToolListKept = define(Entry{
+	ID: "dbmcp.tool.list_kept_variables", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_kept_variables",
+	Default: "List the kept variables you can use as {{kept.name}}: name, type, item count, source tool and seconds until expiry. Values are never shown.",
 }, NoVars{})
 
 var (

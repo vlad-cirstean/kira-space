@@ -137,6 +137,9 @@ type SessionPool struct {
 	build     func(*SessionTokens) Config
 	approvals *ApprovalBroker
 	log       *slog.Logger
+	// OnEnd runs when an agent session's grant is released: its kept variables end with it. Set before
+	// the first Grant.
+	OnEnd func(sessionID string)
 
 	tokens SessionTokens
 
@@ -196,6 +199,9 @@ func (p *SessionPool) Grant(id SessionIdentity) (harness.MCPServer, func(), erro
 func (p *SessionPool) release(tokenID uint64, sessionID string) {
 	p.tokens.remove(tokenID)
 	p.approvals.AbandonSession(sessionID)
+	if p.OnEnd != nil {
+		p.OnEnd(sessionID)
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.grants > 0 {

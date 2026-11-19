@@ -2,7 +2,10 @@ package dbmcp
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"strings"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -68,11 +71,11 @@ func pairs(in []apiPair) []agentapi.NameValue {
 	return out
 }
 
-func (a apiRequestArgs) input() agentapi.Input {
+func (a apiRequestArgs) input(scope string) agentapi.Input {
 	return agentapi.Input{
 		EnvironmentID: a.EnvironmentID, Method: a.Method, URL: a.URL,
 		Headers: pairs(a.Headers), Query: pairs(a.Query), Body: a.Body, ContentType: a.ContentType, Form: pairs(a.Form),
-		TimeoutSeconds: a.TimeoutSeconds, MaxResponseBytes: a.MaxResponseBytes, FollowRedirects: a.FollowRedirects,
+		TimeoutSeconds: a.TimeoutSeconds, MaxResponseBytes: a.MaxResponseBytes, FollowRedirects: a.FollowRedirects, Scope: scope,
 	}
 }
 
@@ -97,7 +100,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if !settings.Enabled {
 		return errResult(apiRequestsOff)
 	}
-	in := a.input()
+	in := a.input(keptScope(ctx))
 	plan, err := s.cfg.API.Plan(in)
 	if err != nil {
 		return errResult(err.Error())
@@ -130,11 +133,18 @@ func isReadMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPT
 
 // approveAPI asks the user. A non-nil result stops the call.
 func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned) (*mcp.CallToolResult, error) {
+	ctx, stop := s.watchKept(ctx, plan.Kept)
+	defer stop()
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
 		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan,
 	})
 	if outcome != ApprovalApproved {
+		var gone *keptGoneError
+		if errors.As(context.Cause(ctx), &gone) {
+			res, _, err := errResult(gone.Error())
+			return res, err
+		}
 		res, _, err := approvalOutcomeError(outcome, "request")
 		return res, err
 	}
@@ -198,6 +208,7 @@ type apiPayload struct {
 	Credentials     []agentapi.Credential `json:"credentials"`
 	FollowRedirects bool                  `json:"followRedirects"`
 	TimeoutSeconds  int                   `json:"timeoutSeconds"`
+	Kept            []agentapi.KeptUse    `json:"kept"`
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds
@@ -242,6 +253,7 @@ func apiPayloadOf(p *agentapi.Planned) apiPayload {
 		}
 	}
 	out.Body = apiBody(p)
+	out.Kept = displayedKept(p.Kept, out.Body)
 	return out
 }
 
@@ -323,4 +335,18 @@ func capUTF8(s string, n int) (string, bool) {
 		n--
 	}
 	return s[:n], true
+}
+
+// displayedKept drops the body sites the capped body text no longer holds.
+func displayedKept(uses []agentapi.KeptUse, body *apiBodyPayload) []agentapi.KeptUse {
+	out := make([]agentapi.KeptUse, len(uses))
+	shown := 0
+	if body != nil {
+		shown = len(utf16.Encode([]rune(body.Text)))
+	}
+	for i, u := range uses {
+		u.Sites = slices.DeleteFunc(slices.Clone(u.Sites), func(st agentapi.KeptSite) bool { return st.Field == "body" && st.To > shown })
+		out[i] = u
+	}
+	return out
 }

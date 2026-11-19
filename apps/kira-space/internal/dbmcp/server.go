@@ -171,6 +171,9 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
+	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves the tool
+	// unregistered and refuses every {{kept.*}} reference.
+	Kept KeptStore
 	// Limits are the limits the server enforces on run_query, beside its built-ins. Nil means none.
 	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
@@ -399,6 +402,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.apiEnabled() {
 		s.addAPITools(srv, src)
+		if s.cfg.Kept != nil {
+			s.addKeptTools(srv, src)
+		}
 	}
 
 	if s.cfg.Audit != nil {
