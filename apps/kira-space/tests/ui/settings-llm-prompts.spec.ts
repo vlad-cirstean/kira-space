@@ -108,7 +108,7 @@ test('lists this app’s prompts; an unedited prompt has no badge', async ({ rel
   await expect(promptRow(window, finishStep.id)).toContainText('finish_step');
   await expect(promptBadges(window, gate.id)).toHaveCount(0);
   await expect(
-    window.locator(`[data-testid="llm-prompt-detail"][data-id="${finishStep.id}"]`),
+    window.locator(`[data-testid="llm-prompt-detail"][data-id="${gate.id}"]`),
   ).toBeVisible();
 });
 
