@@ -19,5 +19,19 @@
         "apiRequests": true
       }
     }
+  },
+  "args:SettingsService.Set#scriptsOff": {
+    "patch": {
+      "dbMcp": {
+        "apiScripts": false
+      }
+    }
+  },
+  "args:SettingsService.Set#scriptsOn": {
+    "patch": {
+      "dbMcp": {
+        "apiScripts": true
+      }
+    }
   }
 }

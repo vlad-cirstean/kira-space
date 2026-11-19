@@ -49,3 +49,29 @@ test('contract: the switch lists the tools, "never" shows its warning', async ({
     .toEqual(never);
   await expect(page.locator('[data-testid="settings-db-mcp-api-never-warning"]')).toBeVisible();
 });
+
+// Backend half: dbmcpflow TestApiScriptsToggle, the same patch.
+test('contract: the scripts switch is on by default and patches apiScripts', async ({
+  relaunch,
+}) => {
+  const off = contract<unknown>('dbmcp-api-settings', 'args:SettingsService.Set#scriptsOff');
+  const enabled = { ...defaultSettings.dbMcp, apiRequests: true };
+  const { window: page, control } = await relaunch({
+    control: [
+      { channel: IPC.settingsGetAll, response: { ...defaultSettings, dbMcp: enabled } },
+      {
+        channel: IPC.settingsSet,
+        args: off,
+        response: { ...defaultSettings, dbMcp: { ...enabled, apiScripts: false } },
+      },
+    ],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
+  const scripts = page.locator('[data-testid="settings-db-mcp-api-scripts"]');
+  await expect(scripts).toBeChecked();
+  await scripts.click();
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual(off);
+});

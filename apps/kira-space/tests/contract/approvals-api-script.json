@@ -1,0 +1,84 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"items\":[{\"id\":1},{\"id\":2}]}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "method": "POST",
+        "query": [
+          {
+            "name": "ct",
+            "value": "application/json"
+          },
+          {
+            "name": "hex",
+            "value": "7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+          }
+        ],
+        "script": {
+          "prepare": {
+            "changed": [
+              "body",
+              "contentType"
+            ],
+            "hash": "222c63086dde1d6427900c13068d3453e9ceaf0516608766d2d65682bad3431e",
+            "input": "{\"ids\":[1,2]}",
+            "inputTruncated": false,
+            "source": "return {body: {items: input.ids.map(id => ({id}))}};"
+          },
+          "transform": {
+            "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
+            "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
+          }
+        },
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  }
+}
