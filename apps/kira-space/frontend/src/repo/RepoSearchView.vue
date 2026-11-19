@@ -4,12 +4,10 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
-import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
-import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import SearchOptionToggles from '@workbench/components/SearchOptionToggles.vue';
-import { useRowHeight } from '@workbench/lib/rowHeight';
+import VirtualList from '@workbench/components/VirtualList.vue';
 import { computed, ref, useTemplateRef } from 'vue';
 import { openRepoFileTab } from '../state/repoTabs';
 import RepoSearchRow from './RepoSearchRow.vue';
@@ -21,7 +19,6 @@ import { type RepoSearchRowVm, useRepoSearchStore } from './state/search';
 const props = defineProps<{ repoId: string }>();
 const repoSearchStore = useRepoSearchStore();
 
-const { single: rowHeight } = useRowHeight();
 const selected = ref<string | null>(null);
 
 const query = computed({
@@ -33,14 +30,6 @@ const running = computed(() => repoSearchStore.repoSearchRunning(props.repoId));
 const stats = computed(() => repoSearchStore.repoSearchStats(props.repoId));
 const error = computed(() => repoSearchStore.repoSearchError(props.repoId));
 const rows = computed(() => repoSearchStore.repoSearchRows(props.repoId));
-
-const scrollEl = ref<HTMLElement | null>(null);
-const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({
-  count: () => rows.value.length,
-  rowHeight: () => rowHeight.value,
-  scrollElement: scrollEl,
-  keepScroll: () => `git:search:${props.repoId}`,
-});
 
 // §7.3: "Searching…" while running, "N results in M files" when done, "(stopped at 10,000)"
 // appended when the whole run hit the cap, "K files skipped" appended when non-zero — the skip
@@ -118,24 +107,17 @@ function onOpen(row: RepoSearchRowVm, preview: boolean): void {
 }
 
 // Enter: permanent open for a match, collapse toggle for a file header. Space: the single click.
-const nav = useListNavigation<RepoSearchRowVm>({
-  container: scrollEl,
-  items: () => rows.value,
-  key: (row) => row.key,
-  activeKey: selected,
-  onOpen: (row) => {
-    onSelect(row);
-    if (row.kind === 'file') onToggleCollapse(row);
-    else onOpen(row, false);
-  },
-  onSelect: (row) => {
-    onSelect(row);
-    if (row.kind === 'file') onToggleCollapse(row);
-    else onOpen(row, true);
-  },
-  scrollToIndex: (index) => scrollToIndex(index),
-  rendered: () => virtualItems.value,
-});
+function onRowOpen(row: RepoSearchRowVm): void {
+  onSelect(row);
+  if (row.kind === 'file') onToggleCollapse(row);
+  else onOpen(row, false);
+}
+
+function onRowSelect(row: RepoSearchRowVm): void {
+  onSelect(row);
+  if (row.kind === 'file') onToggleCollapse(row);
+  else onOpen(row, true);
+}
 </script>
 
 <template>
@@ -185,30 +167,25 @@ const nav = useListNavigation<RepoSearchRowVm>({
     <Alert v-else-if="statusLine" variant="info" data-testid="repo-search-status">
       <AlertDescription>{{ statusLine }}</AlertDescription>
     </Alert>
-    <div
-      ref="scrollEl"
-      class="flex-1 min-h-0 overflow-auto"
-      data-testid="virtual-list"
-      role="listbox"
+    <VirtualList
+      v-model:active-key="selected"
+      :rows="rows"
+      :keep-scroll-key="`git:search:${repoId}`"
+      testid="virtual-list"
       :aria-label="t('common.searchResults.aria')"
-      @scroll="onScroll"
+      :open="onRowOpen"
+      :select="onRowSelect"
     >
-      <div class="relative" :style="{ height: `${totalSize}px` }">
-        <template v-for="item in virtualItems" :key="String(item.key)">
-          <RepoSearchRow
-            :class="VIRTUAL_ROW_CLASS"
-            :style="{ transform: `translateY(${item.start}px)`, height: `${item.size}px` }"
-            v-bind="nav.rowProps(rows[item.index].key)"
-            :row="rows[item.index]"
-            :selected="selected === rows[item.index].key"
-            @select="onSelect"
-            @toggle-collapse="onToggleCollapse"
-            @open="onOpen"
-          />
-        </template>
-      </div>
-    </div>
+      <template #row="{ row, nav }">
+        <RepoSearchRow
+          v-bind="nav"
+          :row="row"
+          :selected="selected === row.key"
+          @select="onSelect"
+          @toggle-collapse="onToggleCollapse"
+          @open="onOpen"
+        />
+      </template>
+    </VirtualList>
   </div>
-  <!-- P110 I2-15: `.virtual-row` moved to VIRTUAL_ROW_CLASS (packages/workbench/src/lib/
-       virtualRows.ts) -- see kira-studio's ProjectTree.vue's identical note. -->
 </template>
