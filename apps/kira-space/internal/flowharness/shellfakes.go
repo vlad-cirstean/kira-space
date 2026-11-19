@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/editorlaunch"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
@@ -67,6 +68,38 @@ func (f *FileOpener) RevealedFiles() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.revealed...)
+}
+
+// EditorLauncher records the paths opened in the code editor. SetMissing makes Open fail the way a
+// machine without VS Code does.
+type EditorLauncher struct {
+	mu      sync.Mutex
+	opened  [][]string
+	missing bool
+}
+
+func (e *EditorLauncher) Open(paths []string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.missing {
+		return editorlaunch.ErrNotFound
+	}
+	e.opened = append(e.opened, append([]string(nil), paths...))
+	return nil
+}
+
+// Opened returns a copy of the recorded Open calls.
+func (e *EditorLauncher) Opened() [][]string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([][]string(nil), e.opened...)
+}
+
+// SetMissing flips whether Open reports VS Code as not installed.
+func (e *EditorLauncher) SetMissing(missing bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.missing = missing
 }
 
 // ClipImage is one image the fake clipboard received.

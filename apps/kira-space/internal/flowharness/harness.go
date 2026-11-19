@@ -266,6 +266,8 @@ type App struct {
 	Events     *Events
 	Browser    *Browser
 	FileOpener *FileOpener
+	// Editor records the VS Code launches of the task file view.
+	Editor *EditorLauncher
 	// ImageClipboard records multi-image clipboard writes; off until SetMulti(true).
 	ImageClipboard *ImageClipboard
 	Dialogs        *Dialogs
@@ -323,7 +325,7 @@ func New(t *testing.T, opts ...Opt) *App {
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
 		Work:   filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
-		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, ImageClipboard: &ImageClipboard{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
+		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Editor: &EditorLauncher{}, ImageClipboard: &ImageClipboard{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
 		ProofWindows: &ProofShell{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
 	}
@@ -502,7 +504,7 @@ func (a *App) build() {
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
 		Providers:       registry, IssueTracker: tracker,
 		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
-		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
+		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, TaskRevealer: a.FileOpener, Editor: a.Editor, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},
 		MobileIsLAN:  func(ip netip.Addr) bool { return ip.IsLoopback() },
