@@ -7,10 +7,11 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
 import { guardedSavedWrite } from '../../state/guardedSavedWrite';
@@ -78,18 +79,10 @@ const saveMutation = useMutation({
   onSuccess: invalidate,
 });
 // A storage failure shows in the footer, never as an unhandled rejection with nothing on screen.
-const failure = ref<string | null>(null);
+const surface = useTaskAction();
 const error = computed(
-  () => failure.value ?? (savedQuery.error.value ? errorText(savedQuery.error.value) : null),
+  () => surface.error.value ?? (savedQuery.error.value ? errorText(savedQuery.error.value) : null),
 );
-async function attempt(action: () => Promise<unknown>): Promise<void> {
-  failure.value = null;
-  try {
-    await action();
-  } catch (err) {
-    failure.value = errorText(err);
-  }
-}
 
 function apply(entry: SavedConsoleQuery): void {
   setText(props.tabId, entry.body.text);
@@ -99,19 +92,19 @@ function apply(entry: SavedConsoleQuery): void {
   emit('close');
 }
 
-const togglePin = (entry: SavedConsoleQuery): Promise<void> =>
-  attempt(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
-const rename = (entry: SavedConsoleQuery): Promise<void> =>
-  attempt(async () => {
+const togglePin = (entry: SavedConsoleQuery): Promise<boolean> =>
+  surface.run(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
+const rename = (entry: SavedConsoleQuery): Promise<boolean> =>
+  surface.run(async () => {
     const name = await promptText(t('studio.console.savedMenu.renameTitle.title'), entry.name);
     if (!name || name.trim() === '') return;
     await updateMutation.mutateAsync({ entry, patch: { name: name.trim() } });
   });
-const remove = (entry: SavedConsoleQuery): Promise<void> =>
-  attempt(() => deleteMutation.mutateAsync(entry.id));
+const remove = (entry: SavedConsoleQuery): Promise<boolean> =>
+  surface.run(() => deleteMutation.mutateAsync(entry.id));
 
-const saveCurrent = (): Promise<void> =>
-  attempt(async () => {
+const saveCurrent = (): Promise<boolean> =>
+  surface.run(async () => {
     const current = tab();
     if (!current?.connectionId) return;
     const name = await promptText(t('studio.console.savedMenu.nameTitle.title'), '');

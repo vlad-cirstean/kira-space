@@ -4,12 +4,12 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useAsyncAction, useTaskAction } from '@workbench/behaviour/asyncAction';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import ViewHead from '@workbench/components/ViewHead.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue';
 import type { ConsoleTabRecord } from '../../../../state/tabDomain';
 import { useConnectionsStore } from '../../../state/connections';
 import EngineIcon from '../../../theme/EngineIcon.vue';
@@ -159,8 +159,8 @@ const showHistogram = computed(
 );
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
-const savedControls = useTemplateRef<{ save: () => Promise<void> }>('savedControls');
-const savedError = ref<string | null>(null);
+const savedControls = useTemplateRef<{ save: () => void }>('savedControls');
+const saved = useTaskAction();
 useShortcut(rootEl, ['form.save'], () => void savedControls.value?.save());
 
 let off: Array<() => void> = [];
@@ -198,7 +198,7 @@ onUnmounted(() => {
         :d="d"
         :connection-id="tab.connectionId ?? ''"
         @run="onRun"
-        @error="(m) => (savedError = m)"
+        @task="saved.run"
       />
     </ViewHead>
 
@@ -224,8 +224,8 @@ onUnmounted(() => {
       :suggest-scope="d.suggestScope.value"
     />
 
-    <Alert strip v-if="savedError" variant="error" data-testid="kibana-saved-error">
-      <AlertDescription>{{ savedError }}</AlertDescription>
+    <Alert strip v-if="saved.error.value" variant="error" data-testid="kibana-saved-error">
+      <AlertDescription>{{ saved.error.value }}</AlertDescription>
     </Alert>
     <Alert
       strip
