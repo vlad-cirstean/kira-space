@@ -1719,6 +1719,12 @@
           "badPath": {
             "body": "This path is outside the task worktree."
           },
+          "editorMissing": {
+            "body": "VS Code was not found. Install it, or add its “code” command to your PATH."
+          },
+          "launchUnsupported": {
+            "body": "Not available in the browser build."
+          },
           "noWorktree": {
             "body": "This branch has no worktree."
           },

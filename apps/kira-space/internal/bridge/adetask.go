@@ -49,6 +49,10 @@ type AdeTaskService struct {
 	OpenWindow     func(rec shell.WindowRecord)
 	CloseWindow    func(key string) bool
 	SetWindowTitle func(key, title string)
+	// Revealer and Editor serve the task file view's Reveal and Open in VS Code; nil in a build
+	// without them. Fields, not methods, so they add nothing to the bound surface.
+	Revealer TaskRevealer
+	Editor   EditorLauncher
 }
 
 // AdeTaskOpenSession is FocusSession's emit half: addressed to the one window just brought forward.

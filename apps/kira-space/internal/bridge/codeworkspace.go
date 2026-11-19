@@ -657,11 +657,7 @@ type CodeWorkspaceSearchHandle struct {
 	SearchID string `json:"searchId"`
 }
 
-// StartSearch validates args, compiles the pattern before returning (codeworkspace.ValidatePattern
-// — a bad regex is E_BAD_REQUEST on this call, never a stream error the panel has to render twice),
-// mints a search id, and starts one goroutine running codeworkspace.Search followed by the
-// coalescer's terminal flush. It returns the handle immediately — a full-worktree scan takes far
-// longer than an IPC call may (OpenWorkspace's own posture).
+// StartSearch validates args, then starts the workspace's one search (runSearch).
 func (s *CodeWorkspaceService) StartSearch(ctx context.Context, args CodeWorkspaceSearchArgs) (CodeWorkspaceSearchHandle, error) {
 	ctx = filesCtx(ctx)
 	if args.ID == "" {
@@ -682,35 +678,35 @@ func (s *CodeWorkspaceService) StartSearch(ctx context.Context, args CodeWorkspa
 	if err := codeworkspace.ValidatePattern(req); err != nil {
 		return CodeWorkspaceSearchHandle{}, ipcerr.BadRequest(err.Error())
 	}
-
 	sess, _, err := s.session(ctx, args.ID)
 	if err != nil {
 		return CodeWorkspaceSearchHandle{}, err
 	}
+	return runSearch(s.Deps.Events, sess, args.WindowKey, req), nil
+}
 
+// runSearch mints a search id and starts one goroutine running codeworkspace.Search followed by the
+// coalescer's terminal flush. The pattern is already validated (a bad regex is E_BAD_REQUEST on the
+// start call, never a stream error the panel has to render twice). It returns the handle
+// immediately: a full-worktree scan takes far longer than an IPC call may.
+func runSearch(emit appcore.Emitter, sess *codeworkspace.Session, windowKey string, req codeworkspace.SearchRequest) CodeWorkspaceSearchHandle {
 	searchID := ids.NewID()
-	coalescer := newSearchCoalescer(s.Deps.Events, args.WindowKey, searchID)
-	// sess.BeginSearch(), not ctx: this bound call returns long before a full-worktree scan
-	// finishes, so the search must outlive it — CancelSearch/Session.Close are the only two ways
-	// this context ever ends (D8).
+	coalescer := newSearchCoalescer(emit, windowKey, searchID)
+	// sess.BeginSearch(), not the call's ctx: the search must outlive the bound call;
+	// CancelSearch and Session.Close are the only two ways it ends (D8).
 	searchCtx := sess.BeginSearch()
 
 	go func() {
 		stats, err := codeworkspace.Search(searchCtx, sess, req, coalescer.push)
-		// CancelSearch (the panel's own Stop button) cancels searchCtx, which
-		// codeworkspace.Search surfaces as ctx.Err() == context.Canceled -- a clean, user-requested
-		// stop, not a failure. Rendering it as an E_INTERNAL error banner hid the partial-results
-		// summary line and made stopping a search look like it had failed. Session.Close ends
-		// searchCtx the same way (StartSearch's own doc comment), and gets the identical clean
-		// treatment here for the same reason: nothing is left to show it to by then anyway.
+		// A cancel (the panel's Stop button, or Session.Close) surfaces as context.Canceled: a clean,
+		// requested stop, not a failure. Showing it as an error hid the partial-results summary.
 		if err != nil && !errors.Is(err, context.Canceled) {
 			coalescer.finish(&stats, &CodeSearchEventErr{Code: string(ipcerr.CodeInternal), Message: err.Error()})
 			return
 		}
 		coalescer.finish(&stats, nil)
 	}()
-
-	return CodeWorkspaceSearchHandle{SearchID: searchID}, nil
+	return CodeWorkspaceSearchHandle{SearchID: searchID}
 }
 
 // CancelSearch stops args.ID's own in-flight search (the workspace's one search, never a

@@ -113,6 +113,7 @@ func main() {
 	wired, err := appwire.Build(appwire.Options{
 		Repos: repositories, DB: db,
 		Cipher: cipher, Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
+		TaskRevealer: newTaskRevealer(fileOpener), Editor: newEditorLauncher(),
 		ImageClipboard: imageclip.New(application.InvokeSync),
 		Dialogs:        appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,

@@ -95,6 +95,10 @@ type Options struct {
 	Browser bridge.Browser
 	// FileOpener opens or reveals a proof folder; main passes the Wails adapter.
 	FileOpener bridge.ProofRevealer
+	// TaskRevealer and Editor serve the task file view's Reveal and Open in VS Code; nil disables
+	// them (the -tags server build, whose host is not the viewer's machine).
+	TaskRevealer bridge.TaskRevealer
+	Editor       bridge.EditorLauncher
 	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
 	ImageClipboard bridge.ProofClipboard
 	Dialogs        bridge.Dialogs
@@ -564,7 +568,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
