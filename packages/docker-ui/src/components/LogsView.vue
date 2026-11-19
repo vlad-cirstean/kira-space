@@ -15,18 +15,12 @@ import { errorText } from '@workbench/bridge/codedError';
 import FindBar from '@workbench/components/FindBar.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { parseAnsi } from '@workbench/lib/ansi';
+import { appendCapped, plainText, tailItems } from '@workbench/lib/logTail';
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { useDocker } from '../context';
 import type { DockerLogLine } from '../wire';
 
 const props = defineProps<{ containerId: string }>();
-
-const MAX_LINES = 20_000;
-const TAILS = [100, 1000, 5000, -1] as const;
-
-const tailLabel = (n: number): string =>
-  n === -1 ? t('common.state.all.option') : t('common.logs.tail.option', { count: n });
 
 interface Line extends DockerLogLine {
   id: number;
@@ -40,9 +34,7 @@ const lines = shallowRef<Line[]>([]);
 const follow = ref(true);
 const timestamps = ref(false);
 const wrap = ref(false);
-const TAIL_ITEMS = computed(() =>
-  TAILS.map((n) => ({ value: String(n), label: tailLabel(n), testid: `docker-logs-tail-${n}` })),
-);
+const TAIL_ITEMS = computed(() => tailItems('docker-logs-tail'));
 const tail = ref<number>(1000);
 const findOpen = useKeptState(() => `docker:logs:${props.containerId}:findOpen`, false);
 const query = useKeptState(() => `docker:logs:${props.containerId}:query`, '');
@@ -67,17 +59,12 @@ const matchLines = computed<number[]>(() => {
   if (q === '') return [];
   const out: number[] = [];
   lines.value.forEach((l, i) => {
-    l.plain ??= plain(l.text);
+    l.plain ??= plainText(l.text);
     if (matchesQuery(l.plain, q)) out.push(i);
   });
   return out;
 });
 const currentLine = computed(() => matchLines.value[current.value]);
-
-const plain = (text: string): string =>
-  parseAnsi(text)
-    .map((seg) => seg.text)
-    .join('');
 
 function onQuery(q: string): void {
   needle.value = q.trim().toLowerCase();
@@ -110,8 +97,10 @@ watch(matchLines, (m) => {
 });
 
 function append(batch: DockerLogLine[]): void {
-  const next = lines.value.concat(batch.map((l) => ({ ...l, id: seq++ })));
-  lines.value = next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next;
+  lines.value = appendCapped(
+    lines.value,
+    batch.map((l) => ({ ...l, id: seq++ })),
+  );
 }
 
 async function close(): Promise<void> {
