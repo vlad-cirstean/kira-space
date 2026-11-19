@@ -8,19 +8,24 @@ import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import SearchOptionToggles from '@workbench/components/SearchOptionToggles.vue';
 import VirtualList from '@workbench/components/VirtualList.vue';
+import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
 import AdeFileSearchRow from './AdeFileSearchRow.vue';
+import { menuForFilePath } from './menu';
 import { type FileSearchRowVm, useAdeFileSearchStore } from './state/fileSearch';
+import { useTaskFileLaunch } from './useTaskFiles';
 
 // C7 §7.3: the query field, the three Monaco-find-widget-vocabulary toggles (D13: the same three
 // codicons the in-file find widget and every other search surface in this app already use), the
 // Search/Stop button, and the streamed results list.
-const props = defineProps<{ branchId: string }>();
+const props = defineProps<{ branchId: string; worktree: string }>();
 // A match opens the file in the viewer at its line and column.
 const emit = defineEmits<{
   open: [path: string, reveal: { line: number; column: number; endColumn?: number }];
 }>();
 const searchStore = useAdeFileSearchStore();
+const contextMenuStore = useContextMenuStore();
+const launch = useTaskFileLaunch(() => props.branchId);
 
 const selected = ref<string | null>(null);
 
@@ -112,6 +117,15 @@ function onRowOpen(row: FileSearchRowVm): void {
   else onOpen(row);
 }
 
+function menuFor(row: FileSearchRowVm) {
+  return menuForFilePath({
+    path: row.path,
+    worktree: props.worktree,
+    isDir: false,
+    launch: launch.menuItems(row.path),
+  });
+}
+
 function onRowSelect(row: FileSearchRowVm): void {
   onSelect(row);
   if (row.kind === 'file') onToggleCollapse(row);
@@ -173,6 +187,10 @@ function onRowSelect(row: FileSearchRowVm): void {
       testid="virtual-list"
       :aria-label="t('common.searchResults.aria')"
       :open="onRowOpen"
+      :menu-for="menuFor"
+      :menu="
+        (row, rect) => contextMenuStore.openContextMenuAt(rect.left, rect.bottom, menuFor(row))
+      "
       :select="onRowSelect"
     >
       <template #row="{ row, nav }">

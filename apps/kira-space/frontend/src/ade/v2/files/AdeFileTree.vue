@@ -12,7 +12,7 @@ import AdeFileTreeRow from './AdeFileTreeRow.vue';
 import { buildTree, type FileTreeRowVm, flatten } from './fileTreeModel';
 import { menuForFilePath } from './menu';
 import { useAdeFilesUiStore } from './state/filesUi';
-import { useTaskFilesListing } from './useTaskFiles';
+import { useTaskFileLaunch, useTaskFilesListing } from './useTaskFiles';
 
 const contextMenuStore = useContextMenuStore();
 const filesUi = useAdeFilesUiStore();
@@ -29,6 +29,7 @@ const selected = computed({
 });
 
 const listing = useTaskFilesListing(() => props.branchId);
+const launch = useTaskFileLaunch(() => props.branchId);
 const tree = computed(() => buildTree(listing.data.value?.paths ?? []));
 // First load of a branch opens the root's own directories; a later Refresh never re-expands
 // whatever the user has since collapsed.
@@ -107,6 +108,7 @@ function menuFor(row: FileTreeRowVm) {
     isDir: row.isDir,
     expanded: row.expanded,
     onToggle: () => onToggle(row),
+    launch: launch.menuItems(row.path),
   });
 }
 

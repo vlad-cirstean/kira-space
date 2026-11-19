@@ -8964,11 +8964,25 @@
         "noWorktree": {
           "empty": "This task has no worktree yet"
         },
+        "openInEditor": {
+          "label": "Open in VS Code"
+        },
         "refresh": {
           "tooltip": "Refresh files"
         },
         "resize": {
           "label": "Resize file list"
+        },
+        "reveal": {
+          "explorer": {
+            "label": "Reveal in File Explorer"
+          },
+          "fileManager": {
+            "label": "Reveal in file manager"
+          },
+          "finder": {
+            "label": "Reveal in Finder"
+          }
         },
         "search": {
           "stopped": {
@@ -8979,6 +8993,11 @@
           },
           "truncated": {
             "tooltip": "This file hit the per-file match cap, so not every match is shown"
+          }
+        },
+        "target": {
+          "file": {
+            "label": "Selected file"
           }
         },
         "tree": {

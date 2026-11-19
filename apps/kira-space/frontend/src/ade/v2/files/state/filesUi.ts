@@ -23,6 +23,8 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   const openFile = ref<Record<string, string | null>>({});
   /** Per branch: a markdown file shows its rendered Reading view. */
   const reading = ref<Record<string, boolean>>({});
+  /** Per branch: why the last Reveal or Open in VS Code failed. */
+  const launchError = ref<Record<string, string>>({});
 
   const viewOf = (taskId: string): TaskFilesView =>
     views.value[taskId] ?? { branchId: '', mode: 'files', filter: '' };
@@ -47,7 +49,13 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   /** Drops entries of tasks and branches no longer on the board (archived, removed). */
   function prune(taskIds: ReadonlySet<string>, branchIds: ReadonlySet<string>): void {
     dropMissing(views.value, taskIds);
-    for (const rec of [expanded.value, selected.value, openFile.value, reading.value]) {
+    for (const rec of [
+      expanded.value,
+      selected.value,
+      openFile.value,
+      reading.value,
+      launchError.value,
+    ]) {
       dropMissing(rec, branchIds);
     }
   }
@@ -59,6 +67,7 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
     selected,
     openFile,
     reading,
+    launchError,
     viewOf,
     patch,
     expandedOf,

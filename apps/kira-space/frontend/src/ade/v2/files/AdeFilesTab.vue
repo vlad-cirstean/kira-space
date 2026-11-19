@@ -23,7 +23,7 @@ import AdeFileTree from './AdeFileTree.vue';
 import AdeFileViewer from './AdeFileViewer.vue';
 import { useAdeFileSearchStore } from './state/fileSearch';
 import { type FilesMode, useAdeFilesUiStore } from './state/filesUi';
-import { taskFileTabId, useTaskFilesListing } from './useTaskFiles';
+import { taskFileTabId, useTaskFileLaunch, useTaskFilesListing } from './useTaskFiles';
 
 // A task's worktree files: tree or content search on the left, a read-only viewer on the right.
 // One branch at a time; the worktree is the agent's, so nothing here edits.
@@ -62,6 +62,10 @@ const modeItems = computed(() => [
 const openFile = computed(() => filesUi.openFile[branchId.value] ?? null);
 
 const listing = useTaskFilesListing(branchId);
+const launch = useTaskFileLaunch(branchId);
+// Reveal and Open in VS Code act on the open file, else the worktree root.
+const actionPath = computed(() => openFile.value ?? '');
+const launchError = computed(() => filesUi.launchError[branchId.value] ?? '');
 const listingError = computed(() => (listing.error.value ? errorText(listing.error.value) : ''));
 
 function refresh(): void {
@@ -142,12 +146,29 @@ const pane = useLiveSize(
       </div>
       <div v-else class="flex-1" />
       <TooltipIconButton
+        v-if="launch.canReveal.value"
+        icon="folder-opened"
+        :label="launch.revealTooltip(actionPath)"
+        data-testid="ade-files-reveal"
+        @click="launch.reveal(actionPath)"
+      />
+      <TooltipIconButton
+        v-if="launch.canOpenEditor.value"
+        icon="code"
+        :label="launch.editorTooltip(actionPath)"
+        data-testid="ade-files-open-editor"
+        @click="launch.openInEditor(actionPath)"
+      />
+      <TooltipIconButton
         icon="refresh"
         :label="t('space.ade.files.refresh.tooltip')"
         data-testid="ade-files-refresh"
         @click="refresh"
       />
     </PanelBar>
+    <Alert v-if="launchError" variant="error" data-testid="ade-files-launch-error"
+      ><AlertDescription>{{ launchError }}</AlertDescription></Alert
+    >
     <Alert v-if="listingError" variant="error" data-testid="ade-files-error"
       ><AlertDescription>{{ listingError }}</AlertDescription></Alert
     >
@@ -166,7 +187,12 @@ const pane = useLiveSize(
           :filter="filter"
           @open="onOpen"
         />
-        <AdeFileSearch v-else :branch-id="branchId" @open="onSearchOpen" />
+        <AdeFileSearch
+          v-else
+          :branch-id="branchId"
+          :worktree="target?.worktree ?? ''"
+          @open="onSearchOpen"
+        />
       </div>
       <ResizeHandle
         line

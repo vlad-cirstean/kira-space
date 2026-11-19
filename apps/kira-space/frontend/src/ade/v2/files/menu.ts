@@ -10,6 +10,8 @@ export function menuForFilePath(opts: {
   isDir: boolean;
   expanded?: boolean;
   onToggle?: () => void;
+  /** Reveal and Open in VS Code entries, from useTaskFileLaunch. */
+  launch?: MenuItem[];
 }): MenuItem[] {
   const items: MenuItem[] = [];
   if (opts.isDir && opts.onToggle) {
@@ -34,5 +36,6 @@ export function menuForFilePath(opts: {
     icon: 'copy',
     run: () => copyText(opts.path),
   });
+  items.push(...(opts.launch ?? []));
   return items;
 }
