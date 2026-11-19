@@ -10,9 +10,9 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
 import { changeRequestTone, TONE_BADGE } from '@theme/lib/statusTone';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime } from '@workbench/behaviour/format';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -43,14 +43,15 @@ const { sessions, repoLabel } = usePlanModel();
 const hostLabels = useHostLabels();
 const query = useArchivedTask(() => props.taskId);
 const restore = useRestoreTask();
-const restoreError = ref('');
+const restoring = useMutationAction(restore);
+const restoreError = restoring.error;
 const tab = ref<TaskPanelTab>('main');
 
 watch(
   () => props.taskId,
   () => {
     tab.value = 'main';
-    restoreError.value = '';
+    restoring.reset();
   },
 );
 
@@ -120,13 +121,7 @@ function open(url: string, e: MouseEvent): void {
 }
 
 async function onRestore(): Promise<void> {
-  restoreError.value = '';
-  try {
-    await restore.mutateAsync({ taskId: props.taskId });
-    boardUi.openTask(props.taskId);
-  } catch (err) {
-    restoreError.value = errorText(err);
-  }
+  if (await restoring.run({ taskId: props.taskId })) boardUi.openTask(props.taskId);
 }
 
 const bodyEl = useTemplateRef<HTMLElement>('bodyEl');

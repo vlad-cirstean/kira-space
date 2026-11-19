@@ -2,10 +2,10 @@
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
 import { candidateOf, candidateOptions, newBranchError } from '../branchOptions';
 import { useCandidates, useSetTaskBranch, useUpdateTaskRepo } from '../queries';
@@ -24,9 +24,10 @@ const props = defineProps<{
 }>();
 const open = defineModel<boolean>('open', { required: true });
 
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 watch(open, (o) => {
-  if (o) error.value = '';
+  if (o) surface.reset();
 });
 
 const candidates = useCandidates(
@@ -45,10 +46,9 @@ const ui = useAdeBoardUiStore();
 const setRepo = useUpdateTaskRepo();
 
 async function submitBranch(name: string, existing: boolean): Promise<void> {
-  error.value = '';
   const branchId = props.branch.id;
   const taskId = props.branch.taskId;
-  try {
+  await surface.run(async () => {
     // A not-created row has no worktree to lose.
     const { proceed, discard } =
       props.branch.name === ''
@@ -72,19 +72,14 @@ async function submitBranch(name: string, existing: boolean): Promise<void> {
       () => setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard }),
     );
     if (!ok) ui.select(taskId);
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 async function submitRepo(codeRepoId: string): Promise<void> {
-  error.value = '';
-  try {
+  await surface.run(async () => {
     await setRepo.mutateAsync({ branchId: props.branch.id, codeRepoId });
     open.value = false;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 </script>
 

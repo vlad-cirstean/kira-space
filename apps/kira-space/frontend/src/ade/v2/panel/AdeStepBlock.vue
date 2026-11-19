@@ -10,7 +10,7 @@ import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { type StatusTone, TONE_BADGE, TONE_TEXT } from '@theme/lib/statusTone';
 import SmartBadge from '@workbench/automations/smart/SmartBadge.vue';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
@@ -45,7 +45,8 @@ const stage = useAdeStageDialogStore();
 const contextMenu = useContextMenuStore();
 const reviewCode = useReviewCode();
 
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const openLog = ref<string | null>(null);
 
 const STATE_TONE: Record<StepBlock['state'], StatusTone> = {
@@ -169,15 +170,20 @@ async function run(
   target: string,
   fn: () => Promise<unknown>,
 ): Promise<void> {
-  error.value = '';
+  surface.reset();
   const taskId = props.card.task.id;
   await ops.run({ id: `${kind}:${target}`, kind, taskId, name: props.card.title }, async () => {
-    try {
-      await fn();
-    } catch (err) {
-      error.value = errorText(err);
-      throw err;
-    }
+    // The op needs the original failure; the surface shows it.
+    let failure: unknown;
+    const ok = await surface.run(async () => {
+      try {
+        await fn();
+      } catch (err) {
+        failure = err;
+        throw err;
+      }
+    });
+    if (!ok) throw failure;
   });
 }
 const onApprove = (stepId: string): Promise<void> =>
@@ -199,8 +205,8 @@ const canTakeOver = (r: StepRun): boolean =>
   (r.state === 'stuck' || r.state === 'failed' || r.state === 'running');
 
 const onReview = (branchId: string): void => {
-  error.value = '';
-  reviewCode.open(props.card.task.id, branchId, null, { onError: (msg) => (error.value = msg) });
+  surface.reset();
+  reviewCode.open(props.card.task.id, branchId, null, { onError: surface.fail });
 };
 function logToggleLabel(runId: string): string {
   const open = openLog.value === runId;

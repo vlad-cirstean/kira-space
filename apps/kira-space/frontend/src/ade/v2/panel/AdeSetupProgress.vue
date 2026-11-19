@@ -4,8 +4,8 @@ import ScriptProgress from '@theme/components/ScriptProgress.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref } from 'vue';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
+import { computed } from 'vue';
 import { useRepos } from '../../../repo/state/reposQueries';
 import { setupStatus } from '../board/setupStatus';
 import { useRetrySetup } from '../queries';
@@ -17,7 +17,8 @@ import AdeRunLog from './AdeRunLog.vue';
 const props = defineProps<{ branch: Branch; repo: string; compact?: boolean }>();
 const repos = useRepos();
 const retry = useRetrySetup();
-const error = ref('');
+const retrying = useMutationAction(retry);
+const error = retrying.error;
 
 const status = computed(() => {
   const setup = props.branch.setup;
@@ -29,12 +30,7 @@ const status = computed(() => {
 });
 
 async function onRetry(): Promise<void> {
-  error.value = '';
-  try {
-    await retry.mutateAsync({ branchId: props.branch.id });
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await retrying.run({ branchId: props.branch.id });
 }
 </script>
 

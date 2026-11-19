@@ -14,8 +14,8 @@ import { Card } from '@theme/components/ui/card';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import Identifier from '@workbench/components/Identifier.vue';
@@ -68,7 +68,8 @@ const retrySetup = useRetrySetup();
 const reviewCode = useReviewCode();
 const automation = useRunAutomation();
 const contextMenu = useContextMenuStore();
-const setupError = ref('');
+const surface = useTaskAction();
+const setupError = surface.error;
 const forcePush = ref(false);
 const openView = useOpenChangeRequest();
 
@@ -113,12 +114,7 @@ const chipLabel = computed(() => {
 });
 const setupFailed = computed(() => branch.value.setup?.state === 'failed');
 async function onRetrySetup(): Promise<void> {
-  setupError.value = '';
-  try {
-    await retrySetup.mutateAsync({ branchId: branch.value.id });
-  } catch (err) {
-    setupError.value = errorText(err);
-  }
+  await surface.run(() => retrySetup.mutateAsync({ branchId: branch.value.id }));
 }
 const runs = computed(() => props.card.task.runs);
 const mainName = computed(
@@ -160,8 +156,8 @@ function run(a: HeaderAction, ev?: MouseEvent): void {
     if (r)
       contextMenu.openContextMenuAt(r.left, r.bottom, automation.menuItems(props.card.task.id, id));
   } else if (a.kind === 'review') {
-    setupError.value = '';
-    reviewCode.open(props.card.task.id, id, null, { onError: (msg) => (setupError.value = msg) });
+    surface.reset();
+    reviewCode.open(props.card.task.id, id, null, { onError: surface.fail });
   }
 }
 const HEADER_ICON = {

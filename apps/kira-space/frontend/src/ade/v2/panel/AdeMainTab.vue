@@ -11,10 +11,10 @@ import { Switch } from '@theme/components/ui/switch';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import AdeParentChip from '../AdeParentChip.vue';
 import { orchestratorToggle } from '../board/kind';
 import { statusWhy, taskPatch } from '../board/panelFacts';
@@ -39,18 +39,12 @@ const boardUi = useAdeBoardUiStore();
 
 const task = computed(() => props.card.task);
 const review = computed(() => props.card.review);
-const fieldError = ref('');
+const surface = useTaskAction();
+const fieldError = surface.error;
 const est = useEstimateWrite(() => task.value.id);
 
 async function write(patch: Partial<TaskPatch>): Promise<boolean> {
-  fieldError.value = '';
-  try {
-    await update.mutateAsync({ taskId: task.value.id, patch: taskPatch(patch) });
-    return true;
-  } catch (err) {
-    fieldError.value = errorText(err);
-    return false;
-  }
+  return surface.run(() => update.mutateAsync({ taskId: task.value.id, patch: taskPatch(patch) }));
 }
 
 // ---- status
@@ -184,7 +178,7 @@ useKeptScroll(() => `ade:task:${props.card.task.id}:main`, bodyEl);
 
     <AdeTaskUpdates :task-id="task.id" />
 
-    <AdeMainBranches :card="card" @error="(m: string) => (fieldError = m)" />
+    <AdeMainBranches :card="card" @error="surface.fail" />
 
     <AdeWorkflowBlock v-if="!review && !card.parked" :card="card" />
   </div>
