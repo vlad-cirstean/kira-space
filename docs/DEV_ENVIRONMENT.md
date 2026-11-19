@@ -852,6 +852,8 @@ pre-push design.
   when work leaves the machine, the same boundary CI defends — and in CI's `checks` job.
 - **`typecheck:*` run `--incremental`** (P215) with one `tsBuildInfoFile` per project under
   `node_modules/.cache/tsbuildinfo` (gitignored). Delete that directory to force a cold check.
+- **`bun run audit:ui [--channel c1..c7] [--out <file>]`** (P674): UI uniformity audit, seven heuristic
+  channels (`scripts/uiaudit/`), ~10s. Discovery only, never in `lint` or hooks. Writes a markdown report.
 
 ## A pre-P97 dev box still has orphaned repo-map files on disk
 
