@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * P265 F3: source text guard U64-U71 and U182 (catalog key ownership, ownership.ts). Flags literal user-visible text and misuse of the catalog
+ * P265 F3: source text guard U64-U71, U208 and U182 (catalog key ownership, ownership.ts). Flags literal user-visible text and misuse of the catalog
  * runtime in `.vue` and `.ts` sources (rules in sourceRules.ts). Exemptions are named, with a
  * reason, in exemptions.ts.
  */

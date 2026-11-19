@@ -34,6 +34,21 @@ export const EXEMPTIONS: readonly Exemption[] = [
     reason:
       '`title` and `description` are vue-sonner class slots holding Tailwind classes, not text',
   },
+  {
+    rule: 'U208',
+    path: 'apps/kira-space/frontend/src/ade/v2/board/setupGate.ts',
+    reason: 'mirrors Go run notes (internal/ade/runs.go), matched with includes, never shown',
+  },
+  {
+    rule: 'U208',
+    path: 'apps/kira-space/frontend/src/ade/v2/dialog/compose.ts',
+    reason: 'agent prompt text sent to the agent, English by design',
+  },
+  {
+    rule: 'U208',
+    path: 'packages/workbench/src/memory/AddMemoryDialog.vue',
+    reason: 'stored memory provenance (record content agents read), not UI chrome',
+  },
 ];
 
 /** U182 pairs: a module that hosts another module's UI reads that module's keys. */
