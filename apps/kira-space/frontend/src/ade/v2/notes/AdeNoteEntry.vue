@@ -115,7 +115,7 @@ function time(h: Handover): string {
         t('space.ade.handover.finished.status')
       }}</Badge>
       <Badge v-if="handover.edited && handover.state !== 'note'" variant="default">{{
-        t('llmPrompts.badge.edited.label')
+        t('common.state.edited.status')
       }}</Badge>
       <span class="ml-auto text-subtle">{{ time(handover) }}</span>
       <AdeOriginSession

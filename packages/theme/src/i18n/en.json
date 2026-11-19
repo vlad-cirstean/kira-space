@@ -4021,6 +4021,9 @@
       "default": {
         "option": "Default"
       },
+      "edited": {
+        "status": "Edited"
+      },
       "failed": {
         "status": "Failed"
       },
@@ -4074,6 +4077,9 @@
       },
       "overview": {
         "label": "Overview"
+      },
+      "preview": {
+        "label": "Preview"
       }
     },
     "task": {
@@ -7106,9 +7112,6 @@
       "defaultChanged": {
         "label": "Default changed"
       },
-      "edited": {
-        "label": "Edited"
-      },
       "invalid": {
         "label": "Invalid"
       }
@@ -7526,11 +7529,6 @@
     "schema": {
       "hint": "Fixed. The reply must match this schema, and an edit can’t change it.",
       "label": "Output schema"
-    },
-    "tab": {
-      "preview": {
-        "label": "Preview"
-      }
     },
     "var": {
       "autostash": {

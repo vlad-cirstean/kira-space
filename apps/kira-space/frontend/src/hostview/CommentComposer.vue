@@ -73,7 +73,7 @@ async function submit(): Promise<void> {
 const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
 const modes = computed(() => [
   { value: 'write', label: t('common.action.edit.label'), testid: 'comment-mode-write' },
-  { value: 'preview', label: t('llmPrompts.tab.preview.label'), testid: 'comment-mode-preview' },
+  { value: 'preview', label: t('common.tab.preview.label'), testid: 'comment-mode-preview' },
 ]);
 </script>
 

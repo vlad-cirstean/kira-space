@@ -103,7 +103,7 @@ function commitWidth(size: number): void {
                 <span class="min-w-0 truncate"><PromptTitle :view="p" /></span>
                 <span class="flex shrink-0 gap-1">
                   <Badge v-if="rowEdited(p)" variant="info" data-testid="llm-prompt-badge">{{
-                    t('llmPrompts.badge.edited.label')
+                    t('common.state.edited.status')
                   }}</Badge>
                   <Badge v-if="p.defaultChanged" variant="warn" data-testid="llm-prompt-badge">{{
                     t('llmPrompts.badge.defaultChanged.label')
