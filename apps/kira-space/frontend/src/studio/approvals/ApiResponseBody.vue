@@ -53,7 +53,7 @@ const parsedRaw = computed(() => {
         testid="api-review"
         :scripted="payload.scripted"
         :raw-label="t('studio.dbMcp.approval.api.responseRaw.label')"
-        :result-label="t('studio.dbMcp.approval.api.responseResult.label')"
+        :result-label="t('common.agentGets.label')"
         :views-label="t('studio.dbMcp.approval.api.responseViews.aria')"
       >
         <template #raw>

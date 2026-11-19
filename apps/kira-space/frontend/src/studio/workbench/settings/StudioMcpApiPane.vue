@@ -122,7 +122,7 @@ const approvalItems = computed(() => [
         <AlertDescription>{{ t('studio.settings.dbMcp.apiApproval.never.body') }}</AlertDescription>
       </Alert>
     </Field>
-    <Field v-if="settingsStore.dbMcp.apiRequests" orientation="horizontal">
+    <Field orientation="horizontal">
       <Switch
         :id="dbMcpApiScriptsId"
         :model-value="settingsStore.dbMcp.apiScripts"

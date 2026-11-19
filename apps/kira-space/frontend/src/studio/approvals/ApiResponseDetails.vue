@@ -17,7 +17,7 @@ const payload = computed(() => apiResponsePayloadSchema.parse(props.item.payload
     <dd data-testid="api-review-request">
       <TruncatedText class="font-data" :text="`${payload.method} ${payload.url}`" />
     </dd>
-    <dt>{{ t('studio.dbMcp.approval.api.responseResult.label') }}</dt>
+    <dt>{{ t('common.agentGets.label') }}</dt>
     <dd data-testid="api-review-bytes">{{ formatBytes(payload.bytes) }}</dd>
     <template v-if="payload.scripted">
       <dt>{{ t('studio.dbMcp.approval.api.responseRaw.label') }}</dt>

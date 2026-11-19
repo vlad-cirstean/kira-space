@@ -124,12 +124,26 @@ export function accessSummaryOf(c: DbMcpAccessInput): string {
   return parts.length > 0 ? parts.join(', ') : 'none';
 }
 
+// The result script of a run_query item (P680): the source the user approves, its hash and the kept names it
+// may write. Also the transform of an api.request item.
+const transformViewSchema = /*#__PURE__*/ z.object({
+  source: z.string(),
+  hash: z.string(),
+  // Kept variables the script may write (P678), with their calls in the source.
+  mayKeep: z
+    .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+    .nullish()
+    .transform((v) => v ?? []),
+});
+
 // Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
-// and the variables as they stood when the statement was checked. Older items carry none.
+// and the variables as they stood when the statement was checked; the result script, if any (P680).
+// Older items carry none.
 const dbKeptShape = {
   params: z.array(z.string()).default([]),
   placeholders: z.array(z.string()).default([]),
   kept: z.array(keptUseSchema).default([]),
+  script: transformViewSchema.nullish().transform((v) => v ?? null),
 };
 
 export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
@@ -181,6 +195,9 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   // The declared mode; requested says the approver asked for this review rather than a setting.
   mode: dbMcpPayloadModeSchema.optional(),
   requested: z.boolean().default(false),
+  // A script produced the held text from the raw result (P680); rawBytes sizes that raw result.
+  scripted: z.boolean().default(false),
+  rawBytes: z.number().default(0),
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 
@@ -229,17 +246,7 @@ const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
       inputTruncated: z.boolean(),
     })
     .nullable(),
-  transform: z
-    .object({
-      source: z.string(),
-      hash: z.string(),
-      // Kept variables the transform may write (P678), with their calls in the source.
-      mayKeep: z
-        .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
-        .nullish()
-        .transform((v) => v ?? []),
-    })
-    .nullable(),
+  transform: transformViewSchema.nullable(),
 });
 // A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
 export const apiInputSchema = /*#__PURE__*/ z.object({

@@ -5,6 +5,7 @@ import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import ApprovalStatement from './ApprovalStatement.vue';
 import DbParamsList from './DbParamsList.vue';
+import DbScriptBlock from './DbScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
@@ -33,5 +34,6 @@ const payload = computed(() => dbExemptionPayloadSchema.parse(props.item.payload
       :placeholders="payload.placeholders"
       :kept="payload.kept"
     />
+    <DbScriptBlock v-if="payload.script" :script="payload.script" :kept="payload.kept" />
   </div>
 </template>

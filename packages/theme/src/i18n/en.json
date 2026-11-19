@@ -3310,6 +3310,9 @@
     "agentCliNotFound": {
       "error": "{product}’s CLI isn’t available. Copy the command above and run it yourself once it is installed."
     },
+    "agentGets": {
+      "label": "Agent gets"
+    },
     "agentRegistered": {
       "description": "Registered with {product}."
     },
@@ -7196,9 +7199,6 @@
           "body": "Added to the api_request tool description while agent scripts are on in the Studio MCP settings."
         }
       },
-      "headlessArtifactsHeader": {
-        "description": "Opens the artifact list a finishing call returns.",
-        "title": "Artifacts list heading",
       "dbmcpToolRunQueryScripts": {
         "description": "Tells the agent how to attach a result script to run_query, what the sandbox allows and what it receives back.",
         "title": "Query result scripts notice",
@@ -7206,6 +7206,9 @@
           "body": "Added to the run_query tool description while agent scripts are on in the Studio MCP settings."
         }
       },
+      "headlessArtifactsHeader": {
+        "description": "Opens the artifact list a finishing call returns.",
+        "title": "Artifacts list heading",
         "usedBy": {
           "body": "Returned to the agent after finish_step on a Kira Space task or a finished handover."
         }
@@ -14627,9 +14630,6 @@
           "responseRaw": {
             "label": "Response"
           },
-          "responseResult": {
-            "label": "Agent gets"
-          },
           "responseViews": {
             "aria": "Response views"
           },
@@ -14697,6 +14697,18 @@
           },
           "maskedRead": {
             "label": "Masked read"
+          }
+        },
+        "query": {
+          "responseRaw": {
+            "label": "Rows read"
+          },
+          "responseViews": {
+            "aria": "Result views"
+          },
+          "scriptResult": {
+            "hint": "The agent receives only what the script returns, not the rows. The statement is what runs; the script can’t change it.",
+            "label": "Result script"
           }
         },
         "reviewResultOn": {
@@ -17766,7 +17778,7 @@
           }
         },
         "apiScripts": {
-          "description": "Agents can attach JavaScript that builds the request or reduces the response before they see it. Each script shows in the approval card and the op log.",
+          "description": "Agents can attach JavaScript that builds an API request, or reduces an API response or a query result before they see it. Each script shows in the approval card and the op log.",
           "label": "Agent scripts"
         },
         "copyCommandAbove": {
