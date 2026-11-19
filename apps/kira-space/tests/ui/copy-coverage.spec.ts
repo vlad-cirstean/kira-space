@@ -511,6 +511,40 @@ studioTest.describe('databases module', () => {
     }
   });
 
+  studioTest('HTTP status tooltip and raw edit error use catalog text', async ({ relaunch }) => {
+    const entry = {
+      id: 'e1',
+      itemId: null,
+      tabId: 't1',
+      sentAt: '2024-06-01T10:05:00.000Z',
+      method: 'GET',
+      url: 'https://api.example.com/orders',
+      environment: '',
+      status: 404,
+      statusText: 'Not Found',
+      elapsedMs: 80,
+      bodyBytes: 22,
+      storedBytes: 96,
+    };
+    const { window: page } = await relaunch({
+      control: [{ channel: IPC.historyList, response: [entry] }],
+    });
+    await setPseudoLocale(page);
+    await openHttpModeAndNewRequest(page);
+    await loc(page, 'http-response-pane-history').click();
+    await loc(page, 'http-history-status-chip').hover();
+    await expectCatalogText(page.locator('[data-slot="tooltip-content"]').first());
+
+    await loc(page, 'http-edit-raw').click();
+    const editorHost = loc(page, 'edit-raw-textarea');
+    await expect(editorHost).toBeVisible();
+    await editorHost.locator('.view-lines').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.insertText('GET');
+    await expect(loc(page, 'edit-raw-error')).toBeVisible();
+    await expectCatalogText(loc(page, 'edit-raw-error'));
+  });
+
   studioTest('collections panel empty state', async ({ relaunch }) => {
     const { window: page } = await relaunch({
       control: [{ channel: IPC.collectionsList, response: { collections: [], items: [] } }],
