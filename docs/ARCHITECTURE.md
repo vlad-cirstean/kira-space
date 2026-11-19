@@ -1495,10 +1495,15 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A byte size is `formatBytes` passed as `{size}`, never a raw count with "bytes". A binary body and a cut response body read the same in the HTTP pane and the approval card (U179).
 - An approval-card kept name with its type is `KeptNameMark` (U180).
 - Studio JSON pretty-printing goes through `beautify.ts` (`indentJson`, `prettyJson`): lossless, never `JSON.stringify(JSON.parse())` (U181).
-- Catalog ownership: a module's sources use its own namespace plus `common`, `format`, `shared`, `theme`, `backend`; pairs mobile to `space.`, space to `git.`, `studio.proof.`, `memory.distill.` (U182).
+- Catalog ownership: a module's sources use its own namespace plus `common`, `format`, `shared`, `theme`, `backend`; pairs mobile to `space.`, space to `git.`, `studio.proof.`, `memory.distill.`; shell dirs (`src/workbench/`, `src/state/`, `src/shortcuts/`, `src/bridge/`, `App.vue`, `main.ts`) read `space` plus shared namespaces, pairs `studio.settings.`, `studio.mode.`, `studio.operations.`, `studio.tab.`, `llmPrompts.nav.`; `packages/workbench/src` reads `workbench`, `llmPrompts` its own (U182).
+- A held result's "Will keep" list is `StagedKeepList` (U183).
+- A transform script in an approval card with its kept marks, "may keep" line and reads note is `TransformScriptBlock` (U184).
+- A gRPC status is `GrpcStatusBadge` (Studio): `grpcCodeClass` tone, `grpcCodeHint` tooltip, data font, "NAME (code)" (U185).
+- A masked value's show and hide toggle is `ValueRevealButton`: "Show value" / "Hide value", eye flips, pressed when shown (U186).
+- An approval footer's requester and button words come from `approvalRequester` and `approvalLabels` on desktop and phone (U187).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U181 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U187 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
