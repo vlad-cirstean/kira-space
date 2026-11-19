@@ -54,12 +54,7 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
       </div>
     </KeyValueList>
     <CollapsibleTrigger v-if="hidden > 0 && !open" as-child>
-      <Button
-        variant="link"
-        size="inline"
-        class="text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
-        data-testid="approval-more"
-      >
+      <Button variant="link-meta" size="inline" data-testid="approval-more">
         {{ t('common.more.label', { count: hidden }) }}
       </Button>
     </CollapsibleTrigger>
