@@ -24,7 +24,7 @@ import (
 
 const (
 	heldKey     = "e2e-held-writes-db"
-	stageW      = `kept.set("w", [1,2]); return 1;`
+	dbStageW      = `kept.set("w", [1,2]); return 1;`
 	waitingText = "got no review within"
 )
 
@@ -56,7 +56,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	}
 
 	t.Run("send", func(t *testing.T) {
-		req, pending := hold(t, stageW)
+		req, pending := hold(t, dbStageW)
 		held := f.pendingResponse(t, req.RequestID)
 		if len(held.Keep) != 1 || held.Keep[0].Name != "w" || held.Keep[0].Preview != "[1,2]" {
 			t.Fatalf("keep = %+v, want w with its preview", held.Keep)
@@ -84,7 +84,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	})
 
 	t.Run("withhold", func(t *testing.T) {
-		req, pending := hold(t, stageW)
+		req, pending := hold(t, dbStageW)
 		f.app.Contract(t, heldKey, "args:ApprovalsService.Answer#withhold", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: false})
 		f.answer(t, false, req.RequestID)
 		res := wait(t, pending)
@@ -95,7 +95,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	})
 
 	t.Run("review timeout", func(t *testing.T) {
-		_, pending := hold(t, stageW)
+		_, pending := hold(t, dbStageW)
 		res := wait(t, pending)
 		if !res.IsError || !strings.Contains(text(res), waitingText) || !strings.Contains(text(res), "withheld") || strings.Contains(text(res), "one") {
 			t.Fatalf("unreviewed = %q, want a timed-out withhold with no data", text(res))
@@ -105,7 +105,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	})
 
 	t.Run("scripts turned off during review", func(t *testing.T) {
-		req, pending := hold(t, stageW)
+		req, pending := hold(t, dbStageW)
 		off := false
 		if _, err := f.app.W.Settings.Set(settingsPatchScripts(&off)); err != nil {
 			t.Fatal(err)
@@ -125,7 +125,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	t.Run("client closes the session during review", func(t *testing.T) {
 		abandon, cancel := context.WithCancel(ctx)
 		go func() {
-			_, _ = sess.CallTool(abandon, &mcp.CallToolParams{Name: "run_query", Arguments: f.queryScriptArgs(scriptStmt, "read", stageW)})
+			_, _ = sess.CallTool(abandon, &mcp.CallToolParams{Name: "run_query", Arguments: f.queryScriptArgs(scriptStmt, "read", dbStageW)})
 		}()
 		req := f.pending(t)
 		if req.Stage != "response" {
@@ -155,7 +155,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", stageW))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", dbStageW))
 		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) || strings.Contains(text(res), `"kept":[`) {
 			t.Fatalf("result = %q, want the output and keptNotSaved naming the user entry", text(res))
 		}
@@ -170,7 +170,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		for i := range keptvars.MaxScopeEntries {
 			f.keep(t, externalScope, fmt.Sprintf("n%d", i), "1")
 		}
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", stageW))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", dbStageW))
 		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"`+keptvars.ErrScopeFull.Error()+`"}]`) {
 			t.Fatalf("result = %q, want keptNotSaved naming the scope cap", text(res))
 		}
