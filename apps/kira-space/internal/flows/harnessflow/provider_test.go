@@ -443,6 +443,7 @@ func TestLeanProviderSeams(t *testing.T) {
 	}
 
 	// Missing optional roles. Headless: a smart script is blocked, an ADE step run fails with the same refusal.
+	setProvider(t, app, fakeprovider.LeanID)
 	refusal := (&harness.MissingRole{Agent: lean.Label(), Role: "smart scripts"}).Error()
 	if pv, err := app.W.ScriptRuns.Preview(args); err != nil || pv.Blocker != refusal {
 		t.Fatalf("smart Preview blocker = %q, %v, want %q", pv.Blocker, err, refusal)
