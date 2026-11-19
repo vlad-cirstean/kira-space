@@ -16,10 +16,11 @@ import { Button } from '@theme/components/ui/button';
 import { EmptyDescription } from '@theme/components/ui/empty';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import type { PickerOption } from '@workbench/lib/pickerOptions';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { STATE_ICONS } from '../icons/index.ts';
 import type { RepoState } from '../state/repo.ts';
 
@@ -29,21 +30,14 @@ const emit = defineEmits<(event: 'repoOpened', repoId: string) => void>();
 // P108 F8: this panel's own refreshList() call (independent of bootstrap()'s own) can fail too —
 // distinct copy so a transport drop here never reads as "none of your folders is a Git
 // repository", which is a different, host-confirmed answer this failure never actually gave.
-const refreshError = ref<string | undefined>(undefined);
+const refresh = useAsyncAction(() => props.repoState.refreshList());
+const refreshError = refresh.error;
 
-function refreshCandidates(): void {
-  refreshError.value = undefined;
-  void props.repoState.refreshList().catch((err: unknown) => {
-    refreshError.value = errorText(err);
-  });
-}
-
-onMounted(refreshCandidates);
+onMounted(() => void refresh.run());
 
 // P108 F10: this was `@click`-bound directly — Vue's own async-error handling stops the
 // rejection from becoming a true unhandled one, but with no `app.config.errorHandler` set it
 // never reached the user either.
-const pickError = ref<string | undefined>(undefined);
 
 const candidateOptions = computed<PickerOption[]>(() =>
   props.repoState.candidates.value.map((c: RepoCandidate) => ({
@@ -53,18 +47,19 @@ const candidateOptions = computed<PickerOption[]>(() =>
   })),
 );
 
-async function openCandidate(option: PickerOption): Promise<void> {
-  pickError.value = undefined;
-  try {
+// `transport-closed` (the host disconnecting mid-request) is hidden outright — this panel
+// is about to be replaced by the boot-error banner (F8) rather than needing its own copy of it.
+const pick = useAsyncAction(
+  async (option: PickerOption) => {
     const result = await props.repoState.open(option.value);
     if (result.kind === 'ok') emit('repoOpened', result.repo.repoId);
-  } catch (err) {
-    // `transport-closed` (the host disconnecting mid-request) is ignored outright — this panel
-    // is about to be replaced by the boot-error banner (F8) rather than needing its own copy of it.
-    if (err instanceof TransportError && err.code === 'transport-closed') return;
-    pickError.value = errorText(err);
-  }
-}
+  },
+  {
+    describe: (err) =>
+      err instanceof TransportError && err.code === 'transport-closed' ? null : errorText(err),
+  },
+);
+const pickError = pick.error;
 </script>
 
 <template>
@@ -82,7 +77,7 @@ async function openCandidate(option: PickerOption): Promise<void> {
       :projects="candidateOptions"
       :disabled="repoState.opening.value"
       :placeholder="t('git.noRepository.open.title')"
-      @select="openCandidate"
+      @select="pick.run"
     />
     <template v-else>
       <EmptyDescription
@@ -100,7 +95,7 @@ async function openCandidate(option: PickerOption): Promise<void> {
         variant="toolbar"
         size="kira"
         data-testid="no-repository-retry"
-        @click="refreshCandidates"
+        @click="refresh.run()"
         ><CodiconIcon :name="ICON.refresh" :size="13" />
         {{ t('common.action.retry.label') }}
       </Button>

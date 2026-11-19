@@ -48,10 +48,10 @@ import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
 import { type MessageKey, t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useFormErrors } from '@workbench/behaviour/formErrors';
-import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
-import { computed, nextTick, reactive, ref, useId, watch } from 'vue';
+import { computed, nextTick, reactive, useId, watch } from 'vue';
 import type { RepoSettingsState } from '../../state/repoSettings.ts';
 
 const props = defineProps<{
@@ -78,7 +78,10 @@ const draft = reactive<RepoSettingsDraft>({ ...props.repoSettingsState.settings.
 // The snapshot the draft was copied from: `save()` diffs against it, so a field the user did not
 // edit is never written back over a newer value another surface set meanwhile.
 let draftBase: RepoSettingsSnapshot = props.repoSettingsState.settings.value;
-const saveError = ref<string | undefined>(undefined);
+const saving = useAsyncAction((patch: Partial<RepoSettingsSnapshot>) =>
+  props.repoSettingsState.set(patch),
+);
+const saveError = saving.error;
 
 watch(
   () => props.open,
@@ -86,7 +89,7 @@ watch(
     if (!isOpen) return;
     draftBase = props.repoSettingsState.settings.value;
     Object.assign(draft, draftBase);
-    saveError.value = undefined;
+    saving.reset();
     fireAndForget(props.repoSettingsState.loadProviders(), 'repoSettings.providers');
     void nextTick(form.reset);
   },
@@ -216,14 +219,7 @@ async function save(): Promise<void> {
   if (draft['kiraSpace.gitHost.provider'] !== current['kiraSpace.gitHost.provider']) {
     patch['kiraSpace.gitHost.provider'] = draft['kiraSpace.gitHost.provider'];
   }
-  if (Object.keys(patch).length > 0) {
-    try {
-      await props.repoSettingsState.set(patch);
-    } catch (err) {
-      saveError.value = errorText(err);
-      return;
-    }
-  }
+  if (Object.keys(patch).length > 0 && !(await saving.run(patch))) return;
   close();
 }
 </script>
