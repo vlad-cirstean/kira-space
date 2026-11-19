@@ -162,6 +162,12 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		if ap, res, err = s.approveAPI(ctx, plan, sc); res != nil || err != nil {
 			return res, nil, err
 		}
+		// The card may have waited a long time: the switches are read again before anything is sent.
+		if refusal := s.recheckAPISwitches(sc); refusal != "" {
+			ap.supplied.Wipe()
+			res, _, err := errResult(refusal)
+			return withNoValueKept(res, plan), nil, err
+		}
 	}
 	statuses, plan, refusal := s.settleInputs(ctx, in, plan, sc, ap.supplied)
 	if refusal != "" {
@@ -180,6 +186,18 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		o.Inputs = statuses
 	}
 	return s.deliverAPI(ctx, plan, sc, o, ap.requested)
+}
+
+// recheckAPISwitches is the refusal text when the tools or the scripts were turned off while the approval
+// card waited, "" when the request may go. Nothing has been sent at that point.
+func (s *Server) recheckAPISwitches(sc *apiScripts) string {
+	switch {
+	case !s.apiEnabled():
+		return apiRequestsOff + ". Nothing was sent."
+	case sc != nil && !s.scriptsOn():
+		return apiScriptsOff + ". Nothing was sent."
+	}
+	return ""
 }
 
 // settleInputs stores what the user typed, then plans again so the plan binds the stored entries' ids (a needed
