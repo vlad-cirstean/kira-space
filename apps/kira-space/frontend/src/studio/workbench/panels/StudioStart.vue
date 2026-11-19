@@ -8,7 +8,6 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import Identifier from '@workbench/components/Identifier.vue';
 import ModuleStart from '@workbench/components/ModuleStart.vue';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
@@ -25,7 +24,6 @@ import { type RecentTableEntry, useRecentTablesStore } from '../../state/studioT
 // P16 design system's FirstRun.html: one door, no vestibule. The engine grid lives only in
 // the New connection dialog, never repeated at the top level.
 const datagripImportStore = useDatagripImportStore();
-const importDataGrip = useAsyncAction(() => datagripImportStore.pickAndScanDataGripProject());
 const connectionsStore = useConnectionsStore();
 const connectionDialogStore = useConnectionDialogStore();
 const recentTablesStore = useRecentTablesStore();
@@ -89,9 +87,9 @@ function openRecent(entry: RecentTableEntry): void {
         variant="dialog"
         size="kira-lg"
         class="gap-1"
-        :pending="importDataGrip.pending.value"
+        :pending="datagripImportStore.picking"
         data-testid="first-run-import-datagrip"
-        @click="importDataGrip.run"
+        @click="datagripImportStore.pickAndScanDataGripProject"
       >
         <span class="size-4 flex items-center justify-center shrink-0"
           ><CodiconIcon name="cloud-download" :size="13" /></span
