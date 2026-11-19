@@ -5,6 +5,7 @@ import { Button } from '@theme/components/ui/button';
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import ApprovalItemCard from '@workbench/approvals/ApprovalItemCard.vue';
+import { approvalLabels, approvalRequester } from '@workbench/approvals/approvalFooter';
 import { useApprovalActions, useApprovals } from '@workbench/approvals/approvalsQueries';
 import { useApprovalKinds } from '@workbench/approvals/registry';
 import { useApprovalsStore } from '@workbench/state/approvals';
@@ -28,12 +29,15 @@ watch(
   (ids) => store.prune(ids),
 );
 
-function requester(item: (typeof items.value)[number]): string {
-  const def = kinds[item.kind];
-  if (def?.requester) return def.requester(item);
-  const o = item.origin;
-  return [o.client, o.cwd, o.task, o.step, o.source].filter(Boolean).join(' · ');
-}
+// Same footer text as the desktop; a kind that throws falls back and hides Approve (Deny stays).
+const footers = computed(() =>
+  items.value.map((item) => {
+    const def = kinds[item.kind];
+    const requester = approvalRequester(def, item);
+    const labels = approvalLabels(def, item);
+    return { item, requester, labels, unreadable: requester.failed || labels.failed };
+  }),
+);
 </script>
 
 <template>
@@ -51,7 +55,7 @@ function requester(item: (typeof items.value)[number]): string {
       <PermissionHint v-if="!permissions.agentInput" :what="t('mobile.approvals.answerOff.hint')" />
       <ul class="m-0 flex list-none flex-col p-0">
         <li
-          v-for="item in items"
+          v-for="{ item, requester, labels, unreadable } in footers"
           :key="item.id"
           class="flex flex-col gap-2 border-b border-border px-3 last:border-b-0"
           data-testid="phone-approval"
@@ -59,7 +63,7 @@ function requester(item: (typeof items.value)[number]): string {
           <ApprovalItemCard :item="item" />
           <div v-if="permissions.agentInput" class="flex flex-col gap-2 pb-3">
             <span class="min-w-0 truncate text-kira-sm text-subtle" data-testid="approval-origin">
-              {{ requester(item) }}
+              {{ requester.value }}
             </span>
             <div class="flex gap-2">
               <Button
@@ -70,10 +74,10 @@ function requester(item: (typeof items.value)[number]): string {
                 :data-testid="`approval-deny-${item.id}`"
                 @click="answer([item.id], false)"
               >
-                {{ kinds[item.kind]?.labels?.(item).deny ?? t('common.action.deny.label') }}
+                {{ labels.value?.deny ?? t('common.action.deny.label') }}
               </Button>
               <Button
-                v-if="kinds[item.kind]"
+                v-if="kinds[item.kind] && !unreadable"
                 size="touch"
                 variant="dialog-approve"
                 class="flex-1"
@@ -81,7 +85,7 @@ function requester(item: (typeof items.value)[number]): string {
                 :data-testid="`approval-approve-${item.id}`"
                 @click="answer([item.id], true)"
               >
-                {{ kinds[item.kind]?.labels?.(item).approve ?? t('common.action.approve.label') }}
+                {{ labels.value?.approve ?? t('common.action.approve.label') }}
               </Button>
             </div>
           </div>

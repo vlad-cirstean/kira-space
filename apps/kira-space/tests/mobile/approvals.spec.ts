@@ -221,6 +221,24 @@ test('contract: a details edit shows the agent reason and its files and answers 
   });
 });
 
+test('an unreadable kind keeps Deny, hides Approve and falls back to the origin text', async ({
+  app,
+  page,
+  server,
+}) => {
+  pair(server);
+  const it = detailsItem();
+  // details.edit's requester parses the payload; this one no longer matches, so the kind throws.
+  server.state.replies.approvals = [
+    { ...it, payload: { broken: true }, origin: { client: 'Claude Code' } },
+  ];
+  await app();
+  const row = page.locator(t('phone-approval'));
+  await expect(row.locator(t('approval-origin'))).toHaveText('Claude Code');
+  await expect(row.locator(t(`approval-deny-${it.id}`))).toBeVisible();
+  await expect(row.locator(t(`approval-approve-${it.id}`))).toHaveCount(0);
+});
+
 test('a reconnect refetches the approvals', async ({ app, page, server }) => {
   pair(server);
   server.state.replies.approvals = [taskItem()];
