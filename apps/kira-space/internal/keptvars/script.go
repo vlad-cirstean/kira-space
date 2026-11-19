@@ -18,8 +18,9 @@ var scriptCallRE = regexp.MustCompile(`\bkept\.(get|set)\(\s*(?:"([A-Za-z][A-Za-
 // ScanScript lists the literal kept calls of src. Comments and strings count too: over-listing is the safe
 // side, because the host functions refuse every name the scan did not find.
 func ScanScript(src string) []ScriptSite {
-	var out []ScriptSite
-	for _, m := range scriptCallRE.FindAllStringSubmatchIndex(src, -1) {
+	matches := scriptCallRE.FindAllStringSubmatchIndex(src, -1)
+	out := make([]ScriptSite, 0, len(matches))
+	for _, m := range matches {
 		start, end := m[4], m[5]
 		if start < 0 {
 			start, end = m[6], m[7]
