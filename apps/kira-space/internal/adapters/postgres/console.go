@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // endTransactionTimeout bounds the BEGIN READ ONLY wrap's own cleanup COMMIT (P2 R2): it must run
@@ -49,6 +50,18 @@ type rawResult struct {
 // so every cell arrives as the server's own text representation, with no per-type Go conversion to
 // undo.
 func runRaw(ctx context.Context, conn *trackedConn, sql string, params []any, op *adapters.OpCtx, track TrackQuery, limit page.ResultCap) (rawResult, error) {
+	return runRawArgs(ctx, conn, sql, queryArgs(true, params), op, track, limit)
+}
+
+// runBound runs sql with the agent's bound values: server-side bind over the extended protocol with
+// text results, never pgx's client-side interpolation (QueryExecModeSimpleProtocol).
+func runBound(ctx context.Context, conn *trackedConn, sql string, binds []any, op *adapters.OpCtx, track TrackQuery, limit page.ResultCap) (rawResult, error) {
+	args := append([]any{pgx.QueryExecModeDescribeExec, pgx.QueryResultFormats{pgx.TextFormatCode}}, binds...)
+	return runRawArgs(ctx, conn, sql, args, op, track, limit)
+}
+
+// runRawArgs is runRaw over ready query arguments, execution mode included.
+func runRawArgs(ctx context.Context, conn *trackedConn, sql string, qargs []any, op *adapters.OpCtx, track TrackQuery, limit page.ResultCap) (rawResult, error) {
 	if err := adapters.CheckNotStarted(ctx); err != nil {
 		return rawResult{}, err
 	}
@@ -56,7 +69,7 @@ func runRaw(ctx context.Context, conn *trackedConn, sql string, params []any, op
 	done := conn.track()
 
 	return adapters.RunWithAbortRace(ctx, func() { release(); done() }, func(queryCtx context.Context) (rawResult, error) {
-		rows, err := conn.Query(queryCtx, sql, queryArgs(true, params)...)
+		rows, err := conn.Query(queryCtx, sql, qargs...)
 		if err != nil {
 			return rawResult{}, mapError(err)
 		}
@@ -244,12 +257,16 @@ func verifyReadOnlyWrap(ctx context.Context, conn *trackedConn, op *adapters.OpC
 // Wrapping the whole batch in an explicit BEGIN READ ONLY transaction closes every angle
 // tried against a real server except that one specific statement, which
 // AssertNoTransactionEscalation rejects outright before anything runs.
-func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration) (pages []page.Page, err error) {
+func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, params []model.BindParam, limit page.ResultCap, timeout time.Duration) (pages []page.Page, err error) {
 	defer func() { err = timeoutError(ctx, timeout, err) }()
+	binds, err := boundArgs(params)
+	if err != nil {
+		return nil, err
+	}
 	if err := checkExecutable(conn, readOnly, connReadOnly, statements); err != nil {
 		return nil, err
 	}
-	op.SetCommand(adapters.JoinConsoleStatements(statements, "--"))
+	op.SetCommand(adapters.CommandWithParams(adapters.JoinConsoleStatements(statements, "--"), params, adapters.ParamDollar))
 
 	end, err := beginBatch(ctx, conn, op, track, readOnly, timeout)
 	if err != nil {
@@ -262,7 +279,13 @@ func execute(ctx context.Context, conn *trackedConn, op *adapters.OpCtx, track T
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
-		result, err := runRaw(ctx, conn, sql, nil, op, track, limit)
+		var result rawResult
+		var err error
+		if len(params) > 0 {
+			result, err = runBound(ctx, conn, sql, binds, op, track, limit)
+		} else {
+			result, err = runRaw(ctx, conn, sql, nil, op, track, limit)
+		}
 		if err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
@@ -414,4 +437,55 @@ func timeoutError(ctx context.Context, timeout time.Duration, err error) error {
 // RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
 func (a *Adapter) RedactStatement(statement string) (string, bool) {
 	return adapters.MaskSQLLiterals(statement, adapters.PostgresDialect)
+}
+
+// boundArgs turns bound values into pgx arguments. Every value goes as text, which the server parses
+// as the type it described for the placeholder: an integer past 2^53 or a numeric such as 12.50 stays
+// exact, and a list is one array literal for one array parameter.
+func boundArgs(params []model.BindParam) ([]any, error) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+	vals, err := adapters.DecodeBinds(params)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, len(vals))
+	for i, v := range vals {
+		out[i] = pgText(v)
+	}
+	return out, nil
+}
+
+func pgText(v adapters.ParamValue) any {
+	switch v.Kind {
+	case adapters.ParamNull:
+		return nil
+	case adapters.ParamBool:
+		return strconv.FormatBool(v.Bool)
+	case adapters.ParamList:
+		return pgArrayLiteral(v)
+	}
+	return v.Text
+}
+
+// pgArrayLiteral is the array literal of a list: every item double-quoted, backslash and double quote
+// escaped. The server parses it as the array type of its placeholder.
+func pgArrayLiteral(v adapters.ParamValue) string {
+	var b strings.Builder
+	b.WriteByte('{')
+	for i, it := range v.Items {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		text := it.Text
+		if it.Kind == adapters.ParamBool {
+			text = strconv.FormatBool(it.Bool)
+		}
+		b.WriteByte('"')
+		b.WriteString(strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(text))
+		b.WriteByte('"')
+	}
+	b.WriteByte('}')
+	return b.String()
 }

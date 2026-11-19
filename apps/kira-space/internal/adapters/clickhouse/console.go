@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // ClassifyStatement satisfies adapters.StatementClassifier (M2) over the shared SQL classifier,
@@ -119,11 +120,11 @@ func isRowReturning(sql string) bool {
 // read can keep running (sparse output, late-emitting aggregate), so runRowReturning kills it.
 var cancelOnCloseSettings = map[string]string{"cancel_http_readonly_queries_on_client_close": "1"}
 
-func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap, extra map[string]string) (page.TabularPage, error) {
+func runRowReturning(ctx context.Context, h *Handle, queryID string, op *adapters.OpCtx, track TrackQuery, sql string, limit page.ResultCap, extra, params map[string]string) (page.TabularPage, error) {
 	var columns []page.ColumnDescriptor
 	var builder *page.TabularPageBuilder
 	truncated := false
-	err := StreamQuery(ctx, h, queryID, sql, op, track, mergeSettings(cancelOnCloseSettings, extra), nil, func(names, types []string) {
+	err := StreamQuery(ctx, h, queryID, sql, op, track, mergeSettings(cancelOnCloseSettings, extra), params, func(names, types []string) {
 		// §8.14's console never consults the catalog — nullability/PK-ness are unknowable here;
 		// console results are always read-only regardless (mirrors mysql-family/console.go).
 		columns = make([]page.ColumnDescriptor, len(names))
@@ -250,13 +251,17 @@ func withStatementTimeout[T any](ctx context.Context, h *Handle, timeout time.Du
 }
 
 // execute is console.ts's own execute.
-func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuery, statements []string, nextQueryID func() string, limit page.ResultCap, timeout time.Duration, log func(level, msg string)) (pages []page.Page, err error) {
+func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuery, statements []string, params []model.BindParam, nextQueryID func() string, limit page.ResultCap, timeout time.Duration, log func(level, msg string)) (pages []page.Page, err error) {
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
+	bound, err := boundParams(params)
+	if err != nil {
+		return nil, err
+	}
 	// One op-log row for the whole batch (P5 D9's precedent) — StreamQuery/RunCommand deliberately
 	// never call op.SetCommand() themselves so this one call is authoritative.
-	op.SetCommand(adapters.JoinConsoleStatements(statements, "--", "#"))
+	op.SetCommand(adapters.CommandWithParams(adapters.JoinConsoleStatements(statements, "--", "#"), params, adapters.ParamBraces))
 
 	pages = make([]page.Page, len(statements))
 	for i, sql := range statements {
@@ -268,7 +273,7 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 				return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.formatClause.body", map[string]string{"clause": clause}, nil)
 			}
 			p, err := withStatementTimeout(ctx, h, timeout, nextQueryID, log, func(ctx context.Context, queryID string, extra map[string]string) (page.TabularPage, error) {
-				return runRowReturning(ctx, h, queryID, op, track, sql, limit, extra)
+				return runRowReturning(ctx, h, queryID, op, track, sql, limit, extra, bound)
 			})
 			if err != nil {
 				return nil, err
@@ -277,7 +282,7 @@ func execute(ctx context.Context, h *Handle, op *adapters.OpCtx, track TrackQuer
 			limit = adapters.RemainingCap(limit, p.Size())
 		} else {
 			written, err := withStatementTimeout(ctx, h, timeout, nextQueryID, log, func(ctx context.Context, queryID string, extra map[string]string) (int64, error) {
-				return RunCommand(ctx, h, queryID, sql, op, track, extra)
+				return RunCommand(ctx, h, queryID, sql, op, track, extra, bound)
 			})
 			if err != nil {
 				return nil, err

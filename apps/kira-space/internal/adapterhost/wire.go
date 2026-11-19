@@ -181,6 +181,8 @@ type ExecuteRequestWire struct {
 	// TimeoutByEngine is set with StatementTimeout when the engine enforces it too: the host timer
 	// then fires after a grace period instead of at the limit.
 	TimeoutByEngine bool `json:"-"`
+	// Params are set by Go callers only (dbmcp); see model.ConsoleRequest.Params.
+	Params []model.BindParam `json:"-"`
 }
 
 func (r ExecuteRequestWire) Validate() error {

@@ -367,6 +367,9 @@ func (a *Adapter) Mutate(ctx context.Context, plan model.MutationPlan, op *adapt
 
 // Execute is index.ts's execute.
 func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *adapters.OpCtx) ([]page.Page, error) {
+	if err := adapters.RefuseParams("mongodb", req); err != nil {
+		return nil, err
+	}
 	dbName := a.state.Load().defaultDatabase
 	if len(req.Path.Segments) > 0 && req.Path.Segments[0].Kind == "database" {
 		name := req.Path.Segments[0].Name

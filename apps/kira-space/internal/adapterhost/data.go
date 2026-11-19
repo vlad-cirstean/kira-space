@@ -226,7 +226,7 @@ func (d *Dispatcher) executeOn(ctx context.Context, adapter, lane adapters.Adapt
 			// takes — recorded as-is so a re-run can reopen at the exact same path, no NodePath
 			// round-trip needed.
 			op.SetPath(req.Path)
-			pages, err := adapter.Execute(ctx, model.ConsoleRequest{Path: path, Statements: req.Statements, Cap: req.Cap, ReadOnly: req.ReadOnly, StatementTimeout: req.StatementTimeout}, op)
+			pages, err := adapter.Execute(ctx, model.ConsoleRequest{Path: path, Statements: req.Statements, Cap: req.Cap, ReadOnly: req.ReadOnly, StatementTimeout: req.StatementTimeout, Params: req.Params}, op)
 			tx = op.Transaction()
 			if err != nil {
 				return nil, err

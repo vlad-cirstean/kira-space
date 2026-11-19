@@ -272,6 +272,9 @@ func (a *Adapter) Mutate(ctx context.Context, plan model.MutationPlan, op *adapt
 
 // Execute is index.ts's execute.
 func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *adapters.OpCtx) ([]page.Page, error) {
+	if err := adapters.RefuseParams("redis", req); err != nil {
+		return nil, err
+	}
 	set, err := a.requireSet()
 	if err != nil {
 		return nil, err

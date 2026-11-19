@@ -277,6 +277,9 @@ func pushHits(hits []searchHit, runtime []string, limit page.ResultCap) (*page.D
 }
 
 func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *adapters.OpCtx) ([]page.Page, error) {
+	if err := adapters.RefuseParams("kibana", req); err != nil {
+		return nil, err
+	}
 	h, err := a.requireHandle()
 	if err != nil {
 		return nil, err

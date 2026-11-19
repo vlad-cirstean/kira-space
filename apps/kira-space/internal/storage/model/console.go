@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
@@ -21,6 +22,20 @@ type ConsoleRequest struct {
 	// StatementTimeout is set by Go callers only (dbmcp); zero means none. The adapter applies the
 	// engine's own timeout to this request only, where it has one.
 	StatementTimeout time.Duration
+	// Params are bound values for the statement's placeholders. Go callers only (dbmcp), never set
+	// from the renderer. Empty runs the statements unchanged.
+	Params []BindParam
+}
+
+// BindParam is one value bound to a statement placeholder as a server-side parameter, never
+// spliced into the SQL text.
+type BindParam struct {
+	// Label names the value in the op log and in errors ("{{kept.ids}}"); never a value.
+	Label string
+	// Name is the placeholder name on ClickHouse ({name:Type}); empty for positional kinds.
+	Name string
+	// Value is compact JSON.
+	Value json.RawMessage
 }
 
 // MongoConsoleMethods mirrors domain/console.ts's MONGO_CONSOLE_METHODS — the ten shell methods
