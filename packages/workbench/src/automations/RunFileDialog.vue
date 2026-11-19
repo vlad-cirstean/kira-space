@@ -23,6 +23,7 @@ import { configName } from '@workbench/config/configName';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
+import { useAsyncAction } from '../behaviour/asyncAction';
 import { errorText } from '../bridge/codedError';
 import ConfigFileProblem from '../config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '../config/ConfigFormProblemAlert.vue';
@@ -220,18 +221,14 @@ const items = computed(() =>
 
 const saveBusy = computed(() => draft.saving.value);
 const canSave = computed(() => draft.canSave.value || hasSecrets.value);
-const secretError = ref('');
-const saveError = computed(() => draft.saveError.value || secretError.value);
+const secrets = useAsyncAction(flushSecrets);
+const saveError = computed(() => draft.saveError.value || (secrets.error.value ?? ''));
 
 async function saveNow(): Promise<void> {
-  secretError.value = '';
+  secrets.reset();
   await draft.saveNow();
   if (draft.dirty.value || draft.saveError.value) return;
-  try {
-    await flushSecrets();
-  } catch (err) {
-    secretError.value = errorText(err);
-  }
+  await secrets.run();
 }
 
 const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());

@@ -23,7 +23,7 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
-import { errorText } from '../../bridge/codedError';
+import { useMutationAction } from '../../behaviour/asyncAction';
 import { useAutomationsModule } from '../module';
 import ParamsForm from '../run/ParamsForm.vue';
 import RunPreview from '../run/RunPreview.vue';
@@ -69,7 +69,6 @@ const due = computed(() => {
     : t('automations.schedule.due.status', { time: clockText(at, tz) });
 });
 
-const error = ref<string | null>(null);
 const accept = useMutation({
   mutationKey: ['scriptRuns', 'confirmAccept'],
   mutationFn: async () => {
@@ -90,10 +89,6 @@ const accept = useMutation({
     });
     emit('close');
   },
-  onError: (err) => {
-    error.value = errorText(err);
-    void preview.refetch();
-  },
 });
 const decline = useMutation({
   mutationKey: ['scriptRuns', 'confirmDecline'],
@@ -101,10 +96,10 @@ const decline = useMutation({
     if (props.runId) await ctx.runs.confirmDecline(props.runId);
   },
   onSuccess: () => emit('close'),
-  onError: (err) => {
-    error.value = errorText(err);
-  },
 });
+const accepting = useMutationAction(accept);
+const declining = useMutationAction(decline);
+const error = computed(() => accepting.error.value ?? declining.error.value);
 
 const canRun = computed(
   () =>
@@ -123,15 +118,17 @@ const ade = computed(() => {
   return a && a.taskId !== '' ? a : null;
 });
 
-function run(): void {
+async function run(): Promise<void> {
   if (!canRun.value) return;
-  error.value = null;
-  accept.mutate();
+  declining.reset();
+  if (!(await accepting.run())) void preview.refetch();
 }
 
 function declineOrClose(): void {
-  if (props.runId) decline.mutate();
-  else emit('close');
+  if (props.runId) {
+    accepting.reset();
+    void declining.run();
+  } else emit('close');
 }
 
 const onSubmitKey = shortcutKeydown(['form.submit'], run);

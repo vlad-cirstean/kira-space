@@ -10,7 +10,8 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useAgentInfoFor } from '@workbench/agent/agentInfo';
 import { useClaimPrompt } from '@workbench/prompts/promptsQueries';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
+import { useAsyncAction } from '../../behaviour/asyncAction';
 import { useAutomationsModule } from '../module';
 import { useRerun } from '../runScript';
 import SmartBadge from '../smart/SmartBadge.vue';
@@ -30,7 +31,6 @@ const decline = useMutation({
   mutationFn: (id: string) => ctx.runs.confirmDecline(id),
 });
 const rerunRun = useRerun();
-const error = ref<string | null>(null);
 const { markSeen } = useSeenRuns();
 onMounted(() => markSeen(props.tab.state.runId));
 
@@ -62,9 +62,9 @@ async function continueInTerminal(): Promise<void> {
   });
 }
 
-async function rerun(): Promise<void> {
-  if (run.value) error.value = await rerunRun(run.value);
-}
+const rerun = useAsyncAction(async () => {
+  if (run.value) await rerunRun(run.value);
+});
 </script>
 
 <template>
@@ -124,7 +124,7 @@ async function rerun(): Promise<void> {
       </DetailHeader>
       <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 pb-3">
         <div v-if="ended" class="flex flex-col gap-1.5" data-testid="script-run-result">
-          <RunOutcomeBlock :run="run" @rerun="rerun" />
+          <RunOutcomeBlock :run="run" @rerun="rerun.run()" />
           <Button
             v-if="canContinue"
             variant="dialog"
@@ -135,8 +135,8 @@ async function rerun(): Promise<void> {
           >
             {{ t('automations.run.continue.label') }}
           </Button>
-          <Alert v-if="error" variant="error"
-            ><AlertDescription>{{ error }}</AlertDescription></Alert
+          <Alert v-if="rerun.error.value" variant="error"
+            ><AlertDescription>{{ rerun.error.value }}</AlertDescription></Alert
           >
         </div>
         <CodeBlock v-if="!isSmart" data-testid="script-run-command">{{ run.command }}</CodeBlock>
