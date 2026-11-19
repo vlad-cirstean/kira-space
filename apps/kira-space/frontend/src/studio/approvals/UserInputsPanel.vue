@@ -41,7 +41,7 @@ const fieldId = (name: string): string => `api-input-${props.itemId}-${name}`;
       v-for="i in stored"
       :key="i.name"
       meta
-      :label="`${t('studio.kept.input.replace.label')}: ${i.label}`"
+      :label="t('studio.kept.input.replace.label', { label: i.label })"
       :data-testid="`api-approval-input-replace-${i.name}`"
     >
       <Field>

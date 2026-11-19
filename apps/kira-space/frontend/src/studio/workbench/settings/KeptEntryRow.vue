@@ -44,7 +44,7 @@ const expiry = useKeptExpiry(() => props.entry.expiresAt);
         class="min-w-0 truncate font-data"
         data-testid="kept-entry-origin"
         >{{
-          `${t('studio.kept.origin.label')} ${entry.origin}`
+          t('studio.kept.origin.label', { origin: entry.origin })
         }}</span
       >
       <span class="shrink-0" data-testid="kept-entry-age"

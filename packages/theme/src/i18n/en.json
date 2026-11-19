@@ -15930,7 +15930,7 @@
       "input": {
         "hint": "Kira keeps these values for you and never shows them to the agent. A value goes only to {origin}.",
         "replace": {
-          "label": "Enter a new value"
+          "label": "Enter a new value: {label}"
         },
         "title": {
           "label": "Values you supply"
@@ -15946,7 +15946,7 @@
         "label": "This script may keep:"
       },
       "origin": {
-        "label": "Goes only to"
+        "label": "Goes only to {origin}"
       },
       "panel": {
         "query": {
