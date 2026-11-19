@@ -320,6 +320,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	w.GrpcHistory = &bridge.GrpcHistoryService{Deps: deps}
 	w.DataGrip = &bridge.DataGripService{Deps: deps}
 	w.DbMcp = embedded.dbMcpSvc
+	w.DbMcpSessions = embedded.dbMcpSessions
 	w.Docker = embedded.dockerSvc
 	w.Kubernetes = embedded.kubeSvc
 	w.ProofStore = proofSvc

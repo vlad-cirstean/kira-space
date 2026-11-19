@@ -30,6 +30,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -310,6 +311,8 @@ type Wired struct {
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
 	DbMcp           *bridge.DbMcpService
+	// DbMcpSessions mints the per-session Kira Studio server grants; flows use it to open a Studio session.
+	DbMcpSessions *dbmcp.SessionPool
 	// Kept is the in-memory kept variable store; KeptVars is its Settings view's service.
 	Kept       *keptvars.Store
 	KeptVars   *bridge.KeptVarsService

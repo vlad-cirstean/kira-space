@@ -104,6 +104,7 @@ type options struct {
 	kubeExtra       []kubernetes.Option
 	dbMcpLimits     []dbmcp.Limit
 	heldCaps        *[2]int
+	approvalTimeout time.Duration
 }
 
 // WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
@@ -230,6 +231,9 @@ func WithDbMcpLimits(ls ...dbmcp.Limit) Opt {
 func WithApprovalHeldCaps(perResult, total int) Opt {
 	return func(o *options) { o.heldCaps = &[2]int{perResult, total} }
 }
+
+// WithApprovalTimeout replaces how long a DB MCP approval waits for an answer.
+func WithApprovalTimeout(d time.Duration) Opt { return func(o *options) { o.approvalTimeout = d } }
 
 // kubeEnv hands the Kubernetes service the test process environment instead of probing the user's
 // login shell.
@@ -522,6 +526,9 @@ func (a *App) build() {
 	a.W.DbMcp.Limits = append(a.W.DbMcp.Limits, a.opts.dbMcpLimits...)
 	if c := a.opts.heldCaps; c != nil {
 		a.W.DbMcp.Approvals.SetHeldCaps(c[0], c[1])
+	}
+	if d := a.opts.approvalTimeout; d > 0 {
+		a.W.DbMcp.Approvals.SetTimeout(d)
 	}
 	a.W.Proof.Shell = a.ProofWindows
 	// The cookie jar is process-global in httpclient.

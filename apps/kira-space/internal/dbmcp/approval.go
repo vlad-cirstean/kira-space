@@ -366,7 +366,9 @@ type ApprovalBroker struct {
 	// heldBytes totals the Response.Bytes of queued entries, under mu.
 	heldBytes           int
 	maxResult, maxTotal int
-	observer            atomic.Pointer[observerBox]
+	// timeout is how long a request waits for an answer; ApprovalTimeout unless a test replaced it.
+	timeout  time.Duration
+	observer atomic.Pointer[observerBox]
 }
 
 // SetObserver wires the audit observer; call once at startup.
@@ -386,7 +388,7 @@ func newApprovalBrokerCaps(now func() time.Time, q *approvals.Queue, perResult, 
 	if q == nil {
 		q = approvals.New(nil)
 	}
-	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total}
+	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total, timeout: ApprovalTimeout}
 	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
 		q.Register(kind, brokerOwner{b})
 	}
@@ -550,7 +552,7 @@ func (b *ApprovalBroker) requestChoice(ctx context.Context, req ApprovalRequest)
 	}
 	req.RequestID = ids.NewID()
 	req.EnqueuedAt = now
-	req.ExpiresAt = now.Add(ApprovalTimeout)
+	req.ExpiresAt = now.Add(b.timeout)
 	entry := &approvalEntry{req: req, result: make(chan approvalResolution, 1)}
 	b.queue.Add(entry.req.RequestID, entry)
 	// Under mu so a fast answer cannot Remove before this Put.
@@ -586,6 +588,14 @@ func (b *ApprovalBroker) requestChoice(ctx context.Context, req ApprovalRequest)
 func (b *ApprovalBroker) SetHeldCaps(perResult, total int) {
 	b.mu.Lock()
 	b.maxResult, b.maxTotal = perResult, total
+	b.mu.Unlock()
+}
+
+// SetTimeout replaces how long a request waits for an answer; flow tests use it to reach the timeout
+// without waiting ApprovalTimeout. Exemption records keep the constant.
+func (b *ApprovalBroker) SetTimeout(d time.Duration) {
+	b.mu.Lock()
+	b.timeout = d
 	b.mu.Unlock()
 }
 
