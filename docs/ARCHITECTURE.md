@@ -73,7 +73,7 @@ whatever sandbox a session happens to be in),
 - packages/theme/src/tailwind-core.css is the host-neutral Tailwind entry (P131 Part 1); base.css is a thin @import of it plus Kira-app-only @theme tokens.
 - Frontend baseline: Vue 3.5 + Vite, Tailwind v4 CSS-first, shadcn-vue on Reka UI, Pinia for client state, TanStack Query for server state, VueUse for DOM composables, @tanstack/vue-virtual for row virtualization.
 - The --kira-* tokens are bridged in packages/theme/src/base.css, and the shadcn-vue palette in packages/theme/src/shadcn-bridge.css.
-- Each app creates one Pinia instance (frontend/src/state/pinia.ts) and one QueryClient/VueQueryPlugin in main.ts, with the client from packages/workbench/src/state/queryClient.ts.
+- Each app creates one Pinia instance (frontend/src/state/pinia.ts) and one QueryClient in main.ts, with the client from packages/workbench/src/state/queryClient.ts; provideShellServices(app, queryClient) installs VueQueryPlugin with it.
 - P104 deleted all 20 hand-rolled theme/primitives/* components and repointed call sites at components/ui/* (shadcn-vue on Reka UI), or inlined bespoke layout containers (PanelShell, ViewChrome, ViewHeader, ReconnectGate, RunState, ColorPicker) as Tailwind composition over those parts.
 - The v-tooltip directive and its singleton AppTooltip.vue were replaced by the Tooltip/TooltipTrigger/TooltipContent trio, with TooltipProvider owning delay/rearm.
 - PanelSplitter, VirtualList and TreeHost were replaced by reka's Splitter* (later narrowed to the Resizable wrappers only) and @tanstack/vue-virtual.
@@ -792,7 +792,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Bind interaction behaviours from their single implementation in packages/workbench/src/behaviour/ (or the theme primitive it names); never re-implement them in app code.
 - List and tree keyboard handling uses useListNavigation; context menus use one store and renderer (state/contextMenu.ts, ContextMenu.vue), with git MenuSection[] passed through sectionsToMenuItems.
 - A danger confirm and any DialogContent destructive open focused on the data-dialog-dismiss control; confirms use confirm({ message, title?, confirmLabel, tone, run? }) over ConfirmDialogView.
-- Shared behaviour primitives: useInlineEdit/InlineEditInput for inline edit, usePersistedState (key kira.<module>.<name>; its shared refs hold no component instance) for per-device UI state, useCopy/copyText, useAsyncAction, errorText for bridge errors, behaviour/format.ts for formats, TIMING for timers, optimisticUpdate, PointPopover.
+- Shared behaviour primitives: useInlineEdit/InlineEditInput for inline edit, usePersistedState (key kira.<module>.<name>; its shared refs hold no component instance) for per-device UI state, useCopy/copyText, useAsyncAction/useTaskAction/useMutationAction, errorText for bridge errors, behaviour/format.ts for formats, TIMING for timers, optimisticUpdate, PointPopover.
 - Data states use QueryState over a client from createQueryClient({ remote }) with staleTime Infinity, push-invalidated; a query that must refetch on mount sets staleTime: 0.
 - Local chords use useShortcut over SHORTCUTS, which carries scope; a unit test forbids two bindings on one chord in a scope.
 - Pane and column resize uses ResizeHandle over usePaneResize (VueUse useDraggable; paneResizeMath holds clamp, direction and percent arithmetic). reka SplitterGroup is retired app-wide.
@@ -1422,7 +1422,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - TooltipContent has two variants sharing one ground (elevated, ring, shadow, no arrow, sideOffset 4, fade only): `default` (padded, max-w-sm, plain text, `\n` breaks lines) and `surface` (layout only, caller pads) for rich content using the ADE tones, which are dark-only. A branch chip inside a default tooltip renders neutral via `data-chip="branch"`.
 - Density scale is 0.5, 1, 1.5, 2, 3, 4; 0.25/1.25/1.75/2.5/3.5 are not allowed anywhere. Dialog width uses size variants only.
 - With DialogContent dirty, outside click is ignored, and Esc and the header X ask the discard confirm; footer Cancel never asks.
-- Every host (Studio, Space, Space mobile, git-ui mount()) calls provideShellServices(app) from bootstrapShell.ts once per createApp, providing CONFIRM_DISCARD_KEY backed by the confirm store, because theme cannot import the store.
+- Every host (Studio, Space, Space mobile, git-ui mount()) calls provideShellServices(app, queryClient) from bootstrapShell.ts once per createApp (git-ui main.ts and each Monaco view-zone app in reviewDecorations.ts included), providing CONFIRM_DISCARD_KEY backed by the confirm store, because theme cannot import the store, and installing VueQueryPlugin with that client so useAsyncAction works in every app.
 - Each host mounts one ConfirmDialog; mobile passes touch for 44px buttons. Tabs ask before closing a dirty tab (TabKindDef.isDirty). A kind with `confirmClose` asks its own question instead; the confirm store's `choose()` adds a secondary button, and one button stays emphasised.
 - Two button looks: toolbar (borderless) and outline (1px border, transparent, hover:bg-field). No filled button. Emphasis is the border: dialog-primary is the accent outline with text-fg, dialog-danger is the error outline, the ADE task step action (AdeTaskActionButton) alone uses ACTION_CLASS tone outlines.
 - A labelled destructive commit (footer, confirm strip) is dialog-danger; an in-view, icon or toolbar one is toolbar plus data-tone="error". Toggle state goes through aria-pressed (TooltipIconButton pressed) or aria-expanded, never a bg-field class.
@@ -1440,9 +1440,9 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U187) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U189) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
-- check-ui-primitives.sh keeps 53 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
+- check-ui-primitives.sh keeps 55 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
 
 ### Shared pickers (P398)
@@ -1501,9 +1501,10 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A gRPC status is `GrpcStatusBadge` (Studio): `grpcCodeClass` tone, `grpcCodeHint` tooltip, data font, "NAME (code)" (U185).
 - A masked value's show and hide toggle is `ValueRevealButton`: "Show value" / "Hide value", eye flips, pressed when shown (U186).
 - An approval footer's requester and button words come from `approvalRequester` and `approvalLabels` on desktop and phone (U187).
+- A write's pending and error come from its TanStack mutation, never a hand ref: `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other awaited call, `useTaskAction()` for one error surface fed by several writes; `describe` maps or hides the text, `cause` gives the coded error for branching. Overlapping runs: latest wins. Keyed store surfaces, git-ui class state and synchronous failures stay outside (U188, U189, U51).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U187 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U189 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
@@ -4264,6 +4265,7 @@ Details content (notes, handovers, links, proofs) moves to files in `<home>/task
 
 ## Known open items
 
+- **TanStack pauses on a webview `offline` event (P682).** `createQueryClient` leaves `networkMode` at the default `online`, and `onlineManager` flips offline on the window `offline` event. Every query and every raw `useMutation` then sits paused (`fetchStatus: 'paused'`) until `online`, though desktop reads and writes are local Wails bridge calls. Only `useAsyncAction` sets `networkMode: 'always'`.
 - **A script that reads a user-supplied value can transform it past the mask (P679).** The mask covers raw, JSON-escaped, URL and base64 forms; a script may split, reverse or hash the value into text no form matches. Such a result is always held for review (reason `userValue`), so the user sees it before the agent does.
 - **Kept variables: non-secret kept values are not masked when a server echoes them (P678).** Only secret entries are masked in a response; a plain value a server returns reaches the agent. The same holds for a value bound into SQL: a database echo in rows or an error message is not masked (P680).
 - **SQL scripts cannot read secret or user-typed kept values (P680).** `run_query` scripts refuse them at argument time: SQL results have no secret mask and a connection has no origin to bind a typed value to. Both live in `api_request` only.

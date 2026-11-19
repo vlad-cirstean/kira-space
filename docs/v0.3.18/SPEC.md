@@ -20,7 +20,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P680 Part 1 | DB MCP: kept variables as bound SQL parameters | Done |
 | P680 Part 2 | DB MCP: JS result transform, raw and transformed review, `kept.set`; runs after P675, P676, P677, P678 Part 2 | Done |
 | P681 | Dependency cleanup | Done |
-| P682 | Async action error state: one owner for a write's pending and error | Planned |
+| P682 | Async action error state: one owner for a write's pending and error | Done |
 | P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Planned |
 | P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
 | P685 | Shared shell for the config-file dialogs | Planned |
@@ -39,6 +39,10 @@ Parked by P674 Part 5. `scripts/copy/check-copy.ts` misses translated text built
 ## P682: Async action error state
 
 Parked by P674 Part 2. About 70 files keep `pending` and `error` refs around an awaited call (`.value = errorText(` in components, stores, mobile) beside `useAsyncAction` (61 callers) and TanStack `useMutation().error`. Decide which owns a write's error (local ref, `useAsyncAction`, mutation state), migrate every site and add a guard at zero offenders. See `plans/P674-iter1.md` PARK.
+
+Plan: `plans/P682.md`.
+
+Result: TanStack mutation state owns every write's pending and error. `useAsyncAction` stays the one adapter, rebuilt on `useMutation` (`networkMode: 'always'`, `gcTime: 0`, thunk variable so typed secrets never sit in mutation `variables`), with `useTaskAction` (one surface fed by several writes) and `useMutationAction(m)` (one queries-file mutation); `error` and `pending` are read-only computeds, `cause` gives the coded error, `fail(err)` records an outside failure, `reset()` replaces ref writes. Local refs declined as a hand copy of `useMutation`. `provideShellServices(app, queryClient)` installs `VueQueryPlugin` on every app root (desktop, mobile, git-ui, Monaco view-zone apps). Counts: 68 files held `.value = errorText(`; 59 migrated, 2 owners rewritten, 7 stayed with a named requirement (5 git-ui class state skipped by U188 through `this.`, 2 synchronous failures as PERMANENT lines); the wider pass moved pending refs, aliases, returned-text helpers and child-emitted error text in about 50 more files. Guards: U188 (hand async error ref, two alternatives), U189 (errorText alias), U51 extended with `Sending`, `Refreshing`, `Reconnecting`; each fails on a planted offender per alternative and sits at zero offenders; PERMANENT 53 to 55; ARCHITECTURE rule, guard range U110-U189. `asyncAction.spec.ts` covers overlapping-run ordering only. Visible change: `ResponseDiffDialog` snapshot load failure now shows QueryState's inline error with Retry (was a bare Alert). Behaviour change: overlapping runs are latest-wins (an older run's late failure no longer replaces a newer run's state; `pending` holds until the newest run settles). Eyeball at visual re-record, same pixels expected: `ade-capture-note`, `ade-port-error`, `generate-data-error`, `boot-error` (git-ui), `config-sync-pane-error`, `comment-error`; re-record `http-diff-dialog`. Open question confirmed: TanStack's default `networkMode: 'online'` pauses queries and raw mutations on a webview `offline` event (`createQueryClient` sets none; only `useAsyncAction` is `always`); real risk, added to ARCHITECTURE Known open items, no SPEC row added.
 
 ## P683: Studio view-store script dedup
 
