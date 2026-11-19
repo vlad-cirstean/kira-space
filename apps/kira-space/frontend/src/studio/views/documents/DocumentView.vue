@@ -31,7 +31,7 @@ import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/r
 import { useHeightAnchor } from '../shared/document/useHeightAnchor';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
 import SearchToolbar from '../shared/page/SearchToolbar.vue';
-import { setVisibleRows } from '../shared/page/visibleRows';
+import { pageRowWindow, reportVisibleWindow } from '../shared/page/visibleRows';
 import StaleDataStrip from '../shared/StaleDataStrip.vue';
 import { ancestorPathPrefix } from '../shared/targetPath';
 import { refreshOrReconnect, useConnectionGate } from '../shared/useConnectionGate';
@@ -242,14 +242,10 @@ function onListScroll(): void {
 }
 
 watch(virtualItems, (items) => {
-  if (items.length === 0) return;
-  const list = rows.value;
-  const from = list[items[0].index];
-  const to = list[items[items.length - 1].index];
-  if (from === undefined || to === undefined) return;
-  setVisibleRows(props.tab.id, from, to + 1);
-  setVisibleWindow(props.tab.id, from, to + 1);
-  documentRowsStore.pruneRows(props.tab.id, from, to + 1);
+  const win = pageRowWindow(items, rows.value);
+  if (!win) return;
+  reportVisibleWindow(props.tab.id, win.from, win.to, setVisibleWindow);
+  documentRowsStore.pruneRows(props.tab.id, win.from, win.to);
   // After the prune, so the parses the fill makes stay cached for this render. Exact heights for
   // the window; the rest of the page is estimated until the worker's counts land.
   documentRowsStore.fillLineCounts(
