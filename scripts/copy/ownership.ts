@@ -4,7 +4,7 @@
  * namespace). Named pairs (exemptions.ts OWNERSHIP_PAIRS) cover a module that hosts another's UI.
  */
 
-/** File path prefix to the module's own catalog namespace. Shell dirs outside this table are not checked. */
+/** File path prefix to the module's own catalog namespace; the first match wins. Files outside this table are not checked. */
 export const OWNERSHIP_MODULES: readonly (readonly [prefix: string, namespace: string])[] = [
   ['apps/kira-space/frontend/src/studio/', 'studio'],
   ['apps/kira-space/frontend/src/ade/', 'space'],
@@ -19,10 +19,24 @@ export const OWNERSHIP_MODULES: readonly (readonly [prefix: string, namespace: s
   ['packages/git-ui/src/', 'git'],
   ['packages/workbench/src/automations/', 'automations'],
   ['packages/workbench/src/memory/', 'memory'],
+  ['packages/workbench/src/llmPrompts/', 'llmPrompts'],
+  ['packages/workbench/src/', 'workbench'],
+  ['apps/kira-space/frontend/src/workbench/', 'shell'],
+  ['apps/kira-space/frontend/src/state/', 'shell'],
+  ['apps/kira-space/frontend/src/shortcuts/', 'shell'],
+  ['apps/kira-space/frontend/src/bridge/', 'shell'],
+  ['apps/kira-space/frontend/src/App.vue', 'shell'],
+  ['apps/kira-space/frontend/src/main.ts', 'shell'],
 ];
 
-/** Studio's Kubernetes view keeps its own top-level namespace; all of Studio's sources read both. */
-const ALSO_OWNS: Readonly<Record<string, readonly string[]>> = { studio: ['kubernetes'] };
+/**
+ * Studio's Kubernetes view keeps its own top-level namespace; all of Studio's sources read both. The
+ * shell is the Space app's frame: it reads `space` and has no namespace of its own.
+ */
+const ALSO_OWNS: Readonly<Record<string, readonly string[]>> = {
+  studio: ['kubernetes'],
+  shell: ['space'],
+};
 
 /** Namespaces every module may read. */
 const SHARED_NAMESPACES: readonly string[] = ['common', 'format', 'shared', 'theme', 'backend'];

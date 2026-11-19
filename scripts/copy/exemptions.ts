@@ -58,4 +58,29 @@ export const OWNERSHIP_PAIRS: readonly OwnershipPair[] = [
     prefix: 'memory.distill.',
     reason: 'repo hosts memory distill of a selection',
   },
+  {
+    module: 'shell',
+    prefix: 'studio.settings.',
+    reason: 'the settings dialog nav and app panes host Studio fields',
+  },
+  {
+    module: 'shell',
+    prefix: 'studio.mode.',
+    reason: 'the mode switcher names Studio modes',
+  },
+  {
+    module: 'shell',
+    prefix: 'studio.operations.',
+    reason: 'the op log hosts Studio operation rows',
+  },
+  {
+    module: 'shell',
+    prefix: 'studio.tab.',
+    reason: 'the tab host wires the Studio tab kinds incognito marker',
+  },
+  {
+    module: 'shell',
+    prefix: 'llmPrompts.nav.',
+    reason: 'the settings nav names the prompts pane',
+  },
 ];
