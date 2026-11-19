@@ -8,16 +8,23 @@ import type {
   HttpResponseWire,
   HttpTimeline,
 } from '@shared/domain/http';
-import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { defineStore } from 'pinia';
 import { variablesForSend } from '../../api/state/variables';
 import { findHttpRequestTab } from '../../api/tabs';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
+import {
+  beginRequest,
+  createRequestFieldFilter,
+  defaultRequestRuntime,
+  type RequestViewRuntime,
+  settleRequestFailure,
+  stopRequest,
+} from '../shared/request/requestOp';
 import { createSubstituter, resolvePairs } from '../shared/request/resolve';
 import { unresolvedOf } from '../shared/request/unresolved';
-import { classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
+import { createRuntimeStore, stopOp } from '../shared/viewOp';
 import { invalidateJarCookies } from './cookies';
 import { useHttpHistoryStore } from './history';
 
@@ -102,33 +109,21 @@ export function resolveTabState(
 
 // D6: the response is runtime-only, never persisted (mirrors consoleTabStateSchema's own results
 // comment) — a restored tab's response pane starts empty, exactly like a fresh one.
-interface HttpRequestViewRuntime {
-  status: 'idle' | 'running' | 'error' | 'cancelled';
-  opId: string | null;
-  /** True while send() resolves variables, before Go knows the op: Stop cancels locally. */
-  preflight: boolean;
+interface HttpRequestViewRuntime extends RequestViewRuntime {
   // timeline is the failed send's own partial timeline (ipcerr.Error.Details,
   // mapHttpError) — undefined for every failure that isn't an HTTP send's own transport/body-read
   // error (classifySendErr is the only producer), so TimelinePane.vue's failure branch has
   // something to render beside the message this error strip has always shown.
   error: { code: string; message: string; timeline?: HttpTimeline } | null;
   response: HttpResponseWire | null;
-  // P375: filter inputs outlive the view's unmount on tab switch; session-only, never tab state.
-  fieldFilterOpen: boolean;
-  fieldFilterQuery: string;
   headerFilter: string;
   cookieFilter: { request: string; response: string };
 }
 
 function defaultRuntime(): HttpRequestViewRuntime {
   return {
-    status: 'idle',
-    opId: null,
-    preflight: false,
-    error: null,
+    ...defaultRequestRuntime(),
     response: null,
-    fieldFilterOpen: false,
-    fieldFilterQuery: '',
     headerFilter: '',
     cookieFilter: { request: '', response: '' },
   };
@@ -163,11 +158,7 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
     const rt = ensureRuntime(tabId);
     if (rt.status === 'running') return;
 
-    const opId = newUuid();
-    rt.status = 'running';
-    rt.opId = opId;
-    rt.preflight = true;
-    rt.error = null;
+    const opId = beginRequest(rt);
 
     try {
       // P112: variablesForSend awaits the tree/environments/variable-row queries (cache-first;
@@ -234,17 +225,11 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
     } catch (err) {
       if (!findHttpRequestTab(tabId)) return; // P108 F8: same guard, the failure path's own half
       if (rt.opId !== opId) return;
-      rt.opId = null;
-      rt.preflight = false;
-      const failure = classifyLoadError(err);
-      if (failure.kind === 'cancelled') {
-        rt.status = 'cancelled';
-        return;
-      }
+      const failure = settleRequestFailure(rt, err);
+      if (!failure) return;
       // D8: httpclient's own error codes never land in viewOp.ts's DISCONNECTED_CODES, so this is
       // never actually 'disconnected' — but even if it were, applyLoadFailure/unmarkHydrated are
       // deliberately not called here: a Reconnect gate has nothing to gate on a connectionless tab.
-      rt.status = 'error';
       rt.response = null;
       // classifyLoadError (viewOp.ts) is shared by every view's own load path and stays at
       // {kind, code, message} — widening it app-wide for one HTTP-only field would reach five other
@@ -259,26 +244,9 @@ export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
     }
   }
 
-  function stop(tabId: string): void {
-    const rt = runtime[tabId];
-    if (rt?.preflight) {
-      rt.preflight = false;
-      rt.opId = null;
-      rt.status = 'cancelled';
-      return;
-    }
-    stopOp(rt);
-  }
+  const stop = (tabId: string): void => stopRequest(runtime[tabId]);
 
-  function setFieldFilter(tabId: string, open: boolean, query: string): void {
-    const rt = ensureRuntime(tabId);
-    rt.fieldFilterOpen = open;
-    rt.fieldFilterQuery = query;
-  }
-
-  function setFieldFilterQuery(tabId: string, query: string): void {
-    ensureRuntime(tabId).fieldFilterQuery = query;
-  }
+  const { setFieldFilter, setFieldFilterQuery } = createRequestFieldFilter(ensureRuntime);
 
   function setHeaderFilter(tabId: string, query: string): void {
     ensureRuntime(tabId).headerFilter = query;
