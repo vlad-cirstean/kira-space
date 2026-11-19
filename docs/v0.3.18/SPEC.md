@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P682`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P686`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -19,6 +19,26 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P680 Part 1 | DB MCP: kept variables as bound SQL parameters | Planned |
 | P680 Part 2 | DB MCP: JS result transform, raw and transformed review, `kept.set`; runs after P675, P676, P677, P678 Part 2 | Planned |
 | P681 | Dependency cleanup | Done |
+| P682 | Async action error state: one owner for a write's pending and error | Planned |
+| P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Planned |
+| P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
+| P685 | Shared shell for the config-file dialogs | Planned |
+
+## P682: Async action error state
+
+Parked by P674 Part 2. About 70 files keep `pending` and `error` refs around an awaited call (`.value = errorText(` in components, stores, mobile) beside `useAsyncAction` (61 callers) and TanStack `useMutation().error`. Decide which owns a write's error (local ref, `useAsyncAction`, mutation state), migrate every site and add a guard at zero offenders. See `plans/P674-iter1.md` PARK.
+
+## P683: Studio view-store script dedup
+
+Parked by P674 Part 2. `search.ts`, `page.ts` and `state.ts` repeat across grid, documents, keyvalue, stream and grpc/http `state.ts`. Per-kind store design, not UI. See `plans/P674-iter1.md` PARK.
+
+## P684: One log find model
+
+Parked by P674 Part 2. Kube logs filter lines (`SearchField`) plus `CopyLogButton`; docker logs find in place (`FindBar`) plus Clear. Pick one model; changes behaviour in one module. See `plans/P674-iter1.md` PARK.
+
+## P685: Config-file dialog shell
+
+Parked by P674 Part 2. `ApiVariablesDialog`, `ConnectionFileDialog` and `RunFileDialog` repeat draft wiring, head toolbar, section tabs and footer. Design a shared shell (sections, secret errors, per-kind forms) over three save flows. See `plans/P674-iter1.md` PARK.
 
 Chapter end (unasked, per working agreement, after the last implementation phase P681): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
