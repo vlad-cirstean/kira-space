@@ -1,0 +1,89 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 27,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_word",
+            "items": 0,
+            "name": "word",
+            "preview": "\"x'); drop table notes; --\"",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 33,
+                "index": 0,
+                "part": "",
+                "to": 34
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "string"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "word"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "statement": "insert into notes (body) values (?)"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": null
+  }
+}
