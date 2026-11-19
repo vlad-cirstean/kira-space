@@ -33,6 +33,7 @@
 # Guards U177-U181: docs/HISTORY.md (v0.3.18).
 # Guards U183-U187: docs/HISTORY.md (v0.3.18).
 # Guards U188-U189, U51 extended: docs/HISTORY.md (v0.3.18).
+# Guard U190: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -364,6 +365,7 @@ U186@@vt@@ValueRevealButton.vue@@hand value reveal toggle (use ValueRevealButton
 U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@\.client,\s*\w+\.cwd,\s*\w+\.task\b
 U188@@vt@@/behaviour/!|/testing/!@@hand async error ref (use useAsyncAction, useMutationAction, useTaskAction)@@(?<!this\.)\b\w+\.value\s*=\s*errorText\(|\b\w*(?:[Ee]rror|[Ff]ailure)\.value\s*=\s*err\s*;
 U189@@vt@@/behaviour/!|/testing/!@@errorText alias (call errorText, or let the action describe)@@\bconst \w+ = \(\w+: unknown\): string => errorText\(\w+\);
+U190@@vt@@queryClient.ts|asyncAction.ts@@per-call TanStack networkMode (set it in createQueryClient defaultOptions)@@\bnetworkMode\s*:\s*['"]
 GUARDS
 
 # hits: "U<n> path"
