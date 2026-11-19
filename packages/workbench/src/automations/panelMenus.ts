@@ -1,5 +1,6 @@
 import type { CustomScript, ScriptKind } from '@shared/domain/scripts';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { moveToCollectionMenu } from '../lib/collectionMenu';
 import type { MenuItem } from '../state/contextMenu';
 
@@ -118,7 +119,7 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       type: 'item',
       id: 'remove',
       label: t('common.action.remove.label'),
-      icon: 'trash',
+      icon: ICON.remove,
       danger: true,
       run: () => actions.remove(script),
     },
