@@ -22,7 +22,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeprovider"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
-	"github.com/kirathecat/kira-studio/internal/memory/importer"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -34,54 +33,9 @@ import (
 var ctx = context.Background()
 
 const (
-	waitFor       = 20 * time.Second
-	extractSystem = "extract facts and rules"
-	mergeSystem   = "merge the facts extracted from one input"
-	evidence      = "the worker keeps port"
-	text          = "## Worker\n\nThe worker keeps port 8000 open and the queue never retries."
-	window        = "w-main"
+	waitFor = 20 * time.Second
+	window  = "w-main"
 )
-
-var mergedLines = []importer.Line{
-	{Text: "Worker keeps port 8000 open.", Kind: "fact"},
-	{Text: "Never retry the queue, because duplicates corrupt totals.", Kind: "rule"},
-}
-
-// extractOut and mergeOut are the structured answers both providers give.
-func extractOut() map[string]any {
-	return map[string]any{"facts": []map[string]string{
-		{"fact": "Worker keeps port 8000 open.", "evidence": evidence, "section": "", "unresolved": ""},
-		{"fact": "Queue never retries.", "evidence": evidence, "section": "", "unresolved": ""},
-	}}
-}
-
-func mergeOut() map[string]any {
-	return map[string]any{
-		"lines":      mergedLines,
-		"unresolved": []map[string]any{},
-		"dropped":    []map[string]string{},
-	}
-}
-
-func raw(t *testing.T, v any) json.RawMessage {
-	t.Helper()
-	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
-// claudeAnswer writes the fake claude's canned reply to a structured call.
-func claudeAnswer(t *testing.T, structured any) string {
-	t.Helper()
-	p := filepath.Join(t.TempDir(), "answer.json")
-	body := raw(t, map[string]any{"type": "result", "subtype": "success", "is_error": false, "total_cost_usd": 0.01, "structured_output": structured})
-	if err := os.WriteFile(p, body, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	return p
-}
 
 func setProvider(t *testing.T, app *flowharness.App, id string) {
 	t.Helper()
@@ -89,15 +43,6 @@ func setProvider(t *testing.T, app *flowharness.App, id string) {
 	if _, err := app.W.Settings.Set(bridge.SettingsSetArgs{Patch: patch}); err != nil {
 		t.Fatalf("set agent.provider %s: %v", id, err)
 	}
-}
-
-func distill(t *testing.T, app *flowharness.App, id string) []importer.Line {
-	t.Helper()
-	res, err := app.W.MemoryDistill.Distill(ctx, bridge.MemoryDistillArgs{RequestID: id, Text: text})
-	if err != nil {
-		t.Fatalf("Distill %s: %v", id, err)
-	}
-	return res.Lines
 }
 
 // claudeCalls counts the calls the fake claude recorded; the generic persona's own are not.
@@ -125,13 +70,11 @@ func wantGone(t *testing.T, err error) {
 }
 
 // TestSecondProviderRegistered: a provider registered next to claude, and chosen through
-// agent.provider, runs text distill, a smart script and the ADE with no caller change; a stored
+// agent.provider, runs a smart script and the ADE with no caller change; a stored
 // conversation keeps its provider; an unknown id falls back; an unregistered provider is reported.
 // Frontend half: agent-provider.spec.ts.
 func TestSecondProviderRegistered(t *testing.T) {
 	fake := fakeprovider.New(map[string]json.RawMessage{})
-	fake.Answers[extractSystem] = raw(t, extractOut())
-	fake.Answers[mergeSystem] = raw(t, mergeOut())
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))
 	app.SetHermetic(t, true) // the fake's --hermetic flag is judged below; off by default since P588
 	usage := app.W.AgentUsage.Get()
@@ -149,21 +92,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 
 	app.Contract(t, "agent", "AgentService.Info#fake", info)
 
-	// 2. Text distill runs on the fake at its default model.
-	if got := distill(t, app, "d1"); !reflect.DeepEqual(got, mergedLines) {
-		t.Fatalf("lines = %+v, want the fake's", got)
-	}
-	calls := fake.Structured()
-	if len(calls) < 2 {
-		t.Fatalf("fake saw %d structured calls, want extract and merge", len(calls))
-	}
-	for _, c := range calls {
-		if c.Model != "fast" {
-			t.Fatalf("structured model = %q, want fast", c.Model)
-		}
-	}
-
-	// 3. A smart script runs headless on the fake with its own model; the run keeps the provider.
+	// 2. A smart script runs headless on the fake with its own model; the run keeps the provider.
 	rec, err := app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
 		Name: "ask", Kind: scripts.KindSmart, Command: "Say hi", Color: "blue", Smart: &scripts.Smart{Model: "deep"},
 	}})
@@ -197,7 +126,7 @@ func TestSecondProviderRegistered(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// 4. The ADE: a headless step run, then an interactive session, with no hooks to compose.
+	// 3. The ADE: a headless step run, then an interactive session, with no hooks to compose.
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	repoRec, err := app.W.CodeWorkspace.ImportRepo(ctx, bridge.CodeWorkspaceImportArgs{Path: repo.Dir})
 	if err != nil {
@@ -256,12 +185,8 @@ func TestSecondProviderRegistered(t *testing.T) {
 		t.Fatalf("fake claude saw %d calls while the fake provider was active", n)
 	}
 
-	// 5. Back on claude, stored conversations still resume on the fake; new work runs on claude.
+	// 4. Back on claude, stored conversations still resume on the fake; new work runs on claude.
 	setProvider(t, app, "claude")
-	app.Scenario(fakeagent.Scenario{Prompts: []fakeagent.PromptRule{
-		{System: extractSystem, Emit: claudeAnswer(t, extractOut())},
-		{System: mergeSystem, Emit: claudeAnswer(t, mergeOut())},
-	}})
 	launch, err := app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: headless.ID})
 	if err != nil {
 		t.Fatal(err)
@@ -286,21 +211,12 @@ func TestSecondProviderRegistered(t *testing.T) {
 	if h := fake.Headless(); h[len(h)-1].Resume != smart.SessionID || fake.MCPConfigs() != renders+1 {
 		t.Fatalf("headless = %+v, renders = %d (was %d), want the resume on the fake, rendered by it", h, fake.MCPConfigs(), renders)
 	}
-	structured := len(fake.Structured())
-	distill(t, app, "d2")
-	if n := claudeCalls(t, app); n == 0 {
-		t.Fatal("a distill on claude made no fake claude call")
-	}
-	if len(fake.Structured()) != structured {
-		t.Fatal("the fake saw a structured call while claude was active")
-	}
 
-	// 6. An unknown id falls back to claude; a stored provider that is gone is reported.
-	before := claudeCalls(t, app)
+	// 5. An unknown id falls back to claude; a stored provider that is gone is reported.
 	setProvider(t, app, "nope")
-	distill(t, app, "d3")
-	if claudeCalls(t, app) <= before || len(fake.Structured()) != structured {
-		t.Fatal("an unknown provider id did not fall back to claude")
+	info, err = app.W.AgentSvc.Info()
+	if err != nil || info.ID != "claude" {
+		t.Fatalf("Info with an unknown provider id = %+v, %v, want claude", info, err)
 	}
 	app.Unregister()
 	app.Restart()
@@ -526,19 +442,7 @@ func TestLeanProviderSeams(t *testing.T) {
 		t.Fatalf("second open with the token = %v, want the expired conflict", err)
 	}
 
-	// Missing optional roles. Structured: memory falls back to claude.
-	setProvider(t, app, fakeprovider.LeanID)
-	app.Scenario(fakeagent.Scenario{Prompts: []fakeagent.PromptRule{
-		{System: extractSystem, Emit: claudeAnswer(t, extractOut())},
-		{System: mergeSystem, Emit: claudeAnswer(t, mergeOut())},
-	}})
-	if got := distill(t, app, "lean-d1"); !reflect.DeepEqual(got, mergedLines) {
-		t.Fatalf("lines = %+v, want claude's", got)
-	}
-	if claudeCalls(t, app) == 0 {
-		t.Fatal("a distill with the lean provider active made no claude call")
-	}
-	// Headless: a smart script is blocked, an ADE step run fails with the same refusal.
+	// Missing optional roles. Headless: a smart script is blocked, an ADE step run fails with the same refusal.
 	refusal := (&harness.MissingRole{Agent: lean.Label(), Role: "smart scripts"}).Error()
 	if pv, err := app.W.ScriptRuns.Preview(args); err != nil || pv.Blocker != refusal {
 		t.Fatalf("smart Preview blocker = %q, %v, want %q", pv.Blocker, err, refusal)
@@ -563,7 +467,7 @@ func TestLeanProviderSeams(t *testing.T) {
 
 // J-HAR-001, J-X-015. Toggling hermetic mid-day reaches every launch site at its next launch: the
 // headless smart script, the headless ADE step and the interactive step command. Earlier launches
-// keep what they got. experimental.memory feeds no launch, so it is not part of the argv.
+// keep what they got.
 func TestHermeticToggleReachesEveryLaunch(t *testing.T) {
 	fake := fakeprovider.New(map[string]json.RawMessage{})
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second))

@@ -27,17 +27,9 @@ func Home(envVar, dirName string) string {
 	return filepath.Join(dir, dirName)
 }
 
-// MemoryDir is the memory folder name under the Kira Space home.
-const MemoryDir = "memory"
-
 // SpaceHome is the Kira Space data directory: $KIRA_SPACE_HOME, else ~/.kira-space.
 func SpaceHome() string {
 	return Home("KIRA_SPACE_HOME", ".kira-space")
-}
-
-// MemoryHome is the memory data directory, <Space home>/memory. It has no env var of its own.
-func MemoryHome() string {
-	return filepath.Join(SpaceHome(), MemoryDir)
 }
 
 // DbPathAt is the app's database file path under an explicit home dir — a caller resolves its own

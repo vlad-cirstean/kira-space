@@ -130,7 +130,7 @@ type MCPCall struct {
 // PromptRule answers a headless call whose --system-prompt contains System. Doc narrows it to one
 // document: the basename of the first "path" (else "source") in the prompt, or of KIRA_DOC, which
 // the fake exports to
-// the MCP servers it starts so a nested call (memory-mcp's gate) keeps the document it belongs to.
+// the MCP servers it starts so a nested call keeps the document it belongs to.
 // Fail makes the first N matching calls end with a budget error; the rule's calls are counted in
 // <KIRA_FAKE_DIR>/rule-<index>.count. WaitFile blocks until the path exists,
 // then Emit prints the file.

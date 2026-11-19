@@ -10,24 +10,12 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/memory/embed"
-	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
 )
 
-// TestMain serves two re-executions of the test binary: as the `memory-mcp` server of the import
-// agent (KIRA_TEST_MEMORY_MCP), and through flowharness.Main as memory-mcp, memory-ingest (the
-// detached import runner), askpass and the fake gh.
+// TestMain runs flowharness.Main (askpass, js-worker and the fake gh re-executions), then reports the spend.
 func TestMain(m *testing.M) {
-	if os.Getenv("KIRA_TEST_MEMORY_MCP") == "1" {
-		// KIRA_TEST_PROMPTS reaches the gate and reconcile prompts of an eval run (P285).
-		os.Exit(memorycli.Run(os.Args[2:], os.Getenv("KIRA_TEST_PROMPTS"), agentSelector(), nil, nil))
-	}
-	if os.Getenv("KIRA_EVAL_EMBED_WORKER") == "1" {
-		// The retrieval eval's embedding worker (P291): this binary re-executed as `memory-embed`.
-		os.Exit(embed.RunWorker(os.Args[1:]))
-	}
 	code := flowharness.Main(m)
-	// Re-executed helper processes (memory-mcp, fake gh) spend nothing and must keep stdout clean.
+	// Re-executed helper processes (fake gh) spend nothing and must keep stdout clean.
 	spendMu.Lock()
 	if spent > 0 {
 		fmt.Fprintf(os.Stderr, "real claude spend (claude -p results only, TUI sessions not counted): %.4f USD\n", spent)

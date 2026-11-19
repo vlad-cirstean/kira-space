@@ -30,7 +30,6 @@ var literalFields = map[string][]string{
 	"mcp.Prompt":         {"Description"},
 	"mcp.PromptArgument": {"Description"},
 	"mcp.ServerOptions":  {"Instructions"},
-	"memory.Call":        {"System"},
 }
 
 var skipDirs = map[string]bool{

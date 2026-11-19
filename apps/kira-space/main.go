@@ -45,7 +45,7 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
-// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
+// Startup order: the argv shims (askpass, js-worker) -> config.EnsureLayout ->
 // logging.Init/Sweep -> instance lock -> storage.Open -> configsync.Recover -> appwire.Build (every
 // service) -> application.New (bound services, git and engine streams) -> the menu -> the startup
 // window list, opened -> app.Run().

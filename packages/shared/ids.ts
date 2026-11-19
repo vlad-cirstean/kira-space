@@ -11,14 +11,11 @@ const ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
 /** Registered nanoid prefixes and their body lengths. */
 export const PREFIXES = {
   wt: 10,
-  km: 12,
-  kg: 12,
   shot: 12,
   tui: 12,
   sbx: 12,
   tmp: 12,
   dtc: 12,
-  dfl: 12,
   frn: 12,
   exm: 12,
 } as const;
