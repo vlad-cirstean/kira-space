@@ -1433,7 +1433,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Use Button pending for busy state, never :disabled on a busy flag.
 - packages/theme/src/format.ts owns formatBytes (1024 base, KB/MB/GB, space before unit), formatPercent, formatDuration (0.42ms, 240ms, 3.4s, no space), formatCompactDuration, formatCurrency, formatElapsed, formatZonedWeekdayClock and displayValue; formatCount lives in i18n/number.ts. A countdown or running clock is formatElapsed; a displayed percentage is formatPercent.
 - formatCompactDuration uses ceil for TTLs and steps seconds, minutes, hours, then days at 24h (e.g. 2d 3h).
-- Relative time has one vocabulary, `relativeTimeOptions()` in packages/theme/src/format.ts (floor; m, h, d, mo, y; past "ago", future "in"); formatRelative and useRelativeTime both read it. A standalone instant in a template is `RelativeTime` (packages/workbench, ticks, absolute tooltip); formatRelative only inside composed text (U163).
+- Relative time has one vocabulary, `relativeTimeOptions()` in packages/theme/src/format.ts (floor; m, h, d, mo, y; past "ago", future "in"); formatRelative and useRelativeTime both read it. A standalone instant in a template is `RelativeTime` (packages/workbench, ticks, absolute tooltip); formatRelative and `useRelativeTime` only inside composed text (U163, U173).
 - packages/workbench/src/behaviour/format.ts re-exports the theme formatters and keeps the reactive useRelativeTime; t() formats numeric params with formatCount while plural still keys on count.
 - Right-click selects (or focuses) before opening the context menu, through nav.contextMenu.
 - Every useSortableReorder caller outside the left panel passes keyboard: true; left-panel lists reorder by drag only. Explicit-Save surfaces bind form.save.
@@ -1479,12 +1479,19 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Status glyphs are StatusDot or CodiconIcon, never text glyphs; arrows between values are `arrow-right` 12 (U156).
 - Disclosure owns its content spacing; secondary disclosures pass `meta`; no trigger or content classes (U154). Tree depth indent is `rowIndent` (U153).
 - Opacity never marks muted or state: tone, `rowVariants` muted/disabled, or `SORTABLE_GHOST_CLASS` (U90).
-- Config secrets render `ConfigSecretsSection`; removing a stored secret is Delete.
+- Config secrets render `ConfigSecretsSection`: API, ADE and run file secrets alike; removing a stored secret is Delete.
 - Log views take tail constants from `logTail.ts` and render lines through `LogLines`; toolbar order is follow, timestamps, wrap, tail (U165).
 - Config files: a save conflict is `SaveConflictAlert` (U166; optional `variant` error or warn), a form problem is `ConfigFormProblemAlert` (U167).
 - Reset to default is `ResetToDefaultButton` (U168).
 - `frames.ts` owns `dropIndicator` and `windowTabStrip` (U169, U170).
 - A pending-work toast is `PendingToast`.
+- An icon-only copy button is `CopyIconButton` (workbench): `ICON.copy`, `ICON.copied` for `TIMING.copiedFeedback`, error tone on failure (U171).
+- A hidden secret value is `MaskedValue` (`MASKED_TEXT`: 8 bullets, subtle, wide tracking); composed text uses `MASKED_TEXT` (U172). U130's masked-data tracking exemption names `MaskedValue`.
+- Marks render through `HighlightedText` (`markClass` for a non-search meaning) (U174).
+- An approval-card meta link is Button `link-meta` (U175).
+- A QueryState inline load failure shows Retry when retryable; `errorLabel` and `errorTestid` replace the text and testid; an `error` slot only for a host that draws the failure in its own frame (log views) (U176).
+- An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
+- A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
 - Guards U110-U170 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
