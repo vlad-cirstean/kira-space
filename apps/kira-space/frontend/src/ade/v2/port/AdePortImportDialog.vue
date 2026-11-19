@@ -17,8 +17,8 @@ import {
 import { FieldDescription, FieldError } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
-import { errorText } from '@workbench/bridge/codedError';
 import OpLogCodeBlock from '@workbench/components/OpLogCodeBlock.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref, watch } from 'vue';
@@ -38,7 +38,8 @@ const cancelMutation = useCancelPort();
 const preview = ref<ImportPreview | null>(null);
 const picked = ref<Set<string>>(new Set());
 const modes = ref<Record<string, string>>({});
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const result = ref<PortResult | null>(null);
 const scrollEl = ref<HTMLElement | null>(null);
 
@@ -77,19 +78,20 @@ const rows = computed(() =>
 );
 
 async function load(): Promise<void> {
-  error.value = '';
   result.value = null;
-  try {
-    const p = await previewMutation.mutateAsync(props.provider.id);
-    preview.value = p;
-    picked.value = new Set((p.items ?? []).filter((i) => i.state === 'new').map((i) => i.id));
-    modes.value = Object.fromEntries(
-      (p.items ?? []).filter((i) => i.modes?.length).map((i) => [i.id, i.modes?.[0] ?? '']),
-    );
-  } catch (err) {
-    preview.value = null;
-    error.value = errorText(err);
-  }
+  await surface.run(async () => {
+    try {
+      const p = await previewMutation.mutateAsync(props.provider.id);
+      preview.value = p;
+      picked.value = new Set((p.items ?? []).filter((i) => i.state === 'new').map((i) => i.id));
+      modes.value = Object.fromEntries(
+        (p.items ?? []).filter((i) => i.modes?.length).map((i) => [i.id, i.modes?.[0] ?? '']),
+      );
+    } catch (err) {
+      preview.value = null;
+      throw err;
+    }
+  });
 }
 
 // A preview is single use: dropping it frees the server's copy.
@@ -113,18 +115,16 @@ function toggle(item: PortItem, on: boolean): void {
 
 async function submit(): Promise<void> {
   if (!preview.value || picked.value.size === 0) return;
-  error.value = '';
-  try {
+  const token = preview.value.token;
+  await surface.run(async () => {
     result.value = await applyMutation.mutateAsync({
-      token: preview.value.token,
+      token,
       items: items.value
         .filter((i) => picked.value.has(i.id))
         .map((i) => ({ id: i.id, mode: modes.value[i.id] ?? '' })),
     });
     preview.value = null;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 const busy = computed(() => previewMutation.isPending.value || applyMutation.isPending.value);

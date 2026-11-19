@@ -14,6 +14,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { formatBytes, formatDateTime } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -35,17 +36,20 @@ const restoreMutation = useRestore();
 const confirmDialogStore = useConfirmDialogStore();
 
 const result = ref<PortResult | null>(null);
-const error = ref('');
+const restoring = useMutationAction(restoreMutation);
+const error = computed(
+  () => restoring.error.value ?? (backups.error.value ? errorText(backups.error.value) : null),
+);
 const rows = computed(() => backups.data.value ?? []);
 
 watch(open, (isOpen) => {
   if (!isOpen) return;
   result.value = null;
-  error.value = '';
+  restoring.reset();
 });
 
 async function restore(b: Backup): Promise<void> {
-  error.value = '';
+  restoring.reset();
   const ok = await confirmDialogStore.confirm({
     title: t('space.ade.port.backupList.confirm.title'),
     message: t('space.ade.port.backupList.confirm.body', { file: b.file, target: b.target }),
@@ -53,10 +57,8 @@ async function restore(b: Backup): Promise<void> {
     tone: 'danger',
   });
   if (!ok) return;
-  try {
-    result.value = await restoreMutation.mutateAsync({ provider: props.provider.id, file: b.file });
-  } catch (err) {
-    error.value = errorText(err);
+  if (await restoring.run({ provider: props.provider.id, file: b.file })) {
+    result.value = restoreMutation.data.value ?? null;
   }
 }
 </script>
@@ -71,8 +73,8 @@ async function restore(b: Backup): Promise<void> {
         <DialogDescription>{{ t('space.ade.port.backupList.hint') }}</DialogDescription>
       </DialogHeader>
       <DialogBody>
-        <Alert v-if="error || backups.error.value" variant="error" data-testid="ade-port-error">
-          <AlertDescription>{{ error || errorText(backups.error.value) }}</AlertDescription>
+        <Alert v-if="error" variant="error" data-testid="ade-port-error">
+          <AlertDescription>{{ error }}</AlertDescription>
         </Alert>
         <AdePortResult v-if="result" :result="result" />
         <ul

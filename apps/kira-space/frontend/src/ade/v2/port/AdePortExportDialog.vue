@@ -23,8 +23,8 @@ import {
   FieldSet,
 } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useCopy } from '@workbench/behaviour/clipboard';
-import { errorText } from '@workbench/bridge/codedError';
 import MonacoDiff from '@workbench/editor/MonacoDiff.vue';
 import { computed, ref, watch } from 'vue';
 import AdePortResult from './AdePortResult.vue';
@@ -44,7 +44,8 @@ const { copy } = useCopy();
 const preview = ref<ExportPreview | null>(null);
 const roles = ref<Set<string>>(new Set());
 const servers = ref(true);
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const result = ref<PortResult | null>(null);
 
 const files = computed(() => preview.value?.files ?? []);
@@ -57,17 +58,18 @@ const nothing = computed(
 );
 
 async function load(): Promise<void> {
-  error.value = '';
   result.value = null;
-  try {
-    const p = await previewMutation.mutateAsync(props.provider.id);
-    preview.value = p;
-    roles.value = new Set((p.files ?? []).filter((f) => f.changed).map((f) => f.role));
-    servers.value = true;
-  } catch (err) {
-    preview.value = null;
-    error.value = errorText(err);
-  }
+  await surface.run(async () => {
+    try {
+      const p = await previewMutation.mutateAsync(props.provider.id);
+      preview.value = p;
+      roles.value = new Set((p.files ?? []).filter((f) => f.changed).map((f) => f.role));
+      servers.value = true;
+    } catch (err) {
+      preview.value = null;
+      throw err;
+    }
+  });
 }
 
 function release(): void {
@@ -90,17 +92,15 @@ function toggle(role: string, on: boolean): void {
 
 async function submit(): Promise<void> {
   if (!preview.value) return;
-  error.value = '';
-  try {
+  const token = preview.value.token;
+  await surface.run(async () => {
     result.value = await applyMutation.mutateAsync({
-      token: preview.value.token,
+      token,
       files: files.value.filter((f) => roles.value.has(f.role)).map((f) => f.role),
       servers: servers.value,
     });
     preview.value = null;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 const busy = computed(() => previewMutation.isPending.value || applyMutation.isPending.value);
