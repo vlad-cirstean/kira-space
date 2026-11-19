@@ -17,7 +17,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P678 Part 2 | API MCP: kept variables script binding (`kept.get`/`kept.set`), held writes, review-card "Will keep"; runs after P676 and P677 | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
 | P680 | DB MCP: JS scripting and kept variables for SQL | Planned |
-| P681 | Dependency cleanup | Planned |
+| P681 | Dependency cleanup | Done |
 
 Chapter end (unasked, per working agreement, after the last implementation phase P681): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
@@ -74,3 +74,5 @@ Plan: `plans/P680.md`.
 Audit every direct dependency and remove what is dead or prototype-only. Scope: Go modules in `go.mod` and `apps/kira-space/go.mod`; npm packages in every `package.json`, devDependencies included. Remove: the dev-only `apps/kira-space/frontend/proto/grid` Cheetah Grid prototype (P165) with `cheetah-grid`, `vue-cheetah-grid`, `cheetah-grid-playwright`, `vite.proto.config.ts`, its knip entries and scripts; `seti-icons` (v0.0.4, last release 2020; check real use in `packages/git-ui` and fileIcon); anything unused per knip/depcheck-style checks and real import greps; duplicates doing the same job; deps used only by removed code. For each low-popularity or stale survivor (audit examples: wasilibs/go-pgquery, gomlx/go-huggingface, rqlite/sql, AfterShip/clickhouse-sql-parser, fsnotify/fsevents, aymanbagabas/go-udiff; npm slickgrid is used and stays) record in the plan: use, last release, replaceability, decision keep or replace. Replace only where a clearly better maintained open-source option meets the same requirements, licence-checked at package and feature level. Verify removal by real build (typecheck, `lint:dead`, `go build ./...`, affected tests); add no dependency without licence check. Delete orphaned scripts, configs, docs and guard-script references.
 
 Plan: `plans/P681.md`.
+
+Result: removed P165 Cheetah Grid prototype (dirs, 3 devDependencies, 8 scripts, 4 configs, 2 specs); `shell-quote` replaced by `shlex` in credential paste (3 new spec rows; unterminated quote now reads to end of line as one word); `seti-icons` kept (real use in `FileTree.vue` and `repo/fileIcon.ts`, no maintained one-colour alternative); `@astrojs/markdown-remark` kept (site `dist` not byte-identical without it, reason in ARCHITECTURE); go-pgquery, go-huggingface, rqlite/sql, clickhouse-sql-parser, fsevents, go-udiff and the rest kept with use, last release and replaceability recorded in the plan. `go mod tidy -diff`, `lint:dead`, `typecheck`, `go build`, `test:unit` clean. No Go module changed.
