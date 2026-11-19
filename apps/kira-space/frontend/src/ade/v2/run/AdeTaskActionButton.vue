@@ -8,8 +8,9 @@ import { usePrefetchRunPreview } from './runPreview';
 import { useTaskAction } from './useTaskAction';
 
 // The task's step action: `▶ Run`, `▶ <Step>`, `Resume <Step>`, `Take over`, `Approve`, `Retry`,
-// `Next stage ›`, `Finish`, `Archive`; nothing otherwise. `icon` renders it as a neutral icon
-// button (the Plan card header); the label moves to the tooltip.
+// `Next stage ›`, `Finish`, `Archive`; nothing otherwise. `icon` renders it as an icon button
+// (the Plan card header); the label moves to the tooltip. Both looks take the action's tone outline
+// (Button `outline`).
 const props = defineProps<{ card: CardModel; icon?: boolean }>();
 const { action, perform, busy } = useTaskAction(() => props.card);
 const prefetch = usePrefetchRunPreview();
@@ -26,7 +27,8 @@ function warm(): void {
       v-if="icon"
       :icon="TASK_ACTION_ICON[action.kind]"
       :label="action.label"
-      :variant="action.tone === 'red' ? 'dialog-danger' : 'dialog'"
+      variant="dialog"
+      :outline="action.tone"
       size="kira-icon"
       class="shrink-0"
       :pending="busy"
@@ -39,7 +41,8 @@ function warm(): void {
     </TooltipIconButton>
     <TextTooltip v-else :text="action.tip">
       <Button
-        :variant="action.tone === 'red' ? 'dialog-danger' : 'dialog'"
+        variant="dialog"
+        :outline="action.tone"
         size="kira"
         class="shrink-0"
         :pending="busy"
