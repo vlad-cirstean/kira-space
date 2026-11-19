@@ -291,6 +291,7 @@ func (b *TaskBoard) closeTaskTerminals(taskID string) error {
 
 // removeWorktree removes a linked worktree, discarding uncommitted changes (the archive was confirmed).
 func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch) error {
+	b.taskFiles.Close(lb.sb.ID)
 	mu := b.repoMutex(lb.sb.CodeRepoID)
 	mu.Lock()
 	defer mu.Unlock()

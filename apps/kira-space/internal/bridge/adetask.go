@@ -119,6 +119,9 @@ var adeTaskCatalog = []struct {
 	{ade.ErrBranchRequestGone, ipcerr.CodeNotFound, "backend.space.ade.branchRequestGone.body"},
 	{repos.ErrOrchestratorKind, ipcerr.CodeBadRequest, "backend.space.ade.orchestratorKind.body"},
 	{ade.ErrHandoverReadOnly, ipcerr.CodeBadRequest, "backend.space.ade.handoverReadOnly.body"},
+	{ade.ErrNoWorktree, ipcerr.CodeNotFound, "backend.space.ade.files.noWorktree.body"},
+	{ade.ErrBadPath, ipcerr.CodeBadRequest, "backend.space.ade.files.badPath.body"},
+	{ade.ErrTargetMissing, ipcerr.CodeNotFound, "backend.space.ade.files.targetMissing.body"},
 	{harness.ErrProviderGone, ipcerr.CodeConflict, "backend.core.agent.providerGone.body"},
 }
 

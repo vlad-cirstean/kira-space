@@ -1715,6 +1715,17 @@
         "estimateTooLong": {
           "body": "An estimate can be at most 480h or 60d."
         },
+        "files": {
+          "badPath": {
+            "body": "This path is outside the task worktree."
+          },
+          "noWorktree": {
+            "body": "This branch has no worktree."
+          },
+          "targetMissing": {
+            "body": "This file no longer exists in the worktree."
+          }
+        },
         "handoverReadOnly": {
           "body": "This note is a copy of a child task’s handover. Edit the child’s handover instead."
         },
