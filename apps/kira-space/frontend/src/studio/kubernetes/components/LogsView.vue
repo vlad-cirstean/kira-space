@@ -7,16 +7,16 @@ import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { appendCapped, plainText, tailItems } from '@workbench/lib/logTail';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { kubeControl } from '../control';
-import type { KubeContainerRef, KubeLogLine } from '../wire';
+import type { KubeContainerRef, KubeLogLine, KubeLogsOpen } from '../wire';
 
 const props = defineProps<{
   clusterId: string;
@@ -43,7 +43,7 @@ const wrap = ref(false);
 const filter = useKeptState(() => logKey('filter'), '');
 const lines = shallowRef<Line[]>([]);
 const ended = ref(false);
-const failure = ref('');
+const streamError = ref('');
 
 let streamId = '';
 let opening: Promise<unknown> = Promise.resolve();
@@ -85,13 +85,26 @@ async function close(): Promise<void> {
 // Bumped by every open() and by unmount; an await that resumes on a stale value bails out.
 let generation = 0;
 
+const openStream = useAsyncAction(async (gen: number, request: KubeLogsOpen) => {
+  try {
+    opening = kubeControl.logsOpen(request);
+    await opening;
+  } catch (err) {
+    if (gen !== generation) return;
+    ended.value = true;
+    throw err;
+  }
+});
+const failure = computed(() => openStream.error.value || streamError.value);
+
 async function open(): Promise<void> {
   const gen = ++generation;
   await close();
   if (gen !== generation) return;
   lines.value = [];
   ended.value = false;
-  failure.value = '';
+  streamError.value = '';
+  openStream.reset();
   const id = `kube-logs:${newUuid()}`;
   streamId = id;
   off = kubeControl.onLogs((e) => {
@@ -99,27 +112,20 @@ async function open(): Promise<void> {
     if (e.lines.length > 0) append(e.lines);
     if (e.ended) {
       ended.value = true;
-      if (e.error) failure.value = e.error;
+      if (e.error) streamError.value = e.error;
     }
   });
-  try {
-    opening = kubeControl.logsOpen({
-      streamId: id,
-      clusterId: props.clusterId,
-      namespace: props.namespace,
-      pod: props.pod,
-      container: container.value,
-      previous: previous.value,
-      tail: tail.value,
-      timestamps: timestamps.value,
-      follow: !previous.value,
-    });
-    await opening;
-  } catch (err) {
-    if (gen !== generation) return;
-    failure.value = errorText(err);
-    ended.value = true;
-  }
+  await openStream.run(gen, {
+    streamId: id,
+    clusterId: props.clusterId,
+    namespace: props.namespace,
+    pod: props.pod,
+    container: container.value,
+    previous: previous.value,
+    tail: tail.value,
+    timestamps: timestamps.value,
+    follow: !previous.value,
+  });
 }
 
 watch(

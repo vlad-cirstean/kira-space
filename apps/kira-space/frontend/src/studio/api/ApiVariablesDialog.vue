@@ -16,7 +16,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
@@ -64,7 +64,6 @@ const savedSecrets = computed(
 );
 
 const typed = ref<Record<string, string>>({});
-const secretError = ref('');
 
 async function flushSecrets(): Promise<void> {
   const referenced = new Set(
@@ -76,6 +75,8 @@ async function flushSecrets(): Promise<void> {
     typed.value = { ...typed.value, [name]: '' };
   }
 }
+
+const secrets = useAsyncAction(flushSecrets);
 
 const draft = useConfigFormDraft<FileModel>({
   file: () => (detail.value ? { text: detail.value.text, hash: detail.value.hash } : undefined),
@@ -99,7 +100,7 @@ watch(
   () => [dialogStore.file, detail.value?.kind] as const,
   () => {
     typed.value = {};
-    secretError.value = '';
+    secrets.reset();
     bulk.value = false;
     section.value =
       dialogStore.tab === 'yaml' || (isEnvironment.value && dialogStore.tab !== 'variables')
@@ -136,17 +137,13 @@ const variables = computed<ApiFileVariable[]>({
 
 const hasTyped = computed(() => Object.values(typed.value).some((v) => v !== ''));
 const canSave = computed(() => draft.canSave.value || hasTyped.value);
-const saveError = computed(() => draft.saveError.value || secretError.value);
+const saveError = computed(() => draft.saveError.value || (secrets.error.value ?? ''));
 
 async function saveNow(): Promise<void> {
-  secretError.value = '';
+  secrets.reset();
   await draft.saveNow();
   if (draft.dirty.value || draft.saveError.value) return;
-  try {
-    await flushSecrets();
-  } catch (err) {
-    secretError.value = errorText(err);
-  }
+  await secrets.run();
 }
 
 function close(): void {

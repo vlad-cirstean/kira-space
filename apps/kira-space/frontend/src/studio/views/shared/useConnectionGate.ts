@@ -1,5 +1,6 @@
 import type { ConnectionStatus } from '@shared/domain/connection';
-import { type ComputedRef, computed, type Ref, ref } from 'vue';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { type ComputedRef, computed } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { useConnectionsStore } from '../../state/connections';
 
@@ -27,7 +28,7 @@ export function useConnectionGate(
 ): {
   connectionStatus: ComputedRef<ConnectionStatus>;
   needsReconnect: ComputedRef<boolean>;
-  reconnecting: Ref<boolean>;
+  reconnecting: ComputedRef<boolean>;
   onReconnectAndLoad(): Promise<boolean>;
 } {
   const connectionStatus = computed<ConnectionStatus>(() => {
@@ -46,25 +47,30 @@ export function useConnectionGate(
   // only run once it did; every existing caller (a template `@click` binding, or an
   // `await onReconnectAndLoad()` that never inspected the old `void` return) is unaffected by the
   // new return value.
-  const reconnecting = ref(false);
+  let connected = false;
+  const reconnect = useAsyncAction(async (connectionId: string) => {
+    connected = false;
+    if (connectionStatus.value !== 'connected') {
+      await useConnectionsStore().connectConnection(connectionId);
+    }
+    if (connectionStatus.value !== 'connected') return;
+    useTabsStore().markHydrated(tab().id);
+    await onLoad?.();
+    connected = true;
+  });
   async function onReconnectAndLoad(): Promise<boolean> {
     const connectionId = tab().connectionId;
     if (!connectionId) return false;
-    reconnecting.value = true;
-    try {
-      if (connectionStatus.value !== 'connected') {
-        await useConnectionsStore().connectConnection(connectionId);
-      }
-      if (connectionStatus.value !== 'connected') return false;
-      useTabsStore().markHydrated(tab().id);
-      await onLoad?.();
-      return true;
-    } finally {
-      reconnecting.value = false;
-    }
+    await reconnect.run(connectionId);
+    return connected;
   }
 
-  return { connectionStatus, needsReconnect, reconnecting, onReconnectAndLoad };
+  return {
+    connectionStatus,
+    needsReconnect,
+    reconnecting: reconnect.pending,
+    onReconnectAndLoad,
+  };
 }
 
 // A one-shot, non-reactive counterpart to the gate above — for a call site

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResponseHistorySnapshot } from '@shared/domain/responseHistory';
+import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
@@ -27,7 +28,7 @@ import { rowMeta } from '@theme/lib/rowVariants';
 import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { displayValue, formatBytes, formatDuration } from '@workbench/behaviour/format';
-import { errorText } from '@workbench/bridge/codedError';
+import QueryState from '@workbench/components/QueryState.vue';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { KIRA_EDITOR_THEME, loadMonaco } from '@workbench/editor/monaco';
 import { monacoLanguageIdFor } from '@workbench/editor/monacoLanguages';
@@ -42,10 +43,6 @@ import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 const props = defineProps<{ ids: [string, string] }>();
 const emit = defineEmits<{ close: [] }>();
 
-const snapA = ref<ResponseHistorySnapshot | null>(null);
-const snapB = ref<ResponseHistorySnapshot | null>(null);
-const loadingSnapshots = ref(true);
-const loadError = ref<string | null>(null);
 const monacoLoad = useAsyncAction(loadMonaco);
 const mergeLoading = monacoLoad.pending;
 const mergeHostRef = ref<HTMLElement | null>(null);
@@ -64,28 +61,23 @@ function disposeMergeView(): void {
   modifiedModel = null;
 }
 
-async function loadSnapshots(): Promise<void> {
-  try {
-    const [s1, s2] = await Promise.all([
-      control.historyGet(props.ids[0]),
-      control.historyGet(props.ids[1]),
-    ]);
-    // ISO timestamps compare lexicographically in chronological order (model.FormatISO's fixed
-    // UTC width) — no Date parsing needed to pick the older one.
-    if (s1.entry.sentAt <= s2.entry.sentAt) {
-      snapA.value = s1;
-      snapB.value = s2;
-    } else {
-      snapA.value = s2;
-      snapB.value = s1;
-    }
-  } catch (err) {
-    loadError.value = errorText(err);
-  } finally {
-    loadingSnapshots.value = false;
-  }
+// ISO timestamps compare lexicographically in chronological order (model.FormatISO's fixed
+// UTC width) — no Date parsing needed to pick the older one.
+function ordered(
+  s1: ResponseHistorySnapshot,
+  s2: ResponseHistorySnapshot,
+): { a: ResponseHistorySnapshot; b: ResponseHistorySnapshot } {
+  return s1.entry.sentAt <= s2.entry.sentAt ? { a: s1, b: s2 } : { a: s2, b: s1 };
 }
-void loadSnapshots();
+const snapshots = useQuery(() => ({
+  queryKey: ['responseDiff', props.ids[0], props.ids[1]] as const,
+  queryFn: async () =>
+    ordered(
+      ...(await Promise.all([control.historyGet(props.ids[0]), control.historyGet(props.ids[1])])),
+    ),
+}));
+const snapA = computed(() => snapshots.data.value?.a ?? null);
+const snapB = computed(() => snapshots.data.value?.b ?? null);
 
 // D12: "not compared" — a binary body on either side. The dialog still shows the summary and
 // headers levels; only the body diff is withheld, with the reason stated inline.
@@ -240,10 +232,11 @@ async function buildMergeView(): Promise<void> {
 }
 
 watch(
-  () => loadingSnapshots.value,
-  (loading) => {
-    if (!loading && bothStored.value) void buildMergeView();
+  () => snapshots.data.value,
+  (loaded) => {
+    if (loaded && bothStored.value) void buildMergeView();
   },
+  { immediate: true },
 );
 
 onUnmounted(() => {
@@ -258,115 +251,116 @@ onUnmounted(() => {
         <DialogTitle>{{ t('studio.http.diff.title') }}</DialogTitle>
       </DialogHeader>
       <DialogBody flush>
-        <InlineState v-if="loadingSnapshots" kind="loading">{{
-          t('common.state.loading.loading')
-        }}</InlineState>
-        <Alert v-else-if="loadError" variant="error"
-          ><AlertDescription>{{ loadError }}</AlertDescription></Alert
-        >
-        <div v-else-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
-          <div class="flex shrink-0 items-center gap-2 px-2 py-1.5" data-testid="http-diff-summary">
-            <div class="flex flex-col gap-0.5">
-              <span :class="[rowMeta, 'self-start']"
-                ><RelativeTime :at="snapA.entry.sentAt" /></span
-              >
-              <div class="flex items-center gap-1">
-                <HttpStatusBadge
-                  :status="snapA.entry.status"
-                  :status-text="snapA.entry.statusText"
-                  data-testid="http-diff-status-a"
-                />
-                <span :class="rowMeta">{{ formatDuration(snapA.entry.elapsedMs) }}</span>
-                <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
-              </div>
-            </div>
-            <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
-            <div class="flex flex-col gap-0.5">
-              <span :class="[rowMeta, 'self-start']"
-                ><RelativeTime :at="snapB.entry.sentAt" /></span
-              >
-              <div class="flex items-center gap-1">
-                <HttpStatusBadge
-                  :status="snapB.entry.status"
-                  :status-text="snapB.entry.statusText"
-                  data-testid="http-diff-status-b"
-                />
-                <span :class="rowMeta">{{ formatDuration(snapB.entry.elapsedMs) }}</span>
-                <span :class="rowMeta">{{ formatBytes(snapB.entry.bodyBytes) }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="max-h-40 shrink-0 overflow-auto px-2 py-1" data-testid="http-diff-headers">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead class="w-18"></TableHead>
-                  <TableHead class="w-40"></TableHead>
-                  <TableHead>{{ t('studio.http.diff.before.label') }}</TableHead>
-                  <TableHead>{{ t('studio.http.diff.after.label') }}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="row in changedHeaderRows"
-                  :key="row.name"
-                  data-testid="http-diff-header-row"
-                >
-                  <TableCell class="text-kira-sm" :class="headerStatusClass(row.status)">{{
-                    headerStatusText(row.status)
-                  }}</TableCell>
-                  <TableCell class="font-data text-muted-foreground">{{ row.name }}</TableCell>
-                  <TableCell class="font-data wrap-anywhere">{{ displayValue(row.a) }}</TableCell>
-                  <TableCell class="font-data wrap-anywhere">{{ displayValue(row.b) }}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-            <Disclosure
-              v-if="unchangedHeaderRows.length > 0"
-              :label="t('studio.http.diff.unchanged.status', { count: unchangedHeaderRows.length })"
-              meta
+        <QueryState :query="snapshots" variant="inline">
+          <div v-if="snapA && snapB" class="flex h-full min-h-0 flex-col">
+            <div
+              class="flex shrink-0 items-center gap-2 px-2 py-1.5"
+              data-testid="http-diff-summary"
             >
+              <div class="flex flex-col gap-0.5">
+                <span :class="[rowMeta, 'self-start']"
+                  ><RelativeTime :at="snapA.entry.sentAt" /></span
+                >
+                <div class="flex items-center gap-1">
+                  <HttpStatusBadge
+                    :status="snapA.entry.status"
+                    :status-text="snapA.entry.statusText"
+                    data-testid="http-diff-status-a"
+                  />
+                  <span :class="rowMeta">{{ formatDuration(snapA.entry.elapsedMs) }}</span>
+                  <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
+                </div>
+              </div>
+              <CodiconIcon name="arrow-right" :size="12" class="text-muted-foreground" />
+              <div class="flex flex-col gap-0.5">
+                <span :class="[rowMeta, 'self-start']"
+                  ><RelativeTime :at="snapB.entry.sentAt" /></span
+                >
+                <div class="flex items-center gap-1">
+                  <HttpStatusBadge
+                    :status="snapB.entry.status"
+                    :status-text="snapB.entry.statusText"
+                    data-testid="http-diff-status-b"
+                  />
+                  <span :class="rowMeta">{{ formatDuration(snapB.entry.elapsedMs) }}</span>
+                  <span :class="rowMeta">{{ formatBytes(snapB.entry.bodyBytes) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="max-h-40 shrink-0 overflow-auto px-2 py-1" data-testid="http-diff-headers">
               <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead class="w-18"></TableHead>
+                    <TableHead class="w-40"></TableHead>
+                    <TableHead>{{ t('studio.http.diff.before.label') }}</TableHead>
+                    <TableHead>{{ t('studio.http.diff.after.label') }}</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   <TableRow
-                    v-for="row in unchangedHeaderRows"
+                    v-for="row in changedHeaderRows"
                     :key="row.name"
-                    data-testid="http-diff-header-row-unchanged"
+                    data-testid="http-diff-header-row"
                   >
-                    <TableCell class="w-18 text-kira-sm" :class="headerStatusClass(row.status)">{{
+                    <TableCell class="text-kira-sm" :class="headerStatusClass(row.status)">{{
                       headerStatusText(row.status)
                     }}</TableCell>
-                    <TableCell class="w-40 font-data text-muted-foreground">{{
-                      row.name
-                    }}</TableCell>
-                    <TableCell class="font-data wrap-anywhere">{{ row.a }}</TableCell>
-                    <TableCell class="font-data wrap-anywhere">{{ row.b }}</TableCell>
+                    <TableCell class="font-data text-muted-foreground">{{ row.name }}</TableCell>
+                    <TableCell class="font-data wrap-anywhere">{{ displayValue(row.a) }}</TableCell>
+                    <TableCell class="font-data wrap-anywhere">{{ displayValue(row.b) }}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
-            </Disclosure>
-          </div>
+              <Disclosure
+                v-if="unchangedHeaderRows.length > 0"
+                :label="
+                  t('studio.http.diff.unchanged.status', { count: unchangedHeaderRows.length })
+                "
+                meta
+              >
+                <Table>
+                  <TableBody>
+                    <TableRow
+                      v-for="row in unchangedHeaderRows"
+                      :key="row.name"
+                      data-testid="http-diff-header-row-unchanged"
+                    >
+                      <TableCell class="w-18 text-kira-sm" :class="headerStatusClass(row.status)">{{
+                        headerStatusText(row.status)
+                      }}</TableCell>
+                      <TableCell class="w-40 font-data text-muted-foreground">{{
+                        row.name
+                      }}</TableCell>
+                      <TableCell class="font-data wrap-anywhere">{{ row.a }}</TableCell>
+                      <TableCell class="font-data wrap-anywhere">{{ row.b }}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Disclosure>
+            </div>
 
-          <Alert v-if="!bothStored" variant="info" data-testid="http-diff-not-comparable">
-            <AlertDescription>
-              {{ t('studio.http.diff.notKept.description') }}
-            </AlertDescription>
-          </Alert>
-          <template v-else>
-            <FieldDescription v-if="!commonFormat" class="shrink-0 px-2 py-1">{{
-              t('studio.http.diff.rawBytes.description')
-            }}</FieldDescription>
-            <InlineState v-if="mergeLoading" kind="loading">{{
-              t('studio.http.diff.loadingMerge.loading')
-            }}</InlineState>
-            <div
-              ref="mergeHostRef"
-              class="diff-merge-host flex-1 min-h-0 overflow-auto"
-              data-testid="http-diff-merge"
-            ></div>
-          </template>
-        </div>
+            <Alert v-if="!bothStored" variant="info" data-testid="http-diff-not-comparable">
+              <AlertDescription>
+                {{ t('studio.http.diff.notKept.description') }}
+              </AlertDescription>
+            </Alert>
+            <template v-else>
+              <FieldDescription v-if="!commonFormat" class="shrink-0 px-2 py-1">{{
+                t('studio.http.diff.rawBytes.description')
+              }}</FieldDescription>
+              <InlineState v-if="mergeLoading" kind="loading">{{
+                t('studio.http.diff.loadingMerge.loading')
+              }}</InlineState>
+              <div
+                ref="mergeHostRef"
+                class="diff-merge-host flex-1 min-h-0 overflow-auto"
+                data-testid="http-diff-merge"
+              ></div>
+            </template>
+          </div>
+        </QueryState>
       </DialogBody>
 
       <DialogFooter>

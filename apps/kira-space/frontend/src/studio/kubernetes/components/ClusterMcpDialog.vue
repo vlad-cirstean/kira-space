@@ -16,7 +16,7 @@ import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field'
 import { Textarea } from '@theme/components/ui/textarea';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { errorText } from '@workbench/bridge/codedError';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref, useId, watch } from 'vue';
 import { useClusters, useSetClusterMcp } from '../queries';
 import type { KubeMcpSettings } from '../wire';
@@ -26,7 +26,7 @@ const open = defineModel<boolean>('open', { required: true });
 
 const clusters = useClusters();
 const cluster = computed(() => clusters.data.value?.clusters.find((c) => c.id === props.clusterId));
-const save = useSetClusterMcp();
+const saving = useMutationAction(useSetClusterMcp());
 
 const approvalItems = computed(() => [
   { value: 'prompt', label: t('common.mcp.askFirst.label'), testid: 'kube-mcp-prompt' },
@@ -34,7 +34,6 @@ const approvalItems = computed(() => [
 ]);
 
 const draft = ref<KubeMcpSettings | null>(null);
-const error = ref<string | null>(null);
 const dirty = computed(
   () => !!draft.value && JSON.stringify(draft.value) !== JSON.stringify(cluster.value?.mcp),
 );
@@ -45,26 +44,15 @@ watch(
     if (isOpen && current && !draft.value) draft.value = { ...current.mcp };
     if (!isOpen) {
       draft.value = null;
-      error.value = null;
+      saving.reset();
     }
   },
   { immediate: true },
 );
 
-function onSave(): void {
+async function onSave(): Promise<void> {
   if (!draft.value) return;
-  error.value = null;
-  save.mutate(
-    { clusterId: props.clusterId, mcp: draft.value },
-    {
-      onSuccess: () => {
-        open.value = false;
-      },
-      onError: (err) => {
-        error.value = errorText(err);
-      },
-    },
-  );
+  if (await saving.run({ clusterId: props.clusterId, mcp: draft.value })) open.value = false;
 }
 const idBase = useId();
 </script>
@@ -117,8 +105,8 @@ const idBase = useId();
             />
           </Field>
         </template>
-        <Alert v-if="error" variant="error" data-testid="kube-mcp-error">
-          <AlertDescription>{{ error }}</AlertDescription>
+        <Alert v-if="saving.error.value" variant="error" data-testid="kube-mcp-error">
+          <AlertDescription>{{ saving.error.value }}</AlertDescription>
         </Alert>
       </DialogBody>
       <DialogFooter>
@@ -128,7 +116,7 @@ const idBase = useId();
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :pending="save.isPending.value"
+          :pending="saving.pending.value"
           :disabled="!draft"
           data-testid="kube-mcp-save"
           @click="onSave"

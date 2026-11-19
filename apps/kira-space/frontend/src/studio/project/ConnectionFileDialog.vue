@@ -15,7 +15,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction, useTaskAction } from '@workbench/behaviour/asyncAction';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
@@ -66,7 +66,6 @@ const applyForm = useConnectionForm(() => dialogStore.file ?? '');
 
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
 const secrets = ref({ password: '', uri: '' });
-const secretError = ref('');
 
 const detail = computed(() => query.data.value);
 const record = computed(() => connectionsStore.connectionRecord(detail.value?.id));
@@ -84,6 +83,9 @@ async function flushSecrets(): Promise<void> {
     secrets.value = { ...secrets.value, [kind]: '' };
   }
 }
+
+const flushing = useAsyncAction(flushSecrets);
+const lifecycle = useTaskAction();
 
 const draft = useConfigFormDraft<ConnectionFileModel>({
   file: () => (detail.value ? { text: detail.value.text, hash: detail.value.hash } : undefined),
@@ -106,7 +108,7 @@ watch(
   () => {
     testResult.value = null;
     secrets.value = { password: '', uri: '' };
-    secretError.value = '';
+    flushing.reset();
     section.value = 'general';
   },
 );
@@ -159,37 +161,28 @@ const savedSecret = (kind: 'password' | 'uri'): boolean => {
 const hasTyped = computed(() => !!secrets.value.password || !!secrets.value.uri);
 const canSave = computed(() => draft.canSave.value || hasTyped.value);
 const saveError = computed(
-  () => draft.saveError.value || secretError.value || lifecycleError.value,
+  () => draft.saveError.value || flushing.error.value || lifecycle.error.value || '',
 );
 
 async function saveNow(): Promise<void> {
-  secretError.value = '';
+  flushing.reset();
   await draft.saveNow();
   if (draft.dirty.value || draft.saveError.value) return;
-  try {
-    await flushSecrets();
-  } catch (err) {
-    secretError.value = errorText(err);
-  }
+  await flushing.run();
 }
 
 function close(): void {
   dialogStore.closeFile();
 }
 
-const lifecycleError = ref('');
-
 // The copy is a new file; the dialog follows it.
 async function onDuplicate(): Promise<void> {
   const id = detail.value?.id;
   if (!id) return;
-  lifecycleError.value = '';
-  try {
+  await lifecycle.run(async () => {
     const created = await connectionsStore.duplicateConnection(id);
     dialogStore.openFile(created.file);
-  } catch (err) {
-    lifecycleError.value = errorText(err);
-  }
+  });
 }
 
 async function onDelete(): Promise<void> {
@@ -207,14 +200,11 @@ async function onDelete(): Promise<void> {
     tone: 'danger',
   });
   if (!ok) return;
-  lifecycleError.value = '';
-  try {
+  await lifecycle.run(async () => {
     if (d.id) await connectionsStore.deleteConnection(d.id);
     else await deleteFile.mutateAsync(d.file);
     close();
-  } catch (err) {
-    lifecycleError.value = errorText(err);
-  }
+  });
 }
 
 async function onTest(): Promise<void> {
