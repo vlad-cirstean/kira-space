@@ -2,6 +2,7 @@
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import SaveBar from '@workbench/components/SaveBar.vue';
@@ -41,9 +42,7 @@ const save = isStep ? useSaveStepYaml() : useSaveWorkflowYaml();
 
 const draft = ref('');
 const dirty = ref(false);
-const saveError = ref('');
 const baseHash = ref('');
-const conflict = ref(false);
 const checked = ref<{ error: WorkflowError | null } | null>(null);
 
 watch(
@@ -87,31 +86,28 @@ watch(dirty, (v) => {
   wfUi.dirty = v;
 });
 
+const saving = useAsyncAction(async (text: string) => {
+  const entry = await save.mutateAsync({
+    fileName: props.fileName,
+    yaml: text,
+    baseHash: baseHash.value,
+  });
+  baseHash.value = entry.hash;
+  if (draft.value === text) dirty.value = false;
+});
+const saveError = saving.error;
+const conflict = computed(() => saving.cause.value?.code === 'E_CONFLICT');
+
 async function saveNow(): Promise<void> {
   if (!dirty.value) return;
-  const text = draft.value;
-  try {
-    const entry = await save.mutateAsync({
-      fileName: props.fileName,
-      yaml: text,
-      baseHash: baseHash.value,
-    });
-    saveError.value = '';
-    conflict.value = false;
-    baseHash.value = entry.hash;
-    if (draft.value === text) dirty.value = false;
-  } catch (err) {
-    saveError.value = errorText(err);
-    conflict.value = (err as { code?: string }).code === 'E_CONFLICT';
-  }
+  await saving.run(draft.value);
 }
 
 function resetTo(data: { yaml: string; hash: string } | undefined): void {
   draft.value = data?.yaml ?? '';
   baseHash.value = data?.hash ?? '';
   dirty.value = false;
-  saveError.value = '';
-  conflict.value = false;
+  saving.reset();
   checked.value = null;
 }
 
@@ -127,7 +123,6 @@ async function overwrite(): Promise<void> {
   const fresh = (await yaml.refetch()).data;
   if (!fresh) return;
   baseHash.value = fresh.hash;
-  conflict.value = false;
   await saveNow();
 }
 
@@ -180,7 +175,7 @@ onBeforeUnmount(() => {
       }}</FieldError
     >
     <SaveConflictAlert
-      :error="saveError"
+      :error="saveError ?? ''"
       :conflict="conflict"
       testid-prefix="ade-wf"
       @reload="reload"

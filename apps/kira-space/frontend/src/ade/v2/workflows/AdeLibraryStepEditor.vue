@@ -5,11 +5,11 @@ import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { useCopy } from '@workbench/behaviour/clipboard';
-import { errorText } from '@workbench/bridge/codedError';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useDeleteStep, useStepYaml } from '../queries';
 import { useWorkflows } from '../readQueries';
 import { useAdeWorkflowsUiStore } from '../state/adeWorkflowsUi';
@@ -26,7 +26,8 @@ const workflows = useWorkflows();
 const del = useDeleteStep();
 const confirm = useConfirmDialogStore();
 const { copy, copied } = useCopy();
-const deleteError = ref('');
+const deleting = useMutationAction(del);
+const deleteError = deleting.error;
 
 const modeItems = [
   { value: 'form', label: t('common.form.label'), testid: 'ade-step-mode-form' },
@@ -52,14 +53,9 @@ async function remove(): Promise<void> {
     tone: 'danger',
   });
   if (!ok) return;
-  deleteError.value = '';
-  try {
-    await del.mutateAsync({ fileName: props.entry.fileName });
-    wfUi.dirty = false;
-    wfUi.stepFile = null;
-  } catch (err) {
-    deleteError.value = errorText(err);
-  }
+  if (!(await deleting.run({ fileName: props.entry.fileName }))) return;
+  wfUi.dirty = false;
+  wfUi.stepFile = null;
 }
 </script>
 

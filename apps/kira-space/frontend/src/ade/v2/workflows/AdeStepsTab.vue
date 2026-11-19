@@ -16,12 +16,12 @@ import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { kindLabel, STEP_KINDS } from '../board/workflowForm';
 import { useNewStep } from '../queries';
 import { useWorkflows } from '../readQueries';
@@ -33,7 +33,8 @@ import AdeLibraryStepEditor from './AdeLibraryStepEditor.vue';
 const wfUi = useAdeWorkflowsUiStore();
 const workflows = useWorkflows();
 const newStep = useNewStep();
-const listError = ref('');
+const creating = useAsyncAction((kind: StepKind) => createStep(kind));
+const listError = creating.error;
 
 const newStepItems = computed<MenuItem[]>(() =>
   STEP_KINDS.map((k) => ({
@@ -70,19 +71,18 @@ async function pick(fileName: string): Promise<void> {
   wfUi.stepFile = fileName;
 }
 
+async function createStep(kind: StepKind): Promise<void> {
+  const entry = await newStep.mutateAsync({
+    name: kindLabel(kind),
+    kind,
+    from: null,
+  });
+  wfUi.openStep(entry.fileName);
+}
+
 async function createNew(kind: StepKind): Promise<void> {
   if (!(await wfUi.leave())) return;
-  listError.value = '';
-  try {
-    const entry = await newStep.mutateAsync({
-      name: kindLabel(kind),
-      kind,
-      from: null,
-    });
-    wfUi.openStep(entry.fileName);
-  } catch (err) {
-    listError.value = errorText(err);
-  }
+  await creating.run(kind);
 }
 </script>
 
