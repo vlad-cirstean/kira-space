@@ -2,9 +2,9 @@
 
 [![PR](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml/badge.svg)](https://github.com/vlad-cirstean/kira-space/actions/workflows/pr.yml)
 
-Native macOS workbench: git client, code workspace, coding agents, memory store, terminal, phone
+Native macOS workbench: git client, code workspace, coding agents, terminal, phone
 view, plus the database (Studio), Api, Docker and Kubernetes modules. Wails (Go) and Vue 3. Modes:
-Agents, Automations, Studio, Api, Docker, Kubernetes, Git, Memory. Replaces the former Kira Studio
+Agents, Automations, Studio, Api, Docker, Kubernetes, Git. Replaces the former Kira Studio
 app.
 
 [Presentation page](https://vlad-cirstean.github.io/kira-space/) and
@@ -39,7 +39,7 @@ Api, Docker and Studio MCP features.
   tree.
 - **Markdown reading view** — a rendered-Markdown toggle beside the raw view, per tab.
 
-## Agents, memory, terminal and phone
+## Agents, terminal and phone
 
 - **Agents** — a task planner with workflows, runs and interactive agent sessions. Claude Code or
   OpenCode, picked per launch, per step or in Settings. One shared context and settings file for every
@@ -52,9 +52,6 @@ Api, Docker and Studio MCP features.
   step (a bounded loop), the end of the stage or a stop; a graph editor draws and edits the routes.
   A desktop notification fires when a session finishes or needs input, or a headless run ends. The status
   bar shows Claude Code's 5-hour and weekly usage for the sessions Kira starts.
-- **Memory** — an MCP server for Claude Code with keyword and semantic search. Semantic search needs
-  an optional local model of about 35 MB, downloaded when you click the button in Settings > Memory.
-  Add memories by hand, or import files or folders in bulk.
 - **Runs** — scripts grouped in collections, each run in its own folder with a status and result,
   plus terminals. A smart script is a prompt run by headless Claude Code with typed parameters and a tool
   allowlist; run it on a task or branch from Agents (in the task worktree if you choose), as a workflow
@@ -136,7 +133,7 @@ Two limits worth knowing up front:
 
 - macOS 26 or later, Apple Silicon (`arm64`).
 - [Git](https://git-scm.com) 2.38 or newer on `PATH`.
-- Optional: authenticated `claude` CLI for Agents, Memory and smart scripts; `opencode` for Agents.
+- Optional: authenticated `claude` CLI for Agents and smart scripts; `opencode` for Agents.
 - Optional: [GitHub CLI](https://cli.github.com) (`gh`), logged in, for PR links. Without it the
   PR indicator stays blank.
 - Optional: Docker-compatible daemon for the Docker module and database tests.
@@ -202,8 +199,7 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 `bun run test:unit`, `bun run test:go` and unscoped `bun run typecheck` cover the whole workspace.
 
 **App data:** `kira.db`, `logs/`, `review.db`, connections, Api collections and runs under
-`~/.kira-space/` (`KIRA_SPACE_HOME`). Memories in `~/.kira-space/memory/`: `memory.db`
-and downloaded `models/`. The home has one lock; two instances on different homes never contend.
+`~/.kira-space/` (`KIRA_SPACE_HOME`). The home has one lock; two instances on different homes never contend.
 
 ## Tests
 
@@ -235,7 +231,7 @@ apps/kira-space/tests/e2e-real  Playwright against a real server build (only wha
 apps/kira-space/tests/contract  JSON fixtures shared by the Go flow tests and the UI specs
 apps/kira-space/tests/claude    opt-in tests against the real `claude` CLI (own Go module)
 apps/kira-space/tests/visual    pixel-diff baselines
-internal             repo-root Go shared by the app's packages: `shell`, `appevent`, `ipcerr`, `startupfail`, `appstorage`, `memory`, `harness`, and more
+internal             repo-root Go shared by the app's packages: `shell`, `appevent`, `ipcerr`, `startupfail`, `appstorage`, `harness`, and more
 packages/workbench   the shared workbench shell (TitleBar/StatusBar/MainView/TabStrip), Pinia store factories, the Monaco editor bootstrap, test harnesses
 packages/git-ipc     the git contract, RPC/codec/validation, the stream channel, the FlatBuffers schema
 packages/git-core    client-side git logic: commit store, lane layout, the client half of search, settings schema

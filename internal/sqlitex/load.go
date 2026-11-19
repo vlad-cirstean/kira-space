@@ -7,7 +7,7 @@ import (
 )
 
 // MigrationSource names one embedded migration file in application order, the shared shape of each
-// database's migrations/embed.go (storage, gitreview, memory).
+// database's migrations/embed.go (storage, gitreview).
 type MigrationSource struct {
 	Version int
 	Name    string

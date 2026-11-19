@@ -541,14 +541,10 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 - Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
 - P444 (CLI 2.1.316): `TestSmartScriptRun/user_MCP_server_loads_through_claude` (hermetic off) runs real `claude mcp list` plus one haiku run, a few cents. Studio `app_MCP_server_loads_through_claude` is the hermetic case.
 - Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:db -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
-- Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD, memory gate smoke a few cents, import smoke 0.14 USD (P211), memory docs test 0.01 USD (P276). Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s). P296: `comment` subtest of the memory docs test 0.006 USD (about 16 s), prompt-registry row of the Space suite 0.083 USD (about 427 s). P297 (CLI 2.1.302): `TestMemoryDistill` 0.03 USD (about 21 s), `TestMemoryDistillBridge` 0.03 USD (about 13 s), `TestMemoryMcpFollowsDocs` 0.022 USD (about 85 s), prompt-registry row 0.082 USD (about 444 s); `TestMemoryGate` now also checks rule kind (about 32 s). Eval subset round `round-p297-01` 1.50 USD (ledger `spend-p297.jsonl`, needs `KIRA_EVAL_PHASE_CAP_USD` above the run cap plus 2); a shallow clone must first `git fetch --depth=1 origin <corpus commit>`.
-- `scripts/docshistory` (re-renders existing chapter blocks in `docs/history/`, P299; refuses a chapter with no
-  block, never closes one): needs the logged-in `claude` CLI, builds `kira-space` itself (or `--binary`), gives each unit a temp `KIRA_SPACE_HOME` (memory lives under it) and never touches your memory DB.
-  Defaults (also `doc`): `--runs docs/history-runs`, `--out -`, `--jobs 1`. Cost per phase 0.02 to 0.25 USD (P299 pilot, mean 0.07);
-  v2.5 (P300): 27 units, 1.45 USD real, 3.20 USD charged (failed tries charge a 0.25 USD estimate).
-  v2.6 (P305): 12 units (13 tries), 0.78 USD real, 0.78 charged. `--max-usd` stops new
-  units, resume reruns the command. `repoint` skips `scripts/docshistory/` and both `testdata/` roots (eval data lives in
-  `apps/kira-space/tests/claude/testdata/memory-eval/`, `internal/llmprompts/testdata/`).
+- Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD. Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s). P296: `comment` subtest of the memory docs test 0.006 USD (about 16 s), prompt-registry row of the Space suite 0.083 USD (about 427 s). P297 (CLI 2.1.302): `TestMemoryDistill` 0.03 USD (about 21 s), `TestMemoryDistillBridge` 0.03 USD (about 13 s), `TestMemoryMcpFollowsDocs` 0.022 USD (about 85 s), prompt-registry row 0.082 USD (about 444 s); `TestMemoryGate` now also checks rule kind (about 32 s). Eval subset round `round-p297-01` 1.50 USD (ledger `spend-p297.jsonl`, needs `KIRA_EVAL_PHASE_CAP_USD` above the run cap plus 2); a shallow clone must first `git fetch --depth=1 origin <corpus commit>`.
+- `scripts/docshistory` (re-renders existing chapter blocks in `docs/history/` from recorded runs in `docs/history-runs`, P299; refuses a chapter with no
+  block, never closes one). Defaults (also `doc`): `--runs docs/history-runs`, `--out -`. `repoint` skips `scripts/docshistory/` and both `testdata/` roots
+  (`apps/kira-space/tests/claude/testdata/`, `internal/llmprompts/testdata/`).
 
 | Changed area (paths) | Command |
 |---|---|
@@ -558,12 +554,8 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 | Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
 | Details on disk benchmark (P643): `internal/taskfiles/**`, the Space tools of `internal/agentmcp/**`, `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**` | Free harness check: `bun run test:claude -run TestDetailsBenchFrozenServes`. Round: `KIRA_BENCH_OUT=/tmp/bench.md KIRA_BENCH_FLOWS=F4,F5,F6,F1 bun run test:claude:details` (flows F1 to F6; sonnet, 3 reps per flow and arm, 0.5 USD per run, `KIRA_BENCH_BUDGET` caps the round, `KIRA_SPIKE_DUMP` keeps each run's transcript). The report gates R over T per flow: context 1.05 on F1 to F4, 1.0 on F5 and F6. `KIRA_BENCH_OUT` is required, never a path under `docs/`. Arm T serves the frozen `tools-baseline.json`; arm R is the real `agentmcp.Server` (submit, state, create_task for an orchestrator) over the task folder with `states-r/` fixtures. Opt-in, never in hooks or CI. |
 | Smart scripts: `internal/{agentmcp,mcpcall,scriptruns,scripts}/**` (incl. `scheduler.go`, `confirm.go`), `internal/harness/claude/headless.go`, `apps/kira-space/internal/ade/automation.go` | `bun run test:claude -run 'TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db -run TestSmartScriptRun` |
-| Memory MCP and install: `internal/memory/memorycli/**`, `internal/memory/mcpserver/**`, `internal/memory/memfmt/**`, `internal/mcpcall/**`, `apps/kira-space/internal/appwire/memoryops.go`, `internal/harness/claude/mcpinstall/**`, `apps/kira-space/internal/bridge/memory.go`, `apps/kira-space/internal/bridge/memorydistill.go` | `bun run test:claude -run 'TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryDistill\|TestMemoryDistillBridge'` (`TestMemoryDistill` covers `ingest_files` with `distill` true, P297; `TestMemoryDistillBridge` covers the UI bridge call, P285 Part 4, P297; `TestMemoryDistillRewrite` covers mode rewrite, P315, about 0.01 USD) |
-| Memory gate: `internal/memory/{agentrunner.go,gate*.go,service.go}`, `internal/harness/claude/structured.go` | `bun run test:claude -run TestMemoryGate` |
-| Memory import and ingest: `internal/memory/importer/**`, `internal/harness/claude/structured.go` | `bun run test:claude -run 'TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia'` (import about 50 s, 0.14 USD, P211; ingest P274; the `TestMemoryDistill` prefix also runs `TestMemoryDistillRewrite`, P315) |
-| Memory ingest eval (P285): `internal/llmprompts` memory.import.* prompts, `internal/memory/importer/{chunk,extract,finalize}*.go` quality | `bun run eval:memory` with `KIRA_EVAL_MODE=run KIRA_EVAL_ROUND=<name>` (see ARCHITECTURE "Memory ingest eval"). Opt-in, never in hooks or CI. Costs about 4 to 5 USD per tuning run (8 to 10 min), judge included; P285 spent 57.9 USD in all; Part 2 spent 28.5 USD (ledger `spend-p2.jsonl`). Part 3 spent about 5.4 USD on the eval (ledger `spend-p3.jsonl`). P289 spent about 8.9 USD on the 5-source subset (ledger `spend-p289.jsonl`; `KIRA_EVAL_ONLY=plan-p257,spec-chunk-go,doc-arch-prompts,cmt-runner-go,json-ade-errors`, about 1.5 USD per round); run the test binary from `apps/kira-space/tests/claude` (`go test -c`) to keep a tree edit from changing a round midway. `KIRA_EVAL_MODE=footprint` with `KIRA_EVAL_ROUNDS=<r1,r2>` re-renders stored facts of past rounds and costs nothing. P291 (retrieval and telegraph eval) spent 14.04 USD of 20 (ledger `P291-runs/spend-p291.jsonl`, set `KIRA_EVAL_RUNS_DIR=P291-runs KIRA_EVAL_LEDGER=spend-p291.jsonl`); modes `questions`, `keys`, `telegraph`, `score` (with `KIRA_EVAL_STYLE=tele`) are paid, `retrieval` and `compare` are free and need `KIRA_ORT_LIB` (`sh scripts/fetch-onnxruntime.sh linux-x64`). Not a pass/fail row: it scores quality. |
 | DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440; `TestDbMcpKeptChainThroughClaude` covers `run_query` `script` and `params` schemas and a chain by name, P686) |
-| Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | memory gate, memory MCP, memory import, ADE, smart scripts and DB MCP rows above: `test:claude -run 'TestMemoryGate\|TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia\|TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db` |
+| Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | ADE, smart scripts and DB MCP rows above: `test:claude -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db` |
 | Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
 | Any other `internal/harness/**` change | `bun run test:claude` |
 | Claude CLI upgrade | `bun run test:claude` |
@@ -763,39 +755,6 @@ exits 0. It overrides `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` for that one install 
   body and `Idempotency-Key`, and `state.failNext` scripts one refusal. Go side: `go test -race
   ./apps/kira-space/internal/mobileterm/` drives a real `coder/websocket` client against the broker
   with a fake clock.
-
-## Memory MCP and the `claude` CLI (P201)
-
-- `memory.db` lives in `$KIRA_SPACE_HOME/memory` (default `~/.kira-space/memory`). `testx.RunWithTempHomes`
-  sets `KIRA_SPACE_HOME` for test binaries.
-- Smoke against the real CLI, opt-in: `bun run test:claude -run TestMemoryGate`.
-  Needs an authenticated `claude` on `PATH` (`claude -p` works here, CLI 2.1.292; ~14 s, a few cents).
-  The gate uses `--safe-mode --setting-sources "" --strict-mcp-config --tools "" --no-session-persistence`;
-  never `--bare`, it forces API-key auth.
-- Import smoke (P211), real CLI, about 50 s and 0.14 USD:
-  `bun run test:claude -run TestMemoryImport`. It runs the engine on
-  `apps/kira-space/tests/claude/testdata/smoke` with a small chunk budget and re-executes the test binary as
-  `memory-mcp` (set `KIRA_TEST_MEMORY_MCP=1`; `TestMain` in that module handles it), so no built app is needed.
-  P274: the import now runs in a detached `memory-ingest` runner (flow binary and `tests/claude` binary
-  serve it through `flowharness.Main`); its log is `$KIRA_SPACE_HOME/memory/import-runner.log`. Check no runner
-  outlives a suite: `pgrep -f '^.*memory-ingest$'` is empty 35 s after.
-  Import UI states: `bun run build:test`, then Playwright `memory-import` (mock bridge).
-- MCP path: `go build -tags server ./apps/kira-space`, then `claude -p --mcp-config <file>
-  --strict-mcp-config` with a `stdio` server `{command: <binary>, args: ["memory-mcp"], env:
-  {KIRA_SPACE_HOME: <tmp>}}`. `printf '' | <binary> memory-mcp` exits 0. The macOS app-bundle binary
-  is unchecked (Known open items).
-- Semantic search (P210): the ONNX Runtime library is not in the repo. `sh scripts/fetch-onnxruntime.sh
-  linux-x64` downloads the pinned 1.31.1 NuGet package (about 160 MB, `api.nuget.org` is reachable through the agent proxy; checksum-verified, idempotent), extracts the library to
-  `apps/kira-space/build/onnxruntime/linux-x64/` (gitignored) and prints the library path. GitHub release asset URLs answer 404 from this sandbox, so a 404 here proves nothing about upstream. Set
-  `KIRA_ORT_LIB` to it for any process that should embed (the server-tag app, `memory-mcp`). Without it
-  the status is `unavailable` and search stays keyword-only. Hugging Face is reachable through the agent
-  proxy here, so the 35 MB model download works. Real-model check, not in CI:
-  `KIRA_ORT_LIB=… go test -tags embedsmoke ./internal/memory/embed/ -run Smoke -v` (installs into a
-  temp dir, runs the real worker, needs 8/10 top-1). Tests otherwise use a fake `Embedder` and a fake
-  worker (the test binary re-executed), so no network or library is needed. `go build` of the
-  `CGO_ENABLED=0` stub and `GOOS=darwin` pure-Go packages works here; the cgo darwin build does not.
-- Worker footprint: `grep VmRSS /proc/$(pgrep -f 'memory-embed')/status` while it runs; it should
-  vanish about 5 min after the last search.
 
 ## `tests/visual/*` pixel diffs: font mismatch, not a code regression
 
@@ -1041,11 +1000,10 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
 
 Per-process memory with ADE open and agents running. Mac only; the sandbox has no `footprint`.
 
-1. Open the app on ADE only. Start 4 agent sessions on a seeded repo. Let each call the Kira
-   memory tool once. Wait 1 min.
+1. Open the app on ADE only. Start 4 agent sessions on a seeded repo. Wait 1 min.
 2. `ps -o pid,ppid,rss,command -g <pgid>` lists the tree. `footprint -p <pid>` for the app,
    `com.apple.WebKit.WebContent`, `com.apple.WebKit.GPU`, `com.apple.WebKit.Networking`, each
-   `kira-space memory-mcp`, each `kira-space memory-embed`, each `claude`.
+   `claude`.
 3. Read the tooltip App/Agents/Scripts totals next to the footprint sum.
 4. Sandbox proxy for the same fixture: `KIRA_RAM_WORLD=ade-agents bunx playwright test
    --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram` prints `PSS` lines
@@ -1062,8 +1020,7 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |
-| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app and in each `memory-mcp` it launches. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
-| `KIRA_ORT_LIB` | ONNX Runtime shared library path, else the bundled copy | you |
+| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
 | `KIRA_TERMINAL_ID`, `KIRA_AGENT_HOOK_SOCKET`, `KIRA_AGENT_HOOK_TOKEN` | Identify a terminal and its hook socket to the Claude hook shim | `terminal` on launch, `harness/claude/hooks` |
 | `KIRA_USER_STATUSLINE` | The user's own statusline command the hook shim chains to | `harness/claude/hooks` shim |
 | `KIRA_ASKPASS_SOCK`, `KIRA_ASKPASS_TOKEN`, `KIRA_ASKPASS_OPID`, `KIRA_ASKPASS_TIMEOUT_MS` | Git askpass helper reaches the prompt broker; per-op id and timeout | `gitaskpass` broker. `loginshell` strips the first two |
@@ -1083,11 +1040,9 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_FAKE_CONFIG`, `KIRA_FAKE_RECORD_ENV` | Fake agent: persona config, env record | flow tests |
 | `KIRA_OPENCODE_BIN` | Opt-in OpenCode probe test binary | you |
 | `KIRA_SECRET_<NAME>` | Env reference Claude export writes for `${secret:name}`; set it where the agent starts | you |
-| `KIRA_MEMORY_EVAL`, `KIRA_EVAL_MODE`, `KIRA_EVAL_ROUND`, `KIRA_EVAL_SET`, `KIRA_EVAL_ONLY`, `KIRA_EVAL_ROUNDS`, `KIRA_EVAL_PROMPTS`, `KIRA_EVAL_BUDGET`, `KIRA_EVAL_PARALLEL`, `KIRA_EVAL_CAP_USD`, `KIRA_EVAL_PHASE_CAP_USD`, `KIRA_EVAL_LEDGER`, `KIRA_EVAL_RUNS_DIR`, `KIRA_EVAL_MODEL_HOME`, `KIRA_EVAL_RECIPES`, `KIRA_EVAL_STYLES`, `KIRA_EVAL_STYLE`, `KIRA_EVAL_VARIANTS`, `KIRA_EVAL_EMBED_WORKER` | Memory ingest eval; `KIRA_MEMORY_EVAL=1` opts in (costs real money); `KIRA_EVAL_LEDGER` names the spend file per part (default `spend.jsonl`); `KIRA_EVAL_RUNS_DIR` picks the runs dir under `apps/kira-space/tests/claude/testdata/memory-eval` (P291: `P291-runs`); `KIRA_EVAL_EMBED_WORKER=1` is internal (the test binary re-executed as the embedding worker) | `bun run eval:memory`, you |
-| `KIRA_TEST_MEMORY_MCP` | Real `claude` tests: run the binary as the memory MCP server | `apps/kira-space/tests/claude` |
 | `KIRA_GIT_DIFFERENTIAL`, `KIRA_GIT_PERF` | `1` runs the git search differential test, the git perf probe | you |
 | `KIRA_DATAGRIP_REAL_PROJECT` | Path of a real DataGrip project for the opt-in import test | you |
-| `KIRA_EMBED_SMOKE_WORKER`, `KIRA_EMBED_FAKE_WORKER`, `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER`, `KIRA_PROBE_HOST`, `KIRA_PROBE_UNSET` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
+| `KIRA_ASKPASS_HELPER_PROCESS`, `KIRA_TEST_MARKER`, `KIRA_PROBE_HOST`, `KIRA_PROBE_UNSET` | Re-exec markers inside the owning package's tests; never set by hand | the tests themselves |
 
 ## Comment sweep (P320)
 
