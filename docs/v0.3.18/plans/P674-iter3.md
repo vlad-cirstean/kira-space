@@ -133,7 +133,7 @@ are known hits.
   `{ size: formatBytes(bodyBytes) }` (keeps its subtle line: card surface, not a pane strip).
   Delete `studio.dbMcp.approval.api.responseBinary.status` and `responseCut.status`.
   `studio.cellEditor.detect.base64Bytes.status` becomes "{size} decoded",
-  `hexBytes.status` becomes "{size}", both with `{ size: formatBytes(bytes) }`.
+  `hexBytes.status` becomes "{size} of data" (bare "{size}" is a C4 near-duplicate of `studio.console.format.engine.error`), both with `{ size: formatBytes(bytes) }`.
 - Guard: U179 `vt`, exempt none, regex `\bcount:\s*(?:[\w.]+\.)?(?:bytes|\w*Bytes)\b`.
 - Visible change: yes (HTTP binary note, approval binary and truncation wording, cell editor
   decoded size).

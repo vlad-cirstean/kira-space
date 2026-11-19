@@ -484,7 +484,7 @@ onUnmounted(() => {
           class="text-kira-sm text-muted-foreground p-1.5"
           data-testid="http-response-binary"
         >
-          {{ t('studio.http.response.binary.status', { count: response.bodyBytes }) }}
+          {{ t('studio.http.response.binary.status', { size: formatBytes(response.bodyBytes) }) }}
         </span>
         <InlineState v-else-if="bodyPending" kind="loading" data-testid="http-response-formatting">
           {{ t('studio.http.response.formatting.loading') }}

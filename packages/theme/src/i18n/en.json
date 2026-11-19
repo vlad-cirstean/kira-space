@@ -13812,7 +13812,7 @@
           "status": "Base64-shaped"
         },
         "base64Bytes": {
-          "status": "{count} byte decoded | {count} bytes decoded"
+          "status": "{size} decoded"
         },
         "csvShape": {
           "status": "{count} row × {columns} columns | {count} rows × {columns} columns"
@@ -13830,7 +13830,7 @@
           "status": "Hex-encoded bytes"
         },
         "hexBytes": {
-          "status": "{count} byte | {count} bytes"
+          "status": "{size} of data"
         },
         "invalidJson": {
           "status": "Looks like JSON, invalid at offset {offset}"
@@ -14653,12 +14653,6 @@
           },
           "redirectsOnTimeout": {
             "status": "Redirects on · {seconds} s"
-          },
-          "responseBinary": {
-            "status": "Binary body, {bytes} not shown"
-          },
-          "responseCut": {
-            "status": "Cut at {bytes}"
           },
           "responseRaw": {
             "label": "Response"
@@ -15741,7 +15735,7 @@
       },
       "response": {
         "binary": {
-          "status": "{count} byte of binary data | {count} bytes of binary data"
+          "status": "Binary body, {size} not shown"
         },
         "binaryNotKept": {
           "description": "This response’s body was binary and wasn’t kept ({size})."

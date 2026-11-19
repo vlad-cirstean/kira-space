@@ -54,15 +54,13 @@ const json = computed(() => {
     />
     <div class="max-h-80 overflow-auto" :data-testid="`${testid}-body`">
       <span v-if="response.binary" class="text-kira-sm text-subtle">{{
-        t('studio.dbMcp.approval.api.responseBinary.status', {
-          bytes: formatBytes(response.bodyBytes),
-        })
+        t('studio.http.response.binary.status', { size: formatBytes(response.bodyBytes) })
       }}</span>
       <FlushEditor v-else-if="json !== null" :doc="json" language="json" />
       <ApprovalCode v-else-if="response.body">{{ response.body }}</ApprovalCode>
     </div>
     <span v-if="response.truncated" class="text-kira-sm text-subtle">{{
-      t('studio.dbMcp.approval.api.responseCut.status', { bytes: formatBytes(response.bodyBytes) })
+      t('studio.http.response.truncated.description', { size: formatBytes(response.bodyBytes) })
     }}</span>
   </div>
 </template>
