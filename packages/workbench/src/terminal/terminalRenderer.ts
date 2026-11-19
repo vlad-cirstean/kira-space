@@ -87,7 +87,10 @@ function createLinkHint(term: Terminal): LinkHint | null {
   return {
     show(event, uri) {
       const box = root.getBoundingClientRect();
-      el.textContent = `${uri}\n${t('workbench.terminal.link.tooltip', { modifier: primaryModifierName() })}`;
+      el.textContent = [
+        uri,
+        t('workbench.terminal.link.tooltip', { modifier: primaryModifierName() }),
+      ].join('\n');
       el.style.display = '';
       const left = Math.min(event.clientX - box.left, Math.max(0, box.width - el.offsetWidth));
       el.style.left = `${Math.max(0, left)}px`;

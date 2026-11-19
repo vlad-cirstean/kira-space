@@ -11,7 +11,10 @@ const TITLE = {
 export function setupStatus(setup: WorktreeSetup, repo: string, branch: string, timeout: string) {
   return {
     state: setup.state,
-    title: `${t(TITLE[setup.state])} · ${repo} ${branch}`,
+    title: t('common.dotPair.label', {
+      first: t(TITLE[setup.state]),
+      second: `${repo} ${branch}`,
+    }),
     startedAt: setup.startedAt,
     finishedAt: setup.finishedAt,
     timeout: timeout || undefined,

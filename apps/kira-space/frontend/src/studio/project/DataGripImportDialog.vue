@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { type MessageKey, t } from '@theme/i18n';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { computed } from 'vue';
 import { useConnectionsStore } from '../state/connections';
@@ -86,8 +86,9 @@ const reportSummary = computed(() => {
   ];
   if (passwords > 0)
     parts.push(t('studio.project.dataGripImport.summary.passwords.body', { count: passwords }));
-  if (failed > 0) parts.push(t('common.failedCount.label', { count: failed }));
-  return parts.join(' ');
+  if (failed > 0)
+    parts.push(t('studio.project.dataGripImport.summary.failed.body', { count: failed }));
+  return joinSentences(...parts);
 });
 const reportTone = computed<'info' | 'warn'>(() =>
   (report.value?.rows.some((row) => !row.created) ?? false) ? 'warn' : 'info',

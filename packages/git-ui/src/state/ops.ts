@@ -1341,7 +1341,10 @@ export class OpsState {
       index: top.index,
     });
     if (preflight.verdict !== 'clean') {
-      this.announcement.value = `${announceMiddleOk()}. ${t('git.op.stashKept.body', { ref: stashRef(top.index) })}`;
+      this.announcement.value = t('git.op.stashKept.body', {
+        done: announceMiddleOk(),
+        ref: stashRef(top.index),
+      });
       return;
     }
 
@@ -1366,7 +1369,7 @@ export class OpsState {
       if (!popResult.ok) this.#noteFailure('stashPop', popResult.error, true);
     } else if (popResult.ok) {
       this.announcement.value = indexDropped
-        ? `${announceMiddleOk()}. ${t('git.op.stashIndexNotRestored.body')}`
+        ? t('git.op.stashIndexNotRestored.body', { done: announceMiddleOk() })
         : announceMiddleOk();
     } else this.#fail('stashPop', popResult.error, true);
   }

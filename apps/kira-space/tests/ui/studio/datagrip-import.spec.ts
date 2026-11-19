@@ -215,7 +215,9 @@ test('datagrip import — the report renders every row outcome, including a fail
 
   // The summary counts both the success and the failure.
   await expect(page.locator('[data-testid="datagrip-report-summary"]')).toContainText('1 of 2');
-  await expect(page.locator('[data-testid="datagrip-report-summary"]')).toContainText('1 failed');
+  await expect(page.locator('[data-testid="datagrip-report-summary"]')).toContainText(
+    '1 connection failed.',
+  );
 
   const okRow = page.locator('[data-testid="datagrip-report-row-uuid-pg"]');
   await expect(okRow.locator('[data-testid="datagrip-report-row-outcome"]')).toContainText(

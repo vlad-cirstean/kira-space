@@ -29,7 +29,7 @@ async function onClick(): Promise<void> {
     return;
   }
   const text = logPlainText(source.chunks);
-  await copy(source.truncated ? `${t('common.copy.logTruncated.notice')}\n${text}` : text, {
+  await copy(source.truncated ? [t('common.copy.logTruncated.notice'), text].join('\n') : text, {
     message: t('common.copy.copiedLog.announce'),
   });
 }

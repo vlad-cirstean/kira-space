@@ -33,7 +33,10 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
     ...(e.secret
       ? [
           e.saved
-            ? `${MASKED_TEXT} (${t('automations.params.secretValue.saved.status')})`
+            ? t('common.withDetail.label', {
+                first: MASKED_TEXT,
+                second: t('automations.params.secretValue.saved.status'),
+              })
             : MASKED_TEXT,
         ]
       : [{ name: e.fromVar, value: e.value }]),

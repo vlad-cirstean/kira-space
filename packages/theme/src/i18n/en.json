@@ -4392,7 +4392,7 @@
           "error": "Max retries only applies to on-failure."
         },
         "memoryMin": {
-          "error": "Minimum is {min}."
+          "error": "Minimum is {min} MB."
         },
         "nameForm": {
           "error": "Use letters, digits, underscores, dots and hyphens, at least 2 characters."
@@ -4489,6 +4489,9 @@
       },
       "pids": {
         "label": "PIDs limit"
+      },
+      "portMapping": {
+        "label": "{host} -> {container}"
       },
       "preserved": {
         "label": "Kept as is"
@@ -6221,10 +6224,10 @@
         "body": "Your changes are stashed. See the stash list."
       },
       "stashIndexNotRestored": {
-        "body": "Your staged changes came back unstaged. The new commit changed the files they were staged against."
+        "body": "{done}. Your staged changes came back unstaged. The new commit changed the files they were staged against."
       },
       "stashKept": {
-        "body": "Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
+        "body": "{done}. Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
       },
       "undone": {
         "announce": "Undone: {label}"
@@ -15896,6 +15899,9 @@
         "requestCaption": {
           "label": "→ {method} {url}"
         },
+        "requestPending": {
+          "label": "→ Request"
+        },
         "unavailable": {
           "empty": "The raw exchange couldn’t be rendered"
         }
@@ -17402,6 +17408,9 @@
           "created": {
             "body": "{created} of {count} connection created. | {created} of {count} connections created."
           },
+          "failed": {
+            "body": "{count} connection failed. | {count} connections failed."
+          },
           "passwords": {
             "body": "{count} password imported. | {count} passwords imported."
           }
@@ -17610,6 +17619,9 @@
         "aria": "Project tree",
         "searchIncomplete": {
           "body": "Searching cached nodes only. Expand more of the tree to include it."
+        },
+        "unreadable": {
+          "status": "{name}: Can’t be read, fix it here"
         }
       },
       "uriRevealConfirm": {
