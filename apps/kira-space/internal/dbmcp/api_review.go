@@ -103,17 +103,20 @@ func (s *Server) reviewAPI(ctx context.Context, plan agentapi.Planned, sc *apiSc
 		APIReview: &apiReviewMeta{Status: o.Raw.Status, StatusText: o.Raw.StatusText, Read: read, Reason: rv.Reason},
 	})
 	if outcome == ApprovalApproved {
-		return s.recheckAPIHeld(plan, read)
+		return s.recheckAPIHeld(plan, sc, read)
 	}
 	return apiHeldRefusal(outcome, plan, read, held.Bytes)
 }
 
 // recheckAPIHeld returns why an approved response must still be withheld, "" when it may go. The held text
 // was masked by the request's own masker at send time, and no user setting changes what that masker covers,
-// so only the tools switch is re-read.
-func (s *Server) recheckAPIHeld(plan agentapi.Planned, read bool) string {
-	if !s.apiEnabled() {
+// so only the tools switch and, for a scripted request, the scripts switch are re-read.
+func (s *Server) recheckAPIHeld(plan agentapi.Planned, sc *apiScripts, read bool) string {
+	switch {
+	case !s.apiEnabled():
 		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiRequestsOff), read)
+	case sc != nil && !s.scriptsOn():
+		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiScriptsOff), read)
 	}
 	return ""
 }
