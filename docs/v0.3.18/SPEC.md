@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P681`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P682`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -13,8 +13,9 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P678 | API MCP: kept variables and chained requests | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
 | P680 | DB MCP: JS scripting and kept variables for SQL | Planned |
+| P681 | Dependency cleanup | Planned |
 
-Chapter end (unasked, per working agreement): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
+Chapter end (unasked, per working agreement, after the last implementation phase P681): non-UI full run, 2 code review rounds (user set 2 for this chapter), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
 
 Standing rules for every phase below: new feature tests split at the IPC boundary (flow test plus UI spec, same scenario); UI follows `docs/ARCHITECTURE.md` uniformity rules and the guard script; no secret ever reaches an agent, a log or the op log; open-source licences only (check package and feature level).
 
@@ -29,6 +30,8 @@ Plan: `plans/P674.md`.
 ## P675: JS engine for the API MCP
 
 Add an embedded JavaScript engine in Go, used by the API MCP (P676 to P679) and later the DB MCP (P680); no UI-facing scripting. Design the interface for both from the start. Engine: `dop251/goja` (pure Go, MIT; user decision); the plan verifies licence of every linked module and maintenance, records the alternatives compared, and decides how the memory ceiling and CPU limit hold given goja has no memory limit API. Requirements: hard CPU time limit and interrupt, memory ceiling, output size cap, no filesystem, network, process, timers or `require`; deterministic globals only (JSON, Math, Date, string and array builtins); big-integer handling documented (JSON numbers above 2^53); errors returned as structured messages with line and column. One engine package with a narrow interface so later features reuse it. Not in scope: jq or gojq filters.
+
+User accepted MPL-2.0 for goja's `ftoa` package (Rhino DToA port; open source, file-level copyleft): use unmodified, keep headers, NOTICES points to the public source at the pinned commit; any patch to those files must be published. Engine stays goja in a per-run child worker process.
 
 Plan: `plans/P675.md`.
 
@@ -61,3 +64,9 @@ Plan: `plans/P679.md`.
 Give the SQL (database) MCP the same abilities as the API MCP: the agent prepares a query for the user and can post-process its result with a JS script before the result returns to the AI (parse, pick, anonymise); the script is shown to the user next to the statement in the approval card and the op log; results can be kept in named variables held by Kira (P678 store, same retention and visibility rules) and used by later queries or scripts, for example ids from one query passed as a list into the next. Kept values never return to the AI. Uses the P675 engine and the P678 store without forking either. Interacts with existing connection MCP settings (read, write and DDL modes, review results, masking): the script never widens what a connection allows, runs after masking and redaction, and a query's approval class is decided from the statement, not the script. Review view shows raw rows and transformed result as in P677. The plan decides tool shape, how variables bind into SQL safely (parameters, never string splicing), and per-adapter limits.
 
 Plan: `plans/P680.md`.
+
+## P681: Dependency cleanup
+
+Audit every direct dependency and remove what is dead or prototype-only. Scope: Go modules in `go.mod` and `apps/kira-space/go.mod`; npm packages in every `package.json`, devDependencies included. Remove: the dev-only `apps/kira-space/frontend/proto/grid` Cheetah Grid prototype (P165) with `cheetah-grid`, `vue-cheetah-grid`, `cheetah-grid-playwright`, `vite.proto.config.ts`, its knip entries and scripts; `seti-icons` (v0.0.4, last release 2020; check real use in `packages/git-ui` and fileIcon); anything unused per knip/depcheck-style checks and real import greps; duplicates doing the same job; deps used only by removed code. For each low-popularity or stale survivor (audit examples: wasilibs/go-pgquery, gomlx/go-huggingface, rqlite/sql, AfterShip/clickhouse-sql-parser, fsnotify/fsevents, aymanbagabas/go-udiff; npm slickgrid is used and stays) record in the plan: use, last release, replaceability, decision keep or replace. Replace only where a clearly better maintained open-source option meets the same requirements, licence-checked at package and feature level. Verify removal by real build (typecheck, `lint:dead`, `go build ./...`, affected tests); add no dependency without licence check. Delete orphaned scripts, configs, docs and guard-script references.
+
+Plan: `plans/P681.md`.
