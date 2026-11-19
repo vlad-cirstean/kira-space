@@ -56,7 +56,7 @@ func (s *Server) openQueryScript(ctx context.Context, source string) (*apiScript
 			if i < 0 {
 				return nil, unknownKeptText(st.Name) + ". " + queryScriptNothingRan
 			}
-			if u := k.uses[i]; u.Secret || u.Source.Kind == keptvars.SourceUser {
+			if u := k.uses[i]; u.Secret || u.Bound() {
 				return nil, fmt.Sprintf(queryKeptNotAllowed, st.Name)
 			}
 		}

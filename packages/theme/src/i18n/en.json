@@ -16157,8 +16157,8 @@
           "label": "{name}, kept by {request}"
         },
         "userValue": {
-          "status": "Reads a value you supplied",
-          "tooltip": "A script reads a value you supplied. Check what it returns before you send, because it goes to the agent"
+          "status": "Reads a secret value",
+          "tooltip": "A script reads a secret kept value, such as one you supplied. Check what it returns before you send, because it goes to the agent"
         },
         "uses": {
           "status": "Uses kept: {names}"

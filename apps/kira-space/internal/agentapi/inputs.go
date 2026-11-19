@@ -54,10 +54,10 @@ func (p Planned) MissingInputs() int {
 	return n
 }
 
-// UsesUserValue reports whether the request inserts a value the user supplied.
+// UsesUserValue reports whether the request inserts a value the user supplied or one derived from it.
 func (p Planned) UsesUserValue() bool {
 	for _, k := range p.Kept {
-		if k.Source.Kind == keptvars.SourceUser {
+		if k.Bound() {
 			return true
 		}
 	}

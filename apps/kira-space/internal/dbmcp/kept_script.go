@@ -39,6 +39,10 @@ type keptRun struct {
 	// secretRead taints every value the run stages: it may have copied a secret.
 	secretRead  bool
 	secretForms []string
+	// boundOrigin is the origin of the bound (user or user-derived) values the run read; mixedOrigins is set
+	// when it read bound values of two origins, so no single origin can own what it derives.
+	boundOrigin  string
+	mixedOrigins bool
 }
 
 // keptMayKeep is a name the transform script may keep, with where its source says so.
@@ -111,7 +115,7 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 	}
 	u := agentapi.KeptUse{
 		ID: e.ID, Name: name, Type: e.Type, Items: e.Items, Bytes: e.Bytes, Secret: e.Secret,
-		Source: e.Source, CreatedAt: e.CreatedAt, ExpiresAt: e.ExpiresAt, Sites: []agentapi.KeptSite{site},
+		Source: e.Source, Origin: e.Origin, CreatedAt: e.CreatedAt, ExpiresAt: e.ExpiresAt, Sites: []agentapi.KeptSite{site},
 	}
 	if !e.Secret {
 		u.Preview, u.PreviewTruncated = keptvars.Preview(e.Value, keptvars.PreviewBytes)
@@ -145,13 +149,13 @@ func (k *keptRun) rebind(names []string) {
 	}
 }
 
-// readsUserValue reports whether a script reads a value the user supplied. A transform can reshape it past
-// any mask, so the result always goes through review.
-func (k *keptRun) readsUserValue() bool {
+// readsSecret reports whether a script reads a secret kept value (a user value, one derived from it, or any
+// other secret). A transform can reshape it past any mask, so the result always goes through review.
+func (k *keptRun) readsSecret() bool {
 	if k == nil {
 		return false
 	}
-	return slices.ContainsFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Source.Kind == keptvars.SourceUser })
+	return slices.ContainsFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Secret || u.Bound() })
 }
 
 // declared reports whether the stage's source calls op with the literal name.
@@ -201,10 +205,25 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			}
 			k.noteSecret(e)
 		}
+		if e.Bound() {
+			k.noteBound(e.Origin)
+		}
 		k.mu.Lock()
 		k.prepareReads = k.prepareReads || stage == stagePrepare
 		k.mu.Unlock()
 		return e.Value, nil
+	}
+}
+
+// noteBound records the origin a read bound value ties the run's derived values to.
+func (k *keptRun) noteBound(origin string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	switch {
+	case k.boundOrigin == "":
+		k.boundOrigin = origin
+	case k.boundOrigin != origin:
+		k.mixedOrigins = true
 	}
 }
 
@@ -294,6 +313,9 @@ type keptSummary struct {
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
 
+// errMixedOrigins is the refusal text for values derived from user values bound to different origins.
+const errMixedOrigins = "the script read user values supplied for different origins, so its values cannot be bound to one origin"
+
 // keptFailure is a staged value the store refused.
 type keptFailure struct {
 	Name  string `json:"name"`
@@ -310,7 +332,11 @@ func (k *keptRun) commit(src keptvars.Source) ([]keptSummary, []keptFailure) {
 	var saved []keptSummary
 	var failed []keptFailure
 	for _, name := range k.order {
-		m, err := k.store.Put(keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretRead, Source: src})
+		if k.mixedOrigins {
+			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})
+			continue
+		}
+		m, err := k.store.Put(keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretRead, Source: src, Origin: k.boundOrigin})
 		if err != nil {
 			failed = append(failed, keptFailure{Name: name, Error: err.Error()})
 			continue

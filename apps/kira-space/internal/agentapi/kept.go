@@ -45,21 +45,26 @@ type KeptSite struct {
 // KeptUse is a kept variable a request uses, as it stood at plan time. The value is not part of it: only a
 // preview, empty for a secret.
 type KeptUse struct {
-	ID               string          `json:"id"`
-	Name             string          `json:"name"`
-	Type             string          `json:"type"`
-	Items            int             `json:"items"`
-	Bytes            int             `json:"bytes"`
-	Secret           bool            `json:"secret"`
-	Source           keptvars.Source `json:"source"`
-	CreatedAt        time.Time       `json:"createdAt"`
-	ExpiresAt        time.Time       `json:"expiresAt"`
-	Preview          string          `json:"preview"`
-	PreviewTruncated bool            `json:"previewTruncated"`
-	Sites            []KeptSite      `json:"sites"`
+	ID     string          `json:"id"`
+	Name   string          `json:"name"`
+	Type   string          `json:"type"`
+	Items  int             `json:"items"`
+	Bytes  int             `json:"bytes"`
+	Secret bool            `json:"secret"`
+	Source keptvars.Source `json:"source"`
+	// Origin is the origin the value is bound to (see keptvars.Meta.Bound); empty for an unbound value. Not sent to the UI.
+	Origin           string     `json:"-"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	ExpiresAt        time.Time  `json:"expiresAt"`
+	Preview          string     `json:"preview"`
+	PreviewTruncated bool       `json:"previewTruncated"`
+	Sites            []KeptSite `json:"sites"`
 	// Pending marks a use whose value the user has yet to supply: ID is empty.
 	Pending bool `json:"pending,omitempty"`
 }
+
+// Bound reports whether the use is a user value or one derived from it.
+func (u KeptUse) Bound() bool { return u.Source.Kind == keptvars.SourceUser || u.Origin != "" }
 
 // keptValue is a value held for one send only.
 type keptValue struct {
@@ -134,7 +139,7 @@ func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]In
 		}
 	} else if !ok {
 		return keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables"+inputsDeclHint, name)
-	} else if e.Source.Kind == keptvars.SourceUser && origin != "" && e.Origin != origin {
+	} else if e.Bound() && origin != "" && e.Origin != origin {
 		return otherOriginError(name, e.Origin, origin)
 	}
 	kp.entries[name] = e

@@ -16,7 +16,8 @@ import (
 const (
 	apiReviewBySetting   = "setting"
 	apiReviewByRequested = "requested"
-	// apiReviewByUserValue: a script read a value the user supplied; a transform could hide it from the mask.
+	// apiReviewByUserValue: a script read a secret kept value (user supplied or derived); a transform could hide it
+	// from the mask.
 	apiReviewByUserValue = "userValue"
 )
 
@@ -46,11 +47,11 @@ func (s *Server) apiReviewSetting(env agentapi.EnvInfo, read bool) bool {
 	return s.apiSettings().ReviewResponses
 }
 
-// apiReviewFor is the one place that decides whether a response is held. A script reading a user-supplied
+// apiReviewFor is the one place that decides whether a response is held. A script reading a secret kept
 // value forces it whatever the settings say; setting wins over requested for the reason.
 func (s *Server) apiReviewFor(plan agentapi.Planned, sc *apiScripts, requested bool) apiReview {
 	switch {
-	case sc != nil && sc.kept.readsUserValue():
+	case sc != nil && sc.kept.readsSecret():
 		return apiReview{On: true, Reason: apiReviewByUserValue}
 	case s.apiReviewSetting(plan.Env, apiReadClass(plan)):
 		return apiReview{On: true, Reason: apiReviewBySetting}
