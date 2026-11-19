@@ -13,7 +13,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Planned |
 | P677 | API MCP: result review with raw and transformed views | Planned |
-| P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Planned |
+| P678 Part 1 | API MCP: kept variables and chained requests, store, syntax, approval card, settings | Done |
 | P678 Part 2 | API MCP: kept variables script binding (`kept.get`/`kept.set`), held writes, review-card "Will keep"; runs after P676 and P677 | Planned |
 | P679 | API MCP: user-supplied values the agent never sees | Planned |
 | P680 Part 1 | DB MCP: kept variables as bound SQL parameters | Planned |
@@ -89,6 +89,8 @@ Plan: `plans/P677.md`.
 Chained requests: an agent gets ids from one request and passes them, parsed into a list, into a later POST. A script can store a result in a named variable held by Kira. The stored value is never returned to the AI; the agent can only refer to it by name in later requests and scripts. It must be obvious to the user that a request uses a variable: the approval card lists every variable the request or script reads (name, value, which request created it, age, expiry) and highlights where it is used in the request and script. A variables view (settings pane or panel) lists live variables with value, source and remaining time, and can clear them. Retention is short: default 1 hour, in memory only, wiped on app exit, expiry refreshed never silently. The user sees values in full (secrets from P679 masked until revealed); the agent sees names only. The store is MCP-agnostic (P680 reuses it for SQL): one package, entries tagged with their source MCP and request. The plan decides storage package, size caps, naming rules, and how variable use is stated in agent-facing tool descriptions.
 
 Plan: `plans/P678.md`.
+
+Result, Part 1: store `internal/keptvars`, `{{kept.<name>}}` resolved after approval, binding to entry ids with cancel on removal, `list_kept_variables`, `KeptVarsService` with `kira:kept:changed`, retention leaf `keptRetentionMinutes`, card panel with site highlights, Settings pane. Flow and UI specs green. Part 2 pending.
 
 ## P679: API MCP: user-supplied values the agent never sees
 
