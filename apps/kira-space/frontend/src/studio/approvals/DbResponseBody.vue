@@ -5,11 +5,11 @@ import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
+import { indentJson } from '../beautify';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import PendingResponse from './PendingResponse.vue';
 import { usePendingResponse } from './pendingResponse';
-import { prettyJson } from './prettyJson';
 import ResultReview from './ResultReview.vue';
 import StagedKeepList from './StagedKeepList.vue';
 
@@ -27,7 +27,7 @@ const text = computed(() => response.data.value?.text ?? '');
 const script = computed(() => response.data.value?.script ?? null);
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
-const resultJson = computed(() => (failed.value ? null : prettyJson(text.value)));
+const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 </script>
 
 <template>
