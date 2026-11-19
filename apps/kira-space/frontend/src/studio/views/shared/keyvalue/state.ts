@@ -6,14 +6,13 @@ import { data } from '../../../bridge/data';
 import { useStaleDataStore } from '../../../state/staleData';
 import { registerTabReload } from '../../../state/viewCommands';
 import { runPagedLoad } from '../page/load';
-import { createPageNavigation } from '../page/navigation';
+import { createPageNavigation, firstPageCursor, pageOffsetCursor } from '../page/navigation';
 import {
   applyPagePosition,
-  beginOp,
   createRuntimeStore,
   defaultPagedRuntime,
   type PagedViewRuntime,
-  runPagedCount,
+  runTabCount,
   stopOp,
 } from '../viewOp';
 import { keyValueHost } from './host';
@@ -79,27 +78,26 @@ export const useKeyValueViewStore = defineStore('keyValueView', () => {
       // prevDisabled, which reads the same `position.strategy` to answer the same question.
       const currentPage = getPage(viewKey);
       if (currentPage && currentPage.position.strategy !== 'offset') {
-        effectiveCursor = { mode: 'offset', offset: 0 };
+        effectiveCursor = firstPageCursor();
         host.patch({ pageIndex: 0 });
       } else {
-        effectiveCursor = { mode: 'offset', offset: host.pageIndex * host.pageSize };
+        effectiveCursor = pageOffsetCursor(host.pageIndex, host.pageSize);
       }
     }
     // A load still in flight for this viewKey (the row this preview/tab was
-    // previously showing) must be CANCELLED, not just superseded client-side — beginOp below only
+    // previously showing) must be CANCELLED, not just superseded client-side — runPagedLoad only
     // stamps a fresh opId, so the stale response gets dropped here (the `rt.opId !== opId` checks),
     // but the backend read it belongs to (a real Redis/S3 call) kept running to completion
     // regardless.
     // Rapidly clicking through N keys used to leave N-1 real backend reads running and discarded.
     // Mirrors FkPreviewPopover.vue's own opsCancel-on-supersede pattern.
     if (rt.opId) stopOp(rt);
-    const opId = beginOp(rt);
 
     await runPagedLoad({
       rt,
-      opId,
-      stillMounted: () => Boolean(runtime[viewKey]),
-      read: () =>
+      runtime,
+      id: viewKey,
+      read: (opId) =>
         data.read({
           opId,
           tabId: viewKey,
@@ -112,7 +110,6 @@ export const useKeyValueViewStore = defineStore('keyValueView', () => {
           cursor: effectiveCursor,
         }),
       expectKind: 'keyvalue',
-      id: viewKey,
       tabNoun: 'key/value tab',
       apply: (page) => {
         setPage(viewKey, page);
@@ -140,17 +137,14 @@ export const useKeyValueViewStore = defineStore('keyValueView', () => {
     if (!host?.connectionId) return;
     const connectionId = host.connectionId;
     const rt = ensureRuntime(viewKey);
-    await runPagedCount(rt, (refresh) =>
-      data.count({ tabId: viewKey, connectionId, path: host.path, filter: null, refresh }),
-    );
+    await runTabCount(rt, { tabId: viewKey, connectionId, path: host.path, filter: null });
   }
 
-  // stop/goNext/goPrev mirror views/grid/state.ts's own set exactly, modulo the tab
-  // accessor pair below — hash/set/zset/stream's cursor strategy is preferred when available,
+  // hash/set/zset/stream's cursor strategy is preferred when available,
   // falling back to `pageIndex`-tracked offset paging (a list key's LRANGE offset strategy has no
   // token to advance by). Only stop/goNext/goPrev are exposed — this view has no goFirst/goLast/
   // goToPage (a key's rows have no addressable position to jump to the way a table's do).
-  const { stop, goNext, goPrev, resetTokens } = createPageNavigation({
+  const { stop, goNext, goPrev, restart } = createPageNavigation({
     tab: (viewKey) => keyValueHost(viewKey) ?? undefined,
     patch: (viewKey, p) => keyValueHost(viewKey)?.patch(p),
     runtime: (viewKey) => runtime[viewKey],
@@ -158,16 +152,10 @@ export const useKeyValueViewStore = defineStore('keyValueView', () => {
     load,
   });
 
-  // Mirrors grid/state.ts's setPageSize: resets to the first page and clears whatever cursor
-  // tokens were held for the old page size (a SCAN cursor from a 100-sized page is not valid
-  // against a 1000-sized one).
-  async function setPageSize(viewKey: string, pageSize: PageSize): Promise<void> {
-    const host = keyValueHost(viewKey);
-    const prevIndex = host?.pageIndex;
-    resetTokens(viewKey);
-    host?.patch({ pageSize, pageIndex: 0 });
-    await load(viewKey, { mode: 'offset', offset: 0 }, prevIndex);
-  }
+  // Resets to the first page and clears whatever cursor tokens were held for the old page size (a
+  // SCAN cursor from a 100-sized page is not valid against a 1000-sized one).
+  const setPageSize = (viewKey: string, pageSize: PageSize): Promise<void> =>
+    restart(viewKey, { pageSize });
 
   /** Shown page is stale: connection gone, or read under another connection session. A preview
    *  pane is also stale when its owning browse tab is. */

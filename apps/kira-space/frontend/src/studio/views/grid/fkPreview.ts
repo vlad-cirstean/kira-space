@@ -4,6 +4,7 @@ import { cellText, isNull, isTruncated, type TypeClass } from '@shared/protocol/
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { data } from '../../bridge/data';
+import { firstPageCursor } from '../shared/page/navigation';
 
 // P67 §4.1: the popover's own fetch + decode + state shape — no component logic here, this module
 // is what FkPreviewPopover.vue renders.
@@ -62,7 +63,7 @@ export async function fetchReferencedRow(
       // P68 7a proposed pageSize 2; not applied. ReadRequestWire.pageSize is 10 | 100 | 1000 |
       // 10000 and Go ReadRequestWire.Validate rejects any other value with E_QUERY. 10 is the floor.
       pageSize: 10,
-      cursor: { mode: 'offset', offset: 0 },
+      cursor: firstPageCursor(),
     });
     if (signal.cancelled) return { status: 'loading' };
     const page = response.page;
