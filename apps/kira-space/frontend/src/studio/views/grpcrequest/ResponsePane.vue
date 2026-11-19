@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-  GRPC_CODE_NAMES,
-  type GrpcResponsePane,
-  grpcCodeClass,
-  grpcCodeHint,
-} from '@shared/domain/grpc';
+import { GRPC_CODE_NAMES, type GrpcResponsePane } from '@shared/domain/grpc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
@@ -14,7 +9,6 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -31,6 +25,7 @@ import { tabViewKey } from '@workbench/state/viewState';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import { patchGrpcRequestTabState } from '../../api/tabs';
+import GrpcStatusBadge from '../../components/GrpcStatusBadge.vue';
 import { DEFAULT_FIND_OPTIONS, type FindOptions, findRanges } from '../../editor/findRanges';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import ResponseFindBar, {
@@ -134,7 +129,6 @@ const hasCode = computed(() => !!liveResult.value || !!viewing.value);
 // P28 D1 reverses P18 D13's always-visible line, matching the identical change on the HTTP
 // response pane: the meaning is now the status chip's tooltip. The server's own statusMessage
 // keeps its own line — that is a message from the server, not a restatement of the code.
-const codeHint = computed(() => (hasCode.value ? grpcCodeHint(code.value) : ''));
 
 const RESPONSE_PANE_OPTIONS = computed(() => [
   {
@@ -298,16 +292,7 @@ onUnmounted(() => {
     <!-- `.response-status-row` stays a bare marker: api-ui-consistency.spec.ts locates it directly. -->
     <ViewToolbar class="response-status-row">
       <template v-if="hasCode">
-        <TextTooltip v-if="codeHint" :text="codeHint"
-          ><Badge data :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
-            {{ codeName }}
-            ({{ code }})
-          </Badge></TextTooltip
-        >
-        <Badge data v-else :variant="grpcCodeClass(code)" data-testid="grpc-status-chip">
-          {{ codeName }}
-          ({{ code }})
-        </Badge>
+        <GrpcStatusBadge :code="code" :code-name="codeName" data-testid="grpc-status-chip" />
         <span class="ml-auto" />
         <span class="text-kira-sm text-subtle" data-testid="grpc-elapsed">{{
           formatDuration(elapsedMs)
