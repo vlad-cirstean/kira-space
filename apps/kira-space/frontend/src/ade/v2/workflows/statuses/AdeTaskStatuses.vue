@@ -181,7 +181,7 @@ async function confirmRemove(): Promise<void> {
             <button
               type="button"
               class="cursor-grab text-muted-foreground"
-              :aria-label="t('mobile.backlog.handle.aria')"
+              :aria-label="t('space.common.dragToReorder.aria')"
               data-testid="ade-status-handle"
             >
               <CodiconIcon name="gripper" :size="13" />

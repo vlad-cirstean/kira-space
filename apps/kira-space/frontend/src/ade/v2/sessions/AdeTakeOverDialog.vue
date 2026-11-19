@@ -15,7 +15,7 @@ const { busy, error, confirm } = useConfirmRun(
 <template>
   <ConfirmDialogView
     :open="takeOver.confirm !== null"
-    :title="t('mobile.needs.takeOverConfirm.title')"
+    :title="t('space.common.takeOverConfirm.title')"
     :message="takeOver.confirm?.text ?? ''"
     :confirm-label="t('common.action.takeOver.label')"
     tone="danger"

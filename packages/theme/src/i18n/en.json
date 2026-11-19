@@ -8181,11 +8181,6 @@
         "title": "Agent requests"
       }
     },
-    "backlog": {
-      "handle": {
-        "aria": "Drag to reorder"
-      }
-    },
     "http": {
       "unreachable": {
         "error": "Can’t reach Kira Space."
@@ -8219,8 +8214,7 @@
         "hint": "Replying to agents is off for this phone."
       },
       "takeOverConfirm": {
-        "body": "{what}. Taking over stops the background run and continues it in {product} on your computer.",
-        "title": "Take over run?"
+        "body": "{what}. Taking over stops the background run and continues it in {product} on your computer."
       }
     },
     "pair": {
@@ -11877,6 +11871,9 @@
           "label": "Tomorrow"
         }
       },
+      "dragToReorder": {
+        "aria": "Drag to reorder"
+      },
       "hidden": {
         "status": "Hidden"
       },
@@ -11920,6 +11917,9 @@
       },
       "step": {
         "label": "Step"
+      },
+      "takeOverConfirm": {
+        "title": "Take over run?"
       },
       "workflow": {
         "label": "Workflow"

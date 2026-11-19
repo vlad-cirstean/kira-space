@@ -92,7 +92,7 @@ useSortableReorder(
             v-if="canWrite"
             class="flex size-touch shrink-0 touch-none items-center justify-center text-subtle"
             role="img"
-            :aria-label="t('mobile.backlog.handle.aria')"
+            :aria-label="t('space.common.dragToReorder.aria')"
             data-drag-handle
             data-testid="later-handle"
           >
