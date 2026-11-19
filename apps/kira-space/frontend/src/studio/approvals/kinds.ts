@@ -9,6 +9,7 @@ import {
   dbResponsePayloadSchema,
   kubeReadPayloadSchema,
 } from '@shared/domain/dbmcp';
+import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
 import { type MessageKey, t } from '@theme/i18n';
 import type { ApprovalKinds, ApprovalRisk } from '@workbench/approvals/registry';
@@ -93,7 +94,7 @@ function planRisks(plan: DbMcpApprovalPlan | null, withRows: boolean): ApprovalR
 
 function queryRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = dbQueryPayloadSchema.parse(item.payload);
-  const out = planRisks(p.plan, true);
+  const out = [...planRisks(p.plan, true), ...keptRisks(p.kept, item.expiresAt, 'db-approval')];
   // The statement looks less powerful than the mode the agent declared.
   if ((RANK[p.detected] ?? Infinity) < (RANK[p.mode] ?? Infinity)) {
     out.push({
@@ -125,7 +126,34 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   });
   // Each datum once: the plan's estimate only when no expensive_query limit already says it.
   const hasRowsLimit = p.limits.some((l) => l.limit === 'expensive_query');
-  return [...out, ...planRisks(p.plan, !hasRowsLimit)];
+  return [
+    ...out,
+    ...planRisks(p.plan, !hasRowsLimit),
+    ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
+  ];
+}
+
+// The tags for the kept variables a request uses; the testids carry the surface's prefix.
+function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
+  if (kept.length === 0) return [];
+  const out: ApprovalRisk[] = [
+    {
+      text: t('studio.kept.risk.uses.status', { names: kept.map((u) => u.name).join(', ') }),
+      tone: 'neutral',
+      testid: `${prefix}-kept`,
+      tooltip: kept
+        .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
+        .join('\n'),
+    },
+  ];
+  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    out.push({
+      text: t('studio.kept.risk.expiring.status'),
+      tone: 'warn',
+      testid: `${prefix}-kept-expiring`,
+    });
+  }
+  return out;
 }
 
 function isRead(method: string): boolean {
@@ -150,23 +178,7 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
         .join('\n'),
     });
   }
-  if (p.kept.length > 0) {
-    out.push({
-      text: t('studio.kept.risk.uses.status', { names: p.kept.map((u) => u.name).join(', ') }),
-      tone: 'neutral',
-      testid: 'api-approval-kept',
-      tooltip: p.kept
-        .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
-        .join('\n'),
-    });
-    if (item.expiresAt > 0 && p.kept.some((u) => Date.parse(u.expiresAt) < item.expiresAt)) {
-      out.push({
-        text: t('studio.kept.risk.expiring.status'),
-        tone: 'warn',
-        testid: 'api-approval-kept-expiring',
-      });
-    }
-  }
+  out.push(...keptRisks(p.kept, item.expiresAt, 'api-approval'));
   if (p.script?.transform?.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {

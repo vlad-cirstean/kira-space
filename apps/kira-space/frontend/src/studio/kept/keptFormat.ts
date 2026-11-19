@@ -51,7 +51,24 @@ export function keptSiteLabel(
       return site.part === 'transform'
         ? t('studio.dbMcp.approval.api.scriptTransform.label')
         : t('studio.dbMcp.approval.api.scriptPrepare.label');
+    case 'statement':
+      return t('studio.dbMcp.approval.detail.statement.label');
+    case 'param':
+      return t('automations.script.paramNamed.label', { name: String(site.index + 1) });
   }
+}
+
+function hoverOf(use: KeptUse, from: number, to: number): ConsoleHoverInfo {
+  return {
+    from,
+    to,
+    lines: [
+      use.name,
+      keptTypeLabel(use),
+      t('studio.kept.expiresAt.status', { time: formatClockTime(new Date(use.expiresAt)) }),
+    ],
+    value: use.secret ? undefined : use.preview,
+  };
 }
 
 /** Monaco hover for a reference in a body: the name, its type and expiry, the value preview. */
@@ -59,16 +76,21 @@ export function keptHover(uses: readonly KeptUse[]) {
   return (doc: string, offset: number): ConsoleHoverInfo | null => {
     const ref = keptRefs(doc).find((r) => offset >= r.from && offset < r.to);
     const use = ref && uses.find((u) => u.name === ref.name);
-    if (!ref || !use) return null;
-    return {
-      from: ref.from,
-      to: ref.to,
-      lines: [
-        use.name,
-        keptTypeLabel(use),
-        t('studio.kept.expiresAt.status', { time: formatClockTime(new Date(use.expiresAt)) }),
-      ],
-      value: use.secret ? undefined : use.preview,
-    };
+    return ref && use ? hoverOf(use, ref.from, ref.to) : null;
+  };
+}
+
+/** The same hover for a placeholder of a SQL statement, found by the sites the backend sent. Only the
+ *  statement as sent carries them: a formatted copy has moved offsets and gets none. */
+export function keptStatementHover(uses: readonly KeptUse[], statement: string) {
+  return (doc: string, offset: number): ConsoleHoverInfo | null => {
+    if (doc !== statement) return null;
+    for (const use of uses) {
+      const site = use.sites.find(
+        (s) => s.field === 'statement' && offset >= s.from && offset < s.to,
+      );
+      if (site) return hoverOf(use, site.from, site.to);
+    }
+    return null;
   };
 }

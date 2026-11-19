@@ -124,6 +124,14 @@ export function accessSummaryOf(c: DbMcpAccessInput): string {
   return parts.length > 0 ? parts.join(', ') : 'none';
 }
 
+// Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
+// and the variables as they stood when the statement was checked. Older items carry none.
+const dbKeptShape = {
+  params: z.array(z.string()).default([]),
+  placeholders: z.array(z.string()).default([]),
+  kept: z.array(keptUseSchema).default([]),
+};
+
 export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
@@ -137,6 +145,7 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   // The item offers "review the result"; reviewResult says the connection's settings already do.
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
+  ...dbKeptShape,
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
@@ -159,6 +168,7 @@ export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   plan: dbMcpApprovalPlanSchema.nullable(),
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
+  ...dbKeptShape,
 });
 export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 

@@ -15890,6 +15890,9 @@
         "label": "This script may keep:"
       },
       "panel": {
+        "query": {
+          "label": "Kept variables this query uses"
+        },
         "title": {
           "label": "Kept variables this request uses"
         }

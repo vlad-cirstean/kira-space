@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { connectionKindSchema } from '@shared/domain/connection';
+import type { KeptUse } from '@shared/domain/kept';
 import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import { t } from '@theme/i18n';
 import { computedAsync } from '@vueuse/core';
 import { computed, ref } from 'vue';
+import { keptStatementHover } from '../kept/keptFormat';
+import { keptStatementRanges } from '../kept/keptHighlight';
 import { canFormatConsole, consoleLanguageFor, formatConsoleText } from '../views/console/format';
 import { sqlDialectFor } from '../views/shared/sqlIdent';
 import { INLINE_CHARS } from '../workers/parse/client';
@@ -11,7 +14,9 @@ import { useParseWorker } from '../workers/parse/useParseWorker';
 import FlushEditor from './FlushEditor.vue';
 import TabbedContent from './TabbedContent.vue';
 
-const props = defineProps<{ kind: string; statement: string }>();
+// `kept` marks the placeholders that bind kept variables. The marks sit at offsets of the statement as
+// sent, so a statement that uses them opens on that view; the formatted tab stays without marks.
+const props = defineProps<{ kind: string; statement: string; kept?: readonly KeptUse[] }>();
 
 const parse = useParseWorker();
 const connectionKind = computed(() => connectionKindSchema.safeParse(props.kind).data);
@@ -34,7 +39,7 @@ const formatted = computedAsync<string | null>(async (onCancel) => {
   }
 }, null);
 
-const view = ref<'formatted' | 'asSent'>('formatted');
+const view = ref<'formatted' | 'asSent'>(props.kept?.length ? 'asSent' : 'formatted');
 const canToggle = computed(() => formatted.value !== null && formatted.value !== props.statement);
 const doc = computed(() =>
   view.value === 'asSent' || !canToggle.value ? props.statement : (formatted.value ?? ''),
@@ -65,6 +70,8 @@ const items = computed<SecondaryTabItem[]>(() => [
       :doc="doc"
       :language="consoleLanguageFor(connectionKind)"
       :sql-dialect="sqlDialectFor(connectionKind)"
+      :range-highlights="kept?.length ? keptStatementRanges(kept, statement) : undefined"
+      :hover-source="kept?.length ? keptStatementHover(kept, statement) : undefined"
       data-testid="db-mcp-approval-statement"
     />
   </TabbedContent>

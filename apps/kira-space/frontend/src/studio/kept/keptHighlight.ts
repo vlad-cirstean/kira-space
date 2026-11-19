@@ -94,6 +94,17 @@ export function keptEditorRanges(names: ReadonlySet<string>) {
       .map((r) => ({ from: r.from, to: r.to, class: KEPT_EDITOR_CLASS }));
 }
 
+/** Monaco ranges for the placeholders a SQL statement binds kept variables to. The offsets are of the
+ *  statement as sent: any other text (the formatted copy) gets none. */
+export function keptStatementRanges(uses: readonly KeptUse[], statement: string) {
+  const ranges = keptRanges(uses, 'statement').map((r) => ({
+    from: r.from,
+    to: r.to,
+    class: KEPT_EDITOR_CLASS,
+  }));
+  return (doc: string): readonly RangeHighlight[] => (doc === statement ? ranges : []);
+}
+
 // A number the sentinel swap uses: below 2^53, so JSON round-trips it exactly.
 const SENTINEL_BASE = 7_000_000_000_000_000;
 

@@ -15,7 +15,8 @@ const keptSourceSchema = /*#__PURE__*/ z.object({
 // A place a request or script reads the variable: offsets are UTF-16 units of the field's text. For
 // `script`, `part` is the stage (`prepare` or `transform`) and the offsets index its source.
 export const keptSiteSchema = /*#__PURE__*/ z.object({
-  field: z.enum(['url', 'header', 'query', 'form', 'body', 'contentType', 'script']),
+  // statement and param belong to a SQL run_query: the placeholder in the statement, and the params entry.
+  field: z.enum(['url', 'header', 'query', 'form', 'body', 'contentType', 'script', 'statement', 'param']),
   index: z.number(),
   part: z.string(),
   from: z.number(),
