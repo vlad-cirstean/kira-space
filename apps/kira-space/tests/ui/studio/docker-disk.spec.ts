@@ -147,8 +147,27 @@ test('contract: engine disk usage is measured only on demand and persists its la
 
   state.fail = true;
   await page.locator('[data-testid="docker-disk-refresh"]').click();
-  await expect(page.locator('[data-testid="docker-disk-error"]')).toContainText('df failed');
+  const error = page.locator('[data-testid="docker-disk-error"]');
+  await expect(error).toContainText('df failed');
+  // A failed re-measure keeps the table and says so in an Alert.
+  await expect(error).toHaveAttribute('data-slot', 'alert');
   await expect(page.locator('[data-testid="docker-disk-total"]')).toHaveText('6.5 GB');
+});
+
+test('a first measure that fails shows an inline error and keeps the Measure button', async ({
+  relaunch,
+}) => {
+  const { page, docker } = await setup(relaunch, {
+    DiskUsage: () => ({ error: { code: 'E_INTERNAL', message: 'df failed' } }),
+  });
+  await openDocker(page);
+  await page.locator('[data-testid="docker-disk-measure"]').click();
+  const error = page.locator('[data-testid="docker-disk-error"]');
+  await expect(error).toContainText('df failed');
+  await expect(error).toHaveAttribute('data-slot', 'inline-state');
+  await expect(page.locator('[data-testid="docker-disk-measure"]')).toBeVisible();
+  await expect(page.locator('[data-testid="docker-disk-total"]')).toHaveCount(0);
+  expect(docker.calls('DiskUsage')).toHaveLength(1);
 });
 
 test('contract: container size is measured on demand and cached for the session', async ({

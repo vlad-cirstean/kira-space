@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
-import DetailSection from '@theme/components/DetailSection.vue';
-import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Button } from '@theme/components/ui/button';
 import {
   Table,
   TableBody,
@@ -18,16 +12,15 @@ import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { displayValue, formatBytes } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
-import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import { useEngineDiskUsage } from '../queries';
+import MeasuredSection from './MeasuredSection.vue';
 
 const VOLUME_LIMIT = 10;
 
-const { query, refresh } = useEngineDiskUsage();
+const { query } = useEngineDiskUsage();
 
 const usage = computed(() => query.data.value);
-const measuring = computed(() => query.isFetching.value);
 
 const categories = computed(() => {
   const u = usage.value;
@@ -48,36 +41,16 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
 </script>
 
 <template>
-  <DetailSection :title="t('docker.disk.title')" class="shrink-0">
-    <template #actions>
-      <span class="ml-auto flex items-center gap-1">
-        <span v-if="usage" data-testid="docker-disk-taken"
-          ><RelativeTime :at="usage.takenAt" /></span
-        >
-        <TooltipIconButton
-          icon="refresh"
-          :label="t('docker.disk.measure.tooltip')"
-          :disabled="measuring"
-          data-testid="docker-disk-refresh"
-          @click="refresh"
-        />
-      </span>
-    </template>
-
-    <Alert v-if="query.error.value" variant="error" data-testid="docker-disk-error">
-      <AlertDescription>{{ query.error.value.message }}</AlertDescription>
-    </Alert>
-
-    <InlineState v-if="measuring && !usage" kind="loading">{{
-      t('docker.measuring.loading')
-    }}</InlineState>
-    <div v-else-if="!usage" class="flex flex-wrap items-center gap-3">
-      <InlineState kind="empty">{{ t('docker.disk.notMeasured.body') }}</InlineState>
-      <Button size="kira" variant="toolbar" data-testid="docker-disk-measure" @click="refresh"
-        ><CodiconIcon name="dashboard" :size="13" />{{ t('docker.measure.label') }}</Button
-      >
-    </div>
-    <template v-else>
+  <MeasuredSection
+    :title="t('docker.disk.title')"
+    class="shrink-0"
+    testid="docker-disk"
+    :query="query"
+    :taken-at="(u) => u.takenAt"
+    :measure-tooltip="t('docker.disk.measure.tooltip')"
+    :not-measured="t('docker.disk.notMeasured.body')"
+  >
+    <template #default="{ data: disk }">
       <Table>
         <TableHeader>
           <TableRow>
@@ -99,7 +72,7 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
           <TableRow>
             <TableCell class="font-medium">{{ t('docker.disk.usedByDocker.label') }}</TableCell>
             <TableCell class="text-right font-data font-medium" data-testid="docker-disk-total">{{
-              formatBytes(usage.total)
+              formatBytes(disk.total)
             }}</TableCell>
             <TableCell />
             <TableCell />
@@ -123,5 +96,5 @@ const sizeText = (n: number): string => (n < 0 ? displayValue(null) : formatByte
         }}</div>
       </div>
     </template>
-  </DetailSection>
+  </MeasuredSection>
 </template>
