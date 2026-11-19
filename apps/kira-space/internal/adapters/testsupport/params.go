@@ -2,7 +2,9 @@ package testsupport
 
 import (
 	"context"
+	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
@@ -35,6 +37,20 @@ type BoundParamsCase struct {
 	Setup, Teardown []string
 	Writes          []BoundProbe
 	Verify          BoundProbe
+}
+
+// IDList is the compact JSON list [1,2,...,n].
+func IDList(n int) string {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := 1; i <= n; i++ {
+		if i > 1 {
+			b.WriteByte(',')
+		}
+		b.WriteString(strconv.Itoa(i))
+	}
+	b.WriteByte(']')
+	return b.String()
 }
 
 // Bind builds a BindParam from a label and compact JSON.
@@ -83,11 +99,16 @@ func BoundParams(c BoundParamsCase) Scenario {
 	}
 }
 
+var probeSeq atomic.Int64
+
+// probeOp names each probe's op uniquely: ClickHouse refuses a query id still registered from the probe before.
+func probeOp() string { return "bound-params-" + strconv.FormatInt(probeSeq.Add(1), 10) }
+
 func runProbe(t *testing.T, a adapters.Adapter, path model.NodePath, p BoundProbe) {
 	t.Helper()
 	pages, err := a.Execute(context.Background(), model.ConsoleRequest{
 		Path: path, Statements: []string{p.SQL}, Params: p.Params, ReadOnly: p.Lane,
-	}, adapters.NewOpCtx("bound-params"))
+	}, adapters.NewOpCtx(probeOp()))
 	if p.WantErr != "" {
 		if err == nil {
 			t.Fatalf("%s: want an error containing %q, got rows %v", p.SQL, p.WantErr, rowsOf(pages))
@@ -115,7 +136,7 @@ func runProbe(t *testing.T, a adapters.Adapter, path model.NodePath, p BoundProb
 func runPlain(t *testing.T, a adapters.Adapter, path model.NodePath, sql string, lane bool) []string {
 	t.Helper()
 	pages, err := a.Execute(context.Background(), model.ConsoleRequest{Path: path, Statements: []string{sql}, ReadOnly: lane},
-		adapters.NewOpCtx("bound-params-plain"))
+		adapters.NewOpCtx(probeOp()))
 	if err != nil {
 		t.Fatalf("%s: %v", sql, err)
 	}

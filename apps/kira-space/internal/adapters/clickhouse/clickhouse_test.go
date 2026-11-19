@@ -978,6 +978,9 @@ func chBoundParams(connID string, scratch bool) testsupport.Scenario {
 		Probes: []testsupport.BoundProbe{
 			{Name: "int", SQL: "SELECT name FROM kira_test.regions WHERE id = {id:UInt32}", Params: []model.BindParam{b("{{kept.id}}", "id", "2")}, Want: []string{"APAC"}},
 			{Name: "text with quote and backslash", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"it's -- ; a\\b"`)}, Want: []string{`it's -- ; a\b`}},
+			{Name: "unicode text", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"Zoë 東京 🐱"`)}, Want: []string{"Zoë 東京 🐱"}},
+			{Name: "1000 ids", SQL: "SELECT name FROM kira_test.regions WHERE id IN {ids:Array(UInt32)} ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "ids", testsupport.IDList(1000))}, Want: []string{"EMEA", "APAC"}},
 			{Name: "text with tab and newline", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"a\tb\nc"`)}, Want: []string{"a\tb\nc"}},
 			{Name: "list with tab and newline", SQL: "SELECT arrayJoin({l:Array(String)})", Params: []model.BindParam{b("{{kept.l}}", "l", `["a\tb\nc"]`)}, Want: []string{"a\tb\nc"}},
 			{Name: "big integer", SQL: "SELECT {n:Int64} + 0", Params: []model.BindParam{b("{{kept.n}}", "n", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
