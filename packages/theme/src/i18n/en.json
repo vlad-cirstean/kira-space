@@ -7199,6 +7199,13 @@
       "headlessArtifactsHeader": {
         "description": "Opens the artifact list a finishing call returns.",
         "title": "Artifacts list heading",
+      "dbmcpToolRunQueryScripts": {
+        "description": "Tells the agent how to attach a result script to run_query, what the sandbox allows and what it receives back.",
+        "title": "Query result scripts notice",
+        "usedBy": {
+          "body": "Added to the run_query tool description while agent scripts are on in the Studio MCP settings."
+        }
+      },
         "usedBy": {
           "body": "Returned to the agent after finish_step on a Kira Space task or a finished handover."
         }

@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/jsengine"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mask"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
@@ -396,10 +397,14 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
 		InputSchema: browseTableSchema(src),
 	}, withPanicRecovery(s, "browse_table", s.browseTable))
+	scriptNote := ""
+	if s.scriptsOn() {
+		scriptNote = " " + llmprompts.DbmcpToolRunQueryScripts.Text(src, llmprompts.NoVars{})
+	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
-		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
-		InputSchema: runQuerySchema(src),
+		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}) + scriptNote,
+		InputSchema: runQuerySchema(src, s.scriptsOn()),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	if s.cfg.Kube != nil {
 		s.addKubeTools(srv, src)
@@ -424,7 +429,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 }
 
 // runQuerySchema is run_query's input schema: mode is required and limited to the three declared modes.
-func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
+func runQuerySchema(src llmprompts.Source, scripts bool) *jsonschema.Schema {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
 		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
 	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
@@ -435,6 +440,11 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	params := sch.Properties["params"]
 	params.MaxItems = jsonschema.Ptr(maxParamEntries)
 	params.Items.MinLength = jsonschema.Ptr(1)
+	if scripts {
+		sch.Properties["script"].MaxLength = jsonschema.Ptr(jsengine.MaxSourceBytes)
+	} else {
+		delete(sch.Properties, "script")
+	}
 	return sch
 }
 

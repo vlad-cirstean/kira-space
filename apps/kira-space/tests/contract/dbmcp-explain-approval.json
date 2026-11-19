@@ -25,6 +25,7 @@
         "plan": null,
         "reviewOffered": false,
         "reviewResult": false,
+        "script": null,
         "statement": "select body from notes where id = 1"
       },
       "reason": "permission",

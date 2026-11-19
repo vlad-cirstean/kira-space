@@ -76,6 +76,7 @@
         "reason": "needs the full run",
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "statement": "select body from notes where id = ? /* big */"
       },
       "reason": "exemption",

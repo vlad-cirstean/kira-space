@@ -22,7 +22,9 @@
         "connectionId": "<id:2>",
         "isError": false,
         "mode": "read",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "statement": "select id, body from notes order by id"
       },
       "reason": "preview",

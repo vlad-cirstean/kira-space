@@ -56,6 +56,8 @@ type queryPayload struct {
 	Params       []string           `json:"params,omitempty"`
 	Placeholders []string           `json:"placeholders,omitempty"`
 	Kept         []agentapi.KeptUse `json:"kept,omitempty"`
+	// Script is the result transform: its source, hash and the kept names it may write.
+	Script *apiTransformView `json:"script"`
 }
 
 type limitHitPayload struct {
@@ -79,6 +81,7 @@ type exemptionPayload struct {
 	Params        []string           `json:"params,omitempty"`
 	Placeholders  []string           `json:"placeholders,omitempty"`
 	Kept          []agentapi.KeptUse `json:"kept,omitempty"`
+	Script        *apiTransformView  `json:"script"`
 }
 
 func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
@@ -94,8 +97,16 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
-		Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
+		Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept, Script: queryScriptView(r.QueryScript),
 	}
+}
+
+// queryScriptView is the transform as the card shows it; nil without one.
+func queryScriptView(sc *apiScripts) *apiTransformView {
+	if !sc.hasTransform() {
+		return nil
+	}
+	return apiScriptPayloadOf(sc).Transform
 }
 
 type responsePayload struct {
@@ -103,7 +114,10 @@ type responsePayload struct {
 	Statement    string `json:"statement"`
 	IsError      bool   `json:"isError"`
 	Bytes        int    `json:"bytes"`
-	AlreadyRan   bool   `json:"alreadyRan"`
+	// Scripted says a script produced the held text from the raw result; RawBytes sizes that raw result.
+	Scripted   bool `json:"scripted"`
+	RawBytes   int  `json:"rawBytes"`
+	AlreadyRan bool `json:"alreadyRan"`
 	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
 	Mode      string `json:"mode"`
 	Requested bool   `json:"requested"`
@@ -186,8 +200,9 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		}
 		it.Payload = mustJSON(responsePayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
-			IsError: held.IsError, Bytes: held.Bytes, AlreadyRan: r.Class != adapters.ClassRead,
-			Mode: r.Mode, Requested: held.Requested,
+			IsError: held.IsError, Bytes: len(held.Text), Scripted: held.Script != nil, RawBytes: len(held.Raw),
+			AlreadyRan: r.Class != adapters.ClassRead,
+			Mode:       r.Mode, Requested: held.Requested,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
@@ -195,7 +210,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
-			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
+			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept, Script: queryScriptView(r.QueryScript),
 		})
 	}
 	return it

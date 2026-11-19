@@ -1,6 +1,7 @@
 package dbmcpflow
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -54,8 +55,8 @@ func TestEditedPromptsReachNewSession(t *testing.T) {
 	}
 	for _, tool := range tools.Tools {
 		if tool.Name == "run_query" {
-			if tool.Description != runQuery {
-				t.Fatalf("run_query description = %q, want the edit", tool.Description)
+			if !strings.HasPrefix(tool.Description, runQuery) {
+				t.Fatalf("run_query description = %q, want the edit first, then any script text", tool.Description)
 			}
 			return
 		}

@@ -54,11 +54,11 @@ func (s *Server) claimExemption(args runQueryArgs, rv queryResolution) (ex *clai
 	if !ok {
 		return refuse(fmt.Sprintf("exemption %s is unknown, used or expired. Run the statement without exemption; a limit refusal gives a new id.", id))
 	}
-	if rec.connectionID != args.ConnectionID || rec.mode != rv.mode || rec.path != args.Path || rec.sql != args.SQL || !slices.Equal(rec.params, args.Params) {
+	if rec.connectionID != args.ConnectionID || rec.mode != rv.mode || rec.path != args.Path || rec.sql != args.SQL || !slices.Equal(rec.params, args.Params) || rec.script != scriptHashOf(args.Script) {
 		if args.Mode == modeMasked {
 			return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, path, columns, filters, order, limit, offset and count.", id))
 		}
-		return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, sql, path, mode and params.", id))
+		return refuse(fmt.Sprintf("exemption %s was issued for a different call. Repeat the refused call exactly: same connectionId, sql, path, mode, params and script.", id))
 	}
 	return &claimedExemption{hits: rec.hits, reason: reason}, nil, nil, nil, false
 }
@@ -131,7 +131,7 @@ func (s *Server) refuseByLimits(summary model.ConnectionSummary, ex *claimedExem
 		hits = mergeHits(ex.hits, hits)
 	}
 	id := s.exemptions.mint(exemptionRecord{
-		connectionID: args.ConnectionID, mode: args.Mode, path: args.Path, sql: args.SQL, params: slices.Clone(args.Params), hits: hits,
+		connectionID: args.ConnectionID, mode: args.Mode, path: args.Path, sql: args.SQL, params: slices.Clone(args.Params), script: scriptHashOf(args.Script), hits: hits,
 	})
 	return errResult((&LimitError{ConnectionName: summary.Name, Hits: hits, ExemptionID: id, Browse: args.Mode == modeMasked}).Error())
 }
@@ -142,7 +142,7 @@ func (s *Server) awaitExemption(ctx context.Context, args runQueryArgs, rv *quer
 	if res, out, err, done := s.ensureReachable(ctx, rv.summary, rv.mode); done {
 		return res, out, err, true
 	}
-	ctx, stop := s.watchKept(ctx, rv.params.usesOf())
+	ctx, stop := s.watchKept(ctx, rv.keptUses())
 	defer stop()
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		Subject: approvals.KindDbExemption, ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
@@ -152,7 +152,7 @@ func (s *Server) awaitExemption(ctx context.Context, args runQueryArgs, rv *quer
 		Plan:      approvalPlanFrom(plan, rv.threshold),
 		Exemption: &ApprovalExemption{Reason: ex.reason, Hits: ex.hits}, Origin: originFrom(ctx),
 		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
-		Params: rv.params.namesOf(), Placeholders: rv.params.placeholdersOf(), Kept: rv.params.usesOf(),
+		Params: rv.params.namesOf(), Placeholders: rv.params.placeholdersOf(), Kept: rv.keptUses(), QueryScript: rv.script,
 	})
 	switch outcome {
 	case ApprovalApproved:

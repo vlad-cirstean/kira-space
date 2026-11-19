@@ -175,9 +175,10 @@ dbmcp.tool.run_query.arg.path	117
 dbmcp.tool.run_query.arg.mode	166
 dbmcp.tool.run_query.arg.maxRows	101
 dbmcp.tool.run_query.arg.params	540
-dbmcp.tool.run_query.arg.exemption	112
+dbmcp.tool.run_query.arg.exemption	114
 dbmcp.tool.run_query.arg.exemption.id	65
 dbmcp.tool.run_query.arg.exemption.reason	89
+dbmcp.tool.run_query.arg.script	110
 ade.review.comments	389
 ade.review.round.message	686
 ade.review.followup.message	466
@@ -213,6 +214,7 @@ dbmcp.tool.operations.arg.cancel	41
 dbmcp.tool.operations	228
 dbmcp.tool.run_query.arg.explain	75
 dbmcp.tool.run_query.arg.includeRaw	59
+dbmcp.tool.run_query.scripts	1314
 dbmcp.tool.get_script_run.arg.contains	70
 dbmcp.tool.get_script_run.arg.from	50
 dbmcp.tool.get_script_run.arg.lines	42

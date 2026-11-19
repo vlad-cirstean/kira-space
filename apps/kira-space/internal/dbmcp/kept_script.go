@@ -49,7 +49,7 @@ type keptMayKeep struct {
 
 // keptRunFor reads the scripts for kept.get and kept.set calls and snapshots what they may read. nil
 // without kept support or without a call. A non-empty string is the refusal text; nothing ran.
-func (s *Server) keptRunFor(scope string, sc *apiScripts) (*keptRun, string) {
+func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*keptRun, string) {
 	if s.cfg.Kept == nil || sc == nil {
 		return nil, ""
 	}
@@ -57,7 +57,7 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts) (*keptRun, string) {
 	k.sites[stagePrepare] = keptvars.ScanScript(sc.Prepare)
 	k.sites[stageTransform] = keptvars.ScanScript(sc.Transform)
 	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op == "set" }) {
-		return nil, "kept.set is available in the transform script only. Nothing was sent."
+		return nil, "kept.set is available in the transform script only. " + nothing
 	}
 	if len(k.sites[stagePrepare]) == 0 && len(k.sites[stageTransform]) == 0 {
 		return nil, ""
@@ -73,7 +73,7 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts) (*keptRun, string) {
 		}
 	}
 	if len(reads) > maxKeptScriptNames || len(sets) > maxKeptScriptNames {
-		return nil, fmt.Sprintf("a script can read at most %d kept variables and keep at most %d. Nothing was sent.", maxKeptScriptNames, maxKeptScriptNames)
+		return nil, fmt.Sprintf("a script can read at most %d kept variables and keep at most %d. %s", maxKeptScriptNames, maxKeptScriptNames, nothing)
 	}
 	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 		for _, st := range k.sites[stage] {

@@ -24,6 +24,7 @@
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "statement": "insert into notes (body) values ('three')"
       },
       "reason": "permission",

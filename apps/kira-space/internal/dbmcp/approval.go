@@ -304,6 +304,8 @@ type ApprovalRequest struct {
 	Params       []string
 	Placeholders []string
 	Kept         []agentapi.KeptUse
+	// QueryScript is the result transform of a run_query, shown beside the statement.
+	QueryScript *apiScripts
 	// Exemption is set for the db.exemption subject.
 	Exemption *ApprovalExemption
 	// Inputs are the values the card asks the user to type (api.request); labels only, never values.

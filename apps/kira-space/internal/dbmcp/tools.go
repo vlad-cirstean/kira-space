@@ -9,6 +9,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/queryplan"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -203,6 +204,8 @@ type runQueryArgs struct {
 	Exemption *exemptionArgs `json:"exemption,omitempty"`
 	// Params names kept variables bound to the statement's placeholders, never inserted into its text.
 	Params []string `json:"params,omitempty"`
+	// Script post-processes the result before the agent gets it (a function body, P675 engine).
+	Script string `json:"script,omitempty"`
 }
 
 type exemptionArgs struct {
@@ -240,12 +243,22 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 		if len(args.Params) > 0 {
 			return errResult("explain plans the statement without running it and takes no params; plan a statement with literals")
 		}
+		if args.Script != "" {
+			return errResult("script post-processes query results; it does not apply to explain")
+		}
 		return s.explainQuery(ctx, req, explainQueryArgs{ConnectionID: args.ConnectionID, SQL: args.SQL, Path: args.Path, IncludeRaw: args.IncludeRaw})
 	}
+	sc, refusal := s.openQueryScript(ctx, args.Script)
+	if refusal != "" {
+		return errResult(refusal)
+	}
+	// Staged values reach the store only at the final point; every other way out drops them.
+	defer sc.dropKept()
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
 		return res, out, err
 	}
+	rv.script = sc
 
 	if res, out, err, done := s.resolveParams(ctx, args, &rv); done {
 		return res, out, err
@@ -272,11 +285,12 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 	if !executed {
 		return res, out, err
 	}
-	// Read after the run: the user may have changed the setting while the query ran.
-	if !rv.reviewRequested && !s.reviewFor(rv.summary, rv.mode, rv.class) {
-		return res, out, err
+	var o *queryScriptOutcome
+	if rv.script.hasTransform() && res != nil && !res.IsError && err == nil {
+		o = s.transformQuery(ctx, rv, resultText(res))
+		res, out, err = o.agentResult(nil, nil)
 	}
-	return s.reviewResponse(ctx, args, rv, set, res, out, err)
+	return s.deliverQuery(ctx, args, rv, set, res, out, err, o)
 }
 
 // executeAndRender masks, executes and renders. executed is false when the call failed before
@@ -399,7 +413,6 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 // disconnect, server stop, quit), so nothing outlives the call. A result over the broker's per-result
 // cap, or one that would push the total over its cap, is withheld unseen.
 func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, res *mcp.CallToolResult, out any, err error) (*mcp.CallToolResult, any, error) {
-	name := rv.summary.Name
 	// go-sdk v1.8.0 (mcp/server.go toolForErr): a regular handler error reaches the client as an
 	// IsError text result carrying err.Error(), so the preview of a bare Go error matches the wire.
 	held := ApprovalResponse{IsError: true, Requested: rv.reviewRequested}
@@ -410,19 +423,24 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 		held.Text = err.Error()
 	}
 	held.Bytes = len(held.Text)
+	if refusal := s.holdResponse(ctx, args, rv, rendered, held); refusal != "" {
+		return errResult(refusal)
+	}
+	return res, out, err
+}
 
+// holdResponse raises the response-stage item for held and waits for the answer. A non-empty string is the
+// refusal text; "" means the user sent the result.
+func (s *Server) holdResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, held ApprovalResponse) string {
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
-		ConnectionID: args.ConnectionID, ConnectionName: name, Kind: rv.summary.Kind,
+		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
 		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
 	})
 	if outcome == ApprovalApproved {
-		if msg := s.recheckHeld(ctx, rv, args, rendered); msg != "" {
-			return errResult(msg)
-		}
-		return res, out, err
+		return s.recheckHeld(ctx, rv, args, rendered)
 	}
-	return errResult(heldRefusal(outcome, rv, held.Bytes))
+	return heldRefusal(outcome, rv, held.Bytes)
 }
 
 // recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
@@ -524,6 +542,16 @@ type queryResolution struct {
 	reviewRequested bool
 	// params is set when the call binds kept variables.
 	params *keptParams
+	// script is the result transform, nil without one. Only its Transform and kept binding are used.
+	script *apiScripts
+}
+
+// keptUses is every kept variable the call binds or its script reads.
+func (rv queryResolution) keptUses() []agentapi.KeptUse {
+	if rv.script == nil || rv.script.kept == nil {
+		return rv.params.usesOf()
+	}
+	return mergeKept(rv.params.usesOf(), rv.script.kept.uses)
 }
 
 // resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables → column review pipeline.
@@ -677,7 +705,7 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 	}
 
 	// A kept variable leaving the store ends the wait: the card must not offer Send for a value that is gone.
-	ctx, stop := s.watchKept(ctx, rv.params.usesOf())
+	ctx, stop := s.watchKept(ctx, rv.keptUses())
 	defer stop()
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
@@ -686,7 +714,7 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
 		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
-		Params: rv.params.namesOf(), Placeholders: rv.params.placeholdersOf(), Kept: rv.params.usesOf(),
+		Params: rv.params.namesOf(), Placeholders: rv.params.placeholdersOf(), Kept: rv.keptUses(), QueryScript: rv.script,
 	})
 	switch outcome {
 	case ApprovalApproved:

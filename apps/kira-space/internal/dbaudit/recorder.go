@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/jsengine"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -124,7 +125,7 @@ func (r *Recorder) CallStarted(c dbmcp.AuditCall) {
 		if !ok && row.StatementLen > 0 {
 			pending = str("sql")
 		}
-		row.Summary = paramNames(args)
+		row.Summary = runQuerySummary(args)
 	} else {
 		row.Summary = summarise(args)
 	}
@@ -337,8 +338,10 @@ func target(args map[string]any) string {
 	return strings.Join(parts, "/")
 }
 
-// paramNames is the summary of a run_query that binds kept variables: their names, never a value.
-func paramNames(args map[string]any) string {
+// runQuerySummary is the summary of a run_query that binds kept variables or runs a script: the names, the
+// script's hash and size, never a value, the script text or its output.
+func runQuerySummary(args map[string]any) string {
+	out := map[string]any{}
 	list, _ := args["params"].([]any)
 	names := make([]string, 0, len(list))
 	for _, v := range list {
@@ -346,10 +349,17 @@ func paramNames(args map[string]any) string {
 			names = append(names, n)
 		}
 	}
-	if len(names) == 0 {
+	if len(names) > 0 {
+		out["params"] = names
+	}
+	if src, _ := args["script"].(string); src != "" {
+		out["scriptSha256"] = jsengine.SourceHash(src)
+		out["scriptBytes"] = len(src)
+	}
+	if len(out) == 0 {
 		return ""
 	}
-	b, err := json.Marshal(map[string]any{"params": names})
+	b, err := json.Marshal(out)
 	if err != nil {
 		return ""
 	}

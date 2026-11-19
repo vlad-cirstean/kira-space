@@ -42,6 +42,8 @@ type scriptRun struct {
 	Source   string
 	Bindings []jsengine.Binding
 	Limits   jsengine.Limits
+	// ConnectionID ties the op row to a connection (run_query scripts); empty for none.
+	ConnectionID string
 	// Validate checks a successful result; a non-empty text fails the run (and its op row) with that text.
 	Validate func(jsengine.Result) string
 }
@@ -60,12 +62,13 @@ func scriptErrText(e *jsengine.Error) string {
 }
 
 // checkScript syntax-checks src. A failure records the stage's op row and returns the agent text; "" is ok.
-func (s *Server) checkScript(ctx context.Context, st scriptStage, src string) string {
+// label names the script in the text and nothing says what did not happen ("Nothing was sent.").
+func (s *Server) checkScript(ctx context.Context, st scriptStage, src, label, nothing string) string {
 	e := jsengine.Check(src)
 	if e == nil {
 		return ""
 	}
-	text := fmt.Sprintf("%s script: %s. Nothing was sent.", st, scriptErrText(e))
+	text := fmt.Sprintf("%s: %s. %s", label, scriptErrText(e), nothing)
 	_, _, _ = s.cfg.ScriptOps.RunOp(ctx, adapterhost.OpSpec{Kind: st.opKind()}, func(_ context.Context, op *adapters.OpCtx) (any, error) {
 		op.SetCommand(visibleScript(src))
 		return nil, errors.New(text)
@@ -78,7 +81,11 @@ func (s *Server) checkScript(ctx context.Context, st scriptStage, src string) st
 func (s *Server) execScript(ctx context.Context, r scriptRun, describe func(*jsengine.Error) string) (jsengine.Result, string) {
 	var res jsengine.Result
 	failure := ""
-	_, _, err := s.cfg.ScriptOps.RunOp(ctx, adapterhost.OpSpec{Kind: r.Stage.opKind()}, func(runCtx context.Context, op *adapters.OpCtx) (any, error) {
+	spec := adapterhost.OpSpec{Kind: r.Stage.opKind()}
+	if r.ConnectionID != "" {
+		spec.ConnectionID = &r.ConnectionID
+	}
+	_, _, err := s.cfg.ScriptOps.RunOp(ctx, spec, func(runCtx context.Context, op *adapters.OpCtx) (any, error) {
 		op.SetCommand(r.Source)
 		out, err := s.cfg.JS.Exec(runCtx, jsengine.Run{Source: r.Source, Bindings: r.Bindings, Limits: r.Limits})
 		if err != nil {

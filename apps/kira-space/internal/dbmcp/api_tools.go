@@ -141,7 +141,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		if sc, refusal = s.openScripts(ctx, a.Script); refusal != "" {
 			return errResult(refusal)
 		}
-		if sc.kept, refusal = s.keptRunFor(in.Scope, sc); refusal != "" {
+		if sc.kept, refusal = s.keptRunFor(in.Scope, sc, "Nothing was sent."); refusal != "" {
 			return errResult(refusal)
 		}
 		if sc.Prepare != "" {
@@ -231,7 +231,7 @@ func (s *Server) openScripts(ctx context.Context, a *apiScriptArgs) (*apiScripts
 		if p.src == "" {
 			continue
 		}
-		if text := s.checkScript(ctx, p.stage, p.src); text != "" {
+		if text := s.checkScript(ctx, p.stage, p.src, string(p.stage)+" script", "Nothing was sent."); text != "" {
 			return nil, text
 		}
 	}

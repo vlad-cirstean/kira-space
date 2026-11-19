@@ -13,7 +13,9 @@ const maxExemptions = 256
 type exemptionRecord struct {
 	connectionID, mode, path, sql string
 	// params are the kept names bound to the statement, in order.
-	params    []string
+	params []string
+	// script is the hash of the result transform the exemption was issued for, "" without one.
+	script    string
 	hits      []LimitHit
 	expiresAt time.Time
 }

@@ -33,6 +33,7 @@
         "reason": "the report needs every row",
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "statement": "select * from notes /* big */"
       },
       "reason": "exemption",
@@ -91,6 +92,7 @@
       "reason": "it is a slow table",
       "reviewOffered": true,
       "reviewResult": false,
+      "script": null,
       "statement": "select * from notes /* big */ /* slow */"
     },
     "reason": "exemption",
