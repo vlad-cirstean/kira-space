@@ -65,6 +65,8 @@
         ],
         "method": "POST",
         "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
         "url": "http://127.0.0.1:<port>/echo",
