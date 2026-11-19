@@ -1333,7 +1333,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Add a domain error code (e.g. E_CONNECT, E_AUTH, E_QUERY, E_ENGINE_DOWN, E_GIT_*, E_PREPARING) only where a UI branches on it.
 - OS errno strings such as ESRCH are not error codes.
 - E_BAD_REQUEST means user input was refused, including over-long ADE message, yaml and script inputs (backend.space.ade.messageTooLong, scriptTooLarge, yamlTooLarge).
-- E_CONFLICT means a state precondition failed, such as a stale baseHash.
+- E_CONFLICT means a state precondition failed, such as a stale baseHash. The client tests it with `isConflict`.
 - E_CONTRACT means a caller bug (the UI always sets the value).
 - User-visible error messages are catalog text via ipcerr.T(code, key, params) (adapters.T for adapters); raw text from outside Kira (driver, server, git, OS) stays verbatim.
 - ipcerr.Contract(format, args…) and ipcerr.Required(field) produce E_CONTRACT with English developer text.
@@ -1443,7 +1443,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U204) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U207) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 55 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1485,7 +1485,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Config secrets render `ConfigSecretsSection`: API, ADE and run file secrets alike; removing a stored secret is Delete.
 - Log views take tail constants from `logTail.ts` and render lines through `LogLines`; toolbar order is follow, timestamps, wrap, tail (U165).
 - A log view finds by filtering lines: `useLogFilter` (kept query, `SearchField`, matches marked, "N of M lines" status) and Copy log over the shown lines. `FindBar` is for documents and pages, not streams: a head-trimmed stream would move its cursor (U204).
-- Config files: a save conflict is `SaveConflictAlert` (U166; optional `variant` error or warn), a form problem is `ConfigFormProblemAlert` (U167).
+- Config files: a save conflict is `SaveConflictAlert` (U166; optional `variant` error or warn), a form problem is `ConfigFormProblemAlert` (U167). A hash-guarded draft is `useGuardedDraft` (`behaviour/guardedDraft.ts`; a store that owns the value passes `state`) and a conflict check is `isConflict` (U205, U206). A config file dialog renders `ConfigFileDialog` (section tabs with error badges from pointers, `form` slot gets `{ section }`, one save error, Discard and Save footer, `QueryState` load; `SaveConflictAlert` has an optional `action` slot for non-conflict failures, such as the Switch to YAML link) (U207). Declined by design: `useFileEdit` (Monaco buffer, three-state conflict), `llmPromptDrafts` (batch under SettingsShell), `dockerEdit` (three-way rebase). Overwrite on a clean draft marks it dirty, then saves; a source push to a clean draft follows and does not reset the save error.
 - Reset to default is `ResetToDefaultButton` (U168).
 - `frames.ts` owns `dropIndicator` and `windowTabStrip` (U169, U170).
 - A pending-work toast is `PendingToast`.
@@ -1508,7 +1508,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A write's pending and error come from its TanStack mutation, never a hand ref: `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other awaited call, `useTaskAction()` for one error surface fed by several writes; `describe` maps or hides the text, `cause` gives the coded error for branching. Overlapping runs: latest wins. Keyed store surfaces, git-ui class state and synchronous failures stay outside (U188, U189, U51).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U204 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U207 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
@@ -3825,7 +3825,7 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 - Validation: `Validate` returns `ValidationError{Path, Key, Args}`: `Path` is a JSON pointer in the file's own vocabulary, `Key` a catalog key `backend.core.runs.*.body`. Messages render through i18n. Secrets: a `secret: true` param holds no value in the file; values live in `secret_values` (scope `script-param`, owner run id) and go through `SetSecrets`.
 - Bound surface (`CustomScriptsService`): `List`, `Create(fields, secretValues)` (writes a new `<id>.yaml`; the id is the slugged name, made unique), `Delete`, `File(file)` and `SaveFile(file, text, baseHash)` (whole text; a changed file is `E_CONFLICT`), `SetSecrets`, Space-only `SetScheduleTarget`, `Reorder(collection, ids)`, `ReorderCollections(names)`. Removed: Update, collection CRUD, Move.
 - Collections are names. `script_collections(name PK, sort_order)` holds order only; a row goes when no run names it. Reorder is within a set (ungrouped is `''`); drag between sets and Move are gone, the file's `collection` key moves a run.
-- UI: `AutomationsPanel.vue` lists rows; a file with an error and a last good version shows a `script-row-problem` marker, a file with none a `script-broken-<file>` row. `RunFileDialog.vue` (shared) edits the file as a form (Smart, Script, Folder, Params tabs) or whole text (YAML tab) over one draft (see Config forms and YAML editor, P514), with `ConfigFileProblem` when the text is invalid, the `E_CONFLICT` Reload/Overwrite pair and `RunSecretsSection.vue` for write-only secret values. Space adds `ScheduleTargetDialog.vue`. Save does not close the dialog.
+- UI: `AutomationsPanel.vue` lists rows; a file with an error and a last good version shows a `script-row-problem` marker, a file with none a `script-broken-<file>` row. `RunFileDialog.vue` (shared) edits the file as a form (Smart, Script, Folder, Params tabs) or whole text (YAML tab) over one draft (see Config forms and YAML editor, P514), rendering `ConfigFileDialog` (`ConfigFileProblem` when the text is invalid, the `E_CONFLICT` Reload/Overwrite pair, Discard and Save footer, close by the header) with `RunSecretsSection.vue` for write-only secret values. Space adds `ScheduleTargetDialog.vue`. Save does not close the dialog.
 - Tests: flows `TestRunsConfigFile`, `TestRunsFileMigration` (Space), `TestRunsConfigFileStudio` (contracts `runs-file.json`); UI `automations-file.spec.ts` in both apps on the same scenario.
 
 ### Api config files (P473)
@@ -3886,10 +3886,10 @@ Config lives as plain files in app-home folders; `internal/configfs` is the one 
 ### Config forms and YAML editor (P514)
 
 - `CodeTextEditor` (Monaco, `autoIndent: 'none'`) edits every config file's YAML. Language `yaml` highlights through the theme rule for `type.yaml`. Other file types keep plain text.
-- One draft per dialog: `useConfigFormDraft` (`packages/workbench/src/config/`) holds the file text and its base hash. A form edit is a node edit on that text through the module's `Form` method; a YAML edit replaces the text. Save is `SaveFile(file, text, baseHash)`; a changed file is `E_CONFLICT` with Reload and Overwrite.
+- One draft per dialog: `useConfigFormDraft` (`packages/workbench/src/config/`, built on `useGuardedDraft`) holds the file text and its base hash. A form edit is a node edit on that text through the module's `Form` method; a YAML edit replaces the text. Save is `SaveFile(file, text, baseHash)`; a changed file is `E_CONFLICT` with Reload and Overwrite.
 - `configfs.Form` decodes the text, applies `[]Edit` through `EditYAML` (`NodeSet`, `Unset`) and returns the model, the new text and a problem with a JSON pointer. Comments and key order outside the edited node stay; indentation becomes 2 and blank lines between keys can go. Only changed leaves are edited. A list edited from the form is replaced whole.
 - `FieldSpec` maps form fields to pointers. `clears` removes exclusive keys, `unsetWhen` removes a key set to its default, `presence` marks a mapping that only appears or vanishes. Unknown keys in a row pass through.
-- The form never resolves a secret reference. `SecretInput.vue` is the shared secret field (P516 eye below). A typed value goes to the write-only `SetSecret` in `afterSave`; the file holds `${secret:<stem>.<name>}`.
+- The form never resolves a secret reference. `SecretInput.vue` is the shared secret field (P516 eye below). A typed value goes to the write-only `SetSecret` through the draft's `secrets` option, after the file write, in the same Save; the file holds `${secret:<stem>.<name>}`.
 - P516: every secret field is a `SecretInput` with an eye. The eye toggles the field's own text client-side. A saved value shows only through an existing gated reveal: connection password and URI, via `ConnectionsService.Reveal` (the `reveal` prop). Elsewhere the eye is disabled while the field is empty and a value is saved, with a tooltip. Run, agent-settings and api-by-name secrets have no reveal path, by design. A revealed saved value lives in the component only (never emitted) and re-masks on hide, typing, unmount and after `TIMING.revealGrace`. The history popover and Copy as curl re-mask client-side too. The bulk `.env` lens cannot mask: Monaco has no password mode.
 - Per module: runs and repos `Form` over their loaders, connections `ConnectionConfigService.Form`, api `Store.FileText`, `SaveFile`, `Form` (suffix picks collection or environment; a collection file edits `variables` only). Script or command choice in the repo form: see the P515 picker bullet above.
 - Lifecycle actions are file operations through each module's one writer; a file with a problem is never edited.
