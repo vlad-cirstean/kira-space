@@ -303,7 +303,7 @@ function onToggleWorkingReviewed(path: string): void {
           data-testid="review-working-header"
         >
           <CodiconIcon name="edit" :size="13" class="text-warn" />
-          <span>{{ t('space.ade.changes.uncommitted.label') }}</span>
+          <span>{{ t('common.changes.uncommitted.label') }}</span>
           <span
             v-if="workingChangedCount > 0"
             class="text-warn font-normal"

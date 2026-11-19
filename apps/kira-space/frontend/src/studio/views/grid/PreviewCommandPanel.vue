@@ -35,7 +35,7 @@ const shownView = computed(() => (hasEdits.value ? view.value : 'sql'));
 const viewItems = computed<SecondaryTabItem[]>(() => [
   {
     value: 'changes',
-    label: t('space.ade.branchPanel.changes.label'),
+    label: t('common.changes.label'),
     testid: 'preview-command-view-changes',
   },
   {

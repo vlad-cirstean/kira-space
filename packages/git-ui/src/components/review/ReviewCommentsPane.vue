@@ -66,7 +66,7 @@ function lineLabel(range: LineRange): string {
 
 function kindLabel(c: ReviewComment): string {
   return c.kind === 'question'
-    ? t('space.ade.needs.kind.question.label')
+    ? t('common.kind.question.label')
     : t('git.review.comments.kind.change.label');
 }
 
@@ -180,7 +180,7 @@ keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value
                     variant="warn"
                     data-testid="review-comment-uncommitted"
                   >
-                    {{ t('space.ade.changes.uncommitted.label') }}
+                    {{ t('common.changes.uncommitted.label') }}
                   </Badge>
                   <span
                     v-if="anchorTitle(c)"

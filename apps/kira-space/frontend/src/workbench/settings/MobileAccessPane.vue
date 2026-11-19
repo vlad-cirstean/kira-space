@@ -347,7 +347,7 @@ const activeDevices = computed(() =>
                 "
               />
               <FieldLabel :for="`${deviceId}-${device.id}-write`">{{
-                t('space.ade.branchPanel.changes.label')
+                t('common.changes.label')
               }}</FieldLabel>
             </Field>
             <Field orientation="horizontal" class="w-auto">

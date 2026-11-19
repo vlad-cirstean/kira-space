@@ -64,7 +64,7 @@ async function askDelete(): Promise<void> {
         />
         <TooltipIconButton
           icon="trash"
-          :label="t('space.ade.proof.entry.delete.tooltip')"
+          :label="t('studio.proof.delete.tooltip')"
           data-testid="proof-delete"
           @click="askDelete()"
         />

@@ -91,7 +91,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
       {{ t('space.repo.settingsFile.lastGood.hint') }}
     </div>
     <div v-if="!view.editable" class="text-kira-sm text-subtle" data-testid="repo-file-read-only">
-      {{ t('space.ade.context.readOnly.hint') }}
+      {{ t('common.content.readOnly.hint') }}
     </div>
     <template v-else>
       <SecondaryTabs

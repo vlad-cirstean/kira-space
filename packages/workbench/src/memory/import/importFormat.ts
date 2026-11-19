@@ -24,7 +24,7 @@ export const JOB_STATE_LABEL = {
 } as const satisfies Record<ImportJobState, MessageKey>;
 
 export const FILE_STATE_LABEL = {
-  pending: 'space.common.pending.status',
+  pending: 'common.state.pending.status',
   skipped: 'common.skipped.status',
   extracting: 'memory.import.fileState.extracting.status',
   extracted: 'memory.import.fileState.extracted.status',

@@ -105,7 +105,7 @@ function kindLabel(b: ArchivedBranch): string {
 
 function commentKind(c: ArchivedComment): string {
   return c.kind === 'question'
-    ? t('space.ade.needs.kind.question.label')
+    ? t('common.kind.question.label')
     : t('git.review.comments.kind.change.label');
 }
 function commentState(c: ArchivedComment): string {

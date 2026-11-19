@@ -59,7 +59,7 @@ function checkLabel(state: CheckState): string {
     case 'error':
       return t('space.hostView.check.error.status');
     case 'pending':
-      return t('space.common.pending.status');
+      return t('common.state.pending.status');
     case 'skipped':
       return t('common.skipped.status');
     default:

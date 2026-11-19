@@ -8,5 +8,5 @@ export function branchSource(it: BranchRequestItem): string {
     return t('space.ade.branchRequest.source.run.label', { step: it.stepName });
   return it.stepName
     ? t('space.ade.branchRequest.source.session.label', { step: it.stepName })
-    : t('space.settings.agentUsage.session.label');
+    : t('common.field.session.label');
 }

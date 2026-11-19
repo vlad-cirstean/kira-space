@@ -159,7 +159,7 @@ function lineLabel(c: ReviewComment): string {
 
 const kindLabel = (c: ReviewComment): string =>
   c.kind === 'question'
-    ? t('space.ade.needs.kind.question.label')
+    ? t('common.kind.question.label')
     : t('git.review.comments.kind.change.label');
 const stateLabel = (c: ReviewComment): string =>
   c.state === 'addressed'
@@ -224,7 +224,7 @@ const stateLabel = (c: ReviewComment): string =>
             variant="warn"
             data-testid="ade-review-comment-uncommitted"
             >{{
-              t('space.ade.changes.uncommitted.label')
+              t('common.changes.uncommitted.label')
             }}</Badge
           >
           <Badge variant="default">{{ kindLabel(c) }}</Badge>

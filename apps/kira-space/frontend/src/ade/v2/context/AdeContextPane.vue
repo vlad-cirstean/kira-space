@@ -57,7 +57,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
         class="text-kira-sm text-subtle"
         data-testid="ade-context-read-only"
       >
-        {{ t('space.ade.context.readOnly.hint') }}
+        {{ t('common.content.readOnly.hint') }}
       </div>
       <template v-else>
         <CodeTextEditor

@@ -83,7 +83,7 @@ function rangeLabel(entry: ReviewRemovedEntry): string {
             variant="info"
             data-testid="ade-review-removed-origin"
           >
-            {{ t('space.ade.changes.uncommitted.label') }}
+            {{ t('common.changes.uncommitted.label') }}
           </Badge>
           <TooltipIconButton
             icon="close"

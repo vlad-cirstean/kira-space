@@ -62,7 +62,7 @@ const tabs = computed<SecondaryTabItem[]>(() => [
   { value: 'edit', label: t('common.action.edit.label'), testid: 'llm-prompt-tab-edit' },
   {
     value: 'changes',
-    label: t('space.ade.branchPanel.changes.label'),
+    label: t('common.changes.label'),
     testid: 'llm-prompt-tab-changes',
   },
   { value: 'preview', label: t('llmPrompts.tab.preview.label'), testid: 'llm-prompt-tab-preview' },

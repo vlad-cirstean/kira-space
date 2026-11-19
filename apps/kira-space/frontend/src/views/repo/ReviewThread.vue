@@ -61,7 +61,7 @@ const hostTab = computed(() =>
 const KIND_ITEMS = computed(() => [
   {
     value: 'question',
-    label: t('space.ade.needs.kind.question.label'),
+    label: t('common.kind.question.label'),
     testid: 'review-thread-kind-question',
   },
   {
@@ -174,7 +174,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         <div class="flex items-center gap-1.5 text-kira-sm text-muted-foreground">
           <span data-testid="review-thread-kind-chip">{{
             current.kind === 'question'
-              ? t('space.ade.needs.kind.question.label')
+              ? t('common.kind.question.label')
               : t('git.review.comments.kind.change.label')
           }}</span>
           <span data-testid="review-thread-state-chip">{{

@@ -26,7 +26,7 @@ type LineState = Extract<BlameLineState, { kind: 'uncommitted' | 'resolved' }>;
 
 function annotationText(state: LineState): string {
   return state.kind === 'uncommitted'
-    ? t('space.ade.changes.uncommitted.label')
+    ? t('common.changes.uncommitted.label')
     : blameLineText(state);
 }
 

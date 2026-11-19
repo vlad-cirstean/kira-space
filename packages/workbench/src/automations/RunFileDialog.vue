@@ -284,7 +284,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
             class="text-kira-sm text-subtle"
             data-testid="run-file-read-only"
           >
-            {{ t('space.ade.context.readOnly.hint') }}
+            {{ t('common.content.readOnly.hint') }}
           </div>
           <template v-else>
             <template v-if="section !== 'yaml'">

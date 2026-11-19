@@ -3325,8 +3325,12 @@
       "status": "Changed"
     },
     "changes": {
+      "label": "Changes",
       "pending": {
         "title": "Pending changes"
+      },
+      "uncommitted": {
+        "label": "Uncommitted"
       }
     },
     "closed": {
@@ -3444,6 +3448,11 @@
     },
     "connecting": {
       "loading": "Connecting…"
+    },
+    "content": {
+      "readOnly": {
+        "hint": "This content is too large or not valid text to edit."
+      }
     },
     "continue": {
       "label": "Continue"
@@ -3618,6 +3627,9 @@
       "scope": {
         "label": "Scope"
       },
+      "session": {
+        "label": "Session"
+      },
       "source": {
         "label": "Source"
       },
@@ -3687,6 +3699,11 @@
       },
       "tab": {
         "label": "Tab"
+      }
+    },
+    "kind": {
+      "question": {
+        "label": "Question"
       }
     },
     "later": {
@@ -4004,6 +4021,9 @@
       },
       "none": {
         "option": "None"
+      },
+      "pending": {
+        "status": "Pending"
       },
       "readOnly": {
         "status": "Read-only"
@@ -9130,9 +9150,6 @@
         "back": {
           "label": "← {title}"
         },
-        "changes": {
-          "label": "Changes"
-        },
         "copyBranchLink": {
           "tooltip": "Copy branch link"
         },
@@ -9237,11 +9254,6 @@
           }
         }
       },
-      "changes": {
-        "uncommitted": {
-          "label": "Uncommitted"
-        }
-      },
       "context": {
         "applies": {
           "hint": "Agents started after you save get the new text. That covers new sessions, headless steps and smart scripts. Running sessions keep theirs."
@@ -9260,9 +9272,6 @@
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use this text."
-        },
-        "readOnly": {
-          "hint": "This content is too large or not valid text to edit."
         },
         "resume": {
           "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
@@ -9670,9 +9679,6 @@
         "kind": {
           "approval": {
             "label": "Approval"
-          },
-          "question": {
-            "label": "Question"
           },
           "setupFailed": {
             "label": "Setup failed"
@@ -10393,9 +10399,6 @@
           "title": "Notes and proof"
         },
         "entry": {
-          "delete": {
-            "tooltip": "Delete proof"
-          },
           "open": {
             "tooltip": "Open in the proof window"
           },
@@ -11895,9 +11898,6 @@
       "notes": {
         "label": "Notes"
       },
-      "pending": {
-        "status": "Pending"
-      },
       "plan": {
         "label": "Plan"
       },
@@ -12694,9 +12694,6 @@
         },
         "readFailed": {
           "error": "Couldn’t read the usage limits."
-        },
-        "session": {
-          "label": "Session"
         },
         "sessionWindow": {
           "label": "Session (5-hour)"
@@ -17505,7 +17502,8 @@
       },
       "delete": {
         "body": "Removes {name}, its folder and its saved views. This can’t be undone.",
-        "title": "Delete this proof"
+        "title": "Delete this proof",
+        "tooltip": "Delete proof"
       },
       "diagram": {
         "invalid": {
