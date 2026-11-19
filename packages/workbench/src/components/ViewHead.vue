@@ -9,7 +9,7 @@ import ViewToolbar from './ViewToolbar.vue';
 // A view's head: connection colour dot, kind icon, title with a dim prefix, badges (default slot),
 // actions, then the colour band. `color` set draws the dot (an empty ring for no colour); the band
 // always renders. `lead` adds a leading icon before the kind icon (an engine icon); `title` replaces
-// the title text (a picker).
+// the title text (a picker). Attrs (a `data-*` marker) go to the toolbar.
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
@@ -40,7 +40,7 @@ const fullTitle = computed(() => `${props.prefix ?? ''}${props.title ?? ''}`);
 </script>
 
 <template>
-  <ViewToolbar :data-testid="testid">
+  <ViewToolbar v-bind="$attrs" :data-testid="testid">
     <span
       v-if="color !== undefined"
       :class="colorMarkClass('dot', color)"
