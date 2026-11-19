@@ -58,6 +58,8 @@ type dbModule struct {
 	connFiles      *connfiles.Loader
 	apiFiles       *apifiles.Store
 	apiSecrets     *apifiles.Secrets
+	// authorizer is the one reveal gate: connections, variables and kept values share its grace window.
+	authorizer *localauth.Authorizer
 }
 
 // wireAdapters wires the database module's backbone over the one database: the connections and API
@@ -194,7 +196,7 @@ func (w *Wired) wireAdapters(deps *appcore.Deps, opts Options, opLog *oplog.Log)
 
 	return &dbModule{
 		router: router, connectionsSvc: connectionsSvc, oplogWiring: oplogWiring,
-		connFiles: connFiles, apiFiles: apiFiles, apiSecrets: apiSecrets,
+		connFiles: connFiles, apiFiles: apiFiles, apiSecrets: apiSecrets, authorizer: authorizer,
 	}, nil
 }
 
@@ -286,7 +288,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 		Retention: bridge.KeptRetention(repositories.Settings),
 		OnChange:  func(rev uint64) { emitter.Emit(bridge.ChannelKeptChanged, bridge.KeptChanged{Revision: rev}) },
 	})
-	w.KeptVars = &bridge.KeptVarsService{Store: w.Kept, Settings: repositories.Settings, TaskTitle: func(id string) string {
+	w.KeptVars = &bridge.KeptVarsService{Store: w.Kept, Settings: repositories.Settings, Auth: dbm.authorizer, TaskTitle: func(id string) string {
 		if t, err := repositories.AdeTasks.GetTask(id); err == nil {
 			return t.Title
 		}

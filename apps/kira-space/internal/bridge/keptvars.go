@@ -5,7 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
@@ -41,6 +43,9 @@ type KeptVarsService struct {
 	Settings *repos.SettingsRepo
 	// TaskTitle names an ADE task for the scope label; "" when unknown.
 	TaskTitle func(taskID string) string
+	// Auth gates Reveal; the app's one authorizer, so the grace window is shared with connection and
+	// variable reveals.
+	Auth *localauth.Authorizer
 }
 
 // KeptEntryView is one live kept variable: its metadata and a preview. A secret has no preview.
@@ -57,6 +62,8 @@ type KeptEntryView struct {
 	Preview          string    `json:"preview"`
 	PreviewTruncated bool      `json:"previewTruncated"`
 	ScopeLabel       string    `json:"scopeLabel"`
+	// Origin is the scheme://host[:port] a user-supplied value goes to; "" for other kinds.
+	Origin string `json:"origin"`
 }
 
 // KeptSrc is where an entry came from.
@@ -87,7 +94,7 @@ func (s *KeptVarsService) List() (KeptList, error) {
 		v := KeptEntryView{
 			ID: m.ID, Name: m.Name, Type: m.Type, Bytes: m.Bytes, Items: m.Items, Secret: m.Secret,
 			Source:    KeptSrc{Kind: string(m.Source.Kind), MCP: m.Source.MCP, Tool: m.Source.Tool, Request: m.Source.Request, Client: m.Source.Client, TaskID: m.Source.TaskID},
-			CreatedAt: m.CreatedAt, ExpiresAt: m.ExpiresAt, ScopeLabel: s.scopeLabel(m),
+			CreatedAt: m.CreatedAt, ExpiresAt: m.ExpiresAt, ScopeLabel: s.scopeLabel(m), Origin: m.Origin,
 		}
 		if !m.Secret {
 			if e, ok := s.Store.ByID(m.ID); ok {
@@ -138,6 +145,56 @@ func (s *KeptVarsService) Value(args KeptValueArgs) (KeptValue, error) {
 		return KeptValue{}, ipcerr.Contract("a secret kept variable is not shown here")
 	}
 	return KeptValue{JSON: string(e.Value), Type: e.Type}, nil
+}
+
+// keptRevealReason is the OS prompt text (macOS prefixes it with "Kira Studio wants to").
+const keptRevealReason = "show a value you supplied to an agent request."
+
+// KeptRevealArgs names the entry to reveal. Confirmed is honoured only where the OS cannot authenticate.
+type KeptRevealArgs struct {
+	ID        string `json:"id"`
+	Confirmed bool   `json:"confirmed"`
+}
+
+// KeptReveal never carries a value except on outcome revealed; the outcomes are apivars.RevealResult's.
+type KeptReveal struct {
+	Value   *string `json:"value"`
+	Error   *string `json:"error"`
+	Outcome string  `json:"outcome"`
+}
+
+// Reveal shows a secret kept value (any source) behind the same gate as connection and variable reveals.
+// The renderer keeps the plaintext in the component showing it and nowhere else.
+func (s *KeptVarsService) Reveal(args KeptRevealArgs) (KeptReveal, error) {
+	if args.ID == "" {
+		return KeptReveal{}, ipcerr.Required("id")
+	}
+	outcome, value, err := localauth.Gated(s.Auth.Authorize, keptRevealReason, args.Confirmed, func() (*string, error) {
+		e, ok := s.Store.ByID(args.ID)
+		if !ok {
+			return nil, ipcerr.NotFoundNamed("kept variable")
+		}
+		if !e.Secret {
+			return nil, ipcerr.Contract("this kept variable is not secret; it is shown in the list")
+		}
+		text := keptvars.SecretText(e)
+		clear(e.Value)
+		return &text, nil
+	})
+	switch outcome {
+	case localauth.GateCancelled:
+		return KeptReveal{Outcome: apivars.OutcomeCancelled}, nil
+	case localauth.GateConfirmationRequired:
+		return KeptReveal{Outcome: apivars.OutcomeConfirmationRequired}, nil
+	case localauth.GateAuthError:
+		slog.Warn("local authentication errored before reveal", "scope", "keptvars", "err", err)
+		msg := err.Error()
+		return KeptReveal{Outcome: apivars.OutcomeError, Error: &msg}, nil
+	case localauth.GateFetchError:
+		return KeptReveal{}, err
+	}
+	slog.Info("secret revealed", "scope", "keptvars", "id", args.ID)
+	return KeptReveal{Outcome: apivars.OutcomeRevealed, Value: value}, nil
 }
 
 // KeptClearArgs names the entries to clear.
