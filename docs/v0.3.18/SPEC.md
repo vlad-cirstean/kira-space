@@ -22,7 +22,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P681 | Dependency cleanup | Done |
 | P682 | Async action error state: one owner for a write's pending and error | Done |
 | P683 | Studio view-store script dedup (`search.ts`, `page.ts`, `state.ts` per kind) | Done |
-| P684 | One log find model for container logs (kube filter vs docker find bar) | Planned |
+| P684 | One log find model for container logs (kube filter vs docker find bar) | Done |
 | P685 | Shared shell for the config-file dialogs | Planned |
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Done |
 | P687 | Shared hash-guarded draft and save-conflict model across modules | Planned |
@@ -64,6 +64,11 @@ Result: shared bodies extended, no new library, no new Pinia store. TanStack Que
 ## P684: One log find model
 
 Parked by P674 Part 2. Kube logs filter lines (`SearchField`) plus `CopyLogButton`; docker logs find in place (`FindBar`) plus Clear. Pick one model; changes behaviour in one module. See `plans/P674-iter1.md` PARK.
+
+Plan: `plans/P684.md`.
+
+Result: filter lines is the one model; docker logs move to it, kube keeps its behaviour. New `useLogFilter` (`packages/workbench/src/behaviour/logFilter.ts`): kept query, trimmed case-insensitive match over ANSI-stripped text cached per line, `shown`, `needle`, "N of M lines" `status`. Reason: a find cursor drifts when `appendCapped` drops the head of a live stream; a filter has no cursor, and the shown lines feed Copy log. Both `LogsView` files use it; `FindBar` stays for documents and pages. `LogLines` lost `currentLine`; catalog keys moved to `common.logs.filter.placeholder` and `common.logs.matches.status`. No backend change, so no flow test half. Guard U204 (`<FindBar` or `matchesQuery(` beside `<LogLines`, plant-checked on `RunLog`). Specs: docker-module, ui-leftovers-docker-automations, module-state edited, docker-logs-copy gained the filtered copy case; kube specs pass unedited.
+Visible change list: docker logs toolbar has a filter field (`docker-logs-filter`) and Copy log (`docker-logs-copy`) in place of the search icon; find bar and prev/next removed; non-matching lines hide; footer shows "N of M lines" while filtering. Kube logs unchanged. Re-record screenshot `studio-docker` at chapter end.
 
 ## P685: Config-file dialog shell
 

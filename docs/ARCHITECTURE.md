@@ -1443,7 +1443,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U203) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U204) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 55 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1484,6 +1484,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Opacity never marks muted or state: tone, `rowVariants` muted/disabled, or `SORTABLE_GHOST_CLASS` (U90).
 - Config secrets render `ConfigSecretsSection`: API, ADE and run file secrets alike; removing a stored secret is Delete.
 - Log views take tail constants from `logTail.ts` and render lines through `LogLines`; toolbar order is follow, timestamps, wrap, tail (U165).
+- A log view finds by filtering lines: `useLogFilter` (kept query, `SearchField`, matches marked, "N of M lines" status) and Copy log over the shown lines. `FindBar` is for documents and pages, not streams: a head-trimmed stream would move its cursor (U204).
 - Config files: a save conflict is `SaveConflictAlert` (U166; optional `variant` error or warn), a form problem is `ConfigFormProblemAlert` (U167).
 - Reset to default is `ResetToDefaultButton` (U168).
 - `frames.ts` owns `dropIndicator` and `windowTabStrip` (U169, U170).
@@ -1507,7 +1508,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A write's pending and error come from its TanStack mutation, never a hand ref: `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other awaited call, `useTaskAction()` for one error surface fed by several writes; `describe` maps or hides the text, `cause` gives the coded error for branching. Overlapping runs: latest wins. Keyed store surfaces, git-ui class state and synchronous failures stay outside (U188, U189, U51).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U203 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U204 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
