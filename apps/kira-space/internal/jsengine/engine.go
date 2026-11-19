@@ -65,24 +65,26 @@ func newEngine(command func() *exec.Cmd) *Engine {
 	return &Engine{sem: make(chan struct{}, MaxConcurrent), command: command}
 }
 
-// Exec runs r in a worker process. The error is *Error for script failures, a plain error for
-// programming errors (limits above a ceiling) and spawn faults.
-func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			slog.Error("exec panicked", "scope", "jsengine", "err", errExecPanic)
-			res, err = Result{}, newError(KindInternal, "internal error")
-		}
-	}()
+// prepared is a validated Run, ready to send.
+type prepared struct {
+	lim    Limits
+	byName map[string]Binding
+	wire   []wireBinding
+	marker string
+	now    time.Time
+	seed   uint64
+}
+
+func prepare(r Run) (*prepared, error) {
 	lim, lerr := r.Limits.normalize()
 	if lerr != nil {
-		return Result{}, lerr
+		return nil, lerr
 	}
-	if _, cerr := compileSource(r.Source); cerr != nil {
-		return Result{}, cerr
+	if _, cerr := parseSource(r.Source); cerr != nil {
+		return nil, cerr
 	}
 	if berr := validateBindings(r.Bindings, lim.InputBytes); berr != nil {
-		return Result{}, berr
+		return nil, berr
 	}
 	total := 0
 	byName := make(map[string]Binding, len(r.Bindings))
@@ -99,11 +101,11 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 		}
 	}
 	if total*memoryPerInput > lim.MemoryBytes {
-		return Result{}, newError(KindInput, "input too large for the memory limit; raise MemoryBytes")
+		return nil, newError(KindInput, "input too large for the memory limit; raise MemoryBytes")
 	}
 	marker, merr := newMarker(r.Bindings)
 	if merr != nil {
-		return Result{}, merr
+		return nil, merr
 	}
 	now := r.Now
 	if now.IsZero() {
@@ -114,15 +116,20 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 		sum, _ := hex.DecodeString(SourceHash(r.Source))
 		seed = binary.BigEndian.Uint64(sum[:8])
 	}
+	return &prepared{lim: lim, byName: byName, wire: wire, marker: marker, now: now, seed: seed}, nil
+}
 
-	select {
-	case e.sem <- struct{}{}:
-	case <-ctx.Done():
-		return Result{}, newError(KindCanceled, "canceled while waiting for a free script slot")
-	}
-	// The deadline starts at the slot, not at Exec: queue time is not script time. Spawn counts.
-	deadline := time.Now().Add(lim.Timeout)
+// child is a started worker with its crash pipe.
+type child struct {
+	p     *workerproc.Proc
+	pid   int
+	crash *headBuffer
+}
 
+// diag waits for the worker to exit and returns its stderr tail plus the crash head.
+func (c *child) diag() string { <-c.p.Done(); return c.p.Diagnostics() + c.crash.String() }
+
+func (e *Engine) spawn() (*child, error) {
 	cmd := e.command()
 	cmd.Env = []string{"GOTRACEBACK=none", "GOMAXPROCS=2", "TZ=UTC"}
 	cmd.Dir = os.TempDir()
@@ -130,70 +137,102 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 	// stderr tail, so the worker also writes crashes to fd 3, read here (head only).
 	crashR, crashW, perr := os.Pipe()
 	if perr != nil {
-		<-e.sem
-		return Result{}, fmt.Errorf("jsengine: crash pipe: %w", perr)
+		return nil, fmt.Errorf("jsengine: crash pipe: %w", perr)
 	}
 	cmd.ExtraFiles = []*os.File{crashW}
 	p, serr := workerproc.Start(cmd)
 	_ = crashW.Close()
 	if serr != nil {
 		_ = crashR.Close()
-		<-e.sem
-		return Result{}, fmt.Errorf("jsengine: start worker: %w", serr)
+		return nil, fmt.Errorf("jsengine: start worker: %w", serr)
 	}
 	crash := &headBuffer{limit: 4096}
 	go func() {
 		_, _ = io.Copy(crash, crashR)
 		_ = crashR.Close()
 	}()
-	diag := func() string { <-p.Done(); return p.Diagnostics() + crash.String() }
-	stop := make(chan struct{})
-	defer func() {
-		close(stop)
-		p.Kill()
-		<-p.Done()
-		<-e.sem
-	}()
+	return &child{p: p, pid: cmd.Process.Pid, crash: crash}, nil
+}
 
+// handshake waits for the worker's hello and sends the request. It returns the RSS kill limit.
+func (c *child) handshake(ctx context.Context, pr *prepared, r Run, deadline time.Time) (uint64, error) {
 	var hello workerMsg
-	if herr := p.Hello(ctx, helloTimeout, &hello); herr != nil {
-		<-p.Done()
+	if herr := c.p.Hello(ctx, helloTimeout, &hello); herr != nil {
+		<-c.p.Done()
 		switch {
 		case ctx.Err() != nil:
-			return Result{}, newError(KindCanceled, "script canceled")
+			return 0, newError(KindCanceled, "script canceled")
 		case errors.Is(herr, workerproc.ErrHelloTimeout):
-			return Result{}, newError(KindInternal, "script worker did not start")
+			return 0, newError(KindInternal, "script worker did not start")
 		}
-		return Result{}, exitError(diag())
+		return 0, exitError(c.diag())
 	}
 	var baseRSS uint64
-	var proc *process.Process
-	if pr, perr := process.NewProcess(int32(cmd.Process.Pid)); perr == nil {
-		proc = pr
+	if pr, perr := process.NewProcess(int32(c.pid)); perr == nil {
 		if mi, merr := pr.MemoryInfo(); merr == nil {
 			baseRSS = mi.RSS
 		}
 	}
-	rssLimit := baseRSS + uint64(lim.hardCeiling()) + 64<<20
-
 	line, jerr := json.Marshal(workerRequest{
-		Source: r.Source, Bindings: wire, Limits: lim,
-		TimeoutNs: int64(time.Until(deadline)), NowMs: now.UnixMilli(), Seed: seed, Marker: marker,
+		Source: r.Source, Bindings: pr.wire, Limits: pr.lim,
+		TimeoutNs: int64(time.Until(deadline)), NowMs: pr.now.UnixMilli(), Seed: pr.seed, Marker: pr.marker,
 	})
 	if jerr != nil {
-		return Result{}, newError(KindInternal, "internal error")
+		return 0, newError(KindInternal, "internal error")
 	}
-	if _, werr := p.Stdin.Write(append(line, '\n')); werr != nil {
-		<-p.Done()
-		return Result{}, exitError(diag())
+	if _, werr := c.p.Stdin.Write(append(line, '\n')); werr != nil {
+		return 0, exitError(c.diag())
 	}
+	return baseRSS + uint64(pr.lim.hardCeiling()) + 64<<20, nil
+}
 
+// Exec runs r in a worker process. The error is *Error for script failures, a plain error for
+// programming errors (limits above a ceiling) and spawn faults.
+func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			slog.Error("exec panicked", "scope", "jsengine", "err", errExecPanic)
+			res, err = Result{}, newError(KindInternal, "internal error")
+		}
+	}()
+	pr, perr := prepare(r)
+	if perr != nil {
+		return Result{}, perr
+	}
+	select {
+	case e.sem <- struct{}{}:
+	case <-ctx.Done():
+		return Result{}, newError(KindCanceled, "canceled while waiting for a free script slot")
+	}
+	defer func() { <-e.sem }()
+	// The deadline starts at the slot, not at Exec: queue time is not script time. Spawn counts.
+	deadline := time.Now().Add(pr.lim.Timeout)
+
+	c, serr := e.spawn()
+	if serr != nil {
+		return Result{}, serr
+	}
+	stop := make(chan struct{})
+	defer func() {
+		close(stop)
+		c.p.Kill()
+		<-c.p.Done()
+	}()
+	rssLimit, herr := c.handshake(ctx, pr, r, deadline)
+	if herr != nil {
+		return Result{}, herr
+	}
+	return c.serve(ctx, pr, deadline, rssLimit, stop)
+}
+
+// serve relays host calls and waits for the final line, a limit or the kill timer.
+func (c *child) serve(ctx context.Context, pr *prepared, deadline time.Time, rssLimit uint64, stop chan struct{}) (Result, error) {
 	lines := make(chan workerMsg)
 	go func() {
 		defer close(lines)
 		for {
 			var m workerMsg
-			if err := p.Dec.Decode(&m); err != nil {
+			if err := c.p.Dec.Decode(&m); err != nil {
 				return
 			}
 			select {
@@ -211,30 +250,22 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 	defer killTimer.Stop()
 	rssTick := time.NewTicker(50 * time.Millisecond)
 	defer rssTick.Stop()
+	proc, _ := process.NewProcess(int32(c.pid))
 
 	for {
 		select {
 		case m, ok := <-lines:
 			if !ok {
-				<-p.Done()
-				return Result{}, exitError(diag())
+				return Result{}, exitError(c.diag())
 			}
-			switch {
-			case m.Call != nil:
-				go func(c *callMsg) { hostRes <- callHost(hctx, byName, c, lim.InputBytes) }(m.Call)
-			case m.Result != nil:
-				p.Stop()
-				if len(m.Result.JSON) > lim.OutputBytes {
-					return Result{}, newError(KindOutput, "result exceeds %d bytes", lim.OutputBytes)
-				}
-				return Result{JSON: m.Result.JSON, Type: m.Result.Type, Elapsed: time.Duration(m.Result.ElapsedNs)}, nil
-			case m.Error != nil:
-				p.Stop()
-				return Result{}, m.Error
+			if m.Call != nil {
+				go func(call *callMsg) { hostRes <- callHost(hctx, pr.byName, call, pr.lim.InputBytes) }(m.Call)
+			} else if res, done, err := c.final(m, pr.lim); done {
+				return res, err
 			}
 		case rep := <-hostRes:
 			b, _ := json.Marshal(parentMsg{Reply: &rep})
-			_, _ = p.Stdin.Write(append(b, '\n')) // a dead worker shows up as closed lines
+			_, _ = c.p.Stdin.Write(append(b, '\n')) // a dead worker shows up as closed lines
 		case <-ctx.Done():
 			return Result{}, newError(KindCanceled, "script canceled")
 		case <-killTimer.C:
@@ -248,6 +279,22 @@ func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
 			}
 		}
 	}
+}
+
+// final handles a result or error line; done is false for any other line.
+func (c *child) final(m workerMsg, lim Limits) (Result, bool, error) {
+	switch {
+	case m.Result != nil:
+		c.p.Stop()
+		if len(m.Result.JSON) > lim.OutputBytes {
+			return Result{}, true, newError(KindOutput, "result exceeds %d bytes", lim.OutputBytes)
+		}
+		return Result{JSON: m.Result.JSON, Type: m.Result.Type, Elapsed: time.Duration(m.Result.ElapsedNs)}, true, nil
+	case m.Error != nil:
+		c.p.Stop()
+		return Result{}, true, m.Error
+	}
+	return Result{}, false, nil
 }
 
 // newMarker draws the per-run BigInt marker, redrawing if any input contains it.

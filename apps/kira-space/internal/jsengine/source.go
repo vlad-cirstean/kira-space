@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/dop251/goja"
+	js_ast "github.com/dop251/goja/ast"
 	"github.com/dop251/goja/parser"
 )
 
@@ -36,24 +37,37 @@ func SourceHash(source string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Check validates source and compiles it without running it. Nil means the source is fine.
+// Check validates source and parses it without running it. Nil means the source is fine. It does
+// not compile: goja folds constant expressions at compile time (`2n ** (2n ** 30n)` allocates
+// gigabytes), so compiling is only safe in the worker, where Exec does it under the ceilings.
+// Early errors raised by the compiler (rare) therefore surface from Exec only.
 func Check(source string) *Error {
-	_, err := compileSource(source)
+	_, err := parseSource(source)
 	return err
 }
 
-func compileSource(source string) (*goja.Program, *Error) {
+func parseSource(source string) (*js_ast.Program, *Error) {
 	if e := validateSource(source); e != nil {
 		return nil, e
 	}
 	ast, err := goja.Parse(scriptName, wrapperPrefix+source+wrapperSuffix, parser.WithDisableSourceMaps)
-	if err == nil {
-		var prg *goja.Program
-		if prg, err = goja.CompileAST(ast, true); err == nil {
-			return prg, nil
-		}
+	if err != nil {
+		return nil, fromGoja(err, newSrcInfo(source), nil, func(v goja.Value) string { return v.String() })
 	}
-	return nil, fromGoja(err, newSrcInfo(source), nil, func(v goja.Value) string { return v.String() })
+	return ast, nil
+}
+
+// compileSource parses and compiles. Worker only, see Check.
+func compileSource(source string) (*goja.Program, *Error) {
+	ast, e := parseSource(source)
+	if e != nil {
+		return nil, e
+	}
+	prg, err := goja.CompileAST(ast, true)
+	if err != nil {
+		return nil, fromGoja(err, newSrcInfo(source), nil, func(v goja.Value) string { return v.String() })
+	}
+	return prg, nil
 }
 
 func isBidi(r rune) bool { return r >= 0x202A && r <= 0x202E || r >= 0x2066 && r <= 0x2069 }

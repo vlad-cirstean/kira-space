@@ -76,10 +76,6 @@ func RunWorker(args []string) int {
 	// time left, so an uncaught one ends the run before the deadline interrupt.
 	regexp2.DefaultMatchTimeout = max(time.Until(st.deadline)/2, time.Millisecond)
 
-	prg, cerr := compileSource(req.Source)
-	if cerr != nil {
-		return st.finish(workerMsg{Error: cerr})
-	}
 	if e := st.newVM(&req); e != nil {
 		return st.finish(workerMsg{Error: e})
 	}
@@ -87,6 +83,13 @@ func RunWorker(args []string) int {
 	debug.SetMemoryLimit(int64(baseTotal) + int64(st.limits.MemoryBytes))
 	stopWatch := startWatchdog(st.vm, baseHeap, uint64(st.limits.MemoryBytes), baseTotal+uint64(st.limits.hardCeiling()))
 	timer := time.AfterFunc(time.Until(st.deadline), func() { st.vm.Interrupt(interruptTimeout) })
+	// Compile under the watchdog: goja folds constant expressions while compiling.
+	prg, cerr := compileSource(req.Source)
+	if cerr != nil {
+		stopWatch()
+		timer.Stop()
+		return st.finish(workerMsg{Error: cerr})
+	}
 
 	start := time.Now()
 	res, err := st.run(prg)
@@ -142,9 +145,9 @@ func (st *runState) finish(m workerMsg) int {
 
 func (st *runState) awaitReply() replyMsg {
 	t := time.NewTimer(time.Until(st.deadline))
-	defer t.Stop()
 	select {
 	case m, ok := <-st.replies:
+		t.Stop()
 		if !ok {
 			os.Exit(1)
 		}
