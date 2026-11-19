@@ -1,0 +1,322 @@
+{
+  "ApprovalsService.List#step2": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"ids\": {{kept.ids}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 20,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[9007199254740993,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 8,
+                "index": 0,
+                "part": "",
+                "to": 20
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#step3": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"items\":[{\"id\":9007199254740993},{\"id\":2}]}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 20,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[9007199254740993,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "script",
+                "from": 22,
+                "index": 0,
+                "part": "prepare",
+                "to": 36
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "body",
+              "contentType"
+            ],
+            "hash": "48997f64dc3b2240a4a47055df8719c73ef24cab1f898b2ac38306aa986a2980",
+            "input": "",
+            "inputTruncated": false,
+            "source": "return {body: {items: kept.get(\"ids\").map(id => ({id}))}};"
+          },
+          "transform": {
+            "hash": "d5d4309fd3975422c1dcbf09a78354b8e461006c45238f286416c70b306a1aa3",
+            "mayKeep": [
+              {
+                "name": "first",
+                "sites": [
+                  {
+                    "field": "script",
+                    "from": 0,
+                    "index": 0,
+                    "part": "transform",
+                    "to": 16
+                  }
+                ]
+              }
+            ],
+            "source": "kept.set(\"first\", String(response.json.body ? 1 : 0)); return 1;"
+          }
+        },
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "KeptVarsService.List#ended": {
+    "entries": [
+      {
+        "bytes": 3,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_first",
+        "items": 0,
+        "name": "first",
+        "origin": "",
+        "preview": "\"1\"",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "script",
+          "mcp": "api",
+          "request": "POST http://127.0.0.1:<port>/echo",
+          "tool": "api_request"
+        },
+        "type": "string"
+      },
+      {
+        "bytes": 20,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_ids",
+        "items": 2,
+        "name": "ids",
+        "origin": "",
+        "preview": "[9007199254740993,2]",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "script",
+          "mcp": "api",
+          "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+          "tool": "api_request"
+        },
+        "type": "array"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "KeptVarsService.List#scopes": {
+    "entries": [
+      {
+        "bytes": 3,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_ids_session",
+        "items": 1,
+        "name": "ids",
+        "origin": "",
+        "preview": "[5]",
+        "previewTruncated": false,
+        "scopeLabel": "session:e2e-s1",
+        "secret": false,
+        "source": {
+          "client": "Go-http-client 1.1",
+          "kind": "script",
+          "mcp": "api",
+          "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+          "tool": "api_request"
+        },
+        "type": "array"
+      },
+      {
+        "bytes": 3,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_first",
+        "items": 0,
+        "name": "first",
+        "origin": "",
+        "preview": "\"1\"",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "script",
+          "mcp": "api",
+          "request": "POST http://127.0.0.1:<port>/echo",
+          "tool": "api_request"
+        },
+        "type": "string"
+      },
+      {
+        "bytes": 20,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_ids",
+        "items": 2,
+        "name": "ids",
+        "origin": "",
+        "preview": "[9007199254740993,2]",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "script",
+          "mcp": "api",
+          "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+          "tool": "api_request"
+        },
+        "type": "array"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "args:ApprovalsService.Answer#step2": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  },
+  "result#step1": "{\"result\":2,\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":0}]}"
+}

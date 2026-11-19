@@ -1,0 +1,471 @@
+{
+  "ApprovalsService.List#again": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Api-Key",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 30,
+                "index": 0,
+                "part": "",
+                "to": 45
+              },
+              {
+                "field": "header",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#forced": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:1>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 49,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "method": "GET",
+        "rawBytes": 644,
+        "reason": "userValue",
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/echo"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#needed": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Api-Key",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 30,
+                "index": 0,
+                "part": "",
+                "to": 45
+              },
+              {
+                "field": "header",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#stored": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Api-Key",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "keptId": "kv_apikey",
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "stored"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 22,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_apikey",
+            "items": 0,
+            "name": "apikey",
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 37,
+                "index": 0,
+                "part": "",
+                "to": 52
+              },
+              {
+                "field": "header",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "user",
+              "mcp": "api",
+              "request": "GET http://127.0.0.1:<port>/echo?k={{kept.apikey}}",
+              "tool": "api_request"
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo/second?k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#forced": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"265\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"body\\\":\\\"\\\",\\\"bodyLen\\\":0,\\\"bodySha256\\\":\\\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\\\",\\\"header\\\":{\\\"Accept-Encoding\\\":[\\\"gzip\\\"],\\\"User-Agent\\\":[\\\"Kira Space/0.0.0-dev\\\"]},\\\"host\\\":\\\"127.0.0.1:<port>\\\",\\\"method\\\":\\\"GET\\\",\\\"path\\\":\\\"/echo\\\",\\\"proto\\\":\\\"HTTP/1.1\\\",\\\"query\\\":\\\"\\\"}\\n\",\"bodyBytes\":265,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/echo\",\"redirects\":[]}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "60a77ee029822db2d789debf6d6d62d72e87e9e377568c8b9c68870da80fbaeb",
+      "source": "return kept.get(\"apikey\") + \"|\" + kept.get(\"apikey\").split(\"\").reverse().join(\"\")"
+    },
+    "text": "{\"result\":\"{{kept.apikey}}|9Q7-terces-depyt-e2e\"}"
+  },
+  "KeptVarsService.List#held": {
+    "entries": [
+      {
+        "bytes": 22,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_apikey",
+        "items": 0,
+        "name": "apikey",
+        "origin": "http://127.0.0.1:<port>",
+        "preview": "",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": true,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "user",
+          "mcp": "api",
+          "request": "GET http://127.0.0.1:<port>/echo?k={{kept.apikey}}",
+          "tool": "api_request"
+        },
+        "type": "string"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "args:ApprovalsService.Answer#deny": {
+    "approve": false,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#typed": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": {
+      "api.request:<id:1>": {
+        "inputs": {
+          "apikey": "e2e-typed-secret-7Q9"
+        }
+      }
+    }
+  },
+  "args:ApprovalsService.Answer#withhold": {
+    "approve": false,
+    "ids": [
+      "api.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:KeptVarsService.Clear#cleared": {
+    "ids": [
+      "kv_apikey"
+    ]
+  },
+  "result#otherOrigin": "the value kept as \"apikey\" was supplied for http://127.0.0.1:<port>; choose another input name for http://localhost:<port>"
+}
