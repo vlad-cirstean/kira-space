@@ -15,7 +15,13 @@ const deleteSecret = useDeleteAgentSecret();
   <ConfigSecretsSection
     :secrets="view.secrets"
     :storage="view.storage"
-    :set-secret="(name, value) => setSecret.mutateAsync({ name, value }).then(() => undefined)"
+    :set-secret="
+      (name, value) =>
+        setSecret
+          .mutateAsync({ name, value })
+          .then(() => undefined)
+          .finally(setSecret.reset)
+    "
     :delete-secret="(name) => deleteSecret.mutateAsync(name).then(() => undefined)"
     testid-prefix="ade-settings-secret"
   >

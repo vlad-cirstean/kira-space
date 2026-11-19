@@ -37,6 +37,8 @@ const update = useMutation({
     });
   },
   onSuccess: () => dialogStore.close(),
+  // The variables hold the typed password: keep no cached copy once the dialog closes.
+  gcTime: 0,
 });
 
 function onOpenChange(open: boolean): void {

@@ -15,8 +15,9 @@ export function useKeptReveal(id: () => string) {
   const value = ref<string | null>(null);
   const refusal = ref('');
   const timer = useTimeoutFn(hide, REVEAL_MS, { immediate: false });
-  const action = useAsyncAction(() =>
-    runReveal(
+  // Resolves to nothing: the mutation's `data` would keep the plaintext past hide().
+  const action = useAsyncAction(async () => {
+    await runReveal(
       (confirmed) => control.keptReveal(id(), confirmed),
       (v) => {
         value.value = v;
@@ -26,12 +27,13 @@ export function useKeptReveal(id: () => string) {
         refusal.value = message;
       },
       t('studio.kept.reveal.body'),
-    ),
-  );
+    );
+  });
 
   function hide(): void {
     value.value = null;
     timer.stop();
+    action.reset();
   }
 
   async function reveal(): Promise<void> {

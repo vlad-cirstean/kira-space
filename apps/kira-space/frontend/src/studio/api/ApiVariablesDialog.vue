@@ -56,7 +56,11 @@ async function flushSecrets(): Promise<void> {
   );
   for (const [name, value] of Object.entries(typed.value)) {
     if (!value || !referenced.has(name)) continue;
-    await setSecret.mutateAsync({ name, value });
+    try {
+      await setSecret.mutateAsync({ name, value });
+    } finally {
+      setSecret.reset();
+    }
     typed.value = { ...typed.value, [name]: '' };
   }
 }

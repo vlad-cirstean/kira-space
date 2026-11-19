@@ -19,6 +19,8 @@ export function useSetApiSecret() {
     {
       mutationFn: (args: { name: string; value: string }) =>
         control.apiConfigSetSecret(args.name, args.value),
+      // The variables hold the typed secret: keep no cached copy once unobserved.
+      gcTime: 0,
       onSuccess: (view: ApiConfigView) => queryClient.setQueryData(apiConfigKey, view),
     },
     queryClient,

@@ -63,6 +63,8 @@ function open(row: ConfigSecretRow): void {
 function close(): void {
   target.value = null;
   value.value = '';
+  // The run's thunk closes over the typed value until the mutation is reset.
+  save.reset();
 }
 
 async function submit(): Promise<void> {

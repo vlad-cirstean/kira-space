@@ -20,6 +20,8 @@ export function useSetAgentSecret() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (args: AgentSetSecretArgs) => control.agentSettingsSetSecret(args),
+    // The variables hold the typed secret: keep no cached copy once unobserved.
+    gcTime: 0,
     onSuccess: (view) => queryClient.setQueryData(agentSettingsKey, view),
   });
 }
