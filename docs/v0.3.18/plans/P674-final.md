@@ -49,6 +49,8 @@ are known hits.
 
 ### F4.1 [DUP] MIGRATE: "Will keep" list onto StagedKeepList
 
+- Status: done 41263a8b7.
+
 - Sites: `src/studio/approvals/ApiResponseBody.vue:80-88` (hand section) vs
   `src/studio/approvals/StagedKeepList.vue` (P680 Part 2, used by `DbResponseBody.vue:67`). Audit
   C1 `10a879c5d5`. P680 Part 2 Result names the swap as pending.
@@ -62,6 +64,8 @@ are known hits.
 - Wave 2, stream A.
 
 ### F4.2 [DUP] EXTRACT: transform script block with kept marks
+
+- Status: done 2736664e2.
 
 - Sites: `src/studio/approvals/ApiRequestBody.vue:124-145` (transform `JsScriptBlock` with
   `keptScriptRanges(scriptSites, 'transform')`, "may keep" line of kept marks, reads note) and
@@ -88,6 +92,8 @@ are known hits.
 - Wave 2, stream A (component rename plus 3 sites in one commit; knip fails on an unused file).
 
 ### F4.3 [GUARD-GAP] MIGRATE: catalog ownership in the shell dirs
+
+- Status: done 801a725e9 (moves), 133a945bc (table, ALSO_OWNS, 5 pairs).
 
 - Rule: ARCHITECTURE catalog ownership line (U182). Iteration 3 left `src/workbench/`, `src/state/`,
   `src/shortcuts/`, `src/bridge/`, `src/App.vue`, `src/main.ts` and `packages/workbench/src/` (except
@@ -137,6 +143,8 @@ are known hits.
 
 ### F4.4 [DRIFT] EXTRACT: gRPC status badge
 
+- Status: done ebf402c2e.
+
 - Sites: `src/studio/views/grpcrequest/ResponsePane.vue:300-310` (`TextTooltip v-if="codeHint"`
   around `Badge data :variant="grpcCodeClass(code)"` "NAME (code)", plus a duplicate bare `Badge`
   in `v-else`), `src/studio/views/grpcrequest/CallHistoryList.vue:176-178` (same pair, text "NAME"
@@ -154,6 +162,8 @@ are known hits.
 - Wave 2, stream A.
 
 ### F4.5 [DRIFT] EXTRACT: masked value reveal toggle
+
+- Status: done c3164cddc (component, SecretInput), 5da897323 (3 Studio sites), 54ceb1797 (docker, key deletion).
 
 - One action (show a hidden value) with three wordings, two icon rules and pressed state on some:
   - `packages/workbench/src/components/SecretInput.vue:111-127`: "Show value" / "Hide value"
@@ -195,6 +205,8 @@ are known hits.
 
 ### F4.6 [DUP] MIGRATE: approval footer requester and labels
 
+- Status: done 83d11be7c (helper, desktop), e0154b453 (phone).
+
 - Sites: `packages/workbench/src/approvals/ApprovalItemActions.vue:23-33` (origin join
   `[o.client, o.cwd, o.task, o.step, o.source]` behind `safeKind`, labels behind `safeKind`,
   `unreadable` hides Approve), `mobile/components/PhoneApprovals.vue:31-36,73,84` (same join and
@@ -211,6 +223,8 @@ are known hits.
 - Wave 1 (helper plus desktop), wave 2 stream B (phone).
 
 ### F4.7 [DRIFT] MIGRATE: composed kept copy in P679 code
+
+- Status: done b238b788a.
 
 - Rule: ARCHITECTURE copy line "Never build a string by concatenating translated parts". Sites:
   `src/studio/approvals/UserInputsPanel.vue:44` (`${t('studio.kept.input.replace.label')}: ${i.label}`),
@@ -370,6 +384,19 @@ lists; C6 literal-icon and generic-concept families, including `4abb3b6c4f` clea
 - Section heading to content gap (`gap-0.5` results and op log detail, `gap-1` approval card
   sections, `gap-2` settings sections and forms): one gap per surface kind, no rule names it.
 - Protocol hint text in `packages/shared` and composed translations: P688.
+
+## Landed notes
+
+- Guards U183-U187 landed in `00940b820` with the regexes as written (no multibyte character, no
+  fix needed); each fails on a planted offender (U186 on `MaskedValue` plus `icon="eye"`, plus a
+  `'eye'` ternary, plus `common.hideValue.label`). U182 table, `ALSO_OWNS.shell` and 5 pairs: planted
+  `git.stash.global.label` flagged in `src/workbench/`, `packages/workbench/src/components/`,
+  `packages/workbench/src/llmPrompts/` and Studio; no stale pair.
+- Key moves kept `en.json` sorted through `biome check --write`; the 13 targets matched the plan names.
+- Worktree bindings were stale (`keptvarsservice.Reveal`); `wails3 task common:generate:bindings`
+  fixed typecheck.
+- F4.6 phone: Approve hides when requester or labels fail, as on desktop; spec
+  `an unreadable kind keeps Deny, hides Approve ...` in `tests/mobile/approvals.spec.ts`.
 
 ## Carry-forward
 

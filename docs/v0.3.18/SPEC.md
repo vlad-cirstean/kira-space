@@ -10,7 +10,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Done |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Done |
 | P674 Part 4 | Full-app UI uniformity audit: iteration 3 | Done |
-| P674 Part 5 | Full-app UI uniformity audit: final whole-app scan | Planned |
+| P674 Part 5 | Full-app UI uniformity audit: final whole-app scan | Done |
 | P675 | JS engine for the API MCP | Done |
 | P676 | API MCP: scripted request preparation and result transform | Done |
 | P677 | API MCP: result review with raw and transformed views | Done |
@@ -87,6 +87,12 @@ Result, Part 4 (iteration 3, `plans/P674-iter3.md`): 6 findings (F3.1-F3.6: 3 EX
 Visible changes: approval response status badge tone (4xx red, 3xx amber, 1xx info), data font and hint tooltip; docker container size loading and not-measured lines and a disk first-measure failure as InlineState; HTTP binary note ("Binary body, 12.0 KB not shown"), approval binary and truncation wording, cell editor decoded sizes; "Will keep" type text takes the card body size; integers above 2^53 and escaped JSON now indent in the approval review, kept values and variable hover (request body digits exact).
 
 Iteration gate: no iteration 4 (`P674.md` caps iterations at 3). Part 5 (final scan) runs next, covers P679 and P680 Part 2 files and rechecks status chips, JSON display and catalog ownership tree-wide, including `src/workbench/` and the shell dirs outside U182's table. Parked, still Planned: P682, P683, P684, P685, P687.
+
+Result, Part 5 (final scan, `plans/P674-final.md`): 7 findings (F4.1-F4.7: 2 EXTRACT, 4 MIGRATE, 1 GUARD-GAP MIGRATE) landed in three waves; P688 parked. New shared pieces: `ValueRevealButton` (theme: "Show value" / "Hide value", eye flips, pressed when shown; used by `SecretInput`, kept values, variable row, variable history, docker env), `TransformScriptBlock` (Studio: `DbScriptBlock` renamed and generalised; API request and both DB cards), `GrpcStatusBadge` (Studio: "NAME (code)", `grpcCodeClass` tone, `grpcCodeHint` tooltip), `approvalRequester` and `approvalLabels` in `approvalFooter.ts` (desktop footer and phone list), and the API held response "Will keep" list now on `StagedKeepList`. 13 borrowed shell keys moved to `common.*` (English unchanged); two kept strings use placeholders instead of concatenation. Guards U183-U187 added (range now U83-U187) and U182 extended: shell dirs (`src/workbench/`, `src/state/`, `src/shortcuts/`, `src/bridge/`, `App.vue`, `main.ts`) map to module `shell` with `ALSO_OWNS` `space`, `packages/workbench/src` to `workbench`, its `llmPrompts` dir to `llmPrompts`, 5 named shell pairs; each guard fails on a planted offender and sits at zero offenders; PERMANENT count stays 53. Deviations: none from the plan; the phone footer now hides Approve for an unreadable kind (the desktop rule), covered by a new mobile spec. Docker env toggle key `docker.env.revealValue.tooltip` deleted.
+
+Visible changes (chapter-end visual re-record): gRPC history status chip reads "NAME (code)"; reveal toggles on kept values, variable rows, variable history and docker env read "Show value" / "Hide value"; the variable row eye flips when shown; kept and docker env toggles show the pressed look.
+
+Carry-forward: P688 (copy guard gaps: 29 composed `t(` sites, English hints in `packages/shared`) parked Planned; P682, P683, P684, P685 and P687 stay Planned. Reviewer notes: do not re-flag composed `t(` sites or shared-domain hint strings (P688); held-response bodies and the two DB card bodies stay duplicated by choice (2 sites each, a third kind should extract); `PendingResponse` "As sent" unindented bytes are intended.
 
 ## P675: JS engine for the API MCP
 
