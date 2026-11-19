@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { KeptUse } from '@shared/domain/kept';
+import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
@@ -35,7 +36,10 @@ const rows = computed(() =>
           {{ row.placeholder }}
         </dt>
         <dd class="font-data" :data-testid="`db-approval-param-${i}-value`">
-          <mark :class="['rounded-kira-sm text-inherit', KEPT_MARK_CLASS]">{{ row.ref }}</mark>
+          <HighlightedText
+            :parts="[{ text: row.ref, match: true }]"
+            :mark-class="KEPT_MARK_CLASS"
+          />
           <span class="text-muted-foreground"> · {{ row.type }}</span>
         </dd>
       </template>

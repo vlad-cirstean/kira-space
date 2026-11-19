@@ -128,14 +128,13 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
     />
     <p v-if="mayKeep.length" class="m-0 text-kira-sm" data-testid="api-approval-may-keep">
       {{ t('studio.kept.mayKeep.label') }}
-      <mark
+      <HighlightedText
         v-for="m in mayKeep"
         :key="m.name"
-        :class="['mr-1 rounded-kira-sm font-data text-inherit', KEPT_MARK_CLASS]"
-        >{{
-          m.name
-        }}</mark
-      >
+        class="mr-1 font-data"
+        :parts="[{ text: m.name, match: true }]"
+        :mark-class="KEPT_MARK_CLASS"
+      />
     </p>
     <FieldDescription v-if="readsInScript" data-testid="api-approval-script-reads">{{
       t('studio.kept.scriptReads.hint')
