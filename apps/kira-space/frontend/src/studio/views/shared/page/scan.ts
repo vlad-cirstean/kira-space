@@ -69,8 +69,23 @@ function compilePattern(q: SearchQuery): RegExp {
 // worst case blocking duration for any single `exec`, without eliminating the risk entirely. A
 // literal/whole-word search (SearchQuery.regex: false) compiles to escapeRegExp's own output,
 // which has no user-controlled quantifiers to backtrack on, so only regex-mode scans apply it —
-// grid/search.ts and keyvalue/search.ts's own runSearch pass it conditionally on `q.regex`.
+// every cell-addressed runSearch passes it through regexTextCap.
 export const REGEX_SCAN_TEXT_CAP = 10_000;
+
+/** REGEX_SCAN_TEXT_CAP for a regex query, none for literal/whole-word. */
+export function regexTextCap(q: SearchQuery): number | undefined {
+  return q.regex ? REGEX_SCAN_TEXT_CAP : undefined;
+}
+
+/** The {row, col, start, end} match every cell-addressed scanner builds. */
+export function cellMatch<C>(
+  row: number,
+  col: C,
+  start: number,
+  end: number,
+): { row: number; col: C; start: number; end: number } {
+  return { row, col, start, end };
+}
 
 /** Walks every match of `pattern` in `text`, calling `emit(start, end)` for each — the zero-width
  *  match guard (a pattern like `x*` or `(?:)` that can match an empty string) that

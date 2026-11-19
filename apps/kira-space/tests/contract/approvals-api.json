@@ -44,8 +44,12 @@
           }
         ],
         "host": "127.0.0.1",
+        "inputs": [],
         "method": "GET",
         "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
         "timeoutSeconds": 30,
         "url": "http://127.0.0.1:<port>/echo",
         "variables": [
@@ -71,12 +75,139 @@
       }
     }
   ],
+  "ApprovalsService.List#reviewOffered": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "ct",
+            "value": "application/json"
+          },
+          {
+            "name": "hex",
+            "value": "7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#reviewOn": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:3>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "ct",
+            "value": "application/json"
+          },
+          {
+            "name": "hex",
+            "value": "7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": true,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
   "args:ApprovalsService.Answer": {
     "approve": true,
     "ids": [
       "api.request:<id:1>"
     ],
     "options": null
+  },
+  "args:ApprovalsService.Answer#reviewOffered": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": {
+      "api.request:<id:1>": {
+        "reviewResult": true
+      }
+    }
   },
   "item#delete": {
     "createdAt": 0,
@@ -106,6 +237,7 @@
       "followRedirects": true,
       "headers": [],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "DELETE",
       "query": [
         {
@@ -113,6 +245,9 @@
           "value": "7"
         }
       ],
+      "reviewOffered": true,
+      "reviewResult": false,
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo?id=7",
       "variables": [
@@ -174,8 +309,12 @@
       "followRedirects": true,
       "headers": [],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "POST",
       "query": [],
+      "reviewOffered": true,
+      "reviewResult": false,
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo",
       "variables": [
@@ -244,8 +383,12 @@
         }
       ],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "POST",
       "query": [],
+      "reviewOffered": true,
+      "reviewResult": false,
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo",
       "variables": [

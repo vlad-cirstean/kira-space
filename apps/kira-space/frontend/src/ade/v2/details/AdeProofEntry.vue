@@ -9,8 +9,8 @@ import { Card } from '@theme/components/ui/card';
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { formatRelative } from '@workbench/behaviour/format';
 import { errorText } from '@workbench/bridge/codedError';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
 import { control as studioControl } from '../../../studio/bridge/control';
@@ -61,7 +61,7 @@ async function askDelete(): Promise<void> {
       <Badge v-if="proof.pending" variant="warn" data-testid="ade-proof-pending">{{
         t('space.ade.proof.entry.pending.status')
       }}</Badge>
-      <span class="ml-auto text-subtle">{{ formatRelative(proof.closedAt) }}</span>
+      <span class="ml-auto text-subtle"><RelativeTime :at="proof.closedAt" /></span>
       <AdeOriginSession
         :task-id="taskId"
         :session-id="proof.sessionId"
@@ -71,7 +71,7 @@ async function askDelete(): Promise<void> {
       <TooltipIconButton
         v-if="!readonly"
         :icon="ICON.delete"
-        :label="t('space.ade.proof.entry.delete.tooltip')"
+        :label="t('studio.proof.delete.tooltip')"
         data-testid="ade-proof-remove"
         @click="askDelete()"
       />

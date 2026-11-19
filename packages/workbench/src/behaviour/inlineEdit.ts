@@ -1,5 +1,5 @@
-import { type Ref, ref, watch } from 'vue';
-import { errorText } from '../bridge/codedError';
+import { type ComputedRef, computed, type Ref, ref, watch } from 'vue';
+import { useAsyncAction } from './asyncAction';
 
 export interface InlineEditOptions {
   /** The stored value. A push replaces the text only while no unsaved edit is held. */
@@ -20,16 +20,19 @@ export interface InlineEditOptions {
  *  settings-like fields. Enter ignores IME composition. */
 export function useInlineEdit(opts: InlineEditOptions): {
   text: Ref<string>;
-  error: Ref<string>;
-  pending: Ref<boolean>;
+  error: ComputedRef<string>;
+  pending: ComputedRef<boolean>;
   onInput: (value: string | number) => void;
   onCommit: () => Promise<void>;
   onCancel: () => void;
   onKeydown: (event: KeyboardEvent) => void;
 } {
   const text = ref(opts.source());
-  const error = ref('');
-  const pending = ref(false);
+  const action = useAsyncAction(async (next: string) => {
+    await opts.commit(next);
+  });
+  const pending = action.pending;
+  const error = computed(() => action.error.value ?? '');
   let dirty = false;
   let settled = false;
 
@@ -46,7 +49,7 @@ export function useInlineEdit(opts: InlineEditOptions): {
     if (settled) return;
     settled = opts.once === true;
     text.value = opts.source();
-    error.value = '';
+    action.reset();
     dirty = false;
     opts.cancel?.();
   }
@@ -58,16 +61,9 @@ export function useInlineEdit(opts: InlineEditOptions): {
       onCancel();
       return;
     }
-    pending.value = true;
-    try {
-      await opts.commit(next);
+    if (await action.run(next)) {
       settled = opts.once === true;
-      error.value = '';
       dirty = false;
-    } catch (err) {
-      error.value = errorText(err);
-    } finally {
-      pending.value = false;
     }
   }
 

@@ -61,7 +61,7 @@ const hostTab = computed(() =>
 const KIND_ITEMS = computed(() => [
   {
     value: 'question',
-    label: t('space.ade.needs.kind.question.label'),
+    label: t('common.kind.question.label'),
     testid: 'review-thread-kind-question',
   },
   {
@@ -114,9 +114,11 @@ useEventListener(
   { passive: true },
 );
 
-const { run, pending, error } = useAsyncAction(async (action: () => Promise<void> | undefined) => {
-  await action();
-});
+const { run, pending, error, reset } = useAsyncAction(
+  async (action: () => Promise<void> | undefined) => {
+    await action();
+  },
+);
 
 // Edit and submit never carry the host tab: it is a destination, not a comment kind.
 const wireKind = (): ReviewCommentKind => (kind.value === 'host' ? 'question' : kind.value);
@@ -140,12 +142,12 @@ function startEdit(): void {
   if (!comment) return;
   draft.value = comment.body;
   kind.value = comment.kind;
-  error.value = null;
+  reset();
   mode.value = 'edit';
 }
 
 function cancelEdit(): void {
-  error.value = null;
+  reset();
   mode.value = 'view';
 }
 
@@ -174,7 +176,7 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
         <div class="flex items-center gap-1.5 text-kira-sm text-muted-foreground">
           <span data-testid="review-thread-kind-chip">{{
             current.kind === 'question'
-              ? t('space.ade.needs.kind.question.label')
+              ? t('common.kind.question.label')
               : t('git.review.comments.kind.change.label')
           }}</span>
           <span data-testid="review-thread-state-chip">{{

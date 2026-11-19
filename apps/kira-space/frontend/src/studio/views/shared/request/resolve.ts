@@ -1,4 +1,4 @@
-import { type Reference, resolve, sanitizeUrlSpan } from '@kira/api-core';
+import { loadDynamicGenerator, type Reference, resolve, sanitizeUrlSpan } from '@kira/api-core';
 
 // httprequest/state.ts's resolveTabState and grpcrequest/state.ts's
 // resolveGrpcTabState each hand-rolled the same refs accumulator + sub closure over resolve(),
@@ -42,4 +42,15 @@ export function resolvePairs<T extends { enabled: boolean; name: string; value: 
   return list
     .filter((p) => p.enabled && p.name.trim() !== '')
     .map((p) => ({ name: sub(p.name), value: sub(p.value) }));
+}
+
+/** One resolve pass; a second with the {{$...}} generator only when the first found a dynamic ref.
+ *  A request with no dynamic reference pays no await and no generators chunk fetch. */
+export async function resolveWithDynamic<T extends { refs: readonly Reference[] }>(
+  resolveOnce: (dynamic?: (name: string) => string | null) => T,
+): Promise<T> {
+  const first = resolveOnce();
+  return first.refs.some((r) => r.kind === 'dynamic')
+    ? resolveOnce(await loadDynamicGenerator())
+    : first;
 }

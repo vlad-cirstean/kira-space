@@ -1189,3 +1189,49 @@ func sqliteExplainPlan(connID string) testsupport.Scenario {
 		FullScan: "SELECT * FROM big_rows", Point: "SELECT * FROM big_rows WHERE id = 1",
 	})
 }
+
+// P680: bound parameters on the console path. The probes need no table beyond the seeded regions.
+func TestSqlite_BoundParams(t *testing.T) {
+	fixture := testsupport.StartSqlite(t)
+	testsupport.RunScenarios(t, connectedAdapter(t, fixture.Config), fixture.Config, sqliteBoundParams(fixture.Config.ID, true))
+}
+
+func sqliteBoundParams(connID string, scratch bool) testsupport.Scenario {
+	b := testsupport.Bind
+	c := testsupport.BoundParamsCase{
+		Path: nodePath(connID, seg("database", "main")),
+		Probes: []testsupport.BoundProbe{
+			{Name: "int", SQL: "SELECT name FROM regions WHERE id = ?", Params: []model.BindParam{b("{{kept.id}}", "", "2")}, Want: []string{"APAC"}},
+			{Name: "text with quote", SQL: "SELECT ? AS v", Params: []model.BindParam{b("{{kept.s}}", "", `"it's -- ; x"`)}, Want: []string{"it's -- ; x"}},
+			{Name: "big integer", SQL: "SELECT ? + 0", Params: []model.BindParam{b("{{kept.n}}", "", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
+			{Name: "exact decimal text", SQL: "SELECT ?", Params: []model.BindParam{b("{{kept.d}}", "", "12.50")}, Want: []string{"12.50"}},
+			{Name: "bool", SQL: "SELECT ?", Params: []model.BindParam{b("{{kept.b}}", "", "true")}, Want: []string{"1"}},
+			{Name: "null", SQL: "SELECT ? IS NULL", Params: []model.BindParam{b("{{kept.z}}", "", "null")}, Want: []string{"1"}},
+			{Name: "int list", SQL: "SELECT name FROM regions WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "", "[1,2]")}, Want: []string{"EMEA", "APAC"}},
+			{Name: "text list on the lane", Lane: true, SQL: "SELECT id FROM regions WHERE name IN (SELECT value FROM json_each(?)) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.names}}", "", `["APAC","EMEA"]`)}, Want: []string{"1", "2"}},
+			{Name: "unicode text", SQL: "SELECT ? AS v", Params: []model.BindParam{b("{{kept.s}}", "", `"Zoë 東京 🐱"`)}, Want: []string{"Zoë 東京 🐱"}},
+			{Name: "list with quote and backslash", SQL: "SELECT value FROM json_each(?)",
+				Params: []model.BindParam{b("{{kept.l}}", "", `["a\"b","c\\d","it's"]`)}, Want: []string{`a"b`, `c\d`, "it's"}},
+			{Name: "empty list", SQL: "SELECT count(*) FROM regions WHERE id IN (SELECT value FROM json_each(?))", Params: []model.BindParam{b("{{kept.ids}}", "", "[]")}, Want: []string{"0"}},
+			{Name: "1000 ids", SQL: "SELECT name FROM regions WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "", testsupport.IDList(1000))}, Want: []string{"EMEA", "APAC"}},
+			{Name: "two values in order", SQL: "SELECT ? || '-' || ?", Params: []model.BindParam{b("{{kept.a}}", "", `"a"`), b("{{kept.b}}", "", `"b"`)}, Want: []string{"a-b"}},
+			{Name: "a value is not spliced into the text", SQL: "SELECT count(*) FROM regions WHERE name = ?",
+				Params: []model.BindParam{b("{{kept.s}}", "", `"EMEA' OR '1'='1"`)}, Want: []string{"0"}},
+			{Name: "too few values", SQL: "SELECT ?, ?", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "missing argument"},
+			{Name: "a second statement", SQL: "SELECT ?; SELECT 2", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "Multiple statements"},
+		},
+	}
+	if scratch {
+		c.Setup = []string{"CREATE TABLE p680_bound (id INTEGER PRIMARY KEY, label TEXT, qty NUMERIC)"}
+		c.Teardown = []string{"DROP TABLE p680_bound"}
+		c.Writes = []testsupport.BoundProbe{
+			{Name: "insert", SQL: "INSERT INTO p680_bound (id, label, qty) VALUES (?, ?, ?)",
+				Params: []model.BindParam{b("{{kept.id}}", "", "7"), b("{{kept.l}}", "", `"x'; DROP TABLE p680_bound; --"`), b("{{kept.q}}", "", "12.50")}},
+		}
+		c.Verify = testsupport.BoundProbe{Name: "read back", SQL: "SELECT id, label, qty FROM p680_bound", Want: []string{"7|x'; DROP TABLE p680_bound; --|12.5"}}
+	}
+	return testsupport.BoundParams(c)
+}

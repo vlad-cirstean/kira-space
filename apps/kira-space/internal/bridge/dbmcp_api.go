@@ -16,9 +16,9 @@ func (s *DbMcpService) apiSettings() dbmcp.APISettings {
 	settings, err := s.Deps.Repos.Settings.GetAll()
 	if err != nil {
 		slog.Warn("db mcp: read API settings, turning the API tools off", "scope", "dbmcp", "err", err)
-		return dbmcp.APISettings{Approval: "always"}
+		return dbmcp.APISettings{Approval: "always", ReviewResponses: true}
 	}
-	return dbmcp.APISettings{Enabled: settings.DbMcp.APIRequests, Approval: settings.DbMcp.APIApproval}
+	return dbmcp.APISettings{Enabled: settings.DbMcp.APIRequests, Approval: settings.DbMcp.APIApproval, Scripts: settings.DbMcp.APIScripts, ReviewResponses: settings.DbMcp.APIReviewResponses}
 }
 
 // AgentAPIGlobals reads the user's API settings an agent request inherits, per send.

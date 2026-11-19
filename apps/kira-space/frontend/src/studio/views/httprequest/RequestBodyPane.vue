@@ -174,7 +174,7 @@ const BODY_MODE_LABEL = {
   formdata: 'studio.http.bodyMode.formdata.label',
   urlencoded: 'studio.http.bodyMode.urlencoded.label',
   raw: 'common.raw.label',
-  json: 'studio.copy.format.json.label',
+  json: 'common.copyFormat.json.label',
   code: 'common.code.label',
   file: 'studio.http.bodyMode.file.label',
 } as const satisfies Record<HttpBodySelection, MessageKey>;

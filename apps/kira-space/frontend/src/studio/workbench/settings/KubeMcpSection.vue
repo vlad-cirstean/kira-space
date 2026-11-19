@@ -5,11 +5,10 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import ClusterMcpDialog from '../../kubernetes/components/ClusterMcpDialog.vue';
 import { useClusters, useSetClusterMcp } from '../../kubernetes/queries';
-import type { KubeCluster } from '../../kubernetes/wire';
 import McpExposureRow from './McpExposureRow.vue';
 
 // Which kubeconfig clusters an agent on the Studio MCP server may list and read. The switch flips
@@ -26,9 +25,7 @@ const editOpen = computed({
   },
 });
 
-const toggle = useAsyncAction((c: KubeCluster, enabled: boolean) =>
-  save.mutateAsync({ clusterId: c.id, mcp: { ...c.mcp, enabled } }),
-);
+const toggle = useMutationAction(save);
 </script>
 
 <template>
@@ -52,7 +49,9 @@ const toggle = useAsyncAction((c: KubeCluster, enabled: boolean) =>
             "
             :pending="toggle.pending.value"
             :toggle-aria="t('studio.settings.dbMcp.kube.toggle.aria', { name: cluster.context })"
-            @toggle="(on) => toggle.run(cluster, on)"
+            @toggle="
+              (on) => toggle.run({ clusterId: cluster.id, mcp: { ...cluster.mcp, enabled: on } })
+            "
           >
             <template #detail>
               <FieldDescription v-if="cluster.mcp.description">{{

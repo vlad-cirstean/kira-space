@@ -44,14 +44,17 @@ const importError = computed(() => (toImport.isError.value ? errorText(toImport.
 const summary = computed(() => {
   const r = result.value;
   if (!r) return '';
-  return `${t('memory.distill.result.summary.status', {
-    inChars: r.inChars,
-    outChars: r.outChars,
-    percent: formatPercent(r.inChars > 0 ? (r.outChars / r.inChars) * 100 : 0),
-    inTokens: r.inTokens,
-    outTokens: r.outTokens,
-    cost: formatCurrency(r.costUsd),
-  })} · ${t('memory.distill.result.parts.label', { count: r.chunks })}`;
+  return t('common.dotPair.label', {
+    first: t('memory.distill.result.summary.status', {
+      inChars: r.inChars,
+      outChars: r.outChars,
+      percent: formatPercent(r.inChars > 0 ? (r.outChars / r.inChars) * 100 : 0),
+      inTokens: r.inTokens,
+      outTokens: r.outTokens,
+      cost: formatCurrency(r.costUsd),
+    }),
+    second: t('memory.distill.result.parts.label', { count: r.chunks }),
+  });
 });
 
 function toggle(index: number, on: boolean): void {

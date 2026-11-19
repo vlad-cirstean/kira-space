@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { colorMarkClass } from '@theme/connColor';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { computed } from 'vue';
 
 export interface RepoHead {
@@ -11,8 +9,7 @@ export interface RepoHead {
   readonly color?: string;
 }
 
-// Studio's view head (`DataView`, `KeyValuePane`): colour dot, icon, name with dim path prefix,
-// badges, then the colour band.
+// A repo's view head: colour dot (none for no colour), icon, name with dim path prefix, badges.
 const props = defineProps<{
   repo: RepoHead;
   headLabel?: string;
@@ -31,19 +28,18 @@ const sync = computed(() => {
 </script>
 
 <template>
-  <ViewToolbar data-testid="git-view-head">
-    <span v-if="hasColor" :class="colorMarkClass('dot', repo.color)" />
-    <span class="size-4 flex items-center justify-center shrink-0 text-muted-foreground">
-      <CodiconIcon name="source-control" :size="13" />
-    </span>
-    <span class="text-kira-md text-fg truncate" data-testid="git-view-head-name"
-      ><span v-if="repo.dir" class="text-subtle">{{ repo.dir }}</span>{{ repo.name }}</span
-    >
+  <ViewHead
+    testid="git-view-head"
+    :color="hasColor ? repo.color : undefined"
+    icon="source-control"
+    :prefix="repo.dir"
+    :title="repo.name"
+    title-testid="git-view-head-name"
+  >
     <Badge v-if="headLabel" data-testid="git-view-head-branch">{{ headLabel }}</Badge>
     <Badge v-if="sync" data-testid="git-view-head-sync">{{ sync }}</Badge>
-    <Badge v-if="operation" variant="warn" class="ml-auto" data-testid="git-view-head-operation">{{
-      operation
-    }}</Badge>
-  </ViewToolbar>
-  <div :class="colorMarkClass('band', repo.color)" />
+    <template v-if="operation" #actions>
+      <Badge variant="warn" data-testid="git-view-head-operation">{{ operation }}</Badge>
+    </template>
+  </ViewHead>
 </template>

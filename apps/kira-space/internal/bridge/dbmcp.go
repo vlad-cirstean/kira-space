@@ -43,6 +43,11 @@ type DbMcpService struct {
 	Scripts dbmcp.ScriptControl
 	// API backs the API request tools; nil leaves them unregistered.
 	API dbmcp.APIRequester
+	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves them off.
+	Kept dbmcp.KeptStore
+	// JS and ScriptOps run and record the scripts agents attach to API requests (P676); nil turns scripts off.
+	JS        dbmcp.ScriptEngine
+	ScriptOps dbmcp.OpRunner
 	// Limits are extra run_query limits for the embedded server (flow tests); production adds its limits
 	// inside dbmcp.
 	Limits []dbmcp.Limit
@@ -136,6 +141,9 @@ func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 		Scripts:          s.Scripts,
 		API:              s.API,
 		APISettings:      s.apiSettings,
+		Kept:             s.Kept,
+		JS:               s.JS,
+		ScriptOps:        s.ScriptOps,
 		MaskRules:        s.Deps.MaskRules,
 		ColumnReview:     s.Deps.MaskReview,
 		ExplainThreshold: s.explainThreshold,
@@ -399,6 +407,29 @@ type DbMcpPendingResponse struct {
 	RequestID string `json:"requestId"`
 	Text      string `json:"text"`
 	IsError   bool   `json:"isError"`
+	// Raw is the response a script read; empty without a script.
+	Raw string `json:"raw"`
+	// Script is the script that produced Text from Raw; nil without one.
+	Script *DbMcpPendingScript `json:"script"`
+	// Keep are the values the script keeps once the result is sent (P678): previews, empty for a secret.
+	Keep []DbMcpPendingKeep `json:"keep"`
+}
+
+// DbMcpPendingKeep is one value a held result will keep.
+type DbMcpPendingKeep struct {
+	Name             string `json:"name"`
+	Type             string `json:"type"`
+	Items            int    `json:"items"`
+	Bytes            int    `json:"bytes"`
+	Secret           bool   `json:"secret"`
+	Preview          string `json:"preview"`
+	PreviewTruncated bool   `json:"previewTruncated"`
+}
+
+// DbMcpPendingScript is the script of a held result.
+type DbMcpPendingScript struct {
+	Source string `json:"source"`
+	Hash   string `json:"hash"`
 }
 
 // PendingResponse returns the exact text the AI client receives if the user sends the result of
@@ -411,5 +442,12 @@ func (s *DbMcpService) PendingResponse(args DbMcpApprovalArgs) (DbMcpPendingResp
 	if !ok {
 		return DbMcpPendingResponse{}, ipcerr.NotFoundNamed("result under review")
 	}
-	return DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError}, nil
+	out := DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError, Raw: r.Raw, Keep: []DbMcpPendingKeep{}}
+	for _, k := range r.Keep {
+		out.Keep = append(out.Keep, DbMcpPendingKeep(k))
+	}
+	if r.Script != nil {
+		out.Script = &DbMcpPendingScript{Source: r.Script.Source, Hash: r.Script.Hash}
+	}
+	return out, nil
 }

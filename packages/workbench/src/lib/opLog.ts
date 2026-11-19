@@ -57,7 +57,7 @@ export const STATUS_ICON: Record<OpStatus, { icon: string; tone: string }> = {
 
 const STATUS_LABEL: Record<OpStatus, MessageKey> = {
   running: 'common.state.running.status',
-  ok: 'automations.run.state.done.status',
+  ok: 'common.state.succeeded.status',
   error: 'workbench.opLog.error.status',
   cancelled: 'common.cancelled.status',
 };

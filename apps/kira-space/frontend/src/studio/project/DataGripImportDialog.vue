@@ -16,9 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { type MessageKey, t } from '@theme/i18n';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { computed } from 'vue';
 import { useConnectionsStore } from '../state/connections';
 import { looksAlreadyImported, useDatagripImportStore } from '../state/datagripImport';
@@ -87,8 +86,9 @@ const reportSummary = computed(() => {
   ];
   if (passwords > 0)
     parts.push(t('studio.project.dataGripImport.summary.passwords.body', { count: passwords }));
-  if (failed > 0) parts.push(t('common.failedCount.label', { count: failed }));
-  return parts.join(' ');
+  if (failed > 0)
+    parts.push(t('studio.project.dataGripImport.summary.failed.body', { count: failed }));
+  return joinSentences(...parts);
 });
 const reportTone = computed<'info' | 'warn'>(() =>
   (report.value?.rows.some((row) => !row.created) ?? false) ? 'warn' : 'info',
@@ -155,11 +155,6 @@ function reportOutcome(row: DataGripReportRow): { label: string; tone: 'ok' | 'w
 
 // No auto-close after confirm: the store's `report` flips the template into the results view and
 // the user closes explicitly.
-const pick = useAsyncAction(() => datagripImportStore.pickAndScanDataGripProject());
-const confirm = useAsyncAction(() => datagripImportStore.confirmDataGripImport());
-async function onConfirm(): Promise<void> {
-  await confirm.run();
-}
 </script>
 
 <template>
@@ -332,8 +327,8 @@ async function onConfirm(): Promise<void> {
             variant="dialog"
             size="kira-lg"
             data-testid="datagrip-import-choose-another"
-            :pending="pick.pending.value"
-            @click="pick.run"
+            :pending="datagripImportStore.picking"
+            @click="datagripImportStore.pickAndScanDataGripProject"
           >
             {{ t('studio.project.dataGripImport.chooseAnother.label') }}
           </Button>
@@ -342,8 +337,8 @@ async function onConfirm(): Promise<void> {
             size="kira-lg"
             data-testid="datagrip-import-confirm"
             :disabled="checkedCount === 0"
-            :pending="confirm.pending.value"
-            @click="onConfirm"
+            :pending="datagripImportStore.confirming"
+            @click="datagripImportStore.confirmDataGripImport"
           >
             {{ t('studio.project.dataGripImport.import.label', { count: checkedCount }) }}
           </Button>

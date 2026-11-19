@@ -21,7 +21,7 @@ import { type DocumentRowView, useDocumentRowsStore } from '../shared/document/r
 import { datasetNumber } from '../shared/eventCoords';
 import { displayText } from '../shared/page/display';
 import { createMatchIndex } from '../shared/page/search';
-import { setVisibleRows } from '../shared/page/visibleRows';
+import { pageRowWindow, reportVisibleWindow } from '../shared/page/visibleRows';
 import ConsoleSlickGrid from './ConsoleSlickGrid.vue';
 import type { CopyAllFormat } from './copyAll';
 import { mongoDocumentRowMenu, rowAsJsonMenu } from './menu';
@@ -189,25 +189,16 @@ const kvNav = useListNavigation<number>({
 // onVisibleRange). The same bounds prune resultPages.ts's decode cache, keyed by pageKey (a decode
 // cache is per result set; search priority is per tab), so resultPages.ts needs no watch of its own.
 watch(kvVirtual.virtualItems, (items) => {
-  if (items.length === 0) return;
-  const list = rowIndices.value;
-  const from = list[items[0].index];
-  const to = list[items[items.length - 1].index];
-  if (from === undefined || to === undefined) return;
-  setVisibleRows(props.tabId, from, to + 1);
-  setVisibleWindow(props.pageKey, from, to + 1);
+  const win = pageRowWindow(items, rowIndices.value);
+  if (win) reportVisibleWindow(props.tabId, win.from, win.to, setVisibleWindow, props.pageKey);
 });
 
 watch(docVirtual.virtualItems, (items) => {
-  if (items.length === 0) return;
-  const list = rowIndices.value;
-  const from = list[items[0].index];
-  const to = list[items[items.length - 1].index];
-  if (from === undefined || to === undefined) return;
-  setVisibleRows(props.tabId, from, to + 1);
-  setVisibleWindow(props.pageKey, from, to + 1);
+  const win = pageRowWindow(items, rowIndices.value);
+  if (!win) return;
+  reportVisibleWindow(props.tabId, win.from, win.to, setVisibleWindow, props.pageKey);
   // Keeps rows.ts's parseCache to the rendered window (docs/ARCHITECTURE.md, Caching).
-  documentRowsStore.pruneRows(props.pageKey, from, to + 1);
+  documentRowsStore.pruneRows(props.pageKey, win.from, win.to);
   fillWindowLineCounts(items);
 });
 watch(hasExpandedDocs, () => fillWindowLineCounts(docVirtual.virtualItems.value));

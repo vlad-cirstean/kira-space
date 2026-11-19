@@ -16,15 +16,28 @@ export interface PageNavRuntime {
   count: { value: number } | null;
 }
 
-export interface PageNavHost<R extends PageNavRuntime> {
-  tab(id: string): { pageIndex: number; pageSize: number } | undefined;
-  patch(id: string, patch: { pageIndex: number }): void;
+export function pageOffsetCursor(pageIndex: number, pageSize: number): PageCursor {
+  return { mode: 'offset', offset: pageIndex * pageSize };
+}
+
+/** A new object each call: callers hand it to a request and may keep it. */
+export function firstPageCursor(): PageCursor {
+  return { mode: 'offset', offset: 0 };
+}
+
+export interface PageNavHost<
+  R extends PageNavRuntime,
+  S extends { pageIndex: number; pageSize: number },
+> {
+  tab(id: string): S | undefined;
+  // Method syntax keeps the parameter bivariant, so a host patching a wider tab state still fits.
+  patch(id: string, patch: Partial<S>): void;
   runtime(id: string): R | undefined;
   ensureRuntime(id: string): R;
   load(id: string, cursor: PageCursor, revertPageIndexOnFailure?: number): Promise<void>;
 }
 
-export interface PageNavigation {
+export interface PageNavigation<S> {
   stop(id: string): void;
   goNext(id: string): Promise<void>;
   goPrev(id: string): Promise<void>;
@@ -32,11 +45,14 @@ export interface PageNavigation {
   goLast(id: string): Promise<void>;
   goToPage(id: string, n: number): Promise<void>;
   resetTokens(id: string): void;
+  /** A query-state change: drop tokens, apply `change`, go to page 0 and reload it. */
+  restart(id: string, change: Partial<S>): Promise<void>;
 }
 
-export function createPageNavigation<R extends PageNavRuntime>(
-  host: PageNavHost<R>,
-): PageNavigation {
+export function createPageNavigation<
+  R extends PageNavRuntime,
+  S extends { pageIndex: number; pageSize: number },
+>(host: PageNavHost<R, S>): PageNavigation<S> {
   function stop(id: string): void {
     stopOp(host.runtime(id));
   }
@@ -59,8 +75,8 @@ export function createPageNavigation<R extends PageNavRuntime>(
     const nextIndex = prevIndex + 1;
     const cursor: PageCursor = rt.nextToken
       ? { mode: 'after', token: rt.nextToken }
-      : { mode: 'offset', offset: nextIndex * tab.pageSize };
-    host.patch(id, { pageIndex: nextIndex });
+      : pageOffsetCursor(nextIndex, tab.pageSize);
+    host.patch(id, { pageIndex: nextIndex } as Partial<S>);
     await host.load(id, cursor, prevIndex);
   }
 
@@ -75,15 +91,15 @@ export function createPageNavigation<R extends PageNavRuntime>(
     const targetIndex = Math.max(0, prevIndex - 1);
     const cursor: PageCursor = rt.prevToken
       ? { mode: 'before', token: rt.prevToken }
-      : { mode: 'offset', offset: targetIndex * tab.pageSize };
-    host.patch(id, { pageIndex: targetIndex });
+      : pageOffsetCursor(targetIndex, tab.pageSize);
+    host.patch(id, { pageIndex: targetIndex } as Partial<S>);
     await host.load(id, cursor, prevIndex);
   }
 
   async function goFirst(id: string): Promise<void> {
     const prevIndex = host.tab(id)?.pageIndex;
-    host.patch(id, { pageIndex: 0 });
-    await host.load(id, { mode: 'offset', offset: 0 }, prevIndex);
+    host.patch(id, { pageIndex: 0 } as Partial<S>);
+    await host.load(id, firstPageCursor(), prevIndex);
   }
 
   // Requires a count — the toolbar disables the Last-page button until an exact/estimated count
@@ -95,8 +111,8 @@ export function createPageNavigation<R extends PageNavRuntime>(
     const prevIndex = tab.pageIndex;
     const pageCount = Math.max(1, Math.ceil(rt.count.value / tab.pageSize));
     const lastIndex = pageCount - 1;
-    host.patch(id, { pageIndex: lastIndex });
-    await host.load(id, { mode: 'offset', offset: lastIndex * tab.pageSize }, prevIndex);
+    host.patch(id, { pageIndex: lastIndex } as Partial<S>);
+    await host.load(id, pageOffsetCursor(lastIndex, tab.pageSize), prevIndex);
   }
 
   async function goToPage(id: string, n: number): Promise<void> {
@@ -104,8 +120,8 @@ export function createPageNavigation<R extends PageNavRuntime>(
     if (!tab) return;
     const prevIndex = tab.pageIndex;
     const index = Math.max(0, n);
-    host.patch(id, { pageIndex: index });
-    await host.load(id, { mode: 'offset', offset: index * tab.pageSize }, prevIndex);
+    host.patch(id, { pageIndex: index } as Partial<S>);
+    await host.load(id, pageOffsetCursor(index, tab.pageSize), prevIndex);
   }
 
   // A keyset token is only meaningful under the query that produced it — every state-changing
@@ -116,5 +132,12 @@ export function createPageNavigation<R extends PageNavRuntime>(
     rt.prevToken = null;
   }
 
-  return { stop, goNext, goPrev, goFirst, goLast, goToPage, resetTokens };
+  async function restart(id: string, change: Partial<S>): Promise<void> {
+    const prevIndex = host.tab(id)?.pageIndex;
+    resetTokens(id);
+    host.patch(id, { ...change, pageIndex: 0 });
+    await host.load(id, firstPageCursor(), prevIndex);
+  }
+
+  return { stop, goNext, goPrev, goFirst, goLast, goToPage, resetTokens, restart };
 }

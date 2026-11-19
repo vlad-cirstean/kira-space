@@ -8,3 +8,9 @@ export async function openSettings(page: Page): Promise<void> {
   await page.click('[data-testid="open-settings"]');
   await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
 }
+
+/** The Studio MCP variables pane of Settings. */
+export async function openKeptPane(page: Page): Promise<void> {
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Studio MCP variables"]');
+}

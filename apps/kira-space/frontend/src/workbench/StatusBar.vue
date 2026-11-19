@@ -103,7 +103,7 @@ function onRevealBlameCommit(): void {
             v-if="blameTooltip"
             :title="blameTooltip.subject"
             :rows="[
-              { label: t('git.search.field.author.label'), value: blameTooltip.author },
+              { label: t('common.field.author.label'), value: blameTooltip.author },
               { label: t('common.field.date.label'), value: blameTooltip.date },
             ]"
             :hint="blameStatusStore.reveal ? t('space.repo.blame.reveal.hint') : undefined"

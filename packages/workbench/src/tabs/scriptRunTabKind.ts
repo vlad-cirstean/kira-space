@@ -37,13 +37,13 @@ export function scriptRunTabKind<
         case 'running':
           return { icon: 'loading', tooltip: t('common.state.running.status') };
         case 'done':
-          return { icon: 'check', tooltip: t('automations.run.state.done.status') };
+          return { icon: 'check', tooltip: t('common.state.succeeded.status') };
         case 'failed':
           return { icon: 'error', tooltip: t('common.state.failed.status') };
         case 'blocked':
           return { icon: 'warning', tooltip: t('common.needsYou.status') };
         case 'waiting':
-          return { icon: 'bell', tooltip: t('automations.run.state.waiting.status') };
+          return { icon: 'bell', tooltip: t('common.state.waitingForYou.status') };
         default:
           return null;
       }

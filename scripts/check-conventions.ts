@@ -101,7 +101,6 @@ const OVERSIZE_VUE_OK = new Set([
   'ConsoleSlickGrid.vue',
   'CommitGrid.vue',
   'MonacoHost.vue',
-  'CheetahProto.vue', // P165 prototype
   'packages/git-ui/src/App.vue',
 ]);
 // Printed in a menu, bound by the grid engine itself rather than a shortcut call.

@@ -4,12 +4,11 @@ import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery, splitMatches } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { loadMonaco } from '@workbench/editor/monaco';
 import { paintOverlayHtml } from '@workbench/editor/paintSpans';
@@ -129,8 +128,8 @@ const shown = computed(() => {
   );
 });
 const LABELS: Record<SectionId, () => string> = {
-  overview: () => t('docker.tab.overview.label'),
-  labels: () => t('docker.field.labels.label'),
+  overview: () => t('common.tab.overview.label'),
+  labels: () => t('common.field.labels.label'),
   annotations: () => t('kubernetes.describe.section.annotations.label'),
   owners: () => t('kubernetes.describe.section.owners.label'),
   conditions: () => t('kubernetes.describe.section.conditions.label'),
@@ -150,11 +149,10 @@ const label = (id: SectionId): string => LABELS[id]();
           :placeholder="t('kubernetes.describe.filter.placeholder')"
           data-testid="kube-describe-filter"
         />
-        <TooltipIconButton
-          icon="copy"
+        <CopyIconButton
+          :text="() => describe.data.value?.manifest ?? ''"
           :label="t('kubernetes.describe.copyManifest.label')"
           data-testid="kube-describe-copy"
-          @click="copyText(describe.data.value?.manifest ?? '')"
         />
       </div>
       <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">

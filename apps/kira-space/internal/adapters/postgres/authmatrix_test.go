@@ -60,6 +60,7 @@ func TestPostgres_AuthMatrix(t *testing.T) {
 			Name:   "superuser, database=kira_test",
 			Config: func(c model.ResolvedConnectionConfig) model.ResolvedConnectionConfig { return c },
 			Expect: testsupport.Outcome{Succeed: true, Details: map[string]string{"database": "kira_test"}},
+			Then:   []testsupport.Scenario{pgBoundParams(f, true)},
 		},
 		{
 			Name: "superuser, database unset",
@@ -118,6 +119,7 @@ func TestPostgres_AuthMatrix(t *testing.T) {
 				pgLaneStatementTimeout(f),
 				testsupport.ReadStatementTimeout(pgReadTimeoutCase(f, true, admin, roleName)),
 				pgExplainPlan(f),
+				pgBoundParams(f, false),
 			},
 		},
 		{

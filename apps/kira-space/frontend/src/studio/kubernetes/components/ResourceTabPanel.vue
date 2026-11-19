@@ -28,7 +28,7 @@ const items = computed(() => [
     testid: 'kube-detail-tab-describe',
   },
   ...(target.value.kind.logs
-    ? [{ value: 'logs', label: t('docker.tab.logs.label'), testid: 'kube-detail-tab-logs' }]
+    ? [{ value: 'logs', label: t('common.tab.logs.label'), testid: 'kube-detail-tab-logs' }]
     : []),
 ]);
 const view = computed<KubeTabView>(() =>

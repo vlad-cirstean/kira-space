@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import CodeBlock from '@theme/components/CodeBlock.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
@@ -36,11 +35,6 @@ const message = computed(() => {
     <FieldLegend>{{ t('memory.mcp.connect.title') }}</FieldLegend>
     <FieldDescription>{{ t('memory.mcp.connect.description') }}</FieldDescription>
     <QueryState :query="status" variant="inline" :is-empty="() => false">
-      <template #error="{ message: statusMessage }">
-        <Alert variant="error">
-          <AlertDescription>{{ statusMessage }}</AlertDescription>
-        </Alert>
-      </template>
       <CodeBlock v-if="command" class="select-all" data-testid="memory-mcp-command">{{
         command
       }}</CodeBlock>

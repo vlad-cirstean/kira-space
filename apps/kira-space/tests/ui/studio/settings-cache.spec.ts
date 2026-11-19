@@ -25,7 +25,7 @@ test('the status bar has no cache readout; Settings > Cache shows usage and hit 
   await page.click('[data-testid="settings-section-Cache"]');
   const inputs = page.locator('[data-testid="settings-dialog"] input[disabled]');
   await expect(inputs.nth(0)).toHaveValue('1.0 MB / 64.0 MB');
-  await expect(inputs.nth(1)).toHaveValue('75% (3/4)');
+  await expect(inputs.nth(1)).toHaveValue('75.0% (3/4)');
 });
 
 test('Clear caches sends cache:clear', async ({ relaunch }) => {

@@ -63,6 +63,7 @@ func runFamilyAuthMatrix(t *testing.T, kind string, fixture any, cfg model.Resol
 			Name:   "kira (scoped), database=kira_test",
 			Config: func(c model.ResolvedConnectionConfig) model.ResolvedConnectionConfig { return c },
 			Expect: testsupport.Outcome{Succeed: true},
+			Then:   []testsupport.Scenario{familyBoundParams(cfg.ID, true)},
 		},
 		{
 			Name: "kira, database unset",
@@ -152,6 +153,7 @@ func runFamilyAuthMatrix(t *testing.T, kind string, fixture any, cfg model.Resol
 				familyLaneStatementTimeout(kind, cfg.ID),
 				testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, true, rootAdapter)),
 				familyExplainPlan(cfg.ID),
+				familyBoundParams(cfg.ID, false),
 			},
 		},
 		{

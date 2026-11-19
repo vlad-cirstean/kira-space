@@ -1,7 +1,6 @@
 import type { ObjectDefinition } from '@shared/domain/definition';
 import type { ObjectMeta } from '@shared/domain/tree';
 import { errorText } from '@workbench/bridge/codedError';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
@@ -36,11 +35,6 @@ function defaultRuntime(): DefinitionViewRuntime {
 
 export const useDefinitionViewStore = defineStore('definitionView', () => {
   const { runtime, ensureRuntime } = createRuntimeStore<DefinitionViewRuntime>(defaultRuntime);
-
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-  });
 
   function findTab(tabId: string) {
     return useTabsStore().tabs.find((t) => t.id === tabId && t.kind === 'definition') ?? null;

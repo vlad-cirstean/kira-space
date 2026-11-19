@@ -28,7 +28,7 @@ import type {
   UndoSlotSnapshot,
 } from '@kira/git-ipc';
 import { TransportError } from '@kira/git-ipc';
-import { type MessageKey, t } from '@theme/i18n';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import { createLatestRequest } from '@workbench/behaviour/latest';
 import { errorText } from '@workbench/bridge/codedError';
 import { type Ref, type ShallowRef, shallowRef } from 'vue';
@@ -505,7 +505,9 @@ export class OpsState {
           parts.push(composeAutoDetachAnnouncement(target, worktreePath));
         }
         this.announcement.value =
-          parts.length > 0 ? parts.join(' ') : composeCheckoutAnnouncement(preflight, target);
+          parts.length > 0
+            ? joinSentences(...parts)
+            : composeCheckoutAnnouncement(preflight, target);
         return;
       }
 
@@ -742,7 +744,7 @@ export class OpsState {
       const preflight = await this.#bridge.request('preflight.reset', { repoId, target, mode });
       if (preflight.verdict === 'blocked') {
         this.announcement.value = preflight.blockers.includes('inProgressOperation')
-          ? `${opFailedTitle('reset')} ${t('git.op.reason.operationInProgress.error')}`
+          ? joinSentences(opFailedTitle('reset'), t('git.op.reason.operationInProgress.error'))
           : t('git.op.reset.unresolved.error', { target });
         return;
       }
@@ -925,7 +927,7 @@ export class OpsState {
     const repoId = this.#repo.repoId;
     if (repoId === undefined) return this.#failedResult(t('git.op.noRepository.error'));
     if (this.busy.value) {
-      this.announcement.value = `${opFailedTitle('stash')} ${t('git.op.busy.error')}`;
+      this.announcement.value = joinSentences(opFailedTitle('stash'), t('git.op.busy.error'));
       return this.#failedResult(t('git.op.busy.error'));
     }
     this.busy.value = true;
@@ -1190,7 +1192,7 @@ export class OpsState {
   async runRestack(branch: string): Promise<RestackResult | undefined> {
     if (this.#stack === undefined) return undefined;
     if (this.busy.value) {
-      this.announcement.value = `${opFailedTitle('restack')} ${t('git.op.busy.error')}`;
+      this.announcement.value = joinSentences(opFailedTitle('restack'), t('git.op.busy.error'));
       return undefined;
     }
     // F3: captured for the same reason `#applyResult`'s own doc comment gives every other
@@ -1341,7 +1343,10 @@ export class OpsState {
       index: top.index,
     });
     if (preflight.verdict !== 'clean') {
-      this.announcement.value = `${announceMiddleOk()}. ${t('git.op.stashKept.body', { ref: stashRef(top.index) })}`;
+      this.announcement.value = t('git.op.stashKept.body', {
+        done: announceMiddleOk(),
+        ref: stashRef(top.index),
+      });
       return;
     }
 
@@ -1366,7 +1371,7 @@ export class OpsState {
       if (!popResult.ok) this.#noteFailure('stashPop', popResult.error, true);
     } else if (popResult.ok) {
       this.announcement.value = indexDropped
-        ? `${announceMiddleOk()}. ${t('git.op.stashIndexNotRestored.body')}`
+        ? t('git.op.stashIndexNotRestored.body', { done: announceMiddleOk() })
         : announceMiddleOk();
     } else this.#fail('stashPop', popResult.error, true);
   }
@@ -1830,8 +1835,10 @@ export class OpsState {
     logged: boolean,
     stashed = false,
   ): void {
-    const note = stashed ? ` ${t('git.op.stashedNote.body')}` : '';
-    this.announcement.value = `${composeOpFailureAnnouncement(action, error)}${note}`;
+    this.announcement.value = joinSentences(
+      composeOpFailureAnnouncement(action, error),
+      stashed && t('git.op.stashedNote.body'),
+    );
     this.#noteFailure(action, error, logged);
   }
 
@@ -1861,7 +1868,7 @@ export class OpsState {
     const repoId = this.#repo.repoId;
     if (repoId === undefined) return this.#failedResult(t('git.op.noRepository.error'));
     if (this.busy.value) {
-      this.announcement.value = `${opFailedTitle(action)} ${t('git.op.busy.error')}`;
+      this.announcement.value = joinSentences(opFailedTitle(action), t('git.op.busy.error'));
       return this.#failedResult(t('git.op.busy.error'));
     }
     this.busy.value = true;

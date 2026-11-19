@@ -1,0 +1,87 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "script",
+                "from": 42,
+                "index": 0,
+                "part": "transform",
+                "to": 56
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "script",
+              "mcp": "db",
+              "request": "notes db: select id, body from notes order by id",
+              "tool": "run_query"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "9b1160ef319acc01df3ae33dd16b5f781b1b001f5fdb8ec9a2ee5779e1663bd6",
+          "mayKeep": [
+            {
+              "name": "n",
+              "sites": [
+                {
+                  "field": "script",
+                  "from": 0,
+                  "index": 0,
+                  "part": "transform",
+                  "to": 12
+                }
+              ]
+            }
+          ],
+          "source": "kept.set(\"n\", result.rows.length); return kept.get(\"ids\").length;"
+        },
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ]
+}

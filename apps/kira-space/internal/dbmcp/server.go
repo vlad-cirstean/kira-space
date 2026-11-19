@@ -25,6 +25,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/config"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/jsengine"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mask"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mcpauth"
@@ -171,6 +172,12 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
+	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves the tool
+	// unregistered and refuses every {{kept.*}} reference.
+	Kept KeptStore
+	// JS and ScriptOps run and record the scripts agents attach; either nil turns scripts off.
+	JS        ScriptEngine
+	ScriptOps OpRunner
 	// Limits are the limits the server enforces on run_query, beside its built-ins. Nil means none.
 	Limits []Limit
 	// Prompts resolves the editable instruction and tool texts; nil means the registry defaults.
@@ -207,7 +214,7 @@ type Server struct {
 	mcpMu  sync.Mutex
 	mcp    *mcp.Server
 	mcpRev uint64
-	mcpAPI bool
+	mcpKey toolSetKey
 
 	httpState // http.go's own fields (listener, *http.Server)
 
@@ -279,7 +286,7 @@ func New(cfg Config) (*Server, error) {
 		limits:     limits,
 		exemptions: newExemptionStore(cfg.Approvals.now),
 	}
-	s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), s.prompts().Revision(), s.apiEnabled()
+	s.mcp, s.mcpRev, s.mcpKey = s.buildMCPServer(), s.prompts().Revision(), s.toolSetKey()
 
 	if err := s.bindHTTP(); err != nil {
 		return nil, err
@@ -348,10 +355,17 @@ func (s *Server) prompts() llmprompts.Source {
 func (s *Server) server() *mcp.Server {
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
-	if rev, api := s.prompts().Revision(), s.apiEnabled(); rev != s.mcpRev || api != s.mcpAPI {
-		s.mcp, s.mcpRev, s.mcpAPI = s.buildMCPServer(), rev, api
+	if rev, key := s.prompts().Revision(), s.toolSetKey(); rev != s.mcpRev || key != s.mcpKey {
+		s.mcp, s.mcpRev, s.mcpKey = s.buildMCPServer(), rev, key
 	}
 	return s.mcp
+}
+
+// toolSetKey is the settings the tool list depends on besides the prompts: a change rebuilds it.
+type toolSetKey struct{ api, scripts bool }
+
+func (s *Server) toolSetKey() toolSetKey {
+	return toolSetKey{api: s.apiEnabled(), scripts: s.scriptsOn()}
 }
 
 // buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;
@@ -383,10 +397,14 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
 		InputSchema: browseTableSchema(src),
 	}, withPanicRecovery(s, "browse_table", s.browseTable))
+	scriptNote := ""
+	if s.scriptsOn() {
+		scriptNote = " " + llmprompts.DbmcpToolRunQueryScripts.Text(src, llmprompts.NoVars{})
+	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
-		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
-		InputSchema: runQuerySchema(src),
+		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}) + scriptNote,
+		InputSchema: runQuerySchema(src, s.scriptsOn()),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	if s.cfg.Kube != nil {
 		s.addKubeTools(srv, src)
@@ -400,6 +418,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	if s.apiEnabled() {
 		s.addAPITools(srv, src)
 	}
+	if s.cfg.Kept != nil {
+		s.addKeptTools(srv, src)
+	}
 
 	if s.cfg.Audit != nil {
 		mcpcall.Record(srv, s.auditHook)
@@ -408,7 +429,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 }
 
 // runQuerySchema is run_query's input schema: mode is required and limited to the three declared modes.
-func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
+func runQuerySchema(src llmprompts.Source, scripts bool) *jsonschema.Schema {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[runQueryArgs](src, llmprompts.DbmcpToolRunQuery.ID(),
 		map[string]any{"maxRows": llmprompts.LimitVars{Default: runQueryDefaultMaxRows, Max: runQueryMaxMaxRows}}), "connectionId", "sql", "mode")
 	sch.Properties["mode"].Enum = []any{modeRead, modeWrite, modeDDL}
@@ -416,6 +437,14 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
 	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
 	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
+	params := sch.Properties["params"]
+	params.MaxItems = jsonschema.Ptr(maxParamEntries)
+	params.Items.MinLength = jsonschema.Ptr(1)
+	if scripts {
+		sch.Properties["script"].MaxLength = jsonschema.Ptr(jsengine.MaxSourceBytes)
+	} else {
+		delete(sch.Properties, "script")
+	}
 	return sch
 }
 

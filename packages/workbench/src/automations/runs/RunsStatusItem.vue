@@ -26,7 +26,7 @@ function show(): void {
       <TooltipDetails
         :title="t('common.scriptRuns.label')"
         :rows="[{ label: t('common.state.running.status'), value: String(running) }]"
-        :hint="t('workbench.statusBar.runs.open.hint')"
+        :hint="t('automations.statusBar.runs.open.hint')"
       />
     </template>
   </StatusBarItem>

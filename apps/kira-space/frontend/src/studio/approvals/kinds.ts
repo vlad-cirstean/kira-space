@@ -2,12 +2,15 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { connectionKindSchema } from '@shared/domain/connection';
 import {
   apiRequestPayloadSchema,
+  apiResponsePayloadSchema,
   type DbMcpApprovalPlan,
+  type DbQueryPayload,
   dbExemptionPayloadSchema,
   dbQueryPayloadSchema,
   dbResponsePayloadSchema,
   kubeReadPayloadSchema,
 } from '@shared/domain/dbmcp';
+import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
 import { type MessageKey, t } from '@theme/i18n';
 import type { ApprovalKinds, ApprovalRisk } from '@workbench/approvals/registry';
@@ -16,6 +19,8 @@ import { markRaw } from 'vue';
 import { KIND_LABEL } from '../project/connection/kinds';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ApiRequestDetails from './ApiRequestDetails.vue';
+import ApiResponseBody from './ApiResponseBody.vue';
+import ApiResponseDetails from './ApiResponseDetails.vue';
 import DbExemptionBody from './DbExemptionBody.vue';
 import DbExemptionDetails from './DbExemptionDetails.vue';
 import DbQueryBody from './DbQueryBody.vue';
@@ -40,7 +45,7 @@ const KUBE_OPERATION_LABEL = {
   discover: 'kubernetes.mcp.discover.label',
   list: 'kubernetes.mcp.list.label',
   describe: 'kubernetes.detail.tab.describe.label',
-  logs: 'docker.tab.logs.label',
+  logs: 'common.tab.logs.label',
 } as const satisfies Record<string, MessageKey>;
 
 const RANK: Record<string, number> = { read: 0, write: 1, ddl: 2 };
@@ -90,7 +95,11 @@ function planRisks(plan: DbMcpApprovalPlan | null, withRows: boolean): ApprovalR
 
 function queryRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = dbQueryPayloadSchema.parse(item.payload);
-  const out = planRisks(p.plan, true);
+  const out = [
+    ...planRisks(p.plan, true),
+    ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
+    ...queryScriptRisks(p.script),
+  ];
   // The statement looks less powerful than the mode the agent declared.
   if ((RANK[p.detected] ?? Infinity) < (RANK[p.mode] ?? Infinity)) {
     out.push({
@@ -122,7 +131,57 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   });
   // Each datum once: the plan's estimate only when no expensive_query limit already says it.
   const hasRowsLimit = p.limits.some((l) => l.limit === 'expensive_query');
-  return [...out, ...planRisks(p.plan, !hasRowsLimit)];
+  return [
+    ...out,
+    ...planRisks(p.plan, !hasRowsLimit),
+    ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
+    ...queryScriptRisks(p.script),
+  ];
+}
+
+// The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
+function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
+  if (!script) return [];
+  const out: ApprovalRisk[] = [];
+  if (script.mayKeep.length) {
+    out.push({
+      text: t('studio.kept.risk.keeps.status', {
+        names: script.mayKeep.map((m) => m.name).join(', '),
+      }),
+      tone: 'neutral',
+      testid: 'db-approval-kept-writes',
+    });
+  }
+  out.push({
+    text: t('studio.dbMcp.approval.risk.scriptResult.status'),
+    tone: 'neutral',
+    testid: 'db-approval-transform',
+    tooltip: t('studio.dbMcp.approval.query.scriptResult.hint'),
+  });
+  return out;
+}
+
+// The tags for the kept variables a request uses; the testids carry the surface's prefix.
+function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
+  if (kept.length === 0) return [];
+  const out: ApprovalRisk[] = [
+    {
+      text: t('studio.kept.risk.uses.status', { names: kept.map((u) => u.name).join(', ') }),
+      tone: 'neutral',
+      testid: `${prefix}-kept`,
+      tooltip: kept
+        .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
+        .join('\n'),
+    },
+  ];
+  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    out.push({
+      text: t('studio.kept.risk.expiring.status'),
+      tone: 'warn',
+      testid: `${prefix}-kept-expiring`,
+    });
+  }
+  return out;
 }
 
 function isRead(method: string): boolean {
@@ -147,11 +206,79 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
         .join('\n'),
     });
   }
+  if (p.inputs.some((i) => i.state === 'needed')) {
+    out.push({
+      text: t('studio.kept.risk.input.status'),
+      tone: 'warn',
+      testid: 'api-approval-input',
+      tooltip: t('studio.kept.risk.input.tooltip'),
+    });
+  }
+  out.push(
+    ...keptRisks(
+      p.kept.filter((u) => !u.pending),
+      item.expiresAt,
+      'api-approval',
+    ),
+  );
+  if (p.script?.transform?.mayKeep.length) {
+    out.push({
+      text: t('studio.kept.risk.keeps.status', {
+        names: p.script.transform.mayKeep.map((m) => m.name).join(', '),
+      }),
+      tone: 'neutral',
+      testid: 'api-approval-kept-writes',
+    });
+  }
+  if (p.script?.prepare) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.builtByScript.status'),
+      tone: 'neutral',
+      testid: 'api-approval-prepare',
+      tooltip: t('studio.dbMcp.approval.api.scriptPrepare.hint'),
+    });
+  }
+  if (p.script?.transform) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.scriptResult.status'),
+      tone: 'neutral',
+      testid: 'api-approval-transform',
+      tooltip: t('studio.dbMcp.approval.api.scriptTransform.hint'),
+    });
+  }
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),
       tone: 'warn',
       testid: 'api-approval-body-truncated',
+    });
+  }
+  return out;
+}
+
+function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
+  const p = apiResponsePayloadSchema.parse(item.payload);
+  const out: ApprovalRisk[] = [];
+  if (p.class === 'write') {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.requestSent.status'),
+      tone: 'warn',
+      testid: 'api-review-sent',
+    });
+  }
+  if (p.reason === 'userValue') {
+    out.push({
+      text: t('studio.kept.risk.userValue.status'),
+      tone: 'warn',
+      testid: 'api-review-user-value',
+      tooltip: t('studio.kept.risk.userValue.tooltip'),
+    });
+  }
+  if (p.isError) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.scriptFailed.status'),
+      tone: 'warn',
+      testid: 'api-review-script-failed',
     });
   }
   return out;
@@ -227,7 +354,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     'script.run': {
       content: markRaw(ScriptRunBody),
       details: markRaw(ScriptRunDetails),
-      operation: () => t('automations.dialog.run.untitled.title'),
+      operation: () => t('common.run.untitled.title'),
       where: (item) => item.target.location,
       whereData: true,
     },
@@ -235,15 +362,36 @@ export function studioApprovalKinds(): ApprovalKinds {
       content: markRaw(ApiRequestBody),
       monaco: true,
       details: markRaw(ApiRequestDetails),
+      footerAction: markRaw(ReviewResultOption),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
       where: (item) =>
         apiRequestPayloadSchema.parse(item.payload).environment?.name ??
         t('studio.api.environments.none.option'),
       targetData: true,
       risks: apiRisks,
+      requiredInputs: (item) =>
+        apiRequestPayloadSchema
+          .parse(item.payload)
+          .inputs.filter((i) => i.state === 'needed')
+          .map((i) => ({ name: i.name, label: i.label })),
       labels: () => ({
         approve: t('common.action.send.label'),
         deny: t('studio.dbMcp.approval.api.dontSend.label'),
+      }),
+    },
+    'api.response': {
+      content: markRaw(ApiResponseBody),
+      monaco: true,
+      details: markRaw(ApiResponseDetails),
+      operation: () => t('common.field.result.label'),
+      where: (item) =>
+        apiResponsePayloadSchema.parse(item.payload).environment?.name ??
+        t('studio.api.environments.none.option'),
+      targetData: true,
+      risks: apiResponseRisks,
+      labels: () => ({
+        approve: t('studio.dbMcp.preview.send.label'),
+        deny: t('studio.dbMcp.preview.withhold.label'),
       }),
     },
     'proof.review': {

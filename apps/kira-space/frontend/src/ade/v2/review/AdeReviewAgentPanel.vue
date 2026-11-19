@@ -7,8 +7,8 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useCopy } from '@workbench/behaviour/clipboard';
-import { errorText } from '@workbench/bridge/codedError';
 import { computed, ref } from 'vue';
 import { notifyReviewRepaint } from '../../../repo/git/reviewRepaint';
 import { useTerminalsStore } from '../../../state/terminals';
@@ -55,7 +55,8 @@ const setupWait = useSetupWait(() => start());
 const waitingSetup = setupWait.waiting;
 
 const note = ref('');
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const missing = ref(false);
 
 const session = computed(() => {
@@ -82,29 +83,25 @@ const copyOff = computed(() => openCount.value === 0 || textM.isPending.value);
 const forwardOff = computed(() => forwardTip.value !== '' || forwardM.isPending.value);
 
 async function forward(): Promise<void> {
-  error.value = '';
-  try {
-    await forwardM.mutateAsync({ branchId: props.target.branchId });
-    notifyReviewRepaint({
-      kind: 'comments',
-      repoId: props.target.gitRepoId,
-      branch: props.target.branch,
-    });
-  } catch (err) {
-    error.value = errorText(err);
-  } finally {
-    await comments.refresh();
-  }
+  await surface.run(async () => {
+    try {
+      await forwardM.mutateAsync({ branchId: props.target.branchId });
+      notifyReviewRepaint({
+        kind: 'comments',
+        repoId: props.target.gitRepoId,
+        branch: props.target.branch,
+      });
+    } finally {
+      await comments.refresh();
+    }
+  });
 }
 
 async function copyComments(): Promise<void> {
-  error.value = '';
-  try {
+  await surface.run(async () => {
     const { text } = await textM.mutateAsync({ branchId: props.target.branchId });
     await copyText(text);
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 const { info: agentInfo } = useAgentInfo();
@@ -118,23 +115,24 @@ const lookup = computed<SessionLookup>(() => ({
 const view = computed(() => (session.value ? sessionView(session.value, lookup.value) : null));
 
 async function start(): Promise<void> {
-  error.value = '';
   note.value = '';
-  try {
-    const result = await launchM.mutateAsync({ taskId: props.target.taskId });
-    setupWait.stop();
-    note.value = result.note;
-    await launchOpener.open(result.launch);
-  } catch (err) {
-    if (isPreparing(err)) {
-      setupWait.start();
-    } else {
+  await surface.run(async () => {
+    try {
+      const result = await launchM.mutateAsync({ taskId: props.target.taskId });
       setupWait.stop();
-      error.value = errorText(err);
+      note.value = result.note;
+      await launchOpener.open(result.launch);
+    } catch (err) {
+      if (isPreparing(err)) {
+        setupWait.start();
+      } else {
+        setupWait.stop();
+        throw err;
+      }
+    } finally {
+      await agent.refetch();
     }
-  } finally {
-    await agent.refetch();
-  }
+  });
 }
 
 async function focus(): Promise<void> {

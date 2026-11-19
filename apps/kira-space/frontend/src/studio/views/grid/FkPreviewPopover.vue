@@ -8,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { PopoverBar, PopoverHeader, PopoverList } from '@theme/components/ui/popover';
 import { Table, TableBody, TableCell, TableRow } from '@theme/components/ui/table';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import PointPopover from '@workbench/components/PointPopover.vue';
 import { onMounted, onUnmounted, ref } from 'vue';
@@ -116,7 +117,7 @@ onUnmounted(() => {
 
       <PopoverBar>
         <Button variant="toolbar" size="kira" data-testid="fk-preview-open" @click="onOpenClick">
-          <CodiconIcon name="arrow-right" :size="13" />
+          <CodiconIcon :name="ICON.openInNewTab" :size="13" />
           {{ t('common.action.openInNewTab.label') }}
         </Button>
       </PopoverBar>

@@ -6,6 +6,7 @@ import {
   type HttpHeaderState,
   type HttpRequestTabState,
 } from '@kira/shared/domain/http';
+import { t } from '@theme/i18n';
 import type { TextRef } from '../lib/textRef';
 
 // A UI-level body-mode selection — HTTP_BODY_MODES itself is unchanged (still six values,
@@ -83,6 +84,9 @@ export function defaultContentTypeFor(mode: HttpBodyMode, codeLanguage: HttpCode
   }
 }
 
+// Protocol token, passed as a param so the catalog text carries no header name.
+const CONTENT_TYPE = 'Content-Type';
+
 /** D9's caption: exactly what Content-Type the send will actually carry — a hand-set header wins
  *  (D7's precedence), binary gets the explicit "no Content-Type" sentence (F3: Postman sets none
  *  either), and 'none' has nothing to caption. */
@@ -92,10 +96,18 @@ export function contentTypeCaption(
   userContentType: string | undefined,
 ): string {
   const trimmed = (userContentType ?? '').trim();
-  if (trimmed !== '') return `Content-Type: ${trimmed} (from your header)`;
+  if (trimmed !== '')
+    return t('studio.http.body.contentType.fromHeader.status', {
+      header: CONTENT_TYPE,
+      type: trimmed,
+    });
   if (mode === 'none') return '';
-  if (mode === 'file') return 'No Content-Type (binary)';
-  return `Content-Type: ${defaultContentTypeFor(mode, codeLanguage)} (auto)`;
+  if (mode === 'file')
+    return t('studio.http.body.contentType.binary.status', { header: CONTENT_TYPE });
+  return t('studio.http.body.contentType.auto.status', {
+    header: CONTENT_TYPE,
+    type: defaultContentTypeFor(mode, codeLanguage),
+  });
 }
 
 /** P15 D8: what counts as "this request has a body", per mode — the tab-strip badge's predicate

@@ -5,6 +5,7 @@ import { announceApp } from '@workbench/behaviour/liveRegion';
 import { type ComputedRef, computed } from 'vue';
 import { copyAndAnnounce } from '../../behaviour/clipboard';
 import { formatCurrency } from '../../behaviour/format';
+import { errorText } from '../../bridge/codedError';
 import { type OpLogDetailLine, type OpLogStatusFilter, opLogMenuItems } from '../../lib/opLog';
 import type { MenuItem } from '../../state/contextMenu';
 import { opLogMatches } from '../../state/createOpLogStore';
@@ -173,9 +174,7 @@ export function useAutomationOps(filters: OpFilterState): AutomationOps {
         disabled: !ended || !run.scriptId,
         run: () => {
           ctx.showAutomations();
-          void rerun(run).then((message) => {
-            if (message) announceApp(message);
-          });
+          void rerun(run).catch((err) => announceApp(errorText(err)));
         },
       },
     ];

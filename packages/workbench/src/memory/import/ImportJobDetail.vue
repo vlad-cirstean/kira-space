@@ -112,7 +112,7 @@ async function discard(): Promise<void> {
           <Badge variant="default" data-testid="import-job-channel">{{
             t(
               job.channel === 'mcp'
-                ? 'memory.common.origin.agent.label'
+                ? 'common.origin.agent.label'
                 : 'memory.import.channel.ui.label',
             )
           }}</Badge>
@@ -147,7 +147,7 @@ async function discard(): Promise<void> {
           size="kira"
           data-testid="import-resume"
           @click="run('resume')"
-          ><CodiconIcon name="debug-continue" :size="13" />
+          ><CodiconIcon :name="ICON.resume" :size="13" />
           {{ t('common.action.resume.label') }}</Button
         >
         <Button

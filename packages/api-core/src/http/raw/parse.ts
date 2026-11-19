@@ -4,6 +4,7 @@ import {
   type HttpHeaderState,
   type HttpRequestTabState,
 } from '@kira/shared/domain/http';
+import { t } from '@theme/i18n';
 import type { TextRef } from '../../lib/textRef';
 import { explicitContentType } from '../headers';
 
@@ -88,12 +89,15 @@ export function parseRawRequest(
   const requestLine = lines[0] ?? '';
   const firstSpace = requestLine.indexOf(' ');
   if (firstSpace === -1) {
-    return { error: 'The first line must be "METHOD target" — no space was found.' };
+    return { error: t('studio.http.editRaw.parse.noSpace.error') };
   }
   const methodToken = requestLine.slice(0, firstSpace);
   if (!(HTTP_METHODS as readonly string[]).includes(methodToken)) {
     return {
-      error: `'${methodToken}' is not one of this app's seven supported methods (${HTTP_METHODS.join(', ')}).`,
+      error: t('studio.http.editRaw.parse.unknownMethod.error', {
+        method: methodToken,
+        methods: HTTP_METHODS.join(', '),
+      }),
     };
   }
   const method = methodToken as HttpRequestTabState['method'];
@@ -102,7 +106,7 @@ export function parseRawRequest(
   const versionMatch = afterMethod.match(/^(\S+)\s+HTTP\/\d(?:\.\d)?$/);
   const target = versionMatch ? versionMatch[1] : afterMethod;
   if (target === '') {
-    return { error: 'No request target was found on the first line.' };
+    return { error: t('studio.http.editRaw.parse.noTarget.error') };
   }
   const url = resolveTarget(currentUrl, target);
 
@@ -116,15 +120,11 @@ export function parseRawRequest(
       break;
     }
     if (line[0] === ' ' || line[0] === '\t') {
-      return {
-        error: `Line ${i + 1} is an obsolete header-folding continuation line — this app does not join it onto the header above.`,
-      };
+      return { error: t('studio.http.editRaw.parse.folded.error', { line: i + 1 }) };
     }
     const colon = line.indexOf(':');
     if (colon === -1) {
-      return {
-        error: `Line ${i + 1} ('${line}') has no ':' — every header line must be 'Name: value'.`,
-      };
+      return { error: t('studio.http.editRaw.parse.noColon.error', { line: i + 1, text: line }) };
     }
     const name = line.slice(0, colon);
     const value = line.slice(colon + 1).replace(/^ /, '');

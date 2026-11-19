@@ -22,6 +22,11 @@
   text-decoration: underline dotted var(--kira-syntax-meta);
 }
 
+.monaco-host .kira-ed-kept {
+  background-color: var(--kira-kept-mark);
+  border-radius: 2px;
+}
+
 .monaco-host .kira-ed-var-unknown,
 .highlight-overlay .kira-ed-var-unknown {
   color: var(--kira-warn);

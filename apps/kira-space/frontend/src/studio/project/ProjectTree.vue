@@ -316,7 +316,7 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
         >
           <CodiconIcon name="error" :size="13" />
           <TruncatedText
-            :text="`${configName(f.file)}: ${t('common.configForm.unreadable.status')}`"
+            :text="t('studio.project.tree.unreadable.status', { name: configName(f.file) })"
           />
         </Button>
       </li>

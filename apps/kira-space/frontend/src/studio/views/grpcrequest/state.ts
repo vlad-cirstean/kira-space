@@ -1,21 +1,27 @@
-import { loadDynamicGenerator } from '@kira/api-core';
 import type {
   GrpcCallEvent,
   GrpcCallResultWire,
   GrpcMessageWire,
   GrpcSchemaWire,
 } from '@shared/domain/grpc';
-import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { queryClient } from '@workbench/state/queryClient';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
 import { variablesForSend } from '../../api/state/variables';
 import { findGrpcRequestTab } from '../../api/tabs';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
-import { classifyLoadError, createRuntimeStore, stopOp } from '../shared/viewOp';
+import {
+  beginRequest,
+  createRequestFieldFilter,
+  defaultRequestRuntime,
+  type RequestViewRuntime,
+  settleRequestFailure,
+  stopRequest,
+} from '../shared/request/requestOp';
+import { resolveWithDynamic } from '../shared/request/resolve';
+import { createRuntimeStore, stopOp } from '../shared/viewOp';
 import { useGrpcCallHistoryStore } from './history';
 import { resolveGrpcTabState } from './resolve';
 import { grpcSchemaKey, grpcSchemaSourceFor } from './schemaQuery';
@@ -32,11 +38,7 @@ const MAX_LIVE_MESSAGES = 10_000;
 // back to exactly MAX_LIVE_MESSAGES.
 
 // D6: the response is runtime-only, never persisted.
-interface GrpcRequestViewRuntime {
-  status: 'idle' | 'running' | 'error' | 'cancelled';
-  opId: string | null;
-  /** True while call() resolves variables, before Go knows the op: Stop cancels locally. */
-  preflight: boolean;
+interface GrpcRequestViewRuntime extends RequestViewRuntime {
   /** The streaming event subscriber's own key, set alongside `opId` when a call
    *  starts and never cleared early the way `opId` is. Messages arrive over the event channel
    *  while the call's own CallResult returns over the control plane — a separate HTTP request —
@@ -57,7 +59,6 @@ interface GrpcRequestViewRuntime {
    *  as before. */
   notifiedCallId: string | null;
   streaming: boolean;
-  error: { code: string; message: string } | null;
   result: GrpcCallResultWire | null;
   /** Capped at MAX_LIVE_MESSAGES (D15) — the oldest are spliced off the head as new ones arrive. */
   messages: GrpcMessageWire[];
@@ -70,27 +71,19 @@ interface GrpcRequestViewRuntime {
    *  trueMessageCount, and what makes the response pane's own byte total O(1) per message instead
    *  of O(N) per push. */
   messageBytes: number;
-  // P375: filter inputs outlive the view's unmount on tab switch; session-only, never tab state.
-  fieldFilterOpen: boolean;
-  fieldFilterQuery: string;
   schemaFilter: string;
 }
 
 function defaultRuntime(): GrpcRequestViewRuntime {
   return {
-    status: 'idle',
-    opId: null,
-    preflight: false,
+    ...defaultRequestRuntime(),
     lastCallId: null,
     notifiedCallId: null,
     streaming: false,
-    error: null,
     result: null,
     messages: [],
     trueMessageCount: 0,
     messageBytes: 0,
-    fieldFilterOpen: false,
-    fieldFilterQuery: '',
     schemaFilter: '',
   };
 }
@@ -145,15 +138,10 @@ function applyGrpcEvent(tabId: string, rt: GrpcRequestViewRuntime, event: GrpcCa
 }
 
 export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
-  const { runtime, ensureRuntime } = createRuntimeStore<GrpcRequestViewRuntime>(defaultRuntime);
-
   // dropResources is noDrop (the registry entry) — the runtime lives here, and a still-running
-  // call must be cancelled through this hook rather than through dropResources
-  // (registerTabRuntimeCleanup is the one place a closing tab's cleanup and an in-flight op's
-  // cancellation can share one call).
-  registerTabRuntimeCleanup((tabId) => {
-    stopOp(runtime[tabId]);
-    delete runtime[tabId];
+  // call must be cancelled through this hook rather than through dropResources.
+  const { runtime, ensureRuntime } = createRuntimeStore<GrpcRequestViewRuntime>(defaultRuntime, {
+    onClose: (_tabId, rt) => stopOp(rt),
   });
 
   // ---- D7/D8: the call itself ----
@@ -202,28 +190,22 @@ export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
     }
     const streaming = method.serverStreaming;
 
-    const opId = newUuid();
-    rt.status = 'running';
-    rt.opId = opId;
+    const opId = beginRequest(rt);
     rt.lastCallId = opId;
-    rt.error = null;
     rt.result = null;
     rt.messages = [];
     rt.trueMessageCount = 0;
     rt.messageBytes = 0;
     rt.streaming = streaming;
 
-    rt.preflight = true;
-
     try {
       const { collectionId, environmentId, values, secretNames } = await variablesForSend(
         tabId,
         tab.state.itemId,
       );
-      const first = resolveGrpcTabState(tab.state, values, secretNames);
-      const resolved = first.refs.some((r) => r.kind === 'dynamic')
-        ? resolveGrpcTabState(tab.state, values, secretNames, await loadDynamicGenerator())
-        : first;
+      const resolved = await resolveWithDynamic((dynamic) =>
+        resolveGrpcTabState(tab.state, values, secretNames, dynamic),
+      );
       // Tab closed or Stop pressed during pre-flight: Go never saw this op, so never call it.
       if (!findGrpcRequestTab(tabId) || rt.opId !== opId) return;
       rt.preflight = false;
@@ -267,38 +249,15 @@ export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
       }
     } catch (err) {
       if (!findGrpcRequestTab(tabId) || rt.opId !== opId) return;
-      rt.opId = null;
-      rt.preflight = false;
-      const failure = classifyLoadError(err);
-      if (failure.kind === 'cancelled') {
-        rt.status = 'cancelled';
-        return;
-      }
-      rt.status = 'error';
+      const failure = settleRequestFailure(rt, err);
+      if (!failure) return;
       rt.error = { code: failure.code, message: failure.message };
     }
   }
 
-  function stop(tabId: string): void {
-    const rt = runtime[tabId];
-    if (rt?.preflight) {
-      rt.preflight = false;
-      rt.opId = null;
-      rt.status = 'cancelled';
-      return;
-    }
-    stopOp(rt);
-  }
+  const stop = (tabId: string): void => stopRequest(runtime[tabId]);
 
-  function setFieldFilter(tabId: string, open: boolean, query: string): void {
-    const rt = ensureRuntime(tabId);
-    rt.fieldFilterOpen = open;
-    rt.fieldFilterQuery = query;
-  }
-
-  function setFieldFilterQuery(tabId: string, query: string): void {
-    ensureRuntime(tabId).fieldFilterQuery = query;
-  }
+  const { setFieldFilter, setFieldFilterQuery } = createRequestFieldFilter(ensureRuntime);
 
   function setSchemaFilter(tabId: string, query: string): void {
     ensureRuntime(tabId).schemaFilter = query;

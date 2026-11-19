@@ -1,0 +1,229 @@
+{
+  "ApprovalsService.List#exemption": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.exemption:<id:1>",
+      "kind": "db.exemption",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 64,
+                "index": 0,
+                "part": "",
+                "to": 65
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "limits": [
+          {
+            "limit": "expensive_query",
+            "max": 1000,
+            "measured": 5000,
+            "unit": "rows"
+          }
+        ],
+        "mode": "read",
+        "params": [
+          "ids"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reason": "needs the full run",
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "1e8027cb8275f2a006a2fe7068e583f4746aef40e31bb3d58df804a0260347ec",
+          "mayKeep": [],
+          "source": "return result.rows.map(r => r[0]);"
+        },
+        "statement": "select body from notes where id in (select value from json_each(?)) /* big */"
+      },
+      "reason": "exemption",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#review": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:1>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 96,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 217,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#write": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "mode": "write",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "486d9affb60dbb0063b03d8e23a6ccf6364ce203dc3a9f56f20e750eb41ecade",
+          "mayKeep": [],
+          "source": "return 1"
+        },
+        "statement": "insert into notes (body) values ('three')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#masked": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "65bd5f67141e68de41cfe8b1136922eee293153b4cc4110a507a55033a2a4a4c",
+      "source": "return result.rows;"
+    },
+    "text": "{\"kind\":\"script\",\"output\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "DbMcpService.PendingResponse#review": {
+    "isError": false,
+    "keep": [
+      {
+        "bytes": 5,
+        "items": 2,
+        "name": "ids",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "array"
+      }
+    ],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "6130cbe33c4797f71be7ed1705a0326335728fa67de64cbee528125484355803",
+      "source": "kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+    },
+    "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "args:ApprovalsService.Answer#deny": {
+    "approve": false,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#exemption": {
+    "approve": true,
+    "ids": [
+      "db.exemption:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#review": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
+  }
+}

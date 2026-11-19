@@ -2,10 +2,7 @@
 import type { ConnectionFileMcp } from '@shared/domain/connectionConfig';
 import { TABLE_LIST_KINDS } from '@shared/domain/dbmcp';
 import { useQuery } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
-import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
-import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Field,
@@ -138,18 +135,9 @@ function toggleShown(on: boolean): void {
           variant="inline"
           :is-empty="() => false"
           :loading-label="t('studio.project.connectionDialog.mcp.tablesLoading.label')"
+          :error-label="t('studio.project.connectionDialog.mcp.tablesOffline.body')"
+          error-testid="connection-mcp-tables-offline"
         >
-          <template #error="{ retry }">
-            <div class="flex items-center gap-2" data-testid="connection-mcp-tables-offline">
-              <InlineState kind="error">{{
-                t('studio.project.connectionDialog.mcp.tablesOffline.body')
-              }}</InlineState>
-              <Button size="kira" variant="toolbar" @click="retry"
-                ><CodiconIcon name="refresh" :size="13" />
-                {{ t('common.action.retry.label') }}</Button
-              >
-            </div>
-          </template>
           <div class="flex items-center gap-2">
             <Checkbox
               :model-value="selectAllState"

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import { useCopy } from '../behaviour/clipboard';
+import CopyIconButton from './CopyIconButton.vue';
 
 // An id, sha, branch, ref or path shown as a value: always `font-data`, truncated with a tooltip
 // for the full text, optionally shortened and copyable.
@@ -18,18 +17,16 @@ const props = defineProps<{
 }>();
 
 const shown = computed(() => (props.short ? props.short(props.value) : props.value));
-const { copy, copied } = useCopy();
 </script>
 
 <template>
   <span class="inline-flex min-w-0 items-center gap-1 font-data">
     <TruncatedText :text="value" :split="split"><slot>{{ shown }}</slot></TruncatedText>
-    <TooltipIconButton
+    <CopyIconButton
       v-if="copyable"
-      :icon="copied ? 'check' : 'copy'"
+      :text="value"
       :label="t('workbench.identifier.copy.label')"
       class="shrink-0"
-      @click="copy(value)"
     />
   </span>
 </template>

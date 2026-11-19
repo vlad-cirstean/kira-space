@@ -24,6 +24,7 @@
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "statement": "SELECT \"id\", \"name\" FROM \"people\" WHERE \"name\" = 'O''Brien' ORDER BY \"id\" DESC LIMIT 10 OFFSET 0"
       },
       "reason": "permission",

@@ -1,7 +1,7 @@
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { logWarn } from '@workbench/bridge/log';
-import { computed, type MaybeRefOrGetter, ref, toValue } from 'vue';
+import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { control } from '../../../bridge/control';
 import { useOpenChangeRequest, useOpenHostView } from '../../../hostview/queries';
 import { issueCategoryTone } from '../artifacts/status';
@@ -77,7 +77,7 @@ export function useTaskLinks(
       })),
   );
   const gaps = computed(() => query.data.value?.gaps ?? []);
-  const error = ref('');
+  const surface = useTaskAction();
 
   /** Saves one link's edit; an empty text removes it. A failure throws, so the editor stays open. */
   async function commit(item: LinkItem, text: string): Promise<void> {
@@ -104,28 +104,20 @@ export function useTaskLinks(
   }
 
   async function remove(item: LinkItem): Promise<void> {
-    error.value = '';
-    try {
-      await commit(item, '');
-    } catch (err) {
-      error.value = errorText(err);
-    }
+    await surface.run(() => commit(item, ''));
   }
 
   async function recategorise(item: LinkItem, kind: Artifact['kind']): Promise<void> {
     if (!item.artifactId || kind === item.kind) return;
-    error.value = '';
-    try {
-      await editLink.mutateAsync({
+    await surface.run(() =>
+      editLink.mutateAsync({
         taskId: toValue(task).id,
         slot: 'stored',
-        id: item.artifactId,
+        id: item.artifactId ?? '',
         text: '',
         kind,
-      });
-    } catch (err) {
-      error.value = errorText(err);
-    }
+      }),
+    );
   }
 
   const add = (line: string) => addLink.mutateAsync({ taskId: toValue(task).id, text: line });
@@ -166,7 +158,7 @@ export function useTaskLinks(
     return false;
   }
 
-  return { query, groups, gaps, error, add, commit, remove, recategorise, openLink };
+  return { query, groups, gaps, error: surface.error, add, commit, remove, recategorise, openLink };
 }
 
 export type TaskLinks = ReturnType<typeof useTaskLinks>;

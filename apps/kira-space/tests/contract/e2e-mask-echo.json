@@ -1,0 +1,60 @@
+{
+  "ApprovalsService.List#forms": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:1>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 236,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "method": "GET",
+        "rawBytes": 517,
+        "reason": "setting",
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/forms"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#forms": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"193\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"{{kept.apikey}}\\\",\\\"b64url\\\":\\\"{{kept.apikey}}\\\",\\\"json\\\":\\\"{{kept.apikey}}\\\",\\\"path\\\":\\\"{{kept.apikey}}\\\",\\\"query\\\":\\\"{{kept.apikey}}\\\",\\\"raw\\\":\\\"{{kept.apikey}}\\\"}\\n\",\"bodyBytes\":193,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[]}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "981d6b4b0509970abf1ef7e8a9a78db28a5869c2ce8e684df52a2efa9abc549c",
+      "source": "return response.json;"
+    },
+    "text": "{\"result\":{\"b64\":\"{{kept.apikey}}\",\"b64url\":\"{{kept.apikey}}\",\"json\":\"{{kept.apikey}}\",\"path\":\"{{kept.apikey}}\",\"query\":\"{{kept.apikey}}\",\"raw\":\"{{kept.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
+  },
+  "result#forms": "{\"result\":{\"b64\":\"{{kept.apikey}}\",\"b64url\":\"{{kept.apikey}}\",\"json\":\"{{kept.apikey}}\",\"path\":\"{{kept.apikey}}\",\"query\":\"{{kept.apikey}}\",\"raw\":\"{{kept.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}",
+  "result#short": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"103\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"YWIxMmNk\\\",\\\"b64url\\\":\\\"YWIxMmNk\\\",\\\"json\\\":\\\"{{kept.pin}}\\\",\\\"path\\\":\\\"{{kept.pin}}\\\",\\\"query\\\":\\\"{{kept.pin}}\\\",\\\"raw\\\":\\\"{{kept.pin}}\\\"}\\n\",\"bodyBytes\":103,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[],\"inputs\":[{\"name\":\"pin\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
+}

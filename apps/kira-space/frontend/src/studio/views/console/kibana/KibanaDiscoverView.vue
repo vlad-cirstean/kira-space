@@ -3,14 +3,13 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useAsyncAction, useTaskAction } from '@workbench/behaviour/asyncAction';
 import { usePersistedState } from '@workbench/behaviour/persisted';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue';
 import type { ConsoleTabRecord } from '../../../../state/tabDomain';
 import { useConnectionsStore } from '../../../state/connections';
 import EngineIcon from '../../../theme/EngineIcon.vue';
@@ -160,8 +159,8 @@ const showHistogram = computed(
 );
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
-const savedControls = useTemplateRef<{ save: () => Promise<void> }>('savedControls');
-const savedError = ref<string | null>(null);
+const savedControls = useTemplateRef<{ save: () => void }>('savedControls');
+const saved = useTaskAction();
 useShortcut(rootEl, ['form.save'], () => void savedControls.value?.save());
 
 let off: Array<() => void> = [];
@@ -183,27 +182,25 @@ onUnmounted(() => {
     data-testid="kibana-discover"
     :data-path="tab.path"
   >
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span class="flex size-4 shrink-0 items-center justify-center">
-        <EngineIcon kind="kibana" :size="13" />
-      </span>
-      <DataViewPicker
-        :model-value="d.state.value.dataViewId"
-        :connection-id="tab.connectionId"
-        :enabled="connected"
-        :fallback-label="d.state.value.dataViewName"
-        @select="d.selectDataView"
-      />
+    <ViewHead :color="railColor" icon="search">
+      <template #lead><EngineIcon kind="kibana" :size="13" /></template>
+      <template #title>
+        <DataViewPicker
+          :model-value="d.state.value.dataViewId"
+          :connection-id="tab.connectionId"
+          :enabled="connected"
+          :fallback-label="d.state.value.dataViewName"
+          @select="d.selectDataView"
+        />
+      </template>
       <DiscoverSavedControls
         ref="savedControls"
         :d="d"
         :connection-id="tab.connectionId ?? ''"
         @run="onRun"
-        @error="(m) => (savedError = m)"
+        @task="saved.run"
       />
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" />
+    </ViewHead>
 
     <QueryBar
       ref="queryBar"
@@ -227,8 +224,8 @@ onUnmounted(() => {
       :suggest-scope="d.suggestScope.value"
     />
 
-    <Alert strip v-if="savedError" variant="error" data-testid="kibana-saved-error">
-      <AlertDescription>{{ savedError }}</AlertDescription>
+    <Alert strip v-if="saved.error.value" variant="error" data-testid="kibana-saved-error">
+      <AlertDescription>{{ saved.error.value }}</AlertDescription>
     </Alert>
     <Alert
       strip

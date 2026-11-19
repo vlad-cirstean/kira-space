@@ -105,6 +105,7 @@ export function useConsoleRun(opts: {
   return {
     starting,
     connectError,
+    resetConnectError: connect.reset,
     runBlocked,
     canExplain,
     explainTooltip,

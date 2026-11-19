@@ -5,7 +5,6 @@ import type { Page } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { useSettingsStore } from '../../../state/settings';
 import type { ConsoleTabRecord } from '../../../state/tabDomain';
@@ -91,7 +90,7 @@ interface ConsoleViewRuntime {
   // Keyed by column name, living on this per-tab runtime record (not per-result) so it survives
   // every subsequent run in the same still-open tab — the "session" the bug report names —
   // and is discarded only when the runtime itself is (a genuinely new session: the tab closes,
-  // `registerTabRuntimeCleanup` below deletes the whole record). Never touched by `dropResults`
+  // `createRuntimeStore`'s tab-close cleanup deletes the whole record). Never touched by `dropResults`
   // (replace-mode's own per-run reset) — a width choice is not a query result.
   columnWidths: Record<string, number>;
 }
@@ -334,10 +333,6 @@ function endTabTransaction(tabId: string): void {
 }
 
 export const useConsoleViewStore = defineStore('consoleView', () => {
-  const { runtime, ensureRuntime, toggleSearchOpen, setSearchOpen } =
-    createRuntimeStore<ConsoleViewRuntime>(defaultRuntime);
-
-  // closeTab has no way to import this leaf module directly — registers here.
   // state/tabs.ts's dropAllPagesForTab already frees this tab's entries in resultPages.ts's own
   // `pages` map directly (rt.results holds only { key, rowCount } now, never a Page, so
   // there is no second reference here left to release before the record itself is dropped).
@@ -345,32 +340,33 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
   // own per-result parse cache — unregisterDocumentRows alone only drops the *source* pointer
   // (rows.ts:25-27's own `rowSources.delete`), leaving every already-parsed document tree for that
   // result retained under a key `nextSeq` guarantees is never reused, for the life of the process.
-  registerTabRuntimeCleanup((tabId) => {
-    // The close prompt already warned; confirming rolls the open transaction back.
-    endTabTransaction(tabId);
-    const rt = runtime[tabId];
-    if (rt) {
-      // P12 round 1 finding #10: routed through the one release path every user-driven removal
-      // (closeResult, closeOtherResults, closeResultsToTheRight, dropResults, evictOldestResults)
-      // already uses — this used to call unregisterDocumentRows/dropRows directly and skip dropPage
-      // and dropPlan, so a closed tab's decoded pages and (especially) its explainResults.ts plan
-      // entries — QueryPlan.raw alone tens of KB each, nextSeq never reused — were retained in their
-      // module-level maps for the life of the process.
-      for (const result of rt.results) releaseResult(rt, result);
-      // Deleting the entry below detaches `rt` — it stays exactly as it is, so an
-      // in-flight run() or explain() awaiting on this same object still reads status 'running' and
-      // its own opId unchanged forever. Their post-await guards only check identity against that
-      // detached object, never `runtime[tabId]`'s own presence, so without this the real statement
-      // (or auto-explain's EXPLAIN batch) fires server-side after the tab is already gone. Cancel
-      // both possible in-flight ops and flip status so every such guard sees the close.
-      if (rt.status === 'running') {
-        if (rt.explainOpId) fireAndForget(control.opsCancel(rt.explainOpId), 'cancelExplain');
-        if (rt.opId) fireAndForget(control.opsCancel(rt.opId), 'cancelQuery');
-        rt.status = 'cancelled';
-      }
-    }
-    delete runtime[tabId];
-  });
+  const { runtime, ensureRuntime, toggleSearchOpen, setSearchOpen } =
+    createRuntimeStore<ConsoleViewRuntime>(defaultRuntime, {
+      onClose: (tabId, rt) => {
+        // The close prompt already warned; confirming rolls the open transaction back.
+        endTabTransaction(tabId);
+        if (!rt) return;
+        // P12 round 1 finding #10: routed through the one release path every user-driven removal
+        // (closeResult, closeOtherResults, closeResultsToTheRight, dropResults, evictOldestResults)
+        // already uses — this used to call unregisterDocumentRows/dropRows directly and skip
+        // dropPage and dropPlan, so a closed tab's decoded pages and (especially) its
+        // explainResults.ts plan entries — QueryPlan.raw alone tens of KB each, nextSeq never
+        // reused — were retained in their module-level maps for the life of the process.
+        for (const result of rt.results) releaseResult(rt, result);
+        // Deleting the entry detaches `rt` — it stays exactly as it is, so an
+        // in-flight run() or explain() awaiting on this same object still reads status 'running'
+        // and its own opId unchanged forever. Their post-await guards only check identity against
+        // that detached object, never `runtime[tabId]`'s own presence, so without this the real
+        // statement (or auto-explain's EXPLAIN batch) fires server-side after the tab is already
+        // gone. Cancel both possible in-flight ops and flip status so every such guard sees the
+        // close.
+        if (rt.status === 'running') {
+          if (rt.explainOpId) fireAndForget(control.opsCancel(rt.explainOpId), 'cancelExplain');
+          if (rt.opId) fireAndForget(control.opsCancel(rt.opId), 'cancelQuery');
+          rt.status = 'cancelled';
+        }
+      },
+    });
 
   function isResultDocExpanded(tabId: string, resultKey: string, id: string): boolean {
     return runtime[tabId]?.expandedDocIds.has(`${resultKey}:${id}`) ?? false;

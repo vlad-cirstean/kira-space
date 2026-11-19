@@ -22,7 +22,9 @@
         "connectionId": "<id:2>",
         "isError": false,
         "mode": "read",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "statement": "select id, body from notes order by id"
       },
       "reason": "preview",
@@ -37,7 +39,10 @@
   ],
   "DbMcpService.PendingResponse": {
     "isError": false,
+    "keep": [],
+    "raw": "",
     "requestId": "<id:1>",
+    "script": null,
     "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
   },
   "args:ApprovalsService.Answer": {

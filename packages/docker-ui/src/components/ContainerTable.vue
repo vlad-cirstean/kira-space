@@ -119,7 +119,7 @@ const nav = useListNavigation<DockerContainer>({
         <span>{{ t('common.field.name.label') }}</span>
         <span class="hidden @4xl:block">{{ t('docker.field.image.label') }}</span>
         <span class="hidden @4xl:block">{{ t('docker.field.ports.label') }}</span>
-        <span class="text-right">{{ t('docker.metric.cpu.label') }}</span>
+        <span class="text-right">{{ t('common.metric.cpu.label') }}</span>
         <span class="text-right">{{ t('common.module.memory.label') }}</span>
         <span />
       </div>
@@ -199,7 +199,7 @@ const nav = useListNavigation<DockerContainer>({
             <span v-else :class="cn('flex', rowActions)">
               <TooltipIconButton
                 icon="output"
-                :label="t('docker.tab.logs.label')"
+                :label="t('common.tab.logs.label')"
                 @click.stop="open(c, 'logs')"
               />
               <TooltipIconButton

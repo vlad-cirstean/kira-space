@@ -145,7 +145,7 @@ defineExpose({ run: runDefault });
     @update:open="onOpenChange"
   >
     <CodiconIcon name="repo-pull" :size="13" />
-    {{ t('git.toolbar.pull.label') }}
+    {{ t('common.action.pull.label') }}
     <template #menu>
       <DropdownMenuContent align="start" :aria-label="t('git.toolbar.pullStrategy.aria')">
         <MenuItems :items="menuItems" />

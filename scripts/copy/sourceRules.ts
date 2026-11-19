@@ -1,5 +1,5 @@
 /**
- * P265 F3: source text guard rules U64-U71 (git show bd0c224688d9:docs/v2.2/plans/P265-text-catalog-i18n.md section 3.2).
+ * P265 F3: source text guard rules U64-U71 and U208 (git show bd0c224688d9:docs/v2.2/plans/P265-text-catalog-i18n.md section 3.2).
  * AST-based: `.vue` through `@vue/compiler-sfc`, expressions and TypeScript through `@babel/parser`.
  * Pure: `scanSource` takes the file text and the catalog's placeholder table, returns hits.
  */
@@ -13,7 +13,17 @@ import {
 } from '@vue/compiler-core';
 import { parse as parseSFC } from '@vue/compiler-sfc';
 
-export const SOURCE_RULES = ['U64', 'U65', 'U66', 'U67', 'U68', 'U69', 'U70', 'U71'] as const;
+export const SOURCE_RULES = [
+  'U64',
+  'U65',
+  'U66',
+  'U67',
+  'U68',
+  'U69',
+  'U70',
+  'U71',
+  'U208',
+] as const;
 export type SourceRule = (typeof SOURCE_RULES)[number];
 
 export interface Hit {
@@ -210,6 +220,92 @@ function terminalLiterals(n: unknown): Node[] {
   }
 }
 
+function unwrap(n: unknown): unknown {
+  let cur = n;
+  while (
+    isNode(cur) &&
+    (cur.type === 'ParenthesizedExpression' || TS_EXPRESSION_WRAPPERS.has(cur.type))
+  ) {
+    cur = cur.expression;
+  }
+  return cur;
+}
+
+/** A `t(` call, or an expression that can evaluate to one (conditional branch, logical side). */
+function tResult(n: unknown): boolean {
+  const e = unwrap(n);
+  if (!isNode(e)) return false;
+  if (e.type === 'ConditionalExpression') return tResult(e.consequent) || tResult(e.alternate);
+  if (e.type === 'LogicalExpression') return tResult(e.left) || tResult(e.right);
+  return isIdentCall(e, 't');
+}
+
+/** Whitespace around exactly one direct `t(` call is layout, not composition. */
+function isPadding(tpl: Node): boolean {
+  const exprs = tpl.expressions as unknown[];
+  return (
+    exprs.length === 1 &&
+    isIdentCall(unwrap(exprs[0]), 't') &&
+    pieces(tpl).every((p) => p.trim() === '')
+  );
+}
+
+function composesT(n: unknown): boolean {
+  const e = unwrap(n);
+  if (!isNode(e)) return false;
+  if (tResult(e)) return true;
+  return terminalLiterals(e).some((l) => l.type === 'TemplateLiteral' && isComposedTemplate(l));
+}
+
+function isComposedTemplate(tpl: Node): boolean {
+  return (tpl.expressions as unknown[]).some(composesT) && !isPadding(tpl);
+}
+
+/** An array literal (or a spread of one) with a t() result in it. */
+function arrayHasT(n: unknown): boolean {
+  const e = unwrap(n);
+  if (!isNode(e)) return false;
+  if (e.type === 'ArrayExpression') {
+    return (e.elements as unknown[]).some((el) =>
+      isNode(el) && el.type === 'SpreadElement' ? arrayHasT(el.argument) : tResult(el),
+    );
+  }
+  if (e.type === 'ConditionalExpression') return arrayHasT(e.consequent) || arrayHasT(e.alternate);
+  if (e.type === 'LogicalExpression') return arrayHasT(e.left) || arrayHasT(e.right);
+  return false;
+}
+
+/** Identifiers a script block fills with t() results: `const p = [t(..)]` or `p.push(t(..))`. */
+function collectTArrays(ast: unknown): Set<string> {
+  const names = new Set<string>();
+  walk(ast, (node) => {
+    if (node.type === 'VariableDeclarator') {
+      const id = node.id as Node;
+      if (id.type === 'Identifier' && arrayHasT(node.init)) names.add(String(id.name));
+    } else if (node.type === 'CallExpression' && calleeName(node) === 'push') {
+      const callee = node.callee as Node;
+      const obj = callee.type === 'MemberExpression' ? (callee.object as Node) : undefined;
+      if (obj?.type === 'Identifier' && (node.arguments as unknown[]).some(tResult)) {
+        names.add(String(obj.name));
+      }
+    }
+    return undefined;
+  });
+  return names;
+}
+
+const ALLOWED_JOIN_SEPARATORS = new Set([' · ', '\n']);
+
+function joinSeparator(call: Node): string | undefined {
+  const sep = unwrap((call.arguments as unknown[])[0]);
+  if (!isNode(sep)) return undefined;
+  if (sep.type === 'StringLiteral') return String(sep.value);
+  if (sep.type === 'TemplateLiteral' && (sep.expressions as unknown[]).length === 0) {
+    return pieces(sep).join('');
+  }
+  return undefined;
+}
+
 const HAS_LETTER = /[A-Za-z]/;
 
 /** User-facing wording: a letter, plus a space or a leading capital. Enum tokens and ids pass. */
@@ -241,6 +337,8 @@ function lineOf(n: Node, offset: number): number {
 
 class Collector {
   readonly hits: Hit[] = [];
+  /** Literals a U67 check examined; U208 leaves them to U67. */
+  readonly textOwned = new Set<Node>();
   constructor(
     readonly file: string,
     readonly ctx: ScanContext,
@@ -298,7 +396,28 @@ function checkCatalogCall(c: Collector, call: Node, offset: number): void {
   }
 }
 
-function checkCompositionAndImports(c: Collector, node: Node, offset: number): void {
+function checkJoin(c: Collector, call: Node, line: number, tArrays: ReadonlySet<string>): void {
+  const callee = call.callee as Node;
+  if (callee.type !== 'MemberExpression') return;
+  const obj = unwrap(callee.object);
+  const holdsT =
+    arrayHasT(obj) || (isNode(obj) && obj.type === 'Identifier' && tArrays.has(String(obj.name)));
+  if (!holdsT) return;
+  const sep = joinSeparator(call);
+  if (sep !== undefined && ALLOWED_JOIN_SEPARATORS.has(sep)) return;
+  c.add(
+    'U69',
+    line,
+    `t() results joined with ${sep === undefined ? 'a computed separator' : JSON.stringify(sep)}; sentences go through joinSentences(), facts through ' · ', lines through '\\n'`,
+  );
+}
+
+function checkCompositionAndImports(
+  c: Collector,
+  node: Node,
+  offset: number,
+  tArrays: ReadonlySet<string>,
+): void {
   const line = lineOf(node, offset);
   switch (node.type) {
     case 'CallExpression': {
@@ -323,6 +442,7 @@ function checkCompositionAndImports(c: Collector, node: Node, offset: number): v
         }
       }
       if (isIdentCall(node, 't')) checkCatalogCall(c, node, offset);
+      if (name === 'join') checkJoin(c, node, line, tArrays);
       break;
     }
     case 'MemberExpression': {
@@ -344,21 +464,19 @@ function checkCompositionAndImports(c: Collector, node: Node, offset: number): v
       }
       break;
     case 'BinaryExpression':
-      if (node.operator === '+' && (isIdentCall(node.left, 't') || isIdentCall(node.right, 't'))) {
+      if (node.operator === '+' && (tResult(node.left) || tResult(node.right))) {
         c.add('U69', line, 't() result concatenated with +; one message with a placeholder');
       }
       break;
-    case 'TemplateLiteral': {
-      const hasT = (node.expressions as unknown[]).some((e) => isIdentCall(e, 't'));
-      if (hasT && pieces(node).some((p) => HAS_LETTER.test(p))) {
+    case 'TemplateLiteral':
+      if (isComposedTemplate(node)) {
         c.add(
           'U69',
           line,
-          't() result inside a template literal with other words; one message with a placeholder',
+          't() result composed in a template literal; use a placeholder or pair message (common.dotPair, common.withDetail) or joinSentences()',
         );
       }
       break;
-    }
     default:
   }
 }
@@ -378,6 +496,7 @@ function checkTextProperty(
   // A cva variant key (`title: '…'` under `variants`) names a variant, not text.
   if (ancestors.some((a) => isIdentCall(a, 'cva'))) return;
   for (const lit of terminalLiterals(node.value)) {
+    c.textOwned.add(lit);
     if (looksLikeText(lit)) {
       c.add('U67', lineOf(lit, offset), `literal text in "${name}"; move to the catalog`);
     }
@@ -389,6 +508,7 @@ function checkTextSink(c: Collector, node: Node, offset: number): void {
   if (name === undefined || !TEXT_SINKS.has(name)) return;
   for (const arg of node.arguments as Node[]) {
     for (const lit of terminalLiterals(arg)) {
+      c.textOwned.add(lit);
       if (startsUpper(lit)) {
         c.add('U67', lineOf(lit, offset), `literal text passed to ${name}(; move to the catalog`);
       }
@@ -400,6 +520,7 @@ function checkNewError(c: Collector, node: Node, offset: number): void {
   const callee = node.callee as Node;
   if (callee.type !== 'Identifier' || callee.name !== 'Error') return;
   for (const lit of terminalLiterals((node.arguments as Node[])[0])) {
+    c.textOwned.add(lit);
     if (startsUpper(lit)) {
       c.add(
         'U67',
@@ -413,15 +534,64 @@ function checkNewError(c: Collector, node: Node, offset: number): void {
 function checkStateAssignment(c: Collector, node: Node, offset: number): void {
   if (node.operator !== '=' || !assignsStateText(node.left as Node)) return;
   for (const lit of terminalLiterals(node.right)) {
+    c.textOwned.add(lit);
     if (startsUpperWithSpace(lit)) {
       c.add('U67', lineOf(lit, offset), 'literal text assigned to state; move to the catalog');
     }
   }
 }
 
+const NO_ARRAYS: ReadonlySet<string> = new Set();
+
+const PROSE_WORD = /^[‘'“"(]?[A-Za-z][a-z’']*[,.;:!?)’'”"]*$/;
+const PROSE_BANNED = /[[\]{}<>=|`]/;
+const FUNCTION_WORDS = new Set(
+  'the a an is are was were be been not no has have had this that it its to of for with could can does did will would must there your you'.split(
+    ' ',
+  ),
+);
+
+/** Prose position: property value, return, arrow body, `??`/`||` right side, array element, branch. */
+function inProseSlot(n: Node, parent: Node | null): boolean {
+  if (parent === null) return false;
+  switch (parent.type) {
+    case 'ObjectProperty':
+      return parent.value === n && !TEXT_PROPS.has(propName(parent) ?? '');
+    case 'ReturnStatement':
+      return parent.argument === n;
+    case 'ArrowFunctionExpression':
+      return parent.body === n;
+    case 'LogicalExpression':
+      return (parent.operator === '??' || parent.operator === '||') && parent.right === n;
+    case 'ArrayExpression':
+      return true;
+    case 'ConditionalExpression':
+      return parent.consequent === n || parent.alternate === n;
+    default:
+      return false;
+  }
+}
+
+function looksLikeProse(n: Node): boolean {
+  const text = pieces(n).join('x');
+  if (!/^[A-Za-z‘'“"]/.test(text) || PROSE_BANNED.test(text)) return false;
+  const words = text.split(/\s+/).filter((w) => PROSE_WORD.test(w));
+  return words.length >= 3 && words.some((w) => FUNCTION_WORDS.has(w.toLowerCase()));
+}
+
+function checkProse(c: Collector, node: Node, parent: Node | null, offset: number): void {
+  if (c.textOwned.has(node) || !inProseSlot(node, parent) || !looksLikeProse(node)) return;
+  c.add(
+    'U208',
+    lineOf(node, offset),
+    'English prose outside the catalog; move it to en.json and call t() at call time',
+  );
+}
+
 function scanScript(c: Collector, ast: unknown, offset: number, moduleScope: boolean): void {
+  const tArrays = collectTArrays(ast);
   walk(ast, (node, _parent, ancestors) => {
-    checkCompositionAndImports(c, node, offset);
+    checkCompositionAndImports(c, node, offset, tArrays);
     if (
       moduleScope &&
       isIdentCall(node, 't') &&
@@ -437,6 +607,9 @@ function scanScript(c: Collector, ast: unknown, offset: number, moduleScope: boo
     else if (node.type === 'CallExpression') checkTextSink(c, node, offset);
     else if (node.type === 'NewExpression') checkNewError(c, node, offset);
     else if (node.type === 'AssignmentExpression') checkStateAssignment(c, node, offset);
+    if (node.type === 'StringLiteral' || node.type === 'TemplateLiteral') {
+      checkProse(c, node, _parent, offset);
+    }
     return undefined;
   });
 }
@@ -458,7 +631,7 @@ function scanTemplateExpression(
   textMode: boolean,
 ): void {
   walk(ast, (node, parent) => {
-    checkCompositionAndImports(c, node, offset);
+    checkCompositionAndImports(c, node, offset, NO_ARRAYS);
     if (!textMode || (node.type !== 'StringLiteral' && node.type !== 'TemplateLiteral'))
       return undefined;
     if (!looksLikeText(node)) return undefined;

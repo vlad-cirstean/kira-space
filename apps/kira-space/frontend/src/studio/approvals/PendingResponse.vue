@@ -22,21 +22,21 @@ import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref } from 'vue';
-import { control } from '../bridge/control';
 import { loadMaskRules, maskRulesQueryKey } from '../state/maskRules';
 import FlushEditor from './FlushEditor.vue';
+import { usePendingResponse } from './pendingResponse';
 import TabbedContent from './TabbedContent.vue';
 
 // The held run_query result of a response-stage approval: the table is a view of the exact bytes
 // the AI client receives on Send. Those bytes are shown on the As sent tab, and nothing here
-// re-renders or re-masks them.
-const props = defineProps<{ requestId: string; connectionId: string }>();
+// re-renders or re-masks them. `field` picks the held text: the exact result, or with a script the raw
+// result it read.
+const props = withDefaults(
+  defineProps<{ requestId: string; connectionId: string; field?: 'text' | 'raw' }>(),
+  { field: 'text' },
+);
 
-const response = useQuery({
-  queryKey: computed(() => ['dbMcpPendingResponse', props.requestId] as const),
-  queryFn: () => control.dbMcpPendingResponse(props.requestId),
-  gcTime: 0, // MB-sized text, immutable per request id: drop on close
-});
+const response = usePendingResponse(() => props.requestId);
 const maskRules = useQuery({
   queryKey: computed(() => maskRulesQueryKey(props.connectionId)),
   queryFn: () => loadMaskRules(props.connectionId),
@@ -45,8 +45,9 @@ const maskedColumns = computed(
   () => new Set((maskRules.data.value ?? []).map((r) => r.columnName.toLowerCase())),
 );
 
-const text = computed(() => response.data.value?.text ?? '');
-const isError = computed(() => response.data.value?.isError === true);
+const text = computed(() => response.data.value?.[props.field] ?? '');
+// A script that failed leaves the raw result readable; only the sent text is the error.
+const isError = computed(() => props.field === 'text' && response.data.value?.isError === true);
 
 const parsed = computed(() => {
   if (!response.data.value || isError.value) return null;
@@ -83,7 +84,7 @@ const grid = computed<{ columns: Column[]; rows: Cell[][] } | null>(() => {
       };
     case 'document':
       return {
-        columns: [plain('docker.resource.id.label'), plain('common.body.label')],
+        columns: [plain('common.field.id.label'), plain('common.body.label')],
         rows: r.documents.map((d) => [d.id, d.body]),
       };
     case 'keyvalue':
@@ -264,9 +265,9 @@ const padBottom = computed(() => {
             </div>
             <CollapsibleTrigger v-if="hiddenRows > 0 && !open" as-child>
               <Button
-                variant="link"
+                variant="link-meta"
                 size="inline"
-                class="self-start text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3"
+                class="self-start"
                 data-testid="db-mcp-preview-more"
               >
                 {{ t('studio.dbMcp.preview.moreRows.label', { count: hiddenRows }) }}

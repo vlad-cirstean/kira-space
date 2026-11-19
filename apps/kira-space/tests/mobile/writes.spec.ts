@@ -32,6 +32,24 @@ test.describe('with write access', () => {
     expect(sent[0]?.key).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  test('a write waits while the phone is offline and sends once on reconnect', async ({
+    page,
+    server,
+  }) => {
+    const args = contract<{ title: string }>('mobile-board', 'args:POST /api/ade/later/items');
+    server.state.replies.laterTask = contract('mobile-board', 'http:POST /api/ade/later/items');
+    await page.locator(t('tab-later')).click();
+    await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+    await page.locator(t('later-add')).fill(args.title);
+    await page.locator(t('later-add-submit')).click();
+    await expect(page.locator(t('later-add-submit'))).toHaveAttribute('aria-busy', 'true');
+    expect(posts(server, '/api/ade/later/items')).toHaveLength(0);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect.poll(() => posts(server, '/api/ade/later/items').length).toBe(1);
+    const sent = posts(server, '/api/ade/later/items') as { key: string }[];
+    expect(sent[0]?.key).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   test('contract: dragging a row to the other list sends the shelf it landed on', async ({
     page,
     server,

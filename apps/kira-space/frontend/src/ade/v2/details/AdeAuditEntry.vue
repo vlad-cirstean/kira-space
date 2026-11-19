@@ -55,7 +55,7 @@ function outcomeLabel(outcome: DbAuditApproval['outcome']): string {
     case 'timedOut':
       return t('space.ade.details.dbAudit.timedOut.status');
     case 'pending':
-      return t('space.common.pending.status');
+      return t('common.state.pending.status');
     default:
       return t('space.ade.details.dbAudit.unanswered.status');
   }
@@ -74,6 +74,8 @@ function subjectLabel(a: DbAuditApproval): string {
       return t('space.ade.details.dbAudit.subjectScript.label');
     case 'api.request':
       return t('space.ade.details.dbAudit.subjectApi.label');
+    case 'api.response':
+      return t('space.ade.details.dbAudit.subjectApiResponse.label');
     default:
       return a.subject;
   }

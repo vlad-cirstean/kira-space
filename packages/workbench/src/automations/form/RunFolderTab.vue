@@ -9,8 +9,8 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/componen
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import type { TextPart } from '@theme/varText';
-import { computed, ref } from 'vue';
-import { errorText } from '../../bridge/codedError';
+import { computed } from 'vue';
+import { useAsyncAction } from '../../behaviour/asyncAction';
 import { useAutomationsModule } from '../module';
 
 // Where the run starts: a folder Kira keeps for it, or one picked folder. Kira Space adds the
@@ -18,7 +18,12 @@ import { useAutomationsModule } from '../module';
 const props = defineProps<{ id: string; errorFor: (pointer: string) => string | undefined }>();
 const file = defineModel<RunFile>({ required: true });
 const ctx = useAutomationsModule();
-const error = ref<string | null>(null);
+const choosing = useAsyncAction(async () => {
+  const path = await ctx.chooseFolder(t('automations.dialog.script.chooseFolder.title'));
+  if (path === null) return;
+  file.value.path = path;
+  file.value.dir = 'fixed';
+});
 
 const dirMode = computed(() => (file.value.dir === 'fixed' ? 'fixed' : 'kira'));
 const dir = useQuery({
@@ -49,18 +54,6 @@ function setMode(mode: string): void {
   file.value.dir = mode === 'fixed' ? 'fixed' : '';
   if (mode !== 'fixed') file.value.path = '';
 }
-
-async function choose(): Promise<void> {
-  error.value = null;
-  try {
-    const path = await ctx.chooseFolder(t('automations.dialog.script.chooseFolder.title'));
-    if (path === null) return;
-    file.value.path = path;
-    file.value.dir = 'fixed';
-  } catch (err) {
-    error.value = errorText(err);
-  }
-}
 </script>
 
 <template>
@@ -87,7 +80,7 @@ async function choose(): Promise<void> {
           variant="dialog"
           size="kira-lg"
           data-testid="script-dialog-workingdir-choose"
-          @click="choose"
+          @click="choosing.run()"
         >
           {{ t('common.action.choose.label') }}
         </Button>
@@ -99,7 +92,9 @@ async function choose(): Promise<void> {
       <FieldError v-if="folderError" data-testid="script-dialog-folder-error">{{
         folderError
       }}</FieldError>
-      <FieldError v-if="error" data-testid="script-dialog-dir-error">{{ error }}</FieldError>
+      <FieldError v-if="choosing.error.value" data-testid="script-dialog-dir-error">{{
+        choosing.error.value
+      }}</FieldError>
     </Field>
 
     <Field v-if="ctx.ade" orientation="horizontal">

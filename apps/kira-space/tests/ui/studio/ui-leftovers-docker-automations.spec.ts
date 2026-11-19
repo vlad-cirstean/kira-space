@@ -109,7 +109,7 @@ test('docker logs: ANSI colour renders as styled spans', async ({ relaunch }) =>
   await expect(line.locator('span', { hasText: 'red' }).first()).toHaveAttribute('style', /color/);
 });
 
-test('docker logs: Find marks every match and prev/next walk them', async ({ relaunch }) => {
+test('docker logs: filter keeps matching lines and marks them', async ({ relaunch }) => {
   const { page, docker } = await setupDocker(relaunch);
   const streamId = await openLogs(page, docker);
   await emitWailsEvent(page, 'kira:docker:logs', {
@@ -121,16 +121,14 @@ test('docker logs: Find marks every match and prev/next walk them', async ({ rel
     ],
     ended: false,
   });
-  await page.locator('[data-testid="docker-logs-find"]').click();
-  await page.locator('[data-testid="docker-logs-find-input"]').fill('boom');
-  const marks = page.locator('[data-testid="docker-log-line"] mark');
-  await expect(marks).toHaveCount(2);
-  const count = page.locator('[data-testid="docker-logs-find-count"]');
-  await expect(count).toHaveText('Match 1 of 2');
-  await page.locator('[data-testid="docker-logs-find-next"]').click();
-  await expect(count).toHaveText('Match 2 of 2');
-  await page.locator('[data-testid="docker-logs-find-prev"]').click();
-  await expect(count).toHaveText('Match 1 of 2');
+  const field = page.locator('[data-testid="docker-logs-filter"]');
+  const rows = page.locator('[data-testid="docker-log-line"]');
+  await field.fill('boom');
+  await expect(rows).toHaveCount(2);
+  await expect(page.locator('[data-testid="docker-log-line"] mark')).toHaveCount(2);
+  await expect(page.locator('[data-testid="docker-logs-matches"]')).toHaveText('2 of 3 lines');
+  await field.press('Escape');
+  await expect(rows).toHaveCount(3);
 });
 
 test('docker rows: Enter opens the Logs tab, right-click selects the container', async ({

@@ -1,5 +1,5 @@
-import { t } from '@theme/i18n';
-import { toCodedError } from '@workbench/bridge/codedError';
+import { joinSentences, t } from '@theme/i18n';
+import { isConflict, toCodedError } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 
 // Decision 3: asked when the server reports the edited row or document changed since it was
@@ -7,8 +7,8 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 export function confirmOverwrite(detail: string): Promise<boolean> {
   return useConfirmDialogStore().confirm({
     title: t('studio.common.overwriteConfirm.title'),
-    message: `${detail} ${t('studio.common.overwriteConfirm.body')}`,
-    confirmLabel: t('space.ade.workflows.conflict.overwrite.label'),
+    message: joinSentences(detail, t('studio.common.overwriteConfirm.body')),
+    confirmLabel: t('common.action.overwrite.label'),
     tone: 'danger',
   });
 }
@@ -18,7 +18,7 @@ export function confirmOverwrite(detail: string): Promise<boolean> {
 export function isConflictWith(err: unknown, flag: string): boolean {
   const coded = toCodedError(err);
   const details = coded.details as Record<string, unknown> | undefined;
-  return coded.code === 'E_CONFLICT' && details?.[flag] === true;
+  return isConflict(err) && details?.[flag] === true;
 }
 
 /** Decision 3: the server reports the row, document or saved item changed since it was loaded. */

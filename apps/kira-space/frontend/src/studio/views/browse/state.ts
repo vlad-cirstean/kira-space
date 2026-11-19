@@ -1,6 +1,5 @@
 import type { PageSize } from '@shared/domain/tabs';
 import { pathParent, type TreeNode } from '@shared/domain/tree';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
 import { pinia } from '../../../state/pinia';
@@ -76,13 +75,14 @@ function defaultRuntime(): BrowseViewRuntime {
 }
 
 export const useBrowseViewStore = defineStore('browseView', () => {
-  const { runtime, ensureRuntime, setActionError } =
-    createRuntimeStore<BrowseViewRuntime>(defaultRuntime);
-
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-    delete pendingKeyTypePaths[tabId];
-  });
+  const { runtime, ensureRuntime, setActionError } = createRuntimeStore<BrowseViewRuntime>(
+    defaultRuntime,
+    {
+      onClose: (tabId) => {
+        delete pendingKeyTypePaths[tabId];
+      },
+    },
+  );
 
   /** The level a tab is currently showing — `''` in session state means "the tab's own container
    *  path" (D14), so a freshly opened tab and one restored at its root agree. */
@@ -202,7 +202,7 @@ export const useBrowseViewStore = defineStore('browseView', () => {
 
   // P63 §4.3: paths a treeKeyTypes call is already in flight for, per tab — module-level (not
   // runtime state) since it is purely a dedupe guard, never rendered. Cleared alongside `runtime`
-  // itself (registerTabRuntimeCleanup above) and on every level change (setLevel above).
+  // itself (createRuntimeStore's onClose above) and on every level change (setLevel above).
   const pendingKeyTypePaths: Record<string, Set<string>> = {};
 
   // Well under any viewport (§4.3's own guard) — a defensive cap on ensureKeyTypes itself, not

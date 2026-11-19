@@ -1,6 +1,6 @@
 import { pathParent } from '@shared/domain/tree';
 import type { ColumnDescriptor } from '@shared/protocol/page';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -27,6 +27,7 @@ export function useKeyValueActions(
   const objectDraft = ref<string | null>(null);
   let declined = false;
   const objectSave = useAsyncAction(async (value: string) => {
+    if (gate.stale.value) throw new Error(t('studio.common.connectionLost.error'));
     declined = !(await saveValueEdit(viewKey(), gate.keyName.value, value, openedETag()));
   });
 
@@ -46,16 +47,12 @@ export function useKeyValueActions(
   watch(gate.page, () => {
     selectedRow = null;
     objectDraft.value = null;
-    objectSave.error.value = null;
+    objectSave.reset();
     cellSelectionStore.clearSelectedCellFor(viewKey());
   });
 
   async function saveObjectEdit(): Promise<void> {
     if (objectDraft.value === null || !gate.keyName.value) return;
-    if (gate.stale.value) {
-      objectSave.error.value = t('studio.common.connectionLost.error');
-      return;
-    }
     if ((await objectSave.run(objectDraft.value)) && !declined) objectDraft.value = null;
   }
 
@@ -123,7 +120,7 @@ export function useKeyValueActions(
           ? 'studio.browse.deleteObjectConfirm.title'
           : 'studio.keyValue.deleteKeyConfirm.title',
       ),
-      message: [
+      message: joinSentences(
         t(
           isObject
             ? 'studio.browse.deleteObjectConfirm.body'
@@ -131,7 +128,7 @@ export function useKeyValueActions(
           { name },
         ),
         t('common.confirm.irreversible.body'),
-      ].join(' '),
+      ),
       confirmLabel: t('common.action.delete.label'),
       tone: 'danger',
     });

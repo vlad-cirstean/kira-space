@@ -2,7 +2,7 @@ import type { NodeKind } from '@shared/domain/tree';
 import { type MessageKey, t } from '@theme/i18n';
 
 const KEYS: Record<NodeKind, MessageKey> = {
-  connection: 'studio.common.nodeKind.connection.label',
+  connection: 'common.field.connection.label',
   database: 'studio.project.connectionDialog.database.label',
   schema: 'studio.common.nodeKind.schema.label',
   table: 'studio.definition.table.label',

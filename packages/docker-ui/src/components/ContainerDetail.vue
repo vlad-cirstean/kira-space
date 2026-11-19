@@ -60,8 +60,8 @@ const TABS: ReadonlyArray<{
   icon: string;
   needsRunning: boolean;
 }> = [
-  { id: 'overview', label: 'docker.tab.overview.label', icon: 'info', needsRunning: false },
-  { id: 'logs', label: 'docker.tab.logs.label', icon: 'output', needsRunning: false },
+  { id: 'overview', label: 'common.tab.overview.label', icon: 'info', needsRunning: false },
+  { id: 'logs', label: 'common.tab.logs.label', icon: 'output', needsRunning: false },
   { id: 'terminal', label: 'common.module.terminal.label', icon: 'terminal', needsRunning: true },
   { id: 'stats', label: 'docker.tab.stats.label', icon: 'graph', needsRunning: false },
   { id: 'inspect', label: 'docker.tab.inspect.label', icon: 'json', needsRunning: false },
@@ -200,7 +200,7 @@ function act(action: ContainerAction): void {
                 data-testid="docker-detail-live"
               >
                 <span class="flex w-28 items-center gap-1.5">
-                  {{ t('docker.metric.cpu.label') }}
+                  {{ t('common.metric.cpu.label') }}
                   <span class="font-data text-fg">{{ formatPercent(live.cpuPercent) }}</span>
                   <UsageBar :percent="live.cpuPercent" class="flex-1" />
                 </span>

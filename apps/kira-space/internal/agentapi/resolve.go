@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apivars"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"golang.org/x/net/http/httpguts"
 )
@@ -39,7 +40,10 @@ type credential struct {
 
 // Plan checks in against the policy without sending it. A problem is returned as an error the
 // agent can act on; it never carries a secret value.
-func (s *Service) Plan(in Input) (Planned, error) {
+func (s *Service) Plan(in Input) (Planned, error) { return s.plan(in, false) }
+
+// plan is Plan; withValues also holds the kept values for the send that follows.
+func (s *Service) plan(in Input, withValues bool) (Planned, error) {
 	env, avail, err := s.environmentOf(in.EnvironmentID)
 	if err != nil {
 		return Planned{}, err
@@ -52,10 +56,15 @@ func (s *Service) Plan(in Input) (Planned, error) {
 		return Planned{}, err
 	}
 	resolved, used := resolvePlain(norm, avail)
+	kept, err := s.checkKept(resolved)
+	if err != nil {
+		return Planned{}, err
+	}
 	p, err := buildPlanned(env, resolved, avail, used)
 	if err != nil {
 		return Planned{}, err
 	}
+	kept.apply(&p, withValues)
 	if err := s.checkAccess(&p); err != nil {
 		return Planned{}, err
 	}
@@ -131,6 +140,7 @@ func normalize(in Input) (Input, error) {
 	}
 	in.TimeoutSeconds = clampOr(in.TimeoutSeconds, 1, maxTimeout, defaultTimeout)
 	in.MaxResponseBytes = clampOr(in.MaxResponseBytes, 1, maxResponse, defaultResponse)
+	in.ScriptBodyBytes = min(max(in.ScriptBodyBytes, 0), MaxScriptBodyBytes)
 	return in, checkHeaders(in.Headers)
 }
 
@@ -204,7 +214,7 @@ func checkNames(in Input, env EnvInfo, avail map[string]available) error {
 	in.texts(func(s *string) {
 		for _, n := range apivars.Names(*s) {
 			switch {
-			case err != nil:
+			case err != nil, keptvars.IsKeptName(n):
 			case apivars.IsDynamicReference(n):
 				err = errors.New("dynamic values are not supported here; send the literal value")
 			default:
@@ -263,11 +273,11 @@ func buildPlanned(env EnvInfo, in Input, avail map[string]available, usedBefore 
 	}
 	creds := referencedCredentials(in, avail)
 	p := Planned{
-		Env: env, Method: in.Method, URL: display, Host: u.Hostname(), Query: queryOf(u),
+		Env: env, Method: in.Method, URL: display, Host: u.Hostname(), Origin: OriginOf(u), Query: queryOf(u),
 		Headers: in.Headers, Body: in.Body, ContentType: in.ContentType, Form: in.Form,
 		Variables:       variablesUsed(usedBefore, creds, avail),
 		FollowRedirects: followOf(in), TimeoutSeconds: in.TimeoutSeconds, MaxResponseBytes: in.MaxResponseBytes,
-		base: in.URL, extra: in.Query, creds: creds,
+		bodyCap: in.ScriptBodyBytes, base: in.URL, extra: in.Query, creds: creds,
 	}
 	for _, c := range creds {
 		hosts := make([]string, len(c.rules))
@@ -436,11 +446,17 @@ func hostList(rules []apiaccess.HostRule) string {
 // access rules refuse. A hop to a host no rule matches is refused unless the policy allows everything or the
 // request was approved by hand and the hop stays on its host. The hop is checked with the request's own method,
 // even when a 303 turns it into a GET.
-func redirectGuard(method string, creds []credential, access apiaccess.Policy, origin *url.URL, approved bool) func(*url.URL) error {
-	if len(creds) == 0 && access.AllowsAll() {
+//
+// A request that carries a value the user supplied (userOrigin) is bound to that origin: a hop off its scheme, host
+// or port is blocked, whatever the rules say.
+func redirectGuard(method string, creds []credential, access apiaccess.Policy, origin *url.URL, approved bool, userOrigin string) func(*url.URL) error {
+	if len(creds) == 0 && access.AllowsAll() && userOrigin == "" {
 		return nil
 	}
 	return func(next *url.URL) error {
+		if userOrigin != "" && OriginOf(next) != userOrigin {
+			return fmt.Errorf("redirect to %s blocked: a value you supplied is bound to %s", next.Host, userOrigin)
+		}
 		for _, c := range creds {
 			if !allowsAny(c.rules, next) {
 				return fmt.Errorf("redirect to %s blocked: credential %q is not allowed there", next.Host, c.name)

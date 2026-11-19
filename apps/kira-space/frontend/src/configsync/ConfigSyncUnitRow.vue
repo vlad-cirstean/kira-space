@@ -41,7 +41,7 @@ const KIND_LABEL: Record<ConfigSyncKind, MessageKey> = {
   delete: 'common.action.delete.label',
   conflict: 'space.ade.board.branchTag.conflict.label',
   blocked: 'space.common.status.blocked.status',
-  unchanged: 'studio.http.diff.unchangedRow.status',
+  unchanged: 'common.diff.unchangedRow.status',
   unmatched: 'space.configSync.kind.unmatched.label',
 };
 const KIND_TONE: Record<ConfigSyncKind, StatusTone> = {

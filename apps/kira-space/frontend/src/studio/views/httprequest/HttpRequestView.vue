@@ -23,7 +23,6 @@ import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { methodTextClass } from '@theme/methodColor';
@@ -31,6 +30,7 @@ import RunState from '@theme/RunState.vue';
 import { refDebounced } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { templateToken } from '@workbench/editor/fieldCompletion';
 import { registerCommand } from '@workbench/shortcuts/commands';
@@ -297,18 +297,15 @@ onUnmounted(() => {
 
 <template>
   <div ref="rootEl" class="flex h-full min-h-0 flex-col" data-testid="http-request-view">
-    <ViewToolbar data-testid="view-head">
-      <span
-        v-if="railColor !== undefined"
-        :class="colorMarkClass('dot', railColor)"
-        data-testid="conn-dot"
-      />
-      <span class="size-4 flex items-center justify-center shrink-0"
-        ><CodiconIcon name="globe" :size="13" /></span
-      >
-      <span class="text-kira-md text-fg truncate" data-testid="http-request-target">{{
-        title
-      }}</span>
+    <ViewHead
+      testid="view-head"
+      dot-testid="conn-dot"
+      band-testid="toolbar-rail"
+      :color="railColor"
+      icon="globe"
+      :title="title"
+      title-testid="http-request-target"
+    >
       <Badge
         data
         variant="chip"
@@ -335,7 +332,7 @@ onUnmounted(() => {
           t('studio.tabs.incognito.label')
         }}</Badge></TextTooltip
       >
-      <span class="ml-auto flex items-center gap-1">
+      <template #actions>
         <TextTooltip :text="saveTooltip">
           <TooltipDisabledTrigger>
             <Button
@@ -350,9 +347,8 @@ onUnmounted(() => {
             </Button>
           </TooltipDisabledTrigger>
         </TextTooltip>
-      </span>
-    </ViewToolbar>
-    <div :class="colorMarkClass('band', railColor)" data-testid="toolbar-rail" />
+      </template>
+    </ViewHead>
     <ViewToolbar>
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton

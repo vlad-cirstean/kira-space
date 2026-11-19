@@ -1,5 +1,6 @@
 import type { TypeClass } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
+import { formatBytes } from '@workbench/behaviour/format';
 import { scanJson, scanXml } from '../../../beautify';
 import { CELL_FORMATS, type CellFormat } from './formats';
 
@@ -373,12 +374,16 @@ export function describeValue(format: CellFormat, text: string): string | null {
     if (format === 'base64') {
       const isUrlSafe = !BASE64_STD_RE.test(value) && BASE64_URL_RE.test(value);
       const bytes = atob(base64ToStd(value, isUrlSafe)).length;
-      return bytes > 0 ? t('studio.cellEditor.detect.base64Bytes.status', { count: bytes }) : null;
+      return bytes > 0
+        ? t('studio.cellEditor.detect.base64Bytes.status', { size: formatBytes(bytes) })
+        : null;
     }
     if (format === 'hex') {
       const digits = value.startsWith('0x') ? value.slice(2) : value;
       const bytes = Math.floor(digits.length / 2);
-      return bytes > 0 ? t('studio.cellEditor.detect.hexBytes.status', { count: bytes }) : null;
+      return bytes > 0
+        ? t('studio.cellEditor.detect.hexBytes.status', { size: formatBytes(bytes) })
+        : null;
     }
     if (format === 'csv') {
       const lines = nonEmptyLines(text);

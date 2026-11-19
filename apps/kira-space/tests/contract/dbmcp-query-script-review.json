@@ -1,0 +1,69 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:1>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 96,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 217,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse": {
+    "isError": false,
+    "keep": [
+      {
+        "bytes": 5,
+        "items": 2,
+        "name": "ids",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "array"
+      }
+    ],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "6130cbe33c4797f71be7ed1705a0326335728fa67de64cbee528125484355803",
+      "source": "kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+    },
+    "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
+  },
+  "result": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":3600}]}"
+}

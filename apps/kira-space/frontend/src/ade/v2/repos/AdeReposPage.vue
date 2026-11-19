@@ -16,15 +16,16 @@ import { Switch } from '@theme/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { paneFrame } from '@theme/lib/frames';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { useKeptState } from '@workbench/behaviour/viewState';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
-import { errorText } from '@workbench/bridge/codedError';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import { configName } from '@workbench/config/configName';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -130,17 +131,13 @@ const title = computed(() =>
       ? t('space.repo.settingsFile.otherFiles.label')
       : t('space.ade.repos.scanFolders.label'),
 );
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const note = ref('');
 
 async function run(task: () => Promise<void>): Promise<void> {
-  error.value = '';
   note.value = '';
-  try {
-    await task();
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await surface.run(task);
 }
 
 const onImport = () => run(async () => void (await codeRepos.importRepoViaDialog()));
@@ -316,18 +313,15 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
         </Alert>
         <template v-if="showRepos">
           <template v-if="selected">
-            <ViewToolbar data-testid="ade-repos-repo-head" :data-repo-id="selected.id">
-              <span :class="colorMarkClass('dot', selected.color)" />
-              <span class="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-                <CodiconIcon name="repo" :size="13" />
-              </span>
-              <span class="min-w-0 text-kira-md text-fg" data-testid="ade-repos-selected"
-                ><TruncatedText :text="selected.root"
-                  ><span v-if="parentDir(selected.root)" class="text-subtle">{{
-                    parentDir(selected.root)
-                  }}</span>{{ selected.name }}</TruncatedText
-                ></span
-              >
+            <ViewHead
+              testid="ade-repos-repo-head"
+              :data-repo-id="selected.id"
+              :color="selected.color"
+              icon="repo"
+              :prefix="parentDir(selected.root) || undefined"
+              :title="selected.name"
+              title-testid="ade-repos-selected"
+            >
               <Tooltip v-if="selectedConfig" :disabled="selectedConfig.source === 'added'">
                 <TooltipTrigger as-child>
                   <Badge class="shrink-0" data-testid="ade-repos-repo-source">{{
@@ -347,7 +341,7 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                   t('space.common.hidden.status')
                 }}</Badge
               >
-              <div class="ml-auto flex shrink-0 items-center gap-1">
+              <template #actions>
                 <TooltipIconButton
                   :icon="selected.hidden ? 'eye' : 'eye-closed'"
                   :label="
@@ -360,14 +354,13 @@ function repoRowClass(r: { id: string; hidden: boolean }): string {
                   @click="onHideRepo(selected.id, !selected.hidden)"
                 />
                 <TooltipIconButton
-                  icon="trash"
+                  :icon="ICON.remove"
                   :label="t('space.ade.repos.remove.tooltip')"
                   data-testid="ade-repos-repo-remove"
                   @click="onRemoveRepo(selected.id, selected.name)"
                 />
-              </div>
-            </ViewToolbar>
-            <div :class="colorMarkClass('band', selected.color)" />
+              </template>
+            </ViewHead>
             <div v-if="selectedConfig" class="m-3 flex flex-col gap-4">
               <RepoIdentity :key="selectedConfig.codeRepoId" :repo="selectedConfig" />
               <RepoFilePane

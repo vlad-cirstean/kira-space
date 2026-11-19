@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { ApiVariable } from '@shared/domain/variables';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { ref, watch } from 'vue';
@@ -39,11 +41,6 @@ const notYetRevealed = () => props.row.isSecret && props.revealed === undefined;
 const shown = () => (props.row.isSecret ? (props.revealed ?? '') : props.row.value);
 const masked = () => props.row.isSecret && (notYetRevealed() || !visible.value);
 
-function valueToggleLabel(): string {
-  if (notYetRevealed()) return t('common.action.reveal.label');
-  return visible.value ? t('common.hideValue.label') : t('common.secret.show.label');
-}
-
 function onEyeClick(): void {
   if (notYetRevealed()) emit('reveal');
   else visible.value = !visible.value;
@@ -74,22 +71,13 @@ function onHistoryOpenChange(open: boolean): void {
       ><TruncatedText :text="row.name" /></span
     >
     <div class="flex min-w-0 items-center gap-1 value-cell">
-      <!-- tracking-widest (0.1em) is the widest step Tailwind's default scale has. -->
-      <span
-        v-if="masked()"
-        class="flex-1 text-subtle tracking-widest"
-        data-testid="variable-value-masked"
-        >••••••••</span
-      >
+      <MaskedValue v-if="masked()" class="flex-1" data-testid="variable-value-masked" />
       <span v-else class="min-w-0 flex-1 font-data text-kira-md" data-testid="variable-value"
         ><TruncatedText :text="shown()" /></span
       >
-      <TooltipIconButton
+      <ValueRevealButton
         v-if="row.isSecret"
-        icon="eye"
-        :label="valueToggleLabel()"
-        :aria-label="t('common.action.reveal.label')"
-        :pressed="visible"
+        :shown="!masked()"
         data-testid="variable-reveal"
         @click="onEyeClick"
       />

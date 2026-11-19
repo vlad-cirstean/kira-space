@@ -2,13 +2,11 @@
 import { defaultContentTypeFor, generateRawRequestFromStored } from '@kira/api-core';
 import type { HttpCodeLanguage, HttpResponseWire, HttpWireFidelity } from '@shared/domain/http';
 import EmptyState from '@theme/components/EmptyState.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { type MessageKey, t } from '@theme/i18n';
-import { ICON } from '@theme/icons';
-import { copyText } from '@workbench/behaviour/clipboard';
 import { formatBytes } from '@workbench/behaviour/format';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { computed, ref } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
@@ -120,7 +118,7 @@ const requestCaption = computed(() => {
   const e = viewingStored.value?.snapshot.entry;
   if (e) return t('studio.http.raw.requestCaption.label', { method: e.method, url: e.url });
   const r = rt.value;
-  return r ? `→ ${t('studio.http.raw.requestPending.label')}` : '';
+  return r ? t('studio.http.raw.requestPending.label') : '';
 });
 
 // D8: the unified document each editor renders — the live wire's own text, or the reconstruction,
@@ -130,14 +128,6 @@ const responseText = computed(() => {
   if (wire.value && response.value) return `${wire.value.responseHead}\n${response.value.body}`;
   return storedResponseText.value;
 });
-
-function onCopyRequest(): void {
-  void copyText(requestText.value);
-}
-
-function onCopyResponse(): void {
-  void copyText(responseText.value);
-}
 
 // The two hosts and their docs, exposed for ResponsePane.vue's own find-bar targets
 // (`targets: { doc, host }[]`) — `getDocs()` rather than exposed computed refs, since it's called
@@ -160,7 +150,7 @@ interface RawSection {
   captionTestid?: string;
   copyLabel: string;
   copyTestid: string;
-  onCopy: () => void;
+  copyText: () => string;
   doc: string;
   highlights?: (doc: string) => readonly RangeHighlight[];
   editorTestid: string;
@@ -177,7 +167,7 @@ const rawSections = computed<RawSection[]>(() => [
     captionTestid: 'http-wire-request-caption',
     copyLabel: t('studio.http.raw.copyRequest.label'),
     copyTestid: 'http-wire-request-copy',
-    onCopy: onCopyRequest,
+    copyText: () => requestText.value,
     doc: requestText.value,
     highlights: props.requestHighlights,
     editorTestid: 'http-wire-request-editor',
@@ -190,7 +180,7 @@ const rawSections = computed<RawSection[]>(() => [
     caption: '←',
     copyLabel: t('studio.http.raw.copyResponse.label'),
     copyTestid: 'http-wire-response-copy',
-    onCopy: onCopyResponse,
+    copyText: () => responseText.value,
     doc: responseText.value,
     highlights: props.responseHighlights,
     editorTestid: 'http-wire-response-editor',
@@ -258,11 +248,10 @@ function setHostRef(key: RawSection['key'], instance: unknown): void {
               <TruncatedText :text="section.caption" />
             </span>
             <span class="ml-auto" />
-            <TooltipIconButton
-              :icon="ICON.copy"
+            <CopyIconButton
+              :text="section.copyText"
               :label="section.copyLabel"
               :data-testid="section.copyTestid"
-              @click="section.onCopy"
             />
           </div>
           <Alert v-if="section.noteBefore" variant="info" :data-testid="section.noteBeforeTestid">

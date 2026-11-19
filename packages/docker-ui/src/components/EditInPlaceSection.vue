@@ -443,7 +443,7 @@ const netChanged = (name: string): boolean => {
             :disabled="disabled || networkLocked || !toAdd"
             data-testid="docker-edit-network-add"
             @click="addNetwork"
-            ><CodiconIcon name="plug" :size="13" />{{ t('docker.edit.attach.label') }}</Button
+            ><CodiconIcon name="plug" :size="13" />{{ t('common.action.attach.label') }}</Button
           >
         </div>
       </div>

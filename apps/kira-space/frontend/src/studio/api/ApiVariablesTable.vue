@@ -133,7 +133,7 @@ function remove(i: number): void {
     <div class="px-1.5">
       <Button variant="toolbar" size="kira" data-testid="api-variable-add" @click="add"
         ><CodiconIcon :name="ICON.add" :size="13" />
-        {{ t('docker.edit.addVariable.label') }}
+        {{ t('common.action.addVariable.label') }}
       </Button>
     </div>
   </div>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AppearanceSettings, RowDensity } from '@shared/domain/settings';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -37,12 +37,9 @@ function setRowDensity(density: RowDensity): void {
   <Field>
     <div class="flex items-center justify-between gap-1">
       <FieldLabel>{{ t('workbench.settings.rowHeight.label') }}</FieldLabel>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         data-testid="settings-reset-appearance-rowDensity"
-        :disabled-trigger="isAtDefault('appearance', 'rowDensity')"
-        :disabled="isAtDefault('appearance', 'rowDensity')"
+        :at-default="isAtDefault('appearance', 'rowDensity')"
         @click="resetLeaf('appearance', 'rowDensity')"
       />
     </div>

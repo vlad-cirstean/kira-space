@@ -2,9 +2,10 @@ import { t } from '@theme/i18n';
 import { copyOrReportError, copyOrReportErrorLazy } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import type { MenuItem } from '@workbench/state/contextMenu';
+import { prettyJson } from '../../beautify';
 import { toPlainJson, toRelaxedText, toShellText } from '../shared/document/ejson';
 import type { CopyFormat } from '../shared/slick/selectionCopy';
-import { type CopyAllFormat, jsonArrayOf, prettyJson } from './copyAll';
+import { type CopyAllFormat, jsonArrayOf } from './copyAll';
 
 // The console result grid's own menu builders, mirroring views/grid/menu.ts's split
 // (builders in a plain module, the host only opens them) -- item ids follow that file's own
@@ -129,7 +130,7 @@ export function tabularRowMenu(ctx: TabularMenuContext): MenuItem[] {
         {
           type: 'item',
           id: 'copy-rows-json',
-          label: t('studio.copy.format.json.label'),
+          label: t('common.copyFormat.json.label'),
           run: () =>
             copyOrReportError(ctx.copy('json'), ctx.onError, () =>
               announceApp(t('common.copy.copiedJson.announce')),

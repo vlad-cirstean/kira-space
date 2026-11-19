@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription, FieldLegend, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
@@ -22,11 +21,6 @@ const hookCopy = useCopy();
     <FieldLegend>{{ t('memory.checkHook.title') }}</FieldLegend>
     <FieldDescription>{{ t('memory.checkHook.description') }}</FieldDescription>
     <QueryState :query="check" variant="inline" :is-empty="() => false">
-      <template #error="{ message }">
-        <Alert variant="error">
-          <AlertDescription>{{ message }}</AlertDescription>
-        </Alert>
-      </template>
       <template v-if="install">
         <FieldDescription>{{ t('memory.checkHook.install.hint') }}</FieldDescription>
         <CodeBlock class="select-all" data-testid="memory-check-install">{{ install }}</CodeBlock>

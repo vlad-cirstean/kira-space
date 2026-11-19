@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -50,6 +51,13 @@ type queryPayload struct {
 	// ReviewOffered shows "review the result"; ReviewResult says the connection's settings already do.
 	ReviewOffered bool `json:"reviewOffered"`
 	ReviewResult  bool `json:"reviewResult"`
+	// Params, Placeholders and Kept describe the kept variables bound to the statement. Names and previews
+	// only: a secret has no preview and values never ride.
+	Params       []string           `json:"params,omitempty"`
+	Placeholders []string           `json:"placeholders,omitempty"`
+	Kept         []agentapi.KeptUse `json:"kept,omitempty"`
+	// Script is the result transform: its source, hash and the kept names it may write.
+	Script *apiTransformView `json:"script"`
 }
 
 type limitHitPayload struct {
@@ -60,16 +68,20 @@ type limitHitPayload struct {
 }
 
 type exemptionPayload struct {
-	ConnectionID  string            `json:"connectionId"`
-	Statement     string            `json:"statement"`
-	Mode          string            `json:"mode"`
-	Detected      string            `json:"detected"`
-	Enforcement   string            `json:"enforcement"`
-	Reason        string            `json:"reason"`
-	Limits        []limitHitPayload `json:"limits"`
-	Plan          *planPayload      `json:"plan"`
-	ReviewOffered bool              `json:"reviewOffered"`
-	ReviewResult  bool              `json:"reviewResult"`
+	ConnectionID  string             `json:"connectionId"`
+	Statement     string             `json:"statement"`
+	Mode          string             `json:"mode"`
+	Detected      string             `json:"detected"`
+	Enforcement   string             `json:"enforcement"`
+	Reason        string             `json:"reason"`
+	Limits        []limitHitPayload  `json:"limits"`
+	Plan          *planPayload       `json:"plan"`
+	ReviewOffered bool               `json:"reviewOffered"`
+	ReviewResult  bool               `json:"reviewResult"`
+	Params        []string           `json:"params,omitempty"`
+	Placeholders  []string           `json:"placeholders,omitempty"`
+	Kept          []agentapi.KeptUse `json:"kept,omitempty"`
+	Script        *apiTransformView  `json:"script"`
 }
 
 func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
@@ -85,7 +97,16 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+		Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept, Script: queryScriptView(r.QueryScript),
 	}
+}
+
+// queryScriptView is the transform as the card shows it; nil without one.
+func queryScriptView(sc *apiScripts) *apiTransformView {
+	if !sc.hasTransform() {
+		return nil
+	}
+	return apiScriptPayloadOf(sc).Transform
 }
 
 type responsePayload struct {
@@ -93,7 +114,10 @@ type responsePayload struct {
 	Statement    string `json:"statement"`
 	IsError      bool   `json:"isError"`
 	Bytes        int    `json:"bytes"`
-	AlreadyRan   bool   `json:"alreadyRan"`
+	// Scripted says a script produced the held text from the raw result; RawBytes sizes that raw result.
+	Scripted   bool `json:"scripted"`
+	RawBytes   int  `json:"rawBytes"`
+	AlreadyRan bool `json:"alreadyRan"`
 	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
 	Mode      string `json:"mode"`
 	Requested bool   `json:"requested"`
@@ -159,7 +183,11 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Params: valuePayloads(sc.Params), Env: valuePayloads(sc.Env),
 		})
 	case approvals.KindAPIRequest:
-		it.Target, it.Operation, it.Payload = apiItemParts(r.API)
+		it.Target, it.Operation, it.Payload = apiItemParts(r)
+	case approvals.KindAPIResponse:
+		it.Reason = "preview"
+		it.Target, it.Operation = apiTargetOp(r.API)
+		it.Payload = mustJSON(apiResponsePayloadOf(r))
 	case approvals.KindDbExemption:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(exemptionPayloadOf(r))
@@ -172,8 +200,9 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		}
 		it.Payload = mustJSON(responsePayload{
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
-			IsError: held.IsError, Bytes: held.Bytes, AlreadyRan: r.Class != adapters.ClassRead,
-			Mode: r.Mode, Requested: held.Requested,
+			IsError: held.IsError, Bytes: len(held.Text), Scripted: held.Script != nil, RawBytes: len(held.Raw),
+			AlreadyRan: r.Class != adapters.ClassRead,
+			Mode:       r.Mode, Requested: held.Requested,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
@@ -181,6 +210,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept, Script: queryScriptView(r.QueryScript),
 		})
 	}
 	return it
@@ -249,6 +279,8 @@ func promptTitle(req ApprovalRequest) string {
 	switch {
 	case req.Subject == approvals.KindAPIRequest && req.API != nil:
 		return i18n.T("backend.prompt.dbMcpAPI.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
+	case req.Subject == approvals.KindAPIResponse && req.API != nil:
+		return i18n.T("backend.prompt.dbMcpAPIResponse.title", map[string]string{"method": req.API.Method, "host": req.API.Host})
 	case req.Subject == approvals.KindScriptRun:
 		return i18n.T("backend.prompt.dbMcpScript.title", map[string]string{"name": req.ConnectionName})
 	case req.Subject == approvals.KindDbExemption:

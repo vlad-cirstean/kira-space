@@ -4,6 +4,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { hostWords, type MessageParams, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 /**
  * The real shell. `AppToolbar.vue`/`CommitGrid.vue`/`LoadMoreButton.vue` are wired together here
@@ -81,7 +82,6 @@ import { childOf, parentOf } from './lib/stackListModel.ts';
 import { renderText, shaLabel } from './lib/text.ts';
 import { useSectionMenu } from './lib/useSectionMenu.ts';
 import { ASYNC_FAILURES, type AsyncFailure } from './state/asyncFailures.ts';
-import { retryBootstrap as sharedRetryBootstrap } from './state/bootstrap.ts';
 import { DetailState } from './state/detail.ts';
 import { createDetailActions, type DetailActions } from './state/detailActions.ts';
 import { composeAsyncFailureNotice, type FailureNotice } from './state/failureNotice.ts';
@@ -170,10 +170,19 @@ const searchState = new SearchState(bridge, refsState, graphView, changeRequestS
 
 const repoState = shallowRef<RepoState | undefined>(undefined);
 // A failed bootstrap() used to leave repoState undefined forever — the whole template is
-// v-if="repoState", so that rendered nothing at all. Set in the catch below, outside that
-// v-if, with a Retry that clears it and re-runs bootstrap() — the ordinary case this guards is a
-// panel opened before Kira Space's socket is even up, not a rare failure.
-const bootError = ref<string | undefined>(undefined);
+// v-if="repoState", so that rendered nothing at all. Its failure shows outside that v-if, with a
+// Retry that re-runs bootstrap() — the ordinary case this guards is a panel opened before Kira
+// Space's socket is even up, not a rare failure.
+let booting = false;
+const boot = useAsyncAction(async () => {
+  booting = true;
+  try {
+    await bootstrap();
+  } finally {
+    booting = false;
+  }
+});
+const bootError = boot.error;
 
 const detailOpen = ref(true);
 const columnWidths = ref<ColumnWidths>(DEFAULT_COLUMN_WIDTHS);
@@ -251,8 +260,9 @@ async function handleRepoOpened(repoId: string): Promise<void> {
   graphOrder.reset();
   clearFailure();
   await graphView.openStream(repoId);
-  // An open that succeeded disproves a boot-failure banner (a reconnect or a manual pick).
-  bootError.value = undefined;
+  // An open that succeeded disproves a boot-failure banner (a reconnect or a manual pick). The
+  // bootstrap's own opens run while it is pending, where there is nothing to clear.
+  if (!booting) boot.reset();
 }
 
 // ---------------------------------------------------------------------------------------
@@ -1191,11 +1201,7 @@ onMounted(() => {
   // applied and the rows it covers re-rendered with their lanes, not merely that the shell
   // mounted. `CommitGrid.vue`'s own `handleChunkLayout` — the one place that event fires — marks
   // it, once, the first time that happens; nothing here needs to know when that is.
-  void bootstrap()
-    .then(onBootstrapSuccess)
-    .catch((err: unknown) => {
-      bootError.value = errorText(err);
-    });
+  void startBootstrap();
 });
 
 // The cold-bootstrap arm — a palette command that fired before this webview had a live
@@ -1212,8 +1218,12 @@ function onBootstrapSuccess(): void {
   }
 }
 
+async function startBootstrap(): Promise<void> {
+  if (await boot.run()) onBootstrapSuccess();
+}
+
 function retryBootstrap(): void {
-  sharedRetryBootstrap(bootError, bootstrap, onBootstrapSuccess);
+  void startBootstrap();
 }
 
 // The four search toggles/scope below round-trip through every write this file makes (the `watch`

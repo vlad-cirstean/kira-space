@@ -1,6 +1,6 @@
 import { useDebounceFn } from '@vueuse/core';
 import { computed, type MaybeRefOrGetter, ref, toValue, watch } from 'vue';
-import { useAsyncAction } from '../behaviour/asyncAction';
+import { useGuardedDraft } from '../behaviour/guardedDraft';
 import { TIMING } from '../behaviour/timing';
 import { errorText } from '../bridge/codedError';
 import {
@@ -32,18 +32,14 @@ export interface ConfigFormDraftOptions<V extends object> {
   save: (text: string, baseHash: string) => Promise<{ hash: string }>;
   refetch: () => Promise<ConfigFileData | undefined>;
   fields: readonly FieldSpec[];
-  /** Runs after the file write succeeds, e.g. the write-only secret calls. */
-  afterSave?: () => Promise<void>;
+  /** Typed write-only secrets that ride the same Save, flushed after the file write. */
+  secrets?: { pending: () => boolean; flush: () => Promise<void> };
 }
 
 export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOptions<V>) {
   const tab = ref<'form' | 'yaml'>('form');
-  const draft = ref('');
-  const baseHash = ref('');
-  const dirty = ref(false);
   const model = ref<V | null>(null);
   const problem = ref<FormProblem | null>(null);
-  const conflict = ref(false);
   // The draft text as loaded or typed in YAML does not decode: the form has nothing to show.
   const undecodable = ref(false);
 
@@ -104,42 +100,32 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
 
   watch(model, () => void scheduleApply(), { deep: true });
 
-  const writer = useAsyncAction(async (text: string) => {
-    try {
-      const next = await opts.save(text, baseHash.value);
-      conflict.value = false;
-      baseHash.value = next.hash;
-      if (draft.value === text) dirty.value = false;
-      await opts.afterSave?.();
-    } catch (err) {
-      conflict.value = (err as { code?: string }).code === 'E_CONFLICT';
-      throw err;
-    }
-  });
-  const saving = writer.pending;
-  const saveError = computed(() => writer.error.value ?? '');
-
-  function resetTo(data: ConfigFileData | undefined): Promise<void> {
-    draft.value = data?.text ?? '';
-    baseHash.value = data?.hash ?? '';
-    dirty.value = false;
-    writer.error.value = null;
-    conflict.value = false;
-    return decode();
-  }
-
-  watch(
-    () => toValue(opts.file),
-    (data) => {
-      if (!data || dirty.value) return;
-      void resetTo(data);
+  const core = useGuardedDraft<string>({
+    source: () => {
+      const f = toValue(opts.file);
+      return f ? { value: f.text, hash: f.hash } : undefined;
     },
-    { immediate: true },
-  );
+    refetch: async () => {
+      const f = await opts.refetch();
+      return f ? { value: f.text, hash: f.hash } : undefined;
+    },
+    write: opts.save,
+    initial: '',
+    side: opts.secrets,
+    afterLoad: () => void decode(),
+    beforeSave: async () => {
+      if (tab.value === 'form') {
+        await applyModel();
+        if (problem.value) return false;
+      }
+      return true;
+    },
+  });
+  const { draft, baseHash, dirty, saving, conflict } = core;
+  const saveError = computed(() => core.saveError.value ?? '');
 
   function onYamlInput(text: string): void {
-    draft.value = text;
-    dirty.value = true;
+    core.edit(text);
     void scheduleDecode();
   }
 
@@ -149,36 +135,16 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
   }
 
   async function saveNow(): Promise<void> {
-    if (saving.value) return;
-    if (tab.value === 'form') {
-      await applyModel();
-      if (problem.value) return;
-    }
-    if (!dirty.value) return;
-    await writer.run(draft.value);
+    await core.save();
   }
 
   const canSave = computed(
-    () => dirty.value && !saving.value && !(tab.value === 'form' && problem.value),
+    () =>
+      !saving.value &&
+      ((dirty.value && !(tab.value === 'form' && problem.value)) ||
+        (opts.secrets?.pending() ?? false)),
   );
   const formDisabled = computed(() => undecodable.value);
-
-  function discard(): Promise<void> {
-    return resetTo(toValue(opts.file));
-  }
-
-  async function reload(): Promise<void> {
-    await resetTo(await opts.refetch());
-  }
-
-  async function overwrite(): Promise<void> {
-    const fresh = await opts.refetch();
-    if (!fresh) return;
-    baseHash.value = fresh.hash;
-    conflict.value = false;
-    dirty.value = true;
-    await saveNow();
-  }
 
   /** The problem message when it names `pointer` (a JSON pointer) or a key under it. */
   function errorFor(pointer: string): string | undefined {
@@ -208,9 +174,9 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
     showTab,
     onYamlInput,
     saveNow,
-    discard,
-    reload,
-    overwrite,
+    discard: core.discard,
+    reload: core.reload,
+    overwrite: core.overwrite,
     errorFor,
     unmatched,
   };

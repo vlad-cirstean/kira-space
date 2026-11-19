@@ -4,13 +4,10 @@ import InlineState from '@theme/components/InlineState.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
-import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
-import { FieldError } from '@theme/components/ui/field';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
-import { ICON } from '@theme/icons';
 import { useEventListener } from '@vueuse/core';
 import QueryState from '@workbench/components/QueryState.vue';
 import { isPrimaryModifier, primaryModifierName } from '@workbench/shortcuts/keys';
@@ -181,15 +178,6 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
       <template #loading>
         <div class="flex min-h-6 items-center gap-1" data-testid="ade-links-loading">
           <Skeleton class="h-4 w-1/3" data-testid="ade-links-skeleton" />
-        </div>
-      </template>
-      <template #error="{ message, retry }">
-        <div class="flex min-h-6 items-center gap-1" data-testid="query-error">
-          <FieldError class="min-w-0 flex-1 truncate">{{ message }}</FieldError>
-          <Button size="kira" variant="toolbar" data-testid="query-retry" @click="retry"
-            ><CodiconIcon :name="ICON.refresh" :size="13" />
-            {{ t('common.action.retry.label') }}</Button
-          >
         </div>
       </template>
       <p

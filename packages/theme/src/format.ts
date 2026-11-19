@@ -1,8 +1,12 @@
 import { t } from '@theme/i18n';
 import { formatCount } from '@theme/i18n/number';
+import { type FormatTimeAgoOptions, formatTimeAgo } from '@vueuse/core';
 
 // The one place app code turns a number or instant into text. Anything shown to a user as a size,
 // a count, a duration, an age, a date-time or a missing value comes from here.
+
+/** A hidden secret value shown as text (`MaskedValue` renders it; composed strings use it). */
+export const MASKED_TEXT = '••••••••';
 
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 
@@ -93,14 +97,43 @@ function toMillis(at: Instant): number {
   return at instanceof Date ? at.getTime() : typeof at === 'number' ? at : new Date(at).getTime();
 }
 
-/** 'just now' / '5m ago' / '3h ago' / '2d ago'. */
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+const MONTH_MS = 30 * DAY_MS;
+const YEAR_MS = 365 * DAY_MS;
+
+type RelativeUnit = 'minute' | 'hour' | 'day' | 'month' | 'year';
+
+/** The one relative-time vocabulary: floor rounding; m, h, d, mo, y; past 'ago', future 'in'. `justNow`
+ *  is a plain string in VueUse, so the options resolve per call, not at module load. */
+export function relativeTimeOptions(): FormatTimeAgoOptions<RelativeUnit> {
+  return {
+    rounding: 'floor',
+    messages: {
+      justNow: t('format.relative.justNow'),
+      past: (n: string) => t('format.relative.past', { time: n }),
+      future: (n: string) => t('format.relative.future', { time: n }),
+      invalid: '',
+      minute: (n: number) => t('format.relative.unitMinute', { count: n }),
+      hour: (n: number) => t('format.relative.unitHour', { count: n }),
+      day: (n: number) => t('format.relative.unitDay', { count: n }),
+      month: (n: number) => t('format.age.months', { count: n }),
+      year: (n: number) => t('format.age.years', { count: n }),
+    },
+    units: [
+      { max: HOUR_MS, value: MINUTE_MS, name: 'minute' },
+      { max: DAY_MS, value: HOUR_MS, name: 'hour' },
+      { max: MONTH_MS, value: DAY_MS, name: 'day' },
+      { max: YEAR_MS, value: MONTH_MS, name: 'month' },
+      { max: Number.POSITIVE_INFINITY, value: YEAR_MS, name: 'year' },
+    ],
+  };
+}
+
+/** 'just now' / '5m ago' / '3h ago' / '2d ago' / '4mo ago' / '1y ago'; a future instant reads 'in 5m'. */
 export function formatRelative(at: Instant, now: number = Date.now()): string {
-  const minutes = Math.floor((now - toMillis(at)) / 60000);
-  if (minutes < 1) return t('format.relative.justNow');
-  if (minutes < 60) return t('format.relative.minutes', { count: minutes });
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t('format.relative.hours', { count: hours });
-  return t('format.relative.days', { count: Math.floor(hours / 24) });
+  return formatTimeAgo(new Date(toMillis(at)), relativeTimeOptions(), now);
 }
 
 const DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {

@@ -1,4 +1,5 @@
 import { expect, studioTest as test } from './fixtures';
+import { installClipboardSpy, lastClipboardWrite } from './studio/support/clipboard';
 import { openContainer, openDocker, setupDocker } from './studio/support/dockerFixture';
 import { emitWailsEvent } from './support/mockRuntime';
 
@@ -73,4 +74,27 @@ test('docker logs: a live follow keeps the newest 20000 lines and a selection co
     () => (window as unknown as { __copied: string[] }).__copied[0] ?? '',
   );
   expect(copied.trim().split(/\r?\n/)).toEqual(want);
+});
+
+// Copy log with a filter set writes the filtered lines the pane shows, not the whole log.
+test('docker logs: Copy log with a filter writes only the matching lines', async ({ relaunch }) => {
+  const { page, docker } = await setupDocker(relaunch);
+  await openDocker(page);
+  await openContainer(page, 'solo', 'logs');
+  await expect.poll(() => docker.calls('LogsOpen').length).toBe(1);
+  const { streamId } = docker.calls('LogsOpen')[0].args as { streamId: string };
+
+  const texts = ['boom one', 'quiet', 'boom two'];
+  await emitWailsEvent(page, 'kira:docker:logs', {
+    streamId,
+    lines: texts.map((text) => ({ stream: 'stdout', text })),
+    ended: false,
+  });
+  const rows = page.locator('[data-testid="docker-log-line"]');
+  await expect(rows).toHaveCount(3);
+  await page.locator('[data-testid="docker-logs-filter"]').fill('boom');
+  await expect(rows).toHaveCount(2);
+  await installClipboardSpy(page);
+  await page.locator('[data-testid="docker-logs-copy"]').click();
+  await expect.poll(() => lastClipboardWrite(page)).toBe('boom one\nboom two');
 });

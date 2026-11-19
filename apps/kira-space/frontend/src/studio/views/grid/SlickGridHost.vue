@@ -112,7 +112,7 @@ import {
 } from './slick/rowValues';
 import '../shared/slick/slickTheme.css';
 import 'slickgrid/dist/styles/css/slick.grid.css';
-import { setVisibleRows } from '../shared/page/visibleRows';
+import { reportVisibleWindow } from '../shared/page/visibleRows';
 import * as scrollTrace from '../shared/slick/scrollTrace';
 import {
   rangesFromSelection,
@@ -985,8 +985,7 @@ function onGridRendered(): void {
   if (!grid || !dataSource) return;
   const band = renderedPageRowBand(grid, dataSource);
   if (!band) return;
-  setVisibleWindow(props.tabId, band.lo, band.hi + 1);
-  setVisibleRows(props.tabId, band.lo, band.hi + 1);
+  reportVisibleWindow(props.tabId, band.lo, band.hi + 1, setVisibleWindow);
 
   if (band.start !== lastCssLayerBand.start || band.end !== lastCssLayerBand.end) {
     lastCssLayerBand = { start: band.start, end: band.end };

@@ -2,10 +2,10 @@
 import type { FileStat } from '@shared/domain/repo';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { Button } from '@theme/components/ui/button';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import { gitRepoIdFor } from '../../repo/git/hostHandlers';
 import { useFileEditStore } from '../../state/fileEdit';
@@ -217,28 +217,20 @@ onUnmounted(teardownEditor);
         @done="edit.done()"
       />
     </ViewToolbar>
-    <Alert v-if="edit.conflict.value" variant="warn" strip data-testid="repo-file-conflict">
-      <AlertDescription>
-        {{
-          edit.conflict.value === 'gone'
-            ? t('space.repo.file.deletedOnDisk.body')
-            : t('space.repo.file.changedOnDisk.body')
-        }}
-      </AlertDescription>
-      <AlertAction>
-        <Button variant="link" size="inline" data-testid="repo-file-reload" @click="edit.reload()">
-          {{ t('common.action.refresh.label') }}
-        </Button>
-        <Button
-          variant="link"
-          size="inline"
-          data-testid="repo-file-overwrite"
-          @click="edit.overwrite()"
-        >
-          {{ t('space.ade.workflows.conflict.overwrite.label') }}
-        </Button>
-      </AlertAction>
-    </Alert>
+    <SaveConflictAlert
+      v-if="edit.conflict.value"
+      variant="warn"
+      strip
+      :error="
+        edit.conflict.value === 'gone'
+          ? t('space.repo.file.deletedOnDisk.body')
+          : t('space.repo.file.changedOnDisk.body')
+      "
+      conflict
+      testid-prefix="repo-file"
+      @reload="edit.reload()"
+      @overwrite="edit.overwrite()"
+    />
     <Alert v-if="edit.errorMessage.value" variant="error" strip data-testid="repo-file-edit-error">
       <AlertDescription>{{ edit.errorMessage.value }}</AlertDescription>
     </Alert>

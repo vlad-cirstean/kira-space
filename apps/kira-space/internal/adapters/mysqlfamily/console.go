@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // endTransactionTimeout bounds the START TRANSACTION READ ONLY wrap's own cleanup COMMIT (P2 R2):
@@ -69,6 +70,13 @@ func typeClassForField(dbType string) page.TypeClass {
 // against its own source — mysqlRows implements no driver.Result), a real, documented capability
 // loss (docs/ARCHITECTURE.md's per-engine section), not an oversight.
 func runRaw(ctx context.Context, conn Entry, query string, op *adapters.OpCtx, track TrackQuery, limit page.ResultCap) (page.TabularPage, error) {
+	return runRawArgs(ctx, conn, query, nil, op, track, limit)
+}
+
+// runRawArgs is runRaw with bound values. With any, the statement is prepared and run over the binary
+// protocol: the server binds the values, and the driver's client-side interpolation (InterpolateParams,
+// which applies only to unprepared calls) never sees them.
+func runRawArgs(ctx context.Context, conn Entry, query string, args []any, op *adapters.OpCtx, track TrackQuery, limit page.ResultCap) (page.TabularPage, error) {
 	if err := adapters.CheckNotStarted(ctx); err != nil {
 		return page.TabularPage{}, err
 	}
@@ -76,7 +84,18 @@ func runRaw(ctx context.Context, conn Entry, query string, op *adapters.OpCtx, t
 	done := conn.track()
 
 	return adapters.RunWithAbortRace(ctx, func() { release(); done() }, func(queryCtx context.Context) (page.TabularPage, error) {
-		sqlRows, err := conn.QueryContext(queryCtx, query)
+		var sqlRows *sql.Rows
+		var err error
+		if len(args) > 0 {
+			stmt, perr := conn.PrepareContext(queryCtx, query)
+			if perr != nil {
+				return page.TabularPage{}, mapError(perr)
+			}
+			defer stmt.Close()
+			sqlRows, err = stmt.QueryContext(queryCtx, args...)
+		} else {
+			sqlRows, err = conn.QueryContext(queryCtx, query)
+		}
 		if err != nil {
 			return page.TabularPage{}, mapError(err)
 		}
@@ -235,23 +254,16 @@ func sessionReadOnly(p page.TabularPage) bool {
 // end the wrap (COMMIT through a comment-lexer gap, an implicit commit) or flip the session default
 // for what follows, so verifyReadOnlyWrap re-checks after every statement;
 // AssertNoTransactionEscalation is the cheap first line of defense.
-func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, limit page.ResultCap, timeout time.Duration, mariadb bool) (pages []page.Page, err error) {
+func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, params []model.BindParam, limit page.ResultCap, timeout time.Duration, mariadb bool) (pages []page.Page, err error) {
 	defer func() { err = timeoutError(ctx, timeout, err) }()
-	if len(statements) == 0 {
-		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
+	binds, err := boundArgs(params)
+	if err != nil {
+		return nil, err
 	}
-	if readOnly && connReadOnly {
-		if err := adapters.AssertNoTransactionEscalation(statements, adapters.MySQLDialect); err != nil {
-			return nil, err
-		}
+	if err := checkConsoleBatch(ctx, conn, op, track, readOnly, connReadOnly, statements); err != nil {
+		return nil, err
 	}
-	// START TRANSACTION implicitly commits an open user transaction; refuse before it runs.
-	if readOnly && !connReadOnly {
-		if err := refuseOpenTransaction(ctx, conn, op, track); err != nil {
-			return nil, err
-		}
-	}
-	op.SetCommand(adapters.JoinConsoleStatements(statements, "--", "#"))
+	op.SetCommand(adapters.CommandWithParams(adapters.JoinConsoleStatements(statements, "--", "#"), params, adapters.ParamQuestion))
 
 	// MySQL's max_execution_time covers SELECT only, so only the read lane gets it; the host
 	// backstop stops everything else. Registered before the wrap so the restore runs after COMMIT.
@@ -264,30 +276,60 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 	}
 
 	if readOnly {
-		// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
-		// mysqlfamily hand-rolled identically. F2: waitInFlight blocks on every RunWithAbortRace
-		// goroutine this batch spawned still touching conn before COMMIT.
-		cleanup, err := adapters.BeginReadOnlyConsole(ctx, "START TRANSACTION READ ONLY", func(ctx context.Context, sql string) error {
-			_, err := conn.ExecContext(ctx, sql)
-			return err
-		}, conn.waitInFlight, func(err error) error { return mapError(err) })
+		cleanup, err := beginReadOnlyWrap(ctx, conn, connReadOnly)
 		if err != nil {
-			if !connReadOnly {
-				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
-				defer cancel()
-				_, _ = conn.ExecContext(cleanupCtx, "SET TRANSACTION READ WRITE")
-			}
 			return nil, err
 		}
 		defer cleanup()
 	}
 
-	pages = make([]page.Page, len(statements))
+	return runStatements(ctx, conn, op, track, readOnly, connReadOnly, statements, binds, limit)
+}
+
+// checkConsoleBatch refuses an empty batch and, in the read lane, a batch that could escalate or
+// would implicitly commit an open user transaction.
+func checkConsoleBatch(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string) error {
+	if len(statements) == 0 {
+		return adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
+	}
+	if readOnly && connReadOnly {
+		return adapters.AssertNoTransactionEscalation(statements, adapters.MySQLDialect)
+	}
+	// START TRANSACTION implicitly commits an open user transaction; refuse before it runs.
+	if readOnly {
+		return refuseOpenTransaction(ctx, conn, op, track)
+	}
+	return nil
+}
+
+// beginReadOnlyWrap opens the read-only wrap and returns its cleanup.
+func beginReadOnlyWrap(ctx context.Context, conn Entry, connReadOnly bool) (func(), error) {
+	// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
+	// mysqlfamily hand-rolled identically. F2: waitInFlight blocks on every RunWithAbortRace
+	// goroutine this batch spawned still touching conn before COMMIT.
+	cleanup, err := adapters.BeginReadOnlyConsole(ctx, "START TRANSACTION READ ONLY", func(ctx context.Context, sql string) error {
+		_, err := conn.ExecContext(ctx, sql)
+		return err
+	}, conn.waitInFlight, func(err error) error { return mapError(err) })
+	if err != nil {
+		if !connReadOnly {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+			defer cancel()
+			_, _ = conn.ExecContext(cleanupCtx, "SET TRANSACTION READ WRITE")
+		}
+		return nil, err
+	}
+	return cleanup, nil
+}
+
+// runStatements runs each statement in order under the shared result cap.
+func runStatements(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, binds []any, limit page.ResultCap) ([]page.Page, error) {
+	pages := make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
-		p, err := runRaw(ctx, conn, stmt, op, track, limit)
+		p, err := runRawArgs(ctx, conn, stmt, binds, op, track, limit)
 		if err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
@@ -379,3 +421,41 @@ func setSessionTimeout(ctx context.Context, conn Entry, timeout time.Duration, m
 func (a *Adapter) RedactStatement(statement string) (string, bool) {
 	return adapters.MaskSQLLiterals(statement, adapters.MySQLDialect)
 }
+
+// boundArgs turns bound values into driver arguments for a prepared statement. An integer binds as an
+// integer, any other number and text as text the server converts, a boolean as 0 or 1. A list binds as
+// its JSON text for JSON_TABLE.
+func boundArgs(params []model.BindParam) ([]any, error) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+	vals, err := adapters.DecodeBinds(params)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, len(vals))
+	for i, v := range vals {
+		switch v.Kind {
+		case adapters.ParamNull:
+			out[i] = nil
+		case adapters.ParamBool:
+			out[i] = int64(0)
+			if v.Bool {
+				out[i] = int64(1)
+			}
+		case adapters.ParamInt:
+			out[i] = v.Int
+		case adapters.ParamList:
+			if len(v.JSON) > maxListJSONBytes {
+				return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.boundListTooLarge.body", map[string]string{"limit": strconv.Itoa(maxListJSONBytes)}, nil)
+			}
+			out[i] = v.JSON
+		default:
+			out[i] = v.Text
+		}
+	}
+	return out, nil
+}
+
+// maxListJSONBytes keeps a list under the server's default max_allowed_packet.
+const maxListJSONBytes = 1 << 20

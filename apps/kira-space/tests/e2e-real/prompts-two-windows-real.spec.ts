@@ -18,9 +18,9 @@ async function addRecurring(page: Page, name: string): Promise<void> {
   await dialog.locator('[data-testid="schedule-cron"]').fill('* * * * *');
   await expect(dialog.locator('[data-testid="schedule-next"]')).toContainText('Next:');
   await dialog.locator('[data-testid="run-file-save"]').click();
-  // Save keeps the dialog open; Close reads "Close" once the draft is clean.
-  await expect(dialog.locator('[data-testid="run-file-cancel"]')).toHaveText('Close');
-  await dialog.locator('[data-testid="run-file-cancel"]').click();
+  // Save keeps the dialog open; the header close leaves once the draft is clean.
+  await expect(dialog.locator('[data-testid="run-file-discard"]')).toBeDisabled();
+  await dialog.locator('[data-testid="run-file-close"]').click();
   await expect(dialog).toHaveCount(0);
 }
 

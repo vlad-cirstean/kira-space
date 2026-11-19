@@ -14,6 +14,7 @@ import type {
   ReviewCommentState,
 } from '@kira/git-ipc';
 import { t } from '@theme/i18n';
+import { isConflict } from '@workbench/bridge/codedError';
 import { logError } from '@workbench/bridge/log';
 import type { HostCommentTarget } from '../../ade/v2/review/useHostLineComment';
 import { invalidateReviewWorking } from '../../ade/v2/review/useReviewWorking';
@@ -249,7 +250,6 @@ export function workingReviewSource(args: {
     return hold;
   };
   // On E_CONFLICT the diff query re-reads, which rewrites the editor's text, hunks and hash together.
-  const isConflict = (err: unknown): boolean => (err as { code?: string }).code === 'E_CONFLICT';
   const reloadOnConflict = async (write: () => Promise<unknown>): Promise<void> => {
     try {
       await write();

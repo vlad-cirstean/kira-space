@@ -454,7 +454,7 @@ const statusLine = computed(() => {
           />
           <TooltipIconButton
             icon="diff"
-            :label="t('git.menu.stashShow.label')"
+            :label="t('common.action.showChanges.label')"
             :pressed="diffShown"
             disabled-trigger
             :disabled="!diffAvailable"

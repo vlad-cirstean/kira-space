@@ -239,7 +239,7 @@ export function useEngineDiskUsage() {
       storedDisk.value = pruneDiskCache(storedDisk.value, scope.value, d);
     }
   });
-  return { query, refresh: () => query.refetch() };
+  return { query };
 }
 
 /** One container's size, measured only on `refresh()` and kept for the session, never persisted. */
@@ -252,7 +252,7 @@ export function useContainerSize(id: MaybeRefOrGetter<string>) {
     enabled: false,
     gcTime: Infinity,
   });
-  return { query, refresh: () => query.refetch() };
+  return { query };
 }
 
 export type ContainerAction = 'start' | 'stop' | 'restart';

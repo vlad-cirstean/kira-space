@@ -144,6 +144,55 @@ describe('U69 composition', () => {
   });
 });
 
+describe('U69 composed translations', () => {
+  const T = "t('a.plain.label')";
+  test('flags every composed shape', () => {
+    const hit = (code: string) => expect(rules('a.ts', code)).toEqual(['U69']);
+    hit(`export const f = (a: string) => \`${D}{a}: ${D}{${T}}\`;`);
+    hit(`export const f = (a: string) => \`${D}{a} · ${D}{${T}}\`;`);
+    hit(`export const f = () => \`6 ${D}{${T}}\`;`);
+    hit(`export const f = (x: string, y: string) => \`${D}{x || ${T}} -> ${D}{y}\`;`);
+    hit(`export const f = (a: string, c: boolean) => \`${D}{a}${D}{c ? \` (${D}{${T}})\` : ''}\`;`);
+    hit(`export const f = (a: string, c: boolean) => a + (c ? ${T} : '');`);
+    hit(`export const f = () => [${T}, ${T}].join(' ');`);
+    hit(`export const f = (c: boolean) => [...(c ? [${T}] : [])].join(', ');`);
+    hit(`export const f = () => { const p = [${T}]; return p.join(' '); };`);
+    hit(`export const f = () => { const p: string[] = []; p.push(${T}); return p.join(''); };`);
+  });
+  test('allows padding, fact and line joins, joinSentences and non-text uses', () => {
+    const ok = (code: string) => expect(rules('a.ts', code)).toEqual([]);
+    ok(`export const f = () => \`  ${D}{${T}}\`;`);
+    ok(`export const f = () => \`${D}{${T}} \`;`);
+    ok(`export const f = () => \`\\n${D}{${T}}\`;`);
+    ok(`export const f = (b: string) => [${T}, b].join(' · ');`);
+    ok(`export const f = (b: string) => [${T}, b].join('\\n');`);
+    ok(`export const f = () => joinSentences(${T}, ${T});`);
+    ok(`export const f = () => ${T}.length + 1;`);
+  });
+});
+
+describe('U208 prose outside the catalog', () => {
+  test('flags prose in property values, returns, fallbacks, arrays and branches', () => {
+    const hit = (code: string) => expect(rules('a.ts', code)).toEqual(['U208']);
+    hit("export const T: Record<number, string> = { 200: 'The call completed and it was fine' };");
+    hit("export const f = () => { return 'the call completed'; };");
+    hit("export const f = (x?: string) => x ?? 'an unrecognised status code';");
+    hit(
+      `export const f = (n: number) => ({ error: \`Line ${D}{n} has no colon, it is broken.\` });`,
+    );
+    hit("export const f = (c: boolean) => (c ? 'This is the one' : null);");
+    hit("export const L = ['It has been the case'];");
+  });
+  test('passes class strings, commands, selectors, SQL comments and U67 properties', () => {
+    const ok = (code: string) => expect(rules('a.ts', code)).toEqual([]);
+    ok("export const f = () => ({ cls: 'border border-info text-info' });");
+    ok("export const f = () => ({ cmd: 'brew upgrade git' });");
+    ok('export const f = () => ({ sel: \'button, a, input, [role="menuitem"]\' });');
+    ok(`export const f = (c: string) => ({ sql: \`-- ${D}{c} truncated in the grid\` });`);
+    expect(rules('a.ts', "export const f = () => ({ label: 'Some text here' });")).toEqual(['U67']);
+  });
+});
+
 describe('U70 module scope', () => {
   test('flags t() outside any function in modules and plain script blocks', () => {
     expect(rules('a.ts', "export const label = t('a.plain.label');")).toEqual(['U70']);

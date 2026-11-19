@@ -1,0 +1,167 @@
+{
+  "ApprovalsService.List#apiToSql": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 20,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[9007199254740993,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 71,
+                "index": 0,
+                "part": "",
+                "to": 72
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "ids"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "update notes set body = 'hit' where id in (select value from json_each(?))"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#sqlToApi": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"b\": {{kept.bodies}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 19,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_bodies",
+            "items": 3,
+            "name": "bodies",
+            "preview": "[\"one\",\"hit\",\"hit\"]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 6,
+                "index": 0,
+                "part": "",
+                "to": 21
+              }
+            ],
+            "source": {
+              "client": "Claude Code 2.1.318",
+              "kind": "script",
+              "mcp": "db",
+              "request": "notes db: select id, body from notes order by id",
+              "tool": "run_query"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ]
+}

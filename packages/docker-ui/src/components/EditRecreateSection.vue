@@ -173,7 +173,7 @@ function addMount(): void {
     <EditField
       field="env"
       multi
-      :label="t('docker.field.env.label')"
+      :label="t('common.field.environment.label')"
       mode="recreate"
       :changed="changed('env')"
       :error="errors['recreate.env']"
@@ -181,7 +181,7 @@ function addMount(): void {
     >
       <EditRows
         :items="rc.env"
-        :add-label="t('docker.edit.addVariable.label')"
+        :add-label="t('common.action.addVariable.label')"
         :disabled="disabled"
         testid="docker-edit-env"
         @add="rc.env.push('=')"
@@ -214,7 +214,7 @@ function addMount(): void {
     <EditField
       field="labels"
       multi
-      :label="t('docker.field.labels.label')"
+      :label="t('common.field.labels.label')"
       mode="recreate"
       :changed="changed('labels')"
       v-slot="{ invalid }"

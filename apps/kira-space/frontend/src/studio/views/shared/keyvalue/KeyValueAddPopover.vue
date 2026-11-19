@@ -32,9 +32,12 @@ const anchorRef = ref<HTMLElement | null>(null);
 const name = ref('');
 const value = ref('');
 
-const { run, pending, error } = useAsyncAction(() =>
-  addKey(props.viewKey, name.value.trim(), value.value),
-);
+const {
+  run,
+  pending,
+  error,
+  reset: resetRun,
+} = useAsyncAction(() => addKey(props.viewKey, name.value.trim(), value.value));
 const { errorFor, errorId, invalidAttrs, submit, reset } = useFormErrors({
   name: {
     value: () => name.value,
@@ -50,7 +53,7 @@ async function onOpen(): Promise<void> {
   }
   name.value = '';
   value.value = '';
-  error.value = null;
+  resetRun();
   open.value = true;
   await nextTick();
   reset();

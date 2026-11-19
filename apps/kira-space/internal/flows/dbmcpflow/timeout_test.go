@@ -216,7 +216,7 @@ func TestDbMcpStatementTimeoutQueueNotCounted(t *testing.T) {
 
 	userOp := ids.NewID()
 	userDone := make(chan error, 1)
-	go func() { userDone <- f.exec(userOp, cte(mediumCTE)) }()
+	go func() { userDone <- f.exec(userOp, cte(queueHoldCTE)) }()
 	testx.WaitUntil(t, 10*time.Second, func() bool { return indexOf(marks(), oplog.DbEventOpStart, userOp) >= 0 })
 
 	start := time.Now()

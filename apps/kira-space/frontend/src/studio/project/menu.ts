@@ -2,7 +2,7 @@ import type { ConnectionSummary } from '@shared/domain/connection';
 import { AWS_STYLE_KINDS, FILE_KINDS } from '@shared/domain/connection';
 import { decodePath } from '@shared/domain/tree';
 import { formatConnectionUri } from '@shared/domain/uri';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
@@ -376,10 +376,10 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
         if (
           !(await useConfirmDialogStore().confirm({
             title: t('studio.project.deleteConnectionConfirm.title'),
-            message: [
+            message: joinSentences(
               t('studio.project.deleteConnectionConfirm.body', { name: row.name }),
               t('common.confirm.irreversible.body'),
-            ].join(' '),
+            ),
             confirmLabel: t('common.action.delete.label'),
             tone: 'danger',
           }))

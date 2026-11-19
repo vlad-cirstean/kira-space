@@ -1,5 +1,5 @@
 import { t } from '@theme/i18n';
-import { errorText, toCodedError } from '@workbench/bridge/codedError';
+import { errorText, isConflict, toCodedError } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed } from 'vue';
 import { useSetTaskWorkflow, useWorkflows } from '../queries';
@@ -29,7 +29,7 @@ export function useSwitchWorkflow() {
       return true;
     } catch (err) {
       // E_CONFLICT is the unconfirmed switch: its text names the runs and logs the switch deletes.
-      if ((err as { code?: string }).code !== 'E_CONFLICT') throw err;
+      if (!isConflict(err)) throw err;
       // The confirmation covers the counts the dialog names; the backend refuses again if the task
       // holds more by the time it arrives (a run finished meanwhile).
       const { runs, logs } = lossCounts(err);

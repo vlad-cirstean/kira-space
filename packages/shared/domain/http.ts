@@ -1,3 +1,4 @@
+import { type MessageKey, t } from '@theme/i18n';
 import { z } from 'zod';
 
 import { type HttpVersion, httpVersionSchema } from './settings';
@@ -429,43 +430,44 @@ export function defaultHttpRequestTabState(): HttpRequestTabState {
 
 // D11: one shared table, rendered inline beside the status chip rather than tooltip-only — the
 // case that matters (4xx/5xx) is exactly the case where a hover shouldn't be required to see it.
+// Holds catalog keys only; the text lives in en.json and `t(` runs at call time.
 // No Go mirror: nothing on the Go side consults this.
-export const STATUS_HINTS: Readonly<Record<number, string>> = {
-  200: 'the request succeeded',
-  201: 'the request succeeded and a resource was created',
-  202: 'the request was accepted for processing, but not yet completed',
-  204: 'the request succeeded and there is no response body',
-  301: 'the resource has permanently moved to a new URL',
-  302: 'the resource is temporarily at a different URL',
-  304: 'the cached response is still valid — nothing new to transfer',
-  400: 'the server could not understand the request as sent',
-  401: 'authentication is required, or has failed',
-  403: 'the server understood the request but refuses to authorize it',
-  404: 'the server has no resource at this URL',
-  405: 'the URL exists, but not for this method',
-  408: 'the server gave up waiting for the rest of the request',
-  409: 'the request conflicts with the resource’s current state',
-  413: 'the request body is larger than the server will accept',
-  415: 'the server does not support the request body’s content type',
-  422: 'the request was well-formed but semantically invalid',
-  429: 'too many requests — the client is being rate-limited',
-  500: 'the server encountered an unexpected error',
-  501: 'the server does not support the functionality required',
-  502: 'a gateway received an invalid response from an upstream server',
-  503: 'the server is temporarily unable to handle the request',
-  504: 'a gateway timed out waiting for an upstream server',
+export const STATUS_HINT_KEYS: Readonly<Record<number, MessageKey>> = {
+  200: 'shared.http.statusHint.code200.tooltip',
+  201: 'shared.http.statusHint.code201.tooltip',
+  202: 'shared.http.statusHint.code202.tooltip',
+  204: 'shared.http.statusHint.code204.tooltip',
+  301: 'shared.http.statusHint.code301.tooltip',
+  302: 'shared.http.statusHint.code302.tooltip',
+  304: 'shared.http.statusHint.code304.tooltip',
+  400: 'shared.http.statusHint.code400.tooltip',
+  401: 'shared.http.statusHint.code401.tooltip',
+  403: 'shared.http.statusHint.code403.tooltip',
+  404: 'shared.http.statusHint.code404.tooltip',
+  405: 'shared.http.statusHint.code405.tooltip',
+  408: 'shared.http.statusHint.code408.tooltip',
+  409: 'shared.http.statusHint.code409.tooltip',
+  413: 'shared.http.statusHint.code413.tooltip',
+  415: 'shared.http.statusHint.code415.tooltip',
+  422: 'shared.http.statusHint.code422.tooltip',
+  429: 'shared.http.statusHint.code429.tooltip',
+  500: 'shared.http.statusHint.code500.tooltip',
+  501: 'shared.http.statusHint.code501.tooltip',
+  502: 'shared.http.statusHint.code502.tooltip',
+  503: 'shared.http.statusHint.code503.tooltip',
+  504: 'shared.http.statusHint.code504.tooltip',
 };
 
 /** A per-code sentence, falling back to a class-level one for a code not in the table. */
 export function statusHint(status: number): string {
-  const known = STATUS_HINTS[status];
-  if (known) return known;
-  if (status >= 100 && status < 200) return 'informational — the exchange is not yet complete';
-  if (status >= 200 && status < 300) return 'the request succeeded';
-  if (status >= 300 && status < 400) return 'the request was redirected';
-  if (status >= 400 && status < 500) return 'the client request was rejected';
-  if (status >= 500 && status < 600) return 'the server failed to fulfil a valid request';
-  return 'unrecognised status code';
+  const known = STATUS_HINT_KEYS[status];
+  if (known) return t(known);
+  if (status >= 100 && status < 200) return t('shared.http.statusHint.informational.tooltip');
+  if (status >= 200 && status < 300) return t('shared.http.statusHint.code200.tooltip');
+  if (status >= 300 && status < 400) return t('shared.http.statusHint.redirected.tooltip');
+  if (status >= 400 && status < 500) return t('shared.http.statusHint.clientError.tooltip');
+  if (status >= 500 && status < 600) return t('shared.http.statusHint.serverError.tooltip');
+  return t('shared.http.statusHint.unknown.tooltip');
 }
 
 export function statusClass(status: number): 'info' | 'ok' | 'warn' | 'error' {

@@ -43,7 +43,7 @@ const DIFF_LABEL: Record<ProofDiff, () => string> = {
   added: () => t('common.added.status'),
   changed: () => t('common.changed.status'),
   removed: () => t('common.removed.status'),
-  unchanged: () => t('studio.http.diff.unchangedRow.status'),
+  unchanged: () => t('common.diff.unchangedRow.status'),
 };
 
 const rows = computed(() => [

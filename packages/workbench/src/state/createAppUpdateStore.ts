@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { defineStore } from 'pinia';
 import { computed, type InjectionKey, ref, watch } from 'vue';
+import { useMutationAction } from '../behaviour/asyncAction';
 import { usePersistedState } from '../behaviour/persisted';
 import { TIMING } from '../behaviour/timing';
-import { errorText } from '../bridge/codedError';
+import { errorText, toCodedError } from '../bridge/codedError';
 import type { AppUpdateStatus } from '../bridge/createCoreControl';
 import { fireAndForget } from '../bridge/fireAndForget';
 import { queryClient } from './queryClient';
@@ -66,17 +67,19 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
     const dismissedVersion = usePersistedState('kira.appUpdate.dismissedVersion', '');
 
     const dialogOpen = ref(false);
-    const installError = ref<string | null>(null);
-
     const installMutation = useMutation(
       { mutationKey: ['appUpdate', 'install'], mutationFn: control.updateInstall },
       queryClient,
     );
-    const installing = computed(() => installMutation.isPending.value);
+    // A cancel is the person's own choice, not a failure.
+    const installAction = useMutationAction(installMutation, {
+      describe: (err) => (toCodedError(err).code === 'E_CANCELLED' ? null : errorText(err)),
+    });
+    const installing = installAction.pending;
+    const installError = installAction.error;
 
     // A menu/palette check: opens the dialog to show progress, the result or the failure.
     const checkRequested = ref(false);
-    const checkError = ref<string | null>(null);
     const checkMutation = useMutation(
       {
         mutationKey: ['appUpdate', 'check'],
@@ -85,7 +88,9 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
       },
       queryClient,
     );
-    const checking = computed(() => checkMutation.isPending.value);
+    const checkAction = useMutationAction(checkMutation);
+    const checking = checkAction.pending;
+    const checkError = checkAction.error;
 
     // Net: the router shows the update popup once per new target, in one window; **Later**
     // silences that target until a different one appears. Skipped while installing — the dialog stays
@@ -108,7 +113,7 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
 
     // The status-bar item's own click — ignores dismissal, always reopens.
     function openUpdateDialog(): void {
-      checkError.value = null;
+      checkAction.reset();
       dialogOpen.value = true;
     }
 
@@ -116,18 +121,13 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
       if (installing.value) return;
       checkRequested.value = true;
       dialogOpen.value = true;
-      checkError.value = null;
-      try {
-        await checkMutation.mutateAsync();
-      } catch (err) {
-        checkError.value = errorText(err);
-      }
+      await checkAction.run();
     }
 
     function later(): void {
       if (installing.value) return;
       // A closed dialog drops its check outcome, so a later open shows the current state.
-      checkError.value = null;
+      checkAction.reset();
       if (!available.value) {
         dialogOpen.value = false;
         checkRequested.value = false;
@@ -140,19 +140,9 @@ export function createAppUpdateStore(control: AppUpdateControl, appName: string)
     }
 
     async function install(): Promise<void> {
-      installError.value = null;
-      try {
-        await installMutation.mutateAsync();
-        // A successful InstallUpdate quits this process shortly after replying — nothing left to
-        // update here; the window is going away.
-      } catch (err) {
-        const code = err instanceof Error ? (err as Error & { code?: string }).code : undefined;
-        if (code === 'E_CANCELLED') {
-          installError.value = null;
-          return;
-        }
-        installError.value = errorText(err);
-      }
+      // A successful InstallUpdate quits this process shortly after replying — nothing left to
+      // update here; the window is going away.
+      await installAction.run();
     }
 
     function cancelInstall(): void {

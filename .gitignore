@@ -142,7 +142,6 @@ vite.config.ts.timestamp-*
 test-results/
 test-results-perf/
 test-results-studio/
-test-results-proto/
 
 # tests/e2e-real/fixtures.ts's own cross-process build lock (F10, P108 Part 6) — reclaimed
 # automatically by a stale-lock check, but never repo content either way.
@@ -180,9 +179,6 @@ apps/kira-space/bin/
 # CodeGraph local index (machine-local, rebuilt by scripts/codegraph-setup.sh)
 .codegraph/
 
-# P163 prototype build (apps/kira-space/frontend/vite.proto.config.ts), never shipped.
-dist-proto/
-dist-proto-hooks/
 
 # Root-level go build output (go build ./apps/...), never repo content.
 /kira-space

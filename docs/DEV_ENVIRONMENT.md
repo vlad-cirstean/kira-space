@@ -562,7 +562,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 | Memory gate: `internal/memory/{agentrunner.go,gate*.go,service.go}`, `internal/harness/claude/structured.go` | `bun run test:claude -run TestMemoryGate` |
 | Memory import and ingest: `internal/memory/importer/**`, `internal/harness/claude/structured.go` | `bun run test:claude -run 'TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia'` (import about 50 s, 0.14 USD, P211; ingest P274; the `TestMemoryDistill` prefix also runs `TestMemoryDistillRewrite`, P315) |
 | Memory ingest eval (P285): `internal/llmprompts` memory.import.* prompts, `internal/memory/importer/{chunk,extract,finalize}*.go` quality | `bun run eval:memory` with `KIRA_EVAL_MODE=run KIRA_EVAL_ROUND=<name>` (see ARCHITECTURE "Memory ingest eval"). Opt-in, never in hooks or CI. Costs about 4 to 5 USD per tuning run (8 to 10 min), judge included; P285 spent 57.9 USD in all; Part 2 spent 28.5 USD (ledger `spend-p2.jsonl`). Part 3 spent about 5.4 USD on the eval (ledger `spend-p3.jsonl`). P289 spent about 8.9 USD on the 5-source subset (ledger `spend-p289.jsonl`; `KIRA_EVAL_ONLY=plan-p257,spec-chunk-go,doc-arch-prompts,cmt-runner-go,json-ade-errors`, about 1.5 USD per round); run the test binary from `apps/kira-space/tests/claude` (`go test -c`) to keep a tree edit from changing a round midway. `KIRA_EVAL_MODE=footprint` with `KIRA_EVAL_ROUNDS=<r1,r2>` re-renders stored facts of past rounds and costs nothing. P291 (retrieval and telegraph eval) spent 14.04 USD of 20 (ledger `P291-runs/spend-p291.jsonl`, set `KIRA_EVAL_RUNS_DIR=P291-runs KIRA_EVAL_LEDGER=spend-p291.jsonl`); modes `questions`, `keys`, `telegraph`, `score` (with `KIRA_EVAL_STYLE=tele`) are paid, `retrieval` and `compare` are free and need `KIRA_ORT_LIB` (`sh scripts/fetch-onnxruntime.sh linux-x64`). Not a pass/fail row: it scores quality. |
-| DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440) |
+| DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440; `TestDbMcpKeptChainThroughClaude` covers `run_query` `script` and `params` schemas and a chain by name, P686) |
 | Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | memory gate, memory MCP, memory import, ADE, smart scripts and DB MCP rows above: `test:claude -run 'TestMemoryGate\|TestMemoryMcpThroughClaude\|TestMemoryMcpFollowsDocs\|TestMemoryInstallRegisters\|TestMemoryImport\|TestMemoryIngest\|TestMemoryDistill\|TestMemoryDistillBridge\|TestMemoryDistillTrivia\|TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db` |
 | Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
 | Any other `internal/harness/**` change | `bun run test:claude` |
@@ -852,6 +852,8 @@ pre-push design.
   when work leaves the machine, the same boundary CI defends — and in CI's `checks` job.
 - **`typecheck:*` run `--incremental`** (P215) with one `tsBuildInfoFile` per project under
   `node_modules/.cache/tsbuildinfo` (gitignored). Delete that directory to force a cold check.
+- **`bun run audit:ui [--channel c1..c7] [--out <file>]`** (P674): UI uniformity audit, seven heuristic
+  channels (`scripts/uiaudit/`), ~10s. Discovery only, never in `lint` or hooks. Writes a markdown report.
 
 ## A pre-P97 dev box still has orphaned repo-map files on disk
 
@@ -1031,49 +1033,9 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant
-  scroll cost there. Read real footprint with `apps/kira-space/frontend/proto/grid/mac/wkhost.swift`.
+  scroll cost there. Read real footprint with the WKWebView host retired in P681: `git show f59b9b4fc4b7:apps/kira-space/frontend/proto/grid/mac/wkhost.swift`.
 - Env knobs: `NDOCS` (documents), `NROWS`/`NCOLS` (console grid), `BODYKIND`/`NITEMS` (HTTP
   response), `NTABLES` (tree), `GRAPH_N` (git graph), `NCONTAINERS` (docker list).
-
-## Grid prototype (P165) — `proto/grid/`
-
-Dev-only Cheetah Grid prototype beside SlickGrid baselines. Not in the shipped bundle; Go embeds only
-`frontend/dist`. Plan and verdict: `git show bd0c224688d9:docs/v2.0/plans/P165-cheetah-grid-prototype.md`.
-
-- Pages: `cheetah.html`, `slick.html?variant=kira|stock`, `empty.html` (bare scroller control).
-  Query: `fixture=features` (NULL, empty, truncated, masked, FK rows), `w`/`h`, `rowHeight`, `zebra=1`,
-  `readonly=1`.
-- `bun run proto:dev:grid` serves them. `proto:build:grid` writes `dist-proto` (no debug hooks).
-  `proto:build:grid:hooks` writes `dist-proto-hooks` (`window.__kiraGridProto`, `window.cheetahGrid`,
-  trace HUD).
-- Both grid pages build the same data: `createProtoData` over the shared `wideTable` template, 10 000 rows x 20 columns, no randomness. Open `cheetah.html` and `slick.html?variant=kira` in two windows to compare by hand; pass the same `fixture`, `w`, `h` and `rowHeight` to both.
-- `bun run test:proto` builds the hooks build and runs `tests/proto/` in Playwright WebKit.
-- `bun run perf:probe:proto` builds both and runs `tests/perf/proto-grid-scroll.spec.ts`. Frame cost
-  uses the release build, late data the hooks build. `GRID=cheetah,slick-stock,slick-kira` narrows.
-  `PERF_HEADED=1 xvfb-run -a bun run perf:probe:proto` runs headed WebKitGTK.
-- Compare against the app with `NCOLS=20 TRACE=1 bunx playwright test
-  --config=apps/kira-space/playwright.perf.config.ts grid-scroll` at the same commit. Its
-  `PERF viewport` line is the size the proto probe copies.
-- Container numbers rank engines only. No GPU, DPR 1. Footprint needs the Mac.
-
-### Mac footprint run (user-run)
-
-Needs Xcode command line tools. Not run in the sandbox, `wkhost.swift` is uncompiled there.
-
-1. `bun run proto:build:grid && bun run proto:build:grid:hooks`, then
-   `bun run proto:preview:grid` (serves `dist-proto` on 127.0.0.1:9246).
-2. `swiftc -O -o /tmp/wkhost apps/kira-space/frontend/proto/grid/mac/wkhost.swift`.
-3. Per page: `/tmp/wkhost <url> 90 apps/kira-space/frontend/proto/grid/mac/driver.js 2> <name>.log`
-   for `proto/grid/empty.html`, `slick.html?variant=kira`, `slick.html?variant=stock`,
-   `cheetah.html`, all with `?w=1440&h=960&rowHeight=28` appended (use `&` after the variant).
-4. Per page and band (`MARK-idle`, `MARK-40px`, `MARK-100px`, `MARK-200px`): idle footprint, peak
-   `FOOTPRINT`, delta. Never `vmmap` for the series.
-5. Late data on a real trackpad: serve `dist-proto-hooks`
-   (`cd apps/kira-space/frontend && bunx vite preview --config vite.proto.config.ts --outDir
-   dist-proto-hooks`), open `cheetah.html?fixture=features` in Safari, press Start trace, one hard
-   two-finger flick, Stop trace. The JSON is on the clipboard. Same on `slick.html?variant=kira`. In
-   the real app: `__kiraScrollTrace` (`docs/PERF.md` section 2.1a). Note perceived smoothness and
-   blank edges per page.
 
 ### Agents module footprint run (user-run)
 

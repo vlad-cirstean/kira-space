@@ -32,6 +32,7 @@ const {
   run: runSave,
   pending: saving,
   error,
+  reset: resetSave,
 } = useAsyncAction(async (collectionId: string, parentId: string | null, trimmed: string) => {
   const failure = await collectionsStore.submitSaveDialog(collectionId, parentId, trimmed);
   if (failure !== null) throw new Error(failure);
@@ -67,7 +68,7 @@ watch(
     if (!open) return;
     name.value = saveDialogStore.suggestedName;
     target.value = firstTargetValue.value;
-    error.value = null;
+    resetSave();
     reset();
   },
   { immediate: true },

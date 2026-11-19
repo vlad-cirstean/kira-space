@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -133,6 +135,8 @@ func (s *HTTPServer) record(r *http.Request) *Request {
 func (s *HTTPServer) handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/echo", s.echo)
+	mux.HandleFunc("/forms", formsHandler)
+	mux.HandleFunc("/reshape", reshape)
 	mux.HandleFunc("/redirect", redirect)
 	mux.HandleFunc("/cookie/set", cookieSet)
 	mux.HandleFunc("/cookie/echo", cookieEcho)
@@ -171,6 +175,31 @@ func (s *HTTPServer) echo(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery, "host": r.Host, "proto": r.Proto,
 		"header": r.Header, "bodyLen": len(body), "bodySha256": hex.EncodeToString(sum[:]), "body": string(body),
+	})
+}
+
+// reshape answers a JSON body parsed and re-serialised with indentation, as a server that validates and
+// echoes a document does: only its leaves survive byte for byte.
+func reshape(w http.ResponseWriter, r *http.Request) {
+	var doc any
+	if err := json.NewDecoder(r.Body).Decode(&doc); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(map[string]any{"received": doc})
+}
+
+// formsHandler answers the header X-Echo in the forms a value takes on its way into a request, so a
+// test knows each form to look for without trusting the code under test.
+func formsHandler(w http.ResponseWriter, r *http.Request) {
+	v := r.Header.Get("X-Echo")
+	j, _ := json.Marshal(v)
+	writeJSON(w, map[string]string{
+		"raw": v, "json": string(j[1 : len(j)-1]), "query": url.QueryEscape(v), "path": url.PathEscape(v),
+		"b64": base64.StdEncoding.EncodeToString([]byte(v)), "b64url": base64.RawURLEncoding.EncodeToString([]byte(v)),
 	})
 }
 

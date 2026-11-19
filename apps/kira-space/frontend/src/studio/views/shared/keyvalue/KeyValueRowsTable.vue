@@ -18,7 +18,7 @@ import { displayText } from '../page/display';
 import SearchFilterNotice from '../page/SearchFilterNotice.vue';
 import SearchToolbar from '../page/SearchToolbar.vue';
 import { createMatchIndex } from '../page/search';
-import { setVisibleRows } from '../page/visibleRows';
+import { pageRowWindow, reportVisibleWindow } from '../page/visibleRows';
 import { pageVersion, setVisibleWindow } from './page';
 import { type Match, matchedRows, pageSearchApi, searchState } from './search';
 import { useKeyValueViewStore } from './state';
@@ -110,13 +110,8 @@ function onGoToMatch(match: Match): void {
 watch(
   virtualRows,
   (rows) => {
-    if (rows.length === 0) return;
-    const list = rowIndices.value;
-    const from = list[rows[0].index];
-    const to = list[rows[rows.length - 1].index];
-    if (from === undefined || to === undefined) return;
-    setVisibleRows(props.viewKey, from, to + 1);
-    setVisibleWindow(props.viewKey, from, to + 1);
+    const win = pageRowWindow(rows, rowIndices.value);
+    if (win) reportVisibleWindow(props.viewKey, win.from, win.to, setVisibleWindow);
   },
   { immediate: true },
 );
@@ -197,7 +192,7 @@ function cellClass(row: number, col: 'field' | 'value') {
         class="flex-1 min-h-0 overflow-auto"
         data-testid="virtual-list"
         role="listbox"
-        :aria-label="t('studio.keyValue.rows.aria')"
+        :aria-label="t('common.field.rows.label')"
       >
         <div class="relative w-full" :style="{ height: `${totalSize}px` }">
           <template v-for="entry in visibleRows" :key="entry.row.index">

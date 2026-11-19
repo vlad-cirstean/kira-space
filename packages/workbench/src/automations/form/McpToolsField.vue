@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ScriptMcpServer, SmartSettings } from '@shared/domain/scripts';
 import { useQuery } from '@tanstack/vue-query';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import {
   Field,
@@ -94,11 +93,6 @@ const enabled = computed(() => smart.value.mcp.map((c) => c.server));
         <span class="text-kira-sm text-muted-foreground" data-testid="smart-mcp-none">{{
           t('automations.smart.mcpNone.emptyHint')
         }}</span>
-      </template>
-      <template #error="{ message }">
-        <Alert variant="error">
-          <AlertDescription>{{ message }}</AlertDescription>
-        </Alert>
       </template>
       <template #default="{ data }">
         <div

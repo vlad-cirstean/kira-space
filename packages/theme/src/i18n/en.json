@@ -13,13 +13,7 @@
         "notSaved": {
           "hint": "Not saved to the script."
         },
-        "suffix": {
-          "label": "Added by Kira"
-        },
-        "title": "Run {name}",
-        "untitled": {
-          "title": "Run script"
-        }
+        "title": "Run {name}"
       },
       "scheduleConfirm": {
         "title": "Run {name}?",
@@ -34,9 +28,6 @@
         },
         "nameExample": {
           "example": "Build"
-        },
-        "noCollection": {
-          "option": "No collection"
         },
         "noFolder": {
           "status": "No folder chosen"
@@ -139,9 +130,6 @@
           "hint": "A long-running script returns to the agent at once; the agent reads its output while it runs and can stop it.",
           "label": "How long it runs"
         },
-        "prompt": {
-          "label": "Ask me first"
-        },
         "run": {
           "label": "When an agent runs it"
         },
@@ -168,7 +156,6 @@
         "tooltip": "New…"
       },
       "none": {
-        "empty": "No scripts",
         "emptyHint": "Add one with the plus button above."
       }
     },
@@ -210,9 +197,6 @@
       },
       "smartHint": {
         "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
-      },
-      "title": {
-        "label": "Parameters"
       }
     },
     "restore": {
@@ -336,14 +320,6 @@
       },
       "secretSaved": {
         "placeholder": "Saved, type to use another value"
-      },
-      "state": {
-        "done": {
-          "status": "Succeeded"
-        },
-        "waiting": {
-          "status": "Waiting for you"
-        }
       },
       "taskOnBranch": {
         "label": "Task {task} on {branch}"
@@ -487,9 +463,6 @@
       "newSmart": {
         "label": "New smart script"
       },
-      "paramNamed": {
-        "label": "Parameter {name}"
-      },
       "promptExample": {
         "example": "Summarize the open TODOs in this folder"
       },
@@ -597,6 +570,13 @@
       "none": {
         "empty": "No terminal open",
         "emptyHint": "Run a script from the panel, or open a terminal."
+      }
+    },
+    "statusBar": {
+      "runs": {
+        "open": {
+          "hint": "Click to show the runs list."
+        }
       }
     },
     "target": {
@@ -1645,6 +1625,9 @@
       "dbMcpAPI": {
         "title": "Send {method} request to {host}"
       },
+      "dbMcpAPIResponse": {
+        "title": "Response from {host}: {method}"
+      },
       "dbMcpExemption": {
         "title": "Lift a limit for one query · {name}"
       },
@@ -2394,6 +2377,15 @@
         "binaryValueInvalid": {
           "body": "Not a valid binary value. Use 0x followed by hexadecimal digits."
         },
+        "boundListTooLarge": {
+          "body": "A bound list takes at most {limit} bytes as JSON text."
+        },
+        "boundNameRequired": {
+          "body": "A bound value needs its placeholder name."
+        },
+        "boundValuesTooLarge": {
+          "body": "Bound values are over the {limit} bytes {engine} takes in a request. Bind fewer or smaller values."
+        },
         "cancelled": {
           "body": "The operation was cancelled."
         },
@@ -2537,6 +2529,9 @@
         },
         "multipleStatements": {
           "body": "Multiple statements aren’t supported in a single statement."
+        },
+        "noBoundParams": {
+          "body": "{kind} takes no bound parameters."
         },
         "noQueryConsole": {
           "body": "{kind} has no query console."
@@ -3051,11 +3046,17 @@
       "add": {
         "label": "Add"
       },
+      "addVariable": {
+        "label": "Add variable"
+      },
       "apply": {
         "label": "Apply"
       },
       "approve": {
         "label": "Approve"
+      },
+      "attach": {
+        "label": "Attach"
       },
       "back": {
         "label": "Back"
@@ -3186,6 +3187,9 @@
       "nextPage": {
         "label": "Next page"
       },
+      "notNow": {
+        "label": "Not now"
+      },
       "open": {
         "label": "Open"
       },
@@ -3198,6 +3202,9 @@
       "openTerminal": {
         "label": "Open terminal"
       },
+      "overwrite": {
+        "label": "Overwrite"
+      },
       "paste": {
         "label": "Paste"
       },
@@ -3209,6 +3216,9 @@
       },
       "previousPage": {
         "label": "Previous page"
+      },
+      "pull": {
+        "label": "Pull"
       },
       "refresh": {
         "label": "Refresh"
@@ -3273,6 +3283,9 @@
       "showAll": {
         "label": "Show all"
       },
+      "showChanges": {
+        "label": "Show changes"
+      },
       "showLess": {
         "label": "Show less"
       },
@@ -3304,6 +3317,9 @@
     "agentCliNotFound": {
       "error": "{product}’s CLI isn’t available. Copy the command above and run it yourself once it is installed."
     },
+    "agentGets": {
+      "label": "Agent gets"
+    },
     "agentRegistered": {
       "description": "Registered with {product}."
     },
@@ -3322,6 +3338,15 @@
     "changed": {
       "status": "Changed"
     },
+    "changes": {
+      "label": "Changes",
+      "pending": {
+        "title": "Pending changes"
+      },
+      "uncommitted": {
+        "label": "Uncommitted"
+      }
+    },
     "closed": {
       "status": "Closed"
     },
@@ -3329,7 +3354,10 @@
       "label": "Code"
     },
     "collection": {
-      "label": "Collection"
+      "label": "Collection",
+      "none": {
+        "option": "No collection"
+      }
     },
     "colour": {
       "amber": {
@@ -3404,6 +3432,32 @@
         "status": "Can’t be read, fix it here"
       }
     },
+    "configSecrets": {
+      "deleteConfirm": {
+        "body": "Anything that references this secret fails until you set it again.",
+        "title": "Delete {name}?"
+      },
+      "dialog": {
+        "hint": "The value is sent once and never shown again.",
+        "title": "Set {name}"
+      },
+      "hint": "Write {ref} in a value. Values stay sealed on this computer.",
+      "none": {
+        "hint": "No secrets yet. Reference one in a config file to see it here."
+      },
+      "set": {
+        "label": "Set value",
+        "status": "Set"
+      },
+      "storageOff": {
+        "hint": "Secret storage is not available, so values can’t be saved."
+      },
+      "title": "Secrets",
+      "unset": {},
+      "unused": {
+        "status": "Not referenced"
+      }
+    },
     "confirm": {
       "irreversible": {
         "body": "This can’t be undone."
@@ -3411,6 +3465,11 @@
     },
     "connecting": {
       "loading": "Connecting…"
+    },
+    "content": {
+      "readOnly": {
+        "hint": "This content is too large or not valid text to edit."
+      }
     },
     "continue": {
       "label": "Continue"
@@ -3450,6 +3509,11 @@
     "copyForAgent": {
       "label": "Copy for agent"
     },
+    "copyFormat": {
+      "json": {
+        "label": "JSON"
+      }
+    },
     "cost": {
       "label": "Cost {value}"
     },
@@ -3471,6 +3535,11 @@
       },
       "resizeWidth": {
         "label": "Resize dialog width"
+      }
+    },
+    "diff": {
+      "unchangedRow": {
+        "status": "Unchanged"
       }
     },
     "discard": {
@@ -3503,11 +3572,11 @@
         "announce": "Couldn’t open the link"
       }
     },
+    "expired": {
+      "status": "Expired"
+    },
     "expires": {
       "status": "Expires in {time}"
-    },
-    "expiresIn": {
-      "status": "Expires in {seconds}s"
     },
     "failedCount": {
       "label": "{count} failed"
@@ -3519,6 +3588,9 @@
       "tooltip": "Fetch {name}"
     },
     "field": {
+      "author": {
+        "label": "Author"
+      },
       "branch": {
         "label": "Branch"
       },
@@ -3527,6 +3599,9 @@
       },
       "command": {
         "label": "Command"
+      },
+      "connection": {
+        "label": "Connection"
       },
       "date": {
         "label": "Date"
@@ -3540,8 +3615,14 @@
       "email": {
         "label": "Email"
       },
+      "environment": {
+        "label": "Environment"
+      },
       "file": {
         "label": "File"
+      },
+      "id": {
+        "label": "ID"
       },
       "key": {
         "label": "Key"
@@ -3549,8 +3630,14 @@
       "kind": {
         "label": "Kind"
       },
+      "labels": {
+        "label": "Labels"
+      },
       "name": {
         "label": "Name"
+      },
+      "network": {
+        "label": "Network"
       },
       "noColour": {
         "label": "No colour"
@@ -3558,20 +3645,38 @@
       "number": {
         "label": "Number"
       },
+      "parameterNamed": {
+        "label": "Parameter {name}"
+      },
+      "parameters": {
+        "label": "Parameters"
+      },
       "reason": {
         "label": "Reason"
+      },
+      "request": {
+        "label": "Request"
       },
       "result": {
         "label": "Result"
       },
+      "rows": {
+        "label": "Rows"
+      },
       "scope": {
         "label": "Scope"
+      },
+      "session": {
+        "label": "Session"
       },
       "source": {
         "label": "Source"
       },
       "status": {
         "label": "Status"
+      },
+      "subject": {
+        "label": "Subject"
       },
       "text": {
         "label": "Text"
@@ -3594,6 +3699,11 @@
     },
     "fileCount": {
       "label": "{count} file | {count} files"
+    },
+    "files": {
+      "skipped": {
+        "label": "{count} file skipped | {count} files skipped"
+      }
     },
     "forcePush": {
       "label": "Force push"
@@ -3633,8 +3743,34 @@
         "label": "Tab"
       }
     },
+    "kind": {
+      "question": {
+        "label": "Question"
+      }
+    },
     "later": {
       "label": "Later"
+    },
+    "logs": {
+      "filter": {
+        "placeholder": "Filter lines"
+      },
+      "follow": {
+        "label": "Follow"
+      },
+      "matches": {
+        "status": "{shown} of {total} lines"
+      },
+      "tail": {
+        "aria": "Lines to show",
+        "option": "{count} line | {count} lines"
+      },
+      "timestamps": {
+        "label": "Timestamps"
+      },
+      "wrap": {
+        "label": "Wrap"
+      }
     },
     "main": {
       "label": "Main"
@@ -3658,6 +3794,9 @@
       "status": "Match {position} of {total}"
     },
     "mcp": {
+      "askFirst": {
+        "label": "Ask me first"
+      },
       "label": "MCP"
     },
     "merge": {
@@ -3669,10 +3808,21 @@
     "message": {
       "label": "Message"
     },
+    "metric": {
+      "cpu": {
+        "label": "CPU"
+      }
+    },
     "mode": {
       "label": "Mode"
     },
     "module": {
+      "agents": {
+        "label": "Agents"
+      },
+      "app": {
+        "label": "App"
+      },
       "automations": {
         "label": "Runs"
       },
@@ -3703,8 +3853,14 @@
       "repositories": {
         "label": "Repositories"
       },
+      "scripts": {
+        "label": "Scripts"
+      },
       "settings": {
         "label": "Settings"
+      },
+      "studioMcp": {
+        "label": "Studio MCP"
       },
       "terminal": {
         "label": "Terminal"
@@ -3763,6 +3919,11 @@
     },
     "openElsewhere": {
       "tooltip": "Open in another window"
+    },
+    "origin": {
+      "agent": {
+        "label": "Agent"
+      }
     },
     "path": {
       "label": "Path"
@@ -3840,11 +4001,24 @@
     "revert": {
       "label": "Revert"
     },
+    "run": {
+      "addedByKira": {
+        "label": "Added by Kira"
+      },
+      "untitled": {
+        "title": "Run script"
+      }
+    },
     "script": {
       "label": "Script"
     },
     "scriptRuns": {
       "label": "Script runs"
+    },
+    "scripts": {
+      "none": {
+        "empty": "No scripts"
+      }
     },
     "searching": {
       "loading": "Searching…"
@@ -3892,6 +4066,9 @@
       "default": {
         "option": "Default"
       },
+      "edited": {
+        "status": "Edited"
+      },
       "failed": {
         "status": "Failed"
       },
@@ -3913,6 +4090,9 @@
       "none": {
         "option": "None"
       },
+      "pending": {
+        "status": "Pending"
+      },
       "readOnly": {
         "status": "Read-only"
       },
@@ -3922,8 +4102,35 @@
       "runningCount": {
         "status": "{count} running"
       },
+      "succeeded": {
+        "status": "Succeeded"
+      },
       "unsavedChanges": {
         "status": "Unsaved changes"
+      },
+      "waitingForYou": {
+        "status": "Waiting for you"
+      }
+    },
+    "tab": {
+      "close": {
+        "tooltip": "Close {title}"
+      },
+      "discard": {
+        "body": "{count} tab has unsaved changes. Closing discards them. | {count} tabs have unsaved changes. Closing discards them.",
+        "title": "Discard unsaved changes"
+      },
+      "logs": {
+        "label": "Logs"
+      },
+      "new": {
+        "label": "New tab"
+      },
+      "overview": {
+        "label": "Overview"
+      },
+      "preview": {
+        "label": "Preview"
       }
     },
     "task": {
@@ -3940,6 +4147,9 @@
     },
     "unresolved": {
       "label": "{count} unresolved"
+    },
+    "unset": {
+      "status": "Not set"
     },
     "user": {
       "label": "User"
@@ -4078,9 +4288,6 @@
       "addPort": {
         "label": "Add port"
       },
-      "addVariable": {
-        "label": "Add variable"
-      },
       "aliases": {
         "placeholder": "Aliases, comma separated"
       },
@@ -4089,9 +4296,6 @@
       },
       "appliesNow": {
         "title": "Applies now"
-      },
-      "attach": {
-        "label": "Attach"
       },
       "attached": {
         "status": "Attached"
@@ -4200,7 +4404,7 @@
           "error": "Max retries only applies to on-failure."
         },
         "memoryMin": {
-          "error": "Minimum is {min}."
+          "error": "Minimum is {min} MB."
         },
         "nameForm": {
           "error": "Use letters, digits, underscores, dots and hyphens, at least 2 characters."
@@ -4295,11 +4499,11 @@
           "body": "Created by {tool}. Its session reaper still owns this container and removes it when the session ends."
         }
       },
-      "pending": {
-        "title": "Pending changes"
-      },
       "pids": {
         "label": "PIDs limit"
+      },
+      "portMapping": {
+        "label": "{host} -> {container}"
       },
       "preserved": {
         "label": "Kept as is"
@@ -4345,9 +4549,6 @@
       },
       "unlimited": {
         "label": "Unlimited"
-      },
-      "unset": {
-        "status": "Not set"
       },
       "variable": {
         "label": "Variable {key}"
@@ -4396,15 +4597,7 @@
         "label": "{version} (API {api})"
       }
     },
-    "env": {
-      "revealValue": {
-        "tooltip": "Reveal value"
-      }
-    },
     "exec": {
-      "close": {
-        "tooltip": "Close {title}"
-      },
       "none": {
         "empty": "No terminal session",
         "emptyHint": "Start a shell inside this container."
@@ -4417,9 +4610,6 @@
       "entrypoint": {
         "label": "Entrypoint"
       },
-      "env": {
-        "label": "Environment"
-      },
       "exitCode": {
         "label": "Exit code"
       },
@@ -4431,9 +4621,6 @@
       },
       "image": {
         "label": "Image"
-      },
-      "labels": {
-        "label": "Labels"
       },
       "mounts": {
         "label": "Mounts"
@@ -4467,24 +4654,11 @@
       }
     },
     "logs": {
-      "follow": {
-        "label": "Follow"
-      },
       "jumpToLatest": {
         "label": "Jump to latest"
       },
       "stopped": {
         "status": "Container stopped"
-      },
-      "tail": {
-        "aria": "Lines to show",
-        "option": "{count} line | {count} lines"
-      },
-      "timestamps": {
-        "label": "Timestamps"
-      },
-      "wrap": {
-        "label": "Wrap"
       }
     },
     "measure": {
@@ -4494,9 +4668,6 @@
       "loading": "Measuring…"
     },
     "metric": {
-      "cpu": {
-        "label": "CPU"
-      },
       "ram": {
         "label": "RAM"
       }
@@ -4564,9 +4735,6 @@
       "driver": {
         "label": "Driver"
       },
-      "id": {
-        "label": "ID"
-      },
       "internal": {
         "label": "Internal"
       },
@@ -4575,9 +4743,6 @@
       },
       "mountPoint": {
         "label": "Mount point"
-      },
-      "network": {
-        "label": "Network"
       },
       "no": {
         "option": "No"
@@ -4686,12 +4851,6 @@
       "inspect": {
         "label": "Inspect"
       },
-      "logs": {
-        "label": "Logs"
-      },
-      "overview": {
-        "label": "Overview"
-      },
       "stats": {
         "label": "Stats"
       }
@@ -4757,11 +4916,8 @@
       "secondsCompact": "{seconds}s"
     },
     "relative": {
-      "days": "{count}d ago",
       "future": "in {time}",
-      "hours": "{count}h ago",
       "justNow": "just now",
-      "minutes": "{count}m ago",
       "past": "{time} ago",
       "unitDay": "{count}d",
       "unitHour": "{count}h",
@@ -5058,9 +5214,6 @@
       "postCheckoutPullConfirm": {
         "body": "{branch} is {count} commit behind {upstream}. | {branch} is {count} commits behind {upstream}.",
         "confirm": "Pull now",
-        "notNow": {
-          "label": "Not now"
-        },
         "title": "Pull the latest changes?"
       },
       "preflight": {
@@ -5622,9 +5775,6 @@
       },
       "stashDrop": {
         "label": "Drop"
-      },
-      "stashShow": {
-        "label": "Show changes"
       }
     },
     "noRepository": {
@@ -6086,10 +6236,10 @@
         "body": "Your changes are stashed. See the stash list."
       },
       "stashIndexNotRestored": {
-        "body": "Your staged changes came back unstaged. The new commit changed the files they were staged against."
+        "body": "{done}. Your staged changes came back unstaged. The new commit changed the files they were staged against."
       },
       "stashKept": {
-        "body": "Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
+        "body": "{done}. Your stashed changes were kept because popping them back would conflict. Pop {ref} manually when ready."
       },
       "undone": {
         "announce": "Undone: {label}"
@@ -6409,9 +6559,6 @@
         "label": "Search message bodies"
       },
       "field": {
-        "author": {
-          "label": "Author"
-        },
         "authorEmail": {
           "label": "Author email"
         },
@@ -6426,9 +6573,6 @@
         },
         "sha": {
           "label": "SHA"
-        },
-        "subject": {
-          "label": "Subject"
         },
         "tagMessage": {
           "label": "Tag message"
@@ -6628,8 +6772,7 @@
         "status": "Remote: {phase}"
       },
       "pull": {
-        "hint": "Pull. Resolves a strategy from your Git configuration before running.",
-        "label": "Pull"
+        "hint": "Pull. Resolves a strategy from your Git configuration before running."
       },
       "pullDefault": {
         "label": "Follow your configuration"
@@ -6874,14 +7017,8 @@
       "ended": {
         "status": "Stream ended"
       },
-      "filter": {
-        "placeholder": "Filter lines"
-      },
       "initContainer": {
         "option": "{name} (init)"
-      },
-      "matches": {
-        "status": "{shown} of {total} lines"
       }
     },
     "mcp": {
@@ -7004,9 +7141,6 @@
     "badge": {
       "defaultChanged": {
         "label": "Default changed"
-      },
-      "edited": {
-        "label": "Edited"
       },
       "invalid": {
         "label": "Invalid"
@@ -7147,6 +7281,27 @@
         "title": "Studio MCP instructions",
         "usedBy": {
           "body": "Sent to {agent} when it connects to the Studio MCP server."
+        }
+      },
+      "dbmcpToolApiRequestReview": {
+        "description": "Tells the agent that the user may hold an API response for review and what a withheld response means.",
+        "title": "API response review notice",
+        "usedBy": {
+          "body": "Always added to the api_request tool description."
+        }
+      },
+      "dbmcpToolApiRequestScripts": {
+        "description": "Tells the agent how to attach a prepare or transform script to api_request, and what the sandbox allows.",
+        "title": "API request scripts notice",
+        "usedBy": {
+          "body": "Added to the api_request tool description while agent scripts are on in the Studio MCP settings."
+        }
+      },
+      "dbmcpToolRunQueryScripts": {
+        "description": "Tells the agent how to attach a result script to run_query, what the sandbox allows and what it receives back.",
+        "title": "Query result scripts notice",
+        "usedBy": {
+          "body": "Added to the run_query tool description while agent scripts are on in the Studio MCP settings."
         }
       },
       "headlessArtifactsHeader": {
@@ -7405,11 +7560,6 @@
       "hint": "Fixed. The reply must match this schema, and an edit can’t change it.",
       "label": "Output schema"
     },
-    "tab": {
-      "preview": {
-        "label": "Preview"
-      }
-    },
     "var": {
       "autostash": {
         "description": "True when git rebase runs with --autostash."
@@ -7612,9 +7762,6 @@
         }
       },
       "origin": {
-        "agent": {
-          "label": "Agent"
-        },
         "external": {
           "label": "External"
         },
@@ -7821,9 +7968,6 @@
         },
         "scanning": {
           "loading": "Scanning files…"
-        },
-        "skipped": {
-          "label": "{count} file skipped | {count} files skipped"
         },
         "sourceTag": {
           "error": "Use 1 to 32 lowercase letters, digits or dashes.",
@@ -8074,11 +8218,6 @@
         "session": {
           "label": "Session {session}"
         },
-        "source": {
-          "ui": {
-            "label": "App"
-          }
-        },
         "withBoth": {
           "label": "{action} · {origin} · {source} ({label}) — {rationale}"
         },
@@ -8110,11 +8249,6 @@
       },
       "heading": {
         "title": "Agent requests"
-      }
-    },
-    "backlog": {
-      "handle": {
-        "aria": "Drag to reorder"
       }
     },
     "http": {
@@ -8150,8 +8284,7 @@
         "hint": "Replying to agents is off for this phone."
       },
       "takeOverConfirm": {
-        "body": "{what}. Taking over stops the background run and continues it in {product} on your computer.",
-        "title": "Take over run?"
+        "body": "{what}. Taking over stops the background run and continues it in {product} on your computer."
       }
     },
     "pair": {
@@ -8264,9 +8397,6 @@
         "reconnecting": {
           "aria": "Connection reconnecting"
         }
-      },
-      "heading": {
-        "title": "Agents"
       },
       "offline": {
         "description": "You are offline. Showing what was last loaded."
@@ -8404,6 +8534,62 @@
       }
     },
     "grpc": {
+      "codeHint": {
+        "code0": {
+          "tooltip": "The call completed"
+        },
+        "code1": {
+          "tooltip": "The call was cancelled before it completed"
+        },
+        "code2": {
+          "tooltip": "The server returned an error it couldn’t classify more specifically"
+        },
+        "code3": {
+          "tooltip": "The server rejected the request message itself"
+        },
+        "code4": {
+          "tooltip": "The call ran past its deadline before the server answered"
+        },
+        "code5": {
+          "tooltip": "The server has no such method or resource"
+        },
+        "code6": {
+          "tooltip": "The resource the call tried to create already exists"
+        },
+        "code7": {
+          "tooltip": "The caller is authenticated but not allowed to make this call"
+        },
+        "code8": {
+          "tooltip": "A resource limit was exceeded, such as a quota or the available disk space"
+        },
+        "code9": {
+          "tooltip": "The system is not in a state required for the call to proceed"
+        },
+        "code10": {
+          "tooltip": "The call was aborted, typically due to a concurrency conflict"
+        },
+        "code11": {
+          "tooltip": "The operation was attempted past the valid range, such as seeking past the end of a file"
+        },
+        "code12": {
+          "tooltip": "The server does not implement this method"
+        },
+        "code13": {
+          "tooltip": "The server encountered an internal invariant violation"
+        },
+        "code14": {
+          "tooltip": "The server couldn’t be reached, or is not accepting calls right now"
+        },
+        "code15": {
+          "tooltip": "Unrecoverable data loss or corruption occurred"
+        },
+        "code16": {
+          "tooltip": "The call carried no valid credentials"
+        },
+        "unknown": {
+          "tooltip": "An unrecognised status code"
+        }
+      },
       "newRequest": {
         "title": "New gRPC request"
       },
@@ -8413,6 +8599,94 @@
         },
         "unary": {
           "label": "Unary"
+        }
+      }
+    },
+    "http": {
+      "statusHint": {
+        "clientError": {
+          "tooltip": "The client request was rejected"
+        },
+        "code200": {
+          "tooltip": "The request succeeded"
+        },
+        "code201": {
+          "tooltip": "The request succeeded and a resource was created"
+        },
+        "code202": {
+          "tooltip": "The request was accepted for processing, but not yet completed"
+        },
+        "code204": {
+          "tooltip": "The request succeeded and there is no response body"
+        },
+        "code301": {
+          "tooltip": "The resource has permanently moved to a new URL"
+        },
+        "code302": {
+          "tooltip": "The resource is temporarily at a different URL"
+        },
+        "code304": {
+          "tooltip": "The cached response is still valid; nothing new to transfer"
+        },
+        "code400": {
+          "tooltip": "The server couldn’t understand the request as sent"
+        },
+        "code401": {
+          "tooltip": "Authentication is required, or has failed"
+        },
+        "code403": {
+          "tooltip": "The server understood the request but refuses to authorize it"
+        },
+        "code404": {
+          "tooltip": "The server has no resource at this URL"
+        },
+        "code405": {
+          "tooltip": "The URL exists, but not for this method"
+        },
+        "code408": {
+          "tooltip": "The server gave up waiting for the rest of the request"
+        },
+        "code409": {
+          "tooltip": "The request conflicts with the resource’s current state"
+        },
+        "code413": {
+          "tooltip": "The request body is larger than the server will accept"
+        },
+        "code415": {
+          "tooltip": "The server does not support the request body’s content type"
+        },
+        "code422": {
+          "tooltip": "The request was well-formed but semantically invalid"
+        },
+        "code429": {
+          "tooltip": "Too many requests; the client is being rate-limited"
+        },
+        "code500": {
+          "tooltip": "The server encountered an unexpected error"
+        },
+        "code501": {
+          "tooltip": "The server does not support the functionality required"
+        },
+        "code502": {
+          "tooltip": "A gateway received an invalid response from an upstream server"
+        },
+        "code503": {
+          "tooltip": "The server can’t handle the request right now"
+        },
+        "code504": {
+          "tooltip": "A gateway timed out waiting for an upstream server"
+        },
+        "informational": {
+          "tooltip": "Informational; the exchange is not yet complete"
+        },
+        "redirected": {
+          "tooltip": "The request was redirected"
+        },
+        "serverError": {
+          "tooltip": "The server didn’t fulfil a valid request"
+        },
+        "unknown": {
+          "tooltip": "Unrecognised status code"
         }
       }
     },
@@ -9067,9 +9341,6 @@
         "back": {
           "label": "← {title}"
         },
-        "changes": {
-          "label": "Changes"
-        },
         "copyBranchLink": {
           "tooltip": "Copy branch link"
         },
@@ -9174,11 +9445,6 @@
           }
         }
       },
-      "changes": {
-        "uncommitted": {
-          "label": "Uncommitted"
-        }
-      },
       "context": {
         "applies": {
           "hint": "Agents started after you save get the new text. That covers new sessions, headless steps and smart scripts. Running sessions keep theirs."
@@ -9197,9 +9463,6 @@
         },
         "overSize": {
           "error": "Over the limit of {max} bytes. Agents do not use this text."
-        },
-        "readOnly": {
-          "hint": "This content is too large or not valid text to edit."
         },
         "resume": {
           "hint": "A resumed {label} conversation keeps the context it started with until it compacts."
@@ -9241,6 +9504,9 @@
           },
           "subjectApi": {
             "label": "API request"
+          },
+          "subjectApiResponse": {
+            "label": "API response"
           },
           "subjectExemption": {
             "label": "Exemption"
@@ -9604,9 +9870,6 @@
         "kind": {
           "approval": {
             "label": "Approval"
-          },
-          "question": {
-            "label": "Question"
           },
           "setupFailed": {
             "label": "Setup failed"
@@ -10327,9 +10590,6 @@
           "title": "Notes and proof"
         },
         "entry": {
-          "delete": {
-            "tooltip": "Delete proof"
-          },
           "open": {
             "tooltip": "Open in the proof window"
           },
@@ -10886,29 +11146,7 @@
           }
         },
         "secrets": {
-          "deleteConfirm": {
-            "body": "Settings that reference this secret fail to launch until you set it again.",
-            "title": "Delete {name}?"
-          },
-          "dialog": {
-            "hint": "The value is sent once and never shown again.",
-            "title": "Set {name}"
-          },
-          "hint": "Write {ref} in the settings. Values stay sealed on this computer.",
-          "none": {
-            "hint": "No secrets yet. Reference one in the settings to see it here."
-          },
-          "set": {
-            "label": "Set value",
-            "status": "Set"
-          },
-          "storageOff": {
-            "hint": "Secret storage is not available."
-          },
-          "title": "Secrets",
-          "unused": {
-            "status": "Not referenced"
-          }
+          "hint": "Write {ref} in the settings. Values stay sealed on this computer."
         }
       },
       "setup": {
@@ -11372,11 +11610,6 @@
         "title": "Discard changes?"
       },
       "workflows": {
-        "conflict": {
-          "overwrite": {
-            "label": "Overwrite"
-          }
-        },
         "editor": {
           "copyYaml": {
             "label": "Copy YAML"
@@ -11832,6 +12065,9 @@
           "label": "Tomorrow"
         }
       },
+      "dragToReorder": {
+        "aria": "Drag to reorder"
+      },
       "hidden": {
         "status": "Hidden"
       },
@@ -11853,9 +12089,6 @@
       "notes": {
         "label": "Notes"
       },
-      "pending": {
-        "status": "Pending"
-      },
       "plan": {
         "label": "Plan"
       },
@@ -11875,6 +12108,9 @@
       },
       "step": {
         "label": "Step"
+      },
+      "takeOverConfirm": {
+        "title": "Take over run?"
       },
       "workflow": {
         "label": "Workflow"
@@ -12650,9 +12886,6 @@
         "readFailed": {
           "error": "Couldn’t read the usage limits."
         },
-        "session": {
-          "label": "Session"
-        },
         "sessionWindow": {
           "label": "Session (5-hour)"
         },
@@ -13224,6 +13457,18 @@
         "overview": {
           "body": "Variables that AI agents can use in API requests through the Studio MCP server. Agents see names, never values."
         },
+        "reviewIntro": {
+          "body": "Hold an agent’s API response for your review before the agent gets it. Inherit follows Kira’s Studio MCP setting."
+        },
+        "reviewLegend": {
+          "label": "Response review"
+        },
+        "reviewRead": {
+          "label": "Reads"
+        },
+        "reviewWrite": {
+          "label": "Writes"
+        },
         "tab": {}
       },
       "collections": {
@@ -13353,35 +13598,7 @@
           "aria": "Config problems"
         },
         "secrets": {
-          "clear": {
-            "label": "Clear value"
-          },
-          "clearConfirm": {
-            "body": "Requests that use this secret fail to send until you set it again.",
-            "title": "Clear {name}?"
-          },
-          "dialog": {
-            "hint": "The value goes to secret storage once and is never shown again.",
-            "title": "Value of {name}"
-          },
-          "hint": "Write {ref} in a value. Values stay sealed on this computer.",
-          "none": {
-            "hint": "No secrets yet. Reference one in a collection or environment to see it here."
-          },
-          "set": {
-            "label": "Enter value",
-            "status": "Value set"
-          },
-          "storageOff": {
-            "hint": "Secret storage is not available, so values can’t be saved."
-          },
-          "title": "API secrets",
-          "unset": {
-            "status": "No value"
-          },
-          "unused": {
-            "status": "Unused"
-          }
+          "title": "API secrets"
         },
         "skipped": {
           "hint": "The rest of the collection is loaded. An item that loaded before keeps its last good version. Fix the items to load them.",
@@ -13759,7 +13976,7 @@
           "status": "Base64-shaped"
         },
         "base64Bytes": {
-          "status": "{count} byte decoded | {count} bytes decoded"
+          "status": "{size} decoded"
         },
         "csvShape": {
           "status": "{count} row × {columns} columns | {count} rows × {columns} columns"
@@ -13777,7 +13994,7 @@
           "status": "Hex-encoded bytes"
         },
         "hexBytes": {
-          "status": "{count} byte | {count} bytes"
+          "status": "{size} of data"
         },
         "invalidJson": {
           "status": "Looks like JSON, invalid at offset {offset}"
@@ -13997,9 +14214,6 @@
       "nodeKind": {
         "bucket": {
           "label": "Bucket"
-        },
-        "connection": {
-          "label": "Connection"
         },
         "consumerGroup": {
           "label": "Consumer group"
@@ -14418,9 +14632,6 @@
         "csv": {
           "label": "CSV"
         },
-        "json": {
-          "label": "JSON"
-        },
         "tsv": {
           "label": "TSV"
         }
@@ -14604,6 +14815,29 @@
           "redirectsOnTimeout": {
             "status": "Redirects on · {seconds} s"
           },
+          "responseRaw": {
+            "label": "Response"
+          },
+          "responseViews": {
+            "aria": "Response views"
+          },
+          "reviewResultOn": {
+            "body": "Already on by this environment’s settings or Kira’s."
+          },
+          "scriptChanged": {
+            "label": "Set by script"
+          },
+          "scriptInput": {
+            "label": "Script input"
+          },
+          "scriptPrepare": {
+            "hint": "A script the agent sent built this request from its input.",
+            "label": "Prepare script"
+          },
+          "scriptTransform": {
+            "hint": "The agent receives only what the transform script returns, not the response.",
+            "label": "Transform script"
+          },
           "send": {}
         },
         "asSent": {
@@ -14653,6 +14887,18 @@
             "label": "Masked read"
           }
         },
+        "query": {
+          "responseRaw": {
+            "label": "Rows read"
+          },
+          "responseViews": {
+            "aria": "Result views"
+          },
+          "scriptResult": {
+            "hint": "The agent receives only what the script returns, not the rows. The statement is what runs; the script can’t change it.",
+            "label": "Result script"
+          }
+        },
         "reviewResultOn": {
           "body": "This connection reviews {mode} results."
         },
@@ -14666,11 +14912,23 @@
           "bodyTruncated": {
             "status": "Body truncated"
           },
+          "builtByScript": {
+            "status": "Built by script"
+          },
           "credentialSent": {
             "status": "Credential sent"
           },
+          "requestSent": {
+            "status": "Request already sent"
+          },
           "rows": {
             "status": "~{rows} rows"
+          },
+          "scriptFailed": {
+            "status": "Script failed"
+          },
+          "scriptResult": {
+            "status": "Agent gets script result"
           },
           "timeout": {
             "status": "Timeout {measured} / {max}"
@@ -15449,6 +15707,15 @@
           "label": "Language"
         },
         "contentType": {
+          "auto": {
+            "status": "{header}: {type} (auto)"
+          },
+          "binary": {
+            "status": "No {header} (binary)"
+          },
+          "fromHeader": {
+            "status": "{header}: {type} (from your header)"
+          },
           "placeholder": "Content type"
         }
       },
@@ -15527,12 +15794,26 @@
         "title": "Compare responses",
         "unchanged": {
           "status": "{count} unchanged"
-        },
-        "unchangedRow": {
-          "status": "Unchanged"
         }
       },
       "editRaw": {
+        "parse": {
+          "folded": {
+            "error": "Line {line} is an obsolete header-folding continuation line; this app does not join it onto the header above."
+          },
+          "noColon": {
+            "error": "Line {line} (“{text}”) has no colon; every header line is a name, a colon and a value."
+          },
+          "noSpace": {
+            "error": "The first line needs a method and a target, separated by a space."
+          },
+          "noTarget": {
+            "error": "No request target was found on the first line."
+          },
+          "unknownMethod": {
+            "error": "“{method}” is not one of the seven supported methods ({methods})."
+          }
+        },
         "unavailable": {
           "tooltip": "A form-data or binary body has no text form that can be edited and parsed back, because a file part is bytes on disk. Its wire form is in the raw view of the response pane"
         }
@@ -15631,7 +15912,7 @@
           "label": "→ {method} {url}"
         },
         "requestPending": {
-          "label": "Request"
+          "label": "→ Request"
         },
         "unavailable": {
           "empty": "The raw exchange couldn’t be rendered"
@@ -15644,7 +15925,7 @@
       },
       "response": {
         "binary": {
-          "status": "{count} byte of binary data | {count} bytes of binary data"
+          "status": "Binary body, {size} not shown"
         },
         "binaryNotKept": {
           "description": "This response’s body was binary and wasn’t kept ({size})."
@@ -15822,6 +16103,111 @@
         }
       }
     },
+    "kept": {
+      "expiresAt": {
+        "status": "Expires at {time}"
+      },
+      "expiry": {
+        "label": "Expiry"
+      },
+      "input": {
+        "hint": "Kira keeps these values for you and never shows them to the agent. A value goes only to {origin}.",
+        "replace": {
+          "label": "Enter a new value: {label}"
+        },
+        "title": {
+          "label": "Values you supply"
+        }
+      },
+      "keptAt": {
+        "label": "Kept"
+      },
+      "manage": {
+        "label": "Manage kept variables"
+      },
+      "mayKeep": {
+        "label": "This script may keep:"
+      },
+      "origin": {
+        "label": "Goes only to {origin}"
+      },
+      "panel": {
+        "query": {
+          "label": "Kept variables this query uses"
+        },
+        "title": {
+          "label": "Kept variables this request uses"
+        }
+      },
+      "reveal": {
+        "body": "Show a value you supplied to an agent request."
+      },
+      "risk": {
+        "expiring": {
+          "status": "Expires before you answer"
+        },
+        "input": {
+          "status": "Needs a value from you",
+          "tooltip": "The agent asked for a value only you can give. Kira keeps it and never shows it to the agent"
+        },
+        "keeps": {
+          "status": "May keep: {names}"
+        },
+        "source": {
+          "label": "{name}, kept by {request}"
+        },
+        "userValue": {
+          "status": "Reads a secret value",
+          "tooltip": "A script reads a secret kept value, such as one you supplied. Check what it returns before you send, because it goes to the agent"
+        },
+        "uses": {
+          "status": "Uses kept: {names}"
+        }
+      },
+      "scriptReads": {
+        "hint": "This script reads kept variables; what it returns goes to the agent."
+      },
+      "site": {
+        "contentType": {
+          "label": "Content-Type header"
+        },
+        "form": {
+          "label": "Form field {name}"
+        },
+        "header": {
+          "label": "Header {name}"
+        },
+        "query": {
+          "label": "Query {name}"
+        }
+      },
+      "source": {
+        "label": "Kept by"
+      },
+      "supplied": {
+        "status": "Supplied by you"
+      },
+      "type": {
+        "array": {
+          "status": "List of {count}"
+        },
+        "boolean": {
+          "status": "True or false"
+        },
+        "object": {
+          "status": "Object, {count} key | Object, {count} keys"
+        },
+        "string": {
+          "status": "Text, {size}"
+        }
+      },
+      "usedIn": {
+        "label": "Used in"
+      },
+      "willKeep": {
+        "label": "Will keep"
+      }
+    },
     "keyValue": {
       "aclReset": {
         "confirm": "Save anyway",
@@ -15914,9 +16300,6 @@
         "tooLarge": {
           "hint": "Too large to edit. Download it to open it locally."
         }
-      },
-      "rows": {
-        "aria": "Rows"
       },
       "status": {
         "loaded": {
@@ -17037,6 +17420,9 @@
           "created": {
             "body": "{created} of {count} connection created. | {created} of {count} connections created."
           },
+          "failed": {
+            "body": "{count} connection failed. | {count} connections failed."
+          },
           "passwords": {
             "body": "{count} password imported. | {count} passwords imported."
           }
@@ -17245,6 +17631,9 @@
         "aria": "Project tree",
         "searchIncomplete": {
           "body": "Searching cached nodes only. Expand more of the tree to include it."
+        },
+        "unreadable": {
+          "status": "{name}: Can’t be read, fix it here"
         }
       },
       "uriRevealConfirm": {
@@ -17318,7 +17707,8 @@
       },
       "delete": {
         "body": "Removes {name}, its folder and its saved views. This can’t be undone.",
-        "title": "Delete this proof"
+        "title": "Delete this proof",
+        "tooltip": "Delete proof"
       },
       "diagram": {
         "invalid": {
@@ -17547,6 +17937,10 @@
           },
           "label": "When no rule matches"
         },
+        "apiReview": {
+          "description": "Hold each API response for your review before the agent gets it. An environment can override this for reads and writes.",
+          "label": "Review responses"
+        },
         "apiRules": {
           "add": {
             "label": "Add rule"
@@ -17597,6 +17991,10 @@
           "save": {
             "label": "Save rule"
           }
+        },
+        "apiScripts": {
+          "description": "Agents can attach JavaScript that builds an API request, or reduces an API response or a query result before they see it. Each script shows in the approval card and the op log.",
+          "label": "Agent scripts"
         },
         "copyCommandAbove": {
           "label": "Copy command above"
@@ -17675,9 +18073,6 @@
           "intro": {
             "description": "Normal scripts an agent can list and run. A smart script is never exposed. Edit the description and approval mode in the script’s MCP tab."
           },
-          "legend": {
-            "label": "Scripts"
-          },
           "long": {
             "status": "Long running"
           },
@@ -17698,15 +18093,32 @@
           "body": "Token valid until {date}."
         }
       },
+      "kept": {
+        "clear": {
+          "aria": "Clear {name}"
+        },
+        "clearAll": {
+          "body": "Every kept variable is removed now. Agents can use one again only after they keep it anew.",
+          "title": "Clear all kept variables"
+        },
+        "empty": {
+          "empty": "No kept variables. Values agents keep appear here for up to {minutes} minutes"
+        },
+        "legend": {
+          "label": "Kept variables"
+        },
+        "retention": {
+          "description": "How long a kept variable lives. New values only; existing values keep their expiry.",
+          "error": "Enter minutes from {min} to {max}.",
+          "label": "Retention in minutes"
+        }
+      },
       "nav": {
         "cache": {
           "label": "Cache"
         },
         "data": {
           "label": "Data"
-        },
-        "studioMcp": {
-          "label": "Studio MCP"
         },
         "studioMcpApi": {
           "label": "API tools"
@@ -18371,8 +18783,10 @@
       "dialog": {
         "title": "Awaiting your approval"
       },
-      "expired": {
-        "status": "Expired"
+      "input": {
+        "required": {
+          "tooltip": "Enter {label} to send"
+        }
       },
       "left": {
         "status": "{time} left"
@@ -18578,23 +18992,11 @@
           "tooltip": "Stop {name}"
         },
         "title": "Running operations"
-      },
-      "runs": {
-        "open": {
-          "hint": "Click to show the runs list."
-        }
       }
     },
     "tabStrip": {
-      "discard": {
-        "body": "{count} tab has unsaved changes. Closing discards them. | {count} tabs have unsaved changes. Closing discards them.",
-        "title": "Discard unsaved changes"
-      },
       "duplicate": {
         "label": "Duplicate tab"
-      },
-      "newTab": {
-        "label": "New tab"
       }
     },
     "terminal": {

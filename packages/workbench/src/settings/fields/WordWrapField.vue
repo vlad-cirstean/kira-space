@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppearanceSettings } from '@shared/domain/settings';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Field, FieldContent, FieldGroup, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { t } from '@theme/i18n';
@@ -38,13 +38,10 @@ const wordWrapId = useId();
         <slot />
       </FieldContent>
     </Field>
-    <TooltipIconButton
-      icon="discard"
-      :label="t('common.action.resetToDefault.label')"
+    <ResetToDefaultButton
       class="ml-auto"
       data-testid="settings-reset-appearance-wordWrap"
-      :disabled-trigger="isAtDefault('appearance', 'wordWrap')"
-      :disabled="isAtDefault('appearance', 'wordWrap')"
+      :at-default="isAtDefault('appearance', 'wordWrap')"
       @click="resetLeaf('appearance', 'wordWrap')"
     />
   </FieldGroup>

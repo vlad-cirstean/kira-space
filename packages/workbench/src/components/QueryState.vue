@@ -11,8 +11,11 @@ import { computed } from 'vue';
 import { errorText, toCodedError } from '../bridge/codedError';
 
 // The one loading / error / empty shell for bridge data. `pane` fills a panel or view body with an
-// Empty block (spinner, error with Retry); `inline` is a one-line state inside a list or popover.
-// Loading placeholders wait `SPINNER_DELAY` themselves. A caller passes its TanStack query result and fills the `default` slot with the loaded data.
+// Empty block (spinner, error with Retry); `inline` is a one-line state inside a list or popover,
+// with the same Retry beside it when the failure is retryable. `errorLabel` replaces the error text
+// and `errorTestid` the error's testid. Loading placeholders wait `SPINNER_DELAY` themselves. A
+// caller passes its TanStack query result and fills the `default` slot with the loaded data. The
+// `error` slot is only for a host that draws the failure inside its own frame (log views).
 interface QueryLike {
   data: Ref<T | undefined>;
   isPending: Ref<boolean>;
@@ -28,8 +31,16 @@ const props = withDefaults(
     /** Default: an empty array. */
     isEmpty?: (data: T) => boolean;
     loadingLabel?: string;
+    errorLabel?: string;
+    errorTestid?: string;
   }>(),
-  { variant: 'pane', loadingLabel: () => t('common.state.loading.loading'), isEmpty: undefined },
+  {
+    variant: 'pane',
+    loadingLabel: () => t('common.state.loading.loading'),
+    isEmpty: undefined,
+    errorLabel: undefined,
+    errorTestid: 'query-error',
+  },
 );
 
 defineSlots<{
@@ -80,9 +91,9 @@ function retry(): void {
         v-if="variant === 'pane'"
         fill
         icon="warning"
-        data-testid="query-error"
+        :data-testid="errorTestid"
         :title="t('common.state.loadFailed.title')"
-        :description="message"
+        :description="errorLabel ?? message"
       >
         <Button
           v-if="canRetry"
@@ -94,7 +105,18 @@ function retry(): void {
           {{ t('common.action.retry.label') }}</Button
         >
       </EmptyState>
-      <InlineState v-else kind="error" data-testid="query-error">{{ message }}</InlineState>
+      <div v-else-if="canRetry" class="flex min-w-0 items-center gap-2">
+        <InlineState kind="error" :data-testid="errorTestid">{{
+          errorLabel ?? message
+        }}</InlineState>
+        <Button size="kira" variant="toolbar" data-testid="query-retry" @click="retry"
+          ><CodiconIcon :name="ICON.refresh" :size="13" />
+          {{ t('common.action.retry.label') }}</Button
+        >
+      </div>
+      <InlineState v-else kind="error" :data-testid="errorTestid">{{
+        errorLabel ?? message
+      }}</InlineState>
     </slot>
   </template>
   <slot v-else-if="state === 'empty'" name="empty" />

@@ -12,7 +12,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldError } from '@theme/components/ui/field';
 import { InputGroup, InputGroupInput } from '@theme/components/ui/input-group';
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { formatCount } from '@workbench/behaviour/format';
@@ -74,10 +74,10 @@ async function onPoll(): Promise<void> {
       gate.redriveLimit.value ?? (await streamViewStore.fetchRedriveLimit(props.tab.id));
     const ok = await confirmDialogStore.confirm({
       title: t('studio.stream.pollConfirm.title'),
-      message: [
+      message: joinSentences(
         t('studio.stream.pollConfirm.body', { duration: gate.hideDuration.value }),
         redriveSentence(limit),
-      ].join(' '),
+      ),
       confirmLabel: t('studio.stream.poll.label'),
       tone: 'primary',
     });
@@ -144,10 +144,10 @@ async function onDeleteMessage(): Promise<void> {
   if (!row?.key) return;
   const confirmed = await confirmDialogStore.confirm({
     title: t('studio.stream.deleteConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.stream.deleteConfirm.body', { id: row.key }),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
   });

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import SaveBar from '@workbench/components/SaveBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useTemplateRef } from 'vue';
@@ -20,6 +19,7 @@ const {
   view,
   draft,
   dirty,
+  saving,
   saveError,
   conflict,
   bytes,
@@ -58,7 +58,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
           class="text-kira-sm text-subtle"
           data-testid="ade-settings-read-only"
         >
-          {{ t('space.ade.context.readOnly.hint') }}
+          {{ t('common.content.readOnly.hint') }}
         </div>
         <template v-else>
           <CodeTextEditor
@@ -73,7 +73,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
           />
           <SaveBar
             :dirty="dirty"
-            :saving="save.isPending.value"
+            :saving="saving"
             :can-save="dirty"
             testid-prefix="ade-settings"
             @save="saveNow"
@@ -90,22 +90,14 @@ useShortcut(root, ['form.save'], () => void saveNow());
             </template>
           </SaveBar>
         </template>
-        <Alert v-if="saveError" variant="error" data-testid="ade-settings-save-error">
-          <AlertDescription>{{ saveError }}</AlertDescription>
-          <AlertAction v-if="conflict">
-            <Button variant="link" size="inline" data-testid="ade-settings-reload" @click="reload">
-              {{ t('common.action.refresh.label') }}
-            </Button>
-            <Button
-              variant="link"
-              size="inline"
-              data-testid="ade-settings-overwrite"
-              @click="overwrite"
-            >
-              {{ t('space.ade.workflows.conflict.overwrite.label') }}
-            </Button>
-          </AlertAction>
-        </Alert>
+        <SaveConflictAlert
+          v-if="saveError"
+          :error="saveError"
+          :conflict="conflict"
+          testid-prefix="ade-settings"
+          @reload="reload"
+          @overwrite="overwrite"
+        />
         <AdeSettingsSecrets :view="view" />
       </div>
       <AdeSettingsResult :providers="view.providers" />

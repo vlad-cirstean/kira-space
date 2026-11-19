@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
 // ClassifyStatement satisfies adapters.StatementClassifier (M2) over the shared SQL classifier.
@@ -34,11 +35,11 @@ func columnsFor(names, declTypes []string) []page.ColumnDescriptor {
 // DDL/pragma) is told apart from a SELECT by QueryContext's own zero-column result, the same signal
 // mysqlfamily's console.go uses (confirmed there; verified independently for
 // modernc.org/sqlite too, not assumed from that unrelated driver's behaviour).
-func runOneStatement(ctx context.Context, conn *sql.Conn, sqlText string, limit page.ResultCap) (page.TabularPage, error) {
+func runOneStatement(ctx context.Context, conn *sql.Conn, sqlText string, args []any, limit page.ResultCap) (page.TabularPage, error) {
 	if err := assertSingleStatement(sqlText); err != nil {
 		return page.TabularPage{}, err
 	}
-	rows, err := conn.QueryContext(ctx, sqlText)
+	rows, err := conn.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return page.TabularPage{}, mapError(err)
 	}
@@ -97,19 +98,23 @@ func runOneStatement(ctx context.Context, conn *sql.Conn, sqlText string, limit 
 }
 
 // execute is console.ts's own execute.
-func execute(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, statements []string, limit page.ResultCap) ([]page.Page, error) {
+func execute(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx, statements []string, params []model.BindParam, limit page.ResultCap) ([]page.Page, error) {
 	if len(statements) == 0 {
 		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
 	}
+	args, err := boundArgs(params)
+	if err != nil {
+		return nil, err
+	}
 	// One op-log row for the whole batch (P5 D9's precedent), not one per statement.
-	op.SetCommand(adapters.JoinConsoleStatements(statements, "--"))
+	op.SetCommand(adapters.CommandWithParams(adapters.JoinConsoleStatements(statements, "--"), params, adapters.ParamQuestion))
 
 	pages := make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
-		p, err := runOneStatement(ctx, conn, stmt, limit)
+		p, err := runOneStatement(ctx, conn, stmt, args, limit)
 		if err != nil {
 			return nil, adapters.AtStatement(err, i)
 		}
@@ -141,4 +146,36 @@ func reportTransaction(ctx context.Context, conn *sql.Conn, op *adapters.OpCtx) 
 // RedactStatement satisfies adapters.StatementRedactor: string literals masked, comments dropped.
 func (a *Adapter) RedactStatement(statement string) (string, bool) {
 	return adapters.MaskSQLLiterals(statement, adapters.SQLiteDialect)
+}
+
+// boundArgs turns bound values into driver arguments: modernc binds them natively. An integer binds as
+// an integer, any other number and text as text the column affinity converts, a boolean as 0 or 1, and
+// a list as its JSON text for json_each.
+func boundArgs(params []model.BindParam) ([]any, error) {
+	if len(params) == 0 {
+		return nil, nil
+	}
+	vals, err := adapters.DecodeBinds(params)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]any, len(vals))
+	for i, v := range vals {
+		switch v.Kind {
+		case adapters.ParamNull:
+			out[i] = nil
+		case adapters.ParamBool:
+			out[i] = int64(0)
+			if v.Bool {
+				out[i] = int64(1)
+			}
+		case adapters.ParamInt:
+			out[i] = v.Int
+		case adapters.ParamList:
+			out[i] = v.JSON
+		default:
+			out[i] = v.Text
+		}
+	}
+	return out, nil
 }

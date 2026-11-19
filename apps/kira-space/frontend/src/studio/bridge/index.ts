@@ -5,6 +5,7 @@ import * as DataGripService from '@bindings/datagripservice.js';
 import * as DbMcpService from '@bindings/dbmcpservice.js';
 import * as FilesService from '@bindings/filesservice.js';
 import * as FiltersService from '@bindings/filtersservice.js';
+import * as KeptVarsService from '@bindings/keptvarsservice.js';
 import * as KibanaService from '@bindings/kibanaservice.js';
 import * as MaskRulesService from '@bindings/maskrulesservice.js';
 import type * as WailsModels from '@bindings/models.js';
@@ -32,6 +33,12 @@ import type {
   DbMcpTablesListing,
 } from '@shared/domain/dbmcp';
 import type { ObjectDefinition } from '@shared/domain/definition';
+import {
+  type KeptList,
+  type KeptValue,
+  keptListSchema,
+  keptValueSchema,
+} from '@shared/domain/kept';
 import {
   type KibanaDataView,
   type KibanaDiscoverBody,
@@ -76,6 +83,7 @@ import type { ConnectionDdl } from '@shared/domain/schema';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
 import type { ObjectMeta, RelationColumns, TreeNode } from '@shared/domain/tree';
 import type { TreeVisibility } from '@shared/domain/treeFilter';
+import type { RevealResult } from '@shared/domain/variables';
 import {
   CHANNEL,
   type FilterHistoryChangedEvent,
@@ -362,6 +370,16 @@ const studioControl = {
     unwrap(DbMcpService.InstallAgent()).then((r) => trust<DbMcpInstallResult>(r)),
   dbMcpTables: (id: string): Promise<DbMcpTablesListing> =>
     unwrap(DbMcpService.Tables({ id })).then((r) => trust<DbMcpTablesListing>(r)),
+  keptList: (): Promise<KeptList> =>
+    unwrap(KeptVarsService.List()).then((r) => keptListSchema.parse(r)),
+  keptValue: (id: string): Promise<KeptValue> =>
+    unwrap(KeptVarsService.Value({ id })).then((r) => keptValueSchema.parse(r)),
+  // Never rejects on a refusal: the outcome names it (revealed | cancelled | confirmation-required | error).
+  keptReveal: (id: string, confirmed: boolean): Promise<RevealResult> =>
+    unwrap(KeptVarsService.Reveal({ id, confirmed })).then((r) => trust<RevealResult>(r)),
+  keptClear: (ids: string[]): Promise<number> => unwrap(KeptVarsService.Clear({ ids })),
+  keptClearAll: (): Promise<number> => unwrap(KeptVarsService.ClearAll()),
+  onKeptChanged: (cb: () => void): (() => void) => on(CHANNEL.keptChanged, () => cb()),
   maskReviewColumns: (id: string, refresh: boolean): Promise<MaskReviewListing> =>
     unwrap(MaskRulesService.ReviewColumns({ id, refresh })).then((r) =>
       trust<MaskReviewListing>(r),

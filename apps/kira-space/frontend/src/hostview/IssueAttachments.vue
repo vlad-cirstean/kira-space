@@ -5,9 +5,10 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
-import { formatBytes, formatRelative } from '@theme/format';
+import { formatBytes } from '@theme/format';
 import { t } from '@theme/i18n';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { control } from '../bridge/control';
 import type { IssueAttachment } from './wire';
 
@@ -52,7 +53,7 @@ function open(a: IssueAttachment): void {
           <span class="w-full truncate text-kira-sm font-normal text-muted-foreground">
             {{ formatBytes(a.size) }}
             <template v-if="a.author"> · {{ a.author.name }}</template>
-            <template v-if="a.createdAt"> · {{ formatRelative(a.createdAt) }}</template>
+            <template v-if="a.createdAt"> · <RelativeTime :at="a.createdAt" /></template>
           </span>
         </Button></TextTooltip
       >

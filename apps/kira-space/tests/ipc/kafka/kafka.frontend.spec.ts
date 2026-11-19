@@ -64,7 +64,8 @@ test('kafka (frontend, mocked IPC) — tree, partition filter, stream tab (offse
   await ordersTopicRow.dblclick();
   const view = page.locator(`[data-testid="stream-view"][data-path="${ORDERS_TOPIC_PATH}"]`);
   await expect(view).toBeVisible();
-  await expect(view.locator('[data-testid="stream-target"]')).toHaveText('orders');
+  // ViewHead renders the "<connection> / " prefix inside the title element.
+  await expect(view.locator('[data-testid="stream-target"]')).toHaveText(/ \/ orders$/);
   await expect(view.locator('[data-testid="stream-poll"]')).toHaveCount(0);
   await expect(view.locator('[data-testid="stream-row"]')).toHaveCount(7, { timeout: 15_000 });
   await expect(view.locator('[data-testid="stream-next"]')).toBeDisabled();

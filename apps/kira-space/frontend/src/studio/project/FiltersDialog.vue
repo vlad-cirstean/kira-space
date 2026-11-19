@@ -64,11 +64,18 @@ const {
   run: runLoad,
   pending: loading,
   error: loadError,
-} = useAsyncAction((connectionId: string) => treeStore.loadVisibility(connectionId));
+  reset: resetLoad,
+} = useAsyncAction(async (connectionId: string) => {
+  await treeStore.loadVisibility(connectionId);
+  if (filtersDialogStore.connectionId === connectionId && !treeStore.visibility[connectionId]) {
+    throw new Error(t('studio.project.filtersDialog.loadFailed.error'));
+  }
+});
 const {
   run: runSave,
   pending: saving,
   error: saveError,
+  reset: resetSave,
 } = useAsyncAction(async (connectionId: string) => {
   await treeStore.saveVisibility(connectionId, draft.value);
   filtersDialogStore.closeFiltersDialog();
@@ -93,18 +100,15 @@ watch(
     const focusPath = filtersDialogStore.focusPath;
     expandedPaths.value = focusPath ? ancestorsOf(focusPath) : new Set();
     nameFilter.value = '';
-    loadError.value = null;
-    saveError.value = null;
+    resetLoad();
+    resetSave();
     draft.value = EMPTY_VISIBILITY;
     baseline.value = sig(EMPTY_VISIBILITY);
     if (!connectionId) return;
     await runLoad(connectionId);
     if (filtersDialogStore.connectionId !== connectionId) return;
     const existing = treeStore.visibility[connectionId];
-    if (!existing) {
-      loadError.value ??= t('studio.project.filtersDialog.loadFailed.error');
-      return;
-    }
+    if (!existing) return;
     draft.value = {
       hiddenKinds: [...existing.hiddenKinds],
       hiddenPaths: [...existing.hiddenPaths],

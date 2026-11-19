@@ -78,7 +78,7 @@ export function terminalTabKind<
         return { icon: 'loading', tooltip: t('common.state.running.status') };
       if (s.status === 'failed' || (s.exitCode ?? 0) !== 0)
         return { icon: 'error', tooltip: t('common.state.failed.status') };
-      return { icon: 'check', tooltip: t('automations.run.state.done.status') };
+      return { icon: 'check', tooltip: t('common.state.succeeded.status') };
     },
     parseState: parseStateWith(terminalTabStateSchema) as (raw: unknown) => TerminalState | null,
   };

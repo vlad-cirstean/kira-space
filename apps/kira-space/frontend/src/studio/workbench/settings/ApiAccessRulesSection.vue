@@ -66,7 +66,7 @@ const remove = useAsyncAction((next: ApiRule[]) =>
 
 function openDialog(index: number | null): void {
   editing.value = index;
-  write.error.value = null;
+  write.reset();
   dialogOpen.value = true;
 }
 

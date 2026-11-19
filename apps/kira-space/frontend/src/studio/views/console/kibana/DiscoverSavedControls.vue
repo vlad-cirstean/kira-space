@@ -13,20 +13,20 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
-import { errorText, toCodedError } from '@workbench/bridge/codedError';
+import { toCodedError } from '@workbench/bridge/codedError';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { control } from '../../../bridge/control';
 import { guardedSavedWrite } from '../../../state/guardedSavedWrite';
 import DiscoverSavedMenu from './DiscoverSavedMenu.vue';
 import type { useDiscover } from './useDiscover';
 
 const props = defineProps<{ d: ReturnType<typeof useDiscover>; connectionId: string }>();
-const emit = defineEmits<{ run: []; error: [message: string | null] }>();
+const emit = defineEmits<{ run: []; task: [task: () => Promise<unknown>] }>();
 
 const queryClient = useQueryClient();
 const invalidate = () => queryClient.invalidateQueries({ queryKey: ['kibanaSaved'] });
@@ -38,8 +38,6 @@ const {
   cancel: cancelPrompt,
 } = useTextPrompt();
 
-const failure = ref<string | null>(null);
-watch(failure, (message) => emit('error', message));
 defineExpose({ save: onSave });
 
 const saveMutation = useMutation({
@@ -77,24 +75,23 @@ async function saveAs(initial?: string): Promise<void> {
   props.d.link(entry);
 }
 
-async function attempt(action: () => Promise<void>): Promise<void> {
-  failure.value = null;
-  try {
-    await action();
-  } catch (err) {
-    failure.value = errorText(err);
-  }
+// The parent owns the error surface: it runs the task and shows the failure.
+function attempt(task: () => Promise<unknown>): void {
+  emit('task', task);
 }
 
-function onSaveAs(): Promise<void> {
-  return attempt(() => saveAs());
+function onSaveAs(): void {
+  attempt(() => saveAs());
 }
 
-function onSave(): Promise<void> {
-  if (!props.d.body.value || pending()) return Promise.resolve();
+function onSave(): void {
+  if (!props.d.body.value || pending()) return;
   const link = props.d.state.value.saved;
-  if (!link) return onSaveAs();
-  return attempt(async () => {
+  if (!link) {
+    onSaveAs();
+    return;
+  }
+  attempt(async () => {
     try {
       const saved = await updateMutation.mutateAsync({ id: link.id, loaded: link.body });
       // Undefined: the user declined to overwrite another window's change.
@@ -111,13 +108,15 @@ function onSave(): Promise<void> {
 function onRevert(): void {
   const link = props.d.state.value.saved;
   if (!link) return;
-  failure.value = null;
-  if (props.d.applySaved(link)) emit('run');
+  attempt(async () => {
+    if (props.d.applySaved(link)) emit('run');
+  });
 }
 
 function onApply(entry: SavedDiscoverQuery): void {
-  failure.value = null;
-  if (props.d.applySaved(entry)) emit('run');
+  attempt(async () => {
+    if (props.d.applySaved(entry)) emit('run');
+  });
 }
 
 const moreItems = computed<MenuItem[]>(() => [

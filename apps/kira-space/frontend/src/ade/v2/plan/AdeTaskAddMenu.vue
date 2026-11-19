@@ -9,7 +9,7 @@ import {
   PopoverTrigger,
 } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
 import { useProjectOptions } from '../../../repo/state/projectOptions';
@@ -24,20 +24,15 @@ const props = defineProps<{ card: CardModel }>();
 const addUi = useAdeAddUiStore();
 const addRepo = useAddTaskRepo();
 const open = ref(false);
-const error = ref('');
+const adding = useMutationAction(addRepo);
+const error = adding.error;
 const draftRepoIds = computed(() =>
   props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
 );
 const projects = useProjectOptions(draftRepoIds);
 
 async function pickRepo(codeRepoId: string): Promise<void> {
-  error.value = '';
-  try {
-    await addRepo.mutateAsync({ taskId: props.card.task.id, codeRepoId, base: null });
-    open.value = false;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  if (await adding.run({ taskId: props.card.task.id, codeRepoId, base: null })) open.value = false;
 }
 
 function addBranch(): void {

@@ -1,0 +1,99 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"ids\": {{kept.ids}}, \"n\": 3}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 10,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 3,
+            "name": "ids",
+            "preview": "[11,12,13]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 8,
+                "index": 0,
+                "part": "",
+                "to": 20
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  }
+}

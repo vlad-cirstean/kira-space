@@ -1,0 +1,209 @@
+{
+  "ApprovalsService.List#step6": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#step6-held": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:3>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 217,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 0,
+        "requested": false,
+        "scripted": false,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#step7": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "mode": "write",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "486d9affb60dbb0063b03d8e23a6ccf6364ce203dc3a9f56f20e750eb41ecade",
+          "mayKeep": [],
+          "source": "return 1"
+        },
+        "statement": "insert into notes (body) values ('three')"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#step8": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:1>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 96,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 217,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer#step6": {
+    "approve": true,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#step6-held": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:3>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#step7": {
+    "approve": true,
+    "ids": [
+      "db.query:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#step8": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:SettingsService.Set#scriptsOff": {
+    "patch": {
+      "dbMcp": {
+        "apiScripts": false
+      }
+    }
+  },
+  "args:SettingsService.Set#scriptsOffReview": {
+    "patch": {
+      "dbMcp": {
+        "apiScripts": false
+      }
+    }
+  },
+  "args:SettingsService.Set#scriptsOn": {
+    "patch": {
+      "dbMcp": {
+        "apiScripts": true
+      }
+    }
+  },
+  "result#step7": "scripts are turned off in Kira Space's Studio MCP settings. Nothing ran.",
+  "result#step8": "query against \"notes db\" ran, but scripts were turned off while its result was in review, so it was withheld."
+}

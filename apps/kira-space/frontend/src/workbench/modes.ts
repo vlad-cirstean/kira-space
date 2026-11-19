@@ -44,7 +44,7 @@ export const MODES: ModeRegistry<AppMode> = {
   // A full-area view: no left panel, no tab strip, no tabs.
   ade: {
     get label() {
-      return t('mobile.shell.heading.title');
+      return t('common.module.agents.label');
     },
     icon: 'robot',
     layout: 'full',

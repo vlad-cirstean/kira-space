@@ -20,7 +20,7 @@ import { type SelectedCell, useCellSelectionStore } from '../../state/cellSelect
 import { datasetNumber } from '../shared/eventCoords';
 import { displayText } from '../shared/page/display';
 import SearchFilterNotice from '../shared/page/SearchFilterNotice.vue';
-import { setVisibleRows } from '../shared/page/visibleRows';
+import { pageRowWindow, reportVisibleWindow } from '../shared/page/visibleRows';
 import { rowMenu } from './menu';
 import { pageVersion, setVisibleWindow } from './page';
 import StreamSearchToolbar from './StreamSearchToolbar.vue';
@@ -195,13 +195,8 @@ function onGoToMatch(row: number): void {
 
 // Reports the visible window so page.ts prunes its decode cache and finds prioritise on-screen rows.
 watch(virtualItems, (items) => {
-  if (items.length === 0) return;
-  const list = rowIndices.value;
-  const from = list[items[0].index];
-  const to = list[items[items.length - 1].index];
-  if (from === undefined || to === undefined) return;
-  setVisibleRows(props.tab.id, from, to + 1);
-  setVisibleWindow(props.tab.id, from, to + 1);
+  const win = pageRowWindow(items, rowIndices.value);
+  if (win) reportVisibleWindow(props.tab.id, win.from, win.to, setVisibleWindow);
 });
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {

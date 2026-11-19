@@ -32,7 +32,9 @@ import type {
   ReviewCommentState,
 } from '@kira/git-ipc';
 import { i18n, t } from '@theme/i18n';
+import { provideShellServices } from '@workbench/bootstrapShell';
 import { logError } from '@workbench/bridge/log';
+import { queryClient } from '@workbench/state/queryClient';
 import { type App, createApp, shallowRef } from 'vue';
 import type { MonacoModule } from './monaco';
 import ReviewBanner from './ReviewBanner.vue';
@@ -221,6 +223,7 @@ export function attachReviewDecorations(
     domNode.style.zIndex = VIEW_ZONE_Z_INDEX;
     bannerApp = createApp(ReviewBanner, { message, retryable, onRetry: () => void load() });
     bannerApp.use(i18n);
+    provideShellServices(bannerApp, queryClient);
     bannerApp.mount(domNode);
     modifiedEditor.changeViewZones((accessor) => {
       errorZoneId = accessor.addZone({ afterLineNumber: 0, heightInPx: 40, domNode });
@@ -282,6 +285,7 @@ export function attachReviewDecorations(
           onToggle: () => void mark(block, !reviewed),
         });
         app.use(i18n);
+        provideShellServices(app, queryClient);
         app.mount(marginDomNode);
         hunkApps.push(app);
         hunkZoneIds.push(
@@ -496,6 +500,7 @@ export function attachReviewDecorations(
         onSetState: (state: ReviewCommentState) => handleSetState(comment, state),
       });
       app.use(i18n);
+      provideShellServices(app, queryClient);
       app.mount(container);
       return app;
     });
@@ -518,6 +523,7 @@ export function attachReviewDecorations(
           : undefined,
       });
       app.use(i18n);
+      provideShellServices(app, queryClient);
       app.mount(container);
       return app;
     });

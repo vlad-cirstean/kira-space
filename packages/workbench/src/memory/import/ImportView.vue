@@ -29,7 +29,10 @@ const jobItems = computed(() =>
     value: job.id,
     label:
       job.channel === 'mcp'
-        ? `${jobTitle(job)} · ${t('memory.common.origin.agent.label')}`
+        ? t('common.dotPair.label', {
+            first: jobTitle(job),
+            second: t('common.origin.agent.label'),
+          })
         : jobTitle(job),
     testid: `import-job-${job.id}`,
   })),

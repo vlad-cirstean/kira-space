@@ -78,10 +78,8 @@ const dirty = computed(
 const previewOpen = ref(false);
 const previewStatements = ref<string[]>([]);
 const committedRows = ref(0);
-const runError = ref<string | null>(null);
 const currentOpId = ref<string | null>(null);
 let abortController: AbortController | null = null;
-let generationFailure: unknown = null;
 
 const {
   run: runPreview,
@@ -100,11 +98,26 @@ const {
     : [];
 });
 
-// Failures are kept for onGenerate to word (GenerationError carries committed-row counts), so the
-// action itself resolves either way.
-const { run: runGenerate, pending: running } = useAsyncAction(
+// D7: the server's own message, how many rows already committed, and — read from
+// caps.transactions, never assumed — whether the failing batch itself rolled back.
+function describeGeneration(err: unknown): string {
+  if (!(err instanceof GenerationError)) return errorText(err);
+  return err.code === 'E_CANCELLED'
+    ? t('studio.generateData.stopped.error', { count: err.committedRows })
+    : t(
+        caps.value?.transactions
+          ? 'studio.generateData.rolledBack.error'
+          : 'studio.generateData.noTransactions.error',
+        { message: err.message, count: err.committedRows },
+      );
+}
+
+const {
+  run: runGenerate,
+  pending: running,
+  error: runError,
+} = useAsyncAction(
   async (t: { connectionId: string; path: string; id: string }) => {
-    generationFailure = null;
     abortController = new AbortController();
     try {
       await runGeneration({
@@ -124,9 +137,11 @@ const { run: runGenerate, pending: running } = useAsyncAction(
         signal: abortController.signal,
       });
     } catch (err) {
-      generationFailure = err;
+      if (err instanceof GenerationError) committedRows.value = err.committedRows;
+      throw err;
     }
   },
+  { describe: describeGeneration },
 );
 
 // D9: recomputed on every plan change, not baked into recipeFor's own one-time proposal.
@@ -182,31 +197,17 @@ async function onGenerate(): Promise<void> {
     gridViewStore.isStale(active.id)
   )
     return;
-  runError.value = null;
   committedRows.value = 0;
-  await runGenerate({ connectionId: active.connectionId, path: active.path, id: active.id });
+  const ok = await runGenerate({
+    connectionId: active.connectionId,
+    path: active.path,
+    id: active.id,
+  });
   currentOpId.value = null;
-  const err = generationFailure;
-  if (err === null) {
+  if (ok) {
     fakeDataStore.closeGenerateDataDialog();
     await gridViewStore.reloadAfterMutation(active.id);
     return;
-  }
-  if (err instanceof GenerationError) {
-    committedRows.value = err.committedRows;
-    // D7: the server's own message, how many rows already committed, and — read from
-    // caps.transactions, never assumed — whether the failing batch itself rolled back.
-    runError.value =
-      err.code === 'E_CANCELLED'
-        ? t('studio.generateData.stopped.error', { count: err.committedRows })
-        : t(
-            caps.value?.transactions
-              ? 'studio.generateData.rolledBack.error'
-              : 'studio.generateData.noTransactions.error',
-            { message: err.message, count: err.committedRows },
-          );
-  } else {
-    runError.value = errorText(err);
   }
   if (committedRows.value > 0) await gridViewStore.reloadAfterMutation(active.id);
 }
@@ -257,7 +258,7 @@ function onSequenceStartChange(index: number, start: number): void {
       <DialogBody>
         <FieldGroup>
           <Field>
-            <FieldLabel for="generate-data-rows">{{ t('studio.keyValue.rows.aria') }}</FieldLabel>
+            <FieldLabel for="generate-data-rows">{{ t('common.field.rows.label') }}</FieldLabel>
             <NumberStepperInput
               id="generate-data-rows"
               :model-value="String(rowCount)"

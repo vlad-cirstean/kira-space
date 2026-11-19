@@ -1,6 +1,7 @@
 import type { Transport, UiActionKind } from '@kira/git-ipc';
 import { i18n } from '@theme/i18n';
 import { provideShellServices } from '@workbench/bootstrapShell';
+import { queryClient } from '@workbench/state/queryClient';
 import { KEPT_VIEW_STATE_KEY, type KeptViewState } from '@workbench/state/viewState';
 import { createApp, shallowReactive, shallowRef, type App as VueApp } from 'vue';
 import AppRoot from './App.vue';
@@ -118,7 +119,7 @@ export function mount(container: Element, opts: MountOptions): MountHandle {
   // `"review"` mount (no CommitGrid.vue there to read it) is harmless.
   app.use(i18n);
   // Dirty dialogs ask through the host's confirm store (git-ui has no Pinia of its own).
-  provideShellServices(app);
+  provideShellServices(app, queryClient);
   if (view === 'review' && keep) {
     app.provide(KEPT_VIEW_STATE_KEY, keep.state);
     app.provide(REVIEW_KEEP_KEY, keep.key);

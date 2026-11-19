@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ScriptRun } from '@shared/domain/scriptRuns';
 import { FieldError } from '@theme/components/ui/field';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useAutomationsModule } from '../automations/module';
 import { useRerun } from '../automations/runScript';
 import RunElapsed from '../automations/runs/RunElapsed.vue';
 import RunOutcomeBlock from '../automations/runs/RunOutcomeBlock.vue';
 import RunStatusBadge from '../automations/runs/RunStatusBadge.vue';
 import { useScriptRunByTerminal } from '../automations/runs/runsQueries';
+import { useAsyncAction } from '../behaviour/asyncAction';
 // P128 §2.5: the one shared terminal tab view, wrapping TerminalHostView.vue for both apps. A repo
 // terminal and a module terminal are the same tab kind, differing only in workspaceId/codeRepoId.
 // P242: a script tab also shows its run status strip and, once the run ends, its result block.
@@ -21,11 +22,7 @@ const scriptRun = computed(() => (props.tab.state.launchKind === 'script' ? run.
 const ended = computed(() => scriptRun.value !== null && scriptRun.value.state !== 'running');
 
 const rerunRun = useRerun();
-const rerunError = ref<string | null>(null);
-
-async function rerun(run: ScriptRun): Promise<void> {
-  rerunError.value = await rerunRun(run);
-}
+const rerun = useAsyncAction((run: ScriptRun) => rerunRun(run));
 
 async function tail(): Promise<string> {
   return (await loadTerminalRenderer()).tailTerminal(props.tab.id, 40);
@@ -44,8 +41,10 @@ async function tail(): Promise<string> {
     </div>
     <template v-if="scriptRun && ended" #outcome>
       <div class="shrink-0 bg-chrome px-1 py-1" data-testid="script-run-outcome">
-        <RunOutcomeBlock :run="scriptRun" compact :tail="tail" @rerun="rerun(scriptRun)" />
-        <FieldError v-if="rerunError" data-testid="script-run-error">{{ rerunError }}</FieldError>
+        <RunOutcomeBlock :run="scriptRun" compact :tail="tail" @rerun="rerun.run(scriptRun)" />
+        <FieldError v-if="rerun.error.value" data-testid="script-run-error">{{
+          rerun.error.value
+        }}</FieldError>
       </div>
     </template>
   </TerminalHostView>

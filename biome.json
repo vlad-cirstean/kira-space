@@ -94,8 +94,7 @@
         "scripts/**",
         "site/scripts/**",
         "site/src/lib/shots.ts",
-        "tools/mutation/**",
-        "apps/kira-space/frontend/proto/**"
+        "tools/mutation/**"
       ],
       "linter": { "rules": { "suspicious": { "noConsole": "off" } } }
     },

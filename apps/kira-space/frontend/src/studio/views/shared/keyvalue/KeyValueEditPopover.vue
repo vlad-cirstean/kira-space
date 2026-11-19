@@ -33,14 +33,14 @@ const anchorRef = ref<HTMLElement | null>(null);
 const draft = ref('');
 const original = ref('');
 
-const { run, pending, error } = useAsyncAction(() =>
+const { run, pending, error, reset } = useAsyncAction(() =>
   saveValueEdit(props.viewKey, props.keyName, draft.value),
 );
 
 function openWith(value: string): void {
   original.value = value;
   draft.value = value;
-  error.value = null;
+  reset();
   open.value = true;
 }
 

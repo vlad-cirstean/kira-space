@@ -150,19 +150,25 @@ export class ReviewCommentsState {
     }
   }
 
-  /** `review.comment.export` -> the existing clipboard port (G13 D12) — the export text is
-   *  produced entirely server-side; this is a fetch-then-copy, never a client-side render. */
-  async copyForAi(): Promise<void> {
+  /** `review.comment.export`: the prompt text, produced entirely server-side, never a client-side
+   *  render. Empty without a target. */
+  async exportText(): Promise<string> {
     const target = this.#target;
-    if (!target) return;
+    if (!target) return '';
+    const result = await this.#bridge.request('review.comment.export', {
+      repoId: target.repoId,
+      branch: target.branch,
+    });
+    return result.text;
+  }
+
+  /** The palette's route to copy-for-AI: fetch then copy through the clipboard port (G13 D12). */
+  async copyForAi(): Promise<void> {
+    if (!this.#target) return;
     try {
-      const result = await this.#bridge.request('review.comment.export', {
-        repoId: target.repoId,
-        branch: target.branch,
-      });
       const outcome = await copyToClipboard(
         this.#bridge,
-        result.text,
+        await this.exportText(),
         t('git.copy.reviewComments.announce'),
       );
       this.announcement.value = outcome.message;

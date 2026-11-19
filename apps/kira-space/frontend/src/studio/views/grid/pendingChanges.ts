@@ -2,7 +2,7 @@ import type { MutationRowOp } from '@shared/domain/mutations';
 import { newUuid } from '@shared/ids';
 import type { MutateResponse } from '@shared/protocol/dataOps';
 import { cellText, isNull, type TabularPage } from '@shared/protocol/page';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
 import { errorText, toCodedError } from '@workbench/bridge/codedError';
 import { defineStore } from 'pinia';
@@ -566,7 +566,10 @@ export const usePendingChangesStore = defineStore('pendingChanges', () => {
       await reconcileAfterUnknownCommit(tabId, reconcile);
     } catch (reloadErr) {
       throw new Error(
-        `${errorText(err)} ${t('studio.grid.commitUnknown.reloadFailed.error', { error: errorText(reloadErr) })}`,
+        joinSentences(
+          errorText(err),
+          t('studio.grid.commitUnknown.reloadFailed.error', { error: errorText(reloadErr) }),
+        ),
       );
     }
     throw err;

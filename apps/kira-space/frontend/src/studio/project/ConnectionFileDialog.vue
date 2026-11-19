@@ -1,28 +1,15 @@
 <script setup lang="ts">
 import type { ConnectionFileModel } from '@shared/domain/connectionConfig';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@theme/components/ui/dialog';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { errorText } from '@workbench/bridge/codedError';
-import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
+import ConfigFileDialog from '@workbench/config/ConfigFileDialog.vue';
 import { configName } from '@workbench/config/configName';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
-import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
-import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, watch } from 'vue';
 import {
@@ -65,7 +52,6 @@ const applyForm = useConnectionForm(() => dialogStore.file ?? '');
 
 const testResult = ref<{ ok: boolean; message: string } | null>(null);
 const secrets = ref({ password: '', uri: '' });
-const secretError = ref('');
 
 const detail = computed(() => query.data.value);
 const record = computed(() => connectionsStore.connectionRecord(detail.value?.id));
@@ -79,10 +65,16 @@ async function flushSecrets(): Promise<void> {
     const value = secrets.value[kind];
     const name = secretNameOf(model[kind]);
     if (!value || !name) continue;
-    await setSecret.mutateAsync({ kind, name, value });
+    try {
+      await setSecret.mutateAsync({ kind, name, value });
+    } finally {
+      setSecret.reset();
+    }
     secrets.value = { ...secrets.value, [kind]: '' };
   }
 }
+
+const lifecycle = useTaskAction();
 
 const draft = useConfigFormDraft<ConnectionFileModel>({
   file: () => (detail.value ? { text: detail.value.text, hash: detail.value.hash } : undefined),
@@ -93,19 +85,15 @@ const draft = useConfigFormDraft<ConnectionFileModel>({
     return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
   },
   fields: CONNECTION_FIELDS,
-  afterSave: flushSecrets,
+  secrets: { pending: () => hasTyped.value, flush: flushSecrets },
 });
 
 const section = ref<ConnectionSection>('general');
-watch(section, (s) => {
-  void draft.showTab(s === 'yaml' ? 'yaml' : 'form');
-});
 watch(
   () => dialogStore.file,
   () => {
     testResult.value = null;
     secrets.value = { password: '', uri: '' };
-    secretError.value = '';
     section.value = 'general';
   },
 );
@@ -137,10 +125,6 @@ const LABEL = {
   yaml: () => t('common.yaml.label'),
 } as const satisfies Record<ConnectionSection, () => string>;
 
-function errorCount(s: ConnectionSection): number {
-  if (s === 'yaml') return 0;
-  return CONNECTION_TAB_POINTERS[s].some((p) => draft.errorFor(p)) ? 1 : 0;
-}
 const items = computed(() =>
   SECTIONS.map((id) => ({
     value: id,
@@ -148,7 +132,6 @@ const items = computed(() =>
     testid: `connection-tab-${id}`,
   })),
 );
-const unclaimed = computed(() => draft.unmatched(Object.values(CONNECTION_TAB_POINTERS).flat()));
 
 const model = computed(() => draft.model.value);
 const savedSecret = (kind: 'password' | 'uri'): boolean => {
@@ -156,39 +139,19 @@ const savedSecret = (kind: 'password' | 'uri'): boolean => {
   return !!name && !!detail.value?.secrets.some((s) => s.kind === kind && s.name === name && s.set);
 };
 const hasTyped = computed(() => !!secrets.value.password || !!secrets.value.uri);
-const canSave = computed(() => draft.canSave.value || hasTyped.value);
-const saveError = computed(
-  () => draft.saveError.value || secretError.value || lifecycleError.value,
-);
-
-async function saveNow(): Promise<void> {
-  secretError.value = '';
-  await draft.saveNow();
-  if (draft.dirty.value || draft.saveError.value) return;
-  try {
-    await flushSecrets();
-  } catch (err) {
-    secretError.value = errorText(err);
-  }
-}
 
 function close(): void {
   dialogStore.closeFile();
 }
 
-const lifecycleError = ref('');
-
 // The copy is a new file; the dialog follows it.
 async function onDuplicate(): Promise<void> {
   const id = detail.value?.id;
   if (!id) return;
-  lifecycleError.value = '';
-  try {
+  await lifecycle.run(async () => {
     const created = await connectionsStore.duplicateConnection(id);
     dialogStore.openFile(created.file);
-  } catch (err) {
-    lifecycleError.value = errorText(err);
-  }
+  });
 }
 
 async function onDelete(): Promise<void> {
@@ -196,24 +159,21 @@ async function onDelete(): Promise<void> {
   if (!d) return;
   const ok = await confirmDialogStore.confirm({
     title: t('studio.project.deleteConnectionConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.project.deleteConnectionConfirm.body', {
         name: record.value?.name ?? configName(d.file),
       }),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
   });
   if (!ok) return;
-  lifecycleError.value = '';
-  try {
+  await lifecycle.run(async () => {
     if (d.id) await connectionsStore.deleteConnection(d.id);
     else await deleteFile.mutateAsync(d.file);
     close();
-  } catch (err) {
-    lifecycleError.value = errorText(err);
-  }
+  });
 }
 
 async function onTest(): Promise<void> {
@@ -225,226 +185,111 @@ async function onTest(): Promise<void> {
     ? { ok: true, message: result.serverVersion ?? '' }
     : { ok: false, message: result.error ?? '' };
 }
-
-const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
 </script>
 
 <template>
-  <Dialog :open="true" @update:open="(v) => !v && close()">
-    <DialogContent
-      size="2xl"
-      fixed-height
-      :dirty="draft.dirty.value"
-      data-testid="connection-file-dialog"
-      @keydown="onSubmitKey"
-    >
-      <DialogHeader close-testid="connection-file-close">
-        <DialogTitle>{{
-          t('studio.connections.file.title', {
-            name: record?.name ?? configName(detail?.file ?? ''),
-          })
-        }}</DialogTitle>
-      </DialogHeader>
-      <ViewToolbar v-if="detail" class="px-3">
-        <SecondaryTabs
-          :model-value="section"
-          :items="items"
-          :aria-label="t('studio.project.connectionDialog.tabs.aria')"
-          @update:model-value="(v) => (section = v as ConnectionSection)"
-        >
-          <template #item="{ item }">
-            {{ item.label }}
-            <Badge
-              v-if="errorCount(item.value as ConnectionSection) > 0"
-              variant="error"
-              :data-testid="`connection-tab-${item.value}-errors`"
-              >{{
-                errorCount(item.value as ConnectionSection)
-              }}</Badge
-            >
-          </template>
-        </SecondaryTabs>
-      </ViewToolbar>
-
-      <DialogBody v-if="detail">
-        <div class="flex flex-col gap-3">
-          <div
-            v-if="detail.lastGood"
-            class="text-kira-sm text-subtle"
-            data-testid="connection-file-last-good"
-          >
-            {{ t('studio.connections.file.lastGood.hint') }}
-          </div>
-          <template v-if="section !== 'yaml'">
-            <ConfigFileProblem
-              :error="detail.problem"
-              :shown="unclaimed"
-              :show-yaml="() => (section = 'yaml')"
-            />
-            <Alert v-if="unclaimed" variant="error" data-testid="connection-form-problem">
-              <AlertDescription>{{
-                t('common.configForm.problem.status', {
-                  line: unclaimed.line,
-                  message: unclaimed.message,
-                })
-              }}</AlertDescription>
-              <AlertAction>
-                <Button
-                  variant="link"
-                  size="inline"
-                  data-testid="connection-form-show-yaml"
-                  @click="section = 'yaml'"
-                >
-                  {{ t('common.configForm.showYaml.label') }}
-                </Button>
-              </AlertAction>
-            </Alert>
-            <fieldset
-              v-if="model"
-              :disabled="draft.formDisabled.value"
-              class="m-0 min-w-0 border-0 p-0"
-            >
-              <ConnectionGeneralTab
-                v-show="section === 'general'"
-                v-model="draft.model.value!"
-                v-model:secrets="secrets"
-                :error-for="draft.errorFor"
-                :stem="stem"
-                :saved-password="savedSecret('password')"
-                :saved-uri="savedSecret('uri')"
-                :storage-available="storageAvailable"
-                :connection-id="detail.id"
-                :connection-name="record?.name ?? configName(detail.file)"
-              />
-              <ConnectionAdvancedTab
-                v-show="section === 'advanced'"
-                v-model="draft.model.value!"
-                :error-for="draft.errorFor"
-              />
-              <ConnectionPreconnectTab
-                v-show="section === 'preconnect'"
-                v-model="draft.model.value!"
-                :error-for="draft.errorFor"
-              />
-              <ConnectionMcpTab
-                v-show="section === 'mcp'"
-                v-model="draft.model.value!"
-                :connection-id="detail.id"
-                :error-for="draft.errorFor"
-              />
-              <ConnectionPrivacyTab
-                v-if="section === 'privacy'"
-                v-model="draft.model.value!"
-                :connection-id="detail.id"
-                :error-for="draft.errorFor"
-              />
-            </fieldset>
-          </template>
-          <template v-else>
-            <ConfigFileProblem :error="detail.problem" />
-            <CodeTextEditor
-              :model-value="draft.draft.value"
-              language="yaml"
-              :problem="draft.problem.value"
-              :ariaLabel="t('studio.connections.file.field.aria')"
-              class="h-72"
-              data-testid="connection-file-text"
-              @update:model-value="draft.onYamlInput"
-              @save="saveNow"
-              @submit="saveNow"
-            />
-          </template>
-          <Alert v-if="saveError" variant="error" data-testid="connection-file-save-error">
-            <AlertDescription>{{ saveError }}</AlertDescription>
-            <AlertAction v-if="draft.conflict.value">
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="connection-file-reload"
-                @click="draft.reload"
-              >
-                {{ t('common.action.refresh.label') }}
-              </Button>
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="connection-file-overwrite"
-                @click="draft.overwrite"
-              >
-                {{ t('space.ade.workflows.conflict.overwrite.label') }}
-              </Button>
-            </AlertAction>
-          </Alert>
-        </div>
-      </DialogBody>
-
-      <DialogFooter>
-        <template #start>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :disabled="!detail?.id || draft.dirty.value"
-            data-testid="connection-duplicate"
-            @click="onDuplicate"
-          >
-            <CodiconIcon :name="ICON.duplicate" :size="13" />
-            {{ t('common.action.duplicate.label') }}
-          </Button>
-          <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :disabled="!detail"
-            data-testid="connection-delete"
-            @click="onDelete"
-          >
-            <CodiconIcon name="trash" :size="13" />
-            {{ t('common.action.delete.label') }}
-          </Button>
-          <span v-if="detail?.id && draft.dirty.value" data-testid="connection-save-first">{{
-            t('studio.project.connectionDialog.saveFirst.hint')
-          }}</span>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :disabled="!detail?.id || draft.dirty.value"
-            :pending="test.isPending.value"
-            data-testid="connection-test"
-            @click="onTest"
-          >
-            <CodiconIcon name="plug" :size="13" />
-            {{ t('studio.project.connectionDialog.test.label') }}
-          </Button>
-          <Badge
-            v-if="testResult"
-            class="min-w-0"
-            :variant="testResult.ok ? 'ok' : 'error'"
-            data-testid="connection-test-result"
-          >
-            <TruncatedText :text="testResult.message" />
-          </Badge>
-        </template>
-        <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          :disabled="!draft.dirty.value"
-          data-testid="connection-file-discard"
-          @click="draft.discard"
-        >
-          {{ t('common.action.discard.label') }}
-        </Button>
-        <Button
-          variant="dialog-primary"
-          size="kira-lg"
-          :disabled="!canSave"
-          :pending="draft.saving.value"
-          data-testid="connection-file-save"
-          @click="saveNow"
-        >
-          {{ t('common.action.save.label') }}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+  <ConfigFileDialog
+    v-model:section="section"
+    :draft="draft"
+    :query="query"
+    :title="
+      t('studio.connections.file.title', {
+        name: record?.name ?? configName(detail?.file ?? ''),
+      })
+    "
+    testid-prefix="connection-file"
+    :sections="items"
+    :tabs-aria="t('studio.project.connectionDialog.tabs.aria')"
+    :yaml-aria="t('studio.connections.file.field.aria')"
+    :pointers="CONNECTION_TAB_POINTERS"
+    :last-good="detail?.lastGood"
+    :last-good-hint="t('studio.connections.file.lastGood.hint')"
+    :problem="detail?.problem"
+    :action-error="lifecycle.error.value"
+    @close="close"
+  >
+    <template #form>
+      <template v-if="detail">
+        <ConnectionGeneralTab
+          v-show="section === 'general'"
+          v-model="draft.model.value!"
+          v-model:secrets="secrets"
+          :error-for="draft.errorFor"
+          :stem="stem"
+          :saved-password="savedSecret('password')"
+          :saved-uri="savedSecret('uri')"
+          :storage-available="storageAvailable"
+          :connection-id="detail.id"
+          :connection-name="record?.name ?? configName(detail.file)"
+        />
+        <ConnectionAdvancedTab
+          v-show="section === 'advanced'"
+          v-model="draft.model.value!"
+          :error-for="draft.errorFor"
+        />
+        <ConnectionPreconnectTab
+          v-show="section === 'preconnect'"
+          v-model="draft.model.value!"
+          :error-for="draft.errorFor"
+        />
+        <ConnectionMcpTab
+          v-show="section === 'mcp'"
+          v-model="draft.model.value!"
+          :connection-id="detail.id"
+          :error-for="draft.errorFor"
+        />
+        <ConnectionPrivacyTab
+          v-if="section === 'privacy'"
+          v-model="draft.model.value!"
+          :connection-id="detail.id"
+          :error-for="draft.errorFor"
+        />
+      </template>
+    </template>
+    <template #footer-start>
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        :disabled="!detail?.id || draft.dirty.value"
+        data-testid="connection-duplicate"
+        @click="onDuplicate"
+      >
+        <CodiconIcon :name="ICON.duplicate" :size="13" />
+        {{ t('common.action.duplicate.label') }}
+      </Button>
+      <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        :disabled="!detail"
+        data-testid="connection-delete"
+        @click="onDelete"
+      >
+        <CodiconIcon name="trash" :size="13" />
+        {{ t('common.action.delete.label') }}
+      </Button>
+      <span v-if="detail?.id && draft.dirty.value" data-testid="connection-save-first">{{
+        t('studio.project.connectionDialog.saveFirst.hint')
+      }}</span>
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        :disabled="!detail?.id || draft.dirty.value"
+        :pending="test.isPending.value"
+        data-testid="connection-test"
+        @click="onTest"
+      >
+        <CodiconIcon name="plug" :size="13" />
+        {{ t('studio.project.connectionDialog.test.label') }}
+      </Button>
+      <Badge
+        v-if="testResult"
+        class="min-w-0"
+        :variant="testResult.ok ? 'ok' : 'error'"
+        data-testid="connection-test-result"
+      >
+        <TruncatedText :text="testResult.message" />
+      </Badge>
+    </template>
+  </ConfigFileDialog>
 </template>

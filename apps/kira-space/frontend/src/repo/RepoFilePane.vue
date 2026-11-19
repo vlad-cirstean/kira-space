@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
 import SaveBar from '@workbench/components/SaveBar.vue';
 import ConfigFileProblem from '@workbench/config/ConfigFileProblem.vue';
+import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
+import SaveConflictAlert from '@workbench/config/SaveConflictAlert.vue';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
@@ -89,7 +91,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
       {{ t('space.repo.settingsFile.lastGood.hint') }}
     </div>
     <div v-if="!view.editable" class="text-kira-sm text-subtle" data-testid="repo-file-read-only">
-      {{ t('space.ade.context.readOnly.hint') }}
+      {{ t('common.content.readOnly.hint') }}
     </div>
     <template v-else>
       <SecondaryTabs
@@ -104,24 +106,13 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
           :shown="unclaimed"
           :show-yaml="() => void draft.showTab('yaml')"
         />
-        <Alert v-if="unclaimed" variant="error" data-testid="repo-form-problem">
-          <AlertDescription>{{
-            t('common.configForm.problem.status', {
-              line: unclaimed.line,
-              message: unclaimed.message,
-            })
-          }}</AlertDescription>
-          <AlertAction>
-            <Button
-              variant="link"
-              size="inline"
-              data-testid="repo-form-show-yaml"
-              @click="draft.showTab('yaml')"
-            >
-              {{ t('common.configForm.showYaml.label') }}
-            </Button>
-          </AlertAction>
-        </Alert>
+        <ConfigFormProblemAlert
+          v-if="unclaimed"
+          :problem="unclaimed"
+          testid="repo-form-problem"
+          show-yaml
+          @show-yaml="draft.showTab('yaml')"
+        />
         <fieldset
           v-if="draft.model.value"
           :disabled="draft.formDisabled.value"
@@ -167,21 +158,13 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
     <Alert v-if="sharedText.error.value" variant="error" data-testid="repo-file-copy-shared-error">
       <AlertDescription>{{ errorText(sharedText.error.value) }}</AlertDescription>
     </Alert>
-    <Alert v-if="draft.saveError.value" variant="error" data-testid="repo-file-save-error">
-      <AlertDescription>{{ draft.saveError.value }}</AlertDescription>
-      <AlertAction v-if="draft.conflict.value">
-        <Button variant="link" size="inline" data-testid="repo-file-reload" @click="draft.reload">
-          {{ t('common.action.refresh.label') }}
-        </Button>
-        <Button
-          variant="link"
-          size="inline"
-          data-testid="repo-file-overwrite"
-          @click="draft.overwrite"
-        >
-          {{ t('space.ade.workflows.conflict.overwrite.label') }}
-        </Button>
-      </AlertAction>
-    </Alert>
+    <SaveConflictAlert
+      v-if="draft.saveError.value"
+      :error="draft.saveError.value"
+      :conflict="draft.conflict.value"
+      testid-prefix="repo-file"
+      @reload="draft.reload"
+      @overwrite="draft.overwrite"
+    />
   </div>
 </template>

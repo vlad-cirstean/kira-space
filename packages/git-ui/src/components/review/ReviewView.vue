@@ -13,6 +13,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
  */
 import { type MessageKey, t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useLiveRegion } from '@workbench/behaviour/liveRegion';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import { errorText } from '@workbench/bridge/codedError';
@@ -26,7 +27,6 @@ import { useReviewAnnouncements } from '../../lib/useReviewAnnouncements.ts';
 import { useReviewStepping } from '../../lib/useReviewStepping.ts';
 import { useReviewWorkingOnly } from '../../lib/useReviewWorkingOnly.ts';
 import type { MountOptions } from '../../main.ts';
-import { retryBootstrap as sharedRetryBootstrap } from '../../state/bootstrap.ts';
 import type { FileListMode } from '../../state/detail.ts';
 import type { DetailActions } from '../../state/detailActions.ts';
 import { RefsState } from '../../state/refs.ts';
@@ -69,9 +69,10 @@ const reviewComments = shallowRef<ReviewCommentsState | undefined>(undefined);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const repoId = ref<string | undefined>(undefined);
 const noActiveRepo = ref(false);
-// G12 D6: same treatment as App.vue's own bootError — "Loading…" forever is not an acceptable
+// G12 D6: same treatment as App.vue's own boot error — "Loading…" forever is not an acceptable
 // rendering of a failed bootstrap() (F7).
-const bootError = ref<string | undefined>(undefined);
+const boot = useAsyncAction(() => bootstrap());
+const bootError = boot.error;
 
 watch(repoId, (id) => refsState.setRepoId(id));
 
@@ -384,13 +385,11 @@ onMounted(() => {
     performance.mark('kira:first-paint');
     performance.measure('kira:first-paint', undefined, 'kira:first-paint');
   });
-  void bootstrap().catch((err: unknown) => {
-    bootError.value = errorText(err);
-  });
+  void boot.run();
 });
 
 function retryBootstrap(): void {
-  sharedRetryBootstrap(bootError, bootstrap);
+  void boot.run();
 }
 
 onBeforeUnmount(() => {

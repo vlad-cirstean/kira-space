@@ -17,7 +17,7 @@ export interface ConsoleHoverInfo {
    *  *read as data*: pre-wrapped, its own inset block distinct from `lines` (rendered as a
    *  caption underneath, in the muted/secondary treatment `lines` alone never had) —
    *  variableCompletion.ts's own `hoverAt` supplies a resolved reference's value here
-   *  (pretty-printed with `formatHoverValue` below when it parses as JSON) and moves what used to
+   *  (pretty-printed with `prettyJson` when it parses as JSON) and moves what used to
    *  be the value's own first line ("environment variable", a transform chain, …) into `lines`,
    *  which MonacoHost.vue now renders as the caption instead of an undifferentiated peer line. */
   value?: string;
@@ -28,14 +28,6 @@ export interface ConsoleHoverInfo {
 // readability win (nested braces on their own lines instead of one long truncated run); anything
 // that doesn't parse is shown verbatim, unchanged, since it is not JSON to begin with (a URL,
 // a token, plain prose).
-export function formatHoverValue(raw: string): string {
-  try {
-    return JSON.stringify(JSON.parse(raw), null, 2);
-  } catch {
-    return raw;
-  }
-}
-
 // MonacoHost.vue renders every ConsoleHoverInfo/HoverInfo `lines` entry as a
 // Markdown string (`supportHtml: false` blocks raw HTML, not Markdown). `lines` is built from
 // database content this app doesn't control — table/column names, a column's `COMMENT ON COLUMN`

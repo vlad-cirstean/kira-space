@@ -261,7 +261,49 @@ function studioItems(): ApprovalItem[] {
       },
       0,
     ),
+    apiResponse('9', false),
+    apiResponse('10', true),
   ];
+}
+
+const API_RAW = JSON.stringify({
+  status: 200,
+  statusText: '200 OK',
+  headers: [
+    { name: 'Content-Type', value: 'application/json', masked: false },
+    { name: 'X-Request-Id', value: 'r-9', masked: false },
+  ],
+  contentType: 'application/json',
+  body: '{"orders":[{"id":1,"total":12.5},{"id":2,"total":7}]}',
+  binary: false,
+  bodyBytes: 52,
+  truncated: false,
+  finalUrl: '',
+  redirects: [],
+});
+const API_RESULT = JSON.stringify({ result: [{ id: 1 }, { id: 2 }] });
+
+function apiResponse(id: string, scripted: boolean): ApprovalItem {
+  return mk(
+    `api.response:${id}`,
+    'api.response',
+    { name: 'api.staging.acme.dev', kind: 'http', color: 'amber', location: 'Staging' },
+    { class: 'request', tone: 'caution' },
+    {
+      method: 'GET',
+      url: 'https://api.staging.acme.dev/v1/orders',
+      host: 'api.staging.acme.dev',
+      environment: { id: 'e1', name: 'Staging', color: 'amber' },
+      status: 200,
+      statusText: '200 OK',
+      isError: false,
+      scripted,
+      bytes: scripted ? API_RESULT.length : API_RAW.length,
+      rawBytes: scripted ? API_RAW.length : 0,
+      class: 'read',
+      reason: 'setting',
+    },
+  );
 }
 
 // The dialog shows one item at a time; pushing a list of one shows that item alone.
@@ -272,6 +314,10 @@ async function show(page: Page, item: ApprovalItem) {
   await expect(dialog.locator('section[data-kind]')).toHaveCount(1);
   if (item.kind === 'db.response')
     await expect(page.locator(t('db-mcp-preview-row')).first()).toBeVisible();
+  if (item.kind === 'api.response')
+    await expect(
+      page.locator(t('api-review-raw-status')).or(page.locator(t('api-review-result'))),
+    ).toBeVisible();
   await page.waitForTimeout(500);
 }
 
@@ -367,6 +413,23 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
       control: [
         {
           channel: IPC.dbMcpPendingResponse,
+          args: { requestId: '9' },
+          response: { requestId: '9', text: API_RAW, isError: false },
+        },
+        {
+          channel: IPC.dbMcpPendingResponse,
+          args: { requestId: '10' },
+          response: {
+            requestId: '10',
+            text: API_RESULT,
+            raw: API_RAW,
+            isError: false,
+            script: { source: 'return { result: body.orders };', hash: 'h' },
+          },
+        },
+        {
+          channel: IPC.dbMcpPendingResponse,
+          args: { requestId: '4' },
           response: { requestId: '4', text: RESULT, isError: false },
         },
       ],
@@ -465,6 +528,23 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
       'headers +N more x',
     );
     await checkFlush(api);
+
+    // Unscripted: the raw response lines up with the details column; scripted: tabs sit on the right.
+    await show(page, byId('api.response:9'));
+    const plain = item('api.response:9');
+    near(await left(plain.locator(t('api-review-raw-status'))), indent, 'api response status x');
+    near(await left(plain.locator(t('api-review-raw-headers'))), indent, 'api response headers x');
+    await checkFlush(plain);
+    await show(page, byId('api.response:10'));
+    const scripted = item('api.response:10');
+    near(await left(scripted.locator(t('api-review-result'))), indent, 'api result x');
+    near(await left(scripted.locator(t('api-review-script'))), indent, 'api script x');
+    near(
+      await right(scripted.locator('[data-slot="secondary-tabs"]')),
+      (await box(scripted)).x + (await box(scripted)).width,
+      'api response tabs right vs item right',
+    );
+    await checkFlush(scripted);
 
     await show(page, byId('db.query:1'));
     // A7: countdown width stays put across ticks

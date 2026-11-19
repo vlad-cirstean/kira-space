@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
@@ -48,13 +48,10 @@ function onSendTest(): void {
         {{ t('common.sendTest.label') }}
       </Button>
     </FieldContent>
-    <TooltipIconButton
+    <ResetToDefaultButton
       class="ml-auto"
-      icon="discard"
-      :label="t('common.action.resetToDefault.label')"
       data-testid="settings-reset-advanced-notifyPrompts"
-      :disabled-trigger="isAtDefault('advanced', 'notifyPrompts')"
-      :disabled="isAtDefault('advanced', 'notifyPrompts')"
+      :at-default="isAtDefault('advanced', 'notifyPrompts')"
       @click="resetLeaf('advanced', 'notifyPrompts')"
     />
   </Field>

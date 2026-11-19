@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { grpcCodeClass, grpcCodeHint } from '@shared/domain/grpc';
 import {
   GRPC_HISTORY_PER_SCOPE_LIMIT,
   type GrpcCallHistoryEntry,
@@ -7,22 +6,22 @@ import {
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { formatRelative } from '@workbench/behaviour/format';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
+import GrpcStatusBadge from '../../components/GrpcStatusBadge.vue';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { useGrpcCallHistoryStore, useGrpcHistoryList, useGrpcHistoryViewing } from './history';
 
@@ -100,10 +99,10 @@ function onDelete(id: string): void {
 async function onClear(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.grpc.history.clearConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.grpc.history.clearConfirm.body'),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.clear.label'),
     tone: 'danger',
   });
@@ -172,13 +171,9 @@ async function onClear(): Promise<void> {
         @click="onRowClick(entry.id)"
         @keydown="onRowKeydown($event, entry.id)"
       >
-        <TextTooltip :text="grpcCodeHint(entry.code)">
-          <Badge data :variant="grpcCodeClass(entry.code)">{{ entry.codeName }}</Badge>
-        </TextTooltip>
+        <GrpcStatusBadge :code="entry.code" :code-name="entry.codeName" />
         <span class="text-kira-sm font-data">{{ entry.method }}</span>
-        <TextTooltip :text="entry.calledAt">
-          <span :class="rowMeta">{{ formatRelative(entry.calledAt) }}</span>
-        </TextTooltip>
+        <span :class="rowMeta"><RelativeTime :at="entry.calledAt" /></span>
         <span class="ml-auto" />
         <TooltipIconButton
           :icon="ICON.delete"

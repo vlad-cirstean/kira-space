@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // Text with its matches marked. The caller splits the text into `parts` (workbench `splitMatches`);
-// `current` is the index in `parts` of the active match, which gets the stronger colour.
+// `current` is the index in `parts` of the active match, which gets the stronger colour. `markClass`
+// replaces the search colours for a caller whose marks mean something else.
 defineProps<{
   parts: readonly { text: string; match: boolean }[];
   current?: number;
+  markClass?: string;
 }>();
 </script>
 
@@ -15,7 +17,7 @@ defineProps<{
         data-testid="match"
         :class="[
           'rounded-kira-sm text-inherit',
-          i === current ? 'bg-search-match-current' : 'bg-search-match',
+          markClass ?? (i === current ? 'bg-search-match-current' : 'bg-search-match'),
         ]"
         >{{
           part.text

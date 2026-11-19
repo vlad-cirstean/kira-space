@@ -5,6 +5,7 @@ import HighlightedText from '@theme/components/HighlightedText.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
+import { dropIndicator } from '@theme/lib/frames';
 import { rowIndent, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { methodTextClass } from '@theme/methodColor';
@@ -139,12 +140,7 @@ function onKeydown(e: KeyboardEvent): void {
       aria-hidden="true"
       data-testid="tree-drop-indicator"
       :data-zone="dropZone"
-      :class="
-        cn(
-          'pointer-events-none absolute inset-x-0 h-0.5 bg-focus',
-          dropZone === 'before' ? 'top-0' : 'bottom-0',
-        )
-      "
+      :class="cn(dropIndicator, dropZone === 'before' ? 'top-0' : 'bottom-0')"
     />
 
     <!-- Same reasoning as project/TreeRow.vue's twisty: its entire meaning is drawn by the

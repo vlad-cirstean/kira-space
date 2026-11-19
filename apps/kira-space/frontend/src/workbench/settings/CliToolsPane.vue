@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import CodeBlock from '@theme/components/CodeBlock.vue';
 import DetailSection from '@theme/components/DetailSection.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { FieldDescription } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
-import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { computed, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useCliTools, useRefreshCliTools } from '../../state/cliTools';
@@ -54,9 +53,6 @@ function details(tool: CliTool): string[] {
 }
 function openDocs(url: string): void {
   fireAndForget(control.openExternal(url), 'settings.cliTools');
-}
-function copy(command: string): void {
-  fireAndForget(copyAndAnnounce(command), 'settings.cliTools');
 }
 </script>
 
@@ -103,11 +99,10 @@ function copy(command: string): void {
           </span>
           <span class="flex items-center gap-1">
             <CodeBlock class="min-w-0 flex-1">{{ step.command }}</CodeBlock>
-            <TooltipIconButton
-              icon="copy"
+            <CopyIconButton
+              :text="step.command"
               :label="t('common.copyCommand.label')"
               :data-testid="`cli-tool-copy-${tool.provider}-${step.purpose}`"
-              @click="copy(step.command)"
             />
           </span>
         </li>

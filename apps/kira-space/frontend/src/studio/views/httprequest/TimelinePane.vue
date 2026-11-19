@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { HttpTimelineHop } from '@shared/domain/http';
-import { statusClass, statusHint } from '@shared/domain/http';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
@@ -15,6 +14,7 @@ import { ICON } from '@theme/icons';
 import { formatDuration } from '@workbench/behaviour/format';
 import { computed } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
+import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 import { useHttpHistoryViewing } from './history';
 import { useHttpRequestViewStore } from './state';
 
@@ -257,11 +257,11 @@ function hopNotes(hop: HttpTimelineHop): HopNote[] {
             <span>{{ hop.method }}</span>
             <span class="min-w-0 flex-1"><TruncatedText :text="hop.url" /></span>
             <CodiconIcon name="arrow-right" :size="12" />
-            <TextTooltip v-if="hop.status > 0" :text="statusHint(hop.status)"
-              ><Badge data :variant="statusClass(hop.status)"
-                >{{ hop.status }} {{ hop.statusText }}</Badge
-              ></TextTooltip
-            >
+            <HttpStatusBadge
+              v-if="hop.status > 0"
+              :status="hop.status"
+              :status-text="hop.statusText"
+            />
             <Badge data v-else variant="error" data-testid="http-timeline-hop-failed-chip">
               {{ hop.error || 'failed' }}
             </Badge>

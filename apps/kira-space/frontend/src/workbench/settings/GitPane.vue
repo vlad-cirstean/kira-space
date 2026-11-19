@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import {
   Field,
   FieldDescription,
@@ -105,12 +105,9 @@ const graphFontSizeId = useId();
           <FieldLabel :for="protectedBranchesId">{{
             t('space.settings.git.protected.label')
           }}</FieldLabel>
-          <TooltipIconButton
-            icon="discard"
-            :label="t('common.action.resetToDefault.label')"
+          <ResetToDefaultButton
             data-testid="settings-reset-git-protectedBranches"
-            :disabled-trigger="isAtDefault('git', 'protectedBranches')"
-            :disabled="isAtDefault('git', 'protectedBranches')"
+            :at-default="isAtDefault('git', 'protectedBranches')"
             @click="resetProtectedBranches"
           />
         </div>
@@ -128,12 +125,9 @@ const graphFontSizeId = useId();
           <FieldLabel :for="fetchAutoIntervalMinutesId">{{
             t('space.settings.git.fetchInterval.label')
           }}</FieldLabel>
-          <TooltipIconButton
-            icon="discard"
-            :label="t('common.action.resetToDefault.label')"
+          <ResetToDefaultButton
             data-testid="settings-reset-git-fetchAutoIntervalMinutes"
-            :disabled-trigger="isAtDefault('git', 'fetchAutoIntervalMinutes')"
-            :disabled="isAtDefault('git', 'fetchAutoIntervalMinutes')"
+            :at-default="isAtDefault('git', 'fetchAutoIntervalMinutes')"
             @click="resetLeaf('git', 'fetchAutoIntervalMinutes')"
           />
         </div>
@@ -159,12 +153,9 @@ const graphFontSizeId = useId();
       <Field>
         <div class="flex items-center justify-between gap-1">
           <FieldLabel :for="gitPathId">{{ t('space.settings.git.gitPath.label') }}</FieldLabel>
-          <TooltipIconButton
-            icon="discard"
-            :label="t('common.action.resetToDefault.label')"
+          <ResetToDefaultButton
             data-testid="settings-reset-git-gitPath"
-            :disabled-trigger="isAtDefault('git', 'gitPath')"
-            :disabled="isAtDefault('git', 'gitPath')"
+            :at-default="isAtDefault('git', 'gitPath')"
             @click="resetLeaf('git', 'gitPath')"
           />
         </div>
@@ -185,12 +176,9 @@ const graphFontSizeId = useId();
           <FieldLabel :for="graphFontSizeId">{{
             t('space.settings.git.graphFont.label')
           }}</FieldLabel>
-          <TooltipIconButton
-            icon="discard"
-            :label="t('common.action.resetToDefault.label')"
+          <ResetToDefaultButton
             data-testid="settings-reset-git-graphFontSize"
-            :disabled-trigger="isAtDefault('git', 'graphFontSize')"
-            :disabled="isAtDefault('git', 'graphFontSize')"
+            :at-default="isAtDefault('git', 'graphFontSize')"
             @click="resetLeaf('git', 'graphFontSize')"
           />
         </div>

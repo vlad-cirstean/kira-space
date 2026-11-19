@@ -39,7 +39,12 @@ const {
   run: runUpload,
   pending: saving,
   error,
+  reset,
 } = useAsyncAction(async (connectionId: string, file: { path: string }) => {
+  const originTab = objectStoreStore.tabId;
+  if (originTab && useStaleDataStore().isStale(originTab, originTab, connectionId)) {
+    throw new Error(t('studio.common.connectionLost.error'));
+  }
   const newPath = await objectStoreStore.uploadObject({
     connectionId,
     containerPath: objectStoreStore.containerPath,
@@ -75,7 +80,7 @@ async function chooseFile(): Promise<void> {
   chosenFile.value = res.file;
   key.value = `${containerPrefix.value}${res.file.name}`;
   contentType.value = contentTypeForFilename(res.file.name);
-  error.value = null;
+  reset();
 }
 
 function onClose(): void {
@@ -86,11 +91,6 @@ async function onUpload(): Promise<void> {
   const connectionId = objectStoreStore.connectionId;
   const file = chosenFile.value;
   if (!connectionId || !file || !key.value.trim()) return;
-  const originTab = objectStoreStore.tabId;
-  if (originTab && useStaleDataStore().isStale(originTab, originTab, connectionId)) {
-    error.value = t('studio.common.connectionLost.error');
-    return;
-  }
   await runUpload(connectionId, file);
 }
 
@@ -103,7 +103,7 @@ watch(
     chosenFile.value = null;
     key.value = '';
     contentType.value = '';
-    error.value = null;
+    reset();
   },
 );
 </script>

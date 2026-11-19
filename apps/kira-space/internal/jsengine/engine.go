@@ -1,0 +1,341 @@
+// Package jsengine runs untrusted JavaScript (goja) for the MCP servers. Each Exec spawns a fresh
+// `kira-space js-worker` child, so memory, CPU and native-recursion ceilings hold by killing the
+// child, never the app. The package imports no domain package: callers pass data in through
+// Bindings and get one JSON value or a structured Error out.
+package jsengine
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/shirou/gopsutil/v4/process"
+
+	"github.com/kirathecat/kira-studio/internal/memory/workerproc"
+)
+
+// Run is one script execution.
+type Run struct {
+	Source   string
+	Bindings []Binding
+	Limits   Limits    // zero fields take defaults
+	Now      time.Time // Date.now() and new Date() for the whole run; zero is time.Now() at Exec start
+	Seed     uint64    // Math.random seed; 0 derives it from SourceHash
+}
+
+// Result is a successful run.
+type Result struct {
+	JSON    json.RawMessage // compact, key order as JSON.stringify gives it, big integers exact; "null" for undefined
+	Type    string          // undefined | null | boolean | number | bigint | string | array | object
+	Elapsed time.Duration   // script time inside the worker, spawn excluded
+}
+
+// Engine runs scripts. Safe for concurrent use; each Exec runs in its own worker process.
+type Engine struct {
+	sem     chan struct{}
+	command func() *exec.Cmd
+}
+
+var errExecPanic = errors.New("jsengine exec panicked")
+
+// New returns an Engine with MaxConcurrent slots. The worker is this binary with "js-worker".
+func New() *Engine {
+	exe, err := os.Executable()
+	if err == nil {
+		if resolved, rerr := filepath.EvalSymlinks(exe); rerr == nil {
+			exe = resolved
+		}
+	}
+	return newEngine(func() *exec.Cmd { return exec.Command(exe, "js-worker") })
+}
+
+func newEngine(command func() *exec.Cmd) *Engine {
+	return &Engine{sem: make(chan struct{}, MaxConcurrent), command: command}
+}
+
+// prepared is a validated Run, ready to send.
+type prepared struct {
+	lim    Limits
+	byName map[string]Binding
+	wire   []wireBinding
+	marker string
+	now    time.Time
+	seed   uint64
+}
+
+func prepare(r Run) (*prepared, error) {
+	lim, lerr := r.Limits.normalize()
+	if lerr != nil {
+		return nil, lerr
+	}
+	if _, cerr := parseSource(r.Source); cerr != nil {
+		return nil, cerr
+	}
+	if berr := validateBindings(r.Bindings, lim.InputBytes); berr != nil {
+		return nil, berr
+	}
+	total := 0
+	byName := make(map[string]Binding, len(r.Bindings))
+	wire := make([]wireBinding, len(r.Bindings))
+	for i, b := range r.Bindings {
+		total += len(b.Value)
+		byName[b.Name] = b
+		wire[i] = wireBinding{Name: b.Name, Value: b.Value}
+		for fn := range b.Funcs {
+			wire[i].Funcs = append(wire[i].Funcs, fn)
+		}
+		if b.Funcs != nil && len(wire[i].Funcs) == 0 {
+			wire[i].Funcs = []string{}
+		}
+	}
+	if total*memoryPerInput > lim.MemoryBytes {
+		return nil, newError(KindInput, "input too large for the memory limit; raise MemoryBytes")
+	}
+	marker, merr := newMarker(r.Bindings)
+	if merr != nil {
+		return nil, merr
+	}
+	now := r.Now
+	if now.IsZero() {
+		now = time.Now()
+	}
+	seed := r.Seed
+	if seed == 0 {
+		sum, _ := hex.DecodeString(SourceHash(r.Source))
+		seed = binary.BigEndian.Uint64(sum[:8])
+	}
+	return &prepared{lim: lim, byName: byName, wire: wire, marker: marker, now: now, seed: seed}, nil
+}
+
+// child is a started worker with its crash pipe.
+type child struct {
+	p     *workerproc.Proc
+	pid   int
+	crash *headBuffer
+}
+
+// diag waits for the worker to exit and returns its stderr tail plus the crash head.
+func (c *child) diag() string { <-c.p.Done(); return c.p.Diagnostics() + c.crash.String() }
+
+func (e *Engine) spawn() (*child, error) {
+	cmd := e.command()
+	cmd.Env = []string{"GOTRACEBACK=none", "GOMAXPROCS=2", "TZ=UTC"}
+	cmd.Dir = os.TempDir()
+	// The runtime prints a fatal error's header before a goroutine dump larger than workerproc's
+	// stderr tail, so the worker also writes crashes to fd 3, read here (head only).
+	crashR, crashW, perr := os.Pipe()
+	if perr != nil {
+		return nil, fmt.Errorf("jsengine: crash pipe: %w", perr)
+	}
+	cmd.ExtraFiles = []*os.File{crashW}
+	p, serr := workerproc.Start(cmd)
+	_ = crashW.Close()
+	if serr != nil {
+		_ = crashR.Close()
+		return nil, fmt.Errorf("jsengine: start worker: %w", serr)
+	}
+	crash := &headBuffer{limit: 4096}
+	go func() {
+		_, _ = io.Copy(crash, crashR)
+		_ = crashR.Close()
+	}()
+	return &child{p: p, pid: cmd.Process.Pid, crash: crash}, nil
+}
+
+// handshake waits for the worker's hello and sends the request. It returns the RSS kill limit.
+func (c *child) handshake(ctx context.Context, pr *prepared, r Run, deadline time.Time) (uint64, error) {
+	var hello workerMsg
+	if herr := c.p.Hello(ctx, helloTimeout, &hello); herr != nil {
+		<-c.p.Done()
+		switch {
+		case ctx.Err() != nil:
+			return 0, newError(KindCanceled, "script canceled")
+		case errors.Is(herr, workerproc.ErrHelloTimeout):
+			return 0, newError(KindInternal, "script worker did not start")
+		}
+		return 0, exitError(c.diag())
+	}
+	var baseRSS uint64
+	if pr, perr := process.NewProcess(int32(c.pid)); perr == nil {
+		if mi, merr := pr.MemoryInfo(); merr == nil {
+			baseRSS = mi.RSS
+		}
+	}
+	line, jerr := json.Marshal(workerRequest{
+		Source: r.Source, Bindings: pr.wire, Limits: pr.lim,
+		TimeoutNs: int64(time.Until(deadline)), NowMs: pr.now.UnixMilli(), Seed: pr.seed, Marker: pr.marker,
+	})
+	if jerr != nil {
+		return 0, newError(KindInternal, "internal error")
+	}
+	if _, werr := c.p.Stdin.Write(append(line, '\n')); werr != nil {
+		return 0, exitError(c.diag())
+	}
+	return baseRSS + uint64(pr.lim.hardCeiling()) + 64<<20, nil
+}
+
+// Exec runs r in a worker process. The error is *Error for script failures, a plain error for
+// programming errors (limits above a ceiling) and spawn faults.
+func (e *Engine) Exec(ctx context.Context, r Run) (res Result, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			slog.Error("exec panicked", "scope", "jsengine", "err", errExecPanic)
+			res, err = Result{}, newError(KindInternal, "internal error")
+		}
+	}()
+	pr, perr := prepare(r)
+	if perr != nil {
+		return Result{}, perr
+	}
+	select {
+	case e.sem <- struct{}{}:
+	case <-ctx.Done():
+		return Result{}, newError(KindCanceled, "canceled while waiting for a free script slot")
+	}
+	defer func() { <-e.sem }()
+	// The deadline starts at the slot, not at Exec: queue time is not script time. Spawn counts.
+	deadline := time.Now().Add(pr.lim.Timeout)
+
+	c, serr := e.spawn()
+	if serr != nil {
+		return Result{}, serr
+	}
+	stop := make(chan struct{})
+	defer func() {
+		close(stop)
+		c.p.Kill()
+		<-c.p.Done()
+	}()
+	rssLimit, herr := c.handshake(ctx, pr, r, deadline)
+	if herr != nil {
+		return Result{}, herr
+	}
+	return c.serve(ctx, pr, deadline, rssLimit, stop)
+}
+
+// serve relays host calls and waits for the final line, a limit or the kill timer.
+func (c *child) serve(ctx context.Context, pr *prepared, deadline time.Time, rssLimit uint64, stop chan struct{}) (Result, error) {
+	lines := make(chan workerMsg)
+	go func() {
+		defer close(lines)
+		for {
+			var m workerMsg
+			if err := c.p.Dec.Decode(&m); err != nil {
+				return
+			}
+			select {
+			case lines <- m:
+			case <-stop:
+				return
+			}
+		}
+	}()
+
+	hctx, hcancel := context.WithDeadline(ctx, deadline)
+	defer hcancel()
+	hostRes := make(chan replyMsg, 1)
+	killTimer := time.NewTimer(time.Until(deadline) + killGrace)
+	defer killTimer.Stop()
+	rssTick := time.NewTicker(50 * time.Millisecond)
+	defer rssTick.Stop()
+	proc, _ := process.NewProcess(int32(c.pid))
+
+	for {
+		select {
+		case m, ok := <-lines:
+			if !ok {
+				return Result{}, exitError(c.diag())
+			}
+			if m.Call != nil {
+				go func(call *callMsg) { hostRes <- callHost(hctx, pr.byName, call, pr.lim.InputBytes) }(m.Call)
+			} else if res, done, err := c.final(m, pr.lim); done {
+				return res, err
+			}
+		case rep := <-hostRes:
+			b, _ := json.Marshal(parentMsg{Reply: &rep})
+			_, _ = c.p.Stdin.Write(append(b, '\n')) // a dead worker shows up as closed lines
+		case <-ctx.Done():
+			return Result{}, newError(KindCanceled, "script canceled")
+		case <-killTimer.C:
+			return Result{}, newError(KindTimeout, "script exceeded its time limit")
+		case <-rssTick.C:
+			if proc == nil {
+				continue
+			}
+			if mi, merr := proc.MemoryInfo(); merr == nil && mi.RSS > rssLimit {
+				return Result{}, newError(KindMemory, "script exceeded its memory limit")
+			}
+		}
+	}
+}
+
+// final handles a result or error line; done is false for any other line.
+func (c *child) final(m workerMsg, lim Limits) (Result, bool, error) {
+	switch {
+	case m.Result != nil:
+		c.p.Stop()
+		if len(m.Result.JSON) > lim.OutputBytes {
+			return Result{}, true, newError(KindOutput, "result exceeds %d bytes", lim.OutputBytes)
+		}
+		return Result{JSON: m.Result.JSON, Type: m.Result.Type, Elapsed: time.Duration(m.Result.ElapsedNs)}, true, nil
+	case m.Error != nil:
+		c.p.Stop()
+		return Result{}, true, m.Error
+	}
+	return Result{}, false, nil
+}
+
+// newMarker draws the per-run BigInt marker, redrawing if any input contains it.
+func newMarker(bs []Binding) (string, *Error) {
+	for range 8 {
+		var raw [16]byte
+		if _, err := rand.Read(raw[:]); err != nil {
+			return "", newError(KindInternal, "internal error")
+		}
+		m := hex.EncodeToString(raw[:])
+		clash := false
+		for _, b := range bs {
+			if bytes.Contains(b.Value, []byte(m)) {
+				clash = true
+			}
+		}
+		if !clash {
+			return m, nil
+		}
+	}
+	return "", newError(KindInternal, "internal error")
+}
+
+// headBuffer keeps the first limit bytes written and discards the rest.
+type headBuffer struct {
+	mu    sync.Mutex
+	buf   []byte
+	limit int
+}
+
+func (h *headBuffer) Write(p []byte) (int, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if room := h.limit - len(h.buf); room > 0 {
+		h.buf = append(h.buf, p[:min(room, len(p))]...)
+	}
+	return len(p), nil
+}
+
+func (h *headBuffer) String() string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return string(h.buf)
+}

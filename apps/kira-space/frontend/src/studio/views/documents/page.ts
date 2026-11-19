@@ -1,8 +1,9 @@
-import { cellByteLength, cellText, type DocumentPage, isTruncated } from '@shared/protocol/page';
+import type { DocumentPage } from '@shared/protocol/page';
 import { compareNatural } from '@workbench/behaviour/match';
 import { useDocumentPageStatsStore } from '../shared/document/pageStatsStore';
 import { useDocumentRowsStore } from '../shared/document/rows';
-import { createPageStore, type RetentionEntry, retentionEntries } from '../shared/page/store';
+import { type DocumentRow, documentIdOf, documentRowOf } from '../shared/page/rowViews';
+import { createPageStore, pageModuleApi } from '../shared/page/store';
 
 // P27 D21: a new page has new rows — every memoized parse and every nested-expansion path
 // views/shared/document/rows.ts holds for this tab is stale. The reset comes first so the page-stats
@@ -15,43 +16,27 @@ const store = createPageStore<DocumentPage>({
   },
 });
 
-export const pageVersion = store.pageVersion;
-export const setPage = store.setPage;
-export const getPage = store.getPage;
-export const drop = store.drop;
-export const totalRetainedBytes = store.totalRetainedBytes;
-export const setVisibleWindow = store.setVisibleWindow;
-/** Playwright-only (main.ts's `window.__kiraRetention`, C1). */
-export function pageStoreEntries(): RetentionEntry<DocumentPage>[] {
-  return retentionEntries(store);
-}
+export const {
+  pageVersion,
+  setPage,
+  getPage,
+  drop,
+  totalRetainedBytes,
+  setVisibleWindow,
+  pageStoreEntries,
+} = pageModuleApi(store);
 
-export interface DocumentRow {
-  id: string;
-  body: string;
-  isTruncated: boolean;
-  bodyByteLength: number;
-}
+export type { DocumentRow };
 
 /** One document's id, decoded without its body. */
 export function documentId(tabId: string, row: number): string | null {
   const page = getPage(tabId);
-  if (!page || row < 0 || row >= page.rowCount) return null;
-  return store.cached(tabId, row, 'id', (decoder) => cellText(page.ids, row, decoder));
+  return page ? documentIdOf(store, tabId, page, row) : null;
 }
 
 export function documentRow(tabId: string, row: number): DocumentRow | null {
   const page = getPage(tabId);
-  if (!page || row < 0 || row >= page.rowCount) return null;
-  // P2 R2 (task #99): see grid/page.ts's cell() for why this is wrapped in cachedView.
-  return store.cachedView(tabId, row, 'row', () => ({
-    id: store.cached(tabId, row, 'id', (decoder) => cellText(page.ids, row, decoder)) ?? '',
-    body: store.cached(tabId, row, 'body', (decoder) => cellText(page.bodies, row, decoder)) ?? '',
-    isTruncated: isTruncated(page.bodies, row),
-    // Straight from the wire's own offsets — see cellByteLength's own doc comment for why this is
-    // preferred over TextEncoder().encode(body).length (views/shared/document/rows.ts's byteLabel).
-    bodyByteLength: cellByteLength(page.bodies, row),
-  }));
+  return page ? documentRowOf(store, tabId, page, row) : null;
 }
 
 // The projection picker's candidate list (ProjectionMenu.vue), the filter/sort autocomplete

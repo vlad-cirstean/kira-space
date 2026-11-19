@@ -338,3 +338,67 @@ func TestDbMcpSessionStep(t *testing.T) {
 		t.Fatalf("run log lacks the list_connections call or %q:\n%s", connName, tail(log, 1500))
 	}
 }
+
+// TestDbMcpKeptChainThroughClaude (P686): Claude Code accepts the generated run_query schema with `script`
+// (nullable object) and `params`, and a model chains by name: a script keeps the ids it read, and a second
+// call binds them by name. The flow tests cover every rule; this checks the real client and model.
+func TestDbMcpKeptChainThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
+		db, err := sql.Open("sqlite", dbFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer db.Close()
+		if _, err := db.Exec(`CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT);
+			INSERT INTO notes (body) VALUES ('one'),('two')`); err != nil {
+			t.Fatal(err)
+		}
+	})
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tool := "mcp__" + dbServer + "__run_query"
+	out, _ := app.claudeP(t, t.TempDir(), nil,
+		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_connections, then call run_query on the connection named "+connName+
+			" with sql \"select id, body from notes order by id\", an empty path, mode read and this exact script: kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return result.rowCount;"+
+			" Then call run_query again on the same connection with sql \"select body from notes where id in (select value from json_each(?)) order by id\", an empty path, mode read and params [\"ids\"]."+
+			" Reply with the bodies it returned.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_kept_variables",
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+	var scripted, bound bool
+	for _, u := range toolUses(msgs, tool) {
+		var in struct {
+			Script *string  `json:"script"`
+			Params []string `json:"params"`
+		}
+		if err := json.Unmarshal(u.Input, &in); err != nil {
+			t.Fatalf("run_query input %s: %v", u.Input, err)
+		}
+		text, isErr, ok := toolResult(msgs, u.ID)
+		switch {
+		case in.Script != nil && strings.Contains(*in.Script, "kept.set"):
+			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"ids"`) || strings.Contains(text, "[1,2]") {
+				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
+			}
+			scripted = true
+		case len(in.Params) == 1 && in.Params[0] == "ids":
+			if !ok || isErr || !strings.Contains(text, "one") || !strings.Contains(text, "two") {
+				t.Fatalf("params run_query result = %q (ok=%v, error=%v), want both bodies", text, ok, isErr)
+			}
+			bound = true
+		}
+	}
+	if !scripted || !bound {
+		t.Fatalf("scripted call = %v, params call = %v, want both:\n%s", scripted, bound, tail(out, 2500))
+	}
+}

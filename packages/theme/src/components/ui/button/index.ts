@@ -10,6 +10,9 @@ export const buttonVariants = cva(
       variant: {
         ghost: 'hover:bg-field hover:text-fg aria-expanded:bg-field aria-expanded:text-fg',
         link: 'cursor-pointer text-primary underline-offset-4 hover:underline',
+        // Approval-card meta link (pairs, proof window, pending response): quiet underlined text.
+        'link-meta':
+          'cursor-pointer text-kira-sm font-normal text-muted-foreground underline decoration-border underline-offset-3 hover:underline',
         // AppButton's `kind`/`variant` vocabulary, collapsed onto this cva's own
         // `variant` axis instead of a second wrapper prop layer.
         // Geometry stays on the `kira`/`kira-lg`/`kira-icon` sizes below (design-system tokens,

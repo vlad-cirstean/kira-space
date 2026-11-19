@@ -66,7 +66,7 @@ const STEP_TONE: Record<StepState, Tone> = {
 function stepStatusText(s: StepProgress, now: boolean): string {
   if (s.kind === 'manual') {
     if (s.state === 'skipped') return runStateLabel('pending');
-    return now ? t('automations.run.state.waiting.status') : runStateLabel('pending');
+    return now ? t('common.state.waitingForYou.status') : runStateLabel('pending');
   }
   if (s.state === 'stuck') return t('space.ade.allSessions.stuck.status');
   if (now && s.state === 'pending' && s.needsRepo)

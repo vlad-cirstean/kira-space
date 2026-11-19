@@ -24,7 +24,7 @@ import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
-import { errorText } from '../bridge/codedError';
+import { useTaskAction } from '../behaviour/asyncAction';
 import { useAutomationsModule } from './module';
 import { groupMenu, newScriptItems, type ScriptMenuActions, scriptMenu } from './panelMenus';
 import RunFileDialog from './RunFileDialog.vue';
@@ -58,7 +58,9 @@ const targetFor = ref<CustomScript | null>(null);
 const search = useKeptState('automations:panel:search', '');
 // The collection whose header shows the inline name field.
 const renamingName = ref<string | null>(null);
-const actionError = ref<string | null>(null);
+// One surface for every panel write (script, collection and run starts).
+const surface = useTaskAction();
+const actionError = surface.error;
 
 interface ScriptGroup {
   name: string;
@@ -177,12 +179,7 @@ async function confirmDeleteCollection(name: string): Promise<void> {
 const empty = computed(() => scripts.records().length === 0 && scripts.problems().length === 0);
 
 async function guarded(fn: () => Promise<unknown>): Promise<void> {
-  actionError.value = null;
-  try {
-    await fn();
-  } catch (err) {
-    actionError.value = errorText(err);
-  }
+  await surface.run(fn);
 }
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
@@ -314,7 +311,7 @@ const confirmStore = useScheduleConfirmStore();
 const startScript = useRunScript();
 const scriptTabs = useScriptTabs();
 async function runScript(script: CustomScript): Promise<void> {
-  actionError.value = await startScript(script);
+  await surface.run(() => startScript(script));
 }
 
 const liveRunByScript = useLiveRunByScript();
@@ -528,7 +525,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
           v-else
           fill
           icon="terminal-bash"
-          :title="t('automations.panel.none.empty')"
+          :title="t('common.scripts.none.empty')"
           :description="t('automations.panel.none.emptyHint')"
         >
           <FieldError v-if="actionError" data-testid="script-error">{{ actionError }}</FieldError>

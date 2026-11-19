@@ -155,7 +155,7 @@ function mapChanges(
       out.push({
         field: `${prefix}.${k}`,
         label: label(k),
-        from: base[k] ?? t('docker.edit.unset.status'),
+        from: base[k] ?? t('common.unset.status'),
         to: draft[k] ?? t('common.removed.status'),
         mode: 'recreate',
       });
@@ -173,11 +173,21 @@ function envMap(env: string[]): Record<string, string> {
   return out;
 }
 
-const portText = (p: DockerRecreateSpec['ports'][number]): string =>
-  `${p.hostIp ? `${p.hostIp}:` : ''}${p.hostPort || t('docker.endpoint.automatic.option')} -> ${p.containerPort}/${p.proto}`;
+const portText = (p: DockerRecreateSpec['ports'][number]): string => {
+  const port = p.hostPort || t('docker.endpoint.automatic.option');
+  return t('docker.edit.portMapping.label', {
+    host: p.hostIp ? `${p.hostIp}:${port}` : port,
+    container: `${p.containerPort}/${p.proto}`,
+  });
+};
 
 const mountText = (m: DockerRecreateSpec['mounts'][number]): string =>
-  `${m.source} -> ${m.target}${m.readOnly ? ` (${t('docker.edit.readOnlyShort.example')})` : ''}`;
+  m.readOnly
+    ? t('common.withDetail.label', {
+        first: `${m.source} -> ${m.target}`,
+        second: t('docker.edit.readOnlyShort.example'),
+      })
+    : `${m.source} -> ${m.target}`;
 
 function setChanges(field: string, label: string, base: string[], draft: string[]): Unsectioned[] {
   const out: Unsectioned[] = [];
@@ -351,7 +361,7 @@ type Errors = Record<string, string>;
 function resourceErrors(r: DockerResources, e: Errors): void {
   if (r.memory !== 0 && r.memory < MIN_MEMORY)
     e['resources.memory'] = t('docker.edit.error.memoryMin.error', {
-      min: `6 ${t('docker.unit.mib.option')}`,
+      min: MIN_MEMORY / MIB,
     });
   if (r.memory !== 0 && r.memoryReservation > r.memory) {
     e['resources.memoryReservation'] = t('docker.edit.error.reservationMax.error');

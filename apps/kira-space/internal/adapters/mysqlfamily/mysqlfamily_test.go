@@ -662,6 +662,7 @@ func runFamilySuite(t *testing.T, kind string, cfg model.ResolvedConnectionConfi
 		testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, true, nil)),
 		testsupport.ReadStatementTimeout(familyReadTimeoutCase(kind, cfg.ID, false, nil)),
 		familyExplainPlan(cfg.ID),
+		familyBoundParams(cfg.ID, true),
 	)
 	testsupport.RunScenarios(t, connectedAdapter(t, kind, cfg), cfg, timeoutCases...)
 
@@ -1358,4 +1359,52 @@ func familyLaneStatementTimeout(kind, connID string) testsupport.Scenario {
 		Slow: "SELECT 1 FROM (SELECT 1 UNION ALL SELECT 2) d WHERE SLEEP(5)", WantCode: familyCode(kind),
 		Baseline: baseline, BaselineWant: "0", Lifted: "SELECT SLEEP(2)",
 	})
+}
+
+// P680: bound parameters on the console path (prepared statements, binary protocol). The probes need no
+// table beyond the seeded regions. The typed-cells probe pins that binary-protocol rows render as the
+// text protocol's do.
+func familyBoundParams(connID string, scratch bool) testsupport.Scenario {
+	b := testsupport.Bind
+	typed := "SELECT CAST(1.5 AS DOUBLE), CAST(12.50 AS DECIMAL(10,2)), CAST('2024-01-02 03:04:05.5' AS DATETIME(1)), b'101', CAST(1.1 AS FLOAT), TIME'12:30:15', DATE'2024-01-02', JSON_OBJECT('a', 1), %s"
+	c := testsupport.BoundParamsCase{
+		Path: nodePath(connID, seg("database", "kira_test")),
+		Probes: []testsupport.BoundProbe{
+			{Name: "int", SQL: "SELECT name FROM regions WHERE id = ?", Params: []model.BindParam{b("{{kept.id}}", "", "2")}, Want: []string{"APAC"}},
+			{Name: "text with quote", SQL: "SELECT CONCAT(?, '')", Params: []model.BindParam{b("{{kept.s}}", "", `"it's -- ; x"`)}, Want: []string{"it's -- ; x"}},
+			{Name: "big integer", SQL: "SELECT CAST(? AS SIGNED) + 0", Params: []model.BindParam{b("{{kept.n}}", "", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
+			{Name: "integer past int64 as decimal", SQL: "SELECT CAST(? AS DECIMAL(30,0))", Params: []model.BindParam{b("{{kept.n}}", "", "18446744073709551616")}, Want: []string{"18446744073709551616"}},
+			{Name: "exact decimal", SQL: "SELECT CAST(? AS DECIMAL(10,2))", Params: []model.BindParam{b("{{kept.d}}", "", "12.50")}, Want: []string{"12.50"}},
+			{Name: "bool", SQL: "SELECT ?", Params: []model.BindParam{b("{{kept.b}}", "", "true")}, Want: []string{"1"}},
+			{Name: "null", SQL: "SELECT ? <=> NULL", Params: []model.BindParam{b("{{kept.z}}", "", "null")}, Want: []string{"1"}},
+			{Name: "int list", SQL: "SELECT name FROM regions WHERE id IN (SELECT j.v FROM JSON_TABLE(?, '$[*]' COLUMNS (v BIGINT PATH '$')) j) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "", "[1,2]")}, Want: []string{"EMEA", "APAC"}},
+			{Name: "text list on the lane", Lane: true, SQL: "SELECT id FROM regions WHERE JSON_CONTAINS(?, JSON_QUOTE(name)) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.names}}", "", `["APAC","EMEA"]`)}, Want: []string{"1", "2"}},
+			{Name: "unicode text", SQL: "SELECT CONCAT(?, '')", Params: []model.BindParam{b("{{kept.s}}", "", `"Zoë 東京 🐱"`)}, Want: []string{"Zoë 東京 🐱"}},
+			{Name: "list with quote and backslash", SQL: "SELECT j.v FROM JSON_TABLE(?, '$[*]' COLUMNS (v VARCHAR(20) PATH '$')) j",
+				Params: []model.BindParam{b("{{kept.l}}", "", `["a\"b","c\\d","it's"]`)}, Want: []string{`a"b`, `c\d`, "it's"}},
+			{Name: "empty list", SQL: "SELECT count(*) FROM regions WHERE id IN (SELECT j.v FROM JSON_TABLE(?, '$[*]' COLUMNS (v BIGINT PATH '$')) j)",
+				Params: []model.BindParam{b("{{kept.ids}}", "", "[]")}, Want: []string{"0"}},
+			{Name: "1000 ids", SQL: "SELECT name FROM regions WHERE id IN (SELECT j.v FROM JSON_TABLE(?, '$[*]' COLUMNS (v BIGINT PATH '$')) j) ORDER BY id",
+				Params: []model.BindParam{b("{{kept.ids}}", "", testsupport.IDList(1000))}, Want: []string{"EMEA", "APAC"}},
+			{Name: "two values in order", SQL: "SELECT CONCAT(?, '-', ?)", Params: []model.BindParam{b("{{kept.a}}", "", `"a"`), b("{{kept.b}}", "", `"b"`)}, Want: []string{"a-b"}},
+			{Name: "a value is not spliced into the text", SQL: "SELECT count(*) FROM regions WHERE name = ?",
+				Params: []model.BindParam{b("{{kept.s}}", "", `"EMEA' OR '1'='1"`)}, Want: []string{"0"}},
+			{Name: "binary-protocol cells equal the text protocol's", SQL: fmt.Sprintf(typed, "?"), SameAs: fmt.Sprintf(typed, "5"),
+				Params: []model.BindParam{b("{{kept.p}}", "", "5")}},
+			{Name: "too many values", SQL: "SELECT 1", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "expected 0 arguments"},
+			{Name: "a second statement", SQL: "SELECT ?; SELECT 2", Params: []model.BindParam{b("{{kept.a}}", "", "1")}, WantErr: "error in your SQL syntax"},
+		},
+	}
+	if scratch {
+		c.Setup = []string{"CREATE TABLE p680_bound (id BIGINT PRIMARY KEY, label VARCHAR(255), qty DECIMAL(10,2))"}
+		c.Teardown = []string{"DROP TABLE p680_bound"}
+		c.Writes = []testsupport.BoundProbe{
+			{Name: "insert", SQL: "INSERT INTO p680_bound (id, label, qty) VALUES (?, ?, ?)",
+				Params: []model.BindParam{b("{{kept.id}}", "", "1152921504606846976"), b("{{kept.l}}", "", `"x'; DROP TABLE p680_bound; --"`), b("{{kept.q}}", "", "12.50")}},
+		}
+		c.Verify = testsupport.BoundProbe{Name: "read back", SQL: "SELECT id, label, qty FROM p680_bound", Want: []string{"1152921504606846976|x'; DROP TABLE p680_bound; --|12.50"}}
+	}
+	return testsupport.BoundParams(c)
 }

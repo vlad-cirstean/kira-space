@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { httpMethodToken, statusClass, statusHint } from '@shared/domain/http';
+import { httpMethodToken } from '@shared/domain/http';
 import { HISTORY_PER_SCOPE_LIMIT, type ResponseHistoryEntry } from '@shared/domain/responseHistory';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -19,11 +18,13 @@ import { methodTextClass } from '@theme/methodColor';
 import { formatBytes, formatDuration, formatRelative } from '@workbench/behaviour/format';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
 import { matchesQuery } from '@workbench/behaviour/match';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
+import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { useHttpHistoryList, useHttpHistoryStore, useHttpHistoryViewing } from './history';
 
@@ -50,7 +51,9 @@ const incognito = computed(() => tabIncognitoStore.isIncognito(props.tab.id));
 const emptyDescription = computed(() => {
   if (incognito.value) return t('studio.http.history.incognito.description');
   const hint = t('studio.http.history.recordHint.description');
-  return isScratch.value ? `${hint} ${t('studio.http.history.scratchHint.description')}` : hint;
+  return isScratch.value
+    ? joinSentences(hint, t('studio.http.history.scratchHint.description'))
+    : hint;
 });
 // The list is ≤ HISTORY_PER_SCOPE_LIMIT by construction (Record's own trim), so "the list is full"
 // is exactly this predicate — not a stored eviction count (List can never say more than "the list
@@ -127,10 +130,10 @@ function onCompare(): void {
 async function onClear(): Promise<void> {
   const ok = await confirmDialogStore.confirm({
     title: t('studio.http.history.clearConfirm.title'),
-    message: [
+    message: joinSentences(
       t('studio.http.history.clearConfirm.body'),
       t('common.confirm.irreversible.body'),
-    ].join(' '),
+    ),
     confirmLabel: t('common.action.clear.label'),
     tone: 'danger',
   });
@@ -224,20 +227,15 @@ async function onClear(): Promise<void> {
         />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <div class="flex items-center gap-1">
-            <TextTooltip :text="entry.sentAt">
-              <span :class="[rowMeta, 'min-w-16']">{{ formatRelative(entry.sentAt) }}</span>
-            </TextTooltip>
+            <span :class="[rowMeta, 'min-w-16']"><RelativeTime :at="entry.sentAt" /></span>
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
             }}</Badge>
-            <TextTooltip :text="statusHint(entry.status)">
-              <Badge
-                data
-                :variant="statusClass(entry.status)"
-                data-testid="http-history-status-chip"
-                >{{ entry.status }} {{ entry.statusText }}</Badge
-              >
-            </TextTooltip>
+            <HttpStatusBadge
+              :status="entry.status"
+              :status-text="entry.statusText"
+              data-testid="http-history-status-chip"
+            />
             <span :class="rowMeta">{{ formatDuration(entry.elapsedMs) }}</span>
             <span :class="rowMeta">{{ formatBytes(entry.bodyBytes) }}</span>
             <span v-if="entry.environment" :class="rowMeta">{{ entry.environment }}</span>

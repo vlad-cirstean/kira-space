@@ -1,4 +1,5 @@
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { useLaunchOpener } from '../dialog/useLaunchOpener';
@@ -83,7 +84,7 @@ export function useSessionMenu(): {
           type: 'item',
           id: 'ade-session-resume-menu',
           label: t('common.action.resume.label'),
-          icon: 'debug-continue',
+          icon: ICON.resume,
           disabled: takeOver.pending.has(id),
           run: () => takeOver.resumeArchived(taskId, id),
         });
@@ -93,7 +94,7 @@ export function useSessionMenu(): {
         type: 'item',
         id: 'ade-session-takeover-menu',
         label: t('common.action.takeOver.label'),
-        icon: 'debug-continue',
+        icon: ICON.takeOver,
         disabled: takeOver.pending.has(id),
         run: () => takeOver.request(id),
       });

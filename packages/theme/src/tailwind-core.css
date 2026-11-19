@@ -46,6 +46,7 @@
      utilities ahead of their scoped-block conversions (B34+). 7 and 5 recurring uses. */
   --color-search-match: var(--kira-search-match);
   --color-search-match-current: var(--kira-search-match-current);
+  --color-kept-mark: var(--kira-kept-mark);
   /* P110 B6: "this {{reference}} will produce a value" -- 4 recurring uses. */
   --color-var-resolved: var(--kira-var-resolved);
   /* P110 B6: the CodeMirror/Monaco syntax palette, shared across MonacoHost, AutocompleteField and

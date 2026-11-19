@@ -116,7 +116,7 @@ export function registerFormScenarios(env: Env, options: Options): void {
     await dialog(page).locator('[data-testid="run-file-tab-yaml"]').click();
     await replaceCodeEditorText(page, editor(page), form('bad').text);
     await dialog(page).locator('[data-testid="run-file-tab-script"]').click();
-    await expect(dialog(page).locator('[data-testid="run-form-problem"]')).toContainText(
+    await expect(dialog(page).locator('[data-testid="run-file-problem"]')).toContainText(
       `Line ${form('bad').problem?.line}`,
     );
     await expect(dialog(page).locator('[data-testid="run-file-save"]')).toBeDisabled();

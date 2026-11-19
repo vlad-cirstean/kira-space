@@ -56,7 +56,7 @@ const device = {
   lastSeenAt: 1_700_000_100_000,
   lastIp: '192.168.1.40',
   revokedAt: null,
-  expiresAt: Date.now() + 5 * 24 * 3_600_000,
+  expiresAt: Date.now() + 5 * 24 * 3_600_000 + 3_600_000,
   canWrite: true,
   canAgentInput: false,
 };
@@ -284,6 +284,9 @@ test('contract: the pairing prompt shows the code and origin; approve and deny c
   await expect(dialog).toBeVisible();
   await expect(window.locator('[data-testid="mobile-pairing-code"]')).toHaveText('4821');
   await expect(window.locator('[data-testid="mobile-pairing-origin"]')).toContainText('127.0.0.1');
+  await expect(window.locator('[data-testid="mobile-pairing-expires"]')).toHaveText(
+    /^Expires in [01]:\d\d$/,
+  );
 
   await window.locator('[data-testid="mobile-pairing-approve"]').click();
   await expect

@@ -4,7 +4,7 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
-import { paneFrame, windowBody } from '@theme/lib/frames';
+import { paneFrame, windowBody, windowTabStrip } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import { useElementSize } from '@vueuse/core';
 import { usePersistedState } from '@workbench/behaviour/persisted';
@@ -131,10 +131,7 @@ const left = useLiveSize(
         :aria-label="t('space.ade.review.window.diffs.aria')"
         data-testid="ade-review-centre"
       >
-        <div
-          class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
-          data-testid="ade-review-tabs"
-        >
+        <div :class="windowTabStrip" data-testid="ade-review-tabs">
           <TabStrip />
         </div>
         <div class="min-h-0 flex-1">

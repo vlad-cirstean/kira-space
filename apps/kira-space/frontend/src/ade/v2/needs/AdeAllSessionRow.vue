@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
-import { useRelativeTime } from '@workbench/behaviour/format';
 import Identifier from '@workbench/components/Identifier.vue';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { activityLabel, shortId } from '../activity';
@@ -16,7 +16,6 @@ const props = defineProps<{ view: SessionView; archived: boolean }>();
 
 const takeOver = useAdeTakeOverStore();
 const { openSession } = useNeedsAction();
-const ago = useRelativeTime(() => props.view.session.lastActiveAt);
 
 const running = computed(() => props.view.session.state === 'running');
 const input = computed(() => running.value && props.view.kind === 'input');
@@ -62,7 +61,9 @@ function open(): void {
         state
       }}</span
     >
-    <span class="w-19 shrink-0 text-kira-md text-muted-foreground">{{ ago }}</span>
+    <span class="w-19 shrink-0 text-kira-md text-muted-foreground"
+      ><RelativeTime :at="view.session.lastActiveAt" /></span
+    >
     <Button
       v-if="!archived"
       size="kira"

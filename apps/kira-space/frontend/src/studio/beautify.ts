@@ -133,6 +133,17 @@ export function beautifyJson(text: string, mode: BeautifyMode): BeautifyResult {
   return beautifyWith(text, mode, tryParseJson, 'json', jsonKeyText);
 }
 
+/** JSON text re-indented with its values byte-identical, or null when it is not JSON. */
+export function indentJson(text: string): string | null {
+  const r = beautifyJson(text, 'indented');
+  return r.ok ? r.text : null;
+}
+
+/** `indentJson`, or the text itself when it is not JSON. */
+export function prettyJson(text: string): string {
+  return indentJson(text) ?? text;
+}
+
 // ---------------------------------------------------------------------------------------------
 // XML / HTML — a lossless scanner. Attributes are copied verbatim inside their tag, never
 // re-quoted/reordered/entity-normalised: only tag boundaries are found, never attribute contents.

@@ -1,7 +1,6 @@
 import { encodeKafkaStreamFilter, encodeSqsStreamFilter } from '@shared/domain/streamFilter';
 import type { PageSize } from '@shared/domain/tabs';
 import type { PageCursor } from '@shared/protocol/dataOps';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { StreamTabRecord } from '../../../state/tabDomain';
@@ -12,12 +11,14 @@ import { useConnectionsStore } from '../../state/connections';
 import { useStaleDataStore } from '../../state/staleData';
 import { registerTabReload } from '../../state/viewCommands';
 import { runPagedLoad } from '../shared/page/load';
+import { firstPageCursor } from '../shared/page/navigation';
 import {
-  beginOp,
+  applyPagePosition,
+  clearCount,
   createRuntimeStore,
   defaultPagedRuntime,
   type PagedViewRuntime,
-  runPagedCount,
+  runTabCount,
   stopOp,
 } from '../shared/viewOp';
 import { drop, setPage } from './page';
@@ -111,20 +112,11 @@ export const useStreamViewStore = defineStore('streamView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
     createRuntimeStore<StreamViewRuntime>(defaultRuntime);
 
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-  });
-
-  // Adopts shared/page/load.ts's runPagedLoad frame, which documents/grid/keyvalue's own load()
-  // already use — this view's supersede/tab-closed/kind-check/applyLoadFailure tail was the exact
-  // same shape load.ts's own note flagged as a candidate, never migrated.
   async function load(tabId: string, cursor?: PageCursor): Promise<void> {
     const tab = useTabsStore().findStreamTab(tabId);
     if (!tab?.connectionId) return;
     const rt = ensureRuntime(tabId);
-    const effectiveCursor: PageCursor = cursor ?? { mode: 'offset', offset: 0 };
-    const opId = beginOp(rt);
+    const effectiveCursor: PageCursor = cursor ?? firstPageCursor();
     rt.polled = true;
 
     const filter = readFilter(tab);
@@ -132,9 +124,9 @@ export const useStreamViewStore = defineStore('streamView', () => {
 
     await runPagedLoad({
       rt,
-      opId,
-      stillMounted: () => Boolean(runtime[tabId]),
-      read: () =>
+      runtime,
+      id: tabId,
+      read: (opId) =>
         data.read({
           opId,
           tabId,
@@ -147,16 +139,11 @@ export const useStreamViewStore = defineStore('streamView', () => {
           cursor: effectiveCursor,
         }),
       expectKind: 'stream',
-      id: tabId,
       tabNoun: 'stream tab',
       apply: (page) => {
         setPage(tabId, page);
         useStaleDataStore().stamp(tabId, connectionId);
-        rt.status = 'idle';
-        rt.opId = null;
-        rt.rowCount = page.rowCount;
-        rt.hasMore = page.position.hasMore;
-        rt.nextToken = page.position.nextToken;
+        applyPagePosition(rt, page);
         rt.visibilityTimeoutSeconds = page.visibilityTimeoutSeconds;
         rt.selectedRow = null; // a fresh page invalidates whatever row index used to be selected
       },
@@ -198,15 +185,12 @@ export const useStreamViewStore = defineStore('streamView', () => {
     // partition/offset/timestamp filter. Sending the same encoded filter here scopes the count
     // identically (kafka/count.go's countTopic now shares load's own freshWindows, so "N total"
     // and the browse agree on what they are counting).
-    await runPagedCount(rt, (refresh) =>
-      data.count({
-        tabId,
-        connectionId,
-        path: tab.path,
-        filter: currentStreamFilter(tab),
-        refresh,
-      }),
-    );
+    await runTabCount(rt, {
+      tabId,
+      connectionId,
+      path: tab.path,
+      filter: currentStreamFilter(tab),
+    });
   }
 
   function stop(tabId: string): void {
@@ -281,7 +265,7 @@ export const useStreamViewStore = defineStore('streamView', () => {
     const caps = tab.connectionId ? useConnectionsStore().states[tab.connectionId]?.caps : null;
     if (caps?.pagination === 'batch') return;
     if (!rt.polled) return; // mirrors onMounted's own guard — never auto-load before the first view
-    await load(tabId, { mode: 'offset', offset: 0 });
+    await load(tabId, firstPageCursor());
   }
 
   // Kafka-only (StreamView.vue only renders the filter row, and thus only ever calls
@@ -301,19 +285,16 @@ export const useStreamViewStore = defineStore('streamView', () => {
     // ("an answer to the previous WHERE is an answer to a different question, not a drifted answer
     // to this one"). Cleared, not staled, so the toolbar returns to "no total" rather than showing a
     // wrong one under a `stale` label that would still be visible until the next Σ click.
-    rt.count = null;
-    rt.countOpId = null;
-    // P108 Part 11 F15: grid/state.ts's own setFilter (and documents/state.ts's setSearch) clear
-    // this alongside count/countOpId — left out here, a count failure from before this filter
-    // change kept showing in the Σ tooltip under a total this filter never produced.
-    rt.countError = null;
+    // The count error clears with it, or a failure from before this filter change would keep
+    // showing in the Σ tooltip under a total this filter never produced.
+    clearCount(rt);
     tabsStore.patchStreamTabState(tabId, {
       offsetFilter: filter.offset,
       partitions: filter.partitions,
       timestampFilter: filter.timestamp,
     });
     useStreamFilterHistoryStore().recordStreamFilterUse(tab.connectionId, tab.path, filter);
-    await load(tabId, { mode: 'offset', offset: 0 });
+    await load(tabId, firstPageCursor());
   }
 
   // The row last clicked — StreamView.vue pairs this with cellSelection.ts's
@@ -326,8 +307,7 @@ export const useStreamViewStore = defineStore('streamView', () => {
 
   /** Shown page is stale: connection gone, or read under another connection session. */
   function isStale(tabId: string): boolean {
-    const connectionId = useTabsStore().findStreamTab(tabId)?.connectionId;
-    return connectionId ? useStaleDataStore().isStale(tabId, tabId, connectionId) : false;
+    return useStaleDataStore().isTabStale(tabId, useTabsStore().findStreamTab(tabId)?.connectionId);
   }
 
   function setFilterDraft(

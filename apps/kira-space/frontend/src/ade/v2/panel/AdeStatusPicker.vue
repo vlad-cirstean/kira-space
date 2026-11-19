@@ -11,8 +11,8 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref } from 'vue';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
+import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import { taskPatch } from '../board/panelFacts';
 import type { CardModel } from '../plan/usePlanModel';
@@ -23,7 +23,8 @@ import { useUpdateTask } from '../queries';
 const props = defineProps<{ card: CardModel }>();
 const { model } = usePlanModel();
 const update = useUpdateTask();
-const error = ref('');
+const updating = useMutationAction(update);
+const error = updating.error;
 
 const statuses = computed(() => model.value?.board.statuses ?? []);
 const at = computed(() => statuses.value.findIndex((s) => s.id === props.card.status.id));
@@ -33,12 +34,7 @@ const next = computed(() =>
 );
 
 async function move(statusId: string): Promise<void> {
-  error.value = '';
-  try {
-    await update.mutateAsync({ taskId: props.card.task.id, patch: taskPatch({ statusId }) });
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await updating.run({ taskId: props.card.task.id, patch: taskPatch({ statusId }) });
 }
 </script>
 

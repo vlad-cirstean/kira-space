@@ -11,7 +11,7 @@ import {
 } from '@theme/components/ui/collapsible';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { formatRelative } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { ref } from 'vue';
 import CommentComposer from './CommentComposer.vue';
 import MarkdownBody from './MarkdownBody.vue';
@@ -106,7 +106,7 @@ function reviewLabel(state: ReviewerState | undefined): string {
             <span class="font-medium text-fg">{{
               comment.author.name || comment.author.login
             }}</span>
-            · {{ formatRelative(comment.createdAt) }}
+            · <RelativeTime :at="comment.createdAt" />
           </div>
           <MarkdownBody :source="comment.body" />
         </div>

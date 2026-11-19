@@ -8,10 +8,10 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import { initials } from './issueFormat';
 import { useOpenHostView } from './queries';
-import RelativeTime from './RelativeTime.vue';
 import type { IssueDetail } from './wire';
 
 const props = defineProps<{ detail: IssueDetail; stacked: boolean }>();

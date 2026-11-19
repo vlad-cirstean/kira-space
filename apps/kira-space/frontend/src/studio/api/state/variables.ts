@@ -7,6 +7,7 @@ import type {
 } from '@shared/domain/variables';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import { queryClient } from '@workbench/state/queryClient';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
@@ -43,21 +44,14 @@ import { createRevealExpiry } from './revealExpiry';
 // are genuinely independent: nothing here reaches into the variable-set machinery, and nothing
 // there reaches back into environment CRUD.
 
-interface VariablesState {
-  /** An environment CRUD call's own failure message — every mutation below used to let
-   *  this throw uncaught (a fire-and-forget `void` call from EnvironmentsView.vue), so a failed
-   *  create/rename/delete/duplicate/reorder/activate left the row exactly as it was with nothing
-   *  telling the user why. Cleared on the next successful mutation. */
-  error: string | null;
-}
-
 export const useVariablesStore = defineStore('variables', () => {
-  const state = reactive<VariablesState>({
-    error: null,
-  });
+  // An environment CRUD call's own failure message: a failed create/rename/delete/duplicate/
+  // reorder/activate leaves the row as it was, so this tells the user why. Cleared on the next
+  // successful mutation. queryClient is explicit: unit tests build this store without an app.
+  const surface = useTaskAction({ queryClient });
 
   function dismissError(): void {
-    state.error = null;
+    surface.reset();
   }
 
   // The environments list is now TanStack Query's cache, not a store field — this observer
@@ -107,14 +101,7 @@ export const useVariablesStore = defineStore('variables', () => {
 
   /** id: '' selects "No environment" (D3). */
   async function setActiveEnvironment(id: string): Promise<boolean> {
-    try {
-      await setActiveEnvironmentMutation.mutateAsync(id);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+    return surface.run(() => setActiveEnvironmentMutation.mutateAsync(id));
   }
 
   // ---- The per-tab environment override ----
@@ -182,14 +169,11 @@ export const useVariablesStore = defineStore('variables', () => {
     description = '',
     color: PaletteColor = 'none',
   ): Promise<ApiEnvironment | undefined> {
-    try {
-      const env = await createEnvironmentMutation.mutateAsync({ name, description, color });
-      state.error = null;
-      return env;
-    } catch (err) {
-      state.error = errorText(err);
-      return undefined;
-    }
+    let env: ApiEnvironment | undefined;
+    await surface.run(async () => {
+      env = await createEnvironmentMutation.mutateAsync({ name, description, color });
+    });
+    return env;
   }
 
   const reorderEnvironmentsMutation = useMutation(
@@ -203,14 +187,7 @@ export const useVariablesStore = defineStore('variables', () => {
 
   /** Applies a whole-list environment order. Returns whether it saved. */
   async function reorderEnvironments(ids: readonly string[]): Promise<boolean> {
-    try {
-      await reorderEnvironmentsMutation.mutateAsync([...ids]);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+    return surface.run(() => reorderEnvironmentsMutation.mutateAsync([...ids]));
   }
 
   const deleteEnvironmentMutation = useMutation(
@@ -225,13 +202,10 @@ export const useVariablesStore = defineStore('variables', () => {
   /** Removes the environment's file. Deleting the active one leaves none active, and its open
    *  variable-set tab closes: it has no state worth keeping once its owner is gone. */
   async function deleteEnvironment(id: string): Promise<void> {
-    try {
+    await surface.run(async () => {
       await deleteEnvironmentMutation.mutateAsync(id);
       closeVariableSetTabsForOwner('environment', id);
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   const duplicateEnvironmentMutation = useMutation(
@@ -245,14 +219,11 @@ export const useVariablesStore = defineStore('variables', () => {
 
   /** Copies the environment file under a free name; the copy is never active. */
   async function duplicateEnvironment(id: string): Promise<ApiEnvironment | undefined> {
-    try {
-      const env = await duplicateEnvironmentMutation.mutateAsync(id);
-      state.error = null;
-      return env;
-    } catch (err) {
-      state.error = errorText(err);
-      return undefined;
-    }
+    let env: ApiEnvironment | undefined;
+    await surface.run(async () => {
+      env = await duplicateEnvironmentMutation.mutateAsync(id);
+    });
+    return env;
   }
 
   // ---- the environments surface ----
@@ -266,7 +237,7 @@ export const useVariablesStore = defineStore('variables', () => {
   }
 
   return {
-    ...toRefs(state),
+    error: surface.error,
     environments,
     loaded,
     activeEnvironment,

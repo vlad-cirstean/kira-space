@@ -1,0 +1,92 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.exemption:<id:1>",
+      "kind": "db.exemption",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "kept": [
+          {
+            "bytes": 1,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_n",
+            "items": 0,
+            "name": "n",
+            "preview": "1",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 34,
+                "index": 0,
+                "part": "",
+                "to": 35
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "number"
+          }
+        ],
+        "limits": [
+          {
+            "limit": "expensive_query",
+            "max": 1000,
+            "measured": 5000,
+            "unit": "rows"
+          }
+        ],
+        "mode": "read",
+        "params": [
+          "n"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reason": "needs the full run",
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "select body from notes where id = ? /* big */"
+      },
+      "reason": "exemption",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ]
+}

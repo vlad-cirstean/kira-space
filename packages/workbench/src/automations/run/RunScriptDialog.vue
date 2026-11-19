@@ -24,7 +24,7 @@ import { TIMING } from '@workbench/behaviour/timing';
 import QueryState from '@workbench/components/QueryState.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, useId } from 'vue';
-import { errorText } from '../../bridge/codedError';
+import { useMutationAction } from '../../behaviour/asyncAction';
 import { useAutomationsModule } from '../module';
 import { useScriptTabs } from '../scriptTabs';
 import SmartBadge from '../smart/SmartBadge.vue';
@@ -85,7 +85,6 @@ const settled = computed(
   () => JSON.stringify(debounced.value) === JSON.stringify(args.value) && !preview.isFetching.value,
 );
 
-const startError = ref<string | null>(null);
 const start = useMutation({
   mutationKey: ['scriptRuns', 'start'],
   mutationFn: async () => {
@@ -122,11 +121,9 @@ const start = useMutation({
     }
     emit('close');
   },
-  onError: (err) => {
-    startError.value = errorText(err);
-    void preview.refetch();
-  },
 });
+const starting = useMutationAction(start);
+const startError = starting.error;
 
 const canRun = computed(
   () =>
@@ -134,7 +131,7 @@ const canRun = computed(
     settled.value &&
     pv.value.missing.length === 0 &&
     pv.value.blocker === '' &&
-    !start.isPending.value,
+    !starting.pending.value,
 );
 
 const promptParts = computed<TextPart[]>(() =>
@@ -145,10 +142,9 @@ function editPrompt(): void {
   oneOff.value = pv.value?.body ?? '';
 }
 
-function run(): void {
+async function run(): Promise<void> {
   if (!canRun.value) return;
-  startError.value = null;
-  start.mutate();
+  if (!(await starting.run())) void preview.refetch();
 }
 
 const onSubmitKey = shortcutKeydown(['form.submit'], run);
@@ -161,7 +157,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
         <DialogTitle>{{
           script
             ? t('automations.dialog.run.title', { name: script.name })
-            : t('automations.dialog.run.untitled.title')
+            : t('common.run.untitled.title')
         }}</DialogTitle>
         <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
@@ -220,7 +216,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             </template>
           </Field>
           <Field v-if="isSmart && pv">
-            <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+            <FieldLabel>{{ t('common.run.addedByKira.label') }}</FieldLabel>
             <CodeBlock class="text-muted-foreground" data-testid="run-suffix">{{
               pv.suffix
             }}</CodeBlock>
@@ -234,13 +230,13 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             :ade="pv.ade"
           />
 
-          <QueryState :query="preview" variant="inline" :is-empty="() => false">
+          <QueryState
+            :query="preview"
+            variant="inline"
+            :is-empty="() => false"
+            error-testid="run-preview-error"
+          >
             <template #loading />
-            <template #error="{ message }">
-              <Alert variant="error" data-testid="run-preview-error">
-                <AlertDescription>{{ message }}</AlertDescription>
-              </Alert>
-            </template>
             <template #default="{ data }">
               <RunPreview :preview="data" />
             </template>

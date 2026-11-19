@@ -9,9 +9,9 @@ import { Label } from '@theme/components/ui/label';
 import { Textarea } from '@theme/components/ui/textarea';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { finishVars, previewTextParts } from '../board/runMessage';
 import { overriddenKeys } from '../board/stepLibrary';
 import { hasContent, kindLabel, STEP_KINDS, withKind } from '../board/workflowForm';
@@ -46,7 +46,6 @@ const confirm = useConfirmDialogStore();
 const wfUi = useAdeWorkflowsUiStore();
 const workflows = useWorkflows();
 const newStep = useNewStep();
-const libError = ref('');
 const patch = (p: Partial<WorkflowStep>): void => draft.patchStep(props.step.id, p);
 
 const libEntry = computed(() =>
@@ -67,18 +66,17 @@ async function editInSteps(): Promise<void> {
   const file = libEntry.value?.fileName;
   if (file && (await wfUi.leave())) wfUi.openStep(file);
 }
+const libSave = useAsyncAction(async () => {
+  const entry = await newStep.mutateAsync({
+    name: props.step.name,
+    kind: props.step.kind,
+    from: props.step,
+  });
+  patch({ use: entry.step?.id ?? '' });
+});
+const libError = libSave.error;
 async function saveToLibrary(): Promise<void> {
-  libError.value = '';
-  try {
-    const entry = await newStep.mutateAsync({
-      name: props.step.name,
-      kind: props.step.kind,
-      from: props.step,
-    });
-    patch({ use: entry.step?.id ?? '' });
-  } catch (err) {
-    libError.value = errorText(err);
-  }
+  await libSave.run();
 }
 
 const kindItems = computed(() =>

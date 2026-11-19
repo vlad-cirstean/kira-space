@@ -1,0 +1,727 @@
+{
+  "ApprovalsService.List#all": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 19,
+                "index": 0,
+                "part": "",
+                "to": 31
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:3>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:4>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 52,
+                "index": 0,
+                "part": "",
+                "to": 53
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "ids"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "insert into notes (body) select 'm2' from json_each(?)"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:5>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 89,
+        "connectionId": "<id:4>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 239,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:6>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 35,
+                "index": 0,
+                "part": "",
+                "to": 50
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 1,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "m",
+            "value": "m4"
+          },
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:7>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:8>",
+        "detected": "read",
+        "enforcement": "session",
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "d3794d7a5bdd4666329275622bb5a4f2391f778c9508a9865356aaa0102417a3",
+          "mayKeep": [],
+          "source": "return \"m5\";"
+        },
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "prompt db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#five": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 19,
+                "index": 0,
+                "part": "",
+                "to": 31
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:3>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:4>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 52,
+                "index": 0,
+                "part": "",
+                "to": 53
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "ids"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "insert into notes (body) select 'm2' from json_each(?)"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:5>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 89,
+        "connectionId": "<id:4>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 217,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:6>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 35,
+                "index": 0,
+                "part": "",
+                "to": 50
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 1,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "m",
+            "value": "m4"
+          },
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:7>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:8>",
+        "detected": "read",
+        "enforcement": "session",
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "d3794d7a5bdd4666329275622bb5a4f2391f778c9508a9865356aaa0102417a3",
+          "mayKeep": [],
+          "source": "return \"m5\";"
+        },
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "prompt db",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#all": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"m2\"],[\"4\",\"m2\"]],\"rowCount\":4,\"returned\":4,\"truncatedCells\":0}",
+    "requestId": "<id:5>",
+    "script": {
+      "hash": "e89a7e5d737b52bcacfca97c4e59c1c7cf7da6b4a1c2313c2fe0144e12b2776f",
+      "source": "return \"m3\";"
+    },
+    "text": "{\"kind\":\"script\",\"output\":\"m3\",\"input\":{\"kind\":\"tabular\",\"rowCount\":4,\"truncated\":false}}"
+  },
+  "DbMcpService.PendingResponse#five": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:5>",
+    "script": {
+      "hash": "e89a7e5d737b52bcacfca97c4e59c1c7cf7da6b4a1c2313c2fe0144e12b2776f",
+      "source": "return \"m3\";"
+    },
+    "text": "{\"kind\":\"script\",\"output\":\"m3\",\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "args:ApprovalsService.Answer#all": {
+    "approve": false,
+    "ids": [
+      "api.request:<id:1>",
+      "db.query:<id:3>",
+      "db.response:<id:5>",
+      "api.request:<id:6>",
+      "db.query:<id:7>"
+    ],
+    "options": null
+  }
+}

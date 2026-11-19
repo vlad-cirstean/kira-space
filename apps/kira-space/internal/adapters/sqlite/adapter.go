@@ -465,7 +465,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 	return runOnConn(ctx, a, op.OpID, func(driverCtx context.Context, conn *sql.Conn) ([]page.Page, error) {
 		// Reported on failure too: an error does not always roll the transaction back.
 		defer reportTransaction(driverCtx, conn, op)
-		return execute(driverCtx, conn, op, req.Statements, adapters.ConsoleCapFor(req))
+		return execute(driverCtx, conn, op, req.Statements, req.Params, adapters.ConsoleCapFor(req))
 	})
 }
 

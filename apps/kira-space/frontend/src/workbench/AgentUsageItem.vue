@@ -22,7 +22,7 @@ const windows = computed(() => {
   if (d?.state !== 'ok') return [];
   return [
     {
-      label: t('space.settings.agentUsage.session.label'),
+      label: t('common.field.session.label'),
       long: t('space.settings.agentUsage.sessionWindow.label'),
       window: d.fiveHour,
     },

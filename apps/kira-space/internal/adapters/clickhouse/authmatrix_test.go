@@ -67,6 +67,7 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 				testsupport.ReadFirstPage(testsupport.NodePath(f.Config.ID, testsupport.Seg("database", "system"), testsupport.Seg("table", "databases"))),
 				chAnalyticTypes(f.Config),
 				chConsoleFormat(f.Config),
+				chBoundParams(f.Config.ID, true),
 			},
 		},
 		{
@@ -125,6 +126,7 @@ func TestClickHouse_AuthMatrix(t *testing.T) {
 					Lifted: "SELECT sleepEachRow(1) FROM numbers(2) SETTINGS max_block_size = 1",
 				}),
 				chExplainPlan(f),
+				chBoundParams(f.Config.ID, false),
 			},
 		},
 		{

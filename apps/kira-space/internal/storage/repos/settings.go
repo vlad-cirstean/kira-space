@@ -82,7 +82,10 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	appsettings.Leaf(stored, "dbMcp.previewResponses", &result.DbMcp.PreviewResponses)
 	appsettings.Leaf(stored, "dbMcp.focusOnApproval", &result.DbMcp.FocusOnApproval)
 	appsettings.Leaf(stored, "dbMcp.apiRequests", &result.DbMcp.APIRequests)
+	appsettings.Leaf(stored, "dbMcp.apiScripts", &result.DbMcp.APIScripts)
+	appsettings.Leaf(stored, "dbMcp.apiReviewResponses", &result.DbMcp.APIReviewResponses)
 	appsettings.LeafValid(stored, "dbMcp.apiApproval", &result.DbMcp.APIApproval, model.ValidAPIApproval)
+	appsettings.LeafValid(stored, "dbMcp.keptRetentionMinutes", &result.DbMcp.KeptRetentionMinutes, model.ValidKeptRetentionMinutes)
 	readAPIRules(stored, &result.DbMcp)
 	readAPIDefault(stored, &result.DbMcp)
 	return result, nil
@@ -378,7 +381,16 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 	if err := appsettings.UpsertOptional(tx, "dbMcp.apiApproval", dm.APIApproval); err != nil {
 		return err
 	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.apiScripts", dm.APIScripts); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.apiReviewResponses", dm.APIReviewResponses); err != nil {
+		return err
+	}
 	if err := appsettings.UpsertOptional(tx, "dbMcp.apiDefault", dm.APIDefault); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.keptRetentionMinutes", dm.KeptRetentionMinutes); err != nil {
 		return err
 	}
 	return appsettings.UpsertOptional(tx, "dbMcp.apiRules", dm.APIRules)

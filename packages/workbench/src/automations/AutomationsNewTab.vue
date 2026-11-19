@@ -35,8 +35,8 @@ function onClick(button: HTMLButtonElement): void {
 
 <template>
   <TabStripNewButton
-    :label="t('workbench.tabStrip.newTab.label')"
-    :tooltip="t('workbench.tabStrip.newTab.label')"
+    :label="t('common.tab.new.label')"
+    :tooltip="t('common.tab.new.label')"
     has-popup
     @click="onClick"
   />

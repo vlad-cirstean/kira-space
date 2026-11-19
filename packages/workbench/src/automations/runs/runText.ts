@@ -4,11 +4,11 @@ import { formatCurrency } from '@workbench/behaviour/format';
 
 const STATE_LABEL: Record<ScriptRun['state'], MessageKey> = {
   running: 'common.state.running.status',
-  done: 'automations.run.state.done.status',
+  done: 'common.state.succeeded.status',
   failed: 'common.state.failed.status',
   cancelled: 'common.cancelled.status',
   blocked: 'common.needsYou.status',
-  waiting: 'automations.run.state.waiting.status',
+  waiting: 'common.state.waitingForYou.status',
   skipped: 'common.skipped.status',
 };
 

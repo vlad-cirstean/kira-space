@@ -20,9 +20,9 @@ import { useIntervalFn, useNow } from '@vueuse/core';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { formatDateTime, formatRelative } from '@workbench/behaviour/format';
 import { TIMING } from '@workbench/behaviour/timing';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, useId, watch } from 'vue';
-import RelativeTime from '../../components/RelativeTime.vue';
 import { useMobileAccessStore } from '../../state/mobileAccess';
 import { useMobileTerminalsStore } from '../../state/mobileTerminals';
 import { MOBILE_PORT_RANGE } from '../../state/settingsDomain';
@@ -347,7 +347,7 @@ const activeDevices = computed(() =>
                 "
               />
               <FieldLabel :for="`${deviceId}-${device.id}-write`">{{
-                t('space.ade.branchPanel.changes.label')
+                t('common.changes.label')
               }}</FieldLabel>
             </Field>
             <Field orientation="horizontal" class="w-auto">

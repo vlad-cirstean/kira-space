@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { type CustomScript, customScriptSchema } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
+import { MASKED_TEXT } from '@theme/format';
 import type { ControlSnapshot } from '../mockRuntime';
 import type { ScenarioEnv } from './env';
 
@@ -112,28 +113,31 @@ export function registerSecretScenarios(env: Env): void {
     await dialog(page).locator('[data-testid="run-file-tab-yaml"]').click();
   }
 
-  test('a saved secret is write-only: empty password field, Saved badge, Clear sends null', async ({
+  const row = (page: Page) => dialog(page).locator('[data-testid="run-secret-token"]');
+  const setDialog = (page: Page) => page.locator('[data-testid="run-secret-dialog"]');
+
+  test('a saved secret is write-only: Set opens an empty password field, Delete sends null', async ({
     relaunch,
   }) => {
     const { window: page, control } = await relaunch({
       control: [...base(['token']), { channel: IPC.customScriptsSetSecrets, response: script([]) }],
     });
     await openEditor(page);
-    const field = dialog(page).locator('[data-testid="run-secret-value-token"]');
+    await expect(row(page).locator('[data-testid="run-secret-state"]')).toHaveText('Set');
+    await row(page).locator('[data-testid="run-secret-set"]').click();
+    const field = setDialog(page).locator('[data-testid="run-secret-value"]');
     await expect(field).toHaveAttribute('type', 'password');
     await expect(field).toHaveValue('');
-    await expect(dialog(page).locator('[data-testid="run-secret-saved-token"]')).toBeVisible();
-    const eye = dialog(page).locator('[data-testid="run-secret-value-token-reveal"]');
-    await expect(eye).toBeDisabled();
+    const eye = setDialog(page).locator('[data-testid="run-secret-value-reveal"]');
     await field.fill('typed');
-    await expect(eye).toBeEnabled();
     await eye.click();
     await expect(field).toHaveAttribute('type', 'text');
     await eye.click();
     await expect(field).toHaveAttribute('type', 'password');
-    await field.fill('');
+    await setDialog(page).getByRole('button', { name: 'Cancel' }).click();
 
-    await dialog(page).locator('[data-testid="run-secret-clear-token"]').click();
+    await row(page).locator('[data-testid="run-secret-delete"]').click();
+    await page.locator('[data-testid="confirm-dialog-confirm"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSetSecrets)?.args)
       .toMatchObject({ id: 's1', values: { token: null } });
@@ -144,19 +148,20 @@ export function registerSecretScenarios(env: Env): void {
       control: [...base([]), { channel: IPC.customScriptsSetSecrets, response: script(['token']) }],
     });
     await openEditor(page);
-    await dialog(page).locator('[data-testid="run-secret-value-token"]').fill('s3cr3t');
-    await dialog(page).locator('[data-testid="run-secret-save-token"]').click();
+    await row(page).locator('[data-testid="run-secret-set"]').click();
+    await setDialog(page).locator('[data-testid="run-secret-value"]').fill('s3cr3t');
+    await setDialog(page).locator('[data-testid="run-secret-save"]').click();
     await expect
       .poll(() => control.log().find((e) => e.channel === IPC.customScriptsSetSecrets)?.args)
       .toMatchObject({ id: 's1', values: { token: 's3cr3t' } });
     expect(JSON.stringify(script(['token']))).not.toContain('s3cr3t');
   });
 
-  test('storage off disables the field and says why', async ({ relaunch }) => {
+  test('storage off disables Set and says why', async ({ relaunch }) => {
     const { window: page } = await relaunch({ control: base([], OFF) });
     await openEditor(page);
-    await expect(dialog(page).locator('[data-testid="run-secret-value-token"]')).toBeDisabled();
-    await expect(dialog(page).locator('[data-testid="run-secrets-off"]')).toBeVisible();
+    await expect(row(page).locator('[data-testid="run-secret-set"]')).toBeDisabled();
+    await expect(dialog(page).locator('[data-testid="run-secrets-storage-off"]')).toBeVisible();
   });
 
   test('the run dialog runs with a saved secret without typing', async ({ relaunch }) => {
@@ -180,7 +185,7 @@ export function registerSecretScenarios(env: Env): void {
     await eye.click();
     await expect(input).toHaveAttribute('type', 'password');
     await input.fill('');
-    await expect(page.locator('[data-testid="run-env-row"]')).toContainText('••••');
+    await expect(page.locator('[data-testid="run-env-row"]')).toContainText(MASKED_TEXT);
     await expect(page.locator('[data-testid="run-start"]')).toBeEnabled();
     await page.locator('[data-testid="run-start"]').click();
     await expect

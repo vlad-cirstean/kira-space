@@ -143,7 +143,7 @@ function toggleDefault(i: number, option: string, on: boolean): void {
 <template>
   <FieldSet data-testid="params-editor">
     <FieldLegend>
-      {{ t('automations.params.title.label') }}
+      {{ t('common.field.parameters.label') }}
       <template #actions>
         <Button variant="dialog" size="kira-lg" data-testid="param-add" @click="add">{{
           t('automations.params.add.label')

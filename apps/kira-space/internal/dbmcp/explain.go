@@ -158,23 +158,24 @@ func (s *Server) assertComposedStatementsAreReads(ctx context.Context, connectio
 // not explainable — a no-op, not a failure. Failures are the caller's to treat as a refusal: a
 // *planCheckError (app text, no adapter data) when the plan cannot be composed, trusted or read, else the
 // adapter's own error wrapped.
-func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, sql, path string, threshold int) (*queryplan.Plan, error) {
+func (s *Server) planFor(ctx context.Context, summary model.ConnectionSummary, sql, path string, binds []model.BindParam, threshold int) (*queryplan.Plan, error) {
 	if !queryplan.Supported(summary.Kind) || !queryplan.Explainable(sql) {
 		return nil, nil
 	}
-	return s.planStatements(ctx, summary, queryplan.StatementsFor(summary.Kind, sql), path, threshold)
+	return s.planStatements(ctx, summary, queryplan.StatementsFor(summary.Kind, sql), path, binds, threshold)
 }
 
 // planStatements runs and parses already-composed EXPLAIN statements. The caller owns the composition and
-// the Explainable check: browse_table composes from a spec whose literals may hold ";".
-func (s *Server) planStatements(ctx context.Context, summary model.ConnectionSummary, statements []string, path string, threshold int) (*queryplan.Plan, error) {
+// the Explainable check: browse_table composes from a spec whose literals may hold ";". binds ride every
+// statement: the EXPLAIN of a parameterised statement binds the same values.
+func (s *Server) planStatements(ctx context.Context, summary model.ConnectionSummary, statements []string, path string, binds []model.BindParam, threshold int) (*queryplan.Plan, error) {
 	if err := s.assertComposedStatementsAreReads(ctx, summary.ID, statements); err != nil {
 		s.log.Warn("dbmcp: expensive_query: composed EXPLAIN refused", "connectionId", summary.ID, "err", err)
 		return nil, &planCheckError{msg: fmt.Sprintf("expensive_query check could not plan this statement on %q; it did not run.", summary.Name)}
 	}
 
 	req := adapterhost.ExecuteRequestWire{
-		OpID: ids.NewID(), ConnectionID: summary.ID, Path: path, Statements: statements,
+		OpID: ids.NewID(), ConnectionID: summary.ID, Path: path, Statements: statements, Params: binds,
 	}
 	applyStatementTimeout(&req, summary, modeRead)
 	resp, err := s.cfg.Query.ExecuteRead(ctx, req)

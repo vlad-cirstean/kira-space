@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ShortcutId } from '@shared/domain/shortcuts';
-import { t } from '@theme/i18n';
+import { joinSentences, t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
@@ -132,7 +132,7 @@ const actions: CollectionMenuActions = {
     void copyOrReportError(
       row.url,
       (message) => {
-        collectionsStore.error = message;
+        collectionsStore.fail(message);
       },
       () => announceApp(t('studio.common.copiedUrl.announce')),
     ),
@@ -184,7 +184,10 @@ async function confirmAndDeleteRows(rows: readonly CollectionRowVm[]): Promise<v
     const [row] = plan.top;
     const keys = DELETE_CONFIRM[row.kind];
     title = t(keys.title);
-    message = [t(keys.body, { name: row.name }), t('common.confirm.irreversible.body')].join(' ');
+    message = joinSentences(
+      t(keys.body, { name: row.name }),
+      t('common.confirm.irreversible.body'),
+    );
   } else {
     const counts = (['request', 'folder', 'collection'] as const)
       .map((kind) => [kind, plan.top.filter((r) => r.kind === kind).length] as const)
@@ -192,16 +195,13 @@ async function confirmAndDeleteRows(rows: readonly CollectionRowVm[]): Promise<v
       .map(([kind, count]) => t(COUNT_LABEL[kind], { count }));
     const nested = plan.itemIds.size > plan.top.filter((r) => r.kind !== 'collection').length;
     title = t('studio.api.collections.deleteManyConfirm.title', { count: plan.top.length });
-    message = [
+    message = joinSentences(
       t('studio.api.collections.deleteManyConfirm.body', { list: counts.join(', ') }),
-      nested ? t('studio.api.collections.deleteManyConfirm.nested.body') : '',
-      hasOpenRequestTab(plan.itemIds)
-        ? t('studio.api.collections.deleteManyConfirm.openTabs.body')
-        : '',
+      nested && t('studio.api.collections.deleteManyConfirm.nested.body'),
+      hasOpenRequestTab(plan.itemIds) &&
+        t('studio.api.collections.deleteManyConfirm.openTabs.body'),
       t('common.confirm.irreversible.body'),
-    ]
-      .filter(Boolean)
-      .join(' ');
+    );
   }
   const confirmed = await confirmDialogStore.confirm({
     title,

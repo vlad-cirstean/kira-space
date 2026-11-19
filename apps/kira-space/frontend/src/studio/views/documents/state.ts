@@ -1,6 +1,5 @@
 import type { SortSpec } from '@shared/domain/queries';
 import type { PageCursor } from '@shared/protocol/dataOps';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { DocumentTabState } from '../../../state/tabDomain';
@@ -9,14 +8,14 @@ import { data } from '../../bridge/data';
 import { useStaleDataStore } from '../../state/staleData';
 import { registerTabCount, registerTabReload } from '../../state/viewCommands';
 import { runPagedLoad } from '../shared/page/load';
-import { createPageNavigation } from '../shared/page/navigation';
+import { createPageNavigation, pageOffsetCursor } from '../shared/page/navigation';
 import {
   applyPagePosition,
-  beginOp,
+  clearCount,
   createRuntimeStore,
   defaultPagedRuntime,
   type PagedViewRuntime,
-  runPagedCount,
+  runTabCount,
 } from '../shared/viewOp';
 import { setPage } from './page';
 
@@ -52,11 +51,6 @@ export const useDocumentViewStore = defineStore('documentView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
     createRuntimeStore<DocumentViewRuntime>(defaultRuntime);
 
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-  });
-
   // Mirrors views/grid/state.ts's own `load()` — `revertPageIndexOnFailure`, when
   // given, is the pageIndex this tab was showing before its caller optimistically advanced it. A
   // failed or cancelled load never calls setPage, so without this the pager would show the new page
@@ -74,17 +68,14 @@ export const useDocumentViewStore = defineStore('documentView', () => {
     // re-fetching the page the user is on instead of silently snapping back to page one.
     // Applies on the default (unsorted/`_id`-sorted) view too: mongo/read.ts's `skip` now runs on
     // any non-zero offset cursor, not just a real (non-`_id`) sort.
-    const effectiveCursor: PageCursor = cursor ?? {
-      mode: 'offset',
-      offset: tab.state.pageIndex * tab.state.pageSize,
-    };
-    const opId = beginOp(rt);
+    const effectiveCursor: PageCursor =
+      cursor ?? pageOffsetCursor(tab.state.pageIndex, tab.state.pageSize);
 
     await runPagedLoad({
       rt,
-      opId,
-      stillMounted: () => Boolean(runtime[tabId]),
-      read: () =>
+      runtime,
+      id: tabId,
+      read: (opId) =>
         data.read({
           opId,
           tabId,
@@ -97,7 +88,6 @@ export const useDocumentViewStore = defineStore('documentView', () => {
           cursor: effectiveCursor,
         }),
       expectKind: 'document',
-      id: tabId,
       tabNoun: 'document tab',
       apply: (page) => {
         setPage(tabId, page);
@@ -124,23 +114,19 @@ export const useDocumentViewStore = defineStore('documentView', () => {
     if (!tab?.connectionId) return;
     const connectionId = tab.connectionId;
     const rt = ensureRuntime(tabId);
-    await runPagedCount(rt, (refresh) =>
-      data.count({
-        tabId,
-        connectionId,
-        path: tab.path,
-        filter: tab.state.search.trim() === '' ? null : tab.state.search,
-        refresh,
-      }),
-    );
+    await runTabCount(rt, {
+      tabId,
+      connectionId,
+      path: tab.path,
+      filter: tab.state.search.trim() === '' ? null : tab.state.search,
+    });
   }
 
-  // stop/goNext/goPrev/goFirst/goLast/goToPage/resetTokens — mirrors views/grid/state.ts's
-  // own set exactly, modulo the tab accessor pair below. Mongo supports an arbitrary skip()/
+  // Mongo supports an arbitrary skip()/
   // limit() offset (unlike Redis's SCAN cursor or Kafka/SQS's per-partition offsets), so a
   // page-N jump is just as meaningful here as it is for SQL; goLast requires a count, same as the
   // grid's own, since the toolbar disables the Last-page button until one has run.
-  const { stop, goNext, goPrev, goFirst, goLast, goToPage, resetTokens } = createPageNavigation({
+  const { stop, goNext, goPrev, goFirst, goLast, goToPage, restart } = createPageNavigation({
     tab: (tabId) => useTabsStore().findDocumentTab(tabId)?.state,
     patch: (tabId, p) => useTabsStore().patchDocumentTabState(tabId, p),
     runtime: (tabId) => runtime[tabId],
@@ -149,44 +135,24 @@ export const useDocumentViewStore = defineStore('documentView', () => {
   });
 
   function setSearch(tabId: string, text: string): void {
-    const prevIndex = useTabsStore().findDocumentTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
     // P43 F7/D10: same reasoning as views/grid/state.ts's setFilter — a count taken under the
     // previous search text answers a different question, not a drifted answer to this one.
-    const rt = ensureRuntime(tabId);
-    rt.count = null;
-    rt.countOpId = null;
-    rt.countError = null;
-    useTabsStore().patchDocumentTabState(tabId, { search: text, pageIndex: 0 });
-    void load(tabId, undefined, prevIndex);
+    clearCount(ensureRuntime(tabId));
+    void restart(tabId, { search: text });
   }
 
-  // Mirrors views/grid/state.ts's setProjection/setSort/setPageSize — each resets `pageIndex` to 0
-  // alongside the field it changes, same as the grid's own setters, since a new
+  // Each setter resets `pageIndex` to 0 alongside the field it changes, since a new
   // filter/sort/projection/pageSize invalidates whatever "page N" meant under the old one. A
   // document tab pages by cursor token only when the sort is unset or purely by `_id` (mongo/
   // read.ts's keyset strategy); any other sort falls back to skip/limit and `pageIndex` is what
   // goNext/goPrev (above) use to compute that offset.
-  function setProjection(tabId: string, projection: string[] | null): void {
-    const prevIndex = useTabsStore().findDocumentTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDocumentTabState(tabId, { projection, pageIndex: 0 });
-    void load(tabId, undefined, prevIndex);
-  }
+  const setProjection = (tabId: string, projection: string[] | null): void =>
+    void restart(tabId, { projection });
 
-  function setSort(tabId: string, sort: SortSpec | null): void {
-    const prevIndex = useTabsStore().findDocumentTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDocumentTabState(tabId, { sort, pageIndex: 0 });
-    void load(tabId, undefined, prevIndex);
-  }
+  const setSort = (tabId: string, sort: SortSpec | null): void => void restart(tabId, { sort });
 
-  function setPageSize(tabId: string, pageSize: DocumentTabState['pageSize']): void {
-    const prevIndex = useTabsStore().findDocumentTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDocumentTabState(tabId, { pageSize, pageIndex: 0 });
-    void load(tabId, undefined, prevIndex);
-  }
+  const setPageSize = (tabId: string, pageSize: DocumentTabState['pageSize']): void =>
+    void restart(tabId, { pageSize });
 
   // The clicked row's own highlight — this view has no cell editor dock to publish a
   // selection into (a document's own row is already the read/write surface). A plain runtime
@@ -243,8 +209,10 @@ export const useDocumentViewStore = defineStore('documentView', () => {
 
   /** Shown page is stale: connection gone, or read under another connection session. */
   function isStale(tabId: string): boolean {
-    const connectionId = useTabsStore().findDocumentTab(tabId)?.connectionId;
-    return connectionId ? useStaleDataStore().isStale(tabId, tabId, connectionId) : false;
+    return useStaleDataStore().isTabStale(
+      tabId,
+      useTabsStore().findDocumentTab(tabId)?.connectionId,
+    );
   }
 
   function setFilterDraft(

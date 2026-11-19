@@ -1,9 +1,11 @@
 import { newUuid } from '@shared/ids';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { reactive } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
+import { data } from '../../bridge/data';
 
 // grid/state.ts, documents/state.ts, keyvalue/state.ts, stream/state.ts and
 // console/state.ts each declared the same DISCONNECTED_CODES set and the same code/message
@@ -49,8 +51,8 @@ export function stopOp(rt: { opId: string | null } | undefined): void {
  *  that unwrapped local reference directly would mean every mutation made afterward (status,
  *  hasMore, tokens, ...) bypasses the proxy's `set` trap entirely, so no dependent render (e.g. a
  *  pager button's `disabled` binding) would ever be notified. Each view keeps its own
- *  `registerTabRuntimeCleanup` call — the cleanup body genuinely differs (console's also clears
- *  `results`) — and its own `defaultRuntime()`, since the six runtime shapes differ. */
+ *  `defaultRuntime()`, since the runtime shapes differ. It registers the tab-close cleanup:
+ *  `onClose` runs first, record still present (undefined if none), then the record is deleted. */
 type HasActionError = { actionError: string | null };
 type HasSearchOpen = { searchOpen: boolean };
 
@@ -61,7 +63,10 @@ type HasSearchOpen = { searchOpen: boolean };
 // field: browse's runtime has actionError but no searchOpen (no find toolbar), console's has
 // searchOpen but no actionError (nothing to mutate) — a store built over either type only ever
 // exposes the setters that field supports, so calling the wrong one is a type error, not a no-op.
-export function createRuntimeStore<R>(makeDefault: () => R): {
+export function createRuntimeStore<R>(
+  makeDefault: () => R,
+  opts: { onClose?: (tabId: string, rt: R | undefined) => void } = {},
+): {
   runtime: Record<string, R>;
   ensureRuntime(tabId: string): R;
 } & (R extends HasActionError
@@ -93,6 +98,12 @@ export function createRuntimeStore<R>(makeDefault: () => R): {
     const rt = runtime[tabId] as unknown as HasSearchOpen | undefined;
     if (rt) rt.searchOpen = open;
   }
+
+  // closeTab cannot import a leaf view module, so the cleanup registers here.
+  registerTabRuntimeCleanup((tabId) => {
+    opts.onClose?.(tabId, runtime[tabId]);
+    delete runtime[tabId];
+  });
 
   return { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } as never;
 }
@@ -194,18 +205,16 @@ export function defaultPagedRuntime(): PagedViewRuntime {
 interface ApplyPagePositionRuntime {
   status: PagedViewRuntime['status'];
   opId: string | null;
-  rowCount: number;
   hasMore: boolean;
   nextToken: string | null;
-  prevToken: string | null;
+  rowCount?: number;
+  prevToken?: string | null;
 }
 
-// documents/state.ts's and keyvalue/state.ts's own `load()` apply callback opened with this exact
-// six-line block (only `setPage`/`rt` differ, which stay with each caller). grid/state.ts's and
-// stream/state.ts's own apply blocks interleave the identical status/opId/hasMore/nextToken
-// assignments with genuinely per-view lines (pending-changes clearing, `lastStrategy`, `polled`'s
-// own reset) and don't track both `rowCount` and `prevToken` on their runtime — left as their own
-// hand-written blocks rather than forced through this helper for two fields neither one needs.
+// The successful-page position block every paged view's `load()` apply opens with. `rowCount` and
+// `prevToken` are written only when the runtime record carries the key: grid has no `rowCount`
+// (it reads the page store), stream has no `prevToken` (forward-only). Per-view lines stay with
+// the caller.
 export function applyPagePosition(
   rt: ApplyPagePositionRuntime,
   page: {
@@ -215,10 +224,10 @@ export function applyPagePosition(
 ): void {
   rt.status = 'idle';
   rt.opId = null;
-  rt.rowCount = page.rowCount;
+  if ('rowCount' in rt) rt.rowCount = page.rowCount;
   rt.hasMore = page.position.hasMore;
   rt.nextToken = page.position.nextToken;
-  rt.prevToken = page.position.prevToken;
+  if ('prevToken' in rt) rt.prevToken = page.position.prevToken;
 }
 
 interface CountRuntime {
@@ -230,29 +239,34 @@ interface CountRuntime {
   countError: string | null;
 }
 
+/** A count under the old query answers a different question, so a query change clears it. */
+export function clearCount(rt: CountRuntime): void {
+  rt.count = null;
+  rt.countOpId = null;
+  rt.countError = null;
+}
+
 let countStamp = 0;
 
-// The countOpId-stamp/guard/assign skeleton — byte-identical across documents/grid/
-// keyvalue/stream's state.ts runCount(). What genuinely differs per view (the request's own
-// filter, which each caller derives its own way) stays with the caller: fetchCount closes over it
-// and gets `refresh` (an already-fresh count stays an L3 hit) handed in, ready to forward.
-export async function runPagedCount(
+// The countOpId-stamp/guard/assign skeleton shared by documents/grid/keyvalue/stream. What
+// differs per view (the request's own filter) stays with the caller via `req`; `refresh` (an
+// already-stale count re-reads past the L3 hit) is added here.
+export async function runTabCount(
   rt: CountRuntime,
-  fetchCount: (refresh: boolean) => Promise<{ value: number; exact: boolean; stale: boolean }>,
+  req: { tabId: string; connectionId: string; path: string; filter: string | null },
 ): Promise<void> {
   const stamp = String(++countStamp);
   rt.countOpId = stamp;
   try {
-    const response = await fetchCount(rt.count?.stale === true);
+    const response = await data.count({ ...req, refresh: rt.count?.stale === true });
     // A filter/refresh change since this count started already stamped a newer countOpId (or
     // cleared it) — an answer to the previous request landing now would resurrect a stale total.
     if (rt.countOpId !== stamp) return;
     rt.count = { value: response.value, exact: response.exact, stale: response.stale };
     rt.countError = null;
   } catch (err) {
-    // A filter/refresh change since this count started already stamped a newer countOpId (or
-    // cleared it) — same supersede guard as the success path above, so a stale failure can't
-    // overwrite an error (or a clear) that belongs to a newer request.
+    // Same supersede guard as the success path, so a stale failure can't overwrite an error (or a
+    // clear) that belongs to a newer request.
     if (rt.countOpId !== stamp) return;
     // Leave the previous count (if any) rather than blanking it on a failed refresh.
     rt.countError = classifyLoadError(err).message;

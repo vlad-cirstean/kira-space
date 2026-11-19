@@ -34,7 +34,19 @@ type Input struct {
 	TimeoutSeconds   int
 	MaxResponseBytes int
 	FollowRedirects  *bool
+	// Scope is the kept-variable scope of the caller; empty means none.
+	Scope string
+	// ScriptBodyBytes is the masked body cap for a response a transform script reads (0: no transform,
+	// MaxResponseBytes applies). Bounded to MaxScriptBodyBytes; not part of sameRequest.
+	ScriptBodyBytes int
+	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
+	Inputs []InputDecl
+	// ScriptReads names the kept variables the request's scripts read by literal kept.get.
+	ScriptReads []string
 }
+
+// MaxScriptBodyBytes bounds ScriptBodyBytes.
+const MaxScriptBodyBytes = 2 << 20
 
 // Credential is a secret a request uses, with the hosts it may go to. Never a value.
 type Credential struct {
@@ -56,6 +68,13 @@ type EnvInfo struct {
 	Color string
 	// AutoApproveReads is the environment's agentAutoApproveReads.
 	AutoApproveReads bool
+	// Review is the environment's agentReview: inherit, review or send per class; "" is inherit.
+	Review ReviewSetting
+}
+
+// ReviewSetting is an environment's response review per request class.
+type ReviewSetting struct {
+	Read, Write string
 }
 
 // Planned is a request checked against the policy but not yet sent. It holds no secret value: URL,
@@ -73,6 +92,12 @@ type Planned struct {
 	Form        []NameValue
 	Variables   []VarUse
 	Credentials []Credential
+	// Kept lists the kept variables the request uses, as they stood at plan time.
+	Kept []KeptUse
+	// Inputs are the declared inputs and whether each has a stored value; Origin is the request's
+	// scheme://host[:port], the key a user value is bound to.
+	Inputs []InputUse
+	Origin string
 
 	// AllowedByRule: an allow rule matched, so the request needs no approval.
 	AllowedByRule bool
@@ -81,10 +106,15 @@ type Planned struct {
 	TimeoutSeconds   int
 	MaxResponseBytes int
 
+	// bodyCap is the masked body cap Send applies; 0 means MaxResponseBytes.
+	bodyCap int
+
 	// base is the URL template before the agent's query entries (extra) are appended.
 	base  string
 	extra []NameValue
 	creds []credential
+	// keptValues holds the kept values for one send; set only by Send's own plan.
+	keptValues map[string]keptValue
 }
 
 // sameRequest reports whether o would send the same method, URL, headers, query, body and form.
@@ -115,6 +145,19 @@ type Result struct {
 	ElapsedMs   int         `json:"elapsedMs"`
 	FinalURL    string      `json:"finalUrl"`
 	Redirects   []Redirect  `json:"redirects"`
+	// Inputs says what happened to each declared input; set by the caller that kept them.
+	Inputs []InputStatus `json:"inputs,omitempty"`
+
+	// Mask is the request's text masker: it removes secrets from anything derived from the response,
+	// such as script output or error text. Nil on a zero Result.
+	Mask func(string) string `json:"-"`
+}
+
+// InputStatus is what became of a declared input: supplied, reused or replaced.
+type InputStatus struct {
+	Name             string `json:"name"`
+	Status           string `json:"status"`
+	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
 
 // VarView is an available variable as the listing shows it. Never a value.
@@ -132,6 +175,8 @@ type EnvView struct {
 	Color            string    `json:"color"`
 	AutoApproveReads bool      `json:"autoApproveReads"`
 	Variables        []VarView `json:"variables"`
+	// Review stays off the wire of ApiConfigService.AgentAccess; dbmcp resolves it for agents.
+	Review ReviewSetting `json:"-"`
 }
 
 // Globals are the user's own API settings an agent request inherits.
@@ -166,4 +211,6 @@ type Service struct {
 	Globals func() (Globals, error)
 	// Access is the user's API access rules, read fresh per plan; nil means no rules.
 	Access func() (apiaccess.Policy, error)
+	// Kept resolves {{kept.<name>}} references; nil refuses them all.
+	Kept KeptReader
 }

@@ -3,16 +3,16 @@
 // (the browse split's preview pane) only the content renders, since BrowseView gates the whole split.
 import { decodePath } from '@shared/domain/tree';
 import { SINGLE_ROW_MAX_BYTES } from '@shared/protocol/page';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import { colorMarkClass, connIconClass } from '@theme/connColor';
+import { connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import RunState from '@theme/RunState.vue';
 import { formatBytes } from '@workbench/behaviour/format';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, onMounted, onUnmounted, useTemplateRef, watch } from 'vue';
@@ -146,21 +146,18 @@ onUnmounted(() => {
 <template>
   <div class="flex-1 min-h-0 flex flex-col" data-testid="keyvalue-pane">
     <template v-if="tab">
-      <ViewToolbar>
-        <span v-if="connColor !== undefined" :class="colorMarkClass('dot', connColor)" />
-        <span v-if="connRecord?.kind" class="size-4 flex items-center justify-center shrink-0">
-          <EngineIcon :kind="connRecord.kind" :size="13" />
-        </span>
-        <span class="size-4 flex items-center justify-center shrink-0" :class="iconClass">
-          <CodiconIcon :name="page?.redisType === 'object' ? 'file' : 'key'" :size="13" />
-        </span>
-        <span class="text-kira-md text-fg truncate" data-testid="keyvalue-target"
-          ><span v-if="pathPrefix" class="text-subtle">{{ pathPrefix }}</span>
-          {{ targetTail?.name ?? tab.path }}</span
+      <ViewHead
+        :color="connColor"
+        :icon="page?.redisType === 'object' ? 'file' : 'key'"
+        :icon-class="iconClass"
+        :prefix="pathPrefix || undefined"
+        :title="targetTail?.name ?? tab.path"
+        title-testid="keyvalue-target"
+      >
+        <template v-if="connRecord?.kind" #lead
+          ><EngineIcon :kind="connRecord.kind" :size="13" /></template
         >
-        <span class="ml-auto flex items-center gap-1" />
-      </ViewToolbar>
-      <div :class="colorMarkClass('band', connColor)" />
+      </ViewHead>
       <ViewToolbar>
         <div class="flex items-center gap-1.5 min-w-0">
           <TooltipIconButton

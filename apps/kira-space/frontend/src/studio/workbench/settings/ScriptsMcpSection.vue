@@ -26,7 +26,7 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
 
 <template>
   <FieldSet>
-    <FieldLegend>{{ t('studio.settings.dbMcp.scripts.legend.label') }}</FieldLegend>
+    <FieldLegend>{{ t('common.module.scripts.label') }}</FieldLegend>
     <FieldDescription>{{ t('studio.settings.dbMcp.scripts.intro.description') }}</FieldDescription>
     <Card v-if="normal.length" variant="list">
       <ul class="m-0 flex list-none flex-col p-0" data-testid="db-mcp-scripts-list">
@@ -60,7 +60,7 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
       </ul>
     </Card>
     <InlineState kind="empty" v-else data-testid="db-mcp-scripts-empty">
-      {{ t('automations.panel.none.empty') }}
+      {{ t('common.scripts.none.empty') }}
     </InlineState>
     <Alert v-if="toggle.error.value" variant="error" data-testid="db-mcp-scripts-error">
       <AlertDescription>{{ toggle.error.value }}</AlertDescription>

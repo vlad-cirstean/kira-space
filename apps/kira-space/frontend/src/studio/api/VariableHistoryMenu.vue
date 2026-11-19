@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ApiVariableHistoryEntry } from '@shared/domain/variables';
 import InlineState from '@theme/components/InlineState.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import MaskedValue from '@theme/components/MaskedValue.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
-import { formatRelative } from '@workbench/behaviour/format';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { reactive } from 'vue';
 import { useVariableSetStore } from './state/variables';
 
@@ -63,25 +64,19 @@ function onEye(entry: ApiVariableHistoryEntry): void {
         data-testid="variable-history-entry"
       >
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span class="text-subtle text-kira-sm">{{ formatRelative(entry.recordedAt) }}</span>
-          <!-- tracking-widest (0.1em) is the widest step Tailwind's default scale has; at this
-               span's inherited font-size (text-kira-md, 12px) that is 1.2px. -->
-          <span
+          <span class="text-subtle text-kira-sm"><RelativeTime :at="entry.recordedAt" /></span>
+          <MaskedValue
             v-if="isMasked(entry)"
-            class="truncate text-subtle tracking-widest"
+            class="truncate"
             data-testid="variable-history-masked"
-          >
-            ••••••••
-          </span>
+          />
           <span v-else class="min-w-0 font-data" data-testid="variable-history-value"
             ><TruncatedText :text="displayValue(entry)" /></span
           >
         </div>
-        <TooltipIconButton
+        <ValueRevealButton
           v-if="canToggle(entry)"
-          :icon="isMasked(entry) ? 'eye' : 'eye-closed'"
-          :label="isMasked(entry) ? t('common.action.reveal.label') : t('common.action.hide.label')"
-          :pressed="!isMasked(entry)"
+          :shown="!isMasked(entry)"
           data-testid="variable-history-reveal"
           @click="onEye(entry)"
         />

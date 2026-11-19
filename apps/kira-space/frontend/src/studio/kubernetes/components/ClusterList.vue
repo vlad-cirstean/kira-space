@@ -3,6 +3,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { type MessageKey, t } from '@theme/i18n';
+import { dropIndicator } from '@theme/lib/frames';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { copyText } from '@workbench/behaviour/clipboard';
@@ -191,12 +192,7 @@ const rowClass = (selected: boolean) =>
           v-if="drop?.id === row.cluster.id"
           aria-hidden="true"
           data-testid="kube-drop-indicator"
-          :class="
-            cn(
-              'pointer-events-none absolute inset-x-0 h-0.5 bg-focus',
-              drop.edge === 'top' ? 'top-0' : 'bottom-0',
-            )
-          "
+          :class="cn(dropIndicator, drop.edge === 'top' ? 'top-0' : 'bottom-0')"
         />
         <ClusterIcon :size="14" />
         <span class="min-w-0 flex-1 truncate">{{ row.cluster.context }}</span>

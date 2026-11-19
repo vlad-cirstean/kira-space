@@ -14,6 +14,7 @@ import {
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { refDebounced } from '@vueuse/core';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
@@ -53,7 +54,8 @@ const tabItems = computed(() => [
     : [{ value: 'new', label: t('space.ade.board.newTask.label'), testid: 'ade-add-tab-new' }]),
   { value: 'branch', label: t('space.ade.add.tabBranch.label'), testid: 'ade-add-tab-branch' },
 ]);
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 
 const repos = useRepos();
 const repoLabel = (id: string): string => {
@@ -81,16 +83,15 @@ watch(open, (o) => {
     addUi.attachTo = null;
     return;
   }
-  error.value = '';
+  surface.reset();
   if (addUi.attachTo) tab.value = 'branch';
 });
 
 const cantAdd = computed(() => title.value.trim() === '' || createTask.isPending.value);
 
 async function addNew(): Promise<void> {
-  error.value = '';
   const j = parseJira(jira.value);
-  try {
+  await surface.run(async () => {
     const task = await createTask.mutateAsync({
       title: title.value.trim(),
       jira: j.key ? j : null,
@@ -108,9 +109,7 @@ async function addNew(): Promise<void> {
     notes.value = '';
     kind.value = 'task';
     open.value = false;
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 const q = ref('');
@@ -136,8 +135,7 @@ const linkPending = computed(
 );
 
 async function pickLink(): Promise<void> {
-  error.value = '';
-  try {
+  await surface.run(async () => {
     const res = await addLink.mutateAsync({
       url: linkUrl.value,
       taskId: attachTo.value?.taskId ?? '',
@@ -145,13 +143,11 @@ async function pickLink(): Promise<void> {
     ui.select(res.task.id);
     open.value = false;
     q.value = '';
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 async function pick(value: string): Promise<void> {
-  error.value = '';
+  surface.reset();
   const b = candidateOf(value);
   const taskId = attachTo.value?.taskId ?? '';
   open.value = false;

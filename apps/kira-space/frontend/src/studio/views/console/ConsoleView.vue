@@ -7,12 +7,12 @@ import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert
 import { Button } from '@theme/components/ui/button';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
-import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import RunState from '@theme/RunState.vue';
 import { useDebounceFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
+import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
@@ -92,6 +92,7 @@ const editorHost = ref<{
 const {
   starting,
   connectError,
+  resetConnectError,
   runBlocked,
   canExplain,
   explainTooltip,
@@ -155,7 +156,7 @@ let lastEmitted = props.tab.state.text;
 function resetStalePreviewState(): void {
   clearFormatMessages();
   explainError.value = null;
-  connectError.value = null;
+  resetConnectError();
   consoleViewStore.clearAutoExplain(props.tab.id);
 }
 
@@ -229,20 +230,16 @@ onUnmounted(() => {
 
 <template>
   <div class="h-full flex flex-col min-h-0" data-testid="console-view" :data-path="tab.path">
-    <ViewToolbar>
-      <span v-if="railColor !== undefined" :class="colorMarkClass('dot', railColor)" />
-      <span v-if="connectionKind" class="size-4 flex items-center justify-center shrink-0">
-        <EngineIcon :kind="connectionKind" :size="13" />
-      </span>
-      <span class="size-4 flex items-center justify-center shrink-0">
-        <CodiconIcon name="terminal" :size="13" />
-      </span>
-      <span class="text-kira-md text-fg truncate" data-testid="console-target">{{
-        targetTail?.name ?? tab.path ?? t('studio.console.target.fallback.label')
-      }}</span>
-    </ViewToolbar>
-
-    <div :class="colorMarkClass('band', railColor)" />
+    <ViewHead
+      :color="railColor"
+      icon="terminal"
+      :title="targetTail?.name ?? tab.path ?? t('studio.console.target.fallback.label')"
+      title-testid="console-target"
+    >
+      <template v-if="connectionKind" #lead
+        ><EngineIcon :kind="connectionKind" :size="13" /></template
+      >
+    </ViewHead>
     <ViewToolbar>
       <div class="flex items-center gap-1.5 min-w-0">
         <TooltipIconButton

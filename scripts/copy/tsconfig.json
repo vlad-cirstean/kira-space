@@ -11,5 +11,5 @@
     "noUncheckedIndexedAccess": false,
     "types": ["bun-types"]
   },
-  "include": ["*.ts", "../check-conventions.ts", "../check-conventions.spec.ts"]
+  "include": ["*.ts", "../check-conventions.ts", "../check-conventions.spec.ts", "../uiaudit/*.ts"]
 }

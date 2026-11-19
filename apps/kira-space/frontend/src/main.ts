@@ -1,4 +1,3 @@
-import { VueQueryPlugin } from '@tanstack/vue-query';
 import { i18n, installCopyTestHook } from '@theme/i18n';
 import { bootstrapShell, provideShellServices } from '@workbench/bootstrapShell';
 import { logError } from '@workbench/bridge/log';
@@ -59,8 +58,7 @@ function mountApp(): void {
   app.use(i18n);
   app.provide(adeReaderKey, controlAdeReader);
   app.use(pinia);
-  provideShellServices(app);
-  app.use(VueQueryPlugin, { queryClient });
+  provideShellServices(app, queryClient);
   app.mount('#app');
 }
 

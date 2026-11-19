@@ -5,15 +5,15 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import { t } from '@theme/i18n';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
-import { errorText } from '@workbench/bridge/codedError';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import RelativeTime from '@/components/RelativeTime.vue';
 import { newIntentKey, useAdeWrites } from '../state/useAdeWrites';
 
 // One shelf of the Later screen: drag a row by its handle to reorder or to drop it on the other
 // shelf, tap a row for its notes. Both shelves share a Sortable group.
 const props = defineProps<{ shelf: Shelf; tasks: readonly Task[]; canWrite: boolean }>();
-const emit = defineEmits<{ error: [message: string] }>();
+// The parent runs the write on its error surface.
+const emit = defineEmits<{ run: [task: () => Promise<unknown>] }>();
 
 const hostLabels = useHostLabels();
 const writes = useAdeWrites();
@@ -26,18 +26,15 @@ function facts(task: Task): string {
   return [task.jira?.key ?? '', link ? hostLabels.factOf(link) : ''].filter(Boolean).join(' · ');
 }
 
-async function put(taskId: string, beforeId: string): Promise<void> {
-  emit('error', '');
-  try {
-    await writes.shelveTask.mutateAsync({
+function put(taskId: string, beforeId: string): void {
+  emit('run', () =>
+    writes.shelveTask.mutateAsync({
       taskId,
       shelf: props.shelf,
       beforeId,
       key: newIntentKey(),
-    });
-  } catch (err) {
-    emit('error', errorText(err));
-  }
+    }),
+  );
 }
 
 useSortableReorder(
@@ -45,7 +42,7 @@ useSortableReorder(
   () => ids.value,
   (fromId, toId) => {
     const next = moveId(ids.value, fromId, toId);
-    void put(fromId, next[next.indexOf(fromId) + 1] ?? '');
+    put(fromId, next[next.indexOf(fromId) + 1] ?? '');
   },
   {
     draggable: '[data-shelf-row]',
@@ -54,7 +51,7 @@ useSortableReorder(
     disabled: () => !props.canWrite,
     group: 'later-shelf',
     itemId: (el) => el.dataset.taskId ?? null,
-    onAdd: (id, beforeId) => void put(id, beforeId ?? ''),
+    onAdd: (id, beforeId) => put(id, beforeId ?? ''),
   },
 );
 </script>
@@ -92,7 +89,7 @@ useSortableReorder(
             v-if="canWrite"
             class="flex size-touch shrink-0 touch-none items-center justify-center text-subtle"
             role="img"
-            :aria-label="t('mobile.backlog.handle.aria')"
+            :aria-label="t('space.common.dragToReorder.aria')"
             data-drag-handle
             data-testid="later-handle"
           >

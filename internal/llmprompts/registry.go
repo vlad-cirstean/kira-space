@@ -1392,7 +1392,7 @@ var (
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "Not for plain row reads: use browse_table (rows, counts, in filters, pages). Run one statement per call, not a script, for joins, grouped aggregates or expressions. Declare `mode`: read runs on a separate read-only connection (enforcement session: the database refuses writes); write and ddl run on the normal one. A denied mode is refused; an approval mode waits up to 10 minutes for the user. A statement more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. explain: true plans a SELECT or WITH without running it: node tree, estimated rows and cost, issues such as full scans; not on mongodb, redis, kafka, s3, sqs or kibana. A call over a limit (statement timeout, expensiveQuery row estimate) is refused with an exemption id: improve the statement, or repeat it with `exemption` to ask the user to lift the limit once.",
+	Default: "Not for plain row reads: use browse_table (rows, counts, in filters, pages). Run one statement per call, not a script, for joins, grouped aggregates or expressions. Declare `mode`: read runs on a separate read-only connection (enforcement session: the database refuses writes); write and ddl run on the normal one. A denied mode is refused; an approval mode waits up to 10 minutes for the user. A statement more powerful than its mode is refused with the mode to use. Reading stops at maxRows: rowCount is rows fetched, a lower bound when truncated is true. explain: true plans a SELECT or WITH without running it: node tree, estimated rows and cost, issues such as full scans; not on mongodb, redis, kafka, s3, sqs or kibana. A call over a limit (statement timeout, expensiveQuery row estimate) is refused with an exemption id: improve the statement, or repeat it with `exemption` to ask the user to lift the limit once. Kept variables hold values you never see: name them in `params`, one per placeholder, and Kira binds them as parameters, never into the text. One statement; not with explain; not on mongodb, redis, kibana. list_kept_variables shows what exists.",
 }, NoVars{})
 
 var (
@@ -1403,7 +1403,9 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}. Reading stops at this many rows; rowCount is then a lower bound.`, LimitVars{Default: 200, Max: 2000})
 	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `true plans the statement without running it. Mode read only. Default false.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: also return the raw plan text. Default false.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: asks the user to lift it for this exact call. Same connectionId, sql, path and mode.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "params", studioApp, NextCall, `Kept variable names, 1-64, never values. postgres: $1, $2 in this order; a list binds as an array (id = ANY($1)). mysql, mariadb: one ? per entry, in order; a list binds as JSON text (id IN (SELECT j.v FROM JSON_TABLE(?, '$[*]' COLUMNS (v BIGINT PATH '$')) j); text items: JSON_CONTAINS(?, JSON_QUOTE(col))). sqlite: ? in order; a list binds as JSON text (id IN (SELECT value FROM json_each(?))). clickhouse: {name:Type} with the kept name, once each (id IN {ids:Array(UInt64)}). A value is text, number, boolean or a flat list of one type.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Function body, up to 64 KiB, that turns the result into what you receive. Global: result. See the description.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal: user lifts it for this exact call. Same connectionId, sql, path, mode, params, script.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `Exemption id from the refusal. Works once; expires in 10 minutes.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user: why this statement needs the limit lifted. Max 300 characters.`, NoVars{})
 )
@@ -1451,13 +1453,28 @@ var (
 // DbmcpToolAPIListEnvironments describes the api_list_environments tool.
 var DbmcpToolAPIListEnvironments = define(Entry{
 	ID: "dbmcp.tool.api_list_environments", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_list_environments",
-	Default: "List environments that share variables with agents: id, name, whether reads skip approval, and variable names. A secret lists its allowed hosts. Values are never shown. Requests without an environment are allowed.",
+	Default: "List environments that share variables with agents: id, name, whether reads skip approval, and variable names. A secret lists its allowed hosts. Values are never shown. Requests without an environment are allowed. reviewResults true: the user holds that class's responses (read: GET, HEAD, OPTIONS without body).",
 }, NoVars{})
 
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped. Kept variables: Kira holds named values you never see. Use {{kept.name}} in a later url path, query, header, form field or body. In a JSON body write it unquoted; Kira inserts JSON. A list fits only a JSON body. Values expire (default 1 hour) and the user can clear them. list_kept_variables shows what exists. Inputs: for a value only the user has (token, password, one-time code), declare it in inputs as {name, label} and write {{kept.name}} where it goes. Kira asks the user in the approval and keeps it for later requests to the same host. A missing value always waits for the user; a kept one is reused without asking. You never see it: an echo shows {{kept.name}}. Never ask the user to paste it into the chat.",
+}, NoVars{})
+
+// DbmcpToolRunQueryScripts is added to run_query's description while scripts are on.
+var DbmcpToolRunQueryScripts = define(Entry{
+	ID: "dbmcp.tool.run_query.scripts", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolRunQueryScripts.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolRunQueryScripts.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolRunQueryScripts.usedBy.body",
+	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. It is a function body that ends with return. The user sees it beside the statement. It runs after the statement, on the masked result in the global result (the JSON run_query returns: kind, columns [{name, dataType, typeClass}], rows of text cells or null, rowCount, truncated, truncatedCells; documents, entries or messages on other kinds). You receive only {kind: \"script\", output: <its return value>, input: {kind, rowCount, truncated}}, never the rows unless it returns them. SQL numbers are text cells: use Number(...) or BigInt(...); big decimals stay text. Result input up to 8 MiB, output up to 4 MiB. Kept in the script: kept.get(\"name\") reads a kept value; kept.set(\"name\", value) keeps one (1 MiB, 16 per run), for a later params or script. Names are literal strings. Kept values are stored only once the result is final and sent; you get kept: [{name, type, items, expiresInSeconds}], never a value. Secret kept values and values the user typed cannot be read. The statement alone decides the approval class and what the connection allows; the script cannot widen it. Not with explain. A script error does not undo a write: its changes stay, do not rerun it.",
+}, NoVars{})
+
+// DbmcpToolListKept describes the list_kept_variables tool.
+var DbmcpToolListKept = define(Entry{
+	ID: "dbmcp.tool.list_kept_variables", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_kept_variables",
+	Default: "List the kept variables you can use as {{kept.name}}: name, type, item count, secret flag, source (kind, tool) and seconds until expiry. Values are never shown. Entries with source user were typed by the user; use them only with the host they were given for.",
 }, NoVars{})
 
 var (
@@ -1478,7 +1495,32 @@ var (
 	_ = arg(DbmcpToolAPIRequest.id, "timeoutSeconds", studioApp, NextCall, `Request timeout, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 30, Max: 300})
 	_ = arg(DbmcpToolAPIRequest.id, "maxResponseBytes", studioApp, NextCall, `Response body cap in bytes, up to {{.Max}}. Default {{.Default}}.`, LimitVars{Default: 65536, Max: 524288})
 	_ = arg(DbmcpToolAPIRequest.id, "followRedirects", studioApp, NextCall, `Follow redirects. Default true. A redirect that would carry a credential to a host not allowed fails.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs", studioApp, NextCall, `Values the user types in the approval, never shown to you. Each has name (starts with a letter; letters, digits, underscore; at most 40) and label (what the user is asked for, one line, at most 80 characters). Use each as {{kept.name}} in this request. At most 4.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs.name", studioApp, NextCall, `Kept variable name for the value.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs.label", studioApp, NextCall, `What the user is asked for, such as Personal access token.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this request. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Globals: request (your method, url, headers, query, body, contentType, form, with {{name}} references unresolved) and input. Return an object with any of method, url, headers, query, body (text, or an object or array sent as JSON), contentType, form.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.input", studioApp, NextCall, `Any JSON, up to 1 MiB, given to prepare as input.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: response (status, statusText, headers [{name, value}], contentType, body text with secrets masked up to 2 MiB, json: the parsed body or null, bodyBytes, truncated, binary, finalUrl, redirects) and request (method, url). Integers above 2^53 arrive as BigInt; use kira.parseJSON for exact numbers in nested JSON text. The result is capped at maxResponseBytes.`, NoVars{})
 )
+
+// DbmcpToolAPIRequestScripts is added to api_request's description while scripts are on.
+var DbmcpToolAPIRequestScripts = define(Entry{
+	ID: "dbmcp.tool.api_request.scripts", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolApiRequestScripts.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestScripts.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestScripts.usedBy.body",
+	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each is a function body that ends with return. The user sees both scripts. script.prepare runs before approval and returns request fields that replace yours. script.transform runs on the response; you receive only {result: <its return value>}, never the raw response unless it returns it. Kept in scripts: kept.get(\"name\") reads a kept value; kept.set(\"name\", value) in transform keeps one (1 MiB, 16 per run). Names are literal strings. Kept values are stored only once the response is final and sent; you get kept: [{name, type, items, expiresInSeconds}], never a value. prepare cannot read secret kept values or return a {{...}} reference not written in your script or request.",
+}, NoVars{})
+
+// DbmcpToolAPIRequestReview is always added to api_request's description.
+var DbmcpToolAPIRequestReview = define(Entry{
+	ID: "dbmcp.tool.api_request.reviewSuffix", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolApiRequestReview.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestReview.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestReview.usedBy.body",
+	Default:    "The user may hold the response for review before you get it (reviewResults in api_list_environments). A withheld response is an error that says the request was sent; do not resend it.",
+}, NoVars{})
 
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{

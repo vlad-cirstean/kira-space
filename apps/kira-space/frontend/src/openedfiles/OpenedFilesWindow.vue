@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
-import { paneFrame, windowBody } from '@theme/lib/frames';
+import { paneFrame, windowBody, windowTabStrip } from '@theme/lib/frames';
 import { cn } from '@theme/lib/utils';
 import MainView from '@workbench/components/MainView.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
@@ -21,10 +21,7 @@ import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
         :class="cn(paneFrame, 'flex flex-1 flex-col')"
         :aria-label="t('space.openedFiles.window.title')"
       >
-        <div
-          class="h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome"
-          data-testid="opened-files-tabs"
-        >
+        <div :class="windowTabStrip" data-testid="opened-files-tabs">
           <TabStrip />
         </div>
         <div class="min-h-0 flex-1">

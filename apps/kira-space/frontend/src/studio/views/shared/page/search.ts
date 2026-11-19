@@ -3,10 +3,9 @@ import { type ComputedRef, computed, shallowReactive } from 'vue';
 import type { SearchHandle, SearchQuery } from './scan';
 import { usePageSearchFilterStore } from './searchFilter';
 
-// What views/shared/page/SearchToolbar.vue is bound to. Each of grid/search.ts,
-// documents/search.ts and keyvalue/search.ts exports one literal of this shape, built from
-// its own runSearch/clearSearchState/searchState/matchedRows plus its page module's
-// getPage/pageVersion — the toolbar itself never imports a specific view's page or search module.
+// What views/shared/page/SearchToolbar.vue is bound to. Each search module exports one literal of
+// this shape (createPageSearch's `pageSearchApi`) — the toolbar itself never imports a specific
+// view's page or search module.
 export interface PageSearchApi<M extends { row: number }> {
   runSearch(
     tabId: string,
@@ -42,6 +41,8 @@ export interface PageSearchApi<M extends { row: number }> {
   pageOf?(tabId: string): unknown;
   loadedRowCount(tabId: string): number;
 }
+
+export type RunSearch<M extends { row: number }> = PageSearchApi<M>['runSearch'];
 
 /** The per-tab match record + its tab-close cleanup registration, once per view module. Moved
  *  here from scan.ts (P39 iter3 F4/D3) — this is about per-tab search *state*, not scanning,
@@ -81,12 +82,10 @@ function createSearchState<M extends { row: number }>(): {
   return { searchState, clearSearchState, matchedRows };
 }
 
-// grid/search.ts, documents/search.ts and keyvalue/search.ts each assembled this
-// same six-ingredient PageSearchApi literal by hand from createSearchState()'s three return values
-// plus their own runSearch/pageVersion/getPage. One factory in one place instead of the same
-// assembly written out three times.
+// One factory assembles the PageSearchApi literal from createSearchState()'s three return values
+// plus a module's own runSearch/pageVersion/pageOf.
 export function createPageSearch<M extends { row: number }>(opts: {
-  runSearch: PageSearchApi<M>['runSearch'];
+  runSearch: RunSearch<M>;
   pageVersion: { n: number };
   pageOf?: PageSearchApi<M>['pageOf'];
   loadedRowCount(tabId: string): number;
@@ -94,14 +93,14 @@ export function createPageSearch<M extends { row: number }>(opts: {
   searchState: PageSearchApi<M>['searchState'];
   clearSearchState(tabId: string): void;
   matchedRows(tabId: string): number[] | null;
-  api: PageSearchApi<M>;
+  pageSearchApi: PageSearchApi<M>;
 } {
   const { searchState, clearSearchState, matchedRows } = createSearchState<M>();
   return {
     searchState,
     clearSearchState,
     matchedRows,
-    api: {
+    pageSearchApi: {
       runSearch: opts.runSearch,
       clearSearchState,
       searchState,
@@ -111,6 +110,19 @@ export function createPageSearch<M extends { row: number }>(opts: {
       loadedRowCount: opts.loadedRowCount,
     },
   };
+}
+
+/** createPageSearch for a module whose search scope is one page store keyed by tab id. */
+export function createSinglePageSearch<M extends { row: number }>(
+  runSearch: RunSearch<M>,
+  page: { getPage(tabId: string): { rowCount: number } | null; pageVersion: { n: number } },
+): ReturnType<typeof createPageSearch<M>> {
+  return createPageSearch<M>({
+    runSearch,
+    pageVersion: page.pageVersion,
+    pageOf: page.getPage,
+    loadedRowCount: (tabId) => page.getPage(tabId)?.rowCount ?? 0,
+  });
 }
 
 // The deleted DataGrid.vue, KeyValueView.vue and ConsoleResultGrid.vue each built this same

@@ -15,8 +15,8 @@ import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import { paneFrame } from '@theme/lib/frames';
 import { useDebounceFn } from '@vueuse/core';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
-import { errorText } from '@workbench/bridge/codedError';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import MonacoHost from '../editor/MonacoHost.vue';
 import { useConnectionsStore } from '../state/connections';
@@ -51,7 +51,9 @@ const DDL_SOURCES = {
 
 const connectionsStore = useConnectionsStore();
 const schemaDialogStore = useSchemaDialogStore();
-const { mutateAsync: saveDdl, isPending: saving } = useSaveDdlMutation();
+const saveAction = useMutationAction(useSaveDdlMutation());
+const saving = saveAction.pending;
+const saveError = saveAction.error;
 const draft = ref('');
 const loaded = ref('');
 const dirty = computed(() => draft.value !== loaded.value);
@@ -119,21 +121,12 @@ function onDocChange(text: string): void {
   void setDebouncedDraft(text);
 }
 
-// SettingsDialog.vue's own pattern (a saveError ref plus a footer strip) mirrored exactly — this
-// file's own header comment already claimed to reuse the staging shape, but had no catch at all: a
-// rejected schemaSet became an unhandled promise rejection from a template @click, the dialog
-// stayed open with nothing shown, and Save looked merely slow rather than failed.
-const saveError = ref<string | null>(null);
-
 async function onSave(): Promise<void> {
   const id = connectionId.value;
   if (!id || saving.value) return;
-  saveError.value = null;
-  try {
-    await saveDdl({ connectionId: id, ddl: draft.value });
+  // A rejected save shows in the footer strip; the dialog stays open.
+  if (await saveAction.run({ connectionId: id, ddl: draft.value })) {
     schemaDialogStore.closeSchemaDialog();
-  } catch (err) {
-    saveError.value = errorText(err);
   }
 }
 </script>

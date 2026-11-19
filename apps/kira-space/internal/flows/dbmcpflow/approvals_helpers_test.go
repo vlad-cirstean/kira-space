@@ -43,7 +43,7 @@ func decodeItem(t testing.TB, it approvals.Item) pendingReq {
 		Statement: pl.Statement, ConnectionID: pl.ConnectionID, Bytes: pl.Bytes,
 	}
 	switch it.Kind {
-	case approvals.KindDbResponse:
+	case approvals.KindDbResponse, approvals.KindAPIResponse:
 		r.Stage = "response"
 	case approvals.KindKubeRead:
 		r.Cluster = &kubeCluster{Context: pl.Context, Server: pl.Server, Namespace: pl.Namespace, Operation: pl.Operation}

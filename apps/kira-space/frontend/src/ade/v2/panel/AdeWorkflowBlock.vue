@@ -7,7 +7,7 @@ import { Button } from '@theme/components/ui/button';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { ref } from 'vue';
 import type { CardModel } from '../plan/usePlanModel';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
@@ -21,16 +21,15 @@ import { useSwitchWorkflow } from './useSwitchWorkflow';
 const props = defineProps<{ card: CardModel }>();
 const wfUi = useAdeWorkflowsUiStore();
 const { options, switchTo } = useSwitchWorkflow();
-const error = ref('');
+const switching = useAsyncAction(async (value: unknown) => {
+  // remount: the native select shows the declined value otherwise
+  if (!(await switchTo(props.card.task.id, String(value ?? '')))) selectKey.value++;
+});
+const error = switching.error;
 const selectKey = ref(0);
 
 async function pick(value: unknown): Promise<void> {
-  error.value = '';
-  try {
-    if (!(await switchTo(props.card.task.id, String(value ?? '')))) selectKey.value++; // remount: the native select shows the declined value otherwise
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await switching.run(value);
 }
 
 function edit(): void {

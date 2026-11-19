@@ -139,9 +139,9 @@ test('contract: a file changed on disk offers Refresh and Overwrite', async ({ r
   await page.keyboard.type('x');
   await page.locator('[data-testid="repo-file-save"]').click();
 
-  await expect(page.locator('[data-testid="repo-file-conflict"]')).toBeVisible();
+  await expect(page.locator('[data-testid="repo-file-save-error"]')).toBeVisible();
   await page.locator('[data-testid="repo-file-overwrite"]').click();
-  await expect(page.locator('[data-testid="repo-file-conflict"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="repo-file-save-error"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="repo-file-modified"]')).toHaveCount(0);
   expect(writes(control).at(-1)?.args).toMatchObject({ baseHash: CHANGED.hash });
 });

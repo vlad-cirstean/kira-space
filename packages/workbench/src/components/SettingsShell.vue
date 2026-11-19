@@ -12,7 +12,7 @@ import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onUnmounted, reactive, ref } from 'vue';
-import { errorText } from '../bridge/codedError';
+import { useAsyncAction } from '../behaviour/asyncAction';
 
 // P103 Part 2 (§5.5): Kira Studio's own workbench/SettingsDialog.vue and Kira Space's, unified —
 // the frame (DialogFrame + its "Settings" header), the nav (`sections`/`activeSection`) and the
@@ -182,26 +182,25 @@ function onDismiss(): void {
 // Every close route unmounts this component, so one hook discards the extra state for all of them.
 onUnmounted(() => props.extra?.discard());
 
-const saveError = ref<string | null>(null);
-
 // P17 D7: a failed Save keeps the dialog open and shows the error; only a successful Save closes
-// it. Saving with nothing changed sends no patch at all (D2).
+// it.
+const saving = useAsyncAction(async () => {
+  const patch = pendingPatch.value;
+  await props.extra?.save();
+  if (Object.keys(patch).length > 0) await props.save(patch);
+  emit('close');
+});
+const saveError = saving.error;
+
+// Saving with nothing changed sends no patch at all (D2).
 async function onSave(): Promise<void> {
   if (!isValid.value) return;
-  saveError.value = null;
-  const patch = pendingPatch.value;
-  const hasPatch = Object.keys(patch).length > 0;
-  if (!hasPatch && !props.extra?.isDirty) {
+  if (Object.keys(pendingPatch.value).length === 0 && !props.extra?.isDirty) {
+    saving.reset();
     emit('close');
     return;
   }
-  try {
-    await props.extra?.save();
-    if (hasPatch) await props.save(patch);
-    emit('close');
-  } catch (err) {
-    saveError.value = errorText(err);
-  }
+  await saving.run();
 }
 </script>
 

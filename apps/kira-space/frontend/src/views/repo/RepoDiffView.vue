@@ -309,7 +309,7 @@ onUnmounted(() => {
         {{ t('common.goToFile.label') }}
       </Button>
       <Badge v-if="workingBranchId" variant="warn" data-testid="repo-diff-uncommitted">
-        {{ t('space.ade.changes.uncommitted.label') }}
+        {{ t('common.changes.uncommitted.label') }}
       </Badge>
       <SecondaryTabs
         v-if="state === 'found'"

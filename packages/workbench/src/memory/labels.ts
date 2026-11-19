@@ -10,7 +10,7 @@ import { type MessageKey, t } from '@theme/i18n';
 
 export const ORIGIN_LABEL = {
   user: 'common.user.label',
-  agent: 'memory.common.origin.agent.label',
+  agent: 'common.origin.agent.label',
   external: 'memory.common.origin.external.label',
 } as const satisfies Record<MemoryOrigin, MessageKey>;
 
@@ -26,8 +26,8 @@ export const SCOPE_LABEL = {
 } as const satisfies Record<MemoryScope, MessageKey>;
 
 export const GROUP_KIND_LABEL = {
-  session: 'space.settings.agentUsage.session.label',
-  request: 'studio.http.raw.requestPending.label',
+  session: 'common.field.session.label',
+  request: 'common.field.request.label',
   task: 'common.task.label',
   document: 'memory.common.groupKind.document.label',
   thread: 'memory.common.groupKind.thread.label',
@@ -70,7 +70,7 @@ const ACTION_LABEL = {
 
 const SOURCE_LABEL = {
   mcp: 'common.mcp.label',
-  ui: 'memory.start.event.source.ui.label',
+  ui: 'common.module.app.label',
   import: 'common.import.label',
 } as const satisfies Record<MemoryEvent['source'], MessageKey>;
 

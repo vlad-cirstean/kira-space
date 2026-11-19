@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import {
   Field,
@@ -111,12 +111,9 @@ const disableCookieJarId = useId();
     <Field>
       <div class="flex items-center justify-between gap-1">
         <FieldLabel>{{ t('studio.http.settings.version.label') }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-api-httpVersion"
-          :disabled-trigger="isAtDefault('api', 'httpVersion')"
-          :disabled="isAtDefault('api', 'httpVersion')"
+          :at-default="isAtDefault('api', 'httpVersion')"
           @click="resetLeaf('api', 'httpVersion')"
         />
       </div>
@@ -136,12 +133,9 @@ const disableCookieJarId = useId();
         <FieldLabel :for="requestTimeoutMsId">{{
           t('studio.http.settings.timeout.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-api-requestTimeoutMs"
-          :disabled-trigger="isAtDefault('api', 'requestTimeoutMs')"
-          :disabled="isAtDefault('api', 'requestTimeoutMs')"
+          :at-default="isAtDefault('api', 'requestTimeoutMs')"
           @click="resetLeaf('api', 'requestTimeoutMs')"
         />
       </div>
@@ -167,12 +161,9 @@ const disableCookieJarId = useId();
         <FieldLabel :for="maxResponseMbId">{{
           t('studio.http.settings.maxResponse.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-api-maxResponseMb"
-          :disabled-trigger="isAtDefault('api', 'maxResponseMb')"
-          :disabled="isAtDefault('api', 'maxResponseMb')"
+          :at-default="isAtDefault('api', 'maxResponseMb')"
           @click="resetLeaf('api', 'maxResponseMb')"
         />
       </div>
@@ -203,13 +194,10 @@ const disableCookieJarId = useId();
         />
         <FieldLabel :for="sslVerifyId">{{ t('studio.http.settings.verifySsl.label') }}</FieldLabel>
       </Field>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         class="ml-auto"
         data-testid="settings-reset-api-sslVerify"
-        :disabled-trigger="isAtDefault('api', 'sslVerify')"
-        :disabled="isAtDefault('api', 'sslVerify')"
+        :at-default="isAtDefault('api', 'sslVerify')"
         @click="resetLeaf('api', 'sslVerify')"
       />
     </FieldGroup>
@@ -229,13 +217,10 @@ const disableCookieJarId = useId();
           t('studio.http.settings.followRedirects.label')
         }}</FieldLabel>
       </Field>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         class="ml-auto"
         data-testid="settings-reset-api-followRedirects"
-        :disabled-trigger="isAtDefault('api', 'followRedirects')"
-        :disabled="isAtDefault('api', 'followRedirects')"
+        :at-default="isAtDefault('api', 'followRedirects')"
         @click="resetLeaf('api', 'followRedirects')"
       />
     </FieldGroup>
@@ -245,12 +230,9 @@ const disableCookieJarId = useId();
         <FieldLabel :for="maxRedirectsId">{{
           t('studio.http.settings.maxRedirects.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-api-maxRedirects"
-          :disabled-trigger="isAtDefault('api', 'maxRedirects')"
-          :disabled="isAtDefault('api', 'maxRedirects')"
+          :at-default="isAtDefault('api', 'maxRedirects')"
           @click="resetLeaf('api', 'maxRedirects')"
         />
       </div>
@@ -287,13 +269,10 @@ const disableCookieJarId = useId();
           <FieldDescription>{{ t('studio.settings.api.cookieJar.description') }}</FieldDescription>
         </FieldContent>
       </Field>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         class="ml-auto"
         data-testid="settings-reset-api-disableCookieJar"
-        :disabled-trigger="isAtDefault('api', 'disableCookieJar')"
-        :disabled="isAtDefault('api', 'disableCookieJar')"
+        :at-default="isAtDefault('api', 'disableCookieJar')"
         @click="resetLeaf('api', 'disableCookieJar')"
       />
     </FieldGroup>

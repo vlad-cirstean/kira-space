@@ -1,0 +1,58 @@
+<script setup lang="ts">
+import type { AgentApiResult } from '@shared/domain/dbmcp';
+import { t } from '@theme/i18n';
+import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
+import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
+import { formatBytes } from '@workbench/behaviour/format';
+import { computed } from 'vue';
+import { indentJson } from '../beautify';
+import HttpStatusBadge from '../components/HttpStatusBadge.vue';
+import FlushEditor from './FlushEditor.vue';
+
+// A response as the agent's request got it, masked: status, headers, body. The body scrolls inside the
+// card, so a 2 MiB body does not grow the dialog.
+const props = defineProps<{ response: AgentApiResult; planUrl: string; testid: string }>();
+
+const finalUrl = computed(() =>
+  props.response.finalUrl && props.response.finalUrl !== props.planUrl
+    ? props.response.finalUrl
+    : '',
+);
+const json = computed(() => {
+  const r = props.response;
+  if (r.binary || r.truncated || !/json/i.test(r.contentType)) return null;
+  return indentJson(r.body);
+});
+</script>
+
+<template>
+  <div class="flex flex-col gap-1.5" :data-testid="testid">
+    <HttpStatusBadge
+      class="self-start"
+      :status="response.status"
+      :status-text="response.statusText"
+      :data-testid="`${testid}-status`"
+    />
+    <ApprovalCode v-if="finalUrl" :data-testid="`${testid}-final-url`">{{ finalUrl }}</ApprovalCode>
+    <ApprovalPairs
+      v-if="response.redirects.length"
+      :rows="response.redirects.map((r) => ({ name: String(r.status), value: r.url }))"
+      :testid="`${testid}-redirects`"
+    />
+    <ApprovalPairs
+      v-if="response.headers.length"
+      :rows="response.headers"
+      :testid="`${testid}-headers`"
+    />
+    <div class="max-h-80 overflow-auto" :data-testid="`${testid}-body`">
+      <span v-if="response.binary" class="text-kira-sm text-subtle">{{
+        t('studio.http.response.binary.status', { size: formatBytes(response.bodyBytes) })
+      }}</span>
+      <FlushEditor v-else-if="json !== null" :doc="json" language="json" />
+      <ApprovalCode v-else-if="response.body">{{ response.body }}</ApprovalCode>
+    </div>
+    <span v-if="response.truncated" class="text-kira-sm text-subtle">{{
+      t('studio.http.response.truncated.description', { size: formatBytes(response.bodyBytes) })
+    }}</span>
+  </div>
+</template>

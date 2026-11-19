@@ -417,7 +417,7 @@ func (a *Adapter) Execute(ctx context.Context, req model.ConsoleRequest, op *ada
 	defer release()
 	// Reported on failure too: an error inside a transaction leaves it open and aborted.
 	defer reportTransaction(conn, op)
-	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, adapters.ConsoleCapFor(req), req.StatementTimeout)
+	return execute(ctx, conn, op, a.trackerFor(op.OpID), a.state.Load().ReadOnly || req.ReadOnly, a.state.Load().ReadOnly, req.Statements, req.Params, adapters.ConsoleCapFor(req), req.StatementTimeout)
 }
 
 // DownloadObject is index.ts's downloadObject — caps.FileTransfer is false, so no UI ever offers

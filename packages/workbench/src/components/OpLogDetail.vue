@@ -4,12 +4,10 @@ import type { OpLogRecord } from '@shared/domain/ops';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
-import { useCopy } from '../behaviour/clipboard';
 import { displayValue, formatClockTime, formatDateTime, formatDuration } from '../behaviour/format';
 import {
   type OpLogDetailLine,
@@ -19,6 +17,7 @@ import {
   statusLabel,
 } from '../lib/opLog';
 import type { MenuItem } from '../state/contextMenu';
+import CopyIconButton from './CopyIconButton.vue';
 import OpLogCodeBlock from './OpLogCodeBlock.vue';
 
 // The expanded body of one op row: fields, command, error, steps, extra lines and an action bar.
@@ -33,7 +32,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ escape: [] }>();
-const { copy } = useCopy();
 
 const actionItems = (): Extract<MenuItem, { type: 'item' }>[] =>
   props.actions.filter(
@@ -81,13 +79,11 @@ function stepDuration(step: OpLogStep): string {
 
     <section v-if="record.command" class="flex flex-col gap-0.5">
       <SectionHeading flush :label="t('common.field.command.label')">
-        <TooltipIconButton
-          icon="copy"
+        <CopyIconButton
+          :text="record.command"
           :label="t('common.copyCommand.label')"
+          :message="t('workbench.opLog.copiedCommand.announce')"
           size="inline"
-          @click="
-            copy(record.command ?? '', { message: t('workbench.opLog.copiedCommand.announce') })
-          "
         />
       </SectionHeading>
       <OpLogCodeBlock
@@ -99,11 +95,11 @@ function stepDuration(step: OpLogStep): string {
 
     <section v-if="record.error" class="flex flex-col gap-0.5">
       <SectionHeading flush :label="t('workbench.opLog.error.status')">
-        <TooltipIconButton
-          icon="copy"
+        <CopyIconButton
+          :text="record.error"
           :label="t('workbench.opLog.copyError.label')"
+          :message="t('workbench.opLog.copiedError.announce')"
           size="inline"
-          @click="copy(record.error ?? '', { message: t('workbench.opLog.copiedError.announce') })"
         />
       </SectionHeading>
       <OpLogCodeBlock :text="record.error" tone="error" data-testid="op-detail-error" />

@@ -16,6 +16,7 @@ import {
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { copyOrReportError } from '@workbench/behaviour/clipboard';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { errorText } from '@workbench/bridge/codedError';
@@ -42,17 +43,20 @@ const ALL_ENTRIES: CatalogueEntry[] = FAKE_NAMES.map((name): CatalogueEntry => (
 // data…*'s own first open, and the same memoised promise a send would use. One sample per name,
 // freshly generated every time the dialog opens (closing and reopening shows a different one).
 // `generate` already accepts either spelling (generators.ts's own dispatch).
-const error = ref<string | null>(null);
-onMounted(async () => {
-  try {
-    const generate = await loadDynamicGenerator();
-    for (const entry of ALL_ENTRIES) {
-      samples[entry.name] = generate(entry.name) ?? '';
+const surface = useTaskAction();
+const error = surface.error;
+onMounted(() =>
+  surface.run(async () => {
+    try {
+      const generate = await loadDynamicGenerator();
+      for (const entry of ALL_ENTRIES) {
+        samples[entry.name] = generate(entry.name) ?? '';
+      }
+    } catch (err) {
+      throw new Error(t('studio.api.dynamicValues.loadError.error', { error: errorText(err) }));
     }
-  } catch (err) {
-    error.value = t('studio.api.dynamicValues.loadError.error', { error: errorText(err) });
-  }
-});
+  }),
+);
 
 function reference(name: string): string {
   return `{{${name}}}`;
@@ -69,10 +73,8 @@ const filteredEntries = computed(() => {
 });
 
 function onCopy(name: string): void {
-  error.value = null;
-  void copyOrReportError(reference(name), (message) => {
-    error.value = message;
-  });
+  surface.reset();
+  void copyOrReportError(reference(name), surface.fail);
 }
 
 function close(): void {

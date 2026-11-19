@@ -21,7 +21,7 @@ const run = computed(() => mcp.value.run ?? 'prompt');
 const mode = computed(() => mcp.value.mode ?? 'short');
 
 const runItems = computed(() => [
-  { value: 'prompt', label: t('automations.form.mcp.prompt.label'), testid: 'script-mcp-prompt' },
+  { value: 'prompt', label: t('common.mcp.askFirst.label'), testid: 'script-mcp-prompt' },
   { value: 'allow', label: t('automations.form.mcp.allow.label'), testid: 'script-mcp-allow' },
 ]);
 const modeItems = computed(() => [

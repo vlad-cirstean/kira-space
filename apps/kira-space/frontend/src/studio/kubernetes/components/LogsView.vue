@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { newUuid } from '@shared/ids';
 import CodiconIcon from '@theme/CodiconIcon.vue';
-import HighlightedText from '@theme/components/HighlightedText.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import { Button } from '@theme/components/ui/button';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
-import { matchesQuery, splitMatches } from '@workbench/behaviour/match';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useLogFilter } from '@workbench/behaviour/logFilter';
 import { useKeptState } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import CopyLogButton from '@workbench/components/CopyLogButton.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { type AnsiSegment, parseAnsi } from '@workbench/lib/ansi';
+import { appendCapped, tailItems } from '@workbench/lib/logTail';
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { kubeControl } from '../control';
-import type { KubeContainerRef, KubeLogLine } from '../wire';
+import type { KubeContainerRef, KubeLogLine, KubeLogsOpen } from '../wire';
 
 const props = defineProps<{
   clusterId: string;
@@ -26,58 +25,41 @@ const props = defineProps<{
   containers: readonly KubeContainerRef[];
 }>();
 
-const MAX_LINES = 20_000;
-const TAILS = [100, 1000, 5000, -1] as const;
-const tailLabel = (n: number): string =>
-  n === -1 ? t('common.state.all.option') : t('docker.logs.tail.option', { count: n });
-
 interface Line extends KubeLogLine {
   id: number;
   stream: string;
-  plain: string;
 }
 
 const logKey = (field: string): string =>
   `kubernetes:logs:${props.clusterId}/${props.namespace}/${props.pod}:${field}`;
 const container = useKeptState(() => logKey('container'), '');
 const previous = ref(false);
-const TAIL_ITEMS = computed(() =>
-  TAILS.map((n) => ({ value: String(n), label: tailLabel(n), testid: `kube-logs-tail-${n}` })),
-);
+const TAIL_ITEMS = computed(() => tailItems('kube-logs-tail'));
 const tail = ref<number>(1000);
 const timestamps = ref(false);
 const follow = ref(true);
 const wrap = ref(false);
-const filter = useKeptState(() => logKey('filter'), '');
 const lines = shallowRef<Line[]>([]);
+const { filter, needle, shown, status } = useLogFilter(
+  () => lines.value,
+  () => logKey('filter'),
+);
 const ended = ref(false);
-const failure = ref('');
+const streamError = ref('');
 
 let streamId = '';
 let opening: Promise<unknown> = Promise.resolve();
 let seq = 0;
 let off: (() => void) | null = null;
 
-const plainOf = (text: string): string =>
-  parseAnsi(text)
-    .map((seg) => seg.text)
-    .join('');
-
-const needle = computed(() => filter.value.trim().toLowerCase());
-const shown = computed(() =>
-  needle.value === ''
-    ? lines.value
-    : lines.value.filter((l) => matchesQuery(l.plain, needle.value)),
-);
-
 // A copy takes what the filter leaves, the same lines the pane shows.
 const loadCopy = async () => ({ chunks: shown.value, truncated: false });
 
 function append(batch: KubeLogLine[]): void {
-  const next = lines.value.concat(
-    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout', plain: plainOf(l.text) })),
+  lines.value = appendCapped(
+    lines.value,
+    batch.map((l) => ({ ...l, id: seq++, stream: 'stdout' })),
   );
-  lines.value = next.length > MAX_LINES ? next.slice(next.length - MAX_LINES) : next;
 }
 
 async function close(): Promise<void> {
@@ -98,13 +80,26 @@ async function close(): Promise<void> {
 // Bumped by every open() and by unmount; an await that resumes on a stale value bails out.
 let generation = 0;
 
+const openStream = useAsyncAction(async (gen: number, request: KubeLogsOpen) => {
+  try {
+    opening = kubeControl.logsOpen(request);
+    await opening;
+  } catch (err) {
+    if (gen !== generation) return;
+    ended.value = true;
+    throw err;
+  }
+});
+const failure = computed(() => openStream.error.value || streamError.value);
+
 async function open(): Promise<void> {
   const gen = ++generation;
   await close();
   if (gen !== generation) return;
   lines.value = [];
   ended.value = false;
-  failure.value = '';
+  streamError.value = '';
+  openStream.reset();
   const id = `kube-logs:${newUuid()}`;
   streamId = id;
   off = kubeControl.onLogs((e) => {
@@ -112,27 +107,20 @@ async function open(): Promise<void> {
     if (e.lines.length > 0) append(e.lines);
     if (e.ended) {
       ended.value = true;
-      if (e.error) failure.value = e.error;
+      if (e.error) streamError.value = e.error;
     }
   });
-  try {
-    opening = kubeControl.logsOpen({
-      streamId: id,
-      clusterId: props.clusterId,
-      namespace: props.namespace,
-      pod: props.pod,
-      container: container.value,
-      previous: previous.value,
-      tail: tail.value,
-      timestamps: timestamps.value,
-      follow: !previous.value,
-    });
-    await opening;
-  } catch (err) {
-    if (gen !== generation) return;
-    failure.value = errorText(err);
-    ended.value = true;
-  }
+  await openStream.run(gen, {
+    streamId: id,
+    clusterId: props.clusterId,
+    namespace: props.namespace,
+    pod: props.pod,
+    container: container.value,
+    previous: previous.value,
+    tail: tail.value,
+    timestamps: timestamps.value,
+    follow: !previous.value,
+  });
 }
 
 watch(
@@ -161,14 +149,6 @@ onBeforeUnmount(() => {
   generation++;
   void close();
 });
-
-function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
-  if (!seg.color && !seg.background) return undefined;
-  return {
-    ...(seg.color && { color: seg.color }),
-    ...(seg.background && { backgroundColor: seg.background }),
-  };
-}
 </script>
 
 <template>
@@ -187,30 +167,30 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       <Toggle v-model="previous" size="kira" data-testid="kube-logs-previous">{{
         t('common.action.previous.label')
       }}</Toggle>
+      <Toggle v-model="follow" size="kira" data-testid="kube-logs-follow">{{
+        t('common.logs.follow.label')
+      }}</Toggle>
+      <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
+        t('common.logs.timestamps.label')
+      }}</Toggle>
+      <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
+        t('common.logs.wrap.label')
+      }}</Toggle>
       <SecondaryTabs
         variant="segmented"
-        :aria-label="t('docker.logs.tail.aria')"
+        :aria-label="t('common.logs.tail.aria')"
         data-testid="kube-logs-tail"
         :model-value="String(tail)"
         :items="TAIL_ITEMS"
         @update:model-value="(v) => (tail = Number(v))"
       />
-      <Toggle v-model="timestamps" size="kira" data-testid="kube-logs-timestamps">{{
-        t('docker.logs.timestamps.label')
-      }}</Toggle>
-      <Toggle v-model="follow" size="kira" data-testid="kube-logs-follow">{{
-        t('docker.logs.follow.label')
-      }}</Toggle>
-      <Toggle v-model="wrap" size="kira" data-testid="kube-logs-wrap">{{
-        t('docker.logs.wrap.label')
-      }}</Toggle>
-      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
       <SearchField
         v-model="filter"
         class="ml-auto w-48"
-        :placeholder="t('kubernetes.logs.filter.placeholder')"
+        :placeholder="t('common.logs.filter.placeholder')"
         data-testid="kube-logs-filter"
       />
+      <CopyLogButton :load="loadCopy" :disabled="shown.length === 0" data-testid="kube-logs-copy" />
     </ViewToolbar>
     <LogLines
       v-model:follow="follow"
@@ -219,27 +199,14 @@ function segmentStyle(seg: AnsiSegment): Record<string, string> | undefined {
       class="rounded-none border-0"
       :lines="shown"
       :wrap="wrap"
+      :show-timestamps="timestamps"
+      :needle="needle"
       :error="failure || undefined"
-    >
-      <template #line="{ segments, index }">
-        <span v-if="timestamps && shown[index]?.ts" class="mr-2 text-muted-foreground">{{
-          shown[index]?.ts
-        }}</span>
-        <span
-          v-for="(seg, i) in segments"
-          :key="i"
-          :class="seg.bold && 'font-medium'"
-          :style="segmentStyle(seg)"
-          ><HighlightedText :parts="splitMatches(seg.text, needle)" /></span
-        >
-      </template>
-    </LogLines>
+    />
     <div
       class="flex shrink-0 items-center gap-2 bg-chrome px-2 py-0.5 text-kira-sm text-muted-foreground"
     >
-      <span v-if="needle !== ''" data-testid="kube-logs-matches">{{
-        t('kubernetes.logs.matches.status', { shown: shown.length, total: lines.length })
-      }}</span>
+      <span v-if="status" data-testid="kube-logs-matches">{{ status }}</span>
       <span v-if="ended" data-testid="kube-logs-ended">{{
         t('kubernetes.logs.ended.status')
       }}</span>

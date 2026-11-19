@@ -28,6 +28,15 @@
 # Guards U127-U132 and U88 steps 5-12: docs/HISTORY.md (v0.3.17).
 # Guards U153-U156, U73/U88/U90 extensions: docs/HISTORY.md (v0.3.17).
 # Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
+# Guards U162-U170: docs/HISTORY.md (v0.3.18).
+# Guards U171-U176: docs/HISTORY.md (v0.3.18).
+# Guards U177-U181: docs/HISTORY.md (v0.3.18).
+# Guards U183-U187: docs/HISTORY.md (v0.3.18).
+# Guards U188-U189, U51 extended: docs/HISTORY.md (v0.3.18).
+# Guard U190: docs/HISTORY.md (v0.3.18).
+# Guards U191-U203: docs/HISTORY.md (v0.3.18).
+# Guard U204: docs/HISTORY.md (v0.3.18).
+# Guards U205-U207: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -71,7 +80,7 @@ packages/docker-ui/src/components/ContainerList.vue
 packages/docker-ui/src/components/ImageList.vue
 packages/docker-ui/src/components/VolumeList.vue
 packages/docker-ui/src/components/NetworkList.vue
-packages/docker-ui/src/components/VirtualList.vue
+packages/workbench/src/components/VirtualList.vue
 apps/kira-space/frontend/src/repo/RepoFileTree.vue
 apps/kira-space/frontend/src/repo/RepoTreeRow.vue
 apps/kira-space/frontend/src/repo/RepoSearchView.vue
@@ -145,7 +154,6 @@ U62 apps/kira-space/frontend/src/ade/v2/notes/AdeNotesEditor.vue # TipTap chain(
 U47 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # Up/Down jump between the wrapping pill lines of a roving-focus strip; useListNavigation is one vertical list
 U62 apps/kira-space/frontend/src/ade/v2/links/AdeLinkStrip.vue # focus moves between pills and to the + after a removal; reka's roving group owns Left/Right only
 # C (rest)
-U11 packages/docker-ui/src/components/LogsView.vue # ANSI bold is log data, not UI chrome
 U41 packages/git-ui/src/App.vue # git engine host reads modifier keys
 U41 apps/kira-space/frontend/src/capture/chord.ts # chord recorder reads modifier flags to build an accelerator string, not a shortcut
 U62 packages/git-ui/src/components/CommitGrid.vue # SlickGrid engine host owns row focus
@@ -154,6 +162,16 @@ U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defe
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
 U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
 U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
+# P674 iteration 1: virtual lists VirtualList cannot host
+U164 apps/kira-space/frontend/src/ade/v2/repos/AdeReposPage.vue # grouped windowRows with group heads, not a flat row list
+U164 apps/kira-space/frontend/src/studio/views/shared/keyvalue/KeyValueRowsTable.vue # custom visibleRows windowing over key and value columns
+U164 apps/kira-space/frontend/src/studio/views/stream/StreamRowsTable.vue # frozen index column beside the virtual body
+U164 apps/kira-space/frontend/src/studio/views/documents/DocumentView.vue # variable-height rows, tooltip delegation on the scroller
+U164 apps/kira-space/frontend/src/studio/views/console/ConsoleResultGrid.vue # two virtualizers over mapped indices
+U164 packages/docker-ui/src/components/ContainerTable.vue # header row inside the listbox, sized by container queries
+# P682: synchronous failures, no awaited call
+U188 apps/kira-space/frontend/src/studio/views/shared/page/SearchToolbar.vue # invalid regex thrown synchronously by runSearch; no awaited call
+U188 apps/kira-space/frontend/src/studio/proof/ProofStepView.vue # synchronous payload parse and page mount; no awaited call
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
@@ -216,7 +234,7 @@ U47@@vt@@/behaviour/!|/testing/!@@ArrowUp/ArrowDown, or role listbox/tree withou
 U48@@vt@@/behaviour/!|/testing/!@@RowContextMenu or useRowMenu (use the context menu store)@@<RowContextMenu\b|useRowMenu\(
 U49@@v@@/behaviour/!|/testing/!@@AdeConfirmDialog, window.confirm or a local ConfirmDialog (use the confirm store or ConfirmDialogView)@@<AdeConfirmDialog\b|window\.confirm|import ConfirmDialog from '\.\./components/
 U50@@vt@@/behaviour/!|/testing/!@@input committing on blur and Enter, or useCommitField (use InlineEditInput, useInlineEdit)@@<(?:input|Input|InputGroupInput)\b(?=(?&t)\s@blur=)(?=(?&t)\s@keydown\.enter)|useCommitField\(
-U51@@vt@@/behaviour/!|/testing/!@@hand-rolled pending ref (use useAsyncAction or mutation.isPending)@@const \w*(?:[Bb]usy|[Pp]ending|[Ss]aving|[Ll]oading|[Ss]ubmitting|[Rr]unning|[Dd]eleting|[Rr]etrying|[Cc]opying)\s*=\s*ref\b
+U51@@vt@@/behaviour/!|/testing/!@@hand-rolled pending ref (use useAsyncAction or mutation.isPending)@@const \w*(?:[Bb]usy|[Pp]ending|[Ss]aving|[Ll]oading|[Ss]ubmitting|[Rr]unning|[Dd]eleting|[Rr]etrying|[Cc]opying|[Ss]ending|[Rr]efreshing|[Rr]econnecting)\s*=\s*ref\b
 U52@@vt@@/behaviour/!|/testing/!|/theme/src/format.ts|/theme/src/i18n/number.ts@@locale or Intl formatting, useTimeAgo, local format helper (use behaviour/format)@@toLocaleString\(|toLocaleDateString|toLocaleTimeString|Intl\.(?:NumberFormat|DateTimeFormat|RelativeTimeFormat)|useTimeAgo\(|function (?:plural|formatDuration|formatElapsed|formatSize|formatTime|formatMs)\b
 U53@@vt@@/behaviour/!|/testing/!|queryClient.ts@@own QueryClient or a query option restating the createQueryClient default@@new QueryClient\b|retry:\s*false|refetchOnWindowFocus:\s*false|staleTime:\s*(?:Infinity|Number\.POSITIVE_INFINITY)
 U53@@v@@/behaviour/!|/testing/!@@explicit queryClient argument in a component (inject it with useQueryClient)@@,\s*queryClient\s*,?\s*\)
@@ -291,7 +309,7 @@ U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes 
 U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
 U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl off the landing hero (detail values are text-kira-lg, RTy.1)@@${TOK}text-kira-xl(?![\w-])
 U129@@vt@@@@arbitrary shadow (shadows come from the elevation tiers, RBo.3)@@${TOK}!?shadow-\[
-U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|VariableRow.vue|VariableHistoryMenu.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
+U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|MaskedValue.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
 U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
 U132@@vt@@/ade/v2/plan/|AdeShelfRow.vue|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
 U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
@@ -323,6 +341,51 @@ U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<Fie
 U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
 U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
 U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
+U162@@v@@ViewHead.vue|ApprovalItemCard.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
+U163@@v@@@@relative time as bare template text (use RelativeTime)@@\{\{\s*formatRelative\(
+U164@@v@@VirtualList.vue@@hand virtual listbox (use VirtualList)@@(?s)\A(?=.*useVirtualRows\()(?=.*useListNavigation\b[<(])(?=.*role="listbox")
+U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]
+U166@@vt@@SaveConflictAlert.vue|confirmOverwrite.ts@@hand save-conflict alert (use SaveConflictAlert)@@common\.action\.overwrite\.label
+U167@@vt@@ConfigFormProblemAlert.vue@@hand config form problem alert (use ConfigFormProblemAlert)@@common\.configForm\.problem\.status
+U168@@vt@@ResetToDefaultButton.vue|PromptDetail.vue@@hand reset-to-default button (use ResetToDefaultButton)@@common\.action\.resetToDefault\.label
+U169@@vt@@frames.ts@@hand drop indicator (use dropIndicator)@@['"](?=[^'"]*${TOK}h-0\.5(?![\w-]))(?=[^'"]*${TOK}bg-focus(?![\w-]))
+U170@@vt@@frames.ts@@hand window tab strip (use windowTabStrip)@@['"](?=[^'"]*${TOK}h-tabbar(?![\w-]))(?=[^'"]*${TOK}min-h-0(?![\w-]))(?=[^'"]*${TOK}bg-chrome(?![\w-]))
+U171@@v@@CopyIconButton.vue@@hand copy icon button (use CopyIconButton)@@(?<![\w:-])icon="copy"|:icon="(?:ICON\.copy|copied\b[^"]*)"
+U172@@vt@@format.ts@@hand masked value (use MaskedValue, MASKED_TEXT)@@(?:•){4}|'•'\.repeat\(
+U173@@v@@RelativeTime.vue|AdeReviewSync.vue|AdeSessionTabTip.vue|AdeAgentsStatusRow.vue@@standalone instant via useRelativeTime (use RelativeTime)@@\buseRelativeTime\(
+U174@@v@@HighlightedText.vue@@hand mark element (use HighlightedText)@@<mark[\s>]
+U175@@vt@@@@hand meta link classes (use Button variant link-meta)@@${TOK}decoration-border(?![\w-])
+U176@@v@@@@QueryState error slot with hand Retry or Alert (use QueryState errorLabel, errorTestid)@@#error="\{[^"]*\bretry\b|#error="[^"]*"\s*>\s*<Alert\b
+U177@@v@@HttpStatusBadge.vue@@hand HTTP status chip (use HttpStatusBadge)@@\bstatusClass\([\w.]*\bstatus\b\)|\bimport\b[^;]*\bstatusClass\b[^;]*from '@shared/domain/http'|>=\s*500\b
+U178@@vt@@MeasuredSection.vue@@hand docker measure section (use MeasuredSection)@@docker\.measuring\.loading|docker\.measure\.label
+U179@@vt@@@@byte size passed as a count (use formatBytes, {size})@@\bcount:\s*(?:[\w.]+\.)?(?:bytes|\w*Bytes)\b
+U180@@v@@KeptNameMark.vue@@hand kept name and type (use KeptNameMark)@@:mark-class="[^"]*KEPT_MARK_CLASS[^"]*"\s*/>\s*<span
+U181@@vt@@@@JSON.parse/stringify pretty-print (use beautify.ts indentJson, prettyJson)@@JSON\.stringify\(\s*JSON\.parse\(
+U183@@vt@@StagedKeepList.vue@@hand Will keep list (use StagedKeepList)@@studio\.kept\.willKeep\.label
+U184@@vt@@TransformScriptBlock.vue@@hand transform script kept marks (use TransformScriptBlock)@@studio\.kept\.mayKeep\.label|studio\.kept\.scriptReads\.hint
+U185@@v@@GrpcStatusBadge.vue@@hand gRPC status chip (use GrpcStatusBadge)@@\bgrpcCodeClass\(|\bgrpcCodeHint\(
+U186@@vt@@ValueRevealButton.vue@@hand value reveal toggle (use ValueRevealButton)@@common\.secret\.show\.label|common\.hideValue\.label|docker\.env\.revealValue|(?s:import MaskedValue\b.*?(?:icon="eye"|'eye'))
+U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@\.client,\s*\w+\.cwd,\s*\w+\.task\b
+U188@@vt@@/behaviour/!|/testing/!@@hand async error ref (use useAsyncAction, useMutationAction, useTaskAction)@@(?<!this\.)\b\w+\.value\s*=\s*errorText\(|\b\w*(?:[Ee]rror|[Ff]ailure)\.value\s*=\s*err\s*;
+U189@@vt@@/behaviour/!|/testing/!@@errorText alias (call errorText, or let the action describe)@@\bconst \w+ = \(\w+: unknown\): string => errorText\(\w+\);
+U190@@vt@@queryClient.ts|asyncAction.ts@@per-call TanStack networkMode (set it in createQueryClient defaultOptions)@@\bnetworkMode\s*:\s*['"]
+U191@@vt@@@@hand page module re-export (use pageModuleApi)@@\bexport const \w+ = store\.(?:pageVersion|bumpPageVersion|setPage|getPage|drop|dropForPrefix|totalRetainedBytes|setVisibleWindow)\b
+U192@@vt@@shared/page/search.ts|shared/page/scan.ts@@hand runSearch progress signature (use RunSearch)@@onProgress:\s*\(\s*found: number,\s*rowsScanned: number
+U193@@vt@@shared/page/scan.ts@@inline regex scan cap (use regexTextCap)@@\.regex \? REGEX_SCAN_TEXT_CAP\b
+U194@@vt@@@@hand cell match builder (use cellMatch)@@\(row, col, start, end\) => \(\{\s*row,\s*col,\s*start,\s*end,?\s*\}\)
+U195@@vt@@shared/viewOp.ts@@hand count reset (use clearCount)@@\.count = null;\s*\w+\.countOpId = null;
+U196@@vt@@shared/page/navigation.ts@@hand query-change restart (use restart)@@const prevIndex = [^;\n]*\.pageIndex;\s*resetTokens\(
+U197@@vt@@shared/viewOp.ts@@runtime cleanup beside createRuntimeStore (use its onClose)@@(?s:createRuntimeStore<.*?registerTabRuntimeCleanup\()
+U198@@vt@@shared/viewOp.ts@@hand count request (use runTabCount)@@\bdata\.count\(
+U199@@vt@@shared/request/resolve.ts@@hand dynamic second pass (use resolveWithDynamic)@@\.refs\.some\(\(\w+\) => \w+\.kind === 'dynamic'\)
+U200@@vt@@shared/request/requestOp.ts@@hand request preflight state (use beginRequest, stopRequest)@@\.preflight = true;|\.preflight = false;\s*\w+\.opId = null;\s*\w+\.status = 'cancelled'
+U201@@vt@@shared/page/visibleRows.ts@@hand visible window math (use pageRowWindow)@@const from = \w+\[\w+\[0\]\.index\]
+U202@@vt@@shared/page/navigation.ts@@offset cursor literal (use pageOffsetCursor, firstPageCursor)@@\{\s*mode: 'offset',\s*offset:
+U203@@vt@@shared/page/rowViews.ts@@hand page row decode (use the rowViews builders)@@store\.cached\(\w+, row, '(?:id|body|field|value)'
+U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand match beside LogLines)@@(?s)\A(?=.*<LogLines\b).*(?:<FindBar\b|\bmatchesQuery\()
+U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
+U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
+U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
 GUARDS
 
 # hits: "U<n> path"

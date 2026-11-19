@@ -96,7 +96,7 @@ const backupsOpen = computed({
         <CodeBlock class="max-h-96 overflow-auto">{{ f.text }}</CodeBlock>
       </section>
       <section v-if="current.env.length > 0" class="flex flex-col gap-1">
-        <SectionHeading flush :label="t('docker.field.env.label')" />
+        <SectionHeading flush :label="t('common.field.environment.label')" />
         <ul class="m-0 flex list-none flex-col gap-0.5 p-0" data-testid="ade-settings-env">
           <li v-for="e in current.env" :key="e.name" class="font-data text-kira-sm">
             {{ e.name }}={{ e.value }}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@theme/components/ui/input-group';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { cn } from '@theme/lib/utils';
 import { useTimeoutFn, useToggle } from '@vueuse/core';
@@ -52,7 +52,7 @@ const shown = computed(() => (typed.value !== '' ? typed.value : (savedPlain.val
 const placeholder = computed(() => {
   if (props.placeholder !== undefined) return props.placeholder;
   if (props.set === undefined) return undefined;
-  return props.set ? t('common.secret.saved.placeholder') : t('docker.edit.unset.status');
+  return props.set ? t('common.secret.saved.placeholder') : t('common.unset.status');
 });
 const notRevealable = computed(
   () => props.set === true && typed.value === '' && savedPlain.value === null && !props.reveal,
@@ -108,17 +108,9 @@ onBeforeUnmount(drop);
       @update:model-value="(v: string | number) => (value = String(v))"
     />
     <InputGroupAddon align="inline-end">
-      <TooltipIconButton
-        :icon="visible ? 'eye-closed' : 'eye'"
-        :label="
-          notRevealable
-            ? t('common.secret.notRevealable.tooltip')
-            : visible
-              ? t('common.hideValue.label')
-              : t('common.secret.show.label')
-        "
-        :aria-label="visible ? t('common.hideValue.label') : t('common.secret.show.label')"
-        :pressed="visible"
+      <ValueRevealButton
+        :shown="visible"
+        :label="notRevealable ? t('common.secret.notRevealable.tooltip') : undefined"
         :disabled="disabled || notRevealable"
         disabled-trigger
         :data-testid="eyeTestid"

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type ConnectionKind, ROW_ESTIMATE_KINDS } from './connection';
+import { keptSiteSchema, keptStagedSchema, keptUseSchema } from './kept';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -123,6 +124,29 @@ export function accessSummaryOf(c: DbMcpAccessInput): string {
   return parts.length > 0 ? parts.join(', ') : 'none';
 }
 
+// The result script of a run_query item (P680): the source the user approves, its hash and the kept names it
+// may write. Also the transform of an api.request item.
+const transformViewSchema = /*#__PURE__*/ z.object({
+  source: z.string(),
+  hash: z.string(),
+  // Kept variables the script may write (P678), with their calls in the source.
+  mayKeep: z
+    .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+    .nullish()
+    .transform((v) => v ?? []),
+});
+export type TransformView = z.infer<typeof transformViewSchema>;
+
+// Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
+// and the variables as they stood when the statement was checked; the result script, if any (P680).
+// Older items carry none.
+const dbKeptShape = {
+  params: z.array(z.string()).default([]),
+  placeholders: z.array(z.string()).default([]),
+  kept: z.array(keptUseSchema).default([]),
+  script: transformViewSchema.nullish().transform((v) => v ?? null),
+};
+
 export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   connectionId: z.string(),
   statement: z.string(),
@@ -136,6 +160,7 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   // The item offers "review the result"; reviewResult says the connection's settings already do.
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
+  ...dbKeptShape,
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
@@ -158,6 +183,7 @@ export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   plan: dbMcpApprovalPlanSchema.nullable(),
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
+  ...dbKeptShape,
 });
 export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 
@@ -170,6 +196,9 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   // The declared mode; requested says the approver asked for this review rather than a setting.
   mode: dbMcpPayloadModeSchema.optional(),
   requested: z.boolean().default(false),
+  // A script produced the held text from the raw result (P680); rawBytes sizes that raw result.
+  scripted: z.boolean().default(false),
+  rawBytes: z.number().default(0),
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 
@@ -207,6 +236,29 @@ export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
 // api.request item payload (dbmcp apiPayload). Values are as the agent sent them: a credential stays
 // {{name}}, and a secret variable's value is "••••".
 const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string() });
+// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
+const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
+  prepare: z
+    .object({
+      source: z.string(),
+      hash: z.string(),
+      changed: z.array(z.string()),
+      input: z.string(),
+      inputTruncated: z.boolean(),
+    })
+    .nullable(),
+  transform: transformViewSchema.nullable(),
+});
+// A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
+export const apiInputSchema = /*#__PURE__*/ z.object({
+  name: z.string(),
+  label: z.string(),
+  state: z.enum(['needed', 'stored']),
+  origin: z.string(),
+  keptId: z.string().optional(),
+});
+export type ApiInput = z.infer<typeof apiInputSchema>;
+
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
   url: z.string(),
@@ -227,14 +279,82 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   credentials: z.array(z.object({ name: z.string(), hosts: z.array(z.string()) })),
   followRedirects: z.boolean(),
   timeoutSeconds: z.number(),
+  // Kept variables the request uses (P678), with where each is read.
+  kept: z
+    .array(keptUseSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  // Values the agent asked the user for (P679): typed on the card (needed) or already held (stored).
+  inputs: z.array(apiInputSchema).default([]),
+  script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
+  // "Review the response" on the card (P677): offered, and already on by settings.
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type ApiRequestPayload = z.infer<typeof apiRequestPayloadSchema>;
+
+// The review fields every pre-run kind carries (db.query, db.exemption, api.request); the db kinds add a mode.
+export const reviewOptionPayloadSchema = /*#__PURE__*/ z.object({
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
+  mode: z.string().default(''),
+});
+
+// api.response item payload (dbmcp apiResponsePayload): no body, text, raw or script; those come from
+// the pending-response query.
+export const apiResponsePayloadSchema = /*#__PURE__*/ z.object({
+  method: z.string(),
+  url: z.string(),
+  host: z.string(),
+  environment: z.object({ id: z.string(), name: z.string(), color: z.string() }).nullable(),
+  status: z.number(),
+  statusText: z.string(),
+  isError: z.boolean(),
+  scripted: z.boolean(),
+  bytes: z.number(),
+  rawBytes: z.number(),
+  class: z.enum(['read', 'write']),
+  reason: z.string(),
+});
+export type ApiResponsePayload = z.infer<typeof apiResponsePayloadSchema>;
+
+// agentapi.Result as the review shows it: the masked response a transform read.
+export const agentApiResultSchema = /*#__PURE__*/ z.object({
+  status: z.number(),
+  statusText: z.string().default(''),
+  headers: z
+    .array(apiPairSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  contentType: z.string().default(''),
+  body: z.string().default(''),
+  binary: z.boolean().default(false),
+  bodyBytes: z.number().default(0),
+  truncated: z.boolean().default(false),
+  finalUrl: z.string().default(''),
+  redirects: z
+    .array(z.object({ status: z.number(), url: z.string() }))
+    .nullish()
+    .transform((v) => v ?? []),
+});
+export type AgentApiResult = z.infer<typeof agentApiResultSchema>;
 
 // bridge/dbmcp.go's DbMcpPendingResponse: the exact text the AI client receives if the user sends.
 export const dbMcpPendingResponseSchema = /*#__PURE__*/ z.object({
   requestId: z.string(),
   text: z.string(),
   isError: z.boolean(),
+  // The response a script read, and the script that turned it into text (P677); empty without one.
+  raw: z.string().default(''),
+  script: z
+    .object({ source: z.string(), hash: z.string() })
+    .nullish()
+    .transform((v) => v ?? null),
+  // Values the script keeps once the result is sent (P678).
+  keep: z
+    .array(keptStagedSchema)
+    .nullish()
+    .transform((v) => v ?? []),
 });
 export type DbMcpPendingResponse = z.infer<typeof dbMcpPendingResponseSchema>;
 

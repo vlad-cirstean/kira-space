@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
           data-testid="ade-stage-not-now"
           @click="emit('notNow')"
           >{{
-            t('git.dialog.postCheckoutPullConfirm.notNow.label')
+            t('common.action.notNow.label')
           }}</Button
         >
         <Button variant="dialog" size="kira-lg" data-testid="ade-stage-cancel" @click="close">{{

@@ -1,0 +1,42 @@
+{
+  "KeptVarsService.List": {
+    "entries": [
+      {
+        "bytes": 23,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_apikey",
+        "items": 0,
+        "name": "apikey",
+        "origin": "https://api.example.test",
+        "preview": "",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": true,
+        "source": {
+          "client": "claude-code",
+          "kind": "user",
+          "mcp": "api",
+          "request": "GET https://api.example.test/users",
+          "tool": "api_request"
+        },
+        "type": "string"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "KeptVarsService.Reveal": {
+    "error": null,
+    "outcome": "revealed",
+    "value": "typed-secret-value-42"
+  },
+  "KeptVarsService.Reveal#confirmation": {
+    "error": null,
+    "outcome": "confirmation-required",
+    "value": null
+  },
+  "args:KeptVarsService.Reveal": {
+    "confirmed": false,
+    "id": "kv_apikey"
+  }
+}

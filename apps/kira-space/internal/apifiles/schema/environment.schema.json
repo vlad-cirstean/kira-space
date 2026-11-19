@@ -30,6 +30,25 @@
       "type": "boolean",
       "default": false,
       "description": "Skip the approval for GET, HEAD and OPTIONS requests without a body that an agent sends in this environment. Off by default."
+    },
+    "agentReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Response review per request class. An unset class is inherit. inherit follows the app setting; review always holds responses for a look; send never holds them.",
+      "properties": {
+        "read": {
+          "type": "string",
+          "enum": ["inherit", "review", "send"],
+          "default": "inherit",
+          "description": "GET, HEAD and OPTIONS requests without a body."
+        },
+        "write": {
+          "type": "string",
+          "enum": ["inherit", "review", "send"],
+          "default": "inherit",
+          "description": "Every other request."
+        }
+      }
     }
   },
   "$defs": {

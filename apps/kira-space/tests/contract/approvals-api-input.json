@@ -1,0 +1,114 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Api-Key",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "header",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": {
+      "api.request:<id:1>": {
+        "inputs": {
+          "apikey": "typed-secret-value-42"
+        }
+      }
+    }
+  }
+}

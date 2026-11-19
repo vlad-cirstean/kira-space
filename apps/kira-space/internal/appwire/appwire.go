@@ -30,6 +30,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/configsync"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filehandlers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -39,6 +40,7 @@ import (
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
@@ -309,9 +311,14 @@ type Wired struct {
 	GrpcHistory     *bridge.GrpcHistoryService
 	DataGrip        *bridge.DataGripService
 	DbMcp           *bridge.DbMcpService
-	Docker          *bridge.DockerService
-	Kubernetes      *bridge.KubernetesService
-	Proof           *bridge.ProofService
+	// DbMcpSessions mints the per-session Kira Studio server grants; flows use it to open a Studio session.
+	DbMcpSessions *dbmcp.SessionPool
+	// Kept is the in-memory kept variable store; KeptVars is its Settings view's service.
+	Kept       *keptvars.Store
+	KeptVars   *bridge.KeptVarsService
+	Docker     *bridge.DockerService
+	Kubernetes *bridge.KubernetesService
+	Proof      *bridge.ProofService
 	// ProofStore is the validation-proof store behind Proof and the DB MCP proof tools.
 	ProofStore *proof.Service
 	// OnWindowClosing are the Studio window-close hooks the shell runs.
@@ -725,7 +732,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
 		application.NewService(w.ConnectionConfig), application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.Docker),
-		application.NewService(w.Kubernetes), application.NewService(w.Proof),
+		application.NewService(w.Kubernetes), application.NewService(w.Proof), application.NewService(w.KeptVars),
 	}
 }
 

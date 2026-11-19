@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * P265 F3: source text guard U64-U71. Flags literal user-visible text and misuse of the catalog
+ * P265 F3: source text guard U64-U71, U208 and U182 (catalog key ownership, ownership.ts). Flags literal user-visible text and misuse of the catalog
  * runtime in `.vue` and `.ts` sources (rules in sourceRules.ts). Exemptions are named, with a
  * reason, in exemptions.ts.
  */
@@ -8,7 +8,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { applyExemptions } from './allowlist';
 import { flattenCatalog, isPlural, placeholdersOf } from './catalogRules';
-import { EXEMPTIONS } from './exemptions';
+import { EXEMPTIONS, OWNERSHIP_PAIRS } from './exemptions';
+import { applyPairs, type OwnershipHit, scanOwnership } from './ownership';
 import { type Hit, type MessageShape, scanSource } from './sourceRules';
 
 const REPO_ROOT = join(import.meta.dir, '..', '..');
@@ -54,22 +55,34 @@ function loadMessages(): Map<string, MessageShape> {
 
 function main(): number {
   const messages = loadMessages();
+  const keys = new Set(messages.keys());
   const hits: Hit[] = [];
+  const owned: OwnershipHit[] = [];
   for (const file of listSources()) {
-    hits.push(...scanSource(file, readFileSync(join(REPO_ROOT, file), 'utf8'), { messages }));
+    const source = readFileSync(join(REPO_ROOT, file), 'utf8');
+    hits.push(...scanSource(file, source, { messages }));
+    owned.push(...scanOwnership(file, source, keys));
   }
   const { remaining, errors } = applyExemptions(hits, EXEMPTIONS);
+  const pairs = applyPairs(owned, OWNERSHIP_PAIRS);
+  errors.push(...pairs.errors);
   const limit = process.argv.includes('--all') ? remaining.length : MAX_PRINTED;
   for (const h of remaining.slice(0, limit)) {
     console.error(`check-copy: ${h.file}:${h.line}: ${h.rule} ${h.message}`);
   }
   if (remaining.length > MAX_PRINTED)
     console.error(`check-copy: ...and ${remaining.length - MAX_PRINTED} more`);
-  for (const e of errors) console.error(`check-copy: ${e}`);
-  if (remaining.length > 0 || errors.length > 0) {
-    const files = new Set(remaining.map((h) => h.file)).size;
+  for (const h of pairs.remaining) {
     console.error(
-      `check-copy: ${remaining.length} hit(s) in ${files} file(s), ${errors.length} exemption error(s)`,
+      `check-copy: ${h.file}:${h.line}: U182 '${h.key}' belongs to another module; move it to common.* or name a pair`,
+    );
+  }
+  for (const e of errors) console.error(`check-copy: ${e}`);
+  const total = remaining.length + pairs.remaining.length;
+  if (total > 0 || errors.length > 0) {
+    const files = new Set([...remaining, ...pairs.remaining].map((h) => h.file)).size;
+    console.error(
+      `check-copy: ${total} hit(s) in ${files} file(s), ${errors.length} exemption error(s)`,
     );
     return 1;
   }

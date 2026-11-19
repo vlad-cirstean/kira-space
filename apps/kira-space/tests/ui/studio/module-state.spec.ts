@@ -270,8 +270,7 @@ test('Docker: panel search, list scroll and logs query survive a module round tr
   await expect(page.locator(t('docker-container-detail'))).toBeVisible();
   await page.locator(t('docker-tab-logs')).click();
   await expect.poll(() => docker.calls('LogsOpen').length).toBe(1);
-  await page.locator(t('docker-logs-find')).click();
-  await page.locator(t('docker-logs-find-input')).fill('boom');
+  await page.locator(t('docker-logs-filter')).fill('boom');
   await page.locator(t('toggle-search')).click();
   await page.locator(t('tree-search')).fill('o');
 
@@ -282,7 +281,7 @@ test('Docker: panel search, list scroll and logs query survive a module round tr
 
   await expect(page.locator(t('tree-search'))).toHaveValue('o');
   await expect.poll(() => scrollTop(page.locator(t('docker-container-list')))).toBe(scrolled);
-  await expect(page.locator(t('docker-logs-find-input'))).toHaveValue('boom');
+  await expect(page.locator(t('docker-logs-filter'))).toHaveValue('boom');
   await emitWailsEvent(page, 'kira:docker:logs', { streamId: 'none', lines: [], ended: false });
 });
 

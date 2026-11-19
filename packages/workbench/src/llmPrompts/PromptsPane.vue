@@ -28,7 +28,7 @@ const AREAS: readonly Area[] = [
   { id: 'memory', prefix: 'memory.', label: 'common.module.memory.label' },
   { id: 'agentRuns', prefix: 'headless.', label: 'llmPrompts.area.agentRuns.label' },
   { id: 'rebaseReview', prefix: 'ade.', label: 'llmPrompts.area.rebaseReview.label' },
-  { id: 'databaseMcp', prefix: 'dbmcp.', label: 'studio.settings.nav.studioMcp.label' },
+  { id: 'databaseMcp', prefix: 'dbmcp.', label: 'common.module.studioMcp.label' },
 ];
 
 const MIN_LIST_WIDTH = 180;
@@ -103,7 +103,7 @@ function commitWidth(size: number): void {
                 <span class="min-w-0 truncate"><PromptTitle :view="p" /></span>
                 <span class="flex shrink-0 gap-1">
                   <Badge v-if="rowEdited(p)" variant="info" data-testid="llm-prompt-badge">{{
-                    t('llmPrompts.badge.edited.label')
+                    t('common.state.edited.status')
                   }}</Badge>
                   <Badge v-if="p.defaultChanged" variant="warn" data-testid="llm-prompt-badge">{{
                     t('llmPrompts.badge.defaultChanged.label')

@@ -2,7 +2,6 @@ import type { SortSpec } from '@shared/domain/queries';
 import type { ObjectMeta } from '@shared/domain/tree';
 import type { PageCursor } from '@shared/protocol/dataOps';
 import { t } from '@theme/i18n';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { DataTabState } from '../../../state/tabDomain';
@@ -17,14 +16,15 @@ import {
   reloadTabsForTarget,
 } from '../../state/viewCommands';
 import { runPagedLoad } from '../shared/page/load';
-import { createPageNavigation } from '../shared/page/navigation';
+import { createPageNavigation, pageOffsetCursor } from '../shared/page/navigation';
 import type { Selection } from '../shared/slick/selection';
 import {
-  beginOp,
+  applyPagePosition,
+  clearCount,
   createRuntimeStore,
   defaultPagedRuntime,
   type PagedViewRuntime,
-  runPagedCount,
+  runTabCount,
 } from '../shared/viewOp';
 import { clearCellFocus } from './focusRequest';
 import { getPage, setPage } from './page';
@@ -74,7 +74,7 @@ function defaultRuntime(): DataViewRuntime {
 
 export const useGridViewStore = defineStore('gridView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
-    createRuntimeStore<DataViewRuntime>(defaultRuntime);
+    createRuntimeStore<DataViewRuntime>(defaultRuntime, { onClose: clearCellFocus });
 
   /** The pending-changes guard lives here, not at any one caller (it used to sit only at
    *  DataToolbar.vue's own toggle button, so menu.ts's `markColumnMaskKind` — marking a column
@@ -99,15 +99,6 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (!rt.maskPreview && usePendingChangesStore().hasPending(tabId)) return;
     rt.maskPreview = !rt.maskPreview;
   }
-
-  // D4: `runtime` is this view's per-tab record — closeTab has no way to import this leaf module
-  // directly (reality 18), so it registers here instead. P67 §5.2: also drops that tab's own
-  // pending focus request (focusRequest.ts), if any — a request never outlives the tab it
-  // targeted.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-    clearCellFocus(tabId);
-  });
 
   async function loadMeta(tabId: string): Promise<void> {
     const tab = useTabsStore().findDataTab(tabId);
@@ -146,11 +137,8 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (!tab?.connectionId) return false;
     const rt = ensureRuntime(tabId);
 
-    const effectiveCursor: PageCursor = cursor ?? {
-      mode: 'offset',
-      offset: tab.state.pageIndex * tab.state.pageSize,
-    };
-    const opId = beginOp(rt);
+    const effectiveCursor: PageCursor =
+      cursor ?? pageOffsetCursor(tab.state.pageIndex, tab.state.pageSize);
 
     // A 'data' tab only ever exists against a tabular-shaped adapter (Postgres/MariaDB) — Mongo
     // opens a 'document' tab instead — so expectKind narrows rather than widening
@@ -158,9 +146,9 @@ export const useGridViewStore = defineStore('gridView', () => {
     // stopped — a failure here (below) leaves the previously rendered page exactly as it was.
     return runPagedLoad({
       rt,
-      opId,
-      stillMounted: () => Boolean(runtime[tabId]),
-      read: () =>
+      runtime,
+      id: tabId,
+      read: (opId) =>
         data.read({
           opId,
           tabId,
@@ -173,22 +161,17 @@ export const useGridViewStore = defineStore('gridView', () => {
           cursor: effectiveCursor,
         }),
       expectKind: 'tabular',
-      id: tabId,
       tabNoun: 'data tab',
       apply: (page) => {
-        setPage(tabId, page);
-        useStaleDataStore().stamp(tabId, tab.connectionId as string);
-        rt.status = 'idle';
-        rt.opId = null;
-        rt.hasMore = page.position.hasMore;
-        rt.nextToken = page.position.nextToken;
-        rt.prevToken = page.position.prevToken;
         // 'cursor'/'offsetWindow'/'batch' are keyvalue/stream-page concepts (P9/P10) — a tabular
         // page's own keyset/offset readers never produce them.
         const strategy = page.position.strategy;
         if (strategy !== 'keyset' && strategy !== 'offset') {
           throw new Error(`unexpected ${strategy} pagination for a tabular page`);
         }
+        setPage(tabId, page);
+        useStaleDataStore().stamp(tabId, tab.connectionId as string);
+        applyPagePosition(rt, page);
         rt.lastStrategy = strategy;
         if (!rt.meta) void loadMeta(tabId);
       },
@@ -212,7 +195,7 @@ export const useGridViewStore = defineStore('gridView', () => {
     const tab = useTabsStore().findDataTab(tabId);
     if (!tab?.connectionId) return;
     await data.invalidate(tab.connectionId, tab.path);
-    await load(tabId, { mode: 'offset', offset: tab.state.pageIndex * tab.state.pageSize });
+    await load(tabId, pageOffsetCursor(tab.state.pageIndex, tab.state.pageSize));
   }
 
   // D18: the post-commit reload. `handleMutate` has already dropped pages and marked the count
@@ -231,9 +214,7 @@ export const useGridViewStore = defineStore('gridView', () => {
       }
     };
     await data.invalidate(tab.connectionId, tab.path, 'pages');
-    requireLoaded(
-      await loadPage(tabId, { mode: 'offset', offset: tab.state.pageIndex * tab.state.pageSize }),
-    );
+    requireLoaded(await loadPage(tabId, pageOffsetCursor(tab.state.pageIndex, tab.state.pageSize)));
     // A commit that deletes every row on the current page left this reload
     // showing an empty grid still labelled page N — nothing else corrects it (goLast/the count
     // chip both still read the pre-delete total until a fresh count runs). Step back one page,
@@ -248,9 +229,7 @@ export const useGridViewStore = defineStore('gridView', () => {
     ) {
       const prevIndex = reloadedTab.state.pageIndex - 1;
       useTabsStore().patchDataTabState(tabId, { pageIndex: prevIndex });
-      requireLoaded(
-        await loadPage(tabId, { mode: 'offset', offset: prevIndex * tab.state.pageSize }),
-      );
+      requireLoaded(await loadPage(tabId, pageOffsetCursor(prevIndex, tab.state.pageSize)));
     }
     // The "immediately marked stale" needs the toolbar's own `rt.count` mirror to pick up the
     // server-side mark, which nothing else here does. `rt.count?.stale` is still false at this
@@ -269,17 +248,13 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (!tab?.connectionId) return;
     const connectionId = tab.connectionId;
     const rt = ensureRuntime(tabId);
-    await runPagedCount(rt, (refresh) =>
-      data.count({ tabId, connectionId, path: tab.path, filter: tab.state.filter, refresh }),
-    );
+    await runTabCount(rt, { tabId, connectionId, path: tab.path, filter: tab.state.filter });
   }
 
-  // stop/goFirst/goNext/goPrev/goLast/goToPage/resetTokens — mirrors views/documents/
-  // state.ts's own set exactly, modulo the tab accessor pair below. Every state-changing control
-  // resets paging to page 0 — page 40 at 100 rows is not page 40 at 10 000, and a changed
-  // filter/sort/projection invalidates whatever tokens were held; goLast requires a count — the
-  // toolbar disables ⏭ until Σ has run.
-  const { stop, goNext, goPrev, goFirst, goLast, goToPage, resetTokens } = createPageNavigation({
+  // Every state-changing control (`restart`) resets paging to page 0 — page 40 at 100 rows is not
+  // page 40 at 10 000, and a changed filter/sort/projection invalidates whatever tokens were held;
+  // goLast requires a count — the toolbar disables ⏭ until Σ has run.
+  const { stop, goNext, goPrev, goFirst, goLast, goToPage, restart } = createPageNavigation({
     tab: (tabId) => useTabsStore().findDataTab(tabId)?.state,
     patch: (tabId, p) => useTabsStore().patchDataTabState(tabId, p),
     runtime: (tabId) => runtime[tabId],
@@ -287,42 +262,23 @@ export const useGridViewStore = defineStore('gridView', () => {
     load,
   });
 
-  async function setPageSize(tabId: string, pageSize: DataTabState['pageSize']): Promise<void> {
-    const prevIndex = useTabsStore().findDataTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDataTabState(tabId, { pageSize, pageIndex: 0 });
-    await load(tabId, { mode: 'offset', offset: 0 }, prevIndex);
-  }
+  const setPageSize = (tabId: string, pageSize: DataTabState['pageSize']): Promise<void> =>
+    restart(tabId, { pageSize });
 
-  async function setProjection(tabId: string, projection: string[] | null): Promise<void> {
-    const prevIndex = useTabsStore().findDataTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDataTabState(tabId, { projection, pageIndex: 0 });
-    await load(tabId, { mode: 'offset', offset: 0 }, prevIndex);
-  }
+  const setProjection = (tabId: string, projection: string[] | null): Promise<void> =>
+    restart(tabId, { projection });
 
-  async function setFilter(tabId: string, filter: string | null): Promise<void> {
-    resetTokens(tabId);
+  function setFilter(tabId: string, filter: string | null): Promise<void> {
     // P43 F7/D10: a count taken under the previous WHERE is an answer to a different question, not
     // a drifted answer to this one — `stale` (§7) would still leave a wrong `of M` in the pager and
     // still let ⏭ page past the end. Clearing it (not staling it) returns the pager to "page N" with
-    // no total, exactly what an un-counted state already looks like. Projection/sort setters below
-    // don't do this: neither changes which rows match.
-    const prevIndex = useTabsStore().findDataTab(tabId)?.state.pageIndex;
-    const rt = ensureRuntime(tabId);
-    rt.count = null;
-    rt.countOpId = null;
-    rt.countError = null;
-    useTabsStore().patchDataTabState(tabId, { filter, pageIndex: 0 });
-    await load(tabId, { mode: 'offset', offset: 0 }, prevIndex);
+    // no total, exactly what an un-counted state already looks like. Projection/sort setters don't
+    // do this: neither changes which rows match.
+    clearCount(ensureRuntime(tabId));
+    return restart(tabId, { filter });
   }
 
-  async function setSort(tabId: string, sort: SortSpec | null): Promise<void> {
-    const prevIndex = useTabsStore().findDataTab(tabId)?.state.pageIndex;
-    resetTokens(tabId);
-    useTabsStore().patchDataTabState(tabId, { sort, pageIndex: 0 });
-    await load(tabId, { mode: 'offset', offset: 0 }, prevIndex);
-  }
+  const setSort = (tabId: string, sort: SortSpec | null): Promise<void> => restart(tabId, { sort });
 
   // Purely a display concern (which page.columns index each display column reads from) — unlike
   // projection/filter/sort above, reordering never changes what the query returns, so this
@@ -354,8 +310,7 @@ export const useGridViewStore = defineStore('gridView', () => {
 
   /** Shown page is stale: connection gone, or read under another connection session. */
   function isStale(tabId: string): boolean {
-    const connectionId = useTabsStore().findDataTab(tabId)?.connectionId;
-    return connectionId ? useStaleDataStore().isStale(tabId, tabId, connectionId) : false;
+    return useStaleDataStore().isTabStale(tabId, useTabsStore().findDataTab(tabId)?.connectionId);
   }
 
   return {

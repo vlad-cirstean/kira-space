@@ -14,10 +14,10 @@ import { Card } from '@theme/components/ui/card';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { hostWords, type MessageKey, t } from '@theme/i18n';
 import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
-import { useCopy } from '@workbench/behaviour/clipboard';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -68,11 +68,10 @@ const retrySetup = useRetrySetup();
 const reviewCode = useReviewCode();
 const automation = useRunAutomation();
 const contextMenu = useContextMenuStore();
-const setupError = ref('');
+const surface = useTaskAction();
+const setupError = surface.error;
 const forcePush = ref(false);
-const { copy, copied } = useCopy();
 const openView = useOpenChangeRequest();
-const copiedKey = ref('');
 
 const branch = computed(() => props.row.branch);
 const graph = computed(() => props.model.view.graph);
@@ -115,12 +114,7 @@ const chipLabel = computed(() => {
 });
 const setupFailed = computed(() => branch.value.setup?.state === 'failed');
 async function onRetrySetup(): Promise<void> {
-  setupError.value = '';
-  try {
-    await retrySetup.mutateAsync({ branchId: branch.value.id });
-  } catch (err) {
-    setupError.value = errorText(err);
-  }
+  await surface.run(() => retrySetup.mutateAsync({ branchId: branch.value.id }));
 }
 const runs = computed(() => props.card.task.runs);
 const mainName = computed(
@@ -162,8 +156,8 @@ function run(a: HeaderAction, ev?: MouseEvent): void {
     if (r)
       contextMenu.openContextMenuAt(r.left, r.bottom, automation.menuItems(props.card.task.id, id));
   } else if (a.kind === 'review') {
-    setupError.value = '';
-    reviewCode.open(props.card.task.id, id, null, { onError: (msg) => (setupError.value = msg) });
+    surface.reset();
+    reviewCode.open(props.card.task.id, id, null, { onError: surface.fail });
   }
 }
 const HEADER_ICON = {
@@ -188,10 +182,6 @@ const words = computed(() =>
 const branchUrl = computed(() => changeRequests.data.value?.branchUrls[branch.value.id] ?? '');
 const FORCE_PUSH_CMD = 'git push --force-with-lease';
 
-function copyLink(key: string, text: string): void {
-  copiedKey.value = key;
-  void copy(text);
-}
 const { pending } = useTaskUpdates();
 const markSeen = useMarkTrackedSeen();
 function markItemSeen(itemKey: string): void {
@@ -450,11 +440,10 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
               <BranchChip v-else :name="branch.name" class="max-w-1/2" />
             </TextTooltip>
             <span class="flex-1" />
-            <TooltipIconButton
-              :icon="copied && copiedKey === 'branch' ? 'check' : 'copy'"
+            <CopyIconButton
+              :text="branchUrl || branch.name"
               :label="t('space.ade.branchPanel.copyBranchLink.tooltip')"
               class="shrink-0"
-              @click="copyLink('branch', branchUrl || branch.name)"
             />
           </template>
         </dd>
@@ -482,11 +471,10 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
               data-testid="ade-pr-view"
               @click="viewChangeRequest(changeRequest.url)"
             />
-            <TooltipIconButton
-              :icon="copied && copiedKey === 'pr' ? 'check' : 'copy'"
+            <CopyIconButton
+              :text="changeRequest.url"
               :label="t('space.ade.link.copy.tooltip', { label: words.changeRequestShort })"
               class="shrink-0"
-              @click="copyLink('pr', changeRequest.url)"
             />
           </template>
         </dd>

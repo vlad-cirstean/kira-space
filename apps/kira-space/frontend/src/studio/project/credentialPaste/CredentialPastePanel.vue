@@ -8,6 +8,7 @@ import { Button } from '@theme/components/ui/button';
 import { FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { Textarea } from '@theme/components/ui/textarea';
+import { MASKED_TEXT } from '@theme/format';
 import { type MessageKey, t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
@@ -108,7 +109,7 @@ function chosen(row: Row): PasteCandidate {
   return row.candidates[picks.value[row.field] ?? 0] ?? row.candidates[0];
 }
 function shown(field: PasteField, c: PasteCandidate): string {
-  return field === 'password' && !showPassword.value ? '•'.repeat(8) : c.value;
+  return field === 'password' && !showPassword.value ? MASKED_TEXT : c.value;
 }
 
 function onApply(): void {

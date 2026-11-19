@@ -13,7 +13,7 @@ import {
 } from '@theme/components/ui/collapsible';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import { useDismissPanelEdits, useForwardPanelEdits, usePanelForward } from '../queries';
 
@@ -24,7 +24,8 @@ const offer = usePanelForward(() => props.taskId);
 const forwardM = useForwardPanelEdits();
 const dismissM = useDismissPanelEdits();
 const open = ref(false);
-const error = ref('');
+const surface = useTaskAction();
+const error = surface.error;
 const failed = ref('');
 
 const data = computed(() => offer.data.value);
@@ -34,28 +35,20 @@ const noTarget = computed(() => (data.value?.targets.length ?? 0) === 0);
 const off = computed(() => noTarget.value || forwardM.isPending.value);
 
 async function forward(): Promise<void> {
-  error.value = '';
   failed.value = '';
-  try {
+  await surface.run(async () => {
     const res = await forwardM.mutateAsync({ taskId: props.taskId });
     if (res.failed.length > 0) {
       failed.value = res.failed
         .map((f) => `${badgeOf(f.sessionId)?.badge ?? f.sessionId}: ${f.error}`)
         .join('; ');
     }
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  });
 }
 
 async function dismiss(): Promise<void> {
-  error.value = '';
   failed.value = '';
-  try {
-    await dismissM.mutateAsync({ taskId: props.taskId });
-  } catch (err) {
-    error.value = errorText(err);
-  }
+  await surface.run(() => dismissM.mutateAsync({ taskId: props.taskId }));
 }
 </script>
 

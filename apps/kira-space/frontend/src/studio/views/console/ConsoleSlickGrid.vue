@@ -32,7 +32,7 @@ import {
   tooltipAttrs,
 } from '../shared/page/columns';
 import { displayText } from '../shared/page/display';
-import { setVisibleRows } from '../shared/page/visibleRows';
+import { reportVisibleWindow } from '../shared/page/visibleRows';
 import { searchCellLayers } from '../shared/slick/cssLayers';
 import {
   createGridDataSource,
@@ -322,17 +322,16 @@ function tagRenderedRows(): void {
   }
 }
 
-// P30 §3.6 C3 — the decode-window/retention report (P5 C1): the same setVisibleRows +
-// setVisibleWindow pair ConsoleResultGrid.vue's own onVisibleRangeIndices made from
-// VirtualList's `visible-range` emit, now driven from grid.onRendered/lastRenderedRowBounds the
-// way SlickGridHost.vue's own onGridRendered does — the *rendered* (overscanned) band, not the
+// P30 §3.6 C3 — the decode-window/retention report (P5 C1): the same reportVisibleWindow pair
+// ConsoleResultGrid.vue's own onVisibleRangeIndices made from VirtualList's `visible-range` emit,
+// now driven from grid.onRendered/lastRenderedRowBounds the way SlickGridHost.vue's own
+// onGridRendered does — the *rendered* (overscanned) band, not the
 // narrower strictly-visible one, so a row still inside the runway keeps its decode cache alive.
 function onGridRendered(): void {
   if (!grid || !dataSource) return;
   const band = renderedPageRowBand(grid, dataSource);
   if (!band) return;
-  setVisibleRows(props.tabId, band.lo, band.hi + 1);
-  setVisibleWindow(props.pageKey, band.lo, band.hi + 1);
+  reportVisibleWindow(props.tabId, band.lo, band.hi + 1, setVisibleWindow, props.pageKey);
 }
 
 function fieldAtCol(colIdx: number): string | undefined {

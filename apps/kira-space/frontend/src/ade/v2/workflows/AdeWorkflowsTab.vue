@@ -14,7 +14,7 @@ import { paneFrame } from '@theme/lib/frames';
 import { rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useAgentInfo } from '@workbench/agent/agentInfo';
-import { errorText } from '@workbench/bridge/codedError';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { configName } from '@workbench/config/configName';
 import { computed, ref, watch } from 'vue';
@@ -53,7 +53,8 @@ watch(
 
 const importOpen = ref(false);
 const importPath = ref('');
-const listError = ref('');
+const surface = useTaskAction();
+const listError = surface.error;
 
 function stepList(e: WorkflowEntry): string {
   return e.workflow ? e.workflow.steps.map((s) => s.name).join(' › ') : '';
@@ -69,28 +70,22 @@ async function pick(fileName: string): Promise<void> {
 async function runImport(): Promise<void> {
   const path = importPath.value.trim();
   if (!path || !(await wfUi.leave())) return;
-  listError.value = '';
-  try {
+  await surface.run(async () => {
     const entry = await importWf.mutateAsync({ path });
     wfUi.workflowFile = entry.fileName;
     wfUi.workflowMode = 'yaml';
     importPath.value = '';
     importOpen.value = false;
-  } catch (err) {
-    listError.value = errorText(err);
-  }
+  });
 }
 
 async function createNew(): Promise<void> {
   if (!(await wfUi.leave())) return;
-  listError.value = '';
-  try {
+  await surface.run(async () => {
     const entry = await newWf.mutateAsync({ name: t('space.ade.workflows.page.new.label') });
     wfUi.workflowFile = entry.fileName;
     wfUi.workflowMode = 'graph';
-  } catch (err) {
-    listError.value = errorText(err);
-  }
+  });
 }
 </script>
 

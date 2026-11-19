@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ApiFileVariable } from '@shared/domain/apiConfig';
-import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
 import CodeTextEditor from '@workbench/editor/CodeTextEditor.vue';
 import { computed, ref } from 'vue';
 import { applyBulk, serializeVariables } from './variablesForm';
@@ -39,14 +39,11 @@ function onInput(next: string): void {
       data-testid="variables-bulk-text"
       @update:model-value="onInput"
     />
-    <Alert v-if="error" variant="error" data-testid="variables-bulk-error">
-      <AlertDescription>{{
-        t('common.configForm.problem.status', {
-          line: error.line,
-          message: t(error.message.key, error.message.params),
-        })
-      }}</AlertDescription>
-    </Alert>
+    <ConfigFormProblemAlert
+      v-if="error"
+      :problem="{ line: error.line, message: t(error.message.key, error.message.params) }"
+      testid="variables-bulk-error"
+    />
     <FieldDescription v-else data-testid="variables-bulk-summary">{{
       t('studio.api.variablesDialog.bulk.summary.status', result.summary)
     }}</FieldDescription>

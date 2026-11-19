@@ -37,6 +37,14 @@ type EnvironmentFile struct {
 	Variables   []Variable `json:"variables,omitempty"`
 	// AgentAutoApproveReads skips the approval for body-less GET, HEAD and OPTIONS agent requests.
 	AgentAutoApproveReads bool `json:"agentAutoApproveReads,omitempty"`
+	// AgentReview overrides the app setting that holds agent responses for the user's review.
+	AgentReview *AgentReview `json:"agentReview,omitempty"`
+}
+
+// AgentReview is the response review per request class: inherit, review or send. An unset class is inherit.
+type AgentReview struct {
+	Read  string `json:"read,omitempty"`
+	Write string `json:"write,omitempty"`
 }
 
 // Variable holds a plain Value, or a Secret reference (`${secret:name}`), never both.

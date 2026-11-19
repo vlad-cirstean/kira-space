@@ -7,11 +7,13 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { errorText } from '@workbench/bridge/codedError';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useTabsStore } from '../../../../state/tabs';
 import { control } from '../../../bridge/control';
 import { guardedSavedWrite } from '../../../state/guardedSavedWrite';
@@ -64,21 +66,14 @@ const deleteMutation = useMutation({
   onSuccess: invalidate,
 });
 
-const failure = ref<string | null>(null);
+// A storage failure shows in the footer, never as an unhandled rejection with nothing on screen.
+const surface = useTaskAction();
 const error = computed(
-  () => failure.value ?? (savedQuery.error.value ? errorText(savedQuery.error.value) : null),
+  () => surface.error.value ?? (savedQuery.error.value ? errorText(savedQuery.error.value) : null),
 );
-async function attempt(action: () => Promise<unknown>): Promise<void> {
-  failure.value = null;
-  try {
-    await action();
-  } catch (err) {
-    failure.value = errorText(err);
-  }
-}
 
-const onApply = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(async () => {
+const onApply = (entry: SavedDiscoverQuery): Promise<boolean> =>
+  surface.run(async () => {
     if (props.dirty) {
       const ok = await confirmDialogStore.confirm({
         title: t('studio.kibana.saved.discard.title'),
@@ -95,11 +90,11 @@ const onApply = (entry: SavedDiscoverQuery): Promise<void> =>
     emit('close');
   });
 
-const togglePin = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
+const togglePin = (entry: SavedDiscoverQuery): Promise<boolean> =>
+  surface.run(() => updateMutation.mutateAsync({ entry, patch: { pinned: !entry.pinned } }));
 
-const rename = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(async () => {
+const rename = (entry: SavedDiscoverQuery): Promise<boolean> =>
+  surface.run(async () => {
     const name = await promptText(t('studio.console.savedMenu.renameTitle.title'), entry.name);
     if (!name || name.trim() === '') return;
     // Undefined: the user declined to overwrite another window's change; nothing was renamed.
@@ -107,8 +102,8 @@ const rename = (entry: SavedDiscoverQuery): Promise<void> =>
     relinkName(entry.id, name.trim());
   });
 
-const remove = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(async () => {
+const remove = (entry: SavedDiscoverQuery): Promise<boolean> =>
+  surface.run(async () => {
     const ok = await confirmDialogStore.confirm({
       title: t('studio.kibana.saved.delete.title'),
       message: t('studio.kibana.saved.delete.body', { name: entry.name }),
@@ -120,8 +115,8 @@ const remove = (entry: SavedDiscoverQuery): Promise<void> =>
     unlink(entry.id);
   });
 
-const openInNewTab = (entry: SavedDiscoverQuery): Promise<void> =>
-  attempt(async () => {
+const openInNewTab = (entry: SavedDiscoverQuery): Promise<boolean> =>
+  surface.run(async () => {
     const opened = useTabsStore().openDiscoverTab(props.connectionId, '', { newTab: true });
     if (!opened) return;
     setText(opened.id, entry.body.query);
@@ -170,7 +165,7 @@ function onSaveCurrent(): void {
     </template>
     <template #entry-actions="{ entry }">
       <TooltipIconButton
-        icon="empty-window"
+        :icon="ICON.openInNewTab"
         :label="t('common.action.openInNewTab.label')"
         data-testid="kibana-saved-open-new"
         @click.stop="openInNewTab(entry)"

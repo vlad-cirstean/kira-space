@@ -8,7 +8,7 @@ const RUN_STATE = {
   back: 'space.ade.outcome.back.status',
   running: 'common.state.running.status',
   review: 'space.ade.board.branchTag.review.label',
-  pending: 'space.common.pending.status',
+  pending: 'common.state.pending.status',
   skipped: 'common.skipped.status',
 } as const satisfies Record<string, MessageKey>;
 

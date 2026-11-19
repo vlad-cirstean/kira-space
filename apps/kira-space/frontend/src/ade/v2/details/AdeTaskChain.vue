@@ -9,7 +9,7 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref } from 'vue';
 import AdeNoteEntry from '../notes/AdeNoteEntry.vue';
 import { AdeNotesEditor, prefetchNotesEditor } from '../notes/asyncEditor';
@@ -66,11 +66,11 @@ const draft = computed({
   set: (v: string) => composer.setDraft(taskId.value, v),
 });
 
-const adding = useAsyncAction(async () => {
+const adding = useMutationAction(add);
+async function submit(): Promise<void> {
   if (!draft.value.trim()) return;
-  await add.mutateAsync({ taskId: taskId.value, body: draft.value });
-  composer.clear(taskId.value);
-});
+  if (await adding.run({ taskId: taskId.value, body: draft.value })) composer.clear(taskId.value);
+}
 
 const editing = ref<string | null>(null);
 </script>
@@ -118,7 +118,7 @@ const editing = ref<string | null>(null);
         compact
         focus-on-mount
         data-testid="ade-note-composer-text"
-        @submit="adding.run"
+        @submit="submit"
       />
       <Alert v-if="adding.error.value" variant="error" data-testid="ade-note-error"
         ><AlertDescription>{{ adding.error.value }}</AlertDescription></Alert
@@ -139,7 +139,7 @@ const editing = ref<string | null>(null);
           :pending="adding.pending.value"
           :disabled="!draft.trim()"
           data-testid="ade-note-save"
-          @click="adding.run"
+          @click="submit"
           >{{
             t('common.action.save.label')
           }}</Button

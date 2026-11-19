@@ -113,7 +113,7 @@ test('Http history — browse a request’s past responses', async ({ relaunch }
   // not as a bare chip, since a dense list row has no room for a full sentence on its own line.
   await rows.nth(1).locator('[data-testid="http-history-status-chip"]').hover();
   await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
-    'the server has no resource at this URL',
+    'The server has no resource at this URL',
   );
 
   await rows.nth(1).click();

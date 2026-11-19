@@ -1,4 +1,3 @@
-import { loadDynamicGenerator } from '@kira/api-core';
 import type { GrpcMetadataState, GrpcMetaPairWire, GrpcSchemaWire } from '@shared/domain/grpc';
 import { newUuid } from '@shared/ids';
 import { useQuery } from '@tanstack/vue-query';
@@ -13,6 +12,7 @@ import { loadVariableRows } from '../../api/state/apiQueries';
 import { useCollectionsStore } from '../../api/state/collections';
 import { mergeVariableRows, useVariablesStore } from '../../api/state/variables';
 import { control } from '../../bridge/control';
+import { resolveWithDynamic } from '../shared/request/resolve';
 import { resolveGrpcTabState } from './resolve';
 
 // The resolved schema for a request's
@@ -96,10 +96,9 @@ async function describeSchema(
     ]);
     const { values, secretNames } = mergeVariableRows(collectionRows, environmentRows);
     const fields = { target: source.target, metadata: source.metadata, message: '' };
-    const first = resolveGrpcTabState(fields, values, secretNames);
-    const resolved = first.refs.some((r) => r.kind === 'dynamic')
-      ? resolveGrpcTabState(fields, values, secretNames, await loadDynamicGenerator())
-      : first;
+    const resolved = await resolveWithDynamic((dynamic) =>
+      resolveGrpcTabState(fields, values, secretNames, dynamic),
+    );
     target = resolved.target;
     metadata = resolved.metadata;
   }

@@ -124,6 +124,8 @@ func main() {
 	windows, quitter := wired.Windows, wired.Quitter
 
 	app := application.New(application.Options{
+		// Wails logs bound-call arguments and results at Debug; the wrapper drops them (a typed secret rides Answer).
+		Logger:      logging.WailsLogger(application.DefaultLogger(slog.LevelInfo)),
 		Name:        "Kira Space",
 		Description: "Git, agents, memory and automations, plus databases, APIs, Docker and Kubernetes, in one app\n\nVersion " + buildinfo.Version,
 		Services:    append(wired.Bound(), notifyServices(wired)...),

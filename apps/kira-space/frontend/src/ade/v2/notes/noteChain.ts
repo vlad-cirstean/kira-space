@@ -26,7 +26,7 @@ export function authorLabel(a: NoteAuthor): string {
     case 'user':
       return t('common.picker.you.label');
     case 'agent':
-      return t('memory.common.origin.agent.label');
+      return t('common.origin.agent.label');
     case 'child':
       return t('space.ade.orchestrator.chain.child.label');
     case 'orchestrator':

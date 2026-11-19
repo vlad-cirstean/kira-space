@@ -20,11 +20,16 @@ export const useStaleDataStore = defineStore('staleData', () => {
     return stamped !== useConnectionsStore().states[connectionId]?.since;
   }
 
+  /** `isStale` for a view whose gate tab is the data key itself; no connection reads as fresh. */
+  function isTabStale(tabId: string, connectionId: string | null | undefined): boolean {
+    return connectionId ? isStale(tabId, tabId, connectionId) : false;
+  }
+
   registerTabRuntimeCleanup((id) => {
     for (const key of Object.keys(sessions)) {
       if (key === id || key.startsWith(`${id}::`)) delete sessions[key];
     }
   });
 
-  return { stamp, isStale };
+  return { stamp, isStale, isTabStale };
 });

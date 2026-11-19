@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
-import { displayValue, formatBytes } from '@workbench/behaviour/format';
+import { displayValue, formatBytes, formatPercent } from '@workbench/behaviour/format';
 import { computed, useId } from 'vue';
 import { CACHE_L2_BUDGET_MB_RANGE } from '../../../state/settingsDomain';
 import { parseIntField, type SettingsPaneProps } from '../../../workbench/settings/types';
@@ -40,7 +40,7 @@ const hitRateLabel = computed(() => {
   if (!stats) return displayValue(null);
   const total = stats.l2Hits + stats.l2Misses;
   if (total === 0) return displayValue(null);
-  return `${Math.round((stats.l2Hits / total) * 100)}% (${stats.l2Hits}/${total})`;
+  return `${formatPercent((stats.l2Hits / total) * 100)} (${stats.l2Hits}/${total})`;
 });
 
 const cacheSizeLabel = computed(() => {
@@ -67,12 +67,9 @@ const hitRateId = useId();
         <FieldLabel :for="cacheBudgetMbId">{{
           t('studio.settings.cache.budget.label')
         }}</FieldLabel>
-        <TooltipIconButton
-          icon="discard"
-          :label="t('common.action.resetToDefault.label')"
+        <ResetToDefaultButton
           data-testid="settings-reset-cache-l2BudgetMb"
-          :disabled-trigger="isAtDefault('cache', 'l2BudgetMb')"
-          :disabled="isAtDefault('cache', 'l2BudgetMb')"
+          :at-default="isAtDefault('cache', 'l2BudgetMb')"
           @click="resetLeaf('cache', 'l2BudgetMb')"
         />
       </div>

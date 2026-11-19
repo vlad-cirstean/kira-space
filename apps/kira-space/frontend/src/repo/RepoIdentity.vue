@@ -5,8 +5,8 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Field, FieldError, FieldLabel, FieldSet } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import SwatchPicker from '@theme/SwatchPicker.vue';
-import { errorText } from '@workbench/bridge/codedError';
-import { computed, ref, useId } from 'vue';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { computed, useId } from 'vue';
 import type { Repo } from '../ade/v2/wire';
 import { useCodeReposStore } from '../state/coderepos';
 
@@ -15,16 +15,10 @@ const props = defineProps<{ repo: Repo }>();
 
 const codeRepos = useCodeReposStore();
 const color = computed(() => codeRepos.colorOf(props.repo.codeRepoId));
-const colorError = ref('');
+const chooseColor = useAsyncAction((next: PaletteColor) =>
+  codeRepos.setCodeRepoColor(props.repo.codeRepoId, next),
+);
 const labelId = useId();
-async function chooseColor(next: PaletteColor): Promise<void> {
-  colorError.value = '';
-  try {
-    await codeRepos.setCodeRepoColor(props.repo.codeRepoId, next);
-  } catch (err) {
-    colorError.value = errorText(err);
-  }
-}
 
 const source = computed(() =>
   t('common.dotPair.label', {
@@ -49,9 +43,11 @@ const source = computed(() =>
         class="h-control"
         :labelledby="labelId"
         data-testid="repo-color"
-        @update:model-value="(v) => chooseColor(v as PaletteColor)"
+        @update:model-value="(v) => chooseColor.run(v as PaletteColor)"
       />
-      <FieldError v-if="colorError" data-testid="repo-color-error">{{ colorError }}</FieldError>
+      <FieldError v-if="chooseColor.error.value" data-testid="repo-color-error">{{
+        chooseColor.error.value
+      }}</FieldError>
     </Field>
     <KeyValueList>
       <dt>{{ t('space.repo.config.repository.label') }}</dt>

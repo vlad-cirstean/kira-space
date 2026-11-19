@@ -6,7 +6,6 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -43,6 +42,7 @@ import {
 } from '../lib/opLog';
 import { type OpTreeRow, orderOpTree } from '../lib/opLogTree';
 import { type MenuItem, useContextMenuStore } from '../state/contextMenu';
+import CopyIconButton from './CopyIconButton.vue';
 import OpLogDetail from './OpLogDetail.vue';
 import OpLogToolbar from './OpLogToolbar.vue';
 
@@ -531,20 +531,16 @@ function alignClass(column: OpLogColumn): string {
                 >
                   <CodiconIcon name="debug-stop" :size="13" />
                 </Button>
-                <TooltipIconButton
+                <CopyIconButton
                   v-if="entry.item.row.record.command"
-                  icon="copy"
+                  :text="entry.item.row.record.command"
                   :label="t('common.copyCommand.label')"
+                  :message="t('workbench.opLog.copiedCommand.announce')"
                   size="inline"
                   :icon-size="13"
                   tabindex="-1"
                   class="opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100"
                   data-testid="op-copy"
-                  @click.stop="
-                    copy(entry.item.row.record.command ?? '', {
-                      message: t('workbench.opLog.copiedCommand.announce'),
-                    })
-                  "
                 />
               </span>
             </li>

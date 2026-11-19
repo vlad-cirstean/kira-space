@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="K extends string">
 import type { LogLevel } from '@shared/domain/settings';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -42,12 +42,9 @@ const LEVEL_ITEMS = computed(() =>
   <Field>
     <div class="flex items-center justify-between gap-1">
       <FieldLabel>{{ label }}</FieldLabel>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         :data-testid="resetTestid"
-        :disabled-trigger="isAtDefault('advanced', leaf)"
-        :disabled="isAtDefault('advanced', leaf)"
+        :at-default="isAtDefault('advanced', leaf)"
         @click="resetLeaf('advanced', leaf)"
       />
     </div>

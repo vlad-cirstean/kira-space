@@ -5,6 +5,7 @@ import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatCurrency } from '@workbench/behaviour/format';
 import { computed } from 'vue';
@@ -100,7 +101,7 @@ async function copyForAgent(): Promise<void> {
           :pending="resume.isPending.value"
           data-testid="run-resume"
           @click="resume.mutate(run)"
-          ><CodiconIcon name="play" :size="13" />{{ t('common.action.resume.label') }}
+          ><CodiconIcon :name="ICON.resume" :size="13" />{{ t('common.action.resume.label') }}
         </Button></TextTooltip
       >
       <Button

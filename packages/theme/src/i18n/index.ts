@@ -47,6 +47,11 @@ export function t(key: MessageKey, params?: MessageParams): string {
     : g.t(key, formatted);
 }
 
+// The sentence separator is locale-dependent (none in CJK); it lives here, not at call sites.
+export function joinSentences(...parts: readonly (string | false | null | undefined)[]): string {
+  return parts.filter((p): p is string => typeof p === 'string' && p !== '').join(' ');
+}
+
 /** The display text a code host provider supplies (`GitHostInfo`). */
 export interface HostWordsSource {
   readonly label: string;

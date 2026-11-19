@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { Switch } from '@theme/components/ui/switch';
 import { type MessageKey, t } from '@theme/i18n';
@@ -36,13 +36,10 @@ const FLAGS = [
         <FieldLabel :for="`settings-experimental-${flag.key}`">{{ t(flag.label) }}</FieldLabel>
         <FieldDescription>{{ t(flag.description) }}</FieldDescription>
       </FieldContent>
-      <TooltipIconButton
+      <ResetToDefaultButton
         class="ml-auto"
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
         :data-testid="`settings-reset-experimental-${flag.key}`"
-        :disabled-trigger="isAtDefault('experimental', flag.key)"
-        :disabled="isAtDefault('experimental', flag.key)"
+        :at-default="isAtDefault('experimental', flag.key)"
         @click="resetLeaf('experimental', flag.key)"
       />
     </Field>

@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@theme/components/ui/po
 import { type MessageKey, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import SwatchPicker from '@theme/SwatchPicker.vue';
-import { errorText } from '@workbench/bridge/codedError';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import SortableList from '@workbench/components/SortableList.vue';
 import { computed, ref } from 'vue';
 import { useSaveStatuses } from '../../queries';
@@ -59,7 +59,8 @@ const defaults = computed<StatusDefaults>(
   () => board.data.value?.statusDefaults ?? { new: '', step: '', review: '', finished: '' },
 );
 const ids = computed(() => statuses.value.map((s) => s.id));
-const error = ref('');
+const saving = useMutationAction(save);
+const error = saving.error;
 const fresh = ref('');
 
 const statusColorLabel = (c: string): string => t(`common.colour.${c}.label` as MessageKey);
@@ -69,13 +70,8 @@ async function commit(
   nextDefaults: StatusDefaults = defaults.value,
   reassign: Record<string, string> = {},
 ): Promise<TaskStatusDef[] | null> {
-  error.value = '';
-  try {
-    return (await save.mutateAsync({ statuses: next, defaults: nextDefaults, reassign })).statuses;
-  } catch (err) {
-    error.value = errorText(err);
-    return null;
-  }
+  if (!(await saving.run({ statuses: next, defaults: nextDefaults, reassign }))) return null;
+  return save.data.value?.statuses ?? null;
 }
 
 function edit(id: string, patch: Partial<TaskStatusDef>): Promise<TaskStatusDef[] | null> {
@@ -83,7 +79,7 @@ function edit(id: string, patch: Partial<TaskStatusDef>): Promise<TaskStatusDef[
 }
 
 async function rename(s: TaskStatusDef, name: string): Promise<void> {
-  if (!(await edit(s.id, { name }))) throw new Error(error.value);
+  if (!(await edit(s.id, { name }))) throw new Error(error.value ?? '');
 }
 
 function setDefault(slot: Slot, id: string): void {
@@ -135,7 +131,7 @@ const uses = computed(() => {
 });
 
 function remove(s: TaskStatusDef): void {
-  error.value = '';
+  saving.reset();
   removing.value = s;
   reassignTo.value = targets.value[0]?.id ?? '';
 }
@@ -181,7 +177,7 @@ async function confirmRemove(): Promise<void> {
             <button
               type="button"
               class="cursor-grab text-muted-foreground"
-              :aria-label="t('mobile.backlog.handle.aria')"
+              :aria-label="t('space.common.dragToReorder.aria')"
               data-testid="ade-status-handle"
             >
               <CodiconIcon name="gripper" :size="13" />
