@@ -83,6 +83,7 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	appsettings.Leaf(stored, "dbMcp.focusOnApproval", &result.DbMcp.FocusOnApproval)
 	appsettings.Leaf(stored, "dbMcp.apiRequests", &result.DbMcp.APIRequests)
 	appsettings.LeafValid(stored, "dbMcp.apiApproval", &result.DbMcp.APIApproval, model.ValidAPIApproval)
+	appsettings.LeafValid(stored, "dbMcp.keptRetentionMinutes", &result.DbMcp.KeptRetentionMinutes, model.ValidKeptRetentionMinutes)
 	readAPIRules(stored, &result.DbMcp)
 	readAPIDefault(stored, &result.DbMcp)
 	return result, nil
@@ -379,6 +380,9 @@ func upsertDbMcpSection(tx *sql.Tx, dm *model.DbMcpPatch) error {
 		return err
 	}
 	if err := appsettings.UpsertOptional(tx, "dbMcp.apiDefault", dm.APIDefault); err != nil {
+		return err
+	}
+	if err := appsettings.UpsertOptional(tx, "dbMcp.keptRetentionMinutes", dm.KeptRetentionMinutes); err != nil {
 		return err
 	}
 	return appsettings.UpsertOptional(tx, "dbMcp.apiRules", dm.APIRules)

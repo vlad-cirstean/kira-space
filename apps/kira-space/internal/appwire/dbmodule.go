@@ -30,6 +30,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbaudit"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/enginecache"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/maskreview"
@@ -220,11 +221,13 @@ func (w *Wired) wireEmbedded(deps appcore.Deps, installer harness.MCPInstaller, 
 	dbMcpSvc.SessionAudit = w.dbAudit
 	dbMcpApprovals.SetObserver(w.dbAudit)
 	dbMcpSessions := bridge.NewDbMcpSessions(dbMcpSvc)
+	dbMcpSessions.OnEnd = func(sessionID string) { w.Kept.ClearScope(dbmcp.KeptScopeOf(sessionID)) }
 
 	// The ops tools read live runs, so the server starts only once the run service exists.
 	dbMcpSvc.Runs = bridge.NewScriptRunControl(w.runs)
 	dbMcpSvc.Scripts = bridge.NewScriptControl(w.runs)
 	dbMcpSvc.API = agentAPI
+	dbMcpSvc.Kept = w.Kept
 	bridge.StartDbMcpIfEnabled(dbMcpSvc)
 	dockerSvc := &bridge.DockerService{BoundService: docker.NewBoundService(deps.Events, dockerOptions(opts, deps.Repos.DockerRestore)...)}
 	docker.StartRestoreBound(dockerSvc.BoundService)
@@ -276,7 +279,17 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	if installer == nil {
 		installer = harness.ActiveInstaller(w.Agents)
 	}
-	agentAPI := &agentapi.Service{Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings), Access: bridge.AgentAPIAccess(repositories.Settings)}
+	w.Kept = keptvars.New(keptvars.Options{
+		Retention: bridge.KeptRetention(repositories.Settings),
+		OnChange:  func(rev uint64) { emitter.Emit(bridge.ChannelKeptChanged, bridge.KeptChanged{Revision: rev}) },
+	})
+	w.KeptVars = &bridge.KeptVarsService{Store: w.Kept, Settings: repositories.Settings, TaskTitle: func(id string) string {
+		if t, err := repositories.AdeTasks.GetTask(id); err == nil {
+			return t.Title
+		}
+		return ""
+	}}
+	agentAPI := &agentapi.Service{Kept: w.Kept, Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings), Access: bridge.AgentAPIAccess(repositories.Settings)}
 	embedded := w.wireEmbedded(deps, installer, dbm.connectionsSvc, dbm.oplogWiring, proofSvc, agentAPI, opts)
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()
@@ -325,6 +338,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 		// preconnect down.
 		embedded.dbMcpSessions.Close()
 		bridge.StopDbMcp(embedded.dbMcpSvc)
+		w.Kept.Close()
 		dbm.connectionsSvc.Shutdown()
 		docker.StopRestoreBound(embedded.dockerSvc.BoundService)
 		kubernetes.ServiceOf(embedded.kubeSvc.BoundService).Shutdown()

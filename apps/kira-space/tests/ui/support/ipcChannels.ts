@@ -99,6 +99,7 @@ export const IPC = {
   scriptRunsConfirmAccept: 'kira:scriptRuns:confirmAccept',
   scriptRunsConfirmDecline: 'kira:scriptRuns:confirmDecline',
   approvalsChanged: 'kira:approvals:changed',
+  keptChanged: 'kira:kept:changed',
   approvalsList: 'kira:approvals:list',
   approvalsAnswer: 'kira:approvals:answer',
   promptsChanged: 'kira:prompts:changed',

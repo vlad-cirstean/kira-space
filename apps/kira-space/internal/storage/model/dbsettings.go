@@ -35,6 +35,8 @@ type DbMcpSettings struct {
 	// APIRulesInvalid is read-only: the stored rules failed to decode or compile, so APIRules is empty
 	// and the access reader refuses every request until a valid Set replaces them.
 	APIRulesInvalid bool `json:"apiRulesInvalid"`
+	// KeptRetentionMinutes is how long a kept variable lives, 5 to 240. It applies to values kept later.
+	KeptRetentionMinutes int `json:"keptRetentionMinutes"`
 }
 
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
@@ -83,6 +85,8 @@ type DbMcpPatch struct {
 	APIApproval      *string           `json:"apiApproval,omitempty"`
 	APIRules         *[]apiaccess.Rule `json:"apiRules,omitempty"`
 	APIDefault       *string           `json:"apiDefault,omitempty"`
+	// KeptRetentionMinutes is range checked, 5 to 240.
+	KeptRetentionMinutes *int `json:"keptRetentionMinutes,omitempty"`
 }
 
 // ValidHTTPVersion mirrors settings.ts's HTTP_VERSIONS — Go's HTTP/1 *is* 1.1, so "1" is never a
@@ -116,6 +120,8 @@ var (
 	validRequestTimeoutMs = appsettings.InRange(0, 3_600_000)
 	validMaxResponseMb    = appsettings.InRange(0, 2048)
 	validMaxRedirects     = appsettings.InRange(0, 100)
+	// ValidKeptRetentionMinutes is the range of dbMcp.keptRetentionMinutes.
+	ValidKeptRetentionMinutes = appsettings.InRange(5, 240)
 )
 
 func validateDataSection(d *DataPatch) error {
@@ -157,6 +163,9 @@ func validateDbMcpSection(d *DbMcpPatch) error {
 	}
 	if d != nil && d.APIDefault != nil && !apiaccess.ValidDefault(*d.APIDefault) {
 		return fmt.Errorf("model: dbMcp.apiDefault: invalid value %q", *d.APIDefault)
+	}
+	if d != nil && d.KeptRetentionMinutes != nil && !ValidKeptRetentionMinutes(*d.KeptRetentionMinutes) {
+		return fmt.Errorf("model: dbMcp.keptRetentionMinutes: out of range value %d", *d.KeptRetentionMinutes)
 	}
 	if d != nil && d.APIRules != nil {
 		if _, err := apiaccess.Compile(*d.APIRules); err != nil {

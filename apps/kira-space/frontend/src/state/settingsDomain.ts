@@ -141,6 +141,8 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   apiDefault: z.enum(['ask', 'deny']).default('ask'),
   // Read-only: stored rules could not be read, so every API request is refused.
   apiRulesInvalid: z.boolean().default(false),
+  // Minutes a kept variable lives, fixed when it is stored.
+  keptRetentionMinutes: z.number().int().min(5).max(240).default(60),
 });
 
 // advanced carries just gitLogLevel here — this app's own diagnostic log verbosity, its entire
@@ -346,6 +348,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     apiRules: [],
     apiDefault: 'ask',
     apiRulesInvalid: false,
+    keptRetentionMinutes: 60,
   }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -453,5 +456,6 @@ export const defaultSettings: Settings = {
     apiRules: [],
     apiDefault: 'ask',
     apiRulesInvalid: false,
+    keptRetentionMinutes: 60,
   },
 };
