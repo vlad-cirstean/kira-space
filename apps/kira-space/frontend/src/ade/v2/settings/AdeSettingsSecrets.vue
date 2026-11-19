@@ -55,7 +55,7 @@ async function submit(): Promise<void> {
 
 async function remove(row: AgentSecretView): Promise<void> {
   const ok = await useConfirmDialogStore().confirm({
-    title: t('space.ade.settings.secrets.deleteConfirm.title', { name: row.name }),
+    title: t('common.configSecrets.deleteConfirm.title', { name: row.name }),
     message: t('space.ade.settings.secrets.deleteConfirm.body'),
     confirmLabel: t('common.action.delete.label'),
     tone: 'danger',
@@ -74,7 +74,7 @@ const refExample = '$' + '{secret:name}';
 
 <template>
   <section class="flex min-w-0 flex-col gap-2" data-testid="ade-settings-secrets">
-    <SectionHeading flush :label="t('space.ade.settings.secrets.title')" />
+    <SectionHeading flush :label="t('common.configSecrets.title')" />
     <FieldDescription>
       {{ t('space.ade.settings.secrets.hint', { ref: refExample }) }}
     </FieldDescription>
@@ -99,10 +99,10 @@ const refExample = '$' + '{secret:name}';
       >
         <span class="min-w-0 flex-1 truncate font-data text-kira-sm">{{ row.name }}</span>
         <Badge v-if="!row.referenced" data-testid="ade-settings-secret-unused">{{
-          t('space.ade.settings.secrets.unused.status')
+          t('common.configSecrets.unused.status')
         }}</Badge>
         <Badge :variant="row.set ? 'ok' : 'warn'" data-testid="ade-settings-secret-state">{{
-          row.set ? t('space.ade.settings.secrets.set.status') : t('docker.edit.unset.status')
+          row.set ? t('common.configSecrets.set.status') : t('docker.edit.unset.status')
         }}</Badge>
         <Button
           variant="dialog"
@@ -111,7 +111,7 @@ const refExample = '$' + '{secret:name}';
           data-testid="ade-settings-secret-set"
           @click="open(row)"
         >
-          {{ t('space.ade.settings.secrets.set.label') }}
+          {{ t('common.configSecrets.set.label') }}
         </Button>
         <Button
           v-if="row.set"
@@ -132,7 +132,7 @@ const refExample = '$' + '{secret:name}';
       <DialogContent size="sm" :dirty="value !== ''" data-testid="ade-settings-secret-dialog">
         <DialogHeader>
           <DialogTitle>{{
-            t('space.ade.settings.secrets.dialog.title', { name: target ?? '' })
+            t('common.configSecrets.dialog.title', { name: target ?? '' })
           }}</DialogTitle>
         </DialogHeader>
         <DialogBody>
@@ -148,7 +148,7 @@ const refExample = '$' + '{secret:name}';
             />
           </Field>
           <FieldDescription>
-            {{ t('space.ade.settings.secrets.dialog.hint') }}
+            {{ t('common.configSecrets.dialog.hint') }}
           </FieldDescription>
           <Alert v-if="error" variant="error">
             <AlertDescription>{{ error }}</AlertDescription>

@@ -78,7 +78,7 @@ const refExample = '$' + '{secret:name}';
   <section class="flex min-w-0 flex-col gap-2 p-2" data-testid="api-secrets">
     <SectionHeading flush :label="t('studio.api.config.secrets.title')" />
     <FieldDescription>
-      {{ t('studio.api.config.secrets.hint', { ref: refExample }) }}
+      {{ t('common.configSecrets.hint', { ref: refExample }) }}
     </FieldDescription>
     <Alert
       v-if="storage && !storage.available"
@@ -86,7 +86,7 @@ const refExample = '$' + '{secret:name}';
       data-testid="api-secrets-storage-off"
     >
       <AlertDescription>{{
-        storage.reason ?? t('studio.api.config.secrets.storageOff.hint')
+        storage.reason ?? t('common.configSecrets.storageOff.hint')
       }}</AlertDescription>
     </Alert>
     <InlineState kind="empty" v-if="secrets.length === 0" data-testid="api-secrets-none">

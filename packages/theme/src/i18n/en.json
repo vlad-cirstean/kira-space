@@ -3407,6 +3407,32 @@
         "status": "Can’t be read, fix it here"
       }
     },
+    "configSecrets": {
+      "deleteConfirm": {
+        "body": "Anything that references this secret fails until you set it again.",
+        "title": "Delete {name}?"
+      },
+      "dialog": {
+        "hint": "The value is sent once and never shown again.",
+        "title": "Set {name}"
+      },
+      "hint": "Write {ref} in a value. Values stay sealed on this computer.",
+      "none": {
+        "hint": "No secrets yet. Reference one in a config file to see it here."
+      },
+      "set": {
+        "label": "Set value",
+        "status": "Set"
+      },
+      "storageOff": {
+        "hint": "Secret storage is not available, so values can’t be saved."
+      },
+      "title": "Secrets",
+      "unset": {},
+      "unused": {
+        "status": "Not referenced"
+      }
+    },
     "confirm": {
       "irreversible": {
         "body": "This can’t be undone."
@@ -10898,27 +10924,14 @@
         },
         "secrets": {
           "deleteConfirm": {
-            "body": "Settings that reference this secret fail to launch until you set it again.",
-            "title": "Delete {name}?"
-          },
-          "dialog": {
-            "hint": "The value is sent once and never shown again.",
-            "title": "Set {name}"
+            "body": "Settings that reference this secret fail to launch until you set it again."
           },
           "hint": "Write {ref} in the settings. Values stay sealed on this computer.",
           "none": {
             "hint": "No secrets yet. Reference one in the settings to see it here."
           },
-          "set": {
-            "label": "Set value",
-            "status": "Set"
-          },
           "storageOff": {
             "hint": "Secret storage is not available."
-          },
-          "title": "Secrets",
-          "unused": {
-            "status": "Not referenced"
           }
         }
       },
@@ -13370,16 +13383,12 @@
             "hint": "The value goes to secret storage once and is never shown again.",
             "title": "Value of {name}"
           },
-          "hint": "Write {ref} in a value. Values stay sealed on this computer.",
           "none": {
             "hint": "No secrets yet. Reference one in a collection or environment to see it here."
           },
           "set": {
             "label": "Enter value",
             "status": "Value set"
-          },
-          "storageOff": {
-            "hint": "Secret storage is not available, so values can’t be saved."
           },
           "title": "API secrets",
           "unset": {
