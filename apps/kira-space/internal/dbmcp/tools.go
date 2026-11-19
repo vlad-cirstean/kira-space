@@ -201,6 +201,8 @@ type runQueryArgs struct {
 	IncludeRaw bool `json:"includeRaw,omitempty"`
 	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
 	Exemption *exemptionArgs `json:"exemption,omitempty"`
+	// Params names kept variables bound to the statement's placeholders, never inserted into its text.
+	Params []string `json:"params,omitempty"`
 }
 
 type exemptionArgs struct {
@@ -235,10 +237,17 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 		if args.Mode != modeRead || args.Exemption != nil {
 			return errResult("explain plans a read: use mode read and no exemption")
 		}
+		if len(args.Params) > 0 {
+			return errResult("explain plans the statement without running it and takes no params; plan a statement with literals")
+		}
 		return s.explainQuery(ctx, req, explainQueryArgs{ConnectionID: args.ConnectionID, SQL: args.SQL, Path: args.Path, IncludeRaw: args.IncludeRaw})
 	}
 	rv, res, out, err, done := s.resolveVerdict(ctx, args)
 	if done {
+		return res, out, err
+	}
+
+	if res, out, err, done := s.resolveParams(ctx, args, &rv); done {
 		return res, out, err
 	}
 
@@ -285,11 +294,18 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		mk = &set
 	}
 
+	// The values are taken here, after every wait: a variable replaced since the check refuses the call.
+	binds, berr := s.bind(ctx, rv.params)
+	if berr != nil {
+		res, out, err = bindResult(berr)
+		return res, out, err, set, false
+	}
 	req := adapterhost.ExecuteRequestWire{
 		OpID:         ids.NewID(),
 		ConnectionID: args.ConnectionID,
 		Path:         args.Path,
 		Statements:   []string{args.SQL},
+		Params:       binds,
 		Cap:          page.ResultCap{Rows: rv.maxRows},
 	}
 	// Exec limits shape the request and ctx for every call; an exempted one sees Exempt and relaxes.
@@ -506,6 +522,8 @@ type queryResolution struct {
 	planErr error
 	// reviewRequested is set when the approver ticked "review the result" on the pre-run item.
 	reviewRequested bool
+	// params is set when the call binds kept variables.
+	params *keptParams
 }
 
 // resolveVerdict is runQuery's resolve → check mode → gate → clamp → connect → tighten → tables → column review pipeline.
@@ -634,7 +652,12 @@ func (s *Server) planForCall(ctx context.Context, args runQueryArgs, rv *queryRe
 	if !rv.summary.McpAutoExplain || rv.class != adapters.ClassRead {
 		return
 	}
-	plan, err := s.planFor(ctx, rv.summary, args.SQL, args.Path, rv.threshold)
+	binds, err := s.bind(ctx, rv.params)
+	if err != nil {
+		rv.planErr = &planCheckError{msg: fmt.Sprintf("expensive_query check could not plan this statement on %q; it did not run. %s", rv.summary.Name, err)}
+		return
+	}
+	plan, err := s.planFor(ctx, rv.summary, args.SQL, args.Path, binds, rv.threshold)
 	if err != nil && ex.covers(LimitExpensiveQuery) {
 		s.log.Warn("dbmcp: run_query: EXPLAIN failed on an exempted call, approving without a plan", "connectionId", args.ConnectionID, "err", err)
 		return
@@ -653,6 +676,9 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		return res, out, err, true
 	}
 
+	// A kept variable leaving the store ends the wait: the card must not offer Send for a value that is gone.
+	ctx, stop := s.watchKept(ctx, rv.params.usesOf())
+	defer stop()
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
@@ -660,6 +686,7 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
 		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
+		Params: rv.params.namesOf(), Placeholders: rv.params.placeholdersOf(), Kept: rv.params.usesOf(),
 	})
 	switch outcome {
 	case ApprovalApproved:
@@ -669,6 +696,9 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 		// landing after that must not run the statement under permissions that no longer hold.
 		return s.recheckAfterApproval(ctx, args, rv)
 	default:
+		if res, out, err, gone := queryKeptGone(ctx); gone {
+			return res, out, err, true
+		}
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", rv.summary.Name))
 		return res, out, err, true
 	}

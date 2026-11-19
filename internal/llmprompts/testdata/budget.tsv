@@ -165,12 +165,13 @@ dbmcp.tool.browse_table.arg.count	148
 dbmcp.tool.browse_table.arg.exemption	176
 dbmcp.tool.browse_table.arg.exemption.id	65
 dbmcp.tool.browse_table.arg.exemption.reason	84
-dbmcp.tool.run_query	921
+dbmcp.tool.run_query	1166
 dbmcp.tool.run_query.arg.connectionId	36
 dbmcp.tool.run_query.arg.sql	363
 dbmcp.tool.run_query.arg.path	117
 dbmcp.tool.run_query.arg.mode	166
 dbmcp.tool.run_query.arg.maxRows	101
+dbmcp.tool.run_query.arg.params	540
 dbmcp.tool.run_query.arg.exemption	112
 dbmcp.tool.run_query.arg.exemption.id	65
 dbmcp.tool.run_query.arg.exemption.reason	89

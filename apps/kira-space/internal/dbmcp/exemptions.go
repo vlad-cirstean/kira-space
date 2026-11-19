@@ -12,8 +12,10 @@ const maxExemptions = 256
 
 type exemptionRecord struct {
 	connectionID, mode, path, sql string
-	hits                          []LimitHit
-	expiresAt                     time.Time
+	// params are the kept names bound to the statement, in order.
+	params    []string
+	hits      []LimitHit
+	expiresAt time.Time
 }
 
 // exemptionStore holds the ids minted by limit refusals until the agent presents one. In memory

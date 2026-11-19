@@ -62,7 +62,7 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	}
 	return jsonResult(map[string]any{
 		"variables": out,
-		"note":      "Use a name as {{kept.name}} in api_request. Values are held by Kira and never shown to you.",
+		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. Values are held by Kira and never shown to you.",
 	})
 }
 
@@ -78,17 +78,25 @@ type keptGoneError struct {
 	reason keptvars.Reason
 }
 
-func (e *keptGoneError) Error() string {
-	why := "expired"
+func (e *keptGoneError) why() string {
 	switch e.reason {
 	case keptvars.ReasonCleared:
-		why = "was cleared by the user"
+		return "was cleared by the user"
 	case keptvars.ReasonReplaced:
-		why = "was replaced"
+		return "was replaced"
 	case keptvars.ReasonEnded, keptvars.ReasonQuit:
-		why = "ended with the session"
+		return "ended with the session"
 	}
-	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, why)
+	return "expired"
+}
+
+func (e *keptGoneError) Error() string {
+	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
+}
+
+// queryText is the wording for run_query, where a statement ran or did not.
+func (e *keptGoneError) queryText() string {
+	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
 }
 
 // watchKept cancels the returned context when a kept variable of the plan leaves the store, so a card never

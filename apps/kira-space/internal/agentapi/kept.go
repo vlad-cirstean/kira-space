@@ -347,13 +347,7 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	}
 	for _, name := range kp.order {
 		e := kp.entries[name]
-		use := KeptUse{
-			ID: e.ID, Name: name, Type: e.Type, Items: e.Items, Bytes: e.Bytes, Secret: e.Secret,
-			Source: e.Source, CreatedAt: e.CreatedAt, ExpiresAt: e.ExpiresAt, Sites: sites[name],
-		}
-		if !e.Secret {
-			use.Preview, use.PreviewTruncated = keptvars.Preview(e.Value, keptvars.PreviewBytes)
-		}
+		use := NewKeptUse(e, sites[name])
 		p.Kept = append(p.Kept, use)
 		if withValues {
 			p.keptValues[name] = keptValue{raw: e.Value, typ: e.Type, secret: e.Secret}

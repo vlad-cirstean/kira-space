@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -50,6 +51,11 @@ type queryPayload struct {
 	// ReviewOffered shows "review the result"; ReviewResult says the connection's settings already do.
 	ReviewOffered bool `json:"reviewOffered"`
 	ReviewResult  bool `json:"reviewResult"`
+	// Params, Placeholders and Kept describe the kept variables bound to the statement. Names and previews
+	// only: a secret has no preview and values never ride.
+	Params       []string           `json:"params,omitempty"`
+	Placeholders []string           `json:"placeholders,omitempty"`
+	Kept         []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 type limitHitPayload struct {
@@ -60,16 +66,19 @@ type limitHitPayload struct {
 }
 
 type exemptionPayload struct {
-	ConnectionID  string            `json:"connectionId"`
-	Statement     string            `json:"statement"`
-	Mode          string            `json:"mode"`
-	Detected      string            `json:"detected"`
-	Enforcement   string            `json:"enforcement"`
-	Reason        string            `json:"reason"`
-	Limits        []limitHitPayload `json:"limits"`
-	Plan          *planPayload      `json:"plan"`
-	ReviewOffered bool              `json:"reviewOffered"`
-	ReviewResult  bool              `json:"reviewResult"`
+	ConnectionID  string             `json:"connectionId"`
+	Statement     string             `json:"statement"`
+	Mode          string             `json:"mode"`
+	Detected      string             `json:"detected"`
+	Enforcement   string             `json:"enforcement"`
+	Reason        string             `json:"reason"`
+	Limits        []limitHitPayload  `json:"limits"`
+	Plan          *planPayload       `json:"plan"`
+	ReviewOffered bool               `json:"reviewOffered"`
+	ReviewResult  bool               `json:"reviewResult"`
+	Params        []string           `json:"params,omitempty"`
+	Placeholders  []string           `json:"placeholders,omitempty"`
+	Kept          []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
@@ -85,6 +94,7 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+		Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
 	}
 }
 
@@ -185,6 +195,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
 		})
 	}
 	return it

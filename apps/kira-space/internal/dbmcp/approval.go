@@ -257,6 +257,11 @@ type ApprovalRequest struct {
 	APIScript *apiScripts
 	// APIReview is set for the api.response subject: what the item shows beside the held response.
 	APIReview *apiReviewMeta
+	// Params are the kept names bound to the statement's placeholders, Placeholders how each shows on the card
+	// and Kept the entries as they stood when the statement was checked. Set on a db.query or db.exemption item.
+	Params       []string
+	Placeholders []string
+	Kept         []agentapi.KeptUse
 	// Exemption is set for the db.exemption subject.
 	Exemption *ApprovalExemption
 	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the

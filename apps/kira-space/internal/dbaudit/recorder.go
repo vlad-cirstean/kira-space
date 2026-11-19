@@ -124,6 +124,7 @@ func (r *Recorder) CallStarted(c dbmcp.AuditCall) {
 		if !ok && row.StatementLen > 0 {
 			pending = str("sql")
 		}
+		row.Summary = paramNames(args)
 	} else {
 		row.Summary = summarise(args)
 	}
@@ -334,6 +335,25 @@ func target(args map[string]any) string {
 		}
 	}
 	return strings.Join(parts, "/")
+}
+
+// paramNames is the summary of a run_query that binds kept variables: their names, never a value.
+func paramNames(args map[string]any) string {
+	list, _ := args["params"].([]any)
+	names := make([]string, 0, len(list))
+	for _, v := range list {
+		if n, ok := v.(string); ok {
+			names = append(names, n)
+		}
+	}
+	if len(names) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(map[string]any{"params": names})
+	if err != nil {
+		return ""
+	}
+	return oplog.RedactJSON(b, maxSummaryBytes)
 }
 
 // summarise keeps allow-listed argument keys only; a url loses its credentials and query.

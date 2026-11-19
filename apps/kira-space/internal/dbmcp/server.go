@@ -412,9 +412,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.apiEnabled() {
 		s.addAPITools(srv, src)
-		if s.cfg.Kept != nil {
-			s.addKeptTools(srv, src)
-		}
+	}
+	if s.cfg.Kept != nil {
+		s.addKeptTools(srv, src)
 	}
 
 	if s.cfg.Audit != nil {
@@ -432,6 +432,9 @@ func runQuerySchema(src llmprompts.Source) *jsonschema.Schema {
 	ex.Properties["id"].MinLength = jsonschema.Ptr(1)
 	ex.Properties["reason"].MinLength = jsonschema.Ptr(1)
 	ex.Properties["reason"].MaxLength = jsonschema.Ptr(maxExemptionReasonRunes)
+	params := sch.Properties["params"]
+	params.MaxItems = jsonschema.Ptr(maxParamEntries)
+	params.Items.MinLength = jsonschema.Ptr(1)
 	return sch
 }
 

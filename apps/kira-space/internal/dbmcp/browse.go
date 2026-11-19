@@ -614,7 +614,7 @@ func (s *Server) planBrowseCall(ctx context.Context, rv *queryResolution, previe
 	if !rv.summary.McpAutoExplain || !queryplan.HasRowEstimate(rv.summary.Kind) {
 		return
 	}
-	plan, err := s.planStatements(ctx, rv.summary, queryplan.StatementsFor(rv.summary.Kind, preview), path, rv.threshold)
+	plan, err := s.planStatements(ctx, rv.summary, queryplan.StatementsFor(rv.summary.Kind, preview), path, nil, rv.threshold)
 	if err != nil && ex.covers(LimitExpensiveQuery) {
 		s.log.Warn("dbmcp: browse_table: EXPLAIN failed on an exempted call, approving without a plan", "connectionId", rv.summary.ID, "err", err)
 		return
