@@ -36,7 +36,13 @@ type Input struct {
 	FollowRedirects  *bool
 	// Scope is the kept-variable scope of the caller; empty means none.
 	Scope string
+	// ScriptBodyBytes is the masked body cap for a response a transform script reads (0: no transform,
+	// MaxResponseBytes applies). Bounded to MaxScriptBodyBytes; not part of sameRequest.
+	ScriptBodyBytes int
 }
+
+// MaxScriptBodyBytes bounds ScriptBodyBytes.
+const MaxScriptBodyBytes = 2 << 20
 
 // Credential is a secret a request uses, with the hosts it may go to. Never a value.
 type Credential struct {
@@ -85,6 +91,9 @@ type Planned struct {
 	TimeoutSeconds   int
 	MaxResponseBytes int
 
+	// bodyCap is the masked body cap Send applies; 0 means MaxResponseBytes.
+	bodyCap int
+
 	// base is the URL template before the agent's query entries (extra) are appended.
 	base  string
 	extra []NameValue
@@ -121,6 +130,10 @@ type Result struct {
 	ElapsedMs   int         `json:"elapsedMs"`
 	FinalURL    string      `json:"finalUrl"`
 	Redirects   []Redirect  `json:"redirects"`
+
+	// Mask is the request's text masker: it removes secrets from anything derived from the response,
+	// such as script output or error text. Nil on a zero Result.
+	Mask func(string) string `json:"-"`
 }
 
 // VarView is an available variable as the listing shows it. Never a value.

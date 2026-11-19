@@ -140,6 +140,7 @@ func normalize(in Input) (Input, error) {
 	}
 	in.TimeoutSeconds = clampOr(in.TimeoutSeconds, 1, maxTimeout, defaultTimeout)
 	in.MaxResponseBytes = clampOr(in.MaxResponseBytes, 1, maxResponse, defaultResponse)
+	in.ScriptBodyBytes = min(max(in.ScriptBodyBytes, 0), MaxScriptBodyBytes)
 	return in, checkHeaders(in.Headers)
 }
 
@@ -276,7 +277,7 @@ func buildPlanned(env EnvInfo, in Input, avail map[string]available, usedBefore 
 		Headers: in.Headers, Body: in.Body, ContentType: in.ContentType, Form: in.Form,
 		Variables:       variablesUsed(usedBefore, creds, avail),
 		FollowRedirects: followOf(in), TimeoutSeconds: in.TimeoutSeconds, MaxResponseBytes: in.MaxResponseBytes,
-		base: in.URL, extra: in.Query, creds: creds,
+		bodyCap: in.ScriptBodyBytes, base: in.URL, extra: in.Query, creds: creds,
 	}
 	for _, c := range creds {
 		hosts := make([]string, len(c.rules))

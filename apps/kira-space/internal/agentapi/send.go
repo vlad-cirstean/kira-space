@@ -1,6 +1,7 @@
 package agentapi
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -165,7 +166,9 @@ func (s *Service) run(ctx context.Context, p Planned, req httpclient.Request, op
 		return Result{}, errors.New(m.text(err.Error()))
 	}
 	resp, _ := value.(httpclient.Response)
-	return maskResult(resp, m, p.MaxResponseBytes), nil
+	res := maskResult(resp, m, cmp.Or(p.bodyCap, p.MaxResponseBytes))
+	res.Mask = m.text
+	return res, nil
 }
 
 // mask removes secrets from agent-bound text: first the rendered forms of the secrets the request
