@@ -260,19 +260,8 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 	if err != nil {
 		return nil, err
 	}
-	if len(statements) == 0 {
-		return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
-	}
-	if readOnly && connReadOnly {
-		if err := adapters.AssertNoTransactionEscalation(statements, adapters.MySQLDialect); err != nil {
-			return nil, err
-		}
-	}
-	// START TRANSACTION implicitly commits an open user transaction; refuse before it runs.
-	if readOnly && !connReadOnly {
-		if err := refuseOpenTransaction(ctx, conn, op, track); err != nil {
-			return nil, err
-		}
+	if err := checkConsoleBatch(ctx, conn, op, track, readOnly, connReadOnly, statements); err != nil {
+		return nil, err
 	}
 	op.SetCommand(adapters.CommandWithParams(adapters.JoinConsoleStatements(statements, "--", "#"), params, adapters.ParamQuestion))
 
@@ -287,25 +276,55 @@ func execute(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQue
 	}
 
 	if readOnly {
-		// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
-		// mysqlfamily hand-rolled identically. F2: waitInFlight blocks on every RunWithAbortRace
-		// goroutine this batch spawned still touching conn before COMMIT.
-		cleanup, err := adapters.BeginReadOnlyConsole(ctx, "START TRANSACTION READ ONLY", func(ctx context.Context, sql string) error {
-			_, err := conn.ExecContext(ctx, sql)
-			return err
-		}, conn.waitInFlight, func(err error) error { return mapError(err) })
+		cleanup, err := beginReadOnlyWrap(ctx, conn, connReadOnly)
 		if err != nil {
-			if !connReadOnly {
-				cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
-				defer cancel()
-				_, _ = conn.ExecContext(cleanupCtx, "SET TRANSACTION READ WRITE")
-			}
 			return nil, err
 		}
 		defer cleanup()
 	}
 
-	pages = make([]page.Page, len(statements))
+	return runStatements(ctx, conn, op, track, readOnly, connReadOnly, statements, binds, limit)
+}
+
+// checkConsoleBatch refuses an empty batch and, in the read lane, a batch that could escalate or
+// would implicitly commit an open user transaction.
+func checkConsoleBatch(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string) error {
+	if len(statements) == 0 {
+		return adapters.T(adapters.CodeQuery, "backend.studio.adapter.noStatements.body", nil, nil)
+	}
+	if readOnly && connReadOnly {
+		return adapters.AssertNoTransactionEscalation(statements, adapters.MySQLDialect)
+	}
+	// START TRANSACTION implicitly commits an open user transaction; refuse before it runs.
+	if readOnly {
+		return refuseOpenTransaction(ctx, conn, op, track)
+	}
+	return nil
+}
+
+// beginReadOnlyWrap opens the read-only wrap and returns its cleanup.
+func beginReadOnlyWrap(ctx context.Context, conn Entry, connReadOnly bool) (func(), error) {
+	// P113 G1: adapters.BeginReadOnlyConsole carries the shared BEGIN/COMMIT wrap postgres and
+	// mysqlfamily hand-rolled identically. F2: waitInFlight blocks on every RunWithAbortRace
+	// goroutine this batch spawned still touching conn before COMMIT.
+	cleanup, err := adapters.BeginReadOnlyConsole(ctx, "START TRANSACTION READ ONLY", func(ctx context.Context, sql string) error {
+		_, err := conn.ExecContext(ctx, sql)
+		return err
+	}, conn.waitInFlight, func(err error) error { return mapError(err) })
+	if err != nil {
+		if !connReadOnly {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), endTransactionTimeout)
+			defer cancel()
+			_, _ = conn.ExecContext(cleanupCtx, "SET TRANSACTION READ WRITE")
+		}
+		return nil, err
+	}
+	return cleanup, nil
+}
+
+// runStatements runs each statement in order under the shared result cap.
+func runStatements(ctx context.Context, conn Entry, op *adapters.OpCtx, track TrackQuery, readOnly, connReadOnly bool, statements []string, binds []any, limit page.ResultCap) ([]page.Page, error) {
+	pages := make([]page.Page, len(statements))
 	for i, stmt := range statements {
 		if err := adapters.CheckCancelled(ctx); err != nil {
 			return nil, adapters.AtStatement(err, i)
