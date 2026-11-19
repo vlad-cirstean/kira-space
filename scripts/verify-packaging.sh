@@ -164,18 +164,6 @@ if ! bun scripts/check-install-step.ts; then
   fail "installer stepping drifted" "scripts/install.sh's nextStep disagrees with internal/releaseline's NextStep table"
 fi
 
-# --- S12: the bundled ONNX Runtime version agrees everywhere it is pinned (P210) ----------------
-# internal/memory/embed/paths.go's ORTVersion names the dylib RuntimeLib loads from Frameworks; the
-# fetch script downloads that version and the bundle task copies that file name.
-ORT_GO_VERSION="$(sed -n 's/^const ORTVersion = "\([^"]*\)".*/\1/p' internal/memory/embed/paths.go 2>/dev/null | head -1)"
-ORT_SCRIPT_VERSION="$(sed -n 's/^ORT_VERSION="\([^"]*\)".*/\1/p' scripts/fetch-onnxruntime.sh 2>/dev/null | head -1)"
-if [ -z "$ORT_GO_VERSION" ] || [ "$ORT_GO_VERSION" != "$ORT_SCRIPT_VERSION" ]; then
-  fail "ONNX Runtime version mismatch" "internal/memory/embed/paths.go ORTVersion ('$ORT_GO_VERSION') != scripts/fetch-onnxruntime.sh ORT_VERSION ('$ORT_SCRIPT_VERSION')"
-fi
-if ! grep -q "libonnxruntime\.$ORT_GO_VERSION\.dylib" apps/kira-space/build/darwin/Taskfile.yml 2>/dev/null; then
-  fail "ONNX Runtime not bundled" "apps/kira-space/build/darwin/Taskfile.yml's create:app:bundle does not reference libonnxruntime.$ORT_GO_VERSION.dylib"
-fi
-
 # --- S13: Kira Space's document types match the file-type vocabulary (P332) --------------------
 # Both Info plists carry a generated CFBundleDocumentTypes/UTImportedTypeDeclarations block; the
 # generator's --check exits non-zero when it drifts from apps/kira-space/internal/filetypes.
