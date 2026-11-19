@@ -241,6 +241,16 @@ const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
     })
     .nullable(),
 });
+// A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
+export const apiInputSchema = /*#__PURE__*/ z.object({
+  name: z.string(),
+  label: z.string(),
+  state: z.enum(['needed', 'stored']),
+  origin: z.string(),
+  keptId: z.string().optional(),
+});
+export type ApiInput = z.infer<typeof apiInputSchema>;
+
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
   url: z.string(),
@@ -266,6 +276,8 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
     .array(keptUseSchema)
     .nullish()
     .transform((v) => v ?? []),
+  // Values the agent asked the user for (P679): typed on the card (needed) or already held (stored).
+  inputs: z.array(apiInputSchema).default([]),
   script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
   // "Review the response" on the card (P677): offered, and already on by settings.
   reviewOffered: z.boolean().default(false),

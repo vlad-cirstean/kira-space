@@ -50,9 +50,28 @@ export function useAnswerApprovals() {
     {
       mutationKey: ['approvals', 'answer'],
       mutationFn: (args: ApprovalAnswerArgs) => control.approvalsAnswer(args),
+      // The variables can carry typed input values: keep no cached copy.
+      gcTime: 0,
     },
     queryClient,
   );
+}
+
+// Typed input values ride the approve answer only: a deny never carries them.
+function answerOptions(
+  store: ReturnType<typeof useApprovalsStore>,
+  ids: string[],
+  approve: boolean,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const id of ids) {
+    const typed = approve ? store.inputs[id] : undefined;
+    const hasTyped = typed !== undefined && Object.keys(typed).length > 0;
+    if (!(id in store.options) && !hasTyped) continue;
+    const base = (store.options[id] ?? {}) as Record<string, unknown>;
+    out[id] = hasTyped ? { ...base, inputs: typed } : store.options[id];
+  }
+  return out;
 }
 
 /** Answers with the options each body collected; a refused item stays listed with its error. */
@@ -63,20 +82,20 @@ export function useApprovalActions() {
   async function answer(ids: string[], approve: boolean): Promise<void> {
     if (ids.length === 0) return;
     store.begin(ids);
-    const options = Object.fromEntries(
-      ids.filter((id) => id in store.options).map((id) => [id, store.options[id]]),
-    );
+    const options = answerOptions(store, ids, approve);
     try {
       const results = await mutation.mutateAsync({
         ids,
         approve,
         options: Object.keys(options).length > 0 ? options : undefined,
       });
+      mutation.reset();
       for (const r of results) {
         if (r.error) store.fail(r.id, r.error);
         else store.done(r.id);
       }
     } catch (e) {
+      mutation.reset();
       for (const id of ids) store.fail(id, errorText(e));
     }
   }

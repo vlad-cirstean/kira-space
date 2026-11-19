@@ -34,6 +34,8 @@ export interface ApprovalKindDef {
   /** The body renders in Monaco: the surface preloads it as the dialog opens, so the editor does not
    *  pop in. Absent for a kind with no editor, which then never pays for Monaco. */
   monaco?: boolean;
+  /** Values the person must type before Approve enables (declared by the agent, kept as secrets). */
+  requiredInputs?: (item: ApprovalItem) => { name: string; label: string }[];
   /** Button words when Approve/Deny do not fit (Send/Withhold, Accept/Reject). */
   labels?: (item: ApprovalItem) => { approve: string; deny: string };
 }

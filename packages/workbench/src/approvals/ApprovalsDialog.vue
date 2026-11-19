@@ -18,6 +18,7 @@ import { computed } from 'vue';
 import ApprovalItemActions from './ApprovalItemActions.vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { useApprovalActions } from './approvalsQueries';
+import { blankInput } from './blankInput';
 import { useApprovalKinds } from './registry';
 
 const props = defineProps<{ items: ApprovalItem[] }>();
@@ -44,7 +45,12 @@ function denyAll(): void {
 const kinds = useApprovalKinds();
 const approveKey = shortcutKeydown(['form.submit'], () => {
   const item = current.value;
-  if (item.kind in kinds && !store.isBroken(item.id) && !store.answering.includes(item.id)) {
+  if (
+    item.kind in kinds &&
+    !store.isBroken(item.id) &&
+    !store.answering.includes(item.id) &&
+    blankInput(kinds[item.kind], item, store.inputs[item.id]) === null
+  ) {
     void answer([item.id], true);
   }
 });

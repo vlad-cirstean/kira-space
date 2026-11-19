@@ -2,12 +2,19 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipDisabledTrigger,
+  TooltipTrigger,
+} from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, watch } from 'vue';
 import { logWarn } from '../bridge/log';
 import { useApprovalActions } from './approvalsQueries';
+import { blankInput } from './blankInput';
 import { useApprovalKind } from './registry';
 import { safeKind } from './safeKind';
 
@@ -25,6 +32,8 @@ const requester = computed(() => {
   const origin = [o.client, o.cwd, o.task, o.step, o.source].filter(Boolean).join(' · ');
   return safeKind(props.item.kind, () => def?.requester?.(props.item) ?? origin, origin);
 });
+// Approve waits for every value the agent asked the person to type.
+const blank = computed(() => blankInput(def, props.item, store.inputs[props.item.id]));
 const unreadable = computed(
   () => store.isBroken(props.item.id) || labels.value.failed || requester.value.failed,
 );
@@ -59,17 +68,26 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
       >
         {{ labels.value?.deny ?? t('common.action.deny.label') }}
       </Button>
-      <Button
-        v-if="def && !unreadable"
-        variant="dialog-approve"
-        size="kira-lg"
-        :pending="busy"
-        :kbd="formatShortcut('form.submit')"
-        :data-testid="`approval-approve-${item.id}`"
-        @click="answer([item.id], true)"
-      >
-        {{ labels.value?.approve ?? t('common.action.approve.label') }}
-      </Button>
+      <Tooltip v-if="def && !unreadable" :disabled="blank === null">
+        <TooltipTrigger as-child>
+          <TooltipDisabledTrigger :disabled="blank !== null">
+            <Button
+              variant="dialog-approve"
+              size="kira-lg"
+              :pending="busy"
+              :disabled="blank !== null"
+              :kbd="formatShortcut('form.submit')"
+              :data-testid="`approval-approve-${item.id}`"
+              @click="answer([item.id], true)"
+            >
+              {{ labels.value?.approve ?? t('common.action.approve.label') }}
+            </Button>
+          </TooltipDisabledTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{{
+          t('workbench.approvals.input.required.tooltip', { label: blank ?? '' })
+        }}</TooltipContent>
+      </Tooltip>
     </div>
   </div>
 </template>

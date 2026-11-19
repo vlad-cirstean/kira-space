@@ -51,6 +51,8 @@ const keptMetaShape = {
 // A variable a pending request uses (agentapi.KeptUse).
 export const keptUseSchema = /*#__PURE__*/ z.object({
   ...keptMetaShape,
+  // A value the user has yet to type (a needed input): no id, no value; the sites still mark where it goes.
+  pending: z.boolean().default(false),
   sites: z
     .array(keptSiteSchema)
     .nullish()
@@ -61,6 +63,8 @@ export type KeptUse = z.infer<typeof keptUseSchema>;
 export const keptEntrySchema = /*#__PURE__*/ z.object({
   ...keptMetaShape,
   scopeLabel: z.string(),
+  // scheme://host[:port] a user-supplied value goes to; empty for a script's value.
+  origin: z.string().default(''),
 });
 export type KeptEntry = z.infer<typeof keptEntrySchema>;
 

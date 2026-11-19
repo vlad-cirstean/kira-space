@@ -12,6 +12,9 @@ export const useApprovalsStore = defineStore('approvals', () => {
   const broken = ref<string[]>([]);
   // Per-item choices a kind body collected (branch.request: itemIds, remoteItemIds).
   const options = ref<Record<string, unknown>>({});
+  // Values the person typed for an item's declared inputs (item id, then input name). Never persisted
+  // and never in TanStack: sent with Approve only, dropped once the item settles.
+  const inputs = ref<Record<string, Record<string, string>>>({});
 
   function minimise(): void {
     minimised.value = true;
@@ -24,6 +27,20 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
   function setOption(id: string, value: unknown): void {
     options.value = { ...options.value, [id]: value };
+  }
+
+  // A blank value is no value: a stored input then keeps what Kira holds, a needed one blocks Approve.
+  function setInput(id: string, name: string, value: string): void {
+    const { [name]: _old, ...rest } = inputs.value[id] ?? {};
+    inputs.value = {
+      ...inputs.value,
+      [id]: value.trim() === '' ? rest : { ...rest, [name]: value },
+    };
+  }
+
+  function clearInputs(id: string): void {
+    const { [id]: _gone, ...rest } = inputs.value;
+    inputs.value = rest;
   }
 
   function markBroken(id: string): void {
@@ -44,6 +61,7 @@ export const useApprovalsStore = defineStore('approvals', () => {
   // An answered item that stays listed (a partially answered branch.request) is answerable again.
   function done(id: string): void {
     answering.value = answering.value.filter((a) => a !== id);
+    clearInputs(id);
   }
 
   function fail(id: string, message: string): void {
@@ -61,6 +79,9 @@ export const useApprovalsStore = defineStore('approvals', () => {
     options.value = Object.fromEntries(
       Object.entries(options.value).filter(([k]) => live.includes(k)),
     );
+    inputs.value = Object.fromEntries(
+      Object.entries(inputs.value).filter(([k]) => live.includes(k)),
+    );
     broken.value = broken.value.filter((b) => live.includes(b));
     if (focusId.value && !live.includes(focusId.value)) focusId.value = null;
     if (live.length === 0) minimised.value = false;
@@ -72,10 +93,13 @@ export const useApprovalsStore = defineStore('approvals', () => {
     answering,
     errors,
     options,
+    inputs,
     broken,
     minimise,
     open,
     setOption,
+    setInput,
+    clearInputs,
     markBroken,
     isBroken,
     begin,
