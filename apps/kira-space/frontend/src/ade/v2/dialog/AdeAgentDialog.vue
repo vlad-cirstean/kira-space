@@ -271,7 +271,7 @@ async function discard(): Promise<void> {
           />
         </Field>
         <Field v-if="view.showMessage && view.suffix">
-          <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+          <FieldLabel>{{ t('common.run.addedByKira.label') }}</FieldLabel>
           <CodeBlock class="text-muted-foreground" data-testid="ade-dialog-suffix">{{
             view.suffix
           }}</CodeBlock>

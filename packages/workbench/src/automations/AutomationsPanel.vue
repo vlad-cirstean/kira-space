@@ -528,7 +528,7 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
           v-else
           fill
           icon="terminal-bash"
-          :title="t('automations.panel.none.empty')"
+          :title="t('common.scripts.none.empty')"
           :description="t('automations.panel.none.emptyHint')"
         >
           <FieldError v-if="actionError" data-testid="script-error">{{ actionError }}</FieldError>

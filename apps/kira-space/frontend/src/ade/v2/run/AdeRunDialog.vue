@@ -268,7 +268,7 @@ async function send(): Promise<void> {
           />
         </Field>
         <Field>
-          <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+          <FieldLabel>{{ t('common.run.addedByKira.label') }}</FieldLabel>
           <CodeBlock class="text-muted-foreground" data-testid="ade-run-suffix">{{
             suffix
           }}</CodeBlock>

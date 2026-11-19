@@ -29,7 +29,7 @@ const cluster = computed(() => clusters.data.value?.clusters.find((c) => c.id ==
 const save = useSetClusterMcp();
 
 const approvalItems = computed(() => [
-  { value: 'prompt', label: t('automations.form.mcp.prompt.label'), testid: 'kube-mcp-prompt' },
+  { value: 'prompt', label: t('common.mcp.askFirst.label'), testid: 'kube-mcp-prompt' },
   { value: 'allow', label: t('kubernetes.mcp.allow.label'), testid: 'kube-mcp-allow' },
 ]);
 

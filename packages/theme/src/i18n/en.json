@@ -13,13 +13,7 @@
         "notSaved": {
           "hint": "Not saved to the script."
         },
-        "suffix": {
-          "label": "Added by Kira"
-        },
-        "title": "Run {name}",
-        "untitled": {
-          "title": "Run script"
-        }
+        "title": "Run {name}"
       },
       "scheduleConfirm": {
         "title": "Run {name}?",
@@ -139,9 +133,6 @@
           "hint": "A long-running script returns to the agent at once; the agent reads its output while it runs and can stop it.",
           "label": "How long it runs"
         },
-        "prompt": {
-          "label": "Ask me first"
-        },
         "run": {
           "label": "When an agent runs it"
         },
@@ -168,7 +159,6 @@
         "tooltip": "New…"
       },
       "none": {
-        "empty": "No scripts",
         "emptyHint": "Add one with the plus button above."
       }
     },
@@ -210,9 +200,6 @@
       },
       "smartHint": {
         "description": "Use {token} in the prompt. A secret reaches the run as {variable} only, never in the prompt."
-      },
-      "title": {
-        "label": "Parameters"
       }
     },
     "restore": {
@@ -340,9 +327,6 @@
       "state": {
         "done": {
           "status": "Succeeded"
-        },
-        "waiting": {
-          "status": "Waiting for you"
         }
       },
       "taskOnBranch": {
@@ -486,9 +470,6 @@
       },
       "newSmart": {
         "label": "New smart script"
-      },
-      "paramNamed": {
-        "label": "Parameter {name}"
       },
       "promptExample": {
         "example": "Summarize the open TODOs in this folder"
@@ -3593,6 +3574,12 @@
       "number": {
         "label": "Number"
       },
+      "parameterNamed": {
+        "label": "Parameter {name}"
+      },
+      "parameters": {
+        "label": "Parameters"
+      },
       "reason": {
         "label": "Reason"
       },
@@ -3698,6 +3685,9 @@
       "status": "Match {position} of {total}"
     },
     "mcp": {
+      "askFirst": {
+        "label": "Ask me first"
+      },
       "label": "MCP"
     },
     "merge": {
@@ -3880,11 +3870,24 @@
     "revert": {
       "label": "Revert"
     },
+    "run": {
+      "addedByKira": {
+        "label": "Added by Kira"
+      },
+      "untitled": {
+        "title": "Run script"
+      }
+    },
     "script": {
       "label": "Script"
     },
     "scriptRuns": {
       "label": "Script runs"
+    },
+    "scripts": {
+      "none": {
+        "empty": "No scripts"
+      }
     },
     "searching": {
       "loading": "Searching…"
@@ -3964,6 +3967,9 @@
       },
       "unsavedChanges": {
         "status": "Unsaved changes"
+      },
+      "waitingForYou": {
+        "status": "Waiting for you"
       }
     },
     "task": {

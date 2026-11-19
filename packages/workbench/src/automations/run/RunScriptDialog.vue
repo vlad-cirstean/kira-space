@@ -161,7 +161,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
         <DialogTitle>{{
           script
             ? t('automations.dialog.run.title', { name: script.name })
-            : t('automations.dialog.run.untitled.title')
+            : t('common.run.untitled.title')
         }}</DialogTitle>
         <DialogDescription v-if="isSmart"><SmartBadge /></DialogDescription>
       </DialogHeader>
@@ -220,7 +220,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
             </template>
           </Field>
           <Field v-if="isSmart && pv">
-            <FieldLabel>{{ t('automations.dialog.run.suffix.label') }}</FieldLabel>
+            <FieldLabel>{{ t('common.run.addedByKira.label') }}</FieldLabel>
             <CodeBlock class="text-muted-foreground" data-testid="run-suffix">{{
               pv.suffix
             }}</CodeBlock>

@@ -29,7 +29,7 @@ const rows = computed(() =>
 
 <template>
   <section class="flex flex-col gap-1" data-testid="db-approval-params">
-    <SectionHeading flush :label="t('automations.params.title.label')" />
+    <SectionHeading flush :label="t('common.field.parameters.label')" />
     <KeyValueList density="compact">
       <template v-for="(row, i) in rows" :key="i">
         <dt class="font-data" :data-testid="`db-approval-param-${i}-placeholder`">

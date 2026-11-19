@@ -354,7 +354,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     'script.run': {
       content: markRaw(ScriptRunBody),
       details: markRaw(ScriptRunDetails),
-      operation: () => t('automations.dialog.run.untitled.title'),
+      operation: () => t('common.run.untitled.title'),
       where: (item) => item.target.location,
       whereData: true,
     },

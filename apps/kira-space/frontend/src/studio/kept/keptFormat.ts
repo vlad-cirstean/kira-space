@@ -54,7 +54,7 @@ export function keptSiteLabel(
     case 'statement':
       return t('studio.dbMcp.approval.detail.statement.label');
     case 'param':
-      return t('automations.script.paramNamed.label', { name: String(site.index + 1) });
+      return t('common.field.parameterNamed.label', { name: String(site.index + 1) });
   }
 }
 

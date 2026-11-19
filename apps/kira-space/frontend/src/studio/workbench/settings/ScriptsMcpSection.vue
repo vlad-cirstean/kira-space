@@ -60,7 +60,7 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
       </ul>
     </Card>
     <InlineState kind="empty" v-else data-testid="db-mcp-scripts-empty">
-      {{ t('automations.panel.none.empty') }}
+      {{ t('common.scripts.none.empty') }}
     </InlineState>
     <Alert v-if="toggle.error.value" variant="error" data-testid="db-mcp-scripts-error">
       <AlertDescription>{{ toggle.error.value }}</AlertDescription>

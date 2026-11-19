@@ -43,7 +43,7 @@ export function scriptRunTabKind<
         case 'blocked':
           return { icon: 'warning', tooltip: t('common.needsYou.status') };
         case 'waiting':
-          return { icon: 'bell', tooltip: t('automations.run.state.waiting.status') };
+          return { icon: 'bell', tooltip: t('common.state.waitingForYou.status') };
         default:
           return null;
       }

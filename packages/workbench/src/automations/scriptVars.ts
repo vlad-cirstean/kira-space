@@ -142,7 +142,7 @@ export function scriptHover(
     if (!ref) return null;
     if (ref.builtin) return [t('automations.script.adeSet.tooltip')];
     if (!ref.param) return [t('automations.script.unknownParam.tooltip')];
-    const lines = [t('automations.script.paramNamed.label', { name: ref.param.name })];
+    const lines = [t('common.field.parameterNamed.label', { name: ref.param.name })];
     if (src.kind === 'smart' && ref.param.secret)
       lines.push(t('automations.script.secretInPrompt.error'));
     else if (ref.param.secret) lines.push(t('common.secret.label'));
