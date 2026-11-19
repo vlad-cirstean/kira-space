@@ -106,9 +106,9 @@ func TestE2ECrossMcp(t *testing.T) {
 		if _, err := f.app.W.Kept.Put(keptvars.Put{Scope: externalScope, Name: "token2", Value: json.RawMessage(`"tok2-cross-secret"`), Secret: true, Source: keptSource}); err != nil {
 			t.Fatal(err)
 		}
-		derive := callToolAsync(sess, "api_request", scriptArgs(envID, "GET", echo, map[string]any{"transform": `kept.set("tainted", kept.get("token2") + "-y"); return 1`}))
-		f.answerItems(t, true, f.pending(t).Item.ID)
-		if res := wait(t, derive); res.IsError {
+		// The transform reads a secret, so its response is held for review.
+		derive := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", echo, map[string]any{"transform": `kept.set("tainted", kept.get("token2") + "-y"); return 1`}))
+		if res := f.finish(t, derive, true); res.IsError {
 			t.Fatalf("derive = %q", text(res))
 		}
 		if e, ok := f.keptValue(t, "tainted"); !ok || !e.Secret {
