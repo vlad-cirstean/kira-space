@@ -447,7 +447,7 @@ func boundArgs(params []model.BindParam) ([]any, error) {
 			out[i] = v.Int
 		case adapters.ParamList:
 			if len(v.JSON) > maxListJSONBytes {
-				return nil, adapters.New(adapters.CodeQuery, fmt.Sprintf("a bound list takes at most %d bytes as JSON text", maxListJSONBytes), nil)
+				return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.boundListTooLarge.body", map[string]string{"limit": strconv.Itoa(maxListJSONBytes)}, nil)
 			}
 			out[i] = v.JSON
 		default:

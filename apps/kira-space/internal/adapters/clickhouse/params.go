@@ -1,7 +1,6 @@
 package clickhouse
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -35,12 +34,12 @@ func boundParams(params []model.BindParam) (map[string]string, error) {
 	total := 0
 	for i, p := range params {
 		if p.Name == "" {
-			return nil, adapters.New(adapters.CodeQuery, "a ClickHouse bound value needs its placeholder name", nil)
+			return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.boundNameRequired.body", nil, nil)
 		}
 		text := paramText(vals[i])
 		total += len(p.Name) + len(text)
 		if total > maxBoundParamBytes {
-			return nil, adapters.New(adapters.CodeQuery, fmt.Sprintf("bound values are over the %d KiB ClickHouse takes in a request; bind fewer or smaller values", maxBoundParamBytes>>10), nil)
+			return nil, adapters.T(adapters.CodeQuery, "backend.studio.adapter.boundValuesTooLarge.body", map[string]string{"limit": strconv.Itoa(maxBoundParamBytes), "engine": "ClickHouse"}, nil)
 		}
 		out[p.Name] = text
 	}

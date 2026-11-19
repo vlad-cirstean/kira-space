@@ -2377,6 +2377,15 @@
         "binaryValueInvalid": {
           "body": "Not a valid binary value. Use 0x followed by hexadecimal digits."
         },
+        "boundListTooLarge": {
+          "body": "A bound list takes at most {limit} bytes as JSON text."
+        },
+        "boundNameRequired": {
+          "body": "A bound value needs its placeholder name."
+        },
+        "boundValuesTooLarge": {
+          "body": "Bound values are over the {limit} bytes {engine} takes in a request. Bind fewer or smaller values."
+        },
         "cancelled": {
           "body": "The operation was cancelled."
         },
@@ -2520,6 +2529,9 @@
         },
         "multipleStatements": {
           "body": "Multiple statements aren’t supported in a single statement."
+        },
+        "noBoundParams": {
+          "body": "{kind} takes no bound parameters."
         },
         "noQueryConsole": {
           "body": "{kind} has no query console."

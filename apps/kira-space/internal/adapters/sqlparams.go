@@ -448,5 +448,5 @@ func RefuseParams(kind string, req model.ConsoleRequest) error {
 	if len(req.Params) == 0 {
 		return nil
 	}
-	return New(CodeUnsupported, fmt.Sprintf("%s takes no bound parameters", kind), errors.New("bound parameters on a non-SQL console"))
+	return T(CodeUnsupported, "backend.studio.adapter.noBoundParams.body", map[string]string{"kind": kind}, errors.New("bound parameters on a non-SQL console"))
 }
