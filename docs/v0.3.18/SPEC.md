@@ -27,7 +27,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Done |
 | P687 | Shared hash-guarded draft and save-conflict model across modules | Planned |
 | P688 | Copy guard gaps: translated text built by joining, English hint text outside the catalog | Planned |
-| P689 | TanStack default network mode: no pause on webview offline event | Planned |
+| P689 | TanStack default network mode: no pause on webview offline event | Done |
 
 ## P687: Shared draft and save-conflict model
 
@@ -40,6 +40,10 @@ Parked by P674 Part 5. `scripts/copy/check-copy.ts` misses translated text built
 ## P689: TanStack default network mode
 
 Parked by P682. `createQueryClient` sets no `networkMode`, so queries and raw `useMutation` default to `online`. After the webview window `offline` event, TanStack `onlineManager` pauses them (`fetchStatus: 'paused'`), though desktop calls are local bridge calls. Only `useAsyncAction` sets `networkMode: 'always'` (P682). Fix: `networkMode: 'always'` in `defaultOptions` for the desktop profile in `createQueryClient`; decide the mobile remote profile in the plan. Add a UI spec that simulates the `offline` event. Then delete the ARCHITECTURE "Known open items" entry "TanStack pauses on a webview `offline` event (P682)".
+
+Plan: plans/P689.md.
+
+Result: `createQueryClient` owns network mode for queries and mutations. Desktop `always`, no reconnect refetch: the webview `offline` event no longer pauses bridge reads or writes. Phone `online` (explicit): requests cannot reach the desktop while offline; paused reads resume on reconnect, paused writes send once with their idempotency key. `useAsyncAction` keeps its per-call `always` (plan dropped it; wrong): the wrapper pausing keeps the inner phone write from starting, so its pending state never shows and a second tap sends a second key. Guard U190 exempts `asyncAction.ts` for it. Fixed in passing: workbench approvals and agent-info queries pinned the desktop client, so on the phone they ran the desktop profile; they now use `useQueryClient()`. Specs: `tests/ui/network-offline.spec.ts` (query refetch, raw mutation, `useAsyncAction`-wrapped write after a dispatched `offline` event; all three fail on the old client), `tests/mobile/writes.spec.ts` offline write waits and sends once on `online`. Frontend-only, no IPC change, so no backend flow half. Guard U190 (per-call `networkMode`), zero offenders; ARCHITECTURE Known open item deleted, guard range U110-U190.
 
 ## P682: Async action error state
 

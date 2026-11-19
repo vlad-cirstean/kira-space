@@ -793,7 +793,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - List and tree keyboard handling uses useListNavigation; context menus use one store and renderer (state/contextMenu.ts, ContextMenu.vue), with git MenuSection[] passed through sectionsToMenuItems.
 - A danger confirm and any DialogContent destructive open focused on the data-dialog-dismiss control; confirms use confirm({ message, title?, confirmLabel, tone, run? }) over ConfirmDialogView.
 - Shared behaviour primitives: useInlineEdit/InlineEditInput for inline edit, usePersistedState (key kira.<module>.<name>; its shared refs hold no component instance) for per-device UI state, useCopy/copyText, useAsyncAction/useTaskAction/useMutationAction, errorText for bridge errors, behaviour/format.ts for formats, TIMING for timers, optimisticUpdate, PointPopover.
-- Data states use QueryState over a client from createQueryClient({ remote }) with staleTime Infinity, push-invalidated; a query that must refetch on mount sets staleTime: 0.
+- Data states use QueryState over a client from createQueryClient({ remote }) with staleTime Infinity, push-invalidated; a query that must refetch on mount sets staleTime: 0. Desktop ignores the webview's network state (`networkMode: 'always'`, no reconnect refetch); the phone pauses while offline (`online`) and resumes on reconnect. Network mode is set only in `createQueryClient` (U190), plus the `useAsyncAction` wrapper, which runs its thunk at once so the inner write's own mode applies. Workbench queries take the app's client through `useQueryClient()`, so the phone runs them on its remote profile.
 - Local chords use useShortcut over SHORTCUTS, which carries scope; a unit test forbids two bindings on one chord in a scope.
 - Pane and column resize uses ResizeHandle over usePaneResize (VueUse useDraggable; paneResizeMath holds clamp, direction and percent arithmetic). reka SplitterGroup is retired app-wide.
 - SplitterGroup was retired because the P132 hang was a non-deterministic race inside third-party layout code and the sizeUnit="px" panel fought SlickGrid on every ResizeObserver tick.
@@ -1504,7 +1504,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - A write's pending and error come from its TanStack mutation, never a hand ref: `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other awaited call, `useTaskAction()` for one error surface fed by several writes; `describe` maps or hides the text, `cause` gives the coded error for branching. Overlapping runs: latest wins. Keyed store surfaces, git-ui class state and synchronous failures stay outside (U188, U189, U51).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U189 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U190 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 
@@ -4265,7 +4265,6 @@ Details content (notes, handovers, links, proofs) moves to files in `<home>/task
 
 ## Known open items
 
-- **TanStack pauses on a webview `offline` event (P682).** `createQueryClient` leaves `networkMode` at the default `online`, and `onlineManager` flips offline on the window `offline` event. Every query and every raw `useMutation` then sits paused (`fetchStatus: 'paused'`) until `online`, though desktop reads and writes are local Wails bridge calls. Only `useAsyncAction` sets `networkMode: 'always'`.
 - **A script that reads a user-supplied value can transform it past the mask (P679).** The mask covers raw, JSON-escaped, URL and base64 forms; a script may split, reverse or hash the value into text no form matches. Such a result is always held for review (reason `userValue`), so the user sees it before the agent does.
 - **Kept variables: non-secret kept values are not masked when a server echoes them (P678).** Only secret entries are masked in a response; a plain value a server returns reaches the agent. The same holds for a value bound into SQL: a database echo in rows or an error message is not masked (P680).
 - **SQL scripts cannot read secret or user-typed kept values (P680).** `run_query` scripts refuse them at argument time: SQL results have no secret mask and a connection has no origin to bind a typed value to. Both live in `api_request` only.
