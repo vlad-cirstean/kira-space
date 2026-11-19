@@ -46,6 +46,7 @@
         "host": "127.0.0.1",
         "method": "GET",
         "query": [],
+        "script": null,
         "timeoutSeconds": 30,
         "url": "http://127.0.0.1:<port>/echo",
         "variables": [
@@ -113,6 +114,7 @@
           "value": "7"
         }
       ],
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo?id=7",
       "variables": [
@@ -176,6 +178,7 @@
       "host": "127.0.0.1",
       "method": "POST",
       "query": [],
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo",
       "variables": [
@@ -246,6 +249,7 @@
       "host": "127.0.0.1",
       "method": "POST",
       "query": [],
+      "script": null,
       "timeoutSeconds": 30,
       "url": "http://127.0.0.1:<port>/echo",
       "variables": [
