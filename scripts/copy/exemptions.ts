@@ -1,4 +1,5 @@
 import type { Exemption } from './allowlist';
+import type { OwnershipPair } from './ownership';
 
 /** Permanent check-copy exemptions: text the guard flags that is not user-facing wording. */
 export const EXEMPTIONS: readonly Exemption[] = [
@@ -32,5 +33,29 @@ export const EXEMPTIONS: readonly Exemption[] = [
     path: 'packages/theme/src/components/ui/sonner/Sonner.vue',
     reason:
       '`title` and `description` are vue-sonner class slots holding Tailwind classes, not text',
+  },
+];
+
+/** U182 pairs: a module that hosts another module's UI reads that module's keys. */
+export const OWNERSHIP_PAIRS: readonly OwnershipPair[] = [
+  {
+    module: 'mobile',
+    prefix: 'space.',
+    reason: 'the phone app renders the Space screens with Space wording',
+  },
+  {
+    module: 'space',
+    prefix: 'git.',
+    reason: 'ADE hosts git-ui review comments and git operations',
+  },
+  {
+    module: 'space',
+    prefix: 'studio.proof.',
+    reason: 'ADE renders Studio proofs',
+  },
+  {
+    module: 'space',
+    prefix: 'memory.distill.',
+    reason: 'repo hosts memory distill of a selection',
   },
 ];

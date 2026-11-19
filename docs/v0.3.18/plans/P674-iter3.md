@@ -70,7 +70,7 @@ are known hits.
   `${testid}-status`). `ResponsePane` drops its `hint` computed if unused; TimelinePane keeps its
   `v-if="hop.status > 0"` and failed-chip branch. `ApiResponseView` drops `tone`, `statusText`,
   `StatusTone`/`TONE_BADGE` imports and the wrapping `div` if it only held the badge.
-- Guard: U177 `v`, exempt `HttpStatusBadge.vue`, regex `\bstatusClass\(|>=\s*500\b`.
+- Guard: U177 `v`, exempt `HttpStatusBadge.vue`, regex `\bstatusClass\([\w.]*\bstatus\b\)|\bimport\b[^;]*\bstatusClass\b[^;]*from '@shared/domain/http'|>=\s*500\b` (bare `\bstatusClass\(` also hit `AdeStepBlock` step-state and git-ui `FileTree` helpers of the same name).
 - Visible change: yes (approval response status: 4xx red, 3xx amber, 1xx info, data font, hint
   tooltip).
 - Specs: `studio/http-request.spec.ts`, `studio/http-history.spec.ts`, `studio/http-pipes.spec.ts`,
@@ -282,6 +282,26 @@ are known hits.
   unchanged.
 - Wave 1 (all moves and callers across modules; one commit per namespace group).
 
+## Progress
+
+- F3.6 `done` per group: automations `32ffc8c2e`, docker `c0d775c5e`, git `f21b728f7`, memory
+  `9d117c712`, mobile `1cf16af57`, space `bba158e9e`, studio `9e0f4fd1b`, workbench `8fb37749b`, plus
+  two `llmPrompts` keys found by U182 `9cb360761` (`llmPrompts.badge.edited.label` to
+  `common.state.edited.status`, `llmPrompts.tab.preview.label` to `common.tab.preview.label`).
+  Final names differ from the move table: `workbench.tabStrip.discard.{title,body}` became
+  `common.tab.discard.{title,body}` (C7: a `...Confirm.title` key must end with `?`);
+  `workbench.statusBar.runs.open.hint` became `automations.statusBar.runs.open.hint` (automations is
+  its only caller).
+- F3.3 `done e75a8b4cf`. `hexBytes.status` reads "{size} of data" (bare "{size}" is a C4
+  near-duplicate of `studio.console.format.engine.error`).
+- F3.1 `done 9c909a774`. F3.4 `done 631ab7821`. F3.5 `done e5c104b70`. F3.2 `done a7bb8055a`.
+- ARCHITECTURE rules `17d57a68a`.
+- Wave 1: done 17d57a68a. Wave 2: done a7bb8055a. Wave 3: done (guards commit below).
+- U182 differs from the plan: the check is `scripts/copy/ownership.ts` (module table, shared
+  namespaces, `applyPairs`), called from `check-copy.ts`; pairs sit in `exemptions.ts`
+  `OWNERSHIP_PAIRS`. Studio's sources (Kubernetes view included) own `studio` and `kubernetes`:
+  the Kubernetes view keeps its own top-level namespace.
+
 ## PARK
 
 None new. Still Planned: P682, P683, P684, P685, P687.
@@ -349,7 +369,7 @@ of `ResponsePane.vue`, `ApiResponseView.vue`, `DbParamsList.vue` sit on wave 1's
 5. `bun run lint:rules`; commit. Remove worktrees, push.
 
 ```
-U177@@v@@HttpStatusBadge.vue@@hand HTTP status chip (use HttpStatusBadge)@@\bstatusClass\(|>=\s*500\b
+U177@@v@@HttpStatusBadge.vue@@hand HTTP status chip (use HttpStatusBadge)@@\bstatusClass\([\w.]*\bstatus\b\)|\bimport\b[^;]*\bstatusClass\b[^;]*from '@shared/domain/http'|>=\s*500\b
 U178@@vt@@MeasuredSection.vue@@hand docker measure section (use MeasuredSection)@@docker\.measuring\.loading|docker\.measure\.label
 U179@@vt@@@@byte size passed as a count (use formatBytes, {size})@@\bcount:\s*(?:[\w.]+\.)?(?:bytes|\w*Bytes)\b
 U180@@v@@KeptNameMark.vue@@hand kept name and type (use KeptNameMark)@@:mark-class="[^"]*KEPT_MARK_CLASS[^"]*"\s*/>\s*<span

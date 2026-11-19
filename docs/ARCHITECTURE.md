@@ -1276,7 +1276,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Catalog rule C10 flags unused keys (--unused, on in lint) and scans internal/ Go callers for backend.* keys.
 - Catalog rule C6 requires sentence case (title case under backend.menu.*); C8 covers plural shape and allows only named placeholders in backend.* messages.
 - Catalog duplicate-text exemptions live in ALLOWED_DUPLICATES, which is empty; each entry needs a reason.
-- The source guard scripts/copy/check-copy.ts (Babel and @vue/compiler-sfc ASTs) runs under bun run lint and enforces U64-U71: no template text, static text attributes, string literals in template expressions, strings in text properties or announce calls, vue-i18n use outside the i18n folder, concatenated or composed translations, t( at module scope, and t params differing from message placeholders.
+- The source guard scripts/copy/check-copy.ts (Babel and @vue/compiler-sfc ASTs) runs under bun run lint and enforces U64-U71 and U182: no template text, static text attributes, string literals in template expressions, strings in text properties or announce calls, vue-i18n use outside the i18n folder, concatenated or composed translations, t( at module scope, and t params differing from message placeholders; U182 (ownership.ts) flags a catalog key read outside its module's namespace, except common, format, shared, theme, backend and the named pairs in exemptions.ts.
 - Source-guard exemptions are in scripts/copy/exemptions.ts, one rule for one file with a reason; a stale exemption with no hit left fails. They cover only font names, protocol tokens, command syntax, EJSON syntax and CLI flag names.
 - bun scripts/copy/check-copy.ts --all prints every source-guard hit.
 - The Go reader packages/theme/src/i18n/catalog.go embeds en.json; i18n.T replaces {name} placeholders (given a map such as map[string]string{"appName": name}) and panics on an unknown key.
@@ -1440,7 +1440,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Every debounce, poll, tick and UI delay must be a TIMING key, and sort comparators must end on a stable key.
 - Bind shortcuts printed on a surface there; trees use useTreeShortcuts; refresh is F5 only; render cap is 500 via useCappedList.
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
-- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U176) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
+- UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U181) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
 - check-ui-primitives.sh keeps 53 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
@@ -1498,7 +1498,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Catalog ownership: a module's sources use its own namespace plus `common`, `format`, `shared`, `theme`, `backend`; pairs mobile to `space.`, space to `git.`, `studio.proof.`, `memory.distill.` (U182).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
-- Guards U110-U176 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
+- Guards U110-U181 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
 

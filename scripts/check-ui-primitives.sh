@@ -30,6 +30,7 @@
 # Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
 # Guards U162-U170: docs/HISTORY.md (v0.3.18).
 # Guards U171-U176: docs/HISTORY.md (v0.3.18).
+# Guards U177-U181: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -346,6 +347,11 @@ U173@@v@@RelativeTime.vue|AdeReviewSync.vue|AdeSessionTabTip.vue|AdeAgentsStatus
 U174@@v@@HighlightedText.vue@@hand mark element (use HighlightedText)@@<mark[\s>]
 U175@@vt@@@@hand meta link classes (use Button variant link-meta)@@${TOK}decoration-border(?![\w-])
 U176@@v@@@@QueryState error slot with hand Retry or Alert (use QueryState errorLabel, errorTestid)@@#error="\{[^"]*\bretry\b|#error="[^"]*"\s*>\s*<Alert\b
+U177@@v@@HttpStatusBadge.vue@@hand HTTP status chip (use HttpStatusBadge)@@\bstatusClass\([\w.]*\bstatus\b\)|\bimport\b[^;]*\bstatusClass\b[^;]*from '@shared/domain/http'|>=\s*500\b
+U178@@vt@@MeasuredSection.vue@@hand docker measure section (use MeasuredSection)@@docker\.measuring\.loading|docker\.measure\.label
+U179@@vt@@@@byte size passed as a count (use formatBytes, {size})@@\bcount:\s*(?:[\w.]+\.)?(?:bytes|\w*Bytes)\b
+U180@@v@@KeptNameMark.vue@@hand kept name and type (use KeptNameMark)@@:mark-class="[^"]*KEPT_MARK_CLASS[^"]*"\s*/>\s*<span
+U181@@vt@@@@JSON.parse/stringify pretty-print (use beautify.ts indentJson, prettyJson)@@JSON\.stringify\(\s*JSON\.parse\(
 GUARDS
 
 # hits: "U<n> path"
