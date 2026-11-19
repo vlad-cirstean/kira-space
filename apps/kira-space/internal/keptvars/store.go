@@ -47,6 +47,8 @@ type Put struct {
 	Origin string
 	// TTL of zero means Options.Retention; it never exceeds MaxTTL.
 	TTL time.Duration
+	// NotAfter, when set, caps the expiry: a value derived from another never outlives it.
+	NotAfter time.Time
 }
 
 type item struct {
@@ -220,9 +222,13 @@ func (s *Store) Put(p Put) (Meta, error) {
 		s.removeLocked(old, ReasonReplaced, &b)
 	}
 	now := s.now()
+	expires := now.Add(ttl)
+	if !p.NotAfter.IsZero() && p.NotAfter.Before(expires) {
+		expires = p.NotAfter
+	}
 	it := &item{value: value, index: -1, meta: Meta{
 		ID: newID(), Scope: p.Scope, Name: p.Name, Type: typ, Bytes: len(value), Items: items,
-		Secret: p.Secret, Source: p.Source, Origin: p.Origin, CreatedAt: now, ExpiresAt: now.Add(ttl),
+		Secret: p.Secret, Source: p.Source, Origin: p.Origin, CreatedAt: now, ExpiresAt: expires,
 	}}
 	s.byID[it.meta.ID] = it
 	if s.byScope[p.Scope] == nil {

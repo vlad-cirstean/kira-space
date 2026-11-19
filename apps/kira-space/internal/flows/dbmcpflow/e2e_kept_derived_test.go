@@ -45,6 +45,30 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 		if !ok || res.IsError || d.Origin != srv.URL || !d.Secret || !d.Bound() || d.Source.Kind != keptvars.SourceScript {
 			t.Fatalf("d = %+v ok=%v result %q, want a secret script entry bound to %s", d.Meta, ok, text(res), srv.URL)
 		}
+		if pw, _ := f.keptValue(t, "pw"); d.ExpiresAt.After(pw.ExpiresAt) {
+			t.Fatalf("d expires %v, after the user value it came from (%v)", d.ExpiresAt, pw.ExpiresAt)
+		}
+	})
+
+	t.Run("a leaf of a derived object stays masked when the server reshapes it", func(t *testing.T) {
+		args := apiArgs(envID, "GET", echo)
+		args["script"] = map[string]any{"transform": `kept.set("obj", {a: kept.get("pw").split("").reverse().join(""), n: [kept.get("pw")]}); return 1;`}
+		h := f.startHeldAfterCard(t, sess, args)
+		res := f.finish(t, h, true)
+		agent = append(agent, text(res))
+		if o, ok := f.keptValue(t, "obj"); !ok || o.Type != "object" || !o.Secret || o.Origin != srv.URL {
+			t.Fatalf("obj = %+v ok=%v, want a secret object bound to %s", o.Meta, ok, srv.URL)
+		}
+		post := apiArgs(envID, "POST", srv.URL+"/reshape", "Content-Type", "application/json")
+		post["body"] = "{{kept.obj}}"
+		pending := callToolAsync(sess, "api_request", post)
+		req := f.pending(t)
+		f.answer(t, true, req.RequestID)
+		out := wait(t, pending)
+		agent = append(agent, text(out))
+		if out.IsError || !strings.Contains(text(out), "received") || strings.Contains(text(out), reverse(derivedSecret)) {
+			t.Fatalf("result = %q, want the reshaped echo with the leaves masked", text(out))
+		}
 	})
 
 	t.Run("send to another host is refused", func(t *testing.T) {
@@ -106,5 +130,6 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 
 	t.Run("the value is nowhere", func(t *testing.T) {
 		f.noLeak(t, derivedSecret, agent...)
+		f.noLeak(t, reverse(derivedSecret), agent...)
 	})
 }

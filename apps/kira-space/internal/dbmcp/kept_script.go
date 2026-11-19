@@ -39,6 +39,8 @@ type keptRun struct {
 	// secretRead taints every value the run stages: it may have copied a secret.
 	secretRead  bool
 	secretForms []string
+	// sourceExpiry is the earliest expiry among the secret or bound values read.
+	sourceExpiry time.Time
 	// boundOrigin is the origin of the bound (user or user-derived) values the run read; mixedOrigins is set
 	// when it read bound values of two origins, so no single origin can own what it derives.
 	boundOrigin  string
@@ -206,7 +208,7 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			k.noteSecret(e)
 		}
 		if e.Bound() {
-			k.noteBound(e.Origin)
+			k.noteBound(e.Origin, e.ExpiresAt)
 		}
 		k.mu.Lock()
 		k.prepareReads = k.prepareReads || stage == stagePrepare
@@ -216,9 +218,10 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 }
 
 // noteBound records the origin a read bound value ties the run's derived values to.
-func (k *keptRun) noteBound(origin string) {
+func (k *keptRun) noteBound(origin string, expiresAt time.Time) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
+	k.noteExpiry(expiresAt)
 	switch {
 	case k.boundOrigin == "":
 		k.boundOrigin = origin
@@ -231,15 +234,17 @@ func (k *keptRun) noteSecret(e keptvars.Entry) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	k.secretRead = true
-	// A string is masked by its text, so a quoted JSON string stays valid JSON.
-	if e.Type == "string" {
-		var s string
-		if json.Unmarshal(e.Value, &s) == nil {
-			k.secretForms = append(k.secretForms, s)
-			return
-		}
+	k.noteExpiry(e.ExpiresAt)
+	// A string is masked by its text, so a quoted JSON string stays valid JSON; a structure by its leaves too.
+	k.secretForms = append(k.secretForms, keptvars.SecretTexts(e)...)
+}
+
+// noteExpiry keeps the earliest expiry of the secret or bound values the run read; a derived value never
+// outlives its source. The caller holds k.mu.
+func (k *keptRun) noteExpiry(at time.Time) {
+	if k.sourceExpiry.IsZero() || at.Before(k.sourceExpiry) {
+		k.sourceExpiry = at
 	}
-	k.secretForms = append(k.secretForms, string(e.Value))
 }
 
 // set stages a value; nothing reaches the store before Commit.
@@ -336,7 +341,9 @@ func (k *keptRun) commit(src keptvars.Source) ([]keptSummary, []keptFailure) {
 			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})
 			continue
 		}
-		m, err := k.store.Put(keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretRead, Source: src, Origin: k.boundOrigin})
+		put := keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretRead, Source: src, Origin: k.boundOrigin}
+		put.NotAfter = k.sourceExpiry
+		m, err := k.store.Put(put)
 		if err != nil {
 			failed = append(failed, keptFailure{Name: name, Error: err.Error()})
 			continue

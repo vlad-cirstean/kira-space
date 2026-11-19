@@ -470,6 +470,7 @@ func (p Planned) secretKeptTexts() []string {
 	for _, v := range p.keptValues {
 		if v.secret {
 			out = append(out, scalarText(v), string(v.raw))
+			out = append(out, keptvars.SecretTexts(keptvars.Entry{Meta: keptvars.Meta{Type: v.typ}, Value: v.raw})...)
 		}
 	}
 	return out

@@ -136,6 +136,7 @@ func (s *HTTPServer) handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/echo", s.echo)
 	mux.HandleFunc("/forms", formsHandler)
+	mux.HandleFunc("/reshape", reshape)
 	mux.HandleFunc("/redirect", redirect)
 	mux.HandleFunc("/cookie/set", cookieSet)
 	mux.HandleFunc("/cookie/echo", cookieEcho)
@@ -175,6 +176,20 @@ func (s *HTTPServer) echo(w http.ResponseWriter, r *http.Request) {
 		"method": r.Method, "path": r.URL.Path, "query": r.URL.RawQuery, "host": r.Host, "proto": r.Proto,
 		"header": r.Header, "bodyLen": len(body), "bodySha256": hex.EncodeToString(sum[:]), "body": string(body),
 	})
+}
+
+// reshape answers a JSON body parsed and re-serialised with indentation, as a server that validates and
+// echoes a document does: only its leaves survive byte for byte.
+func reshape(w http.ResponseWriter, r *http.Request) {
+	var doc any
+	if err := json.NewDecoder(r.Body).Decode(&doc); err != nil {
+		http.Error(w, "bad json", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(map[string]any{"received": doc})
 }
 
 // formsHandler answers the header X-Echo in the forms a value takes on its way into a request, so a

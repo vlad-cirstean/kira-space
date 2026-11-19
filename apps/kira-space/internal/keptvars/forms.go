@@ -1,6 +1,7 @@
 package keptvars
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"net/url"
@@ -21,6 +22,53 @@ func SecretText(e Entry) string {
 		}
 	}
 	return string(e.Value)
+}
+
+// SecretTexts lists every text a secret value may show as: a string as is, an array or object as its whole
+// JSON literal plus each string and number leaf (a server may echo one leaf alone or re-serialise the
+// structure, so only the leaves survive), any other scalar as its literal. Empty texts are dropped.
+func SecretTexts(e Entry) []string {
+	var out []string
+	add := func(t string) {
+		if t != "" {
+			out = append(out, t)
+		}
+	}
+	switch e.Type {
+	case "string":
+		add(SecretText(e))
+		return out
+	case "array", "object":
+		add(string(e.Value))
+		dec := json.NewDecoder(bytes.NewReader(e.Value))
+		dec.UseNumber()
+		var v any
+		if dec.Decode(&v) == nil {
+			leaves(v, add)
+		}
+		return out
+	case "null":
+		return nil
+	}
+	add(string(e.Value))
+	return out
+}
+
+func leaves(v any, add func(string)) {
+	switch t := v.(type) {
+	case string:
+		add(t)
+	case json.Number:
+		add(t.String())
+	case []any:
+		for _, x := range t {
+			leaves(x, add)
+		}
+	case map[string]any:
+		for _, x := range t {
+			leaves(x, add)
+		}
+	}
 }
 
 // forms lists the spellings of text a server may echo back.
@@ -60,8 +108,10 @@ func SecretPairs(entries []Entry) []string {
 	var ps []pair
 	for _, e := range entries {
 		ref := "{{kept." + e.Name + "}}"
-		for _, f := range forms(SecretText(e)) {
-			ps = append(ps, pair{f, ref})
+		for _, t := range SecretTexts(e) {
+			for _, f := range forms(t) {
+				ps = append(ps, pair{f, ref})
+			}
 		}
 	}
 	sort.SliceStable(ps, func(i, j int) bool { return len(ps[i].old) > len(ps[j].old) })
@@ -81,13 +131,11 @@ func SecretReplacer(entries []Entry) *strings.Replacer {
 	return strings.NewReplacer(pairs...)
 }
 
-// SecretRaw lists the raw value texts, for a masker that matches values only.
+// SecretRaw lists the raw texts of the values (leaves included), for a masker that matches values only.
 func SecretRaw(entries []Entry) []string {
 	out := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if t := SecretText(e); t != "" {
-			out = append(out, t)
-		}
+		out = append(out, SecretTexts(e)...)
 	}
 	return out
 }
