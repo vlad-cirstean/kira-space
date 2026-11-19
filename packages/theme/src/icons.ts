@@ -10,6 +10,7 @@ export const ICON = {
   clearField: 'close',
   clearAll: 'clear-all',
   copy: 'copy',
+  copied: 'check',
   duplicate: 'files',
   edit: 'edit',
   rename: 'edit',
