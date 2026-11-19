@@ -54,3 +54,8 @@ export function errorText(err: unknown): string {
   if (e.code === 'E_CONTRACT') return t('common.error.contract.body', { detail: e.message });
   return e.message;
 }
+
+/** A refused precondition: stale base hash, unconfirmed switch, changed row. */
+export function isConflict(err: unknown): boolean {
+  return toCodedError(err).code === 'E_CONFLICT';
+}
