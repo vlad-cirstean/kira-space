@@ -9,6 +9,8 @@ export function monacoLanguageIdFor(id: EditorLanguageId): string {
   switch (id) {
     case 'json':
       return 'json';
+    case 'javascript':
+      return 'javascript';
     case 'xml':
       return 'xml';
     case 'sql':

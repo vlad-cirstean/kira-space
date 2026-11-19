@@ -22,10 +22,20 @@ const apiRequests = useAsyncAction((enabled: boolean) =>
 const apiApproval = useAsyncAction((mode: 'always' | 'never') =>
   settingsStore.patchSettings({ dbMcp: { apiApproval: mode } }),
 );
-const actionError = computed(() => apiRequests.error.value ?? apiApproval.error.value);
+const apiScripts = useAsyncAction((enabled: boolean) =>
+  settingsStore.patchSettings({ dbMcp: { apiScripts: enabled } }),
+);
+const actionError = computed(
+  () => apiRequests.error.value ?? apiApproval.error.value ?? apiScripts.error.value,
+);
 function clearActionErrors(): void {
   apiRequests.error.value = null;
   apiApproval.error.value = null;
+  apiScripts.error.value = null;
+}
+async function onToggleApiScripts(enabled: boolean): Promise<void> {
+  clearActionErrors();
+  await apiScripts.run(enabled);
 }
 async function onToggleApiRequests(enabled: boolean): Promise<void> {
   clearActionErrors();
@@ -41,6 +51,7 @@ const sharedVariableCount = computed(() =>
 );
 
 // `for`/`id` keeps the label-to-control association now that the field wrapper is a plain <Field> div.
+const dbMcpApiScriptsId = useId();
 const dbMcpApiId = useId();
 const approvalItems = computed(() => [
   {
@@ -97,6 +108,21 @@ const approvalItems = computed(() => [
       >
         <AlertDescription>{{ t('studio.settings.dbMcp.apiApproval.never.body') }}</AlertDescription>
       </Alert>
+    </Field>
+    <Field v-if="settingsStore.dbMcp.apiRequests" orientation="horizontal">
+      <Switch
+        :id="dbMcpApiScriptsId"
+        :model-value="settingsStore.dbMcp.apiScripts"
+        :disabled="apiScripts.pending.value"
+        data-testid="settings-db-mcp-api-scripts"
+        @update:model-value="(v) => onToggleApiScripts(v === true)"
+      />
+      <FieldContent>
+        <FieldLabel :for="dbMcpApiScriptsId">{{
+          t('studio.settings.dbMcp.apiScripts.label')
+        }}</FieldLabel>
+        <FieldDescription>{{ t('studio.settings.dbMcp.apiScripts.description') }}</FieldDescription>
+      </FieldContent>
     </Field>
     <ApiAccessRulesSection v-if="settingsStore.dbMcp.apiRequests" />
 

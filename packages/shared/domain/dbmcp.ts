@@ -208,6 +208,19 @@ export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
 // api.request item payload (dbmcp apiPayload). Values are as the agent sent them: a credential stays
 // {{name}}, and a secret variable's value is "••••".
 const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string() });
+// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
+const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
+  prepare: z
+    .object({
+      source: z.string(),
+      hash: z.string(),
+      changed: z.array(z.string()),
+      input: z.string(),
+      inputTruncated: z.boolean(),
+    })
+    .nullable(),
+  transform: z.object({ source: z.string(), hash: z.string() }).nullable(),
+});
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
   url: z.string(),
@@ -233,6 +246,7 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
     .array(keptUseSchema)
     .nullish()
     .transform((v) => v ?? []),
+  script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
 });
 export type ApiRequestPayload = z.infer<typeof apiRequestPayloadSchema>;
 

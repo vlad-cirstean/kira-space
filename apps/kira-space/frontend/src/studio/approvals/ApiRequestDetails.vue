@@ -2,6 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
+import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
@@ -47,6 +48,25 @@ const headerParts = (row: number, part: 'name' | 'value') => {
           testid="api-approval-variables"
         />
       </dd>
+    </template>
+    <template v-if="payload.script?.prepare">
+      <template v-if="payload.script.prepare.changed.length">
+        <dt>{{ t('studio.dbMcp.approval.api.scriptChanged.label') }}</dt>
+        <dd data-testid="api-approval-script-changed">
+          {{ payload.script.prepare.changed.join(', ') }}
+        </dd>
+      </template>
+      <template v-if="payload.script.prepare.input">
+        <dt>{{ t('studio.dbMcp.approval.api.scriptInput.label') }}</dt>
+        <dd>
+          <ApprovalCode data-testid="api-approval-script-input">{{
+            payload.script.prepare.input
+          }}</ApprovalCode>
+          <span v-if="payload.script.prepare.inputTruncated">{{
+            t('studio.common.truncated.status')
+          }}</span>
+        </dd>
+      </template>
     </template>
     <dt>{{ t('studio.dbMcp.approval.detail.options.label') }}</dt>
     <dd data-testid="api-approval-options">{{ options }}</dd>

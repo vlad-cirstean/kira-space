@@ -53,6 +53,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'Max',
   'SQL',
   'JSON',
+  'JavaScript',
   'YAML',
   'CSV',
   'TSV',

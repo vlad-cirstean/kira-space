@@ -14611,6 +14611,20 @@
           "redirectsOnTimeout": {
             "status": "Redirects on · {seconds} s"
           },
+          "scriptChanged": {
+            "label": "Set by script"
+          },
+          "scriptInput": {
+            "label": "Script input"
+          },
+          "scriptPrepare": {
+            "hint": "A script the agent sent built this request from its input.",
+            "label": "Prepare script"
+          },
+          "scriptTransform": {
+            "hint": "The agent receives only what the transform script returns, not the response.",
+            "label": "Transform script"
+          },
           "send": {}
         },
         "asSent": {
@@ -14673,11 +14687,17 @@
           "bodyTruncated": {
             "status": "Body truncated"
           },
+          "builtByScript": {
+            "status": "Built by script"
+          },
           "credentialSent": {
             "status": "Credential sent"
           },
           "rows": {
             "status": "~{rows} rows"
+          },
+          "scriptResult": {
+            "status": "Agent gets script result"
           },
           "timeout": {
             "status": "Timeout {measured} / {max}"
@@ -17668,6 +17688,10 @@
           "save": {
             "label": "Save rule"
           }
+        },
+        "apiScripts": {
+          "description": "Agents can attach JavaScript that builds the request or reduces the response before they see it. Each script shows in the approval card and the op log.",
+          "label": "Agent scripts"
         },
         "copyCommandAbove": {
           "label": "Copy command above"

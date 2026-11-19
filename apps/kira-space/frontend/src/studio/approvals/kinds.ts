@@ -164,6 +164,22 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       });
     }
   }
+  if (p.script?.prepare) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.builtByScript.status'),
+      tone: 'neutral',
+      testid: 'api-approval-prepare',
+      tooltip: t('studio.dbMcp.approval.api.scriptPrepare.hint'),
+    });
+  }
+  if (p.script?.transform) {
+    out.push({
+      text: t('studio.dbMcp.approval.risk.scriptResult.status'),
+      tone: 'neutral',
+      testid: 'api-approval-transform',
+      tooltip: t('studio.dbMcp.approval.api.scriptTransform.hint'),
+    });
+  }
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),

@@ -170,6 +170,7 @@ async function onRerun(record: SpaceOpRecord): Promise<void> {
 }
 
 function codeLanguage(record: Row): EditorLanguageId | null {
+  if (record.kind === 'jsPrepare' || record.kind === 'jsTransform') return 'javascript';
   if (
     isAutomationOp(record) ||
     !isDb(record) ||

@@ -2,6 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import HighlightedText from '@theme/components/HighlightedText.vue';
+import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
@@ -14,6 +15,7 @@ import {
   prettyKeptJson,
 } from '../kept/keptHighlight';
 import FlushEditor from './FlushEditor.vue';
+import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 
 // What the agent would send: path and query, then the body. Host, headers and variables sit on
@@ -97,5 +99,17 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
         <template v-else>{{ payload.body.text }}</template></ApprovalCode
       >
     </template>
+    <JsScriptBlock
+      v-if="payload.script?.prepare"
+      :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
+      :source="payload.script.prepare.source"
+      testid="api-approval-script-prepare"
+    />
+    <JsScriptBlock
+      v-if="payload.script?.transform"
+      :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
+      :source="payload.script.transform.source"
+      testid="api-approval-script-transform"
+    />
   </div>
 </template>

@@ -6,6 +6,7 @@
 // re-exported from editor/languages.ts so nothing else in the app has to change its import.
 export type EditorLanguageId =
   | 'json'
+  | 'javascript'
   | 'xml'
   | 'sql'
   | 'mongo'
