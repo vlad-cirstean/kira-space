@@ -14,6 +14,8 @@ interface TaskFilesView {
 // board are pruned. Search results live in useAdeFileSearchStore, file lists in TanStack Query.
 export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   const views = ref<Record<string, TaskFilesView>>({});
+  /** Width of the tree and search pane beside the viewer; 0 until the user drags it. */
+  const paneWidth = ref(0);
   /** Per branch: expanded directories. Absent until the tree first loads. */
   const expanded = ref<Record<string, Set<string>>>({});
   /** Per branch: the selected tree path and the file open in the viewer. */
@@ -52,6 +54,7 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
 
   return {
     views,
+    paneWidth,
     expanded,
     selected,
     openFile,

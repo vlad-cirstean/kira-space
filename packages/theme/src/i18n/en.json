@@ -8961,6 +8961,15 @@
         "copyRelPath": {
           "label": "Copy relative path"
         },
+        "noWorktree": {
+          "empty": "This task has no worktree yet"
+        },
+        "refresh": {
+          "tooltip": "Refresh files"
+        },
+        "resize": {
+          "label": "Resize file list"
+        },
         "search": {
           "stopped": {
             "status": "{summary} (stopped at 10,000)"
@@ -8974,6 +8983,12 @@
         },
         "tree": {
           "aria": "Repository files"
+        },
+        "truncated": {
+          "hint": "The worktree has more files than the list shows."
+        },
+        "viewer": {
+          "empty": "Select a file to view it"
         }
       },
       "flow": {

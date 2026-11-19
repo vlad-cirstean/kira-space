@@ -41,3 +41,7 @@ export function useTaskFileRead(
     };
   });
 }
+
+/** Editor registry id of one worktree file's viewer; shared by the viewer and a search reveal. */
+export const taskFileTabId = (branchId: string, path: string): string =>
+  `ade-file:${branchId}:${path}`;
