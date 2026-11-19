@@ -5,6 +5,7 @@ import { t } from '@theme/i18n';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
+import { KEPT_MARK_CLASS, keptParts, keptRanges } from '../kept/keptHighlight';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
@@ -17,6 +18,12 @@ const options = computed(() =>
     { seconds: payload.value.timeoutSeconds },
   ),
 );
+
+const headerParts = (row: number, part: 'name' | 'value') => {
+  const text = payload.value.headers[row]?.[part] ?? '';
+  const ranges = keptRanges(payload.value.kept, 'header', row, part);
+  return ranges.length ? keptParts(text, ranges) : null;
+};
 </script>
 
 <template>
@@ -26,6 +33,8 @@ const options = computed(() =>
       <dd>
         <ApprovalPairs
           :rows="payload.headers.map((h) => ({ name: h.name, value: h.value, secret: h.masked }))"
+          :highlight="headerParts"
+          :mark-class="KEPT_MARK_CLASS"
           testid="api-approval-headers"
         />
       </dd>

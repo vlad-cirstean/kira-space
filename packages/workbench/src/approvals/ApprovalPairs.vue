@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import HighlightedText from '@theme/components/HighlightedText.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Button } from '@theme/components/ui/button';
 import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
@@ -10,6 +11,12 @@ const props = defineProps<{
   rows: { name: string; value: string; secret?: boolean }[];
   testid: string;
   rowTestid?: (name: string) => string;
+  /** Marks parts of a row's name or value: the ranges to mark, or none. */
+  highlight?: (
+    row: number,
+    part: 'name' | 'value',
+  ) => readonly { text: string; match: boolean }[] | null;
+  markClass?: string;
 }>();
 
 const VISIBLE = 3;
@@ -27,9 +34,21 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
         class="contents"
         :data-testid="rowTestid?.(row.name)"
       >
-        <dt class="font-data">{{ row.name }}</dt>
+        <dt class="font-data">
+          <HighlightedText
+            v-if="highlight?.(i, 'name')"
+            :parts="highlight(i, 'name') ?? []"
+            :mark-class="markClass"
+          />
+          <template v-else>{{ row.name }}</template>
+        </dt>
         <dd class="break-all font-data">
-          {{ row.value }}
+          <HighlightedText
+            v-if="highlight?.(i, 'value')"
+            :parts="highlight(i, 'value') ?? []"
+            :mark-class="markClass"
+          />
+          <template v-else>{{ row.value }}</template>
           <span v-if="row.secret" class="text-subtle">{{ t('common.secret.label') }}</span>
         </dd>
       </div>

@@ -147,6 +147,23 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
         .join('\n'),
     });
   }
+  if (p.kept.length > 0) {
+    out.push({
+      text: t('studio.kept.risk.uses.status', { names: p.kept.map((u) => u.name).join(', ') }),
+      tone: 'neutral',
+      testid: 'api-approval-kept',
+      tooltip: p.kept
+        .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
+        .join('\n'),
+    });
+    if (item.expiresAt > 0 && p.kept.some((u) => Date.parse(u.expiresAt) < item.expiresAt)) {
+      out.push({
+        text: t('studio.kept.risk.expiring.status'),
+        tone: 'warn',
+        testid: 'api-approval-kept-expiring',
+      });
+    }
+  }
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),

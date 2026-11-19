@@ -468,6 +468,10 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   dbMcpInstallAgent: 'DbMcpService.InstallAgent',
   dbMcpPendingResponse: 'DbMcpService.PendingResponse',
   dbMcpTables: 'DbMcpService.Tables',
+  keptList: 'KeptVarsService.List',
+  keptValue: 'KeptVarsService.Value',
+  keptClear: 'KeptVarsService.Clear',
+  keptClearAll: 'KeptVarsService.ClearAll',
   maskReviewColumns: 'MaskRulesService.ReviewColumns',
   maskReviewPending: 'MaskRulesService.ReviewPending',
   proofSession: 'ProofService.Session',
@@ -866,6 +870,8 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     expiresAt: '',
     error: '',
   }),
+  // P678: the Studio MCP variables pane lists on mount; nothing kept is the honest default.
+  [IPC.keptList]: '{"entries":[],"retentionMinutes":60}',
   // P85: main.ts's bootstrap() joins hydrateCustomScripts() to the same unconditional-every-boot
   // Promise.all as updateStatus above, same reasoning — a spec that never configures a
   // script gets "no scripts yet", not a fixture miss.

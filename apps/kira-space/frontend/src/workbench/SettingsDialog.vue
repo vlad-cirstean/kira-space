@@ -17,6 +17,7 @@ import KubeMcpSection from '../studio/workbench/settings/KubeMcpSection.vue';
 import ScriptsMcpSection from '../studio/workbench/settings/ScriptsMcpSection.vue';
 import StudioMcpApiPane from '../studio/workbench/settings/StudioMcpApiPane.vue';
 import StudioMcpConnectionsPane from '../studio/workbench/settings/StudioMcpConnectionsPane.vue';
+import StudioMcpKeptPane from '../studio/workbench/settings/StudioMcpKeptPane.vue';
 import StudioMcpServerPane from '../studio/workbench/settings/StudioMcpServerPane.vue';
 import { useMemoryEnabled } from './experimental';
 import AboutPane from './settings/AboutPane.vue';
@@ -45,6 +46,7 @@ const indentedSections: readonly Section[] = [
   'Studio MCP clusters',
   'Studio MCP scripts',
   'Studio MCP API',
+  'Studio MCP variables',
 ];
 
 const sectionLabels = computed<Record<Section, string>>(() => ({
@@ -66,6 +68,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Studio MCP clusters': t('common.product.kubernetes.label'),
   'Studio MCP scripts': t('studio.settings.dbMcp.scripts.legend.label'),
   'Studio MCP API': t('studio.settings.nav.studioMcpApi.label'),
+  'Studio MCP variables': t('common.module.variables.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
   Experimental: t('space.settings.nav.experimental.label'),
@@ -250,6 +253,7 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
         :reset-leaf="s.resetLeaf"
         :register-field-error="s.registerFieldError"
       />
+      <StudioMcpKeptPane :active="s.activeSection === 'Studio MCP variables'" />
       <PromptsPane :active="s.activeSection === 'Prompts'" />
       <AdvancedPane
         :active="s.activeSection === 'Advanced'"

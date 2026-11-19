@@ -399,6 +399,7 @@ studioTest.describe('databases module', () => {
       'Studio MCP clusters',
       'Studio MCP scripts',
       'Studio MCP API',
+      'Studio MCP variables',
       'Advanced',
     ]) {
       await loc(page, `settings-section-${section}`).click();

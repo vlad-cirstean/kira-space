@@ -15822,6 +15822,70 @@
         }
       }
     },
+    "kept": {
+      "expiresAt": {
+        "status": "Expires at {time}"
+      },
+      "expiry": {
+        "label": "Expiry"
+      },
+      "keptAt": {
+        "label": "Kept"
+      },
+      "manage": {
+        "label": "Manage kept variables"
+      },
+      "panel": {
+        "title": {
+          "label": "Kept variables this request uses"
+        }
+      },
+      "risk": {
+        "expiring": {
+          "status": "Expires before you answer"
+        },
+        "source": {
+          "label": "{name}, kept by {request}"
+        },
+        "uses": {
+          "status": "Uses kept: {names}"
+        }
+      },
+      "site": {
+        "contentType": {
+          "label": "Content-Type header"
+        },
+        "form": {
+          "label": "Form field {name}"
+        },
+        "header": {
+          "label": "Header {name}"
+        },
+        "query": {
+          "label": "Query {name}"
+        }
+      },
+      "source": {
+        "label": "Kept by"
+      },
+      "type": {
+        "array": {
+          "status": "List of {count}"
+        },
+        "boolean": {
+          "status": "True or false"
+        },
+        "object": {
+          "status": "Object, {count} key | Object, {count} keys"
+        },
+        "string": {
+          "status": "Text, {size}"
+        }
+      },
+      "usedIn": {
+        "label": "Used in"
+      }
+    },
     "keyValue": {
       "aclReset": {
         "confirm": "Save anyway",
@@ -17696,6 +17760,26 @@
         },
         "tokenValid": {
           "body": "Token valid until {date}."
+        }
+      },
+      "kept": {
+        "clear": {
+          "aria": "Clear {name}"
+        },
+        "clearAll": {
+          "body": "Every kept variable is removed now. Agents can use one again only after they keep it anew.",
+          "title": "Clear all kept variables"
+        },
+        "empty": {
+          "empty": "No kept variables. Values agents keep appear here for up to {minutes} minutes"
+        },
+        "legend": {
+          "label": "Kept variables"
+        },
+        "retention": {
+          "description": "How long a kept variable lives. New values only; existing values keep their expiry.",
+          "error": "Enter minutes from {min} to {max}.",
+          "label": "Retention in minutes"
         }
       },
       "nav": {

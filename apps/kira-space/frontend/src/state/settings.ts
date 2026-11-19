@@ -23,6 +23,7 @@ export const sections = [
   'Studio MCP clusters',
   'Studio MCP scripts',
   'Studio MCP API',
+  'Studio MCP variables',
   'Prompts',
   'Advanced',
   'Experimental',

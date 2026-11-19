@@ -1,9 +1,9 @@
 import { expect, studioTest as test } from '../fixtures';
 import { openSettings } from './support/settings';
 
-// UI-only split of the Studio MCP settings, so no backend half: the nav lists one parent and four
+// UI-only split of the Studio MCP settings, so no backend half: the nav lists one parent and five
 // indented children, and each section shows only its own block.
-const CHILDREN = ['connections', 'clusters', 'scripts', 'API'] as const;
+const CHILDREN = ['connections', 'clusters', 'scripts', 'API', 'variables'] as const;
 
 const blocks: Record<string, string> = {
   'Studio MCP': 'settings-db-mcp-enabled',
@@ -11,9 +11,10 @@ const blocks: Record<string, string> = {
   'Studio MCP clusters': 'db-mcp-kube-empty',
   'Studio MCP scripts': 'db-mcp-scripts-empty',
   'Studio MCP API': 'settings-db-mcp-api',
+  'Studio MCP variables': 'settings-kept-retention',
 };
 
-test('Studio MCP settings: nav shows the parent and four children, each section its own block', async ({
+test('Studio MCP settings: nav shows the parent and five children, each section its own block', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch();
@@ -27,6 +28,7 @@ test('Studio MCP settings: nav shows the parent and four children, each section 
     ['clusters', 'Kubernetes'],
     ['scripts', 'Scripts'],
     ['API', 'API tools'],
+    ['variables', 'Variables'],
   ] as const) {
     await expect(nav(`Studio MCP ${child}`)).toHaveText(label);
     await expect(nav(`Studio MCP ${child}`)).toHaveClass(/pl-4/);

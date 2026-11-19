@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type ConnectionKind, ROW_ESTIMATE_KINDS } from './connection';
+import { keptUseSchema } from './kept';
 
 // M1 §6.2: the Database MCP section's own domain — bridge/dbmcp.go's DbMcpStatus/
 // DbMcpInstallResult wire projections. command is the copy-paste registration text naming the
@@ -227,6 +228,11 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   credentials: z.array(z.object({ name: z.string(), hosts: z.array(z.string()) })),
   followRedirects: z.boolean(),
   timeoutSeconds: z.number(),
+  // Kept variables the request uses (P678), with where each is read.
+  kept: z
+    .array(keptUseSchema)
+    .nullish()
+    .transform((v) => v ?? []),
 });
 export type ApiRequestPayload = z.infer<typeof apiRequestPayloadSchema>;
 

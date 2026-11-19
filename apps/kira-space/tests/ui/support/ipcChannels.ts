@@ -524,6 +524,10 @@ export const IPC = {
   dbMcpInstallAgent: 'kira:dbmcp:installAgent',
   dbMcpPendingResponse: 'kira:dbmcp:approval:response',
   dbMcpTables: 'kira:dbmcp:tables',
+  keptList: 'kira:kept:list',
+  keptValue: 'kira:kept:value',
+  keptClear: 'kira:kept:clear',
+  keptClearAll: 'kira:kept:clearAll',
   // P439: the Kubernetes module's bound surface; log batches are events, no entry.
   kubernetesClusters: 'kira:kubernetes:clusters',
   kubernetesDescribe: 'kira:kubernetes:describe',
