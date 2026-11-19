@@ -37,6 +37,7 @@
   --color-warn: var(--kira-warn);
   --color-ok: var(--kira-ok);
   --color-info: var(--kira-info);
+  --color-agent: var(--kira-agent);
   /* P104 completion pass: the "is this filtered/active?" indicator dot's own colour -- §1.4's
      "existing colour utilities" disposition, missing an actual @theme entry until now. */
   --color-state-on: var(--kira-state-on);

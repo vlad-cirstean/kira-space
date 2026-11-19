@@ -11,6 +11,8 @@ import { buttonVariants } from '.';
 interface Props extends PrimitiveProps {
   variant?: ButtonVariants['variant'];
   size?: ButtonVariants['size'];
+  /** Tone of a `dialog` outline (border, text, focus outline). */
+  outline?: ButtonVariants['outline'];
   class?: HTMLAttributes['class'];
   /** An async action is running: disabled, `aria-busy`, and a spinner replaces the button's icon. */
   pending?: boolean;
@@ -34,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
     :aria-busy="pending || undefined"
     :class="
       cn(
-        buttonVariants({ variant, size }),
+        buttonVariants({ variant, size, outline }),
         pending && '[&_.codicon:not(.animate-spin)]:hidden',
         props.class,
       )
