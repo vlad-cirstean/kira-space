@@ -202,7 +202,7 @@ files are the known hits.
   `showTimestamps`, `needle`, `currentLine` and renders the line itself (its own `segmentStyle`
   wins; host copies deleted). Both views drop the `#line` slot. Toolbar order in both: follow,
   timestamps, wrap, tail, then find and copy or clear. Find model stays per host (P684).
-- Guard: U165 `vt`, exempt `logTail.ts`, regex `\b(?:MAX_LINES|TAILS)\s*=\s*[\[\d]`.
+- Guard: U165 `vt`, exempt `logTail.ts`, regex `\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]`.
 - Visible change: yes (kube bold weight; toolbar order).
 - Specs: `kubernetes-tabs.spec.ts`, `kubernetes-hardening.spec.ts`, `copy-coverage.spec.ts`,
   `docker-module.spec.ts`, `module-state.spec.ts`, `ui-leftovers-docker-automations.spec.ts`.
@@ -462,6 +462,8 @@ Wave-2 site count: A 45, B 28, C 22 (95 > 40): three streams.
 
 ### Wave 3 (one Sonnet, after rebasing A, B, C onto the chapter branch)
 
+Wave 3: done (guards U162-U170, six PERMANENT lines, PERMANENT 47 to 53, ARCHITECTURE range U83-U170; U165 regex gained `(?:LOG_)?`).
+
 1. Add header `# Guards U162-U170: docs/HISTORY.md (v0.3.18).` and the nine lines below to the
    `GUARDS` heredoc. It is unquoted: `${TOK}` expands; escape any literal `$`. `PRE` defines group
    1, so a backreference uses a named group with `\k<name>`, never `\1`.
@@ -473,7 +475,7 @@ Wave-2 site count: A 45, B 28, C 22 (95 > 40): three streams.
 U162@@v@@ViewHead.vue|ApprovalItemCard.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
 U163@@v@@@@relative time as bare template text (use RelativeTime)@@\{\{\s*formatRelative\(
 U164@@v@@VirtualList.vue@@hand virtual listbox (use VirtualList)@@(?s)\A(?=.*useVirtualRows\()(?=.*useListNavigation\b[<(])(?=.*role="listbox")
-U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:MAX_LINES|TAILS)\s*=\s*[\[\d]
+U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]
 U166@@vt@@SaveConflictAlert.vue|confirmOverwrite.ts@@hand save-conflict alert (use SaveConflictAlert)@@common\.action\.overwrite\.label
 U167@@vt@@ConfigFormProblemAlert.vue@@hand config form problem alert (use ConfigFormProblemAlert)@@common\.configForm\.problem\.status
 U168@@vt@@ResetToDefaultButton.vue|PromptDetail.vue@@hand reset-to-default button (use ResetToDefaultButton)@@common\.action\.resetToDefault\.label

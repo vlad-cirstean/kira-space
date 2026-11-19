@@ -7,7 +7,7 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | # | Phase | Status |
 |---|-------|--------|
 | P674 Part 1 | Full-app UI uniformity audit: audit tool `scripts/uiaudit/` | Done |
-| P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Planned |
+| P674 Part 2 | Full-app UI uniformity audit: iteration 1 | Done |
 | P674 Part 3 | Full-app UI uniformity audit: iteration 2 | Planned |
 | P674 Part 4 | Full-app UI uniformity audit: final whole-app scan | Planned |
 | P675 | JS engine for the API MCP | Done |
@@ -58,6 +58,12 @@ Same method as v0.3.17 P672, but whole app with no subject list: the earlier pas
 Look for: components reimplemented near a shared primitive instead of using it; two components doing one job; module-local wrappers that duplicate a theme or workbench piece; per-module copies of a layout, row, list, header, empty or error pattern; hand-built widgets that shadcn-vue, VueUse, Pinia or TanStack Query already provide; same data shown in different ways in different places (dates, sizes, durations, counts, identifiers, paths, shortcuts); one concept with several names or icons; duplicated state logic that belongs in a shared composable or store; inconsistent copy for the same action. Each finding names the shared home it moves to. The plan decides split into Parts, iteration count and guards; fresh scan per iteration, final all-subject scan last, carry-forward items listed.
 
 Plan: `plans/P674.md`.
+
+Result, Part 2 (iteration 1, `plans/P674-iter1.md`): 17 findings (11 EXTRACT, 3 MERGE, 3 MIGRATE) landed in three waves. New shared pieces: `ViewHead` (binds `$attrs` to its toolbar), one `RelativeTime`, `VirtualList` in `packages/workbench` (gains a `visible` emit, exposes `focusKey`), `ConfigSecretsSection`, `logTail.ts` with `LogLines`, `SaveConflictAlert` (optional `variant` error or warn), `ConfigFormProblemAlert`, `ResetToDefaultButton`, `PendingToast`, `dropIndicator` and `windowTabStrip` in `frames.ts`, new ICON entries, one relative-time vocabulary, `formatElapsed` for the countdown, `formatPercent`, `displayValue` for the chart gap. Guards U162-U170 added (range now U83-U170); each fails on a planted offender and sits at zero offenders. U165 regex widened to `\b(?:LOG_)?(?:MAX_LINES|TAILS)` so the `logTail.ts` exemption matches `LOG_MAX_LINES` and `LOG_TAILS`. Six U164 PERMANENT lines for lists `VirtualList` cannot host (AdeReposPage, KeyValueRowsTable, StreamRowsTable, DocumentView, ConsoleResultGrid, ContainerTable); PERMANENT count 47 to 53 (the plan said 48 to 54; wave 1 removed the U11 LogsView line). Wave 2 also fixed `ResponseDiffDialog`, a multi-line `formatRelative` site the ledger missed; the `RepoFileView` save error testid is now `repo-file-save-error`.
+
+Visible changes: relative times gain forms ("in 5m" for future instants, "4mo ago", "1y ago" past 30 days), show an absolute tooltip on mobile, settings and Studio rows, and tick; the cell editor relative line is terse; ApiSecrets Clear becomes Delete (danger confirm) and secrets copy is unified across Studio and ADE; Studio view-head kind icon is muted without `iconClass`, head titles get an overflow tooltip, KeyValuePane prefix space is gone; kube logs toolbar order is follow, timestamps, wrap, tail and kube bold weight changes; displayed percentages show one decimal under 100% ("75.0%"); countdown above one hour reads h:mm:ss; chart tooltip null reads an em dash; changed ICON glyphs (resume, takeOver, openInNewTab, stop, remove, push).
+
+Parked, still Planned: P682, P683, P684, P685.
 
 ## P675: JS engine for the API MCP
 

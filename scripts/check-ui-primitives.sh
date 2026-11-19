@@ -28,6 +28,7 @@
 # Guards U127-U132 and U88 steps 5-12: docs/HISTORY.md (v0.3.17).
 # Guards U153-U156, U73/U88/U90 extensions: docs/HISTORY.md (v0.3.17).
 # Guards U157-U161, U149 extended: docs/HISTORY.md (v0.3.17).
+# Guards U162-U170: docs/HISTORY.md (v0.3.18).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -153,6 +154,13 @@ U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defe
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
 U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
 U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
+# P674 iteration 1: virtual lists VirtualList cannot host
+U164 apps/kira-space/frontend/src/ade/v2/repos/AdeReposPage.vue # grouped windowRows with group heads, not a flat row list
+U164 apps/kira-space/frontend/src/studio/views/shared/keyvalue/KeyValueRowsTable.vue # custom visibleRows windowing over key and value columns
+U164 apps/kira-space/frontend/src/studio/views/stream/StreamRowsTable.vue # frozen index column beside the virtual body
+U164 apps/kira-space/frontend/src/studio/views/documents/DocumentView.vue # variable-height rows, tooltip delegation on the scroller
+U164 apps/kira-space/frontend/src/studio/views/console/ConsoleResultGrid.vue # two virtualizers over mapped indices
+U164 packages/docker-ui/src/components/ContainerTable.vue # header row inside the listbox, sized by container queries
 PERMANENT
 
 # `(?&t)` = the inside of one tag, quote-aware so `=>` or `a > b` inside an attribute value does not
@@ -322,6 +330,15 @@ U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<Fie
 U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
 U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
 U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
+U162@@v@@ViewHead.vue|ApprovalItemCard.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
+U163@@v@@@@relative time as bare template text (use RelativeTime)@@\{\{\s*formatRelative\(
+U164@@v@@VirtualList.vue@@hand virtual listbox (use VirtualList)@@(?s)\A(?=.*useVirtualRows\()(?=.*useListNavigation\b[<(])(?=.*role="listbox")
+U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]
+U166@@vt@@SaveConflictAlert.vue|confirmOverwrite.ts@@hand save-conflict alert (use SaveConflictAlert)@@common\.action\.overwrite\.label
+U167@@vt@@ConfigFormProblemAlert.vue@@hand config form problem alert (use ConfigFormProblemAlert)@@common\.configForm\.problem\.status
+U168@@vt@@ResetToDefaultButton.vue|PromptDetail.vue@@hand reset-to-default button (use ResetToDefaultButton)@@common\.action\.resetToDefault\.label
+U169@@vt@@frames.ts@@hand drop indicator (use dropIndicator)@@['"](?=[^'"]*${TOK}h-0\.5(?![\w-]))(?=[^'"]*${TOK}bg-focus(?![\w-]))
+U170@@vt@@frames.ts@@hand window tab strip (use windowTabStrip)@@['"](?=[^'"]*${TOK}h-tabbar(?![\w-]))(?=[^'"]*${TOK}min-h-0(?![\w-]))(?=[^'"]*${TOK}bg-chrome(?![\w-]))
 GUARDS
 
 # hits: "U<n> path"
