@@ -1304,12 +1304,17 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 | Delete (destroys stored data) | `trash` |
 | Remove from a list, row or selection; close; clear field | `close` |
 | Remove a draft row from a form list before save | `close` (`ICON.remove`); `trash` only when the click destroys stored data |
+| Take an item out of a list (even when confirmed) | `close` (`ICON.remove`); `ICON.delete` only when data is destroyed |
+| Cancel a running operation | `debug-stop` (`ICON.stop`) |
 | Clear all | `clear-all` |
 | Add | `add` |
 | Copy / duplicate | `copy` / `files` |
 | Edit, rename | `edit` |
 | Refresh, search, filter, history | `refresh`, `search`, `filter`, `history` |
 | Run, stop, restart | `play`, `debug-stop`, `debug-restart` |
+| Resume a paused or stopped run | `debug-continue` (`ICON.resume`) |
+| Take over a run in a terminal | `terminal` (`ICON.takeOver`) |
+| Open in a new tab | `empty-window` (`ICON.openInNewTab`) |
 | Reset to default, revert, discard | `discard` |
 | Settings | `settings-gear` |
 | More actions | `ellipsis` |
@@ -1395,7 +1400,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Name helper folders lib/, never util, utils or helpers (N3).
 - Stores live in state/ and workbench composables in behaviour/; a Pinia id is the export name without use/create and Store, camelCase (N4).
 - Short SHA is 7 characters (shortSha, Go gitclient.ShortSHA, U82); Docker ids stay 12.
-- A list that grows with user data and can pass 200 rows must use useVirtualRows, VirtualList or SlickGrid; plain v-for only when bounded to 200 or fewer by construction.
+- A list that grows with user data and can pass 200 rows must use useVirtualRows, VirtualList (packages/workbench/src/components/VirtualList.vue) or SlickGrid; plain v-for only when bounded to 200 or fewer by construction. A flat keyboard listbox uses VirtualList; direct useVirtualRows plus useListNavigation needs a PERMANENT reason (U164).
 - A picker section showing a large set caps with useCappedList plus ShowMoreButton (U80).
 - Performance budgets: keystroke p50 50ms, scroll p95 80ms, tab switch gate 300ms.
 
@@ -1426,8 +1431,9 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Toasts and corner prompt chips share one top-right column (packages/workbench CornerStack): chips (ApprovalsToast, ConfigSyncToast) first, Sonner toasts below, 8px under the title bar, 16px from the right edge; the toast offset follows the chips' measured height.
 - Operation failures use Alert variant="error" in the body; FieldError is only under a field or as a one-line footer status, paired with aria-invalid and aria-describedby (useFormErrors).
 - Use Button pending for busy state, never :disabled on a busy flag.
-- packages/theme/src/format.ts owns formatBytes (1024 base, KB/MB/GB, space before unit), formatPercent, formatDuration (0.42ms, 240ms, 3.4s, no space), formatCompactDuration, formatCurrency, formatElapsed, formatZonedWeekdayClock and displayValue; formatCount lives in i18n/number.ts.
+- packages/theme/src/format.ts owns formatBytes (1024 base, KB/MB/GB, space before unit), formatPercent, formatDuration (0.42ms, 240ms, 3.4s, no space), formatCompactDuration, formatCurrency, formatElapsed, formatZonedWeekdayClock and displayValue; formatCount lives in i18n/number.ts. A countdown or running clock is formatElapsed; a displayed percentage is formatPercent.
 - formatCompactDuration uses ceil for TTLs and steps seconds, minutes, hours, then days at 24h (e.g. 2d 3h).
+- Relative time has one vocabulary, `relativeTimeOptions()` in packages/theme/src/format.ts (floor; m, h, d, mo, y; past "ago", future "in"); formatRelative and useRelativeTime both read it. A standalone instant in a template is `RelativeTime` (packages/workbench, ticks, absolute tooltip); formatRelative only inside composed text (U163).
 - packages/workbench/src/behaviour/format.ts re-exports the theme formatters and keeps the reactive useRelativeTime; t() formats numeric params with formatCount while plural still keys on count.
 - Right-click selects (or focuses) before opening the context menu, through nav.contextMenu.
 - Every useSortableReorder caller outside the left panel passes keyboard: true; left-panel lists reorder by drag only. Explicit-Save surfaces bind form.save.
@@ -1436,7 +1442,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - In-memory trees (Studio collections, Space repo file tree) persist expanded keys with usePersistedState('kira.<module>.expanded', []); lazy IPC trees (Studio project tree) do not restore.
 - UI convention guards are wired into bun run lint: scripts/check-ui-primitives.sh (U83-U161) and scripts/check-conventions.ts (N8-N12), plus check-theme-classes.sh which bans stock shadow-(sm|md|lg|xl|2xl).
 - check-conventions.ts N8-N12 check duplicate spec helpers, .ts files under components/, .vue files over 600 lines, printed shortcuts without binding, and state/ dir and menu file naming.
-- check-ui-primitives.sh keeps 48 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
+- check-ui-primitives.sh keeps 47 named PERMANENT lines, each with a reason; its built-in exempt column fails when an entry exempts nothing (suffix ! opts a blanket directory out).
 - vue-tsc checkUnknownComponents, inside typecheck, catches unresolved components.
 
 ### Shared pickers (P398)
@@ -1451,7 +1457,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - git-ui option builders live in lib/refOptions.ts. Suggested base options use the s: value prefix so the same ref in the branch list keeps a unique value.
 - The git-ui toolbar popover (tabs for branches, tags, stashes, worktrees, stacks) is RefsPopover.vue, separate from the shared picker.
 
-### UI uniformity rules (P672)
+### UI uniformity rules (P672, P674)
 
 - Dialog size by content: sm confirm or single field; md form up to about 8 fields; lg sections or list picker; xl two panes, diff, preview; 2xl fixed-height editor or multi-tab config; full review windows only.
 - Dialog footer: `#start` secondary actions, then dismiss, alternate, one emphasised button (dialog-primary, dialog-danger or dialog-approve) rightmost. Header is the title plus an optional DialogDescription for intro text; mode tabs open DialogBody. Body keeps dialogBodyClass (only `flush`, `min-h-*`); sections are FieldSet + FieldLegend or SectionHeading. Failure is an error Alert as last body child, field validation FieldError. Dismiss (Cancel, Close, Done, Dismiss) is `dialog`. `#start` text inherits `text-kira-sm text-subtle` (bare span); queue counts go there. Destructive confirm: `DialogContent destructive`, dismiss `data-dialog-dismiss`. `flush` body never re-adds padding; tab panes inside a body carry none.
@@ -1459,7 +1465,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - One field label: FieldLabel (bare Label only sr-only, or with placement-only classes for a checkbox or switch in a bar, menu or list row). Two layouts: stacked Field, or `Field orientation="responsive"` (label column 7.5rem once the nearest `@container` is 24rem wide, stacked below; the host pane carries `@container`). Checkbox and switch rows are `Field orientation="horizontal"`, control first, then FieldContent (FieldLabel, FieldDescription), reset button `ml-auto`; Checkbox classes place it only: no size, colour, fill or shape class and no icon child (U110), and shows the primitive minus glyph when indeterminate. FieldSet without gap override. Fixed widths w-24, w-40, w-56 only. Textarea steps: short text the primitive default (`font-data` for data), prompt or body `min-h-24 max-h-90 resize-y`, code or script `min-h-32 max-h-90 resize-y font-data`; no `rows`. Form controls take the primitive default size; `size="kira"` only in bars and rows, and a form control in a ViewToolbar, PanelHeader or PopoverBar always takes it (U161). A required field marks its FieldLabel `required` (U160), never a hand asterisk. Every control has a name: FieldLabel `for` its id, or aria-label in bars, rows and cells (U133). A colour choice is SwatchPicker. FieldLegend is the first child of its FieldSet; legend actions go in its `#actions` slot. FieldDescription follows the control.
 - Menus render MenuItems from a MenuItem[] (`testId` keeps a host testid; disabled reason is `hint`); kinds are item, submenu, radio, checkbox (`keepOpen` for toggles that stay open), separator, label; a hand entry only for option content a kind cannot carry (AdeChip, per-method colour, rich label block), with a comment. An option picker showing the current value is a radio kind (`value` null is the none option); the check indicator is the primitive codicon and never overridden (U141). Menu icons 13 and muted (U116 fails a toned icon in a hand entry); a danger item's icon follows its error colour. Popovers have two shapes: default (form: fields and a right-aligned action row, optional PopoverHeader) and `flush` (list: SectionHeading or PopoverHeader, PopoverBar for a search or tab bar, PopoverList for the row list, PopoverFooter px-1.5 py-1 holding a toolbar kira Button); a form block in a flush popover uses PopoverBody; no margin or padding class on a bar control (U145); widths w-56, w-80, w-96, w-120, w-auto only for a popover sized to one control.
 - Rows come from rowVariants; trailing meta is rowMeta; entity lists are rows, tabular data SlickGrid or Table.
-- Heading roles: PanelHeader (panel title bar, muted) is one grey step above SectionHeading (section in a panel, list or popover, subtle; actions in its default slot, right-aligned with case reset; `data` for a data-valued label; `#leading` icon or dot); FieldSet + FieldLegend groups a form; CardTitle on Card section titles a card (DetailSection); DetailHeader titles a view or detail pane (icon 16 muted or `#leading`, h2 lg 500 or `as="h1"` on a mobile screen, `#meta`, right-aligned `#actions`, `#description`, `#eyebrow`; `wrap` for long titles, `data` for a data name, `#control` for an inline-edit title). A detail head inside a toolbar row aligned with a sibling toolbar stays ViewToolbar (git detail-head, Studio tab view-head). A window title bar title is TitleBarTitle (U146). No other heading markup.
+- Heading roles: PanelHeader (panel title bar, muted) is one grey step above SectionHeading (section in a panel, list or popover, subtle; actions in its default slot, right-aligned with case reset; `data` for a data-valued label; `#leading` icon or dot); FieldSet + FieldLegend groups a form; CardTitle on Card section titles a card (DetailSection); DetailHeader titles a view or detail pane (icon 16 muted or `#leading`, h2 lg 500 or `as="h1"` on a mobile screen, `#meta`, right-aligned `#actions`, `#description`, `#eyebrow`; `wrap` for long titles, `data` for a data name, `#control` for an inline-edit title). A view head (dot, kind icon, title with dim prefix, badges, actions, band) is `ViewHead` (U162). A window title bar title is TitleBarTitle (U146). No other heading markup.
 - Key-value data is KeyValueList: default density in panes, `density="compact"` (sm, row gap 0.5) in sidebars and tooltips; dt muted, dd fg, font-data per data value, no class for grid, gap or type. Rows align on baseline; `columns="fixed"` gives a 72px key column for aligned approval details.
 - Card variants: inset (small block of text), section (titled group, DetailSection), list (scroll list of rows); classes only place the card in its parent; no bound :class; state shows through a Badge, never Card border, fill or opacity. Rows in a list sit in one list Card, never a box per row. CardHeader and CardTitle only through DetailSection; its content stacks with gap-2 (`flush`: none). Code text is CodeBlock; a row is never a Card. Card inset with an Input, Select or Checkbox is a Card section. U124 fails a Card class that sets padding, gap, type, fill, border, opacity or row layout, or a bound :class (AdeTaskCard is exempt: D1 board card tone, rail and selected fill).
 - Status tones: running or in progress info (+ Spinner), succeeded ok, waiting or partial warn, failed error, idle or unknown neutral. Row or header uses Badge, dense list StatusDot, prose tone text. ADE pastel tones stay on the plan board and task cards (D1). Agent liveness `working` is ok; `unseen` and `waiting` info; `input` warn. `@theme/lib/statusTone` holds the map (`StatusTone`, `TONE_BADGE`, `TONE_TEXT`, `TONE_DOT`, `CHANGE_REQUEST_TONE`: open info, merged ok, draft and closed neutral; git-ui badges and ADE read it; `ISSUE_CATEGORY_TONE`/`issueTone`; `CHECK_TONE`/`checkTone`; `CHANGE_TONE`: added ok, changed warn, removed error, every diff and change-kind surface reads it). Off-board ADE renders a board `Tone` through `THEME_TONE`; an AdeChip with a tone is board-only (`:color` status chips go anywhere). U125 fails an ADE pastel map, tone token or toned AdeChip off the board. Unsaved marker is StatusDot warn. StatusDot `color` only for data colours (U151). `warn-text` and `note-text` are Alert-only (U147). Toolbar button tone through `tone` / `data-tone` (ok, warn, error, info), never a class (U149 also fails `TONE_TEXT[` or a quoted tone in a bound class); `toolbarTone` maps a StatusTone to it (neutral none). Badge `chip` only with its own colour class or style; untoned tags are the default Badge (U159), and a required tag is the default Badge; action icons stay muted (U150). Spinning icon is Spinner, never a CodiconIcon `spin` (U148). Connection icon colour `connIconClass` (fallback muted).
@@ -1473,6 +1479,12 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Status glyphs are StatusDot or CodiconIcon, never text glyphs; arrows between values are `arrow-right` 12 (U156).
 - Disclosure owns its content spacing; secondary disclosures pass `meta`; no trigger or content classes (U154). Tree depth indent is `rowIndent` (U153).
 - Opacity never marks muted or state: tone, `rowVariants` muted/disabled, or `SORTABLE_GHOST_CLASS` (U90).
+- Config secrets render `ConfigSecretsSection`; removing a stored secret is Delete.
+- Log views take tail constants from `logTail.ts` and render lines through `LogLines`; toolbar order is follow, timestamps, wrap, tail (U165).
+- Config files: a save conflict is `SaveConflictAlert` (U166), a form problem is `ConfigFormProblemAlert` (U167).
+- Reset to default is `ResetToDefaultButton` (U168).
+- `frames.ts` owns `dropIndicator` and `windowTabStrip` (U169, U170).
+- A pending-work toast is `PendingToast`.
 - Guards U110-U161 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
 
 ## Process model
