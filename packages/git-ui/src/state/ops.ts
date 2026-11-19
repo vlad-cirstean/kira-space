@@ -505,7 +505,9 @@ export class OpsState {
           parts.push(composeAutoDetachAnnouncement(target, worktreePath));
         }
         this.announcement.value =
-          parts.length > 0 ? parts.join(' ') : composeCheckoutAnnouncement(preflight, target);
+          parts.length > 0
+            ? joinSentences(...parts)
+            : composeCheckoutAnnouncement(preflight, target);
         return;
       }
 

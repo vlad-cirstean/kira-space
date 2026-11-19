@@ -195,16 +195,13 @@ async function confirmAndDeleteRows(rows: readonly CollectionRowVm[]): Promise<v
       .map(([kind, count]) => t(COUNT_LABEL[kind], { count }));
     const nested = plan.itemIds.size > plan.top.filter((r) => r.kind !== 'collection').length;
     title = t('studio.api.collections.deleteManyConfirm.title', { count: plan.top.length });
-    message = [
+    message = joinSentences(
       t('studio.api.collections.deleteManyConfirm.body', { list: counts.join(', ') }),
-      nested ? t('studio.api.collections.deleteManyConfirm.nested.body') : '',
-      hasOpenRequestTab(plan.itemIds)
-        ? t('studio.api.collections.deleteManyConfirm.openTabs.body')
-        : '',
+      nested && t('studio.api.collections.deleteManyConfirm.nested.body'),
+      hasOpenRequestTab(plan.itemIds) &&
+        t('studio.api.collections.deleteManyConfirm.openTabs.body'),
       t('common.confirm.irreversible.body'),
-    ]
-      .filter(Boolean)
-      .join(' ');
+    );
   }
   const confirmed = await confirmDialogStore.confirm({
     title,
