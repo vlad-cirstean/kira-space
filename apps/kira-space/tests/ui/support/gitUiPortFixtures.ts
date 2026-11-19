@@ -22,11 +22,6 @@ export const PORT_REPO = {
 
 export const PORT_CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [PORT_REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: PORT_REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
 ];
 
 export const PORT_REPO_OPEN = {
@@ -476,6 +471,62 @@ export async function openReviewListing(
   await host.locator(`[data-testid="review-branch-option-${REVIEW_BRANCH}"]`).click();
   await expect(host.locator('[data-testid^="review-row-"]').first()).toBeVisible({
     timeout: 20_000,
+  });
+  return page;
+}
+
+/** Restored tabs of the port repo: the pinned graph and one file. A file tab no longer opens from
+ *  a project tree, so boot restores it beside the graph. */
+export function restoredFileTabs(path: string, fileActive = true): ControlSnapshot {
+  const base = { connectionId: null, workspaceId: PORT_REPO.id };
+  return {
+    channel: IPC.tabsList,
+    response: [
+      {
+        ...base,
+        id: 'restored-repo-graph',
+        kind: 'repo-graph',
+        path: '',
+        order: 0,
+        active: !fileActive,
+        state: { viewState: null, reviewSession: null },
+      },
+      {
+        ...base,
+        id: 'restored-repo-file',
+        kind: 'repo-file',
+        path,
+        order: 1,
+        active: fileActive,
+        state: { revealLine: null, markdownReading: false, rev: null },
+      },
+    ],
+  };
+}
+
+export interface OpenGraphWithFileOptions extends OpenGraphOptions {
+  readonly file: string;
+  /** The file tab is active at boot; false leaves the graph in front. */
+  readonly fileActive?: boolean;
+}
+
+/** Boots Space with the git mock installed before the page loads and the graph plus `file` tabs
+ *  restored. */
+export async function openPortGraphWithFile(
+  relaunch: Relaunch,
+  options: OpenGraphWithFileOptions,
+): Promise<Page> {
+  const { window: page } = await relaunch({
+    control: [
+      ...(options.control ?? PORT_CONTROL),
+      restoredFileTabs(options.file, options.fileActive),
+    ],
+    gitStream: {
+      repoId: PORT_REPO.repoId,
+      extraResults: { ...BASE_RESULTS, ...options.results },
+      graphStreamChunks: options.chunks,
+      graphStreamHoldAfter: options.holdAfter,
+    },
   });
   return page;
 }

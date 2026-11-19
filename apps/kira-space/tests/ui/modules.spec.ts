@@ -107,15 +107,7 @@ test('round trip: a repo\'s tabs hide behind Terminal, a Terminal-module tab ope
   relaunch,
 }) => {
   const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: [], status: {}, truncated: false },
-      },
-      TERMINAL_OPEN_OK,
-    ],
+    control: [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }, TERMINAL_OPEN_OK],
   });
 
   // Git is active by default (this app's own boot mode, mockRuntime.ts's own WILDCARD_DEFAULTS) —

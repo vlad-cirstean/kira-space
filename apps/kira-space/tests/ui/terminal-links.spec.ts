@@ -20,10 +20,7 @@ const REPO = {
 registerTerminalLinkScenarios(
   { test, contract, ipc: IPC },
   {
-    extraBase: [
-      { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: [] },
-    ],
+    extraBase: [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }],
     openTerminal: async (page) => {
       await repoRowById(page, REPO.id).click();
       await page.locator('[data-testid="tab-strip-new"]').click();
@@ -39,7 +36,6 @@ test('container resizes that keep the grid send no resize; a real change sends o
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: [] },
       { channel: IPC.terminalOpen, response: { shell: '/bin/zsh' } },
       { channel: IPC.terminalResize, response: null },
     ],

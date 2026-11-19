@@ -26,14 +26,7 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 const sha = (i: number): string => (i + 1).toString(16).padStart(40, '0');
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 test('graph scroll', async ({ relaunch }, info) => {
   const rows = Array.from({ length: N }, (_, i) => {

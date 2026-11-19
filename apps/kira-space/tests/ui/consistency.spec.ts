@@ -23,6 +23,7 @@ import {
 } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
+import { restoredRepoTabs } from './support/repoFiles';
 import type { ControlSnapshot } from './support/types';
 
 // P266 Stream B: the Space consistency pass. Backend halves: adeflow TestStaleWorkflowSaveReportsCatalogText,
@@ -63,14 +64,6 @@ const DIFF_SNAP: ControlSnapshot = {
   },
 };
 
-async function openDiff(page: Page): Promise<void> {
-  await page.locator(`${t('repo-row')}[data-repo-id="${REPO.id}"]`).click();
-  await page.locator(t('git-panel-tab-files')).click();
-  await page.locator('[data-testid="repo-tree-row"][data-path="c.ts"]').click({ button: 'right' });
-  await page.locator(t('menu-item-open-changes')).click();
-  await expect(page.locator(t('repo-diff-editor'))).toBeVisible();
-}
-
 test('the menu command palette event opens the palette with the Space commands', async ({
   relaunch,
 }) => {
@@ -87,15 +80,12 @@ test('the menu find event focuses the open diff find widget', async ({ relaunch 
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: ['c.ts'], status: { 'c.ts': 'M' }, truncated: false },
-      },
       DIFF_SNAP,
+      restoredRepoTabs(REPO.id, [{ kind: 'repo-diff', path: 'c.ts', active: true }]),
     ],
   });
-  await openDiff(page);
+  await page.locator(`${t('repo-row')}[data-repo-id="${REPO.id}"]`).click();
+  await expect(page.locator(t('repo-diff-editor'))).toBeVisible();
   await expect(page.locator('.monaco-diff-editor .monaco-editor').first()).toBeVisible();
   // Focus in the editor, not the tree row: Find in a focused left panel opens that panel's search (P665).
   await page.locator('.monaco-diff-editor .monaco-editor').first().click();

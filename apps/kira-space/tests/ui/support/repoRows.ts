@@ -1,9 +1,5 @@
 import type { Page } from '@playwright/test';
 
-export function treeRow(page: Page, path: string) {
-  return page.locator(`[data-testid="repo-tree-row"][data-path="${path}"]`);
-}
-
 export function repoTab(page: Page, kind?: string) {
   return kind
     ? page.locator(`[data-testid="tab-strip-wrapper"] [data-testid="tab"][data-tab-kind="${kind}"]`)

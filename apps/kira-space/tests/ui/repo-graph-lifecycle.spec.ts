@@ -4,14 +4,14 @@ import { gitStreamEmit, gitStreamRequests, installGitStreamMock } from './suppor
 import {
   manyRowShas,
   manyRows,
-  openPortGraph,
+  openPortGraphWithFile,
   PORT_CONTROL,
   PORT_REPO,
   refsAtTip,
   singleRowChunks,
 } from './support/gitUiPortFixtures';
 import { IPC } from './support/ipcChannels';
-import { repoRowById, repoTab, treeRow } from './support/repoRows';
+import { repoRowById, repoTab } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
 
 // P67b §2/§3/§9: the two reported bugs, as regressions. Both need the real @kira/git-ui mount
@@ -30,11 +30,8 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const FILE_LISTING = { paths: ['a.ts'], status: {}, truncated: false };
-
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: FILE_LISTING },
   {
     channel: IPC.codeWorkspaceReadFile,
     args: { id: REPO.id, path: 'a.ts' },
@@ -91,7 +88,9 @@ test('bug 2 regression: a cold repo open reaches the graph with no boot-retry cl
 test("bug 1 regression: disposing another mount's lease leaves the graph live", async ({
   relaunch,
 }) => {
-  const page = await openPortGraph(relaunch, {
+  const page = await openPortGraphWithFile(relaunch, {
+    file: 'a.ts',
+    fileActive: false,
     chunks: singleRowChunks(manyRows(3)),
     results: { 'refs.list': refsAtTip(manyRowShas(0)) },
     control: [
@@ -111,8 +110,7 @@ test("bug 1 regression: disposing another mount's lease leaves the graph live", 
   });
   await expect(connectionStateIn(page, 'repo-graph-host')).toHaveText('connected');
 
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'a.ts').click();
+  await repoTab(page, 'repo-file').click();
   await expect(page.locator('[data-testid="repo-file-editor"]')).toBeVisible();
   await repoTab(page, 'repo-file').hover();
   await repoTab(page, 'repo-file').locator('[data-testid="tab-close"]').click();

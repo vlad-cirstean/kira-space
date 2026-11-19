@@ -30,7 +30,14 @@ import {
 } from './studio/support/postgresFixture';
 import { openRedisBrowse, REDIS_DB0 } from './studio/support/redisFixture';
 import { expandRow, findRow, openBrowseLeaf } from './studio/support/tree';
-import { FIXED_NOW, openPlan, openWorkflows } from './support/adeV2';
+import {
+  FIXED_NOW,
+  openPlan,
+  openTaskFile,
+  openTaskFiles,
+  openWorkflows,
+  taskFilesControl,
+} from './support/adeV2';
 import { gitStreamParams } from './support/gitStreamMock';
 import { BASE_RESULTS, PORT_CONTROL, PORT_REPO, SHA_A, SHA_B } from './support/gitUiPortFixtures';
 import { calls } from './support/ipcCalls';
@@ -170,35 +177,7 @@ const README = [
   ...Array.from({ length: 80 }, (_, i) => `Tail ${i}\n`),
 ].join('\n');
 
-function readFile(path: string, text: string, language: string): ControlSnapshot {
-  return {
-    channel: IPC.codeWorkspaceReadFile,
-    args: { id: REPO.id, path },
-    response: {
-      kind: 'found',
-      text,
-      bytes: text.length,
-      limitBytes: 8 * 1024 * 1024,
-      language,
-    },
-  };
-}
-
-const REPO_CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['README.md', 'dir/b.ts'], status: {}, truncated: false },
-  },
-  readFile('README.md', README, 'markdown'),
-  readFile('dir/b.ts', 'export const b = 1;\n', 'typescript'),
-];
-
-async function openFiles(page: Page): Promise<void> {
-  await page.locator('[data-testid="repo-row"][data-repo-id="repo-1"]').click();
-  await page.locator(t('git-panel-tab-files')).click();
-}
+const REPO_CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 test('F2 on a repo row starts the inline rename', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: REPO_CONTROL });
@@ -211,27 +190,27 @@ test('F2 on a repo row starts the inline rename', async ({ relaunch }) => {
   await expect(input).toHaveCount(0);
 });
 
-test('file tree folder expansion survives a reload', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await openFiles(page);
-  const row = (path: string) => page.locator(`[data-testid="repo-tree-row"][data-path="${path}"]`);
-  await row('dir').click();
-  if (!(await row('dir/b.ts').isVisible())) await page.keyboard.press('ArrowRight');
-  await expect(row('dir/b.ts')).toBeVisible();
-  // Persisting the expansion is debounced and has no observable end before the reload.
-  await page.waitForTimeout(500);
-
-  await page.reload();
-  await openFiles(page);
-  await expect(row('dir/b.ts')).toBeVisible();
-});
-
 test('a markdown heading link scrolls its target to the pane top', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await openFiles(page);
-  await page.locator('[data-testid="repo-tree-row"][data-path="README.md"]').click();
-  await page.locator(t('repo-file-view-reading')).click();
-  const pane = page.locator(t('repo-file-markdown'));
+  const { window: page } = await openPlan(
+    relaunch,
+    taskFilesControl([
+      {
+        channel: IPC.adeTaskFileRead,
+        response: {
+          kind: 'found',
+          text: README,
+          bytes: README.length,
+          limitBytes: 8 * 1024 * 1024,
+          language: 'markdown',
+          stat: { hash: 'h', size: README.length },
+        },
+      },
+    ]),
+  );
+  await openTaskFiles(page);
+  await openTaskFile(page, 'README.md');
+  await page.locator(t('ade-files-view-reading')).click();
+  const pane = page.locator(t('ade-files-markdown'));
   await expect(pane).toBeVisible();
   const heading = pane.locator('#bottom');
   await pane.locator('a[href="#bottom"]').click();

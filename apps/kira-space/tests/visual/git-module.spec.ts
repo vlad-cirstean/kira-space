@@ -175,14 +175,7 @@ const MOCK_RESULTS = {
   },
 };
 
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 const VIEW_STATE = {
   version: 8,

@@ -1,6 +1,5 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan } from './support/adeV2';
+import { openPlan, openTaskFile, openTaskFiles, taskFilesControl } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -12,8 +11,6 @@ import type { ControlSnapshot } from './support/types';
 // P660: view state of module panels and the Agents full view survives leaving the module and
 // coming back. One round trip per module: set state, switch away, switch back, assert.
 
-const panelTab = (page: Page, name: 'repos' | 'files' | 'review') =>
-  page.locator(`[data-testid="git-panel-tab-${name}"]`);
 const REPO = {
   id: 'repo-state-1',
   name: 'state-repo',
@@ -24,44 +21,35 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const GIT_CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: {
-      paths: Array.from({ length: 80 }, (_, i) => `file-${String(i).padStart(2, '0')}.ts`),
-      status: {},
-      truncated: false,
-    },
-  },
-];
+const GIT_CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
-test('Git: repo and file search, tree scroll survive a module round trip', async ({ relaunch }) => {
+test('Git: repo search survives a module round trip', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: GIT_CONTROL });
   await page.setViewportSize({ width: 1200, height: 520 });
   const search = page.locator('[data-testid="tree-search"]');
 
-  // Repos tab: the bar and its text.
   await page.locator('[data-testid="toggle-search"]').click();
   await search.fill('state');
-  await page.locator(`[data-testid="repo-row"][data-repo-id="${REPO.id}"]`).click();
-
-  // Files tab: its own text, and the tree scroll.
-  await panelTab(page, 'files').click();
-  await search.fill('file');
-  const tree = page.locator('[data-testid="virtual-list"]');
-  await expect(tree).toBeVisible();
-  await scrollTo(tree, 400);
-  const scrolled = await scrollTop(tree);
 
   await roundTrip(page, 'automations', 'git');
 
-  await expect(search).toHaveValue('file');
-  await expect(panelTab(page, 'files')).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(() => scrollTop(page.locator('[data-testid="virtual-list"]'))).toBe(scrolled);
-  await panelTab(page, 'repos').click();
   await expect(search).toHaveValue('state');
+});
+
+test('Agents: the task Files tab, its filter and its open file survive a module round trip', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch, taskFilesControl());
+  await openTaskFiles(page);
+  await openTaskFile(page, 'README.md');
+  await page.locator('[data-testid="ade-files-filter"]').fill('READ');
+
+  await roundTrip(page, 'git', 'ade');
+
+  await expect(page.locator('[data-testid="ade-files-filter"]')).toHaveValue('READ');
+  await expect(
+    page.locator('[data-testid="ade-files-viewer"][data-path="README.md"]'),
+  ).toBeVisible();
 });
 
 const t = (id: string) => `[data-testid="${id}"]`;

@@ -4,7 +4,8 @@ import { expect, test } from '../ui/fixtures';
 import { adeV2Control, FIXED_NOW } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
-import { repoRowById, treeRow } from '../ui/support/repoRows';
+import { restoredRepoTabs } from '../ui/support/repoFiles';
+import { repoRowById } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { shoot } from './support/shoot';
 
@@ -177,11 +178,6 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
       response: [{ id: REPO.id, head: { kind: 'branch', name: 'main' } }],
     },
     {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: REPO.id },
-      response: { paths: ['src/App.vue'], status: {}, truncated: false },
-    },
-    {
       channel: IPC.tabsList,
       response: [
         {
@@ -227,20 +223,6 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
   await shoot(win, 'space-commit-detail', consoleErrors);
 });
 
-const WORKSPACE_FILES = [
-  'README.md',
-  'package.json',
-  'src/App.vue',
-  'src/components/OrderTable.vue',
-  'src/components/SearchBox.vue',
-  'src/lib/paging.ts',
-  'src/main.ts',
-  'src/stores/cart.ts',
-  'src/stores/orders.ts',
-  'tests/paging.spec.ts',
-  'tsconfig.json',
-];
-
 const PAGING_SOURCE = [
   'export interface Page<T> {',
   '  rows: T[];',
@@ -272,15 +254,7 @@ test('space workspace', async ({ relaunch, consoleErrors }) => {
       args: { ids: [REPO.id] },
       response: [{ id: REPO.id, head: { kind: 'branch', name: 'main' } }],
     },
-    {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: REPO.id },
-      response: {
-        paths: WORKSPACE_FILES,
-        status: { 'src/App.vue': 'M', 'src/components/SearchBox.vue': 'A' },
-        truncated: false,
-      },
-    },
+    restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'src/lib/paging.ts', active: true }]),
     {
       channel: IPC.codeWorkspaceReadFile,
       args: { id: REPO.id, path: 'src/lib/paging.ts' },
@@ -312,14 +286,6 @@ test('space workspace', async ({ relaunch, consoleErrors }) => {
     },
   });
   await repoRowById(win, REPO.id).click();
-  await win.locator('[data-testid="git-panel-tab-files"]').click();
-  for (const dir of ['src', 'src/lib', 'src/stores']) {
-    await expect(treeRow(win, dir)).toBeVisible();
-    if ((await treeRow(win, dir).getAttribute('aria-expanded')) === 'false') {
-      await treeRow(win, dir).click();
-    }
-  }
-  await treeRow(win, 'src/lib/paging.ts').dblclick();
   const editor = win.locator('.monaco-editor').first();
   await expect(editor).toContainText('pageCount');
   await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());

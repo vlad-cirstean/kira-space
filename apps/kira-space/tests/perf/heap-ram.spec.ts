@@ -53,7 +53,8 @@ import {
   singleRowChunks,
 } from '../ui/support/gitUiPortFixtures';
 import { IPC } from '../ui/support/ipcChannels';
-import { treeRow } from '../ui/support/repoRows';
+import { restoredRepoTabs } from '../ui/support/repoFiles';
+import { repoTab } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './studio/documentsFixture';
 import {
@@ -183,14 +184,7 @@ test('ram: kept-graphs', async ({ relaunch }, info) => {
     root: `/tmp/kept-repo-${i}`,
     sortOrder: i + 1,
   }));
-  const control: ControlSnapshot[] = [
-    { channel: IPC.codeWorkspaceListRepos, response: repos },
-    ...repos.map((r) => ({
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: r.id },
-      response: { paths: ['a.ts'], status: {}, truncated: false },
-    })),
-  ];
+  const control: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: repos }];
   const { window: page } = await relaunch({ control });
   await installGitStreamMock(
     page,
@@ -228,18 +222,15 @@ const LIMIT = 8 * 1024 * 1024;
 const FILES = Array.from({ length: 10 }, (_, i) => `f${i}.ts`);
 const DIFFS = Array.from({ length: 10 }, (_, i) => `d${i}.ts`);
 
-function fileControl(): ControlSnapshot[] {
+// No project tree opens a file or diff tab any more: the world's tabs restore, `open(i)` activates
+// the i-th, so the heap cost measured is the mount, not the open.
+function fileControl(kind: 'repo-file' | 'repo-diff'): ControlSnapshot[] {
   const out: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: [PORT_REPO] },
-    {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: PORT_REPO.id },
-      response: {
-        paths: [...FILES, ...DIFFS],
-        status: Object.fromEntries(DIFFS.map((d) => [d, 'M'])),
-        truncated: false,
-      },
-    },
+    restoredRepoTabs(
+      PORT_REPO.id,
+      (kind === 'repo-file' ? FILES : DIFFS).map((path) => ({ kind, path })),
+    ),
   ];
   for (const path of FILES) {
     const stat = { size: LARGE_TEXT.length, hash: `hash-${path}` };
@@ -300,39 +291,40 @@ function fileControl(): ControlSnapshot[] {
   return out;
 }
 
-async function openGraphWithFiles(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch']) {
+async function openGraphWithFiles(
+  relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
+  kind: 'repo-file' | 'repo-diff',
+) {
   return openPortGraph(async (o) => relaunch(o), {
     chunks: singleRowChunks(manyRows(300)),
     results: { 'refs.list': refsAtTip(manyRowShas(0)) },
-    control: fileControl(),
+    control: fileControl(kind),
   });
 }
 
 test('ram: repo-file', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('repo-file'));
-  const page = await openGraphWithFiles(relaunch);
+  const page = await openGraphWithFiles(relaunch, 'repo-file');
   await page.clock.install();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
   await tabWorld({
     world: 'repo-file',
     page,
     info,
     keep: 1,
     open: async (i) => {
-      await treeRow(page, FILES[i]).dblclick();
+      await repoTab(page, 'repo-file').nth(i).click();
       await expect(page.locator('[data-testid="repo-file-editor"] .view-lines')).toContainText(
         'value0',
       );
-      await expect(page.locator('[data-testid="tab"]')).toHaveCount(i + 2);
+      await expect(page.locator('[data-testid="tab"]')).toHaveCount(FILES.length + 1);
     },
   });
 });
 
 test('ram: diff', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('diff'));
-  const page = await openGraphWithFiles(relaunch);
+  const page = await openGraphWithFiles(relaunch, 'repo-diff');
   await page.clock.install();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
   const s = await tabWorld({
     world: 'diff',
     page,
@@ -340,10 +332,9 @@ test('ram: diff', async ({ relaunch }, info) => {
     keep: 1,
     snapshotAt: ['mode', 'closed', 'closed2', 'closed3'],
     open: async (i) => {
-      await treeRow(page, DIFFS[i]).click({ button: 'right' });
-      await page.locator('[data-testid="menu-item-open-changes"]').click();
+      await repoTab(page, 'repo-diff').nth(i).click();
       await expect(page.locator('[data-testid="repo-diff-editor"]')).toBeVisible();
-      await expect(page.locator('[data-testid="tab"]')).toHaveCount(i + 2);
+      await expect(page.locator('[data-testid="tab"]')).toHaveCount(DIFFS.length + 1);
     },
   });
   if (SNAPSHOTS) {

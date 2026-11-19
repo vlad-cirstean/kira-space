@@ -17,14 +17,7 @@ const REPO = {
 };
 const SHA = 'ab'.repeat(20);
 
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 const repoOpen = {
   kind: 'ok',
