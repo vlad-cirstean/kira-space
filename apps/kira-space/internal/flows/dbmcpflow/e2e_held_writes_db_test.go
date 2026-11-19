@@ -24,7 +24,7 @@ import (
 
 const (
 	heldKey     = "e2e-held-writes-db"
-	dbStageW      = `kept.set("w", [1,2]); return 1;`
+	dbStageW    = `kept.set("w", [1,2]); return 1;`
 	waitingText = "got no review within"
 )
 
