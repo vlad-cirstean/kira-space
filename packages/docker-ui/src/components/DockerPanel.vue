@@ -6,11 +6,12 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { FieldLabel } from '@theme/components/ui/field';
 import { type MessageKey, t } from '@theme/i18n';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 import {
   useContainers,
   useDockerLiveSync,
@@ -81,15 +82,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
   },
 });
 
-const refreshing = ref(false);
-async function refresh(): Promise<void> {
-  refreshing.value = true;
-  try {
-    await qc.invalidateQueries({ queryKey: ['docker'] });
-  } finally {
-    refreshing.value = false;
-  }
-}
+const refresh = useAsyncAction(() => qc.invalidateQueries({ queryKey: ['docker'] }));
 </script>
 
 <template>
@@ -120,8 +113,8 @@ async function refresh(): Promise<void> {
           icon="refresh"
           :label="t('common.action.refresh.label')"
           data-testid="docker-refresh"
-          :disabled="refreshing"
-          @click="refresh"
+          :disabled="refresh.pending.value"
+          @click="refresh.run()"
         />
       </template>
     </PanelHeader>

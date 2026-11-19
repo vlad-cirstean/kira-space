@@ -8,10 +8,10 @@ import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { useDebounceFn } from '@vueuse/core';
+import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
 import { useKeptState } from '@workbench/behaviour/viewState';
-import { errorText } from '@workbench/bridge/codedError';
 import FindBar from '@workbench/components/FindBar.vue';
 import LogLines from '@workbench/components/LogLines.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
@@ -41,7 +41,6 @@ const query = useKeptState(() => `docker:logs:${props.containerId}:query`, '');
 const needle = useKeptState(() => `docker:logs:${props.containerId}:needle`, '');
 const current = ref(0);
 const ended = ref(false);
-const failure = ref('');
 const streamError = ref('');
 const logsEl = useTemplateRef<{
   scrollToIndex: (index: number) => void;
@@ -118,11 +117,16 @@ async function close(): Promise<void> {
   });
 }
 
+const openLogs = useAsyncAction(async (request: Parameters<typeof control.logsOpen>[0]) => {
+  opening = control.logsOpen(request);
+  await opening;
+});
+
 async function open(): Promise<void> {
   await close();
   lines.value = [];
   ended.value = false;
-  failure.value = '';
+  openLogs.reset();
   streamError.value = '';
   const id = `docker-logs:${newUuid()}`;
   streamId = id;
@@ -134,18 +138,13 @@ async function open(): Promise<void> {
       streamError.value = e.error ?? '';
     }
   });
-  try {
-    opening = control.logsOpen({
-      streamId: id,
-      containerId: props.containerId,
-      tail: tail.value,
-      timestamps: timestamps.value,
-      follow: true,
-    });
-    await opening;
-  } catch (err) {
-    failure.value = errorText(err);
-  }
+  await openLogs.run({
+    streamId: id,
+    containerId: props.containerId,
+    tail: tail.value,
+    timestamps: timestamps.value,
+    follow: true,
+  });
 }
 
 const reopen = useDebounceFn(() => void open(), TIMING.search);
@@ -156,7 +155,7 @@ onBeforeUnmount(() => {
   void close();
 });
 
-const errorMessage = computed(() => failure.value || (ended.value ? streamError.value : ''));
+const errorMessage = computed(() => openLogs.error.value || (ended.value ? streamError.value : ''));
 
 function jumpFollow(): void {
   follow.value = true;
