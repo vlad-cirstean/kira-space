@@ -5,9 +5,9 @@ import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import { indentJson } from '../beautify';
 import HttpStatusBadge from '../components/HttpStatusBadge.vue';
 import FlushEditor from './FlushEditor.vue';
-import { prettyJson } from './prettyJson';
 
 // A response as the agent's request got it, masked: status, headers, body. The body scrolls inside the
 // card, so a 2 MiB body does not grow the dialog.
@@ -21,7 +21,7 @@ const finalUrl = computed(() =>
 const json = computed(() => {
   const r = props.response;
   if (r.binary || r.truncated || !/json/i.test(r.contentType)) return null;
-  return prettyJson(r.body);
+  return indentJson(r.body);
 });
 </script>
 

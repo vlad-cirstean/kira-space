@@ -4,18 +4,10 @@ import { announceApp } from '@workbench/behaviour/liveRegion';
 import { errorText } from '@workbench/bridge/codedError';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import type { MenuItem } from '@workbench/state/contextMenu';
-import { beautifyJson } from '../../beautify';
+import { prettyJson } from '../../beautify';
 import { parseIdLabel, toPlainJson, toRelaxedText, toShellText } from '../shared/document/ejson';
 import { deleteDocument } from './mutations';
 import { useDocumentViewStore } from './state';
-
-// P19 D6 (parity half): the row's body is already canonical extended JSON (ejson.ts's own
-// header rule) — re-indented through beautify.ts's JSON scanner, falling back to the raw body if
-// it does not scan (a truncated body, say).
-function prettyJson(text: string): string {
-  const r = beautifyJson(text, 'indented');
-  return r.ok ? r.text : text;
-}
 
 // A rejected clipboard write (denied permission, an unfocused window) must not vanish the same
 // way an unhandled promise rejection would — ContextMenu.vue's `onItemClick` is never awaited by

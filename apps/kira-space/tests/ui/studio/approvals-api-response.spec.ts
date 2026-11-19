@@ -41,6 +41,12 @@ test('contract: an unscripted response shows its raw view and Send answers by id
   await expect(body.locator('[data-testid="api-review-raw-status"]')).toContainText('200');
   await expect(body.locator('[data-testid="api-review-raw-headers"]')).toBeVisible();
   await expect(body.locator('[data-testid="api-review-raw-body"]')).toContainText('a@x.test');
+  // An integer above 2^53 keeps its digits and the body is indented (not the compact original).
+  const rawBody = body.locator('[data-testid="api-review-raw-body"]');
+  await expect(rawBody).toContainText('"id": 9007199254740993');
+  await expect(rawBody).not.toContainText('"total":2');
+  await expect(body.locator('[data-testid="api-review-raw-status"]')).toContainText('200 OK');
+  await expect(body.locator('[data-testid="api-review-raw-status"]')).toHaveClass(/text-ok/);
   await expect(page.locator('[data-testid="api-review-view-raw"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="api-review-script"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="api-review-sent"]')).toHaveCount(0);
@@ -87,4 +93,38 @@ test('contract: a failed script shows the failure beside the raw response', asyn
   );
   await page.click('[data-testid="api-review-view-raw"]');
   await expect(page.locator('[data-testid="api-review-raw-body"]')).toContainText('a@x.test');
+});
+
+test('a binary or cut body reads as the HTTP pane words it, sizes through formatBytes', async ({
+  relaunch,
+}) => {
+  const it = item('plain');
+  const base = held('plain');
+  const response = JSON.parse(base.text) as Record<string, unknown>;
+  const text = JSON.stringify({
+    ...response,
+    status: 404,
+    statusText: 'Not Found',
+    body: '',
+    binary: true,
+    truncated: true,
+    bodyBytes: 12288,
+  });
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.dbMcpPendingResponse, response: { ...base, text } },
+      ...mocks('plain').slice(1),
+    ],
+  });
+  await pushApprovals(page, [liveItem(it)]);
+  const body = page.locator('[data-testid="api-review-body"]');
+  await expect(body.locator('[data-testid="api-review-raw-body"]')).toContainText(
+    'Binary body, 12.0 KB not shown',
+  );
+  await expect(body).toContainText('Response truncated at 12.0 KB.');
+  await expect(body.locator('[data-testid="api-review-raw-status"]')).toContainText(
+    '404 Not Found',
+  );
+  // statusClass tone: 4xx is error red, never the warn amber of a redirect.
+  await expect(body.locator('[data-testid="api-review-raw-status"]')).toHaveClass(/text-error/);
 });

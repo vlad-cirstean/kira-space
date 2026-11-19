@@ -8,7 +8,7 @@ import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import FlushEditor from '../approvals/FlushEditor.vue';
-import { prettyJson } from '../approvals/prettyJson';
+import { indentJson } from '../beautify';
 import { control } from '../bridge/control';
 import { useKeptValue } from './keptQueries';
 import { useKeptReveal } from './useKeptReveal';
@@ -32,12 +32,11 @@ function parsed(json: string): { ok: true; value: unknown } | { ok: false } {
   }
 }
 
-/** Strings raw, other JSON pretty-printed; the text of a whole value, as copied. A value that
- *  re-indenting would change (a big integer) stays as it is. */
+/** Strings raw, other JSON pretty-printed; the text of a whole value, as copied. */
 function plainText(json: string): string {
   const p = parsed(json);
   if (!p.ok) return json;
-  return typeof p.value === 'string' ? p.value : (prettyJson(json) ?? json);
+  return typeof p.value === 'string' ? p.value : (indentJson(json) ?? json);
 }
 
 const lines = computed(() => plainText(props.entry.preview).split('\n'));
@@ -56,7 +55,7 @@ const full = useKeptValue(
 const fullDoc = computed(() => {
   const json = full.data.value?.json;
   if (json === undefined) return '';
-  return prettyJson(json) ?? json;
+  return indentJson(json) ?? json;
 });
 
 const secretReveal = useKeptReveal(() => props.entry.id);

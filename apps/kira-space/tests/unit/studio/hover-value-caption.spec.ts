@@ -8,26 +8,30 @@
 // `MarkdownString[]` contents) — a thin, mechanical transform inside a Vue component,
 // which this app's own convention doesn't unit-test (no `.vue` file in this repo has a dedicated
 // spec; UI specs cover that layer instead — `tests/ui/api-ui-consistency.spec.ts`'s own "shows its
-// value" hover check already exercises the value/caption split at the UI level). `formatHoverValue`
+// value" hover check already exercises the value/caption split at the UI level). `prettyJson`
 // is the one piece of real logic left here, and it still earns its own test.
 import { describe, expect, test } from 'bun:test';
-import { formatHoverValue } from '../../../frontend/src/studio/editor/hoverInfo';
+import { prettyJson } from '../../../frontend/src/studio/beautify';
 
-describe('formatHoverValue — pretty-prints a JSON-shaped value, leaves anything else verbatim', () => {
+describe('prettyJson — pretty-prints a JSON-shaped value, leaves anything else verbatim', () => {
   test('a JSON object re-indents', () => {
-    expect(formatHoverValue('{"a":1,"b":"x"}')).toBe('{\n  "a": 1,\n  "b": "x"\n}');
+    expect(prettyJson('{"a":1,"b":"x"}')).toBe('{\n  "a": 1,\n  "b": "x"\n}');
   });
 
   test('a JSON array re-indents', () => {
-    expect(formatHoverValue('[1,2,3]')).toBe('[\n  1,\n  2,\n  3\n]');
+    expect(prettyJson('[1,2,3]')).toBe('[\n  1,\n  2,\n  3\n]');
+  });
+
+  test('an integer above 2^53 keeps its digits', () => {
+    expect(prettyJson('{"id":9007199254740993}')).toBe('{\n  "id": 9007199254740993\n}');
   });
 
   test('a bare string value (the common case — most variables are not JSON) is unchanged', () => {
-    expect(formatHoverValue('https://api.example.com')).toBe('https://api.example.com');
+    expect(prettyJson('https://api.example.com')).toBe('https://api.example.com');
   });
 
   test('invalid/non-JSON text is unchanged, not a throw', () => {
-    expect(() => formatHoverValue('not { json at all')).not.toThrow();
-    expect(formatHoverValue('not { json at all')).toBe('not { json at all');
+    expect(() => prettyJson('not { json at all')).not.toThrow();
+    expect(prettyJson('not { json at all')).toBe('not { json at all');
   });
 });

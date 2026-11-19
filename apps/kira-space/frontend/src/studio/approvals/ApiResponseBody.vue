@@ -7,6 +7,7 @@ import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
+import { indentJson } from '../beautify';
 import KeptNameMark from '../kept/KeptNameMark.vue';
 import KeptValueView from '../kept/KeptValueView.vue';
 import { keptTypeLabel } from '../kept/keptFormat';
@@ -14,7 +15,6 @@ import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import { usePendingResponse } from './pendingResponse';
-import { prettyJson } from './prettyJson';
 import ResultReview from './ResultReview.vue';
 
 // The held API response: what the agent gets on Send, and with a script, the raw response it read and
@@ -32,7 +32,7 @@ const script = computed(() => response.data.value?.script ?? null);
 // Values the script keeps once this result is sent (P678): not stored yet, previews only.
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
-const resultJson = computed(() => (failed.value ? null : prettyJson(text.value)));
+const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 // Never hide bytes: an unparseable response falls back to its verbatim text.
 const parsedRaw = computed(() => {
   const source = raw.value || text.value;

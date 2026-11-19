@@ -1,5 +1,6 @@
 import type { KeptSite, KeptUse } from '@shared/domain/kept';
 import type { RangeHighlight } from '@workbench/editor/ranges';
+import { indentJson } from '../beautify';
 
 // One mark colour for every kept variable; the name inside the token says which.
 export const KEPT_MARK_CLASS = 'bg-kept-mark';
@@ -114,7 +115,7 @@ const SENTINEL_BASE = 7_000_000_000_000_000;
 export function prettyKeptJson(body: string): string | null {
   const refs = keptRefs(body);
   if (refs.length === 0 || body.includes(String(SENTINEL_BASE).slice(0, 13)))
-    return prettyPlain(body);
+    return indentJson(body);
   let swapped = '';
   let at = 0;
   refs.forEach((r, i) => {
@@ -122,18 +123,10 @@ export function prettyKeptJson(body: string): string | null {
     at = r.to;
   });
   swapped += body.slice(at);
-  const pretty = prettyPlain(swapped);
+  const pretty = indentJson(swapped);
   if (pretty === null) return null;
   return pretty.replace(/7000000000000\d{3}/g, (m) => {
     const ref = refs[Number(m) - SENTINEL_BASE];
     return ref ? body.slice(ref.from, ref.to) : m;
   });
-}
-
-function prettyPlain(text: string): string | null {
-  try {
-    return JSON.stringify(JSON.parse(text), null, 2);
-  } catch {
-    return null;
-  }
 }

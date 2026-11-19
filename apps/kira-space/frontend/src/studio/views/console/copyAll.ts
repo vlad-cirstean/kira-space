@@ -1,4 +1,4 @@
-import { beautifyJson } from '../../beautify';
+import { prettyJson } from '../../beautify';
 import {
   beautifyShellText,
   toPlainJson,
@@ -7,14 +7,6 @@ import {
 } from '../shared/document/ejson';
 
 export type CopyAllFormat = 'plain' | 'shell' | 'canonical' | 'relaxed';
-
-// D6: the row's body -- already canonical extended JSON (a Mongo document) or built fresh (a
-// Redis key/value pair) -- re-indented through beautify.ts's JSON scanner, falling back to the
-// raw text if it does not scan (a truncated body, say).
-export function prettyJson(text: string): string {
-  const r = beautifyJson(text, 'indented');
-  return r.ok ? r.text : text;
-}
 
 function indented(text: string): string {
   return text

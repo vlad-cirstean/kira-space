@@ -2,9 +2,10 @@ import { t } from '@theme/i18n';
 import { copyOrReportError, copyOrReportErrorLazy } from '@workbench/behaviour/clipboard';
 import { announceApp } from '@workbench/behaviour/liveRegion';
 import type { MenuItem } from '@workbench/state/contextMenu';
+import { prettyJson } from '../../beautify';
 import { toPlainJson, toRelaxedText, toShellText } from '../shared/document/ejson';
 import type { CopyFormat } from '../shared/slick/selectionCopy';
-import { type CopyAllFormat, jsonArrayOf, prettyJson } from './copyAll';
+import { type CopyAllFormat, jsonArrayOf } from './copyAll';
 
 // The console result grid's own menu builders, mirroring views/grid/menu.ts's split
 // (builders in a plain module, the host only opens them) -- item ids follow that file's own

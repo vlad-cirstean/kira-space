@@ -15,8 +15,9 @@ import { t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
 import { type Completion, templateToken } from '@workbench/editor/fieldCompletion';
 import type { RangeHighlight } from '@workbench/editor/ranges';
+import { prettyJson } from '../../beautify';
 import type { EditorCompletionSource } from '../../editor/completion';
-import { type ConsoleHoverInfo, formatHoverValue } from '../../editor/hoverInfo';
+import type { ConsoleHoverInfo } from '../../editor/hoverInfo';
 import { mergeVariableRows } from './variables';
 
 // The Api side supplies the data, in one module, from the call already being made — the finding
@@ -87,7 +88,7 @@ export interface VariableSupport {
    *  editors use instead. */
   hoverAt: (text: string, offset: number) => string[] | null;
   /** The same lookup as `hoverAt`, but keeping a resolved reference's actual value (`value`,
-   *  pretty-printed with editor/hover.ts's own `formatHoverValue` when it parses as JSON) separate
+   *  pretty-printed with `prettyJson` when it parses as JSON) separate
    *  from its explanation (`lines` — the caption `variableHoverSource` renders underneath it).
    *  `value` is `undefined` for every other reference kind (deferred/dynamic/unknown never had a
    *  value to show, only ever an explanation) — `hoverAt` above is a thin wrapper over this
@@ -153,10 +154,10 @@ export function variableSupport(
         // D13(c): the renderer has the plaintext for a non-secret, so showing the piped RESULT is
         // both possible and more useful than showing the input untransformed.
         const shown = pipeline.length > 0 ? (applyPipeline(pipeline, raw) ?? raw) : raw;
-        // Real-interaction fix: pretty-printed first (formatHoverValue re-indents a JSON-shaped
+        // Real-interaction fix: pretty-printed first (prettyJson re-indents a JSON-shaped
         // value), *then* length-capped — a value that only exceeds HOVER_VALUE_MAX_LENGTH because
         // indentation added whitespace would be a strange thing to truncate over.
-        const formatted = formatHoverValue(shown);
+        const formatted = prettyJson(shown);
         const truncated =
           formatted.length > HOVER_VALUE_MAX_LENGTH
             ? `${formatted.slice(0, HOVER_VALUE_MAX_LENGTH)}…`
