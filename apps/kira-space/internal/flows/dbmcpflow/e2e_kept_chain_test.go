@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func TestE2EKeptChain(t *testing.T) {
 			t.Fatalf("kept = %+v, want A's entry read in the body", pl.Kept)
 		}
 		ids := f.keptID(t, externalScope, "ids")
-		ro := append(opts, flowharness.Replace(ids, "kv_ids"))
+		ro := append(slices.Clip(opts), flowharness.Replace(ids, "kv_ids"))
 		f.app.Contract(t, keptChainKey, "ApprovalsService.List#step2", []approvals.Item{req.Item}, ro...)
 		f.app.Contract(t, keptChainKey, "args:ApprovalsService.Answer#step2", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answer(t, true, req.RequestID)
@@ -94,7 +95,7 @@ func TestE2EKeptChain(t *testing.T) {
 		if len(mk) != 1 || mk[0].Name != "first" {
 			t.Fatalf("mayKeep = %+v, want first", mk)
 		}
-		ro := append(opts, flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"))
+		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"))
 		f.app.Contract(t, keptChainKey, "ApprovalsService.List#step3", []approvals.Item{req.Item}, ro...)
 		f.answer(t, true, req.RequestID)
 		if res := wait(t, pending); res.IsError || !strings.Contains(text(res), `"name":"first"`) {
@@ -135,7 +136,7 @@ func TestE2EKeptChain(t *testing.T) {
 		if len(labels) != 2 || labels[0] == labels[1] {
 			t.Fatalf("ids rows carry scope labels %v, want two different ones", labels)
 		}
-		ro := append(opts, flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"),
+		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"),
 			flowharness.Replace(f.keptID(t, "session:e2e-s1", "ids"), "kv_ids_session"), flowharness.Replace(f.keptID(t, externalScope, "first"), "kv_first"))
 		f.app.Contract(t, keptChainKey, "KeptVarsService.List#scopes", list, ro...)
 	})
@@ -171,7 +172,7 @@ func TestE2EKeptChain(t *testing.T) {
 				t.Fatalf("entry %+v of the ended session is still listed", e)
 			}
 		}
-		ro := append(opts, flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"), flowharness.Replace(f.keptID(t, externalScope, "first"), "kv_first"))
+		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"), flowharness.Replace(f.keptID(t, externalScope, "first"), "kv_first"))
 		f.app.Contract(t, keptChainKey, "KeptVarsService.List#ended", list, ro...)
 	})
 
