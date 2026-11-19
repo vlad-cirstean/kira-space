@@ -1,6 +1,5 @@
 import type { SortSpec } from '@shared/domain/queries';
 import type { PageCursor } from '@shared/protocol/dataOps';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { DocumentTabState } from '../../../state/tabDomain';
@@ -51,11 +50,6 @@ function defaultRuntime(): DocumentViewRuntime {
 export const useDocumentViewStore = defineStore('documentView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
     createRuntimeStore<DocumentViewRuntime>(defaultRuntime);
-
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-  });
 
   // Mirrors views/grid/state.ts's own `load()` — `revertPageIndexOnFailure`, when
   // given, is the pageIndex this tab was showing before its caller optimistically advanced it. A

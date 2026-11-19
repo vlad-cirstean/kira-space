@@ -10,7 +10,6 @@ import type {
 } from '@shared/domain/http';
 import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { variablesForSend } from '../../api/state/variables';
 import { findHttpRequestTab } from '../../api/tabs';
@@ -147,15 +146,10 @@ function buildSettingsWire(s: HttpRequestSettingsState): HttpRequestSettingsWire
 }
 
 export const useHttpRequestViewStore = defineStore('httpRequestView', () => {
-  const { runtime, ensureRuntime } = createRuntimeStore<HttpRequestViewRuntime>(defaultRuntime);
-
-  // gRPC's own cleanup already cancels an in-flight call here (state.ts); HTTP's did not
-  // — a send kept running in Go and recording history for a tab already gone. stopOp before the
-  // delete matches that shape (registerTabRuntimeCleanup is the one place a closing tab's cleanup
-  // and an in-flight op's cancellation can share one call).
-  registerTabRuntimeCleanup((tabId) => {
-    stopOp(runtime[tabId]);
-    delete runtime[tabId];
+  // Close cancels an in-flight send: it otherwise kept running in Go and recording history for a
+  // tab already gone.
+  const { runtime, ensureRuntime } = createRuntimeStore<HttpRequestViewRuntime>(defaultRuntime, {
+    onClose: (_tabId, rt) => stopOp(rt),
   });
 
   /** One Send op, run through HttpService.Send → the existing op scheduler — mirrors

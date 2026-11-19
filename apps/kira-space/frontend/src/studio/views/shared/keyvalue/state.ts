@@ -1,6 +1,5 @@
 import type { PageSize } from '@shared/domain/tabs';
 import type { PageCursor } from '@shared/protocol/dataOps';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../../state/pinia';
 import { data } from '../../../bridge/data';
@@ -44,15 +43,14 @@ function defaultRuntime(): KeyValueViewRuntime {
 
 export const useKeyValueViewStore = defineStore('keyValueView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
-    createRuntimeStore<KeyValueViewRuntime>(defaultRuntime);
-
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  // P63: also drops the browse split's own `${tabId}::preview` entry — that viewKey is not a real
-  // tab id, so it never closes on its own; it dies only when the browse tab that owns it does.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-    delete runtime[`${tabId}::preview`];
-  });
+    createRuntimeStore<KeyValueViewRuntime>(defaultRuntime, {
+      // P63: also drops the browse split's own `${tabId}::preview` entry — that viewKey is not a
+      // real tab id, so it never closes on its own; it dies only when the browse tab that owns it
+      // does.
+      onClose: (tabId) => {
+        delete runtime[`${tabId}::preview`];
+      },
+    });
 
   // Mirrors views/grid/state.ts's own `load()` — `revertPageIndexOnFailure`, when
   // given, is the pageIndex this tab was showing before its caller optimistically advanced it. A

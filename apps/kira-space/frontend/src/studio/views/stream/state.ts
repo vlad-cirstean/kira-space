@@ -1,7 +1,6 @@
 import { encodeKafkaStreamFilter, encodeSqsStreamFilter } from '@shared/domain/streamFilter';
 import type { PageSize } from '@shared/domain/tabs';
 import type { PageCursor } from '@shared/protocol/dataOps';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { StreamTabRecord } from '../../../state/tabDomain';
@@ -110,11 +109,6 @@ export interface StreamFilterInput {
 export const useStreamViewStore = defineStore('streamView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
     createRuntimeStore<StreamViewRuntime>(defaultRuntime);
-
-  // D4: closeTab has no way to import this leaf module directly (reality 18) — registers here.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-  });
 
   // Adopts shared/page/load.ts's runPagedLoad frame, which documents/grid/keyvalue's own load()
   // already use — this view's supersede/tab-closed/kind-check/applyLoadFailure tail was the exact

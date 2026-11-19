@@ -2,7 +2,6 @@ import type { SortSpec } from '@shared/domain/queries';
 import type { ObjectMeta } from '@shared/domain/tree';
 import type { PageCursor } from '@shared/protocol/dataOps';
 import { t } from '@theme/i18n';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { pinia } from '../../../state/pinia';
 import type { DataTabState } from '../../../state/tabDomain';
@@ -74,7 +73,7 @@ function defaultRuntime(): DataViewRuntime {
 
 export const useGridViewStore = defineStore('gridView', () => {
   const { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } =
-    createRuntimeStore<DataViewRuntime>(defaultRuntime);
+    createRuntimeStore<DataViewRuntime>(defaultRuntime, { onClose: clearCellFocus });
 
   /** The pending-changes guard lives here, not at any one caller (it used to sit only at
    *  DataToolbar.vue's own toggle button, so menu.ts's `markColumnMaskKind` — marking a column
@@ -99,15 +98,6 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (!rt.maskPreview && usePendingChangesStore().hasPending(tabId)) return;
     rt.maskPreview = !rt.maskPreview;
   }
-
-  // D4: `runtime` is this view's per-tab record — closeTab has no way to import this leaf module
-  // directly (reality 18), so it registers here instead. P67 §5.2: also drops that tab's own
-  // pending focus request (focusRequest.ts), if any — a request never outlives the tab it
-  // targeted.
-  registerTabRuntimeCleanup((tabId) => {
-    delete runtime[tabId];
-    clearCellFocus(tabId);
-  });
 
   async function loadMeta(tabId: string): Promise<void> {
     const tab = useTabsStore().findDataTab(tabId);

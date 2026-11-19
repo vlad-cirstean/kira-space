@@ -1,6 +1,7 @@
 import { newUuid } from '@shared/ids';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { reactive } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
 import { control } from '../../bridge/control';
@@ -49,8 +50,8 @@ export function stopOp(rt: { opId: string | null } | undefined): void {
  *  that unwrapped local reference directly would mean every mutation made afterward (status,
  *  hasMore, tokens, ...) bypasses the proxy's `set` trap entirely, so no dependent render (e.g. a
  *  pager button's `disabled` binding) would ever be notified. Each view keeps its own
- *  `registerTabRuntimeCleanup` call — the cleanup body genuinely differs (console's also clears
- *  `results`) — and its own `defaultRuntime()`, since the six runtime shapes differ. */
+ *  `defaultRuntime()`, since the runtime shapes differ. It registers the tab-close cleanup:
+ *  `onClose` runs first, record still present (undefined if none), then the record is deleted. */
 type HasActionError = { actionError: string | null };
 type HasSearchOpen = { searchOpen: boolean };
 
@@ -61,7 +62,10 @@ type HasSearchOpen = { searchOpen: boolean };
 // field: browse's runtime has actionError but no searchOpen (no find toolbar), console's has
 // searchOpen but no actionError (nothing to mutate) — a store built over either type only ever
 // exposes the setters that field supports, so calling the wrong one is a type error, not a no-op.
-export function createRuntimeStore<R>(makeDefault: () => R): {
+export function createRuntimeStore<R>(
+  makeDefault: () => R,
+  opts: { onClose?: (tabId: string, rt: R | undefined) => void } = {},
+): {
   runtime: Record<string, R>;
   ensureRuntime(tabId: string): R;
 } & (R extends HasActionError
@@ -93,6 +97,12 @@ export function createRuntimeStore<R>(makeDefault: () => R): {
     const rt = runtime[tabId] as unknown as HasSearchOpen | undefined;
     if (rt) rt.searchOpen = open;
   }
+
+  // closeTab cannot import a leaf view module, so the cleanup registers here.
+  registerTabRuntimeCleanup((tabId) => {
+    opts.onClose?.(tabId, runtime[tabId]);
+    delete runtime[tabId];
+  });
 
   return { runtime, ensureRuntime, setActionError, toggleSearchOpen, setSearchOpen } as never;
 }

@@ -8,7 +8,6 @@ import type {
 import { newUuid } from '@shared/ids';
 import { t } from '@theme/i18n';
 import { queryClient } from '@workbench/state/queryClient';
-import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
 import { variablesForSend } from '../../api/state/variables';
@@ -145,15 +144,10 @@ function applyGrpcEvent(tabId: string, rt: GrpcRequestViewRuntime, event: GrpcCa
 }
 
 export const useGrpcRequestViewStore = defineStore('grpcRequestView', () => {
-  const { runtime, ensureRuntime } = createRuntimeStore<GrpcRequestViewRuntime>(defaultRuntime);
-
   // dropResources is noDrop (the registry entry) — the runtime lives here, and a still-running
-  // call must be cancelled through this hook rather than through dropResources
-  // (registerTabRuntimeCleanup is the one place a closing tab's cleanup and an in-flight op's
-  // cancellation can share one call).
-  registerTabRuntimeCleanup((tabId) => {
-    stopOp(runtime[tabId]);
-    delete runtime[tabId];
+  // call must be cancelled through this hook rather than through dropResources.
+  const { runtime, ensureRuntime } = createRuntimeStore<GrpcRequestViewRuntime>(defaultRuntime, {
+    onClose: (_tabId, rt) => stopOp(rt),
   });
 
   // ---- D7/D8: the call itself ----
