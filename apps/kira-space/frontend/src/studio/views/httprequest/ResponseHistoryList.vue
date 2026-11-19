@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { httpMethodToken, statusClass, statusHint } from '@shared/domain/http';
+import { httpMethodToken } from '@shared/domain/http';
 import { HISTORY_PER_SCOPE_LIMIT, type ResponseHistoryEntry } from '@shared/domain/responseHistory';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -25,6 +24,7 @@ import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref } from 'vue';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
+import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { useHttpHistoryList, useHttpHistoryStore, useHttpHistoryViewing } from './history';
 
@@ -229,14 +229,11 @@ async function onClear(): Promise<void> {
             <Badge data variant="chip" :class="methodTextClass(httpMethodToken(entry.method))">{{
               entry.method
             }}</Badge>
-            <TextTooltip :text="statusHint(entry.status)">
-              <Badge
-                data
-                :variant="statusClass(entry.status)"
-                data-testid="http-history-status-chip"
-                >{{ entry.status }} {{ entry.statusText }}</Badge
-              >
-            </TextTooltip>
+            <HttpStatusBadge
+              :status="entry.status"
+              :status-text="entry.statusText"
+              data-testid="http-history-status-chip"
+            />
             <span :class="rowMeta">{{ formatDuration(entry.elapsedMs) }}</span>
             <span :class="rowMeta">{{ formatBytes(entry.bodyBytes) }}</span>
             <span v-if="entry.environment" :class="rowMeta">{{ entry.environment }}</span>

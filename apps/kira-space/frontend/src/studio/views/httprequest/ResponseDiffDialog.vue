@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { statusClass, statusHint } from '@shared/domain/http';
 import type { ResponseHistorySnapshot } from '@shared/domain/responseHistory';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
@@ -37,6 +34,7 @@ import { monacoLanguageIdFor } from '@workbench/editor/monacoLanguages';
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { type BeautifyResult, beautifyJson, beautifyXml } from '../../beautify';
 import { control } from '../../bridge/control';
+import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 
 // P8 D12: two entries, three levels of difference, one dialog. `ids` are the two selections from
 // the History list's own checkboxes — this dialog itself decides which is A (older) and which is
@@ -273,15 +271,11 @@ onUnmounted(() => {
                 ><RelativeTime :at="snapA.entry.sentAt" /></span
               >
               <div class="flex items-center gap-1">
-                <TextTooltip :text="statusHint(snapA.entry.status)">
-                  <Badge
-                    data
-                    :variant="statusClass(snapA.entry.status)"
-                    data-testid="http-diff-status-a"
-                  >
-                    {{ snapA.entry.status }} {{ snapA.entry.statusText }}
-                  </Badge>
-                </TextTooltip>
+                <HttpStatusBadge
+                  :status="snapA.entry.status"
+                  :status-text="snapA.entry.statusText"
+                  data-testid="http-diff-status-a"
+                />
                 <span :class="rowMeta">{{ formatDuration(snapA.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapA.entry.bodyBytes) }}</span>
               </div>
@@ -292,15 +286,11 @@ onUnmounted(() => {
                 ><RelativeTime :at="snapB.entry.sentAt" /></span
               >
               <div class="flex items-center gap-1">
-                <TextTooltip :text="statusHint(snapB.entry.status)">
-                  <Badge
-                    data
-                    :variant="statusClass(snapB.entry.status)"
-                    data-testid="http-diff-status-b"
-                  >
-                    {{ snapB.entry.status }} {{ snapB.entry.statusText }}
-                  </Badge>
-                </TextTooltip>
+                <HttpStatusBadge
+                  :status="snapB.entry.status"
+                  :status-text="snapB.entry.statusText"
+                  data-testid="http-diff-status-b"
+                />
                 <span :class="rowMeta">{{ formatDuration(snapB.entry.elapsedMs) }}</span>
                 <span :class="rowMeta">{{ formatBytes(snapB.entry.bodyBytes) }}</span>
               </div>

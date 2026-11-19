@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { AgentApiResult } from '@shared/domain/dbmcp';
-import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
-import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import HttpStatusBadge from '../components/HttpStatusBadge.vue';
 import FlushEditor from './FlushEditor.vue';
 import { prettyJson } from './prettyJson';
 
@@ -14,16 +13,6 @@ import { prettyJson } from './prettyJson';
 // card, so a 2 MiB body does not grow the dialog.
 const props = defineProps<{ response: AgentApiResult; planUrl: string; testid: string }>();
 
-const tone = computed<StatusTone>(() => {
-  const s = props.response.status;
-  if (s >= 500) return 'error';
-  if (s >= 400) return 'warn';
-  if (s >= 200 && s < 300) return 'ok';
-  return 'neutral';
-});
-const statusText = computed(() =>
-  [props.response.status, props.response.statusText].filter(Boolean).join(' '),
-);
 const finalUrl = computed(() =>
   props.response.finalUrl && props.response.finalUrl !== props.planUrl
     ? props.response.finalUrl
@@ -38,9 +27,12 @@ const json = computed(() => {
 
 <template>
   <div class="flex flex-col gap-1.5" :data-testid="testid">
-    <div class="flex items-center gap-2">
-      <Badge :variant="TONE_BADGE[tone]" :data-testid="`${testid}-status`">{{ statusText }}</Badge>
-    </div>
+    <HttpStatusBadge
+      class="self-start"
+      :status="response.status"
+      :status-text="response.statusText"
+      :data-testid="`${testid}-status`"
+    />
     <ApprovalCode v-if="finalUrl" :data-testid="`${testid}-final-url`">{{ finalUrl }}</ApprovalCode>
     <ApprovalPairs
       v-if="response.redirects.length"

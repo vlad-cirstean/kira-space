@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type HttpResponsePane, statusClass, statusHint } from '@shared/domain/http';
+import type { HttpResponsePane } from '@shared/domain/http';
 import EmptyState from '@theme/components/EmptyState.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import SearchField from '@theme/components/SearchField.vue';
@@ -7,7 +7,6 @@ import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
-import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -22,6 +21,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import { patchHttpRequestTabState } from '../../api/tabs';
+import HttpStatusBadge from '../../components/HttpStatusBadge.vue';
 import { DEFAULT_FIND_OPTIONS, type FindOptions, findRanges } from '../../editor/findRanges';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import ResponseFindBar, {
@@ -151,11 +151,6 @@ const RESPONSE_VIEW_OPTIONS = computed(() => [
 function setResponseView(view: 'pretty' | 'raw'): void {
   patchHttpRequestTabState(props.tab.id, { responseView: view });
 }
-
-// The standing caption under the status row was reported as noise. The hint is now the status
-// chip's tooltip, which is what the four other consumers of `statusHint` in this app
-// (ResponseHistoryList, ResponseDiffDialog, TimelinePane) have always done with it.
-const hint = computed(() => (response.value ? statusHint(response.value.status) : ''));
 
 const redirectCaption = computed(() => {
   const r = response.value;
@@ -294,11 +289,11 @@ onUnmounted(() => {
 
     <ViewToolbar class="response-status-row">
       <template v-if="response">
-        <TextTooltip :text="hint">
-          <Badge data :variant="statusClass(response.status)" data-testid="http-status">
-            {{ response.status }} {{ response.statusText }}
-          </Badge>
-        </TextTooltip>
+        <HttpStatusBadge
+          :status="response.status"
+          :status-text="response.statusText"
+          data-testid="http-status"
+        />
         <span class="ml-auto" />
         <TextTooltip :text="t('studio.http.response.timeTooltip.tooltip')">
           <Button variant="toolbar" size="status" data-testid="http-elapsed" @click="viewTimeline">
