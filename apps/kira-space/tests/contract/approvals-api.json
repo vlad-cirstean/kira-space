@@ -44,6 +44,7 @@
           }
         ],
         "host": "127.0.0.1",
+        "inputs": [],
         "method": "GET",
         "query": [],
         "reviewOffered": true,
@@ -103,6 +104,7 @@
         "followRedirects": true,
         "headers": [],
         "host": "127.0.0.1",
+        "inputs": [],
         "method": "GET",
         "query": [
           {
@@ -160,6 +162,7 @@
         "followRedirects": true,
         "headers": [],
         "host": "127.0.0.1",
+        "inputs": [],
         "method": "GET",
         "query": [
           {
@@ -234,6 +237,7 @@
       "followRedirects": true,
       "headers": [],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "DELETE",
       "query": [
         {
@@ -305,6 +309,7 @@
       "followRedirects": true,
       "headers": [],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "POST",
       "query": [],
       "reviewOffered": true,
@@ -378,6 +383,7 @@
         }
       ],
       "host": "127.0.0.1",
+      "inputs": [],
       "method": "POST",
       "query": [],
       "reviewOffered": true,

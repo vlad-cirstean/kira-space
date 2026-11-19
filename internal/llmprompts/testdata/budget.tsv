@@ -118,7 +118,7 @@ dbmcp.tool.get_script_run	228
 dbmcp.tool.get_script_run.arg.runId	23
 dbmcp.tool.get_script_run.arg.waitSeconds	74
 dbmcp.tool.api_list_environments	312
-dbmcp.tool.api_request	764
+dbmcp.tool.api_request	1171
 dbmcp.tool.api_request.arg.environmentId	68
 dbmcp.tool.api_request.arg.method	47
 dbmcp.tool.api_request.arg.url	53
@@ -136,7 +136,10 @@ dbmcp.tool.api_request.arg.form.value	42
 dbmcp.tool.api_request.arg.timeoutSeconds	35
 dbmcp.tool.api_request.arg.maxResponseBytes	56
 dbmcp.tool.api_request.arg.followRedirects	101
-dbmcp.tool.list_kept_variables	139
+dbmcp.tool.list_kept_variables	258
+dbmcp.tool.api_request.arg.inputs	263
+dbmcp.tool.api_request.arg.inputs.name	33
+dbmcp.tool.api_request.arg.inputs.label	58
 dbmcp.tool.api_request.arg.script	82
 dbmcp.tool.api_request.arg.script.prepare	279
 dbmcp.tool.api_request.arg.script.input	49

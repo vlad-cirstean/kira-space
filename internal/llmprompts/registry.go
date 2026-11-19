@@ -1458,13 +1458,13 @@ var DbmcpToolAPIListEnvironments = define(Entry{
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped. Kept variables: Kira holds named values you never see. Use {{kept.name}} in a later url path, query, header, form field or body. In a JSON body write it unquoted; Kira inserts JSON. A list fits only a JSON body. Values expire (default 1 hour) and the user can clear them. list_kept_variables shows what exists.",
+	Default: "Send one HTTP request. Reference shared variables as {{name}}, in the url, headers, query or body. A secret goes only to its allowed hosts, otherwise the call fails. The user may be asked to approve; hosts the user allowed are sent without asking. User access rules may refuse a host or method, and redirects to hosts they do not allow; the error names the allowed ones. TLS is always verified. Secret values are masked in the response, which is capped. Kept variables: Kira holds named values you never see. Use {{kept.name}} in a later url path, query, header, form field or body. In a JSON body write it unquoted; Kira inserts JSON. A list fits only a JSON body. Values expire (default 1 hour) and the user can clear them. list_kept_variables shows what exists. Inputs: for a value only the user has (token, password, one-time code), declare it in inputs as {name, label} and write {{kept.name}} where it goes. Kira asks the user in the approval and keeps it for later requests to the same host. A missing value always waits for the user; a kept one is reused without asking. You never see it: an echo shows {{kept.name}}. Never ask the user to paste it into the chat.",
 }, NoVars{})
 
 // DbmcpToolListKept describes the list_kept_variables tool.
 var DbmcpToolListKept = define(Entry{
 	ID: "dbmcp.tool.list_kept_variables", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_kept_variables",
-	Default: "List the kept variables you can use as {{kept.name}}: name, type, item count, source tool and seconds until expiry. Values are never shown.",
+	Default: "List the kept variables you can use as {{kept.name}}: name, type, item count, secret flag, source (kind, tool) and seconds until expiry. Values are never shown. Entries with source user were typed by the user; use them only with the host they were given for.",
 }, NoVars{})
 
 var (
@@ -1485,6 +1485,9 @@ var (
 	_ = arg(DbmcpToolAPIRequest.id, "timeoutSeconds", studioApp, NextCall, `Request timeout, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 30, Max: 300})
 	_ = arg(DbmcpToolAPIRequest.id, "maxResponseBytes", studioApp, NextCall, `Response body cap in bytes, up to {{.Max}}. Default {{.Default}}.`, LimitVars{Default: 65536, Max: 524288})
 	_ = arg(DbmcpToolAPIRequest.id, "followRedirects", studioApp, NextCall, `Follow redirects. Default true. A redirect that would carry a credential to a host not allowed fails.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs", studioApp, NextCall, `Values the user types in the approval, never shown to you. Each has name (starts with a letter; letters, digits, underscore; at most 40) and label (what the user is asked for, one line, at most 80 characters). Use each as {{kept.name}} in this request. At most 4.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs.name", studioApp, NextCall, `Kept variable name for the value.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "inputs.label", studioApp, NextCall, `What the user is asked for, such as Personal access token.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this request. At least one of prepare or transform.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Globals: request (your method, url, headers, query, body, contentType, form, with {{name}} references unresolved) and input. Return an object with any of method, url, headers, query, body (text, or an object or array sent as JSON), contentType, form.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script.input", studioApp, NextCall, `Any JSON, up to 1 MiB, given to prepare as input.`, NoVars{})

@@ -16,12 +16,14 @@ import (
 const (
 	apiReviewBySetting   = "setting"
 	apiReviewByRequested = "requested"
+	// apiReviewByUserValue: a script read a value the user supplied; a transform could hide it from the mask.
+	apiReviewByUserValue = "userValue"
 )
 
 // apiReview is the review decision for one request.
 type apiReview struct {
 	On bool
-	// Reason is why the response is held: "setting" or "requested".
+	// Reason is why the response is held: "setting", "requested" or "userValue".
 	Reason string
 }
 
@@ -44,10 +46,12 @@ func (s *Server) apiReviewSetting(env agentapi.EnvInfo, read bool) bool {
 	return s.apiSettings().ReviewResponses
 }
 
-// apiReviewFor is the one place that decides whether a response is held. Setting wins over requested
-// for the reason.
-func (s *Server) apiReviewFor(plan agentapi.Planned, _ *apiScripts, requested bool) apiReview {
+// apiReviewFor is the one place that decides whether a response is held. A script reading a user-supplied
+// value forces it whatever the settings say; setting wins over requested for the reason.
+func (s *Server) apiReviewFor(plan agentapi.Planned, sc *apiScripts, requested bool) apiReview {
 	switch {
+	case sc != nil && sc.kept.readsUserValue():
+		return apiReview{On: true, Reason: apiReviewByUserValue}
 	case s.apiReviewSetting(plan.Env, apiReadClass(plan)):
 		return apiReview{On: true, Reason: apiReviewBySetting}
 	case requested:

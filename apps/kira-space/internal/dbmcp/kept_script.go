@@ -119,6 +119,41 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 	k.uses = append(k.uses, u)
 }
 
+// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced):
+// a use made at plan time holds the old entry id, or none for a value that did not exist yet.
+func (k *keptRun) rebind(names []string) {
+	if k == nil {
+		return
+	}
+	for _, name := range names {
+		var sites []agentapi.KeptSite
+		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
+			sites = k.uses[i].Sites
+			k.uses = slices.Delete(k.uses, i, i+1)
+		} else {
+			for _, stage := range []scriptStage{stagePrepare, stageTransform} {
+				for _, st := range k.sites[stage] {
+					if st.Op == "get" && st.Name == name {
+						sites = append(sites, agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To})
+					}
+				}
+			}
+		}
+		for _, site := range sites {
+			k.addUse(name, site)
+		}
+	}
+}
+
+// readsUserValue reports whether a script reads a value the user supplied. A transform can reshape it past
+// any mask, so the result always goes through review.
+func (k *keptRun) readsUserValue() bool {
+	if k == nil {
+		return false
+	}
+	return slices.ContainsFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Source.Kind == keptvars.SourceUser })
+}
+
 // declared reports whether the stage's source calls op with the literal name.
 func (k *keptRun) declared(stage scriptStage, op, name string) bool {
 	return slices.ContainsFunc(k.sites[stage], func(st keptvars.ScriptSite) bool { return st.Op == op && st.Name == name })

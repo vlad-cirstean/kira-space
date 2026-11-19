@@ -33,6 +33,7 @@
         "followRedirects": true,
         "headers": [],
         "host": "127.0.0.1",
+        "inputs": [],
         "method": "POST",
         "query": [
           {

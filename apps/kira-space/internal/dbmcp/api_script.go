@@ -52,6 +52,8 @@ type apiOutcome struct {
 	Raw         agentapi.Result
 	Transformed json.RawMessage // nil without a transform or on failure
 	Failure     string          // transform failure text, "" otherwise
+	// Inputs says what became of each declared input; empty without inputs.
+	Inputs []agentapi.InputStatus
 }
 
 func newAPIScripts(a *apiScriptArgs) *apiScripts {
@@ -369,7 +371,7 @@ func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []
 			key string
 			v   any
 			n   int
-		}{{"kept", saved, len(saved)}, {"keptNotSaved", failed, len(failed)}} {
+		}{{"inputs", o.Inputs, len(o.Inputs)}, {"kept", saved, len(saved)}, {"keptNotSaved", failed, len(failed)}} {
 			if f.n == 0 {
 				continue
 			}
@@ -380,8 +382,23 @@ func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []
 			text += `,"` + f.key + `":` + string(b)
 		}
 		return textResult(text + `}`)
+	case len(o.Inputs) > 0:
+		return rawWithInputs(o)
 	}
 	return jsonResult(o.Raw)
+}
+
+// rawWithInputs is the masked response as is plus the inputs summary as one more key.
+func rawWithInputs(o apiOutcome) (*mcp.CallToolResult, any, error) {
+	body, err := json.Marshal(o.Raw)
+	if err != nil {
+		return nil, nil, fmt.Errorf("dbmcp: encode result: %w", err)
+	}
+	inputs, err := json.Marshal(o.Inputs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("dbmcp: encode result: %w", err)
+	}
+	return textResult(string(body[:len(body)-1]) + `,"inputs":` + string(inputs) + `}`)
 }
 
 // apiPrepareView is the prepare script as the approval card shows it.

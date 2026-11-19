@@ -71,6 +71,8 @@ type apiRequestArgs struct {
 	FollowRedirects  *bool     `json:"followRedirects,omitempty"`
 	// Script is set by an agent that attaches JavaScript to the request.
 	Script *apiScriptArgs `json:"script,omitempty"`
+	// Inputs are values only the user has; the user types them in the approval.
+	Inputs []apiInput `json:"inputs,omitempty"`
 }
 
 func pairs(in []apiPair) []agentapi.NameValue {
@@ -86,6 +88,7 @@ func (a apiRequestArgs) input(scope string) agentapi.Input {
 		EnvironmentID: a.EnvironmentID, Method: a.Method, URL: a.URL,
 		Headers: pairs(a.Headers), Query: pairs(a.Query), Body: a.Body, ContentType: a.ContentType, Form: pairs(a.Form),
 		TimeoutSeconds: a.TimeoutSeconds, MaxResponseBytes: a.MaxResponseBytes, FollowRedirects: a.FollowRedirects, Scope: scope,
+		Inputs: inputDecls(a.Inputs), ScriptReads: scriptReads(a.Script),
 	}
 }
 
@@ -152,13 +155,17 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if err != nil {
 		return errResult(err.Error())
 	}
-	requested := false
-	if needsAPIApproval(settings, plan) {
+	var ap apiApproval
+	// A missing input forces the card whatever the rules say: the card is the only place the value is typed.
+	if needsAPIApproval(settings, plan) || plan.MissingInputs() > 0 {
 		var res *mcp.CallToolResult
-		var err error
-		if res, requested, err = s.approveAPI(ctx, plan, sc); res != nil || err != nil {
+		if ap, res, err = s.approveAPI(ctx, plan, sc); res != nil || err != nil {
 			return res, nil, err
 		}
+	}
+	statuses, plan, refusal := s.settleInputs(ctx, in, plan, sc, ap.supplied)
+	if refusal != "" {
+		return errResult(refusal)
 	}
 	if sc.hasTransform() {
 		in.ScriptBodyBytes = transformBodyBytes
@@ -167,11 +174,39 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if err != nil {
 		return errResult(err.Error())
 	}
-	o := apiOutcome{Raw: raw}
+	o := apiOutcome{Raw: raw, Inputs: statuses}
 	if sc.hasTransform() {
 		o = s.transformAPI(ctx, plan, sc, raw)
+		o.Inputs = statuses
 	}
-	return s.deliverAPI(ctx, plan, sc, o, requested)
+	return s.deliverAPI(ctx, plan, sc, o, ap.requested)
+}
+
+// settleInputs stores what the user typed, then plans again so the plan binds the stored entries' ids (a needed
+// input had none, a replaced one has a new id) and the scripts read the fresh entries. The refusal is
+// non-empty when a value could not be kept or the request no longer plans.
+func (s *Server) settleInputs(ctx context.Context, in agentapi.Input, plan agentapi.Planned, sc *apiScripts, supplied SuppliedInputs) ([]agentapi.InputStatus, agentapi.Planned, string) {
+	if len(plan.Inputs) == 0 {
+		supplied.Wipe()
+		return nil, plan, ""
+	}
+	statuses, err := s.keepInputs(ctx, plan, supplied)
+	if err != nil {
+		return nil, plan, err.Error()
+	}
+	next, err := s.cfg.API.Plan(in)
+	if err != nil {
+		return nil, plan, err.Error()
+	}
+	names := make([]string, len(plan.Inputs))
+	for i, u := range plan.Inputs {
+		names[i] = u.Name
+	}
+	if sc != nil {
+		sc.kept.rebind(names)
+	}
+	s.fillReused(ctx, statuses)
+	return statuses, next, ""
 }
 
 // openScripts validates the script argument and syntax-checks both scripts before anything runs.
@@ -217,26 +252,33 @@ func needsAPIApproval(st APISettings, p agentapi.Planned) bool {
 
 func isReadMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPTIONS" }
 
+// apiApproval is what an approved card hands back: the review tick and the typed values.
+type apiApproval struct {
+	requested bool
+	supplied  SuppliedInputs
+}
+
 // approveAPI asks the user. A non-nil result stops the call; requested says the user ticked "review the
-// response" on the card.
-func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (res *mcp.CallToolResult, requested bool, err error) {
+// response" on the card and supplied holds the values the user typed.
+func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (apiApproval, *mcp.CallToolResult, error) {
 	ctx, stop := s.watchKept(ctx, keptUsesOf(plan, sc))
 	defer stop()
-	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
+	outcome, choice, supplied := s.cfg.Approvals.RequestInputs(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
 		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan, APIScript: sc,
-		OfferReview: true, ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)),
+		OfferReview: true, ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)), Inputs: approvalInputsOf(plan),
 	})
 	if outcome != ApprovalApproved {
+		supplied.Wipe()
 		var gone *keptGoneError
 		if errors.As(context.Cause(ctx), &gone) {
 			res, _, err := errResult(gone.Error())
-			return res, false, err
+			return apiApproval{}, res, err
 		}
 		res, _, err := approvalOutcomeError(outcome, "request")
-		return res, false, err
+		return apiApproval{}, withNoValueKept(res, plan), err
 	}
-	return nil, choice.ReviewResult, nil
+	return apiApproval{requested: choice.ReviewResult, supplied: supplied}, nil, nil
 }
 
 // addAPITools registers api_list_environments and api_request.
@@ -314,6 +356,8 @@ type apiPayload struct {
 	TimeoutSeconds  int                   `json:"timeoutSeconds"`
 	Kept            []agentapi.KeptUse    `json:"kept,omitempty"`
 	Script          *apiScriptPayload     `json:"script"`
+	// Inputs are the values the card asks the user to type, or reuses; never a value.
+	Inputs []apiInputPayload `json:"inputs"`
 	// ReviewOffered shows "review the response"; ReviewResult says the settings already hold it.
 	ReviewOffered bool `json:"reviewOffered"`
 	ReviewResult  bool `json:"reviewResult"`
@@ -370,6 +414,7 @@ func apiItemParts(r ApprovalRequest) (approvals.Target, approvals.Operation, []b
 	}
 	target, op := apiTargetOp(p)
 	payload := apiPayloadOf(p)
+	payload.Inputs = apiInputsPayload(p)
 	payload.Script = apiScriptPayloadOf(r.APIScript)
 	if r.APIScript != nil && r.APIScript.kept != nil {
 		payload.Kept = mergeKept(payload.Kept, r.APIScript.kept.uses)

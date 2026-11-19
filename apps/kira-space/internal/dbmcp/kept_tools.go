@@ -41,11 +41,13 @@ type keptListEntry struct {
 	Name             string         `json:"name"`
 	Type             string         `json:"type"`
 	Items            int            `json:"items"`
+	Secret           bool           `json:"secret"`
 	Source           keptListSource `json:"source"`
 	ExpiresInSeconds int            `json:"expiresInSeconds"`
 }
 
 type keptListSource struct {
+	Kind string `json:"kind"`
 	MCP  string `json:"mcp"`
 	Tool string `json:"tool"`
 }
@@ -56,7 +58,8 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	out := make([]keptListEntry, 0, len(list))
 	for _, m := range list {
 		out = append(out, keptListEntry{
-			Name: m.Name, Type: m.Type, Items: m.Items, Source: keptListSource{MCP: m.Source.MCP, Tool: m.Source.Tool},
+			Name: m.Name, Type: m.Type, Items: m.Items, Secret: m.Secret,
+			Source:           keptListSource{Kind: string(m.Source.Kind), MCP: m.Source.MCP, Tool: m.Source.Tool},
 			ExpiresInSeconds: max(int(math.Ceil(time.Until(m.ExpiresAt).Seconds())), 0),
 		})
 	}
@@ -76,6 +79,8 @@ func (s *Server) addKeptTools(srv *mcp.Server, src llmprompts.Source) {
 type keptGoneError struct {
 	name   string
 	reason keptvars.Reason
+	// user marks a value the user supplied: the agent repeats the request and the user is asked again.
+	user bool
 }
 
 func (e *keptGoneError) why() string {
@@ -91,6 +96,9 @@ func (e *keptGoneError) why() string {
 }
 
 func (e *keptGoneError) Error() string {
+	if e.user {
+		return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Repeat the request with the same inputs; the user will be asked again.", e.name, e.why())
+	}
 	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
 }
 
@@ -105,14 +113,22 @@ func (s *Server) watchKept(ctx context.Context, uses []agentapi.KeptUse) (contex
 	if len(uses) == 0 || s.cfg.Kept == nil {
 		return ctx, func() {}
 	}
-	ctx2, cancel := context.WithCancelCause(ctx)
-	names := make(map[string]string, len(uses))
-	ids := make([]string, len(uses))
-	for i, u := range uses {
-		names[u.ID], ids[i] = u.Name, u.ID
+	// A use with no id is a value the user has not supplied yet: nothing to watch.
+	byID := make(map[string]agentapi.KeptUse, len(uses))
+	ids := make([]string, 0, len(uses))
+	for _, u := range uses {
+		if u.ID != "" {
+			byID[u.ID] = u
+			ids = append(ids, u.ID)
+		}
 	}
+	if len(ids) == 0 {
+		return ctx, func() {}
+	}
+	ctx2, cancel := context.WithCancelCause(ctx)
 	unwatch := s.cfg.Kept.OnRemove(ids, func(r keptvars.Removal) {
-		cancel(&keptGoneError{name: names[r.ID], reason: r.Reason})
+		u := byID[r.ID]
+		cancel(&keptGoneError{name: u.Name, reason: r.Reason, user: u.Source.Kind == keptvars.SourceUser})
 	})
 	return ctx2, func() { unwatch(); cancel(nil) }
 }
