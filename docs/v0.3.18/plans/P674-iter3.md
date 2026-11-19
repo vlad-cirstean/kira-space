@@ -257,7 +257,7 @@ are known hits.
     `studio.http.raw.requestPending.label` to `common.field.request.label`;
     `studio.http.diff.unchangedRow.status` to `common.diff.unchangedRow.status`.
   - `workbench.tabStrip.newTab.label` to `common.tab.new.label`;
-    `workbench.tabStrip.discard.title`, `.body` to `common.tab.discardConfirm.title`, `.body`;
+    `workbench.tabStrip.discard.title`, `.body` to `common.tab.discard.title`, `.body`;
     `workbench.statusBar.runs.open.hint` to `automations.statusBar.runs.open.hint` when automations
     is its only caller, else `common.statusBar.runs.open.hint`.
   - Stay (covered by a pair): `git.op.inProgress.rebase.label`, `git.review.comments.*` (6 keys),

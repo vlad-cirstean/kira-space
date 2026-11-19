@@ -580,6 +580,13 @@
         "emptyHint": "Run a script from the panel, or open a terminal."
       }
     },
+    "statusBar": {
+      "runs": {
+        "open": {
+          "hint": "Click to show the runs list."
+        }
+      }
+    },
     "target": {
       "hint": "The ADE task and branch each scheduled run uses.",
       "title": "Target of {name}"
@@ -4055,8 +4062,15 @@
       }
     },
     "tab": {
+      "discard": {
+        "body": "{count} tab has unsaved changes. Closing discards them. | {count} tabs have unsaved changes. Closing discards them.",
+        "title": "Discard unsaved changes"
+      },
       "logs": {
         "label": "Logs"
+      },
+      "new": {
+        "label": "New tab"
       },
       "overview": {
         "label": "Overview"
@@ -18797,23 +18811,11 @@
           "tooltip": "Stop {name}"
         },
         "title": "Running operations"
-      },
-      "runs": {
-        "open": {
-          "hint": "Click to show the runs list."
-        }
       }
     },
     "tabStrip": {
-      "discard": {
-        "body": "{count} tab has unsaved changes. Closing discards them. | {count} tabs have unsaved changes. Closing discards them.",
-        "title": "Discard unsaved changes"
-      },
       "duplicate": {
         "label": "Duplicate tab"
-      },
-      "newTab": {
-        "label": "New tab"
       }
     },
     "terminal": {

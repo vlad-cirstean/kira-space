@@ -242,8 +242,8 @@ export function useFileEdit(o: FileEditOptions) {
       return;
     }
     const ok = await confirmDialog.confirm({
-      title: t('workbench.tabStrip.discard.title'),
-      message: t('workbench.tabStrip.discard.body', { count: 1 }),
+      title: t('common.tab.discard.title'),
+      message: t('common.tab.discard.body', { count: 1 }),
       confirmLabel: t('common.action.discard.label'),
       tone: 'danger',
     });

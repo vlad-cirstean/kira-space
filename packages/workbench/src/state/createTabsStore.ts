@@ -478,8 +478,8 @@ export function createTabsStore<
 
     function askDiscard(count: number): Promise<boolean> {
       return useConfirmDialogStore().confirm({
-        title: t('workbench.tabStrip.discard.title'),
-        message: t('workbench.tabStrip.discard.body', { count }),
+        title: t('common.tab.discard.title'),
+        message: t('common.tab.discard.body', { count }),
         confirmLabel: t('common.action.discard.label'),
         tone: 'danger',
       });
