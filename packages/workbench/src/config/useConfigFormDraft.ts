@@ -43,7 +43,6 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
   const dirty = ref(false);
   const model = ref<V | null>(null);
   const problem = ref<FormProblem | null>(null);
-  const conflict = ref(false);
   // The draft text as loaded or typed in YAML does not decode: the form has nothing to show.
   const undecodable = ref(false);
 
@@ -105,17 +104,12 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
   watch(model, () => void scheduleApply(), { deep: true });
 
   const writer = useAsyncAction(async (text: string) => {
-    try {
-      const next = await opts.save(text, baseHash.value);
-      conflict.value = false;
-      baseHash.value = next.hash;
-      if (draft.value === text) dirty.value = false;
-      await opts.afterSave?.();
-    } catch (err) {
-      conflict.value = (err as { code?: string }).code === 'E_CONFLICT';
-      throw err;
-    }
+    const next = await opts.save(text, baseHash.value);
+    baseHash.value = next.hash;
+    if (draft.value === text) dirty.value = false;
+    await opts.afterSave?.();
   });
+  const conflict = computed(() => writer.cause.value?.code === 'E_CONFLICT');
   const saving = writer.pending;
   const saveError = computed(() => writer.error.value ?? '');
 
@@ -123,8 +117,7 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
     draft.value = data?.text ?? '';
     baseHash.value = data?.hash ?? '';
     dirty.value = false;
-    writer.error.value = null;
-    conflict.value = false;
+    writer.reset();
     return decode();
   }
 
@@ -175,7 +168,6 @@ export function useConfigFormDraft<V extends object>(opts: ConfigFormDraftOption
     const fresh = await opts.refetch();
     if (!fresh) return;
     baseHash.value = fresh.hash;
-    conflict.value = false;
     dirty.value = true;
     await saveNow();
   }

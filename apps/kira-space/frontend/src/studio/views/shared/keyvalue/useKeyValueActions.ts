@@ -27,6 +27,7 @@ export function useKeyValueActions(
   const objectDraft = ref<string | null>(null);
   let declined = false;
   const objectSave = useAsyncAction(async (value: string) => {
+    if (gate.stale.value) throw new Error(t('studio.common.connectionLost.error'));
     declined = !(await saveValueEdit(viewKey(), gate.keyName.value, value, openedETag()));
   });
 
@@ -46,16 +47,12 @@ export function useKeyValueActions(
   watch(gate.page, () => {
     selectedRow = null;
     objectDraft.value = null;
-    objectSave.error.value = null;
+    objectSave.reset();
     cellSelectionStore.clearSelectedCellFor(viewKey());
   });
 
   async function saveObjectEdit(): Promise<void> {
     if (objectDraft.value === null || !gate.keyName.value) return;
-    if (gate.stale.value) {
-      objectSave.error.value = t('studio.common.connectionLost.error');
-      return;
-    }
     if ((await objectSave.run(objectDraft.value)) && !declined) objectDraft.value = null;
   }
 

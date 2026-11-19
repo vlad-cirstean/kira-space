@@ -92,6 +92,7 @@ const editorHost = ref<{
 const {
   starting,
   connectError,
+  resetConnectError,
   runBlocked,
   canExplain,
   explainTooltip,
@@ -155,7 +156,7 @@ let lastEmitted = props.tab.state.text;
 function resetStalePreviewState(): void {
   clearFormatMessages();
   explainError.value = null;
-  connectError.value = null;
+  resetConnectError();
   consoleViewStore.clearAutoExplain(props.tab.id);
 }
 

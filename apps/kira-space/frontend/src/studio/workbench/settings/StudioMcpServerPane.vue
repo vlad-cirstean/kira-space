@@ -47,11 +47,11 @@ const actionError = computed(
     install.error.value,
 );
 function clearActionErrors(): void {
-  toggle.error.value = null;
-  preview.error.value = null;
-  focus.error.value = null;
-  regenerate.error.value = null;
-  install.error.value = null;
+  toggle.reset();
+  preview.reset();
+  focus.reset();
+  regenerate.reset();
+  install.reset();
 }
 async function onToggleDbMcpEnabled(enabled: boolean): Promise<void> {
   clearActionErrors();

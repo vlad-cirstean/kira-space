@@ -19,7 +19,7 @@ import { ICON } from '@theme/icons';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import SecretInput from '@workbench/components/SecretInput.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 export interface ConfigSecretRow {
   name: string;
@@ -47,16 +47,17 @@ const props = defineProps<{
 
 const target = ref<string | null>(null);
 const value = ref('');
-const error = ref('');
 const save = useAsyncAction((name: string, secret: string) => props.setSecret(name, secret));
 const drop = useAsyncAction((name: string) => props.deleteSecret(name));
+const error = computed(() => save.error.value ?? drop.error.value ?? '');
 
 const tid = (suffix: string): string => `${props.testidPrefix}-${suffix}`;
 
 function open(row: ConfigSecretRow): void {
   target.value = row.name;
   value.value = '';
-  error.value = '';
+  save.reset();
+  drop.reset();
 }
 
 function close(): void {
@@ -66,8 +67,8 @@ function close(): void {
 
 async function submit(): Promise<void> {
   if (target.value === null || value.value === '') return;
+  drop.reset();
   if (await save.run(target.value, value.value)) close();
-  else error.value = save.error.value ?? '';
 }
 
 async function remove(row: ConfigSecretRow): Promise<void> {
@@ -78,7 +79,8 @@ async function remove(row: ConfigSecretRow): Promise<void> {
     tone: 'danger',
   });
   if (!ok) return;
-  error.value = (await drop.run(row.name)) ? '' : (drop.error.value ?? '');
+  save.reset();
+  await drop.run(row.name);
 }
 
 const refExample = '$' + '{secret:name}';

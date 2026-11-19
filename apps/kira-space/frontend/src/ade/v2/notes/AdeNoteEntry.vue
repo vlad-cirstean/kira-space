@@ -6,7 +6,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { formatRelative } from '@workbench/behaviour/format';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { computed, ref, watch } from 'vue';
@@ -51,12 +51,11 @@ watch(
   },
   { immediate: true },
 );
-const saving = useAsyncAction(async () => {
-  if (text.value !== props.handover.body) {
-    await update.mutateAsync({ id: props.handover.id, body: text.value });
-  }
-  emit('done');
-});
+const saving = useMutationAction(update);
+async function save(): Promise<void> {
+  const unchanged = text.value === props.handover.body;
+  if (unchanged || (await saving.run({ id: props.handover.id, body: text.value }))) emit('done');
+}
 
 function time(h: Handover): string {
   return formatRelative(h.state === 'draft' ? h.updatedAt : h.createdAt);
@@ -147,7 +146,7 @@ function time(h: Handover): string {
         focus-on-mount
         :hard-breaks="author !== 'user'"
         data-testid="ade-handover-text"
-        @submit="saving.run"
+        @submit="save"
       />
       <Alert v-if="saving.error.value" variant="error" data-testid="ade-handover-error"
         ><AlertDescription>{{ saving.error.value }}</AlertDescription></Alert
@@ -167,7 +166,7 @@ function time(h: Handover): string {
           size="kira"
           :pending="saving.pending.value"
           data-testid="ade-handover-save"
-          @click="saving.run"
+          @click="save"
           >{{
             t('common.action.save.label')
           }}</Button

@@ -15,7 +15,7 @@ export function useConfirmRun(
     if (message !== null) throw new Error(message);
   });
   watch(open, (o) => {
-    if (o) action.error.value = null;
+    if (o) action.reset();
   });
   async function confirm(): Promise<void> {
     if (action.pending.value) return;

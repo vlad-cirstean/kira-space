@@ -1,4 +1,4 @@
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { stageSessions } from '../board/stageSessions';
@@ -210,9 +210,10 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   }
 
   /** Not now on the routed prompt: keeps the draft and withdraws the popup. */
-  const dismissal = useAsyncAction(async () => {
-    if (taskId.value) await dismissM.mutateAsync({ taskId: taskId.value });
-  });
+  const dismissal = useMutationAction(dismissM);
+  async function dismiss(): Promise<boolean> {
+    return taskId.value ? dismissal.run({ taskId: taskId.value }) : true;
+  }
 
   const error = computed(() => dismissal.error.value ?? '');
   /** Edits the draft would lose on close. */
@@ -239,6 +240,6 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     openPass,
     close,
     submit,
-    dismiss: dismissal.run,
+    dismiss,
   };
 });

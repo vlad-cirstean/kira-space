@@ -36,10 +36,10 @@ const actionError = computed(
     apiReview.error.value,
 );
 function clearActionErrors(): void {
-  apiRequests.error.value = null;
-  apiApproval.error.value = null;
-  apiScripts.error.value = null;
-  apiReview.error.value = null;
+  apiRequests.reset();
+  apiApproval.reset();
+  apiScripts.reset();
+  apiReview.reset();
 }
 async function onToggleApiReview(enabled: boolean): Promise<void> {
   clearActionErrors();

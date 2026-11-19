@@ -18,14 +18,14 @@ export const useAdeRepoGateStore = defineStore('adeRepoGate', () => {
     const done = resolver;
     resolver = null;
     request.value = null;
-    adding.error.value = null;
+    adding.reset();
     done?.(chosen);
   }
 
   function ask(taskId: string): Promise<boolean> {
     resolver?.(false); // a second ask replaces the open one
     added = new Set();
-    adding.error.value = null;
+    adding.reset();
     request.value = { taskId };
     return new Promise<boolean>((resolve) => {
       resolver = resolve;

@@ -114,9 +114,11 @@ useEventListener(
   { passive: true },
 );
 
-const { run, pending, error } = useAsyncAction(async (action: () => Promise<void> | undefined) => {
-  await action();
-});
+const { run, pending, error, reset } = useAsyncAction(
+  async (action: () => Promise<void> | undefined) => {
+    await action();
+  },
+);
 
 // Edit and submit never carry the host tab: it is a destination, not a comment kind.
 const wireKind = (): ReviewCommentKind => (kind.value === 'host' ? 'question' : kind.value);
@@ -140,12 +142,12 @@ function startEdit(): void {
   if (!comment) return;
   draft.value = comment.body;
   kind.value = comment.kind;
-  error.value = null;
+  reset();
   mode.value = 'edit';
 }
 
 function cancelEdit(): void {
-  error.value = null;
+  reset();
   mode.value = 'view';
 }
 

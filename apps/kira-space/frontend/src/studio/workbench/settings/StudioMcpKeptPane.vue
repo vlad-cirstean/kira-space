@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { KeptEntry } from '@shared/domain/kept';
 import InlineState from '@theme/components/InlineState.vue';
 import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
@@ -15,7 +14,7 @@ import {
 } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import NumberStepperInput from '@theme/NumberStepperInput.vue';
-import { useAsyncAction } from '@workbench/behaviour/asyncAction';
+import { useAsyncAction, useMutationAction } from '@workbench/behaviour/asyncAction';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, useId, watch } from 'vue';
@@ -67,7 +66,7 @@ async function onRetention(e: Event): Promise<void> {
   }
 }
 
-const clearOne = useAsyncAction((e: KeptEntry) => clear.mutateAsync([e.id]));
+const clearOne = useMutationAction(clear);
 function clearAll(): void {
   void confirmStore.confirm({
     title: t('studio.settings.kept.clearAll.title'),
@@ -135,7 +134,7 @@ function clearAll(): void {
         <Card v-if="entries.length" variant="list">
           <ul class="m-0 flex list-none flex-col p-0" data-testid="settings-kept-list">
             <li v-for="e in entries" :key="e.id" data-testid="settings-kept-entry">
-              <KeptEntryRow :entry="e" @clear="clearOne.run(e)" />
+              <KeptEntryRow :entry="e" @clear="clearOne.run([e.id])" />
             </li>
           </ul>
         </Card>
