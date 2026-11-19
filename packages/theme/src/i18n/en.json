@@ -15692,6 +15692,15 @@
           "label": "Language"
         },
         "contentType": {
+          "auto": {
+            "status": "{header}: {type} (auto)"
+          },
+          "binary": {
+            "status": "No {header} (binary)"
+          },
+          "fromHeader": {
+            "status": "{header}: {type} (from your header)"
+          },
           "placeholder": "Content type"
         }
       },
@@ -15773,6 +15782,23 @@
         }
       },
       "editRaw": {
+        "parse": {
+          "folded": {
+            "error": "Line {line} is an obsolete header-folding continuation line; this app does not join it onto the header above."
+          },
+          "noColon": {
+            "error": "Line {line} (“{text}”) has no colon; every header line is a name, a colon and a value."
+          },
+          "noSpace": {
+            "error": "The first line needs a method and a target, separated by a space."
+          },
+          "noTarget": {
+            "error": "No request target was found on the first line."
+          },
+          "unknownMethod": {
+            "error": "“{method}” is not one of the seven supported methods ({methods})."
+          }
+        },
         "unavailable": {
           "tooltip": "A form-data or binary body has no text form that can be edited and parsed back, because a file part is bytes on disk. Its wire form is in the raw view of the response pane"
         }
