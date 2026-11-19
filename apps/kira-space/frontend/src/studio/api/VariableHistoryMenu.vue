@@ -2,9 +2,9 @@
 import type { ApiVariableHistoryEntry } from '@shared/domain/variables';
 import InlineState from '@theme/components/InlineState.vue';
 import MaskedValue from '@theme/components/MaskedValue.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
 import { PopoverContent, PopoverList } from '@theme/components/ui/popover';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
@@ -74,11 +74,9 @@ function onEye(entry: ApiVariableHistoryEntry): void {
             ><TruncatedText :text="displayValue(entry)" /></span
           >
         </div>
-        <TooltipIconButton
+        <ValueRevealButton
           v-if="canToggle(entry)"
-          :icon="isMasked(entry) ? 'eye' : 'eye-closed'"
-          :label="isMasked(entry) ? t('common.action.reveal.label') : t('common.action.hide.label')"
-          :pressed="!isMasked(entry)"
+          :shown="!isMasked(entry)"
           data-testid="variable-history-reveal"
           @click="onEye(entry)"
         />

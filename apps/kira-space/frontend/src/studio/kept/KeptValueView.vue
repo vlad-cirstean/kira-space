@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import Disclosure from '@theme/components/Disclosure.vue';
 import MaskedValue from '@theme/components/MaskedValue.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
+import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
@@ -85,13 +85,8 @@ async function valueText(): Promise<string> {
           :message="t('common.copy.copiedValue.announce')"
           data-testid="kept-value-copy"
         />
-        <TooltipIconButton
-          :icon="secretReveal.value.value !== null ? 'eye-closed' : 'eye'"
-          :label="
-            secretReveal.value.value !== null
-              ? t('common.action.hide.label')
-              : t('common.action.reveal.label')
-          "
+        <ValueRevealButton
+          :shown="secretReveal.value.value !== null"
           :disabled="secretReveal.busy.value"
           data-testid="kept-value-reveal"
           @click="secretReveal.value.value !== null ? secretReveal.hide() : secretReveal.reveal()"
