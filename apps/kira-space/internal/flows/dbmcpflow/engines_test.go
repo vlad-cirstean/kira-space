@@ -37,6 +37,9 @@ type engine struct {
 	big, bigPath string
 	// customers is the seeded people table for masking; masks and browse are skipped where empty.
 	customers, customersPath string
+	// typesRead selects a big int (9007199254740993), a decimal (12.50), NULL and a timestamp, in that order;
+	// empty where the engine has no such statement.
+	typesRead string
 	// castErr is a statement that fails on the engine with a message naming data.
 	castErr string
 	// hiddenWrite creates a function or other object that writes when a read calls it; empty where
@@ -84,6 +87,7 @@ func allEngines() []engine {
 			medium:    "select pg_sleep(2)",
 			big:       "app.big_rows", bigPath: tablePath("kira_test", "app", "big_rows"),
 			customers: "app.customers", customersPath: tablePath("kira_test", "app", "customers"),
+			typesRead:   "select 9007199254740993::bigint, 12.50::numeric, null, timestamp '2026-01-02 03:04:05'",
 			castErr:     "select name::int from app.customers",
 			enforcement: `{"ddl":"session","read":"session","write":"session"}`,
 			rowEstimate: true, structured: true,
@@ -105,6 +109,7 @@ func allEngines() []engine {
 			medium:    "select sleepEachRow(1) from numbers(2) settings max_block_size = 1",
 			big:       "big_rows", bigPath: tablePath("kira_test", "big_rows"),
 			customers: "customers", customersPath: tablePath("kira_test", "customers"),
+			typesRead:   "select toInt64(9007199254740993), toDecimal32(12.50, 2), null, toDateTime('2026-01-02 03:04:05')",
 			castErr:     "select toInt32(name) from customers",
 			enforcement: `{"ddl":"app","read":"session","write":"app"}`,
 			rowEstimate: true, structured: true,
@@ -120,6 +125,7 @@ func allEngines() []engine {
 			slowDDL:   "create table {t} as select count(*) as s from (" + slowSQLiteBody + ")",
 			medium:    cte(mediumCTE),
 			customers: "notes", castErr: "select * from no_such_table_p602",
+			typesRead:   "select 9007199254740993, '12.50', null, '2026-01-02 03:04:05'",
 			enforcement: `{"ddl":"app","read":"app","write":"app"}`,
 			structured:  true,
 		},
@@ -164,6 +170,7 @@ func mysqlEngine(kind string, config func(*testing.T) model.ResolvedConnectionCo
 		medium:    mediumTwoRows,
 		big:       "big_rows", bigPath: tablePath("kira_test", "big_rows"),
 		customers: "customers", customersPath: tablePath("kira_test", "customers"),
+		typesRead:   "select cast(9007199254740993 as signed), cast(12.50 as decimal(5,2)), null, timestamp('2026-01-02 03:04:05')",
 		castErr:     "select (select name from customers) from customers",
 		enforcement: enforcement, rowEstimate: true, structured: true,
 		hiddenSetup: []string{
