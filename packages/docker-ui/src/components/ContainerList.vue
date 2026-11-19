@@ -5,6 +5,7 @@ import { t } from '@theme/i18n';
 import { copyText } from '@workbench/behaviour/clipboard';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import QueryState from '@workbench/components/QueryState.vue';
+import VirtualList from '@workbench/components/VirtualList.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
@@ -14,7 +15,6 @@ import { useDockerUiStore } from '../state/dockerUi';
 import type { DockerContainer } from '../wire';
 import ContainerGroupRow from './ContainerGroupRow.vue';
 import ContainerRow from './ContainerRow.vue';
-import VirtualList from './VirtualList.vue';
 
 const { single: groupRowHeight, double: containerRowHeight } = useRowHeight();
 

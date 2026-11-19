@@ -71,7 +71,7 @@ packages/docker-ui/src/components/ContainerList.vue
 packages/docker-ui/src/components/ImageList.vue
 packages/docker-ui/src/components/VolumeList.vue
 packages/docker-ui/src/components/NetworkList.vue
-packages/docker-ui/src/components/VirtualList.vue
+packages/workbench/src/components/VirtualList.vue
 apps/kira-space/frontend/src/repo/RepoFileTree.vue
 apps/kira-space/frontend/src/repo/RepoTreeRow.vue
 apps/kira-space/frontend/src/repo/RepoSearchView.vue

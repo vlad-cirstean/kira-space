@@ -5,27 +5,24 @@ import { useRowHeight } from '@workbench/lib/rowHeight';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
 
-const props = withDefaults(
-  defineProps<{
-    rows: readonly T[];
-    rowHeight?: number;
-    rowHeights?: readonly number[];
-    testid?: string;
-    /** Enter on a row. */
-    open?: (row: T) => void;
-    /** ContextMenu key and Shift+F10 on a row. */
-    menu?: (row: T, rect: DOMRect) => void;
-    /** Click, Space and right-click select the row. */
-    select?: (row: T) => void;
-    /** Right-click menu of a row; none (or empty) leaves the browser menu alone. */
-    menuFor?: (row: T) => MenuItem[];
-    /** Group rows that expand and collapse (Right and Left). */
-    tree?: ListNavigationOptions<T>['tree'];
-    /** View-state key: list scroll survives an unmount. */
-    keepScrollKey?: string;
-  }>(),
-  { testid: 'docker-list' },
-);
+const props = defineProps<{
+  rows: readonly T[];
+  rowHeight?: number;
+  rowHeights?: readonly number[];
+  testid: string;
+  /** Enter on a row. */
+  open?: (row: T) => void;
+  /** ContextMenu key and Shift+F10 on a row. */
+  menu?: (row: T, rect: DOMRect) => void;
+  /** Click, Space and right-click select the row. */
+  select?: (row: T) => void;
+  /** Right-click menu of a row; none (or empty) leaves the browser menu alone. */
+  menuFor?: (row: T) => MenuItem[];
+  /** Group rows that expand and collapse (Right and Left). */
+  tree?: ListNavigationOptions<T>['tree'];
+  /** View-state key: list scroll survives an unmount. */
+  keepScrollKey?: string;
+}>();
 
 defineSlots<{
   row(props: {
@@ -41,7 +38,8 @@ defineSlots<{
 
 const { single: defaultRowHeight } = useRowHeight();
 const scrollEl = ref<HTMLElement | null>(null);
-const activeKey = ref<string | null>(null);
+// Bound by a host that tracks the active row itself; local when unbound.
+const activeKey = defineModel<string | null>('activeKey', { default: null });
 const activeIndex = computed(() => props.rows.findIndex((r) => r.key === activeKey.value));
 
 const { virtualItems, totalSize, onScroll, scrollToIndex } = useVirtualRows({

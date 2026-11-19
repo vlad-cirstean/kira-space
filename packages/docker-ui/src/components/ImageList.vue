@@ -8,11 +8,11 @@ import { formatBytes } from '@workbench/behaviour/format';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import Identifier from '@workbench/components/Identifier.vue';
 import QueryState from '@workbench/components/QueryState.vue';
+import VirtualList from '@workbench/components/VirtualList.vue';
 import { computed } from 'vue';
 import { shortId } from '../lib/format';
 import { useImages } from '../queries';
 import { useDockerUiStore } from '../state/dockerUi';
-import VirtualList from './VirtualList.vue';
 
 const ui = useDockerUiStore();
 const images = useImages();

@@ -6,10 +6,10 @@ import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { compareNatural, matchesQuery } from '@workbench/behaviour/match';
 import QueryState from '@workbench/components/QueryState.vue';
+import VirtualList from '@workbench/components/VirtualList.vue';
 import { computed } from 'vue';
 import { useVolumes } from '../queries';
 import { useDockerUiStore } from '../state/dockerUi';
-import VirtualList from './VirtualList.vue';
 
 const ui = useDockerUiStore();
 const volumes = useVolumes();
