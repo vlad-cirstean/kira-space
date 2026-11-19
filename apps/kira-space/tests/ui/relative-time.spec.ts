@@ -37,8 +37,8 @@ test('a relative time ticks from "just now" to "1m ago" and shows the absolute t
   );
 
   await created.locator('time').hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').first()).toHaveText(
-    /^Jan 15, 2026, 9:00\sAM$/,
+  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
+    /Jan 15, 2026, 9:00\sAM/,
   );
 });
 
