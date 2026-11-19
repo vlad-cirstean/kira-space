@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { agentApiResultSchema, apiResponsePayloadSchema } from '@shared/domain/dbmcp';
-import SectionHeading from '@theme/components/SectionHeading.vue';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
-import KeptNameMark from '../kept/KeptNameMark.vue';
-import KeptValueView from '../kept/KeptValueView.vue';
-import { keptTypeLabel } from '../kept/keptFormat';
 import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import { usePendingResponse } from './pendingResponse';
 import ResultReview from './ResultReview.vue';
+import StagedKeepList from './StagedKeepList.vue';
 
 // The held API response: what the agent gets on Send, and with a script, the raw response it read and
 // the script. Every byte shown comes from the pending-response query, never from the item payload.
@@ -77,15 +74,7 @@ const parsedRaw = computed(() => {
           <ApprovalCode v-else data-testid="api-review-result">{{ text }}</ApprovalCode>
         </template>
         <template #after>
-          <section v-if="keep.length" class="flex flex-col gap-1" data-testid="api-review-keep">
-            <SectionHeading flush :label="t('studio.kept.willKeep.label')" />
-            <ul class="m-0 flex list-none flex-col gap-2 p-0">
-              <li v-for="k in keep" :key="k.name" :data-testid="`api-review-keep-${k.name}`">
-                <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" />
-                <KeptValueView :entry="{ ...k, id: '' }" staged />
-              </li>
-            </ul>
-          </section>
+          <StagedKeepList v-if="keep.length" :keep="keep" testid="api-review-keep" />
         </template>
         <template #script>
           <JsScriptBlock
