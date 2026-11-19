@@ -1,9 +1,10 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import type { KeptList } from '@shared/domain/kept';
-import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
+import { answeredOk, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { withTimes } from './support/keptTimes';
 import { openKeptPane } from './support/settings';
 
 // Contract e2e-kept-chain. Backend half: dbmcpflow TestE2EKeptChain. A script keeps a list with an
@@ -24,16 +25,6 @@ function live(key: string): KeptList {
       expiresAt: new Date(Date.now() + 59 * 60_000).toISOString(),
     })),
   };
-}
-
-function withTimes(it: ApprovalItem): ApprovalItem {
-  const payload = structuredClone(it.payload) as { kept: Record<string, unknown>[] };
-  payload.kept = payload.kept.map((k) => ({
-    ...k,
-    createdAt: new Date(Date.now() - 60_000).toISOString(),
-    expiresAt: new Date(Date.now() + 59 * 60_000).toISOString(),
-  }));
-  return liveItem({ ...it, payload });
 }
 
 test('contract: the card shows the kept list with its digits and marks the reference; Send answers by id', async ({
