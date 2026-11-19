@@ -11,6 +11,7 @@ import { defaultGrpcSavedRequest, defaultHttpSavedRequest } from '@shared/domain
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { refDebounced } from '@vueuse/core';
+import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { matchesQuery } from '@workbench/behaviour/match';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { TIMING } from '@workbench/behaviour/timing';
@@ -95,11 +96,6 @@ interface CollectionsState {
   /** D16: "N secret values were not written to the file" — set after an export that stripped at
    *  least one, shown alongside the import report strip. */
   exportWarning: string | null;
-  /** A tree mutation's (create/rename/delete/duplicate/save/import/export) own failure
-   *  message — every one of them used to let this throw uncaught from a fire-and-forget `void`
-   *  call in CollectionsPanel.vue/CollectionsTree.vue, so a failed write left the row exactly as it
-   *  was with nothing telling the user why. Cleared on the next attempt that succeeds. */
-  error: string | null;
 }
 
 // ---- saving a request into a collection ----
@@ -117,8 +113,13 @@ export const useCollectionsStore = defineStore('collections', () => {
     busy: false,
     importResult: null,
     exportWarning: null,
-    error: null,
   });
+
+  // A tree mutation's (create/rename/delete/duplicate/save/import/export) own failure message,
+  // shown in ImportReportStrip. Every write runs on it, so a failed write never leaves the row
+  // as it was with nothing telling the user why. Cleared on the next attempt that succeeds.
+  // queryClient is explicit: unit tests build this store without an app.
+  const surface = useTaskAction({ queryClient });
 
   // Expanded keys survive a reload (the whole tree is in memory, so restoring is just a key set).
   const expandedKeys = usePersistedState<string[]>('kira.api.expanded', []);
@@ -133,7 +134,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   };
 
   function dismissError(): void {
-    state.error = null;
+    surface.reset();
   }
 
   // The tree is now TanStack Query's cache, not a store field — this observer is
@@ -151,7 +152,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   watch(items, (list) => syncRequestTabNames(list));
   watch(collections, (list) => syncVariableSetTabNames('collection', list));
   /** P108 F10's successor for the read side: a failed initial/refetch List used to reject into a
-   *  void'd promise with nothing shown — this surfaces it the same way state.error does for a
+   *  void'd promise with nothing shown — this surfaces it the same way the error surface does for a
    *  mutation's own failure (rendered in ImportReportStrip.vue). */
   const treeLoadError = computed(() =>
     treeQuery.error.value ? errorText(treeQuery.error.value) : null,
@@ -321,13 +322,10 @@ export const useCollectionsStore = defineStore('collections', () => {
   );
 
   async function createCollection(): Promise<void> {
-    try {
+    await surface.run(async () => {
       const collection = await createCollectionMutation.mutateAsync();
       selection.selectOnly(collectionKey(collection.id));
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   const createItemMutation = useMutation(
@@ -357,14 +355,11 @@ export const useCollectionsStore = defineStore('collections', () => {
     parentId: string | null,
     kind: CollectionItemKind,
   ): Promise<void> {
-    try {
+    await surface.run(async () => {
       const item = await createItemMutation.mutateAsync({ collectionId, parentId, kind });
       revealItem(collectionId, parentId);
       selection.selectOnly(itemKey(item.id));
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   const createGrpcItemMutation = useMutation(
@@ -383,14 +378,11 @@ export const useCollectionsStore = defineStore('collections', () => {
 
   /** createItem's own gRPC sibling (P11 D12) — always a request, never a folder. */
   async function createGrpcItem(collectionId: string, parentId: string | null): Promise<void> {
-    try {
+    await surface.run(async () => {
       const item = await createGrpcItemMutation.mutateAsync({ collectionId, parentId });
       revealItem(collectionId, parentId);
       selection.selectOnly(itemKey(item.id));
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   function beginRename(row: CollectionRowVm): void {
@@ -415,13 +407,10 @@ export const useCollectionsStore = defineStore('collections', () => {
   /** Renames the row in its file. Bound tabs follow through the tree refresh. */
   async function renameRow(row: CollectionRowVm, name: string): Promise<void> {
     state.renamingKey = null;
-    try {
+    await surface.run(async () => {
       const target = row.kind === 'collection' ? 'collection' : 'item';
       await renameRowMutation.mutateAsync({ id: row.id, target, name });
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   const moveRowsMutation = useMutation(
@@ -438,18 +427,13 @@ export const useCollectionsStore = defineStore('collections', () => {
    *  into another collection file makes new rows: open tabs and the selection follow them. Returns
    *  whether it moved. */
   async function moveRows(itemIds: readonly string[], placement: Placement): Promise<boolean> {
-    try {
+    return surface.run(async () => {
       const moved = await moveRowsMutation.mutateAsync({ itemIds: [...itemIds], placement });
       remapRequestTabItems(moved);
       revealItem(placement.collectionId, placement.parentId);
       const keys = itemIds.map((id) => itemKey(moved[id] ?? id));
       selection.selectMany(keys, keys[0]);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+    });
   }
 
   const reorderCollectionsMutation = useMutation(
@@ -463,14 +447,7 @@ export const useCollectionsStore = defineStore('collections', () => {
 
   /** Applies a whole-list collection order. Returns whether it saved. */
   async function reorderCollections(ids: readonly string[]): Promise<boolean> {
-    try {
-      await reorderCollectionsMutation.mutateAsync([...ids]);
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+    return surface.run(() => reorderCollectionsMutation.mutateAsync([...ids]));
   }
 
   /** Moves rows to the root of another collection. Returns whether it moved. */
@@ -486,13 +463,14 @@ export const useCollectionsStore = defineStore('collections', () => {
 
   /** Creates a collection, moves the rows into it, and opens the new collection for naming. */
   async function moveRowsToNewCollection(rows: readonly CollectionRowVm[]): Promise<void> {
-    try {
-      const collection = await createCollectionMutation.mutateAsync();
-      if (!(await moveRowsToCollection(rows, collection.id))) return;
-      state.renamingKey = collectionKey(collection.id);
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    // The move runs its own task: nested runs on one surface would let the outer settle over it.
+    let createdId: string | null = null;
+    const created = await surface.run(async () => {
+      createdId = (await createCollectionMutation.mutateAsync()).id;
+    });
+    if (!created || createdId === null) return;
+    if (!(await moveRowsToCollection(rows, createdId))) return;
+    state.renamingKey = collectionKey(createdId);
   }
 
   /** Every item id a delete of `row` also removes: the row's subtree, read from the cache because
@@ -543,7 +521,7 @@ export const useCollectionsStore = defineStore('collections', () => {
   async function deleteRows(rows: readonly CollectionRowVm[]): Promise<void> {
     const { top, itemIds } = planDelete(rows);
     if (top.length === 0) return;
-    try {
+    await surface.run(async () => {
       await deleteRowsMutation.mutateAsync({
         collectionIds: top.filter((r) => r.kind === 'collection').map((r) => r.id),
         itemIds: top.filter((r) => r.kind !== 'collection').map((r) => r.id),
@@ -557,16 +535,13 @@ export const useCollectionsStore = defineStore('collections', () => {
       for (const row of top) {
         if (row.kind === 'collection') closeVariableSetTabsForOwner('collection', row.id);
       }
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   /** Duplicating a folder copies the folder alone, a request copies its saved request. */
   async function duplicateRow(row: CollectionRowVm): Promise<void> {
     const name = t('studio.api.collections.copyName.label', { name: row.name });
-    try {
+    await surface.run(async () => {
       if (row.kind === 'folder') {
         await control.collectionsCreateItem({
           collectionId: row.collectionId,
@@ -595,18 +570,15 @@ export const useCollectionsStore = defineStore('collections', () => {
         });
       }
       await afterTreeListChange();
-      state.error = null;
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   /** Opens a request row into its tab (reusing one already bound to the row). A row deleted between
    *  the tree listing and the fetch loads as `null` and opens as a brand-new
-   *  saved row; any other load failure lands in `state.error` and opens nothing. A gRPC row
+   *  saved row; any other load failure lands in the error surface and opens nothing. A gRPC row
    *  opens the 'grpc-request' kind, which the protocol column alone tells apart. */
   async function openRequestRow(row: CollectionRowVm): Promise<void> {
-    try {
+    await surface.run(async () => {
       if (row.protocol === 'grpc') {
         const saved = (await loadSavedGrpcRequest(row.id)) ?? defaultGrpcSavedRequest();
         openCollectionGrpcRequestTab(row.id, row.name, saved);
@@ -614,13 +586,11 @@ export const useCollectionsStore = defineStore('collections', () => {
         const saved = (await loadSavedRequest(row.id)) ?? defaultHttpSavedRequest();
         openCollectionRequestTab(row.id, row.name, saved);
       }
-    } catch (err) {
-      state.error = errorText(err);
-    }
+    });
   }
 
   /** Creates the row, caches it as the tab's saved side, and binds the tab to it. Resolves to the
-   *  failure message (also set on `state.error`) so the dialog can show it itself, null on success. */
+   *  failure message (also set on the error surface) so the dialog can show it itself, null on success. */
   async function submitSaveDialog(
     collectionId: string,
     parentId: string | null,
@@ -630,59 +600,60 @@ export const useCollectionsStore = defineStore('collections', () => {
     const { tabId, payload } = saveDialogStore;
     if (!tabId || !payload) return null;
 
-    try {
-      if (payload.protocol === 'grpc') {
-        const item = await control.collectionsCreateGrpcItem({
+    let failure: unknown = null;
+    const ok = await surface.run(async () => {
+      try {
+        if (payload.protocol === 'grpc') {
+          const item = await control.collectionsCreateGrpcItem({
+            collectionId,
+            parentId,
+            name,
+            request: payload.request,
+          });
+          queryClient.setQueryData(apiSavedGrpcRequestKey(item.id), payload.request);
+          try {
+            await control.grpcHistoryAdopt(tabId, item.id);
+          } catch (err) {
+            logWarn('collections', 'adopting grpc call history into the saved request failed', err);
+          }
+          patchGrpcRequestTabState(tabId, { itemId: item.id, name });
+          await afterTreeListChange();
+          revealItem(collectionId, parentId);
+          saveDialogStore.closeSaveDialog(true);
+          return;
+        }
+
+        const item = await control.collectionsCreateItem({
           collectionId,
           parentId,
+          kind: 'request',
           name,
           request: payload.request,
         });
-        queryClient.setQueryData(apiSavedGrpcRequestKey(item.id), payload.request);
+        queryClient.setQueryData(apiSavedRequestKey(item.id), payload.request);
+        // P8 D14: a scratch tab's response history follows it into the collection, before the tab's
+        // itemId is patched below. Best-effort, the same posture D2's own Go-side Record call takes
+        // — Save as… itself must succeed regardless of whether adopting its history did.
+        // ResponsePane.vue's own watch on tab.state.itemId is what refetches the list under the new
+        // scope once the patch below actually lands (http/** may not import views/**, so the
+        // refetch can't be triggered from here).
         try {
-          await control.grpcHistoryAdopt(tabId, item.id);
+          await control.historyAdopt(tabId, item.id);
         } catch (err) {
-          logWarn('collections', 'adopting grpc call history into the saved request failed', err);
+          logWarn('collections', 'adopting response history into the saved request failed', err);
         }
-        patchGrpcRequestTabState(tabId, { itemId: item.id, name });
+        // The tab is now bound to a real row, so its title becomes the saved name and Save stops
+        // falling back to Save as…
+        patchHttpRequestTabState(tabId, { itemId: item.id, name });
         await afterTreeListChange();
         revealItem(collectionId, parentId);
         saveDialogStore.closeSaveDialog(true);
-        state.error = null;
-        return null;
-      }
-
-      const item = await control.collectionsCreateItem({
-        collectionId,
-        parentId,
-        kind: 'request',
-        name,
-        request: payload.request,
-      });
-      queryClient.setQueryData(apiSavedRequestKey(item.id), payload.request);
-      // P8 D14: a scratch tab's response history follows it into the collection, before the tab's
-      // itemId is patched below. Best-effort, the same posture D2's own Go-side Record call takes
-      // — Save as… itself must succeed regardless of whether adopting its history did.
-      // ResponsePane.vue's own watch on tab.state.itemId is what refetches the list under the new
-      // scope once the patch below actually lands (http/** may not import views/**, so the
-      // refetch can't be triggered from here).
-      try {
-        await control.historyAdopt(tabId, item.id);
       } catch (err) {
-        logWarn('collections', 'adopting response history into the saved request failed', err);
+        failure = err;
+        throw err;
       }
-      // The tab is now bound to a real row, so its title becomes the saved name and Save stops
-      // falling back to Save as…
-      patchHttpRequestTabState(tabId, { itemId: item.id, name });
-      await afterTreeListChange();
-      revealItem(collectionId, parentId);
-      saveDialogStore.closeSaveDialog(true);
-      state.error = null;
-      return null;
-    } catch (err) {
-      state.error = errorText(err);
-      return state.error;
-    }
+    });
+    return ok ? null : errorText(failure);
   }
 
   /** Save — writes an already-bound request back to its own row. */
@@ -692,7 +663,8 @@ export const useCollectionsStore = defineStore('collections', () => {
     request: HttpSavedRequest,
     seen: HttpSavedRequest | null = null,
   ): Promise<boolean> {
-    try {
+    let wrote = false;
+    const ok = await surface.run(async () => {
       // Decision 3: `seen` is the request the tab last synced with, `name` the item name it holds
       // (bound tabs follow a rename, so a name that differs in the file is one this window never
       // saw); an item another window saved or renamed since asks before it is overwritten, and
@@ -705,17 +677,14 @@ export const useCollectionsStore = defineStore('collections', () => {
           guarded && seen ? { request: seen, name } : undefined,
         ),
       );
-      if (saved === undefined) return false;
+      if (saved === undefined) return;
       // The cache is the dirty comparison's saved side, so it must move in step with the write or
       // the mark would stay lit after a successful save.
       queryClient.setQueryData(apiSavedRequestKey(itemId), request);
       await afterTreeListChange();
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+      wrote = true;
+    });
+    return ok && wrote;
   }
 
   /** saveRequest's own gRPC sibling. */
@@ -725,7 +694,8 @@ export const useCollectionsStore = defineStore('collections', () => {
     request: GrpcSavedRequest,
     seen: GrpcSavedRequest | null = null,
   ): Promise<boolean> {
-    try {
+    let wrote = false;
+    const ok = await surface.run(async () => {
       const saved = await guardedSavedWrite((guarded) =>
         control.collectionsSaveGrpcRequest(
           itemId,
@@ -734,15 +704,12 @@ export const useCollectionsStore = defineStore('collections', () => {
           guarded && seen ? { request: seen, name } : undefined,
         ),
       );
-      if (saved === undefined) return false;
+      if (saved === undefined) return;
       queryClient.setQueryData(apiSavedGrpcRequestKey(itemId), request);
       await afterTreeListChange();
-      state.error = null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
-    }
+      wrote = true;
+    });
+    return ok && wrote;
   }
 
   // ---- import (D11/D12) ----
@@ -762,43 +729,40 @@ export const useCollectionsStore = defineStore('collections', () => {
       filters: [{ name: t('studio.api.collections.postmanFilter.label'), extensions: ['json'] }],
     });
     if (chosen.canceled || !chosen.files?.length) return false;
+    const paths = chosen.files.map((f) => f.path);
 
     // D11: the panel's header action is disabled with a spinner for the duration rather than joining
     // the op log — that machinery is per tab (ViewChrome + useRunState) and an import started from
     // the left panel has no tab, so a row there would buy nothing the user is looking at.
     state.busy = true;
-    state.error = null;
+    let imported = false;
     try {
-      const result = await control.collectionsImport(chosen.files.map((f) => f.path));
-      state.importResult = {
-        files: result.files.map((f) => ({
-          ...f,
-          collection: f.collection && { ...f.collection, warnings: f.collection.warnings ?? [] },
-          environment: f.environment && {
-            ...f.environment,
-            warnings: f.environment.warnings ?? [],
-          },
-        })),
-      };
-      const first = result.files.find((f) => f.collection)?.collection;
-      if (first) {
-        expandedSet.add(collectionKey(first.collectionId));
-        selection.selectOnly(collectionKey(first.collectionId));
-      }
-      return true;
-    } catch (err) {
-      // This used to let the error propagate uncaught, and (since it ran only in the
-      // try's success path) never reloaded the tree on failure either — a partially-applied import
-      // (Go's own import is not one transaction; some rows can land before a later one fails) left
-      // the panel showing the pre-import tree until something else happened to reload it.
-      state.error = errorText(err);
-      return false;
+      await surface.run(async () => {
+        const result = await control.collectionsImport(paths);
+        state.importResult = {
+          files: result.files.map((f) => ({
+            ...f,
+            collection: f.collection && { ...f.collection, warnings: f.collection.warnings ?? [] },
+            environment: f.environment && {
+              ...f.environment,
+              warnings: f.environment.warnings ?? [],
+            },
+          })),
+        };
+        const first = result.files.find((f) => f.collection)?.collection;
+        if (first) {
+          expandedSet.add(collectionKey(first.collectionId));
+          selection.selectOnly(collectionKey(first.collectionId));
+        }
+        imported = true;
+      });
     } finally {
       // Always reloads, success or failure (P108 F10), before clearing `busy` — a partial import's
       // rows must be visible immediately, not just after the next unrelated refresh.
       await afterTreeListChange();
       state.busy = false;
     }
+    return imported;
   }
 
   function dismissReport(): void {
@@ -825,27 +789,28 @@ export const useCollectionsStore = defineStore('collections', () => {
     // re-importable without renaming.
     const chosen = await control.filesChooseSave(`${name}.postman_collection.json`);
     if (chosen.canceled || !chosen.filePath) return false;
+    const filePath = chosen.filePath;
     state.busy = true;
-    state.error = null;
+    let exported = false;
     try {
-      const report = await control.collectionsExport(collectionId, chosen.filePath);
-      const notes: string[] = [];
-      if (report.secretCount > 0) {
-        notes.push(t('studio.api.collections.exportSecrets.body', { count: report.secretCount }));
-      }
-      if (report.skippedGrpc > 0) {
-        notes.push(
-          t('studio.api.collections.exportSkippedGrpc.body', { count: report.skippedGrpc }),
-        );
-      }
-      state.exportWarning = notes.length > 0 ? notes.join(' ') : null;
-      return true;
-    } catch (err) {
-      state.error = errorText(err);
-      return false;
+      await surface.run(async () => {
+        const report = await control.collectionsExport(collectionId, filePath);
+        const notes: string[] = [];
+        if (report.secretCount > 0) {
+          notes.push(t('studio.api.collections.exportSecrets.body', { count: report.secretCount }));
+        }
+        if (report.skippedGrpc > 0) {
+          notes.push(
+            t('studio.api.collections.exportSkippedGrpc.body', { count: report.skippedGrpc }),
+          );
+        }
+        state.exportWarning = notes.length > 0 ? notes.join(' ') : null;
+        exported = true;
+      });
     } finally {
       state.busy = false;
     }
+    return exported;
   }
 
   // ---- lookups the panel, the menus and the request view all share ----
@@ -884,6 +849,8 @@ export const useCollectionsStore = defineStore('collections', () => {
 
   return {
     ...toRefs(state),
+    error: surface.error,
+    fail: surface.fail,
     expanded: expandedKeys,
     collections,
     items,

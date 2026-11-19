@@ -132,7 +132,7 @@ const actions: CollectionMenuActions = {
     void copyOrReportError(
       row.url,
       (message) => {
-        collectionsStore.error = message;
+        collectionsStore.fail(message);
       },
       () => announceApp(t('studio.common.copiedUrl.announce')),
     ),
