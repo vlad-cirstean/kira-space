@@ -8519,6 +8519,62 @@
       }
     },
     "grpc": {
+      "codeHint": {
+        "code0": {
+          "tooltip": "The call completed"
+        },
+        "code1": {
+          "tooltip": "The call was cancelled before it completed"
+        },
+        "code2": {
+          "tooltip": "The server returned an error it couldn’t classify more specifically"
+        },
+        "code3": {
+          "tooltip": "The server rejected the request message itself"
+        },
+        "code4": {
+          "tooltip": "The call ran past its deadline before the server answered"
+        },
+        "code5": {
+          "tooltip": "The server has no such method or resource"
+        },
+        "code6": {
+          "tooltip": "The resource the call tried to create already exists"
+        },
+        "code7": {
+          "tooltip": "The caller is authenticated but not allowed to make this call"
+        },
+        "code8": {
+          "tooltip": "A resource limit was exceeded, such as a quota or the available disk space"
+        },
+        "code9": {
+          "tooltip": "The system is not in a state required for the call to proceed"
+        },
+        "code10": {
+          "tooltip": "The call was aborted, typically due to a concurrency conflict"
+        },
+        "code11": {
+          "tooltip": "The operation was attempted past the valid range, such as seeking past the end of a file"
+        },
+        "code12": {
+          "tooltip": "The server does not implement this method"
+        },
+        "code13": {
+          "tooltip": "The server encountered an internal invariant violation"
+        },
+        "code14": {
+          "tooltip": "The server couldn’t be reached, or is not accepting calls right now"
+        },
+        "code15": {
+          "tooltip": "Unrecoverable data loss or corruption occurred"
+        },
+        "code16": {
+          "tooltip": "The call carried no valid credentials"
+        },
+        "unknown": {
+          "tooltip": "An unrecognised status code"
+        }
+      },
       "newRequest": {
         "title": "New gRPC request"
       },
@@ -8528,6 +8584,94 @@
         },
         "unary": {
           "label": "Unary"
+        }
+      }
+    },
+    "http": {
+      "statusHint": {
+        "clientError": {
+          "tooltip": "The client request was rejected"
+        },
+        "code200": {
+          "tooltip": "The request succeeded"
+        },
+        "code201": {
+          "tooltip": "The request succeeded and a resource was created"
+        },
+        "code202": {
+          "tooltip": "The request was accepted for processing, but not yet completed"
+        },
+        "code204": {
+          "tooltip": "The request succeeded and there is no response body"
+        },
+        "code301": {
+          "tooltip": "The resource has permanently moved to a new URL"
+        },
+        "code302": {
+          "tooltip": "The resource is temporarily at a different URL"
+        },
+        "code304": {
+          "tooltip": "The cached response is still valid; nothing new to transfer"
+        },
+        "code400": {
+          "tooltip": "The server couldn’t understand the request as sent"
+        },
+        "code401": {
+          "tooltip": "Authentication is required, or has failed"
+        },
+        "code403": {
+          "tooltip": "The server understood the request but refuses to authorize it"
+        },
+        "code404": {
+          "tooltip": "The server has no resource at this URL"
+        },
+        "code405": {
+          "tooltip": "The URL exists, but not for this method"
+        },
+        "code408": {
+          "tooltip": "The server gave up waiting for the rest of the request"
+        },
+        "code409": {
+          "tooltip": "The request conflicts with the resource’s current state"
+        },
+        "code413": {
+          "tooltip": "The request body is larger than the server will accept"
+        },
+        "code415": {
+          "tooltip": "The server does not support the request body’s content type"
+        },
+        "code422": {
+          "tooltip": "The request was well-formed but semantically invalid"
+        },
+        "code429": {
+          "tooltip": "Too many requests; the client is being rate-limited"
+        },
+        "code500": {
+          "tooltip": "The server encountered an unexpected error"
+        },
+        "code501": {
+          "tooltip": "The server does not support the functionality required"
+        },
+        "code502": {
+          "tooltip": "A gateway received an invalid response from an upstream server"
+        },
+        "code503": {
+          "tooltip": "The server can’t handle the request right now"
+        },
+        "code504": {
+          "tooltip": "A gateway timed out waiting for an upstream server"
+        },
+        "informational": {
+          "tooltip": "Informational; the exchange is not yet complete"
+        },
+        "redirected": {
+          "tooltip": "The request was redirected"
+        },
+        "serverError": {
+          "tooltip": "The server didn’t fulfil a valid request"
+        },
+        "unknown": {
+          "tooltip": "Unrecognised status code"
         }
       }
     },
