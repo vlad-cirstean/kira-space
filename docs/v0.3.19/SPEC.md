@@ -8,7 +8,7 @@ Phases from `P690` (highest shipped: `P689`, chapter v0.3.18). Next new phase: `
 |---|-------|--------|
 | P690 | Remove the memory module; keep it on an archive tag | Planned |
 | P691 | Project file view moves from the Git module into agent tasks; Reveal in file manager, Open in VS Code | Planned |
-| P692 | Agents module: color-coded task Start and Finish buttons | Planned |
+| P692 | Agents module: color-coded task Start and Finish buttons | Done |
 | P693 Part 1 | Agents module RAM: measure and audit | Planned |
 | P693 Part 2 | Agents module RAM: implement the fixes, re-measure | Planned |
 
@@ -98,9 +98,11 @@ Open design questions for the planner:
 
 Done when: Start and Finish (and whatever the plan names) are tone-colored in the task card and the task details in light and dark, through the theme Button, with no `ACTION_CLASS` string map; a spec asserts the colors in each host; the guard fails on a planted offender and sits at zero; ARCHITECTURE rule lines and U125 corrected; visible change list below filled in for the visual re-record. Frontend only, no IPC change, so no backend flow half.
 
-Visible change list (planner confirms): task card header action (`ade-task-action-session`, `-run`, `-finish`, `-advance`), task panel header action, workflow block action; re-record every ADE visual spec that shows a card or a panel with an action (list by running them once at phase end): `plan-*`, `ade-*` baselines.
+Visible change list (confirmed by the visual run): task card header action (`ade-task-action-*`: agent, green, amber, red, purple border and glyph), task panel header action and workflow block current-step action (border and label). Red (`takeOver`, `retry`) loses the `dialog-danger` tint. Visual baselines to re-record: `ade-plan-days` (only failure of `--project=visual ade-`; the other 15 pass). Screenshots project (`space.shot.ts`, `build/startTask.shot.ts`, `build/branchesHandover.shot.ts`, `build/proof.shot.ts`) shows the action; CI owns it.
 
 Plan: `plans/P692.md`.
+
+Result (P692): `outline` cva axis (`agent|green|amber|red|purple`) with `compoundVariants` on theme `dialog`; `AdeTaskActionButton` binds `variant="dialog" :outline="action.tone"` in both looks (no map); `--color-agent` moved into theme `tailwind-core.css`. Guards U208 (step action carries its tone outline, no class tone or bound class), U209 (`outline` only on the step action). Dead `ACTION_CLASS` dropped from U125 and `scripts/uiaudit/classes.ts`; ARCHITECTURE lines fixed. UI spec `ade-v2-action-tone.spec.ts` asserts computed border, text and focus outline in card, panel and workflow block from live tokens; fails with step 2 reverted. Planted offenders 1-5 hit U208, U208, U208 (plus U149), U209, U114/U125. UI run (11 specs, 149 tests) green. One theme exists, so the spec runs in it; add a theme loop when a theme switch exists.
 
 ## P693: Agents module RAM
 
