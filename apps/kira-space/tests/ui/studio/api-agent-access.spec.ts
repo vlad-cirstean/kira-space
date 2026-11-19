@@ -161,3 +161,19 @@ test('contract: a YAML edit sharing a variable shows in the form', async ({ rela
     'checked',
   );
 });
+
+// Backend half: apiflow.TestApiAgentAccess form call review-both.
+test('contract: the review choice per class edits agentReview', async ({ relaunch }) => {
+  const { window: page } = await openAgentTab(relaunch, [agentFormCall('review-both')]);
+  const read = (v: string) => page.locator(`[data-testid="api-agent-review-read-${v}"]`);
+  const write = (v: string) => page.locator(`[data-testid="api-agent-review-write-${v}"]`);
+  await expect(read('inherit')).toHaveAttribute('data-state', 'on');
+  await read('review').click();
+  await expect(read('review')).toHaveAttribute('data-state', 'on');
+  await write('send').click();
+  await expect(write('send')).toHaveAttribute('data-state', 'on');
+  await page.locator('[data-testid="api-tab-yaml"]').click();
+  await expect
+    .poll(() => codeEditorText(page.locator('[data-testid="api-variables-text"]')))
+    .toBe(form('review-both').text);
+});

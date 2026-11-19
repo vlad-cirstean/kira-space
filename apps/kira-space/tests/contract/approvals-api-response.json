@@ -1,0 +1,248 @@
+{
+  "ApprovalsService.List#plain": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:1>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 747,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "method": "GET",
+        "rawBytes": 0,
+        "reason": "setting",
+        "scripted": false,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#scriptFailed": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:4>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 142,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": true,
+        "method": "GET",
+        "rawBytes": 747,
+        "reason": "setting",
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#scripted": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:1>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 81,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "method": "GET",
+        "rawBytes": 747,
+        "reason": "setting",
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#scriptedWrite": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:3>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 81,
+        "class": "write",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "method": "POST",
+        "rawBytes": 747,
+        "reason": "setting",
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#plain": {
+    "isError": false,
+    "raw": "",
+    "requestId": "<id:1>",
+    "script": null,
+    "text": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}"
+  },
+  "DbMcpService.PendingResponse#scriptFailed": {
+    "isError": true,
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
+    "requestId": "<id:4>",
+    "script": {
+      "hash": "18d6e2d01818de1e3fb0250164187318448a30005e204fcfe75d7e832d5dddf7",
+      "source": "throw new Error('boom')"
+    },
+    "text": "transform script failed: script runtime error at line 1, column 7: Error: boom. The request was sent (HTTP 200); its response is not returned."
+  },
+  "DbMcpService.PendingResponse#scripted": {
+    "isError": false,
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
+      "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
+    },
+    "text": "{\"result\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
+  },
+  "DbMcpService.PendingResponse#scriptedWrite": {
+    "isError": false,
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
+    "requestId": "<id:3>",
+    "script": {
+      "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
+      "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
+    },
+    "text": "{\"result\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
+  },
+  "args:ApprovalsService.Answer#plain": {
+    "approve": true,
+    "ids": [
+      "api.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#scriptFailed": {
+    "approve": true,
+    "ids": [
+      "api.response:<id:4>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#scripted": {
+    "approve": true,
+    "ids": [
+      "api.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#scriptedWrite": {
+    "approve": true,
+    "ids": [
+      "api.response:<id:3>"
+    ],
+    "options": null
+  },
+  "result#plain": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}"
+}

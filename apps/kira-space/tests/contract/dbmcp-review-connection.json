@@ -77,7 +77,9 @@
   },
   "DbMcpService.PendingResponse": {
     "isError": false,
+    "raw": "",
     "requestId": "<id:2>",
+    "script": null,
     "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
   }
 }

@@ -75,3 +75,30 @@ test('contract: the scripts switch is on by default and patches apiScripts', asy
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(off);
 });
+
+// Backend half: dbmcpflow TestApiToolsToggle, the same patch.
+test('contract: the review switch is off by default and patches apiReviewResponses', async ({
+  relaunch,
+}) => {
+  const on = contract<unknown>('dbmcp-api-settings', 'args:SettingsService.Set#reviewOn');
+  const enabled = { ...defaultSettings.dbMcp, apiRequests: true };
+  const { window: page, control } = await relaunch({
+    control: [
+      { channel: IPC.settingsGetAll, response: { ...defaultSettings, dbMcp: enabled } },
+      {
+        channel: IPC.settingsSet,
+        args: on,
+        response: { ...defaultSettings, dbMcp: { ...enabled, apiReviewResponses: true } },
+      },
+    ],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Studio MCP API"]');
+  const review = page.locator('[data-testid="settings-db-mcp-api-review"]');
+  await expect(review).not.toBeChecked();
+  await review.click();
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual(on);
+  await expect(review).toBeChecked();
+});

@@ -20,6 +20,13 @@
       }
     }
   },
+  "args:SettingsService.Set#reviewOn": {
+    "patch": {
+      "dbMcp": {
+        "apiReviewResponses": true
+      }
+    }
+  },
   "args:SettingsService.Set#scriptsOff": {
     "patch": {
       "dbMcp": {

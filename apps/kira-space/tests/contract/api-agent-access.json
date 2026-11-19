@@ -63,6 +63,68 @@
     "file": "staging.environment.yaml",
     "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
   },
+  "args:ApiConfigService.Form#review-bad": {
+    "edits": [
+      {
+        "path": [
+          "agentReview"
+        ],
+        "unset": false,
+        "value": {
+          "read": "maybe"
+        }
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#review-both": {
+    "edits": [
+      {
+        "path": [
+          "agentReview"
+        ],
+        "unset": false,
+        "value": {
+          "read": "review",
+          "write": "send"
+        }
+      },
+      {
+        "path": [
+          "agentReview",
+          "read"
+        ],
+        "unset": false,
+        "value": "review"
+      },
+      {
+        "path": [
+          "agentReview",
+          "write"
+        ],
+        "unset": false,
+        "value": "send"
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
+  "args:ApiConfigService.Form#review-read": {
+    "edits": [
+      {
+        "path": [
+          "agentReview"
+        ],
+        "unset": false,
+        "value": {
+          "read": "review"
+        }
+      }
+    ],
+    "file": "staging.environment.yaml",
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\n"
+  },
   "args:ApiConfigService.Form#share": {
     "edits": [
       {
@@ -159,6 +221,57 @@
     "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\nagentAutoApproveReads: true\n",
     "value": {
       "agentAutoApproveReads": true,
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#review-bad": {
+    "problem": {
+      "col": 3,
+      "line": 8,
+      "message": "agentReview.read must be one of \"inherit\", \"review\", \"send\".",
+      "path": "/agentReview/read"
+    },
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\nagentReview:\n  read: maybe\n",
+    "value": null
+  },
+  "form#review-both": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\nagentReview:\n  read: review\n  write: send\n",
+    "value": {
+      "agentReview": {
+        "read": "review",
+        "write": "send"
+      },
+      "name": "Staging",
+      "variables": [
+        {
+          "name": "base_url",
+          "value": "https://staging.example.com"
+        },
+        {
+          "name": "token",
+          "secret": "${secret:staging.token}"
+        }
+      ]
+    }
+  },
+  "form#review-read": {
+    "problem": null,
+    "text": "name: Staging\nvariables:\n  - name: base_url\n    value: https://staging.example.com\n  - name: token\n    secret: ${secret:staging.token}\nagentReview:\n  read: review\n",
+    "value": {
+      "agentReview": {
+        "read": "review"
+      },
       "name": "Staging",
       "variables": [
         {

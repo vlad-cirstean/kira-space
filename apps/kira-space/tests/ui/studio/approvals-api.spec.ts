@@ -86,3 +86,41 @@ test('contract: Send answers the item id, Don’t send denies it', async ({ rela
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [it.id], approve: true, options: null });
 });
+
+const reviewItem = (key: string) => {
+  const found = contract<ApprovalItem[]>('approvals-api', `ApprovalsService.List#${key}`)[0];
+  if (!found) throw new Error(`contract has no ${key}`);
+  return found;
+};
+
+// Backend half: dbmcpflow TestApiResponseReviewOnRequest. The card offers "review the result"; a tick
+// rides the answer as an option, and settings that already hold the response show it on and locked.
+test('contract: the review option is offered, ticked and sent with the answer', async ({
+  relaunch,
+}) => {
+  const it = reviewItem('reviewOffered');
+  const answer = contract<{ ids: string[]; options: Record<string, unknown> }>(
+    'approvals-api',
+    'args:ApprovalsService.Answer#reviewOffered',
+  );
+  const { window: page, control } = await relaunch({
+    control: [{ channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) }],
+  });
+  await pushApprovals(page, [liveItem(it)]);
+  const box = page.locator('[data-testid="api-approval-review-result"]');
+  await expect(box).toHaveAttribute('data-state', 'unchecked');
+  await box.click();
+  await page.click(`[data-testid="approval-approve-${it.id}"]`);
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
+    .toEqual({ ids: answer.ids, approve: true, options: answer.options });
+});
+
+test('contract: a review already on by settings shows checked and locked', async ({ relaunch }) => {
+  const it = reviewItem('reviewOn');
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [liveItem(it)]);
+  const box = page.locator('[data-testid="api-approval-review-result"]');
+  await expect(box).toHaveAttribute('data-state', 'checked');
+  await expect(box).toBeDisabled();
+});

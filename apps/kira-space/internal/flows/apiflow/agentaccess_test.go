@@ -66,6 +66,23 @@ func TestApiAgentAccess(t *testing.T) {
 	if reads.Problem != nil || !strings.Contains(reads.Text, "agentAutoApproveReads: true") {
 		t.Fatalf("reads = %+v", reads)
 	}
+	review := call("review-read", seed, []configfs.Edit{{Path: []string{"agentReview"}, Value: map[string]any{"read": "review"}}})
+	if review.Problem != nil || !strings.Contains(review.Text, "agentReview:") || !strings.Contains(review.Text, "read: review") {
+		t.Fatalf("review-read = %+v, want an agentReview block", review)
+	}
+	// The tab sends the whole block and each changed leaf in one call against the saved text.
+	both := call("review-both", seed, []configfs.Edit{
+		{Path: []string{"agentReview"}, Value: map[string]any{"read": "review", "write": "send"}},
+		{Path: []string{"agentReview", "read"}, Value: "review"},
+		{Path: []string{"agentReview", "write"}, Value: "send"},
+	})
+	if both.Problem != nil || !strings.Contains(both.Text, "write: send") {
+		t.Fatalf("review-both = %+v", both)
+	}
+	badReview := call("review-bad", seed, []configfs.Edit{{Path: []string{"agentReview"}, Value: map[string]any{"read": "maybe"}}})
+	if badReview.Problem == nil {
+		t.Fatalf("review-bad = %+v, want an enum problem", badReview)
+	}
 	yamlSide := strings.Replace(seed, "    value: https://staging.example.com\n", "    value: https://staging.example.com\n    agent: true\n", 1)
 	if res := call("yaml", yamlSide, []configfs.Edit{}); res.Problem != nil || res.Text != yamlSide {
 		t.Fatalf("yaml = %+v", res)
