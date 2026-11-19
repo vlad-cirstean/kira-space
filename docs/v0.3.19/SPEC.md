@@ -7,7 +7,7 @@ Phases from `P690` (highest shipped: `P689`, chapter v0.3.18). Next new phase: `
 | # | Phase | Status |
 |---|-------|--------|
 | P690 | Remove the memory module; keep it on an archive tag | Done |
-| P691 | Project file view moves from the Git module into agent tasks; Reveal in file manager, Open in VS Code | Planned |
+| P691 | Project file view moves from the Git module into agent tasks; Reveal in file manager, Open in VS Code | Done |
 | P692 | Agents module: color-coded task Start and Finish buttons | Done |
 | P693 Part 1 | Agents module RAM: measure and audit | Planned |
 | P693 Part 2 | Agents module RAM: implement the fixes, re-measure | Planned |
@@ -83,6 +83,8 @@ Open design questions for the planner:
 Done when: Git module has no Files tab and no file Search view (Repos and Review stay) and nothing in it lists project files; a task shows its worktree files with name filter and content search, opens a file for reading (and editing if the plan keeps it), and the agent module offers it only inside a task; "Reveal in file manager" (label per platform: Finder, File Explorer, file manager) and "Open in VS Code" work for the task worktree and a selected file, with a clear error when VS Code is missing; paths are resolved server-side and contained under the worktree; no credential or shell string involved; guards, specs and docs updated; flow test (backend: worktree-scoped list, read, search, containment refusal, reveal and open-in-editor recorded by the fakes) and UI spec (same scenario through the mock bridge, same asserted result) pass. New visual states listed for the re-record.
 
 Plan: `plans/P691.md`.
+
+Result: Files tab, Files/Search switch and `RepoFileTree` left the Git module (panel is Repos and Review; a stored `files` choice reads as Repos). Agents task panel gets a Files tab (`ade/v2/files/`): name filter, RE2 content search, read-only viewer with markdown Reading, branch picker for several worktrees. Backend: `AdeTaskService` TaskFiles, TaskFileRead, TaskFilesSearch, TaskFilesCancelSearch, TaskFilesClose, TaskFileReveal, TaskFileOpenInEditor, TaskFilesLaunchers; one `codeworkspace.Session` per branch row id; new `internal/editorlaunch` locates VS Code per OS and starts it detached; server build wires no launcher. Read-only: edit and blame stay on repo-file tabs. Flow test `TestTaskFiles` and UI spec `ade-v2-task-files` share `tests/contract/ade-task-files.json`. Specs that reached files or diffs through the Git tree restore the tabs or use the files window. New visual baselines: `tests/visual/ade-task-files.spec.ts` (five states). Fixed on the way: pane width ref unwrapped in the template, directory expansion seeded from the empty pre-load tree. Dropped with the tree: persisted expanded keys, preview-slot specs, "Open changes" menu item.
 
 ## P692: Color-coded task Start and Finish buttons
 
