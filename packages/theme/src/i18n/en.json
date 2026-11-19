@@ -4757,11 +4757,8 @@
       "secondsCompact": "{seconds}s"
     },
     "relative": {
-      "days": "{count}d ago",
       "future": "in {time}",
-      "hours": "{count}h ago",
       "justNow": "just now",
-      "minutes": "{count}m ago",
       "past": "{time} ago",
       "unitDay": "{count}d",
       "unitHour": "{count}h",

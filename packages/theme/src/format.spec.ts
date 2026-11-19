@@ -7,6 +7,7 @@ import {
   formatCurrency,
   formatDuration,
   formatElapsed,
+  formatRelative,
 } from './format';
 
 describe('formatBytes rounding edges', () => {
@@ -133,5 +134,37 @@ describe('formatAgeCompact unit boundaries', () => {
     expect(age(11 * 30 * 86400)).toBe('11mo');
     expect(age(365 * 86400)).toBe('1y');
     expect(age(2 * 365 * 86400)).toBe('2y');
+  });
+});
+
+describe('formatRelative', () => {
+  const now = Date.UTC(2026, 5, 1, 12);
+  const ago = (ms: number): string => formatRelative(now - ms, now);
+  const MIN = 60_000;
+  const HOUR = 60 * MIN;
+  const DAY = 24 * HOUR;
+
+  test('floors each unit and switches at its boundary', () => {
+    expect(ago(59_999)).toBe('just now');
+    expect(ago(MIN)).toBe('1m ago');
+    expect(ago(119_999)).toBe('1m ago');
+    expect(ago(HOUR - 1)).toBe('59m ago');
+    expect(ago(HOUR)).toBe('1h ago');
+    expect(ago(DAY - 1)).toBe('23h ago');
+    expect(ago(DAY)).toBe('1d ago');
+  });
+
+  test('months from 30 days, years from 365 days', () => {
+    expect(ago(30 * DAY - 1)).toBe('29d ago');
+    expect(ago(30 * DAY)).toBe('1mo ago');
+    expect(ago(364 * DAY)).toBe('12mo ago');
+    expect(ago(365 * DAY)).toBe('1y ago');
+    expect(ago(800 * DAY)).toBe('2y ago');
+  });
+
+  test('a future instant reads "in"', () => {
+    expect(ago(-5 * MIN)).toBe('in 5m');
+    expect(ago(-2 * DAY)).toBe('in 2d');
+    expect(ago(-30_000)).toBe('just now');
   });
 });

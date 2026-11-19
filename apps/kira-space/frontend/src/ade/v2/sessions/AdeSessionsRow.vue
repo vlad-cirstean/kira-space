@@ -6,7 +6,7 @@ import { CommandItem } from '@theme/components/ui/command';
 import { Kbd } from '@theme/components/ui/kbd';
 import { t } from '@theme/i18n';
 import { rowActions, rowMeta } from '@theme/lib/rowVariants';
-import { formatRelativeAt } from '@workbench/behaviour/format';
+import { formatRelative } from '@workbench/behaviour/format';
 import { splitMatches } from '@workbench/behaviour/match';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
@@ -37,7 +37,7 @@ const emit = defineEmits<{ primary: [] }>();
 const takeOver = useAdeTakeOverStore();
 const menu = useSessionMenu();
 const now = useSharedNow();
-const ago = computed(() => formatRelativeAt(props.view.session.lastActiveAt, now.value));
+const ago = computed(() => formatRelative(props.view.session.lastActiveAt, now.value.getTime()));
 const logOpen = ref(false);
 const moreBtn = useTemplateRef<{ $el: HTMLElement }>('moreBtn');
 
