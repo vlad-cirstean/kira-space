@@ -14,7 +14,6 @@ export const sections = [
   'Updates',
   'Mobile access',
   'Agent',
-  'Memory',
   'Data',
   'Cache',
   'Api',
@@ -26,7 +25,6 @@ export const sections = [
   'Studio MCP variables',
   'Prompts',
   'Advanced',
-  'Experimental',
   'About',
 ] as const;
 export type Section = (typeof sections)[number];

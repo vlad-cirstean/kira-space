@@ -37,7 +37,6 @@ export const FILES_WORKSPACE = '__files__';
 const MODE_KEYS: Record<AppMode, true> = {
   ade: true,
   automations: true,
-  memory: true,
   git: true,
   studio: true,
   api: true,

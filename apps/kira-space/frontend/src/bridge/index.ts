@@ -139,7 +139,6 @@ import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
-import { memoryControl } from './memoryControl';
 
 // bridge/index.ts is this app's own composition root — Kira Studio's own bridge/index.ts, trimmed
 // to the 15 services apps/kira-space/main.go binds (LinkService added alongside this file —
@@ -896,6 +895,5 @@ const coreBindings = {
 // studio/bridge/index.ts, which layers them over this object.
 export const control = {
   ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(coreBindings),
-  ...memoryControl,
   ...spaceControl,
 };

@@ -18,7 +18,6 @@ export const OWNERSHIP_MODULES: readonly (readonly [prefix: string, namespace: s
   ['packages/docker-ui/src/', 'docker'],
   ['packages/git-ui/src/', 'git'],
   ['packages/workbench/src/automations/', 'automations'],
-  ['packages/workbench/src/memory/', 'memory'],
   ['packages/workbench/src/llmPrompts/', 'llmPrompts'],
   ['packages/workbench/src/', 'workbench'],
   ['apps/kira-space/frontend/src/workbench/', 'shell'],

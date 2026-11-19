@@ -25,7 +25,6 @@ interface Area {
 }
 
 const AREAS: readonly Area[] = [
-  { id: 'memory', prefix: 'memory.', label: 'common.module.memory.label' },
   { id: 'agentRuns', prefix: 'headless.', label: 'llmPrompts.area.agentRuns.label' },
   { id: 'rebaseReview', prefix: 'ade.', label: 'llmPrompts.area.rebaseReview.label' },
   { id: 'databaseMcp', prefix: 'dbmcp.', label: 'common.module.studioMcp.label' },

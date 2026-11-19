@@ -328,35 +328,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskTaskBranchRisk: 'AdeTaskService.TaskBranchRisk',
   adeTaskHostProviders: 'AdeTaskService.HostProviders',
 
-  memorySearch: 'MemoryService.Search',
-  memoryRecent: 'MemoryService.Recent',
-  memoryHistory: 'MemoryService.History',
-  memoryStore: 'MemoryService.Store',
-  memoryContext: 'MemoryService.Context',
-  memoryProjects: 'MemoryService.Projects',
-  memoryMcpStatus: 'MemoryService.McpStatus',
-  memoryCheckHook: 'MemoryService.CheckHook',
-  memoryMcpInstall: 'MemoryService.InstallAgent',
-  memorySemanticStatus: 'MemoryService.SemanticStatus',
-  memorySemanticInstall: 'MemoryService.InstallSemanticModel',
-  memorySemanticRetry: 'MemoryService.RetrySemantic',
-  memoryImportChoose: 'MemoryImportService.Choose',
-  memoryImportCreate: 'MemoryImportService.Create',
-  memoryImportJobs: 'MemoryImportService.Jobs',
-  memoryImportJob: 'MemoryImportService.Job',
-  memoryImportStart: 'MemoryImportService.Start',
-  memoryImportPause: 'MemoryImportService.Pause',
-  memoryImportResume: 'MemoryImportService.Resume',
-  memoryImportCancel: 'MemoryImportService.Cancel',
-  memoryImportDiscard: 'MemoryImportService.Discard',
-  memoryImportDismiss: 'MemoryImportService.Dismiss',
-  memoryImportRetryFailed: 'MemoryImportService.RetryFailed',
-  memoryImportRetryFile: 'MemoryImportService.RetryFile',
-  memoryDistillRun: 'MemoryDistillService.Distill',
-  memoryDistillLimits: 'MemoryDistillService.Limits',
-  memoryDistillChoose: 'MemoryDistillService.Choose',
-  memoryDistillToImport: 'MemoryDistillService.ToImport',
-
   // Databases module (formerly Kira Studio's own table).
   appInfo: 'AppService.Info',
   filesChooseSave: 'FilesService.ChooseSave',
@@ -741,22 +712,6 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
     defaultTargetRunId: '',
     candidates: [],
     round: null,
-  }),
-  // P201 Part 2: the Memory module lists recent memories as soon as its mode opens.
-  [IPC.memoryRecent]: '[]',
-  // P272: no project keys by default.
-  [IPC.memoryProjects]: '[]',
-  // P273: no check commands by default.
-  [IPC.memoryCheckHook]: JSON.stringify({ executable: '', installCommand: '', hookLine: '' }),
-  // P211: no imports by default.
-  [IPC.memoryImportJobs]: '[]',
-  // P210: no embedder by default, so the semantic row stays hidden.
-  [IPC.memorySemanticStatus]: JSON.stringify({
-    state: 'off',
-    message: '',
-    model: '',
-    done: 0,
-    total: 0,
   }),
   // Databases module (formerly Kira Studio's own table).
   [IPC.filtersList]: JSON.stringify({ hiddenKinds: [], hiddenPaths: [] }),

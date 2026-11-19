@@ -8,17 +8,7 @@ import type { Settings } from '../../state/settingsDomain';
 // and its panel), so it saves with the rest instead of writing on toggle.
 type SettingsSections = Pick<
   Settings,
-  | 'appearance'
-  | 'advanced'
-  | 'git'
-  | 'agent'
-  | 'memory'
-  | 'experimental'
-  | 'capture'
-  | 'tracking'
-  | 'data'
-  | 'cache'
-  | 'api'
+  'appearance' | 'advanced' | 'git' | 'agent' | 'capture' | 'tracking' | 'data' | 'cache' | 'api'
 > & {
   ade: Pick<Settings['ade'], 'headlessSettingSources'>;
 };

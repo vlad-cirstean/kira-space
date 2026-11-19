@@ -53,7 +53,6 @@ import {
   singleRowChunks,
 } from '../ui/support/gitUiPortFixtures';
 import { IPC } from '../ui/support/ipcChannels';
-import { openMemory } from '../ui/support/memoryNav';
 import { treeRow } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './studio/documentsFixture';
@@ -117,7 +116,6 @@ test('ram: idle and modes', async ({ relaunch }, info) => {
       { name: 'boot60', run: () => page.waitForTimeout(60_000) },
       ...hop('ade', 'git'),
       ...hop('automations', 'git'),
-      ...hop('memory', 'git'),
       { name: 'mode:studio', run: () => modeTab(page, 'studio').click() },
       ...hop('api', 'studio'),
       ...hop('docker', 'studio'),
@@ -505,70 +503,6 @@ for (const tasks of [20, 200]) {
       const d = await diffSnapshotFiles(s.snapshotFile('left'), s.snapshotFile('back'));
       console.log(`HEAPDIFF ${APP} ade${tasks} left-back ${JSON.stringify(d)}`);
     }
-  });
-}
-
-function memoryRow(i: number): Record<string, unknown> {
-  return {
-    id: `m${i}`,
-    lineageId: `m${i}`,
-    version: 1,
-    fact: `Fact ${i}: the billing service number ${i} listens on port ${9000 + (i % 100)}.`,
-    kind: 'fact',
-    reason: `Reason ${i}`,
-    keywords: ['billing', `k${i % 20}`],
-    origin: i % 2 ? 'agent' : 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: '2026-03-01T10:00:00.000Z',
-    supersededAt: null,
-    versions: 1,
-  };
-}
-
-for (const count of [50, 500]) {
-  test(`ram: memory ${count}`, async ({ relaunch }, info) => {
-    test.skip(!worldEnabled('memory'));
-    const all = Array.from({ length: count }, (_, i) => memoryRow(i));
-    const { window: page } = await relaunch({
-      control: [
-        { channel: IPC.memoryRecent, response: all },
-        { channel: IPC.memoryHistory, response: { memories: [all[0]], events: [] } },
-        { channel: IPC.memoryContext, response: { memory: all[0], groups: [] } },
-      ],
-    });
-    await page.clock.install();
-    await runMemSteps({
-      app: APP,
-      world: `memory${count}`,
-      page,
-      info,
-      steps: [
-        { name: 'list', run: () => openMemory(page), snapshot: true },
-        {
-          name: 'detail',
-          run: async () => {
-            await page.locator('[data-testid="memory-row-m0"]').click();
-            await page.waitForTimeout(1000);
-          },
-          snapshot: true,
-        },
-        {
-          name: 'left',
-          run: async () => {
-            await modeTab(page, 'git').click();
-            await page.waitForTimeout(1500);
-          },
-          snapshot: true,
-        },
-      ],
-    });
   });
 }
 

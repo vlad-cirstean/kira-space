@@ -53,17 +53,6 @@ const RECORDS = [
       },
     ],
   }),
-  op({
-    id: 'op-c',
-    startedAt: '2026-01-01T00:01:00.000Z',
-    module: 'memory',
-    kind: 'memory_search',
-    source: 'MCP',
-    repoName: '',
-    repoRoot: '',
-    durationMs: 3,
-    command: 'memory_search {"query":"port"}',
-  }),
 ];
 
 test('operations dock: list and expanded failed op', async ({ relaunch }) => {
@@ -76,7 +65,7 @@ test('operations dock: list and expanded failed op', async ({ relaunch }) => {
   await handle.focus();
   for (let i = 0; i < 20; i++) await window.keyboard.press('ArrowUp');
   const dock = window.locator('[data-testid="operations-panel"]');
-  await expect(window.locator('[data-testid="op-row"]')).toHaveCount(3);
+  await expect(window.locator('[data-testid="op-row"]')).toHaveCount(2);
   await expect(dock).toHaveScreenshot('operations-list.png');
   await window.locator('[data-testid="op-row"][data-op-id="op-b"]').click();
   await expect(window.locator('[data-testid="op-detail"]')).toBeVisible();

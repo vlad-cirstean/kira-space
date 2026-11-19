@@ -287,7 +287,7 @@ const netChanged = (name: string): boolean => {
 
     <EditField
       field="memory"
-      :label="t('common.module.memory.label')"
+      :label="t('common.metric.memory.label')"
       :mode="mode('memory')"
       :changed="changed('memory')"
       :error="err('memory')"

@@ -34,7 +34,6 @@ import {
 } from './studio/support/tree';
 import { gotoAdeRepos } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -327,83 +326,6 @@ test('repo search results — arrows, Enter on a file header and Home/End', asyn
   // Enter on a file header collapses its matches.
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-testid="repo-search-match-row"]')).toHaveCount(1);
-});
-
-function memoryRecord(id: string, fact: string): Record<string, unknown> {
-  return {
-    id,
-    lineageId: id,
-    version: 1,
-    fact,
-    kind: 'fact',
-    reason: 'Because.',
-    keywords: [],
-    origin: 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: NOW,
-    supersededAt: null,
-    versions: 1,
-  };
-}
-
-test('memory list — focus on mount, arrows, Home/End, Enter selects and a typed key lands in search', async ({
-  relaunch,
-}) => {
-  const first = memoryRecord('ma', 'First fact.');
-  const second = memoryRecord('mb', 'Second fact.');
-  const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryRecent, response: [first, second] },
-      { channel: IPC.memoryHistory, response: { memories: [second], events: [] } },
-      { channel: IPC.memoryContext, response: { memory: second, groups: [] } },
-    ]),
-  });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-  const search = page.locator('[data-testid="memory-search"]');
-  await expect(search).toBeFocused();
-
-  const row = (id: string) => page.locator(`[data-testid="memory-row-${id}"]`);
-  await expect(page.locator('[data-testid^="memory-row-"][tabindex="0"]')).toHaveCount(1);
-  await row('ma').focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(row('ma')).toBeFocused();
-  await page.keyboard.press('End');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('[data-testid="memory-detail-fact"]')).toContainText('Second fact.');
-
-  await row('ma').focus();
-  await page.keyboard.press('z');
-  await expect(search).toBeFocused();
-  await expect(search).toHaveValue('z');
-});
-
-test('memory list — 200 memories virtualize, End and Home reach the ends', async ({ relaunch }) => {
-  const records = Array.from({ length: 200 }, (_, i) => memoryRecord(`m${i}`, `Fact ${i}.`));
-  const { window: page } = await relaunch({
-    control: withMemory([{ channel: IPC.memoryRecent, response: records }]),
-  });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-
-  const rows = page.locator('[data-testid^="memory-row-m"]');
-  await expect(rows.first()).toBeVisible();
-  expect(await rows.count()).toBeLessThan(60);
-  await rows.first().focus();
-  await page.keyboard.press('End');
-  await expect(page.locator('[data-testid="memory-row-m199"]')).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(page.locator('[data-testid="memory-row-m0"]')).toBeFocused();
 });
 
 studioTest.describe('databases module', () => {

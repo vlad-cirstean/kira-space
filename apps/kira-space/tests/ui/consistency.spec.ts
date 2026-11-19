@@ -22,7 +22,6 @@ import {
   openPlan,
 } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -106,14 +105,6 @@ test('the menu find event focuses the open diff find widget', async ({ relaunch 
       timeout: 500,
     });
   }).toPass();
-});
-
-test('Memory mode has no tab strip', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: withMemory([{ channel: IPC.windowsEnsure, response: { mode: 'memory' } }]),
-  });
-  await expect(page.locator(t('memory-panel'))).toBeVisible();
-  await expect(page.locator(t('tab-strip'))).toHaveCount(0);
 });
 
 test('the ADE panel width comes back from the stored layout', async ({ relaunch }) => {

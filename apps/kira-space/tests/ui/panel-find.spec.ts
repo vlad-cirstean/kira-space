@@ -2,7 +2,6 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { openReviewListing } from './support/gitUiPortFixtures';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import { switchModule } from './support/moduleRoundTrip';
 import { expectPanelFind, pressFind } from './support/panelFind';
@@ -52,28 +51,6 @@ const script = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-const memory = {
-  id: 'm1',
-  lineageId: 'm1',
-  version: 1,
-  fact: 'Fact number 1.',
-  kind: 'fact',
-  reason: 'Added for the find spec.',
-  keywords: [],
-  origin: 'user',
-  sourceTag: null,
-  scope: 'personal',
-  project: null,
-  sessionId: null,
-  status: 'current',
-  historical: false,
-  supersedesId: null,
-  supersededById: null,
-  createdAt: '2026-03-01T10:00:00.000Z',
-  supersededAt: null,
-  versions: 1,
-};
-
 test('Automations: Cmd+F reveals and focuses the search', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [
@@ -86,14 +63,6 @@ test('Automations: Cmd+F reveals and focuses the search', async ({ relaunch }) =
   await switchModule(page, 'automations');
   await expect(page.locator(t('tree-search'))).toHaveCount(0);
   await expectPanelFind(page, page.locator(t('toggle-search')), page.locator(t('tree-search')));
-});
-
-test('Memory: Cmd+F from a result row refocuses the always-shown search', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: withMemory([{ channel: IPC.memoryRecent, response: [memory] }]),
-  });
-  await switchModule(page, 'memory');
-  await expectPanelFind(page, page.locator(t('memory-row-m1')), page.locator(t('memory-search')));
 });
 
 async function openFiles(page: Page): Promise<void> {

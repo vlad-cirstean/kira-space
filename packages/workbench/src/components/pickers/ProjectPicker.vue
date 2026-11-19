@@ -3,14 +3,11 @@ import { t } from '@theme/i18n';
 import type { PickerOption } from '../../lib/pickerOptions';
 import PickerPopover from './PickerPopover.vue';
 
-// The one project picker: a git repository or a memory project key. Options come from the
-// caller's own data source; `custom` adds a free-entry item for keys not in the list.
+// The one project picker: a git repository. Options come from the caller's own data source.
 withDefaults(
   defineProps<{
     projects: readonly PickerOption[];
     placeholder: string;
-    /** Free entry: the typed text becomes the value. */
-    custom?: boolean;
     loading?: boolean;
     error?: string | null;
     disabled?: boolean;
@@ -20,7 +17,6 @@ withDefaults(
     testid: string;
   }>(),
   {
-    custom: false,
     loading: false,
     error: null,
     disabled: false,
@@ -42,7 +38,6 @@ const open = defineModel<boolean>('open', { default: false });
     :placeholder="placeholder"
     :search-placeholder="t('common.picker.findProject.placeholder')"
     :empty-text="t('common.picker.noProjects.empty')"
-    :custom-label="custom ? (q) => t('common.picker.useValue.label', { value: q }) : undefined"
     :loading="loading"
     :error="error"
     :disabled="disabled"
@@ -51,7 +46,6 @@ const open = defineModel<boolean>('open', { default: false });
     :trigger="trigger"
     :testid="testid"
     @select="emit('select', $event)"
-    @custom="(text) => (model = text)"
   >
     <template #footer><slot name="footer" /></template>
   </PickerPopover>

@@ -368,44 +368,6 @@ export const IPC = {
   leasesRequestRelease: 'kira:ade:leases:requestRelease',
   leasesForceRelease: 'kira:ade:leases:forceRelease',
   adeLeasesChanged: 'kira:ade:leases',
-
-  // P201 Part 2: the Memory module's bound surface; memoryChanged is a push channel, no FQN entry.
-  memorySearch: 'kira:memory:search',
-  memoryRecent: 'kira:memory:recent',
-  memoryHistory: 'kira:memory:history',
-  memoryStore: 'kira:memory:store',
-  // P272: a fact with the facts stored alongside it; the project keys of current facts.
-  memoryContext: 'kira:memory:context',
-  memoryProjects: 'kira:memory:projects',
-  memoryMcpStatus: 'kira:memory:mcpStatus',
-  memoryCheckHook: 'kira:memory:checkHook',
-  memoryMcpInstall: 'kira:memory:mcpInstall',
-  memoryChanged: 'kira:memory:changed',
-  // P210: semantic-search status; memorySemantic is a push channel, no FQN entry.
-  memorySemanticStatus: 'kira:memory:semanticStatus',
-  memorySemanticInstall: 'kira:memory:semanticInstall',
-  memorySemanticRetry: 'kira:memory:semanticRetry',
-  memorySemantic: 'kira:memory:semantic',
-  // P211: bulk import; memoryImport is a push channel, no FQN entry.
-  memoryImportChoose: 'kira:memory:importchoose',
-  memoryImportCreate: 'kira:memory:importcreate',
-  memoryImportJobs: 'kira:memory:importjobs',
-  memoryImportJob: 'kira:memory:importjob',
-  memoryImportStart: 'kira:memory:importstart',
-  memoryImportPause: 'kira:memory:importpause',
-  memoryImportResume: 'kira:memory:importresume',
-  memoryImportCancel: 'kira:memory:importcancel',
-  memoryImportDiscard: 'kira:memory:importdiscard',
-  memoryImportDismiss: 'kira:memory:importdismiss',
-  memoryImportRetryFailed: 'kira:memory:importretryFailed',
-  memoryImportRetryFile: 'kira:memory:importretryFile',
-  memoryImport: 'kira:memory:import',
-  // P285 Part 4: distill; memoryDistill is a push channel, no FQN entry.
-  memoryDistillRun: 'kira:memory:distillrun',
-  memoryDistillLimits: 'kira:memory:distilllimits',
-  memoryDistillChoose: 'kira:memory:distillchoose',
-  memoryDistillToImport: 'kira:memory:distilltoimport',
-  memoryDistill: 'kira:memory:distill',
   // Databases module (formerly Kira Studio's own table). The studio* keys are the Studio twins of
   // Space keys of the same name.
   appInfo: 'kira:app:info',

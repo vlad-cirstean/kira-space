@@ -1,6 +1,5 @@
 const APP = 'apps/kira-space/frontend/';
 const WORKBENCH_AREAS = new Set([
-  'memory',
   'automations',
   'agent',
   'approvals',

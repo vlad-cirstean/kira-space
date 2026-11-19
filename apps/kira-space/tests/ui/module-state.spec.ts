@@ -3,7 +3,6 @@ import { expect, test } from './fixtures';
 import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import { roundTrip, switchModule } from './support/moduleRoundTrip';
 import { scrollTo, scrollTop } from './support/scroll';
@@ -113,62 +112,6 @@ test('Automations: search bar, text and list scroll survive a module round trip'
 
   await expect(page.locator(t('tree-search'))).toHaveValue('Script');
   await expect.poll(() => scrollTop(page.locator(`${t('automations-body')} > div`))).toBe(scrolled);
-});
-
-function memoryRow(i: number, over: Record<string, unknown> = {}) {
-  return {
-    id: `m${i}`,
-    lineageId: `m${i}`,
-    version: 1,
-    fact: `Fact number ${i}.`,
-    kind: 'fact',
-    reason: 'Added for the state spec.',
-    keywords: [],
-    origin: 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: '2026-03-01T10:00:00.000Z',
-    supersededAt: null,
-    versions: 1,
-    ...over,
-  };
-}
-
-test('Memory: results scroll and detail scroll survive a module round trip', async ({
-  relaunch,
-}) => {
-  const rows = Array.from({ length: 40 }, (_, i) => memoryRow(i));
-  const long = memoryRow(0, {
-    reason: Array.from({ length: 120 }, (_, i) => `Line ${i}`).join('\n\n'),
-  });
-  const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryRecent, response: [long, ...rows.slice(1)] },
-      { channel: IPC.memoryHistory, response: { memories: [long], events: [] } },
-      { channel: IPC.memoryContext, response: { memory: long, groups: [] } },
-    ]),
-  });
-  await page.setViewportSize({ width: 1200, height: 520 });
-  await switchModule(page, 'memory');
-  await page.locator(t('memory-row-m0')).click();
-  const detail = page.locator(t('memory-start'));
-  await expect(page.locator(t('memory-detail'))).toBeVisible();
-  await scrollTo(detail, 200);
-  const detailTop = await scrollTop(detail);
-  const results = page.locator(t('memory-results'));
-  await scrollTo(results, 300);
-  const resultsTop = await scrollTop(results);
-
-  await roundTrip(page, 'git', 'memory');
-
-  await expect.poll(() => scrollTop(page.locator(t('memory-start')))).toBe(detailTop);
-  await expect.poll(() => scrollTop(results)).toBe(resultsTop);
 });
 
 test('Agents: plan scroll, All sessions filter and picked file survive page and module switches', async ({

@@ -265,18 +265,6 @@ const captureSettingsSchema = /*#__PURE__*/ z.object({
   hotkey: z.string().default(DEFAULT_CAPTURE_HOTKEY),
 });
 
-// P314: the model alias per provider id for every memory call (gate, reconcile, import, distill).
-// A provider without an entry uses its default.
-const memorySettingsSchema = /*#__PURE__*/ z.object({
-  models: z.record(z.string(), z.string()).default({}),
-});
-
-// P556: one boolean per feature still behind a toggle; a new flag is one field here and one row in
-// workbench/settings/ExperimentalPane.vue.
-const experimentalSettingsSchema = /*#__PURE__*/ z.object({
-  memory: z.boolean().default(false),
-});
-
 // P512: per item kind, whether each concept counts as a meaningful update. One boolean per concept
 // in state/trackingConcepts.ts; an unknown stored key drops, a missing one reads its default.
 function trackingKindSchema(kind: TrackedKind) {
@@ -332,8 +320,6 @@ const settingsSchema = /*#__PURE__*/ z.object({
     agentInput: false,
   }),
   capture: captureSettingsSchema.default({ enabled: true, hotkey: DEFAULT_CAPTURE_HOTKEY }),
-  memory: memorySettingsSchema.default({ models: {} }),
-  experimental: experimentalSettingsSchema.default({ memory: false }),
   tracking: trackingSettingsSchema.default({
     changeRequest: trackingDefaults('changeRequest'),
     issue: trackingDefaults('issue'),
@@ -373,8 +359,6 @@ const settingsPatchSchema = /*#__PURE__*/ z.object({
   ade: adeSettingsSchema.partial().optional(),
   mobile: mobileSettingsSchema.partial().optional(),
   capture: captureSettingsSchema.partial().optional(),
-  memory: memorySettingsSchema.partial().optional(),
-  experimental: experimentalSettingsSchema.partial().optional(),
   tracking: trackingSettingsSchema.partial().optional(),
   agent: appAgentSettingsSchema.partial().optional(),
   data: dataSettingsSchema.partial().optional(),
@@ -433,12 +417,6 @@ export const defaultSettings: Settings = {
   capture: {
     enabled: true,
     hotkey: DEFAULT_CAPTURE_HOTKEY,
-  },
-  memory: {
-    models: {},
-  },
-  experimental: {
-    memory: false,
   },
   tracking: {
     changeRequest: trackingDefaults('changeRequest'),

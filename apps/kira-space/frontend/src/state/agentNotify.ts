@@ -24,7 +24,7 @@ export function installAgentNotifyFocus(): void {
   const visibility = useDocumentVisibility();
 
   const activeTerminalId = computed(() => {
-    if (mode.active === 'ade' || mode.active === 'memory') return '';
+    if (mode.active === 'ade') return '';
     const id = tabs.activeIdByWorkspace[visibleWorkspace()];
     return id && tabs.tabs.some((t) => t.id === id && t.kind === 'terminal') ? id : '';
   });

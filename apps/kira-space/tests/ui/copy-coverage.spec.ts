@@ -49,10 +49,9 @@ import {
 import { adeFixture, adeV2Control, bandOf, openAdeRepos, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 
-// Chrome text on the ADE, repos, settings, memory and title bar surfaces comes from
+// Chrome text on the ADE, repos, settings and title bar surfaces comes from
 // the catalog. The pseudo-locale wraps catalog messages, so a literal shows as a letter outside the
 // markers. Fixture data (names, titles, ids, paths, times) is allowed by exact match. The git
 // surfaces are covered by copy-coverage-git.spec.ts.
@@ -241,24 +240,18 @@ test('repositories page', async ({ relaunch }) => {
 });
 
 test('settings dialog, every pane', async ({ relaunch }) => {
-  const status = contract<{ command: string }>('memory-settings', 'MemoryService.McpStatus');
   const about = contract<{ appVersion: string; repoUrl: string }>(
     'settings-about',
     'AppService.Info#about',
   );
   const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryMcpStatus, response: status },
+    control: [
       {
         channel: IPC.fileHandlersStatus,
         response: contract('file-handlers', 'FileHandlersService.Status#off'),
       },
-      {
-        channel: IPC.memoryCheckHook,
-        response: contract('memory-settings', 'MemoryService.CheckHook'),
-      },
       { channel: IPC.appInfo, response: { ...about, go: 'go1.0', wails: 'v3.0.0', kiraHome: '' } },
-    ]),
+    ],
   });
   await emitWailsEvent(page, IPC.openSettings, undefined);
   await page.locator(t('settings-dialog')).waitFor();
@@ -283,29 +276,12 @@ test('settings dialog, every pane', async ({ relaunch }) => {
     'File types',
     'Mobile access',
     'Agent',
-    'Memory',
     'Advanced',
-    'Experimental',
     'About',
   ]) {
     await page.locator(t(`settings-section-${section}`)).click();
     await expectCatalogText(page.locator(t('settings-dialog')), { allow });
   }
-});
-
-test('memory panel, add memory dialog and import view', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: withMemory() });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-  await expect(page.locator(t('memory-panel'))).toBeVisible();
-  await setPseudoLocale(page);
-  await expectCatalogText(page.locator(t('memory-panel')));
-  await page.locator(t('memory-add')).click();
-  const dialog = page.locator(t('add-memory-dialog'));
-  await expect(dialog).toBeVisible();
-  await expectCatalogText(dialog);
-  await page.keyboard.press('Escape');
-  await page.locator(t('memory-import')).click();
-  await expectCatalogText(page.locator(t('memory-panel')));
 });
 
 studioTest.describe('databases module', () => {
@@ -379,14 +355,7 @@ studioTest.describe('databases module', () => {
     const providerNames = [agent.productLabel, ...agent.models.map((m) => m.label)].map(
       (v) => new RegExp(`^${v}$`),
     );
-    const { window: page } = await relaunch({
-      control: [
-        {
-          channel: IPC.memoryMcpStatus,
-          response: contract('memory-settings', 'MemoryService.McpStatus'),
-        },
-      ],
-    });
+    const { window: page } = await relaunch();
     await setPseudoLocale(page);
     await openSettings(page);
     for (const section of [

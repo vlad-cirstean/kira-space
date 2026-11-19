@@ -71,7 +71,6 @@ apps/kira-space/frontend/src/studio/workbench/panels/ProjectPanel.vue
 apps/kira-space/frontend/src/studio/api/CollectionsPanel.vue
 packages/docker-ui/src/components/DockerPanel.vue
 packages/workbench/src/automations/AutomationsPanel.vue
-packages/workbench/src/memory/MemoryPanel.vue
 apps/kira-space/frontend/src/repo/GitPanel.vue
 apps/kira-space/frontend/src/studio/project/ProjectTree.vue
 apps/kira-space/frontend/src/studio/project/TreeRow.vue
@@ -134,7 +133,7 @@ U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # s
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
-# B (apps/kira-space, W/memory)
+# B (apps/kira-space)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
 U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab count badge (P466)
@@ -212,7 +211,7 @@ U26@@vt@@@@retired tone variant err/destructive/note, or a tone alpha (use Badge
 U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}rounded-full(?![\w-]))(?=[^"]*${TOK}px-)
 U28@@v@@@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
 U28@@vS@@@@Checkbox in a settings pane (a live boolean is a Switch)@@<Checkbox\b
-U28@@v@@/settings/|MemoryPanel.vue|AdeMainTab.vue|AdeReposPage.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
+U28@@v@@/settings/|AdeMainTab.vue|AdeReposPage.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
 U29@@v@@@@TooltipProvider with props (the theme owns the delays), or TooltipContent class other than whitespace-pre-wrap@@<TooltipProvider\b(?!\s*>)|<TooltipContent\b(?&t)\s:?class="(?!whitespace-pre-wrap")
 U30@@v@@@@DropdownMenuContent width, or DropdownMenuItem height/padding/gap class@@<DropdownMenuContent\b(?&t)\s:?class="[^"]*${TOK}(?:w|min-w|max-w)-|<DropdownMenuItem\b(?&t)\s:?class="[^"]*${TOK}(?:h|py|px|gap)-
 U31@@v@@@@hand-written resize cursor or handle look, or a separator without resizeHandleVariants@@${TOK}cursor-(?:col|row|ew|ns)-resize|<ResizeHandle\b(?&t)\s:?class="[^"]*${TOK}(?:w-|h-|bg-|shadow|cursor|outline)|(?s)\A(?!.*resizeHandleVariants).*role="separator"
