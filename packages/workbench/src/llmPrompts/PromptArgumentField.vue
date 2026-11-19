@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { LlmPromptView } from '@shared/domain/llmPrompts';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Field, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Textarea } from '@theme/components/ui/textarea';
-import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import { computed, watch } from 'vue';
 import { useLlmPromptDraftsStore } from '../state/llmPromptDrafts';
@@ -35,12 +34,9 @@ watch(
   <Field data-testid="llm-prompt-arg" :data-id="view.id">
     <div class="flex items-center justify-between gap-1">
       <FieldLabel class="font-data" :for="view.id">{{ view.name }}</FieldLabel>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         data-testid="llm-prompt-reset"
-        :disabled-trigger="text === view.defaultText"
-        :disabled="text === view.defaultText"
+        :at-default="text === view.defaultText"
         @click="drafts.setText(view, view.defaultText)"
       />
     </div>

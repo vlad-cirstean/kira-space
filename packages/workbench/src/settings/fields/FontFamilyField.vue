@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AppearanceSettings } from '@shared/domain/settings';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
@@ -43,12 +43,9 @@ const fieldId = useId();
   <Field>
     <div class="flex items-center justify-between gap-1">
       <FieldLabel :for="fieldId">{{ t('theme.fontFamily.label') }}</FieldLabel>
-      <TooltipIconButton
-        icon="discard"
-        :label="t('common.action.resetToDefault.label')"
+      <ResetToDefaultButton
         data-testid="settings-reset-appearance-fontFamily"
-        :disabled-trigger="isAtDefault('appearance', 'fontFamily')"
-        :disabled="isAtDefault('appearance', 'fontFamily')"
+        :at-default="isAtDefault('appearance', 'fontFamily')"
         @click="resetLeaf('appearance', 'fontFamily')"
       />
     </div>
