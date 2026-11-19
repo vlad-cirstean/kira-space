@@ -5,8 +5,8 @@ import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import ApprovalStatement from './ApprovalStatement.vue';
 import DbParamsList from './DbParamsList.vue';
-import DbScriptBlock from './DbScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
+import TransformScriptBlock from './TransformScriptBlock.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
@@ -34,6 +34,13 @@ const payload = computed(() => dbQueryPayloadSchema.parse(props.item.payload));
       :placeholders="payload.placeholders"
       :kept="payload.kept"
     />
-    <DbScriptBlock v-if="payload.script" :script="payload.script" :kept="payload.kept" />
+    <TransformScriptBlock
+      v-if="payload.script"
+      :label="t('studio.dbMcp.approval.query.scriptResult.label')"
+      :script="payload.script"
+      :kept="payload.kept"
+      testid="db-approval"
+      script-testid="db-approval-script"
+    />
   </div>
 </template>

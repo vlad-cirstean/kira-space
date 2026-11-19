@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DbQueryPayload } from '@shared/domain/dbmcp';
+import type { TransformView } from '@shared/domain/dbmcp';
 import type { KeptUse } from '@shared/domain/kept';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import { FieldDescription } from '@theme/components/ui/field';
@@ -8,12 +8,15 @@ import { computed } from 'vue';
 import { KEPT_MARK_CLASS, keptScriptRanges } from '../kept/keptHighlight';
 import JsScriptBlock from './JsScriptBlock.vue';
 
-// The result script of a run_query card: the source the user approves, with its kept calls marked, the
-// names it may keep and a note when it reads kept values. The statement above is what runs; the script only
-// shapes what the agent gets back.
+// A transform script in an approval card: the source the user approves, with its kept calls marked, the
+// names it may keep and a note when it reads kept values. The script only shapes what the agent gets back.
+// `testid` prefixes the may-keep and reads rows; `scriptTestid` is the script block's own.
 const props = defineProps<{
-  script: NonNullable<DbQueryPayload['script']>;
+  label: string;
+  script: TransformView;
   kept: readonly KeptUse[];
+  testid: string;
+  scriptTestid: string;
 }>();
 
 const sites = computed(() => [
@@ -29,12 +32,12 @@ const readsInScript = computed(() =>
 <template>
   <div class="flex flex-col gap-1">
     <JsScriptBlock
-      :label="t('studio.dbMcp.approval.query.scriptResult.label')"
+      :label="label"
       :source="script.source"
       :range-highlights="marked ? keptScriptRanges(sites, 'transform') : undefined"
-      testid="db-approval-script"
+      :testid="scriptTestid"
     />
-    <p v-if="script.mayKeep.length" class="m-0 text-kira-sm" data-testid="db-approval-may-keep">
+    <p v-if="script.mayKeep.length" class="m-0 text-kira-sm" :data-testid="`${testid}-may-keep`">
       {{ t('studio.kept.mayKeep.label') }}
       <HighlightedText
         v-for="m in script.mayKeep"
@@ -44,7 +47,7 @@ const readsInScript = computed(() =>
         :mark-class="KEPT_MARK_CLASS"
       />
     </p>
-    <FieldDescription v-if="readsInScript" data-testid="db-approval-script-reads">{{
+    <FieldDescription v-if="readsInScript" :data-testid="`${testid}-script-reads`">{{
       t('studio.kept.scriptReads.hint')
     }}</FieldDescription>
   </div>

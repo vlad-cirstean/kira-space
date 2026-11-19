@@ -135,6 +135,7 @@ const transformViewSchema = /*#__PURE__*/ z.object({
     .nullish()
     .transform((v) => v ?? []),
 });
+export type TransformView = z.infer<typeof transformViewSchema>;
 
 // Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
 // and the variables as they stood when the statement was checked; the result script, if any (P680).

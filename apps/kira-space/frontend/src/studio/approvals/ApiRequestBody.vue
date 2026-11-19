@@ -2,7 +2,6 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import HighlightedText from '@theme/components/HighlightedText.vue';
-import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
@@ -19,6 +18,7 @@ import {
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
+import TransformScriptBlock from './TransformScriptBlock.vue';
 import UserInputsPanel from './UserInputsPanel.vue';
 
 // What the agent would send: path and query, then the body. Host, headers and variables sit on
@@ -69,15 +69,8 @@ const formParts = (row: number, part: 'name' | 'value') => {
   const ranges = keptRanges(kept.value, 'form', row, part);
   return ranges.length ? keptParts(text, ranges) : null;
 };
-// The script's own calls: reads come with the uses, writes with the transform's mayKeep.
-const scriptSites = computed(() => [
-  ...kept.value.flatMap((u) => u.sites),
-  ...(payload.value.script?.transform?.mayKeep.flatMap((m) => m.sites) ?? []),
-]);
-const mayKeep = computed(() => payload.value.script?.transform?.mayKeep ?? []);
-const readsInScript = computed(() =>
-  kept.value.some((u) => u.sites.some((s) => s.field === 'script')),
-);
+// The prepare script's own kept calls (reads); the transform block marks its own.
+const keptSites = computed(() => kept.value.flatMap((u) => u.sites));
 const pairName = (field: 'header' | 'query' | 'form', index: number): string => {
   if (field === 'header') return payload.value.headers[index]?.name ?? '';
   if (field === 'query') return payload.value.query[index]?.name ?? '';
@@ -118,30 +111,16 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
       v-if="payload.script?.prepare"
       :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
       :source="payload.script.prepare.source"
-      :range-highlights="kept.length ? keptScriptRanges(scriptSites, 'prepare') : undefined"
+      :range-highlights="kept.length ? keptScriptRanges(keptSites, 'prepare') : undefined"
       testid="api-approval-script-prepare"
     />
-    <JsScriptBlock
+    <TransformScriptBlock
       v-if="payload.script?.transform"
       :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-      :source="payload.script.transform.source"
-      :range-highlights="
-        kept.length || mayKeep.length ? keptScriptRanges(scriptSites, 'transform') : undefined
-      "
-      testid="api-approval-script-transform"
+      :script="payload.script.transform"
+      :kept="kept"
+      testid="api-approval"
+      script-testid="api-approval-script-transform"
     />
-    <p v-if="mayKeep.length" class="m-0 text-kira-sm" data-testid="api-approval-may-keep">
-      {{ t('studio.kept.mayKeep.label') }}
-      <HighlightedText
-        v-for="m in mayKeep"
-        :key="m.name"
-        class="mr-1 font-data"
-        :parts="[{ text: m.name, match: true }]"
-        :mark-class="KEPT_MARK_CLASS"
-      />
-    </p>
-    <FieldDescription v-if="readsInScript" data-testid="api-approval-script-reads">{{
-      t('studio.kept.scriptReads.hint')
-    }}</FieldDescription>
   </div>
 </template>
