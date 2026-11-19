@@ -346,6 +346,8 @@ Wave 1: done cfd18dda3
 
 ### Wave 2
 
+Wave 2: done 2efc3aa51
+
 | Stream | Owns this iteration | Sites |
 |--------|---------------------|-------|
 | A Studio | `src/studio/**` | F2.1 RawExchangePane, DescribeView, KeptValueView; F2.2 VariableRow, VariableHistoryMenu, KeptValueView, CredentialPastePanel; F2.4 KeptVariableRow, KeptEntryRow; F2.5 both kept rows adopt `useKeptExpiry`; F2.7 StudioMcpKeptPane, ConnectionMcpTables, ConnectionMaskReview; F2.8 KeptVariableRow; F2.9 ProofOpenWindow, PendingResponse (only if P677 landed); F2.10 StudioMcpKeptPane |
