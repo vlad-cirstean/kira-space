@@ -19,7 +19,6 @@ Release notes are on [GitHub Releases](https://github.com/vlad-cirstean/kira-spa
 | Proof | Agents | [Proof](../../space/proof/) |
 | MCP servers for agents | Agents | [MCP and agents](../../space/mcp/) |
 | Scripts and smart scripts | Automations | [Runs](../../shared/runs/) |
-| Memory | Memory | [Memory](../../space/memory/) |
 | Phone view | Agents | [Phone view](../../space/phone/) |
 | Ten database engines | Studio | [Databases](../../studio/databases/) |
 | Data grid | Studio | [Data grid](../../studio/data-grid/) |

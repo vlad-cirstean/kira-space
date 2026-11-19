@@ -53,7 +53,6 @@ const SHOT_PAGES: Record<string, readonly ShotId[]> = {
     'build-proof-compare',
     'build-proof-chain',
   ],
-  'space/memory': ['space-memory'],
 };
 
 const visited = new Set<string>();
@@ -197,10 +196,7 @@ for (const doc of PAGES) {
 test('search finds a tool and opens its page', async ({ page }) => {
   await page.goto(`${BASE}docs/`);
   await page.locator('site-search button').first().click();
-  await page
-    .locator('input[type="search"], .pagefind-ui__search-input')
-    .first()
-    .fill('store_memory');
+  await page.locator('input[type="search"], .pagefind-ui__search-input').first().fill('run_query');
   const hit = page.locator('dialog a[href*="docs/reference/mcp-tools"]').first();
   await expect(hit).toBeVisible();
   await hit.click();

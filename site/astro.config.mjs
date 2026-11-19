@@ -51,7 +51,7 @@ export default defineConfig({
       sidebar: [
         { label: 'Overview', link: '/docs/' },
         { label: 'Start', items: [{ autogenerate: { directory: 'docs/start' } }] },
-        { label: 'Git, agents and memory', items: [{ autogenerate: { directory: 'docs/space' } }] },
+        { label: 'Git and agents', items: [{ autogenerate: { directory: 'docs/space' } }] },
         {
           label: 'Databases, APIs, Docker and Kubernetes',
           items: [{ autogenerate: { directory: 'docs/studio' } }],

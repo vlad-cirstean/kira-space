@@ -6,13 +6,12 @@ sources:
   - apps/kira-space/README.md
   - docs/ARCHITECTURE.md
   - internal/kirapaths
-  - internal/memory/mcpserver
   - apps/kira-space/internal/dbmcp/server.go
 sidebar:
   order: 3
 ---
 
-Kira Space is one native macOS app. A mode switcher moves between its modules: Agents, Automations, Studio, Api, Docker, Kubernetes, Git and Memory.
+Kira Space is one native macOS app. A mode switcher moves between its modules: Agents, Automations, Studio, Api, Docker, Kubernetes and Git.
 
 ## Local data
 
@@ -28,7 +27,6 @@ Kira starts the `claude` or `opencode` command that you installed and signed in 
 
 Kira offers MCP servers to agents:
 
-- `kira-memory` recalls stored facts in Claude Code sessions.
 - `kira-studio` and `kira-studio-session` give a client your databases, under rules you set.
 - `kira-space` gives a task agent its task, branches and proof.
 

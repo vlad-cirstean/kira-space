@@ -85,14 +85,6 @@ export const SHOTS: readonly ShotDef[] = [
     label: 'Agents board',
   },
   {
-    id: 'space-memory',
-    title: 'Memory',
-    alt: 'Kira Space memory list showing each fact with its origin and scope.',
-    caption: 'Memory. Every fact shows origin and scope.',
-    icon: 'lightbulb',
-    label: 'Memory',
-  },
-  {
     id: 'studio-grid-row-menu',
     title: 'Row menu',
     alt: 'Kira Space grid context menu with copy, duplicate, revert and delete row actions.',

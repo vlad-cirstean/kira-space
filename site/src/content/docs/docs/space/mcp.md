@@ -6,7 +6,6 @@ sources:
   - apps/kira-space/README.md
   - internal/agentmcp
   - apps/kira-space/internal/dbmcp/server.go
-  - internal/memory/mcpserver
   - internal/harness/claude/mcpinstall
 sidebar:
   order: 6
@@ -17,7 +16,6 @@ Kira Space runs several local [MCP](https://modelcontextprotocol.io) servers. Ea
 | Server | For | Switch |
 |---|---|---|
 | `kira-space` | A task agent: task info, branches, artifacts and proof. | Always on in a task run. |
-| `kira-memory` | Claude Code sessions: store and recall facts. | `Settings > Memory`. |
 | `kira-studio` | An external AI client reading your databases. | Off by default. `Settings > Studio MCP`. |
 | `kira-studio-session` | A workflow step with **Kira database tools**. | Per step. |
 

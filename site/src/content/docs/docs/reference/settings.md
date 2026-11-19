@@ -57,9 +57,9 @@ See [Prompts](../prompts/).
 - Log level: off, error, warn, info or debug. Default info.
 - A system notification when a popup waits in a window that is not in front. On by default.
 
-## Git, agents and memory
+## Git and agents
 
-Sections: Appearance, Git, CLI tools, File types, Capture, Mobile access, the agent (Claude Code or OpenCode), Memory, Prompts, Advanced, About.
+Sections: Appearance, Git, CLI tools, File types, Capture, Mobile access, the agent (Claude Code or OpenCode), Prompts, Advanced, About.
 
 ### Appearance
 
@@ -99,10 +99,6 @@ This section is named after the current agent: **Claude Code** or **OpenCode**. 
 - **Show the start of the reply** in the notification. On by default.
 - The usage display. On by default, and only for Claude Code.
 
-### Memory
-
-Pick the Claude model memory uses (`haiku`, `sonnet` or `opus`; default `sonnet`), connect Claude Code, download the semantic model, and install the memory check hook. See [Memory](../../space/memory/).
-
 ### Advanced
 
 Git log level (default info) and the popup notification (on).
@@ -114,6 +110,5 @@ Shows the app version and a link to the GitHub repository, opened in the browser
 ## Where data lives
 
 - Database, Api, Git, agents and automations: home `~/.kira-space`, override `KIRA_SPACE_HOME`, database `kira.db`.
-- Memory: home `~/.kira-space/memory`, override `KIRA_SPACE_HOME`, database `memory.db`.
 
-Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `review.db`), tokens, `logs/` and `backups/` stay outside `config/`. Memory lives in `memory/`, created on first use: `memory.db`, the downloaded model, imported documents and the import log.
+Kira Space keeps one home, `~/.kira-space`. Its `config/` folder holds the plain-file config, one folder per module: `connections`, `api`, `runs`, `workflows`, `steps`, `repos`, `agent` (context and agent settings) and `prompts` (`llm-prompts.json`). Databases (`kira.db`, `review.db`), tokens, `logs/` and `backups/` stay outside `config/`.
