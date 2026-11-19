@@ -1,7 +1,7 @@
 # v0.3.18
 
 Full-app UI uniformity audit, then a JavaScript engine for the API MCP: scripted transforms, result review with raw and transformed views, chained requests through kept variables, user-supplied values the agent never sees. Continues from chapter v0.3.17.
-Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P688`. Branch
+Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `P689`. Branch
 `chapter/v0.3.18`.
 
 | # | Phase | Status |
@@ -26,10 +26,15 @@ Phases from `P674` (highest shipped: `P673`, chapter v0.3.17). Next new phase: `
 | P685 | Shared shell for the config-file dialogs | Planned |
 | P686 | MCP e2e coverage: complex scenarios across API and DB MCP features; runs after P680 Part 2 | Planned |
 | P687 | Shared hash-guarded draft and save-conflict model across modules | Planned |
+| P688 | Copy guard gaps: translated text built by joining, English hint text outside the catalog | Planned |
 
 ## P687: Shared draft and save-conflict model
 
 Parked by P674 Part 3. About 10 copies of a hash-guarded draft with save-conflict handling across modules (ADE workflow and step editors, repo file, API and connection config dialogs). Design one shared model; overlaps P685, plan them together. See `plans/P674-iter2.md` PARK.
+
+## P688: Copy guard gaps
+
+Parked by P674 Part 5. `scripts/copy/check-copy.ts` misses translated text built with template literals (29 sites across modules), and English hint text sits outside the catalog in `packages/shared` (`statusHint`, `GRPC_CODE_HINTS`). Decide which joins are allowed, then write the guard and migrate every site. See `plans/P674-final.md` PARK.
 
 ## P682: Async action error state
 
