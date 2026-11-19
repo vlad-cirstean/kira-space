@@ -1,0 +1,105 @@
+{
+  "ApprovalsService.List#db": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:1>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 86,
+        "connectionId": "<id:2>",
+        "isError": false,
+        "mode": "read",
+        "rawBytes": 217,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#db": {
+    "isError": false,
+    "keep": [
+      {
+        "bytes": 5,
+        "items": 2,
+        "name": "w",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "array"
+      }
+    ],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:1>",
+    "script": {
+      "hash": "84c3722bb019ca93ebc4ce610cd61e17cf67f21028f0595e5460cf14ff4b77c0",
+      "source": "kept.set(\"w\", [1,2]); return 1;"
+    },
+    "text": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "KeptVarsService.List#afterSend": {
+    "entries": [
+      {
+        "bytes": 5,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_w",
+        "items": 2,
+        "name": "w",
+        "origin": "",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "Claude Code 2.1.318",
+          "kind": "script",
+          "mcp": "db",
+          "request": "notes db: select id, body from notes order by id",
+          "tool": "run_query"
+        },
+        "type": "array"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "args:ApprovalsService.Answer#send": {
+    "approve": true,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#withhold": {
+    "approve": false,
+    "ids": [
+      "db.response:<id:1>"
+    ],
+    "options": null
+  },
+  "result#scopeFull": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"too many kept variables (64 per session); ask the user to clear some in the Kept variables view\"}]}",
+  "result#send": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"w\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":3600}]}",
+  "result#tooLarge": "script failed: script runtime error at line 1, column 9: Error: kept variable \"w\": a kept value is larger than 1 MiB or nested deeper than 64 levels. The query ran; its result is not returned.",
+  "result#userEntry": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"a kept variable of that name was supplied by the user and cannot be replaced\"}]}"
+}
