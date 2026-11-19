@@ -330,7 +330,7 @@ async function save(): Promise<void> {
         </FieldSet>
 
         <FieldSet>
-          <FieldLegend>{{ t('git.toolbar.pull.label') }}</FieldLegend>
+          <FieldLegend>{{ t('common.action.pull.label') }}</FieldLegend>
           <Field>
             <FieldLabel>{{ t('git.dialog.repoSettings.strategy.label') }}</FieldLabel>
             <SecondaryTabs

@@ -26,7 +26,7 @@ const toggle = useAsyncAction((id: string, enabled: boolean) =>
 
 <template>
   <FieldSet>
-    <FieldLegend>{{ t('studio.settings.dbMcp.scripts.legend.label') }}</FieldLegend>
+    <FieldLegend>{{ t('common.module.scripts.label') }}</FieldLegend>
     <FieldDescription>{{ t('studio.settings.dbMcp.scripts.intro.description') }}</FieldDescription>
     <Card v-if="normal.length" variant="list">
       <ul class="m-0 flex list-none flex-col p-0" data-testid="db-mcp-scripts-list">

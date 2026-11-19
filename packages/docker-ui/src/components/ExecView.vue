@@ -67,7 +67,7 @@ const hostTab = (id: string) => ({
           <TooltipIconButton
             icon="close"
             :icon-size="12"
-            :label="t('docker.exec.close.tooltip', { title: s.title })"
+            :label="t('common.tab.close.tooltip', { title: s.title })"
             data-testid="docker-exec-close"
             @click="closeSession(s.id)"
           />

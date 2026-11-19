@@ -61,9 +61,9 @@ export interface SearchResultsModel {
  *  `refName` is present, since that is the row's own visible text and needs no label pointing at
  *  it. */
 const FIELD_LABEL_KEYS = {
-  subject: 'git.search.field.subject.label',
+  subject: 'common.field.subject.label',
   body: 'common.body.label',
-  authorName: 'git.search.field.author.label',
+  authorName: 'common.field.author.label',
   authorEmail: 'git.search.field.authorEmail.label',
   committerName: 'git.commit.committer.label',
   committerEmail: 'git.search.field.committerEmail.label',

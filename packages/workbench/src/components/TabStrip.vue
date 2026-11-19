@@ -313,7 +313,7 @@ if (moveTab) {
           size="title"
           class="tab-close size-4 p-0"
           :class="tab.active ? 'opacity-100' : rowActions"
-          :aria-label="t('docker.exec.close.tooltip', { title: titleFor(tab) })"
+          :aria-label="t('common.tab.close.tooltip', { title: titleFor(tab) })"
           data-testid="tab-close"
           @click="onClose($event, tab)"
         >

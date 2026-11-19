@@ -29,9 +29,6 @@
         "nameExample": {
           "example": "Build"
         },
-        "noCollection": {
-          "option": "No collection"
-        },
         "noFolder": {
           "status": "No folder chosen"
         },
@@ -323,11 +320,6 @@
       },
       "secretSaved": {
         "placeholder": "Saved, type to use another value"
-      },
-      "state": {
-        "done": {
-          "status": "Succeeded"
-        }
       },
       "taskOnBranch": {
         "label": "Task {task} on {branch}"
@@ -3213,6 +3205,9 @@
       "previousPage": {
         "label": "Previous page"
       },
+      "pull": {
+        "label": "Pull"
+      },
       "refresh": {
         "label": "Refresh"
       },
@@ -3347,7 +3342,10 @@
       "label": "Code"
     },
     "collection": {
-      "label": "Collection"
+      "label": "Collection",
+      "none": {
+        "option": "No collection"
+      }
     },
     "colour": {
       "amber": {
@@ -3578,6 +3576,9 @@
       "tooltip": "Fetch {name}"
     },
     "field": {
+      "author": {
+        "label": "Author"
+      },
       "branch": {
         "label": "Branch"
       },
@@ -3586,6 +3587,9 @@
       },
       "command": {
         "label": "Command"
+      },
+      "connection": {
+        "label": "Connection"
       },
       "date": {
         "label": "Date"
@@ -3644,6 +3648,9 @@
       "result": {
         "label": "Result"
       },
+      "rows": {
+        "label": "Rows"
+      },
       "scope": {
         "label": "Scope"
       },
@@ -3655,6 +3662,9 @@
       },
       "status": {
         "label": "Status"
+      },
+      "subject": {
+        "label": "Subject"
       },
       "text": {
         "label": "Text"
@@ -3780,10 +3790,21 @@
     "message": {
       "label": "Message"
     },
+    "metric": {
+      "cpu": {
+        "label": "CPU"
+      }
+    },
     "mode": {
       "label": "Mode"
     },
     "module": {
+      "agents": {
+        "label": "Agents"
+      },
+      "app": {
+        "label": "App"
+      },
       "automations": {
         "label": "Runs"
       },
@@ -3814,8 +3835,14 @@
       "repositories": {
         "label": "Repositories"
       },
+      "scripts": {
+        "label": "Scripts"
+      },
       "settings": {
         "label": "Settings"
+      },
+      "studioMcp": {
+        "label": "Studio MCP"
       },
       "terminal": {
         "label": "Terminal"
@@ -4057,6 +4084,9 @@
       "runningCount": {
         "status": "{count} running"
       },
+      "succeeded": {
+        "status": "Succeeded"
+      },
       "unsavedChanges": {
         "status": "Unsaved changes"
       },
@@ -4065,6 +4095,9 @@
       }
     },
     "tab": {
+      "close": {
+        "tooltip": "Close {title}"
+      },
       "discard": {
         "body": "{count} tab has unsaved changes. Closing discards them. | {count} tabs have unsaved changes. Closing discards them.",
         "title": "Discard unsaved changes"
@@ -4549,9 +4582,6 @@
       }
     },
     "exec": {
-      "close": {
-        "tooltip": "Close {title}"
-      },
       "none": {
         "empty": "No terminal session",
         "emptyHint": "Start a shell inside this container."
@@ -4622,9 +4652,6 @@
       "loading": "Measuring…"
     },
     "metric": {
-      "cpu": {
-        "label": "CPU"
-      },
       "ram": {
         "label": "RAM"
       }
@@ -6516,9 +6543,6 @@
         "label": "Search message bodies"
       },
       "field": {
-        "author": {
-          "label": "Author"
-        },
         "authorEmail": {
           "label": "Author email"
         },
@@ -6533,9 +6557,6 @@
         },
         "sha": {
           "label": "SHA"
-        },
-        "subject": {
-          "label": "Subject"
         },
         "tagMessage": {
           "label": "Tag message"
@@ -6735,8 +6756,7 @@
         "status": "Remote: {phase}"
       },
       "pull": {
-        "hint": "Pull. Resolves a strategy from your Git configuration before running.",
-        "label": "Pull"
+        "hint": "Pull. Resolves a strategy from your Git configuration before running."
       },
       "pullDefault": {
         "label": "Follow your configuration"
@@ -8188,11 +8208,6 @@
         "session": {
           "label": "Session {session}"
         },
-        "source": {
-          "ui": {
-            "label": "App"
-          }
-        },
         "withBoth": {
           "label": "{action} · {origin} · {source} ({label}) — {rationale}"
         },
@@ -8372,9 +8387,6 @@
         "reconnecting": {
           "aria": "Connection reconnecting"
         }
-      },
-      "heading": {
-        "title": "Agents"
       },
       "offline": {
         "description": "You are offline. Showing what was last loaded."
@@ -14049,9 +14061,6 @@
         "bucket": {
           "label": "Bucket"
         },
-        "connection": {
-          "label": "Connection"
-        },
         "consumerGroup": {
           "label": "Consumer group"
         },
@@ -16109,9 +16118,6 @@
           "hint": "Too large to edit. Download it to open it locally."
         }
       },
-      "rows": {
-        "aria": "Rows"
-      },
       "status": {
         "loaded": {
           "status": "{count} loaded"
@@ -17878,9 +17884,6 @@
           "intro": {
             "description": "Normal scripts an agent can list and run. A smart script is never exposed. Edit the description and approval mode in the script’s MCP tab."
           },
-          "legend": {
-            "label": "Scripts"
-          },
           "long": {
             "status": "Long running"
           },
@@ -17927,9 +17930,6 @@
         },
         "data": {
           "label": "Data"
-        },
-        "studioMcp": {
-          "label": "Studio MCP"
         },
         "studioMcpApi": {
           "label": "API tools"

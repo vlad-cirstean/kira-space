@@ -257,7 +257,7 @@ function onSequenceStartChange(index: number, start: number): void {
       <DialogBody>
         <FieldGroup>
           <Field>
-            <FieldLabel for="generate-data-rows">{{ t('studio.keyValue.rows.aria') }}</FieldLabel>
+            <FieldLabel for="generate-data-rows">{{ t('common.field.rows.label') }}</FieldLabel>
             <NumberStepperInput
               id="generate-data-rows"
               :model-value="String(rowCount)"

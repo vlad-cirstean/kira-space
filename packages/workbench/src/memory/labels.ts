@@ -70,7 +70,7 @@ const ACTION_LABEL = {
 
 const SOURCE_LABEL = {
   mcp: 'common.mcp.label',
-  ui: 'memory.start.event.source.ui.label',
+  ui: 'common.module.app.label',
   import: 'common.import.label',
 } as const satisfies Record<MemoryEvent['source'], MessageKey>;
 

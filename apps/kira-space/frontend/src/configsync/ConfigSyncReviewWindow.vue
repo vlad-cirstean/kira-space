@@ -164,7 +164,7 @@ function onCancel(): void {
           data-testid="config-sync-pull"
           @click="onPull"
         >
-          {{ t('git.toolbar.pull.label') }}
+          {{ t('common.action.pull.label') }}
         </Button>
       </span>
     </footer>

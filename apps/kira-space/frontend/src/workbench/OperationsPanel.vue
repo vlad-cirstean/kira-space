@@ -57,7 +57,7 @@ const columns = computed<OpLogColumn[]>(() => [
   { id: 'status', label: t('common.field.status.label'), width: '44px' },
   { id: 'time', label: t('common.field.time.label'), width: '84px', priority: 3 },
   { id: 'origin', label: t('common.field.source.label'), width: '170px', priority: 5 },
-  { id: 'subject', label: t('git.search.field.subject.label'), width: '150px', priority: 1 },
+  { id: 'subject', label: t('common.field.subject.label'), width: '150px', priority: 1 },
   { id: 'kind', label: t('common.field.kind.label'), width: '110px', priority: 4 },
   {
     id: 'duration',
@@ -66,7 +66,7 @@ const columns = computed<OpLogColumn[]>(() => [
     priority: 3,
     align: 'end',
   },
-  { id: 'rows', label: t('studio.keyValue.rows.aria'), width: '56px', priority: 2, align: 'end' },
+  { id: 'rows', label: t('common.field.rows.label'), width: '56px', priority: 2, align: 'end' },
   { id: 'command', label: t('common.field.command.label'), width: '1fr' },
 ]);
 
@@ -230,14 +230,14 @@ function fieldsFor(record: Row): OpLogField[] {
     : isDb(record)
       ? [
           {
-            label: t('studio.common.nodeKind.connection.label'),
+            label: t('common.field.connection.label'),
             value: connectionNameFor(record.connectionId ?? '') ?? record.subject,
           },
           { label: t('studio.operations.field.path.label'), value: record.path ?? '', code: true },
           { label: t('common.key.tab.label'), value: record.tabId ? tabTitleFor(record) : '' },
           { label: t('common.field.source.label'), value: sourceText(record) },
           {
-            label: t('studio.keyValue.rows.aria'),
+            label: t('common.field.rows.label'),
             value: record.rows === null || record.rows === undefined ? '' : String(record.rows),
           },
         ]

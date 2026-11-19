@@ -23,7 +23,7 @@ export function moveToCollectionMenu(opts: {
       type: 'option',
       id: 'move-to-none',
       value: null,
-      label: t('automations.dialog.script.noCollection.option'),
+      label: t('common.collection.none.option'),
       disabled: !canMoveTo(null),
       rerun: true,
       run: () => opts.onMove(null),

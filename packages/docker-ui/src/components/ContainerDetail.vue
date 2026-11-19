@@ -200,7 +200,7 @@ function act(action: ContainerAction): void {
                 data-testid="docker-detail-live"
               >
                 <span class="flex w-28 items-center gap-1.5">
-                  {{ t('docker.metric.cpu.label') }}
+                  {{ t('common.metric.cpu.label') }}
                   <span class="font-data text-fg">{{ formatPercent(live.cpuPercent) }}</span>
                   <UsageBar :percent="live.cpuPercent" class="flex-1" />
                 </span>

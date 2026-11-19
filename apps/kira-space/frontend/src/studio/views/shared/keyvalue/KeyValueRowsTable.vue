@@ -197,7 +197,7 @@ function cellClass(row: number, col: 'field' | 'value') {
         class="flex-1 min-h-0 overflow-auto"
         data-testid="virtual-list"
         role="listbox"
-        :aria-label="t('studio.keyValue.rows.aria')"
+        :aria-label="t('common.field.rows.label')"
       >
         <div class="relative w-full" :style="{ height: `${totalSize}px` }">
           <template v-for="entry in visibleRows" :key="entry.row.index">

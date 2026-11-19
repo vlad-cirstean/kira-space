@@ -42,9 +42,9 @@ const breakdown = computed(() => {
     processes: String(u.processCount),
   });
   return [
-    line('app', t('memory.start.event.source.ui.label'), sample.app),
-    line('agents', t('mobile.shell.heading.title'), sample.agents),
-    line('scripts', t('studio.settings.dbMcp.scripts.legend.label'), sample.scripts),
+    line('app', t('common.module.app.label'), sample.app),
+    line('agents', t('common.module.agents.label'), sample.agents),
+    line('scripts', t('common.module.scripts.label'), sample.scripts),
     line('total', t('workbench.statusBar.metrics.total.label'), sample),
   ];
 });
@@ -73,7 +73,7 @@ const breakdown = computed(() => {
         >
           <div class="contents text-muted-foreground">
             <span />
-            <span class="text-right">{{ t('docker.metric.cpu.label') }}</span>
+            <span class="text-right">{{ t('common.metric.cpu.label') }}</span>
             <span class="text-right">{{ t('common.module.memory.label') }}</span>
             <span class="text-right">{{ t('workbench.statusBar.metrics.processes.label') }}</span>
           </div>

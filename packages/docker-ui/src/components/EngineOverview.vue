@@ -235,7 +235,7 @@ function refresh(): Promise<void> {
                   }}
                 </div>
               </DetailSection>
-              <DetailSection :title="t('docker.metric.cpu.label')">
+              <DetailSection :title="t('common.metric.cpu.label')">
                 <div class="flex items-baseline gap-1.5">
                   <span class="text-kira-lg font-medium" data-testid="docker-engine-cpu">{{
                     formatPercent(totals.cpu)

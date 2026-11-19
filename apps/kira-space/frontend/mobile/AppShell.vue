@@ -49,7 +49,7 @@ const DOT_LABEL = {
     <DetailHeader
       as="h1"
       class="border-b border-border bg-chrome"
-      :title="t('mobile.shell.heading.title')"
+      :title="t('common.module.agents.label')"
     >
       <template #meta>
         <StatusDot

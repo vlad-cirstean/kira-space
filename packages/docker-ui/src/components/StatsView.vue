@@ -28,7 +28,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
         t('docker.stats.waiting.loading')
       }}</p>
       <div v-else class="grid grid-cols-1 gap-3 @3xl:grid-cols-2">
-        <DetailSection :title="t('docker.metric.cpu.label')">
+        <DetailSection :title="t('common.metric.cpu.label')">
           <div class="flex items-baseline justify-between">
             <span class="text-kira-lg font-medium" data-testid="docker-stats-cpu">{{
               formatPercent(latest.cpuPercent)
