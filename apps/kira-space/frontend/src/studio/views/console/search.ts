@@ -1,16 +1,15 @@
 import { cellText, isNull } from '@shared/protocol/page';
 import {
+  cellMatch,
   chunkRowsForColumns,
   eachMatch,
   emptyScan,
   keyValueRowScanner,
-  REGEX_SCAN_TEXT_CAP,
+  regexTextCap,
   runChunkedScan,
-  type SearchHandle,
-  type SearchQuery,
   tabularRowScanner,
 } from '../shared/page/scan';
-import { createPageSearch } from '../shared/page/search';
+import { createPageSearch, type RunSearch } from '../shared/page/search';
 import { visibleRowsOf } from '../shared/page/visibleRows';
 import { pageVersion } from './resultPages';
 import { useConsoleViewStore } from './state';
@@ -30,16 +29,7 @@ export interface Match {
 
 // Searches the active result set's loaded page only, never the server (§8.5's D28, every other
 // view's own precedent).
-function runSearch(
-  tabId: string,
-  q: SearchQuery,
-  onProgress: (
-    found: number,
-    rowsScanned: number,
-    totalRows: number,
-    soFar: readonly Match[],
-  ) => void,
-): SearchHandle<Match> {
+const runSearch: RunSearch<Match> = (tabId, q, onProgress) => {
   const page = useConsoleViewStore().activePage(tabId);
   if (!page || q.text === '') return emptyScan();
 
@@ -52,12 +42,12 @@ function runSearch(
   // branches uncapped — a user regex like `(a+)+$` against one long console cell still blocked
   // the main thread. Same partial mitigation, same condition: only a regex search has
   // user-controlled quantifiers to backtrack on.
-  const regexTextCap = q.regex ? REGEX_SCAN_TEXT_CAP : undefined;
+  const cap = regexTextCap(q);
 
   if (page.kind === 'tabular') {
     return runChunkedScan<Match>(
       page.rowCount,
-      tabularRowScanner(page, (row, col, start, end) => ({ row, col, start, end }), regexTextCap),
+      tabularRowScanner(page, cellMatch, cap),
       q,
       onProgress,
       // P21 round 3 performance finding 1: cell-based chunk budget for the tabular branch only —
@@ -74,12 +64,7 @@ function runSearch(
       (row, pattern, out) => {
         if (isNull(bodies, row)) return;
         const text = cellText(bodies, row, decoder);
-        eachMatch(
-          pattern,
-          text,
-          (start, end) => out.push({ row, col: 0, start, end }),
-          regexTextCap,
-        );
+        eachMatch(pattern, text, (start, end) => out.push({ row, col: 0, start, end }), cap);
       },
       q,
       onProgress,
@@ -93,28 +78,17 @@ function runSearch(
   if (page.kind !== 'keyvalue') return emptyScan();
   return runChunkedScan<Match>(
     page.rowCount,
-    keyValueRowScanner(
-      page,
-      [0, 1],
-      (row, col, start, end) => ({ row, col, start, end }),
-      regexTextCap,
-    ),
+    keyValueRowScanner(page, [0, 1], cellMatch, cap),
     q,
     onProgress,
     priority,
   );
-}
+};
 
-const {
-  searchState,
-  matchedRows,
-  api: pageSearchApi,
-} = createPageSearch<Match>({
+export const { searchState, matchedRows, pageSearchApi } = createPageSearch<Match>({
   runSearch,
   pageVersion,
   loadedRowCount: (tabId) => useConsoleViewStore().activePage(tabId)?.rowCount ?? 0,
   // Page identity, not the counter every console tab's load/close bumps (Part 11 F4 pattern).
   pageOf: (tabId) => useConsoleViewStore().activePage(tabId),
 });
-
-export { matchedRows, pageSearchApi, searchState };

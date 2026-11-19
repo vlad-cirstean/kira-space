@@ -1,11 +1,5 @@
-import {
-  eachMatch,
-  REGEX_SCAN_TEXT_CAP,
-  runPageScan,
-  type SearchHandle,
-  type SearchQuery,
-} from '../shared/page/scan';
-import { createPageSearch } from '../shared/page/search';
+import { eachMatch, regexTextCap, runPageScan } from '../shared/page/scan';
+import { createSinglePageSearch, type RunSearch } from '../shared/page/search';
 import { documentRow, getPage, pageVersion } from './page';
 
 export interface Match {
@@ -28,21 +22,11 @@ export function previewLineFor(body: string): string {
 // document's "columns" are dynamic, so there is no per-field grid to search field-by-field the
 // way views/grid/search.ts does, and full-text-over-EJSON would be new scope this task doesn't
 // ask for.
-function runSearch(
-  tabId: string,
-  q: SearchQuery,
-  onProgress: (
-    found: number,
-    rowsScanned: number,
-    totalRows: number,
-    soFar: readonly Match[],
-  ) => void,
-): SearchHandle<Match> {
+const runSearch: RunSearch<Match> = (tabId, q, onProgress) => {
   const page = getPage(tabId);
   // runPageScan scans the rows DocumentView.vue's VirtualList currently has on screen first.
   // A user regex like `(a+)+$` against one long document body still blocks the main thread. Same
   // partial mitigation grid/search.ts already applies, same condition (regex-only).
-  const regexTextCap = q.regex ? REGEX_SCAN_TEXT_CAP : undefined;
   return runPageScan(
     page,
     tabId,
@@ -50,24 +34,17 @@ function runSearch(
       const doc = documentRow(tabId, row);
       if (!doc) return;
       const text = previewLineFor(doc.body);
-      eachMatch(pattern, text, (start, end) => out.push({ row, start, end }), regexTextCap);
+      eachMatch(pattern, text, (start, end) => out.push({ row, start, end }), regexTextCap(q));
     },
     q,
     onProgress,
   );
-}
+};
 
-// Mirrors views/grid/search.ts's searchState, narrowed to one column (a document has no columns
-// to disambiguate a match's position within).
-const {
-  searchState,
-  matchedRows,
-  api: pageSearchApi,
-} = createPageSearch<Match>({
+export const { searchState, matchedRows, pageSearchApi } = createSinglePageSearch<Match>(
   runSearch,
-  pageVersion,
-  pageOf: getPage,
-  loadedRowCount: (tabId) => getPage(tabId)?.rowCount ?? 0,
-});
-
-export { matchedRows, pageSearchApi, searchState };
+  {
+    getPage,
+    pageVersion,
+  },
+);
