@@ -411,6 +411,19 @@ type DbMcpPendingResponse struct {
 	Raw string `json:"raw"`
 	// Script is the script that produced Text from Raw; nil without one.
 	Script *DbMcpPendingScript `json:"script"`
+	// Keep are the values the script keeps once the result is sent (P678): previews, empty for a secret.
+	Keep []DbMcpPendingKeep `json:"keep"`
+}
+
+// DbMcpPendingKeep is one value a held result will keep.
+type DbMcpPendingKeep struct {
+	Name             string `json:"name"`
+	Type             string `json:"type"`
+	Items            int    `json:"items"`
+	Bytes            int    `json:"bytes"`
+	Secret           bool   `json:"secret"`
+	Preview          string `json:"preview"`
+	PreviewTruncated bool   `json:"previewTruncated"`
 }
 
 // DbMcpPendingScript is the script of a held result.
@@ -429,7 +442,10 @@ func (s *DbMcpService) PendingResponse(args DbMcpApprovalArgs) (DbMcpPendingResp
 	if !ok {
 		return DbMcpPendingResponse{}, ipcerr.NotFoundNamed("result under review")
 	}
-	out := DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError, Raw: r.Raw}
+	out := DbMcpPendingResponse{RequestID: args.RequestID, Text: r.Text, IsError: r.IsError, Raw: r.Raw, Keep: []DbMcpPendingKeep{}}
+	for _, k := range r.Keep {
+		out.Keep = append(out.Keep, DbMcpPendingKeep(k))
+	}
 	if r.Script != nil {
 		out.Script = &DbMcpPendingScript{Source: r.Script.Source, Hash: r.Script.Hash}
 	}

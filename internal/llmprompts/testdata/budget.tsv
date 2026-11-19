@@ -141,7 +141,7 @@ dbmcp.tool.api_request.arg.script	82
 dbmcp.tool.api_request.arg.script.prepare	279
 dbmcp.tool.api_request.arg.script.input	49
 dbmcp.tool.api_request.arg.script.transform	395
-dbmcp.tool.api_request.scripts	432
+dbmcp.tool.api_request.scripts	824
 dbmcp.tool.api_request.reviewSuffix	183
 dbmcp.tool.list_children	222
 dbmcp.tool.list_children.arg.connectionId	36

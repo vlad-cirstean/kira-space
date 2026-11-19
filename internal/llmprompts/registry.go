@@ -1496,7 +1496,7 @@ var DbmcpToolAPIRequestScripts = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpToolApiRequestScripts.title",
 	PurposeKey: "llmPrompts.entry.dbmcpToolApiRequestScripts.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpToolApiRequestScripts.usedBy.body",
-	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each is a function body that ends with return. The user sees both scripts. script.prepare runs before approval and returns request fields that replace yours. script.transform runs on the response; you receive only {result: <its return value>}, never the raw response unless it returns it.",
+	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each is a function body that ends with return. The user sees both scripts. script.prepare runs before approval and returns request fields that replace yours. script.transform runs on the response; you receive only {result: <its return value>}, never the raw response unless it returns it. Kept in scripts: kept.get(\"name\") reads a kept value; kept.set(\"name\", value) in transform keeps one (1 MiB, 16 per run). Names are literal strings. Kept values are stored only once the response is final and sent; you get kept: [{name, type, items, expiresInSeconds}], never a value. prepare cannot read secret kept values or return a {{...}} reference not written in your script or request.",
 }, NoVars{})
 
 // DbmcpToolAPIRequestReview is always added to api_request's description.

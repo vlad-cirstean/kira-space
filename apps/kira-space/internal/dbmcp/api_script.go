@@ -44,6 +44,7 @@ type apiScripts struct {
 	Prepare, Transform string
 	Input              json.RawMessage
 	Changed            []string // set by prepare: the request fields it returned
+	kept               *keptRun // nil unless a script calls kept.get or kept.set
 }
 
 // apiOutcome is everything the final point needs: the raw masked response, and the transform output or failure.
@@ -90,13 +91,13 @@ func (s *Server) prepareAPI(ctx context.Context, in agentapi.Input, sc *apiScrip
 	var changed []string
 	_, failure := s.execScript(ctx, scriptRun{
 		Stage: stagePrepare, Source: sc.Prepare,
-		Bindings: []jsengine.Binding{{Name: "request", Value: req}, {Name: "input", Value: input}},
+		Bindings: append([]jsengine.Binding{{Name: "request", Value: req}, {Name: "input", Value: input}}, sc.kept.Bindings(stagePrepare)...),
 		Validate: func(out jsengine.Result) string {
 			var err error
 			if merged, changed, err = applyPrepared(in, out); err != nil {
 				return fmt.Sprintf("prepare script returned an invalid request: %s. Nothing was sent.", err)
 			}
-			return ""
+			return sc.kept.checkPrepared(in, merged, sc.Prepare)
 		},
 	}, func(e *jsengine.Error) string {
 		return fmt.Sprintf("prepare script failed: %s. Nothing was sent.", scriptErrText(e))
@@ -267,14 +268,16 @@ func (s *Server) transformAPI(ctx context.Context, plan agentapi.Planned, sc *ap
 		Method string `json:"method"`
 		URL    string `json:"url"`
 	}{plan.Method, plan.URL})
-	bindings := []jsengine.Binding{{Name: "response", Value: resp}, {Name: "request", Value: reqB}}
+	bindings := append([]jsengine.Binding{{Name: "response", Value: resp}, {Name: "request", Value: reqB}}, sc.kept.Bindings(stageTransform)...)
+	// Secret kept values the script read leave its output too.
+	mask := func(text string) string { return sc.kept.mask(s.maskText(raw, text)) }
 	total := len(resp) + len(reqB)
 	tail := fmt.Sprintf("The request was sent (HTTP %d); its response is not returned.", raw.Status)
 	_, failure := s.execScript(ctx, scriptRun{
 		Stage: stageTransform, Source: sc.Transform, Bindings: bindings,
 		Limits: jsengine.Limits{InputBytes: transformInputBytes, OutputBytes: plan.MaxResponseBytes},
 		Validate: func(out jsengine.Result) string {
-			masked := json.RawMessage(s.maskText(raw, string(out.JSON)))
+			masked := json.RawMessage(mask(string(out.JSON)))
 			if !json.Valid(masked) {
 				return "the script result could not be masked; nothing was returned"
 			}
@@ -291,7 +294,7 @@ func (s *Server) transformAPI(ctx context.Context, plan agentapi.Planned, sc *ap
 		default:
 			text = fmt.Sprintf("transform script failed: %s. %s", scriptErrText(e), tail)
 		}
-		return s.maskText(raw, text)
+		return mask(text)
 	})
 	o.Failure = failure
 	return o
@@ -327,27 +330,56 @@ func responseBinding(r agentapi.Result) (json.RawMessage, error) {
 }
 
 // deliverAPI is the one point where the agent-bound result is final: the response review runs first,
-// and later phases commit here. requested says the user asked for the review on the approval card.
+// then the values the transform staged are kept. requested says the user asked for the review on the
+// approval card.
 func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts, o apiOutcome, requested bool) (*mcp.CallToolResult, any, error) {
-	res, out, err := apiAgentResult(sc, o)
+	res, out, err := apiAgentResult(sc, o, nil, nil)
+	// Staged values are held until here; every way out but the final point drops them.
+	defer sc.dropKept()
 	// Read after the send: the user may change the setting while the request runs.
 	if rv := s.apiReviewFor(plan, sc, requested); rv.On {
 		if refusal := s.reviewAPI(ctx, plan, sc, o, rv, res, err); refusal != "" {
 			return errResult(refusal)
 		}
 	}
-	// Final point: the agent gets res.
+	// Final point: the agent gets res, and the staged values are stored.
+	if o.Failure == "" && sc.hasTransform() && ctx.Err() == nil {
+		if saved, failed := sc.kept.commit(keptSourceOf(ctx, plan)); len(saved)+len(failed) > 0 {
+			return apiAgentResult(sc, o, saved, failed)
+		}
+	}
 	return res, out, err
 }
 
-// apiAgentResult is what the agent receives: the failure text, the transform's result, or the masked
-// response as is.
-func apiAgentResult(sc *apiScripts, o apiOutcome) (*mcp.CallToolResult, any, error) {
+func (sc *apiScripts) dropKept() {
+	if sc != nil {
+		sc.kept.drop()
+	}
+}
+
+// apiAgentResult is what the agent receives: the failure text, the transform's result with a summary of
+// the values it kept, or the masked response as is.
+func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []keptFailure) (*mcp.CallToolResult, any, error) {
 	switch {
 	case o.Failure != "":
 		return errResult(o.Failure)
 	case sc.hasTransform():
-		return textResult(`{"result":` + string(o.Transformed) + `}`)
+		text := `{"result":` + string(o.Transformed)
+		for _, f := range []struct {
+			key string
+			v   any
+			n   int
+		}{{"kept", saved, len(saved)}, {"keptNotSaved", failed, len(failed)}} {
+			if f.n == 0 {
+				continue
+			}
+			b, err := json.Marshal(f.v)
+			if err != nil {
+				continue
+			}
+			text += `,"` + f.key + `":` + string(b)
+		}
+		return textResult(text + `}`)
 	}
 	return jsonResult(o.Raw)
 }
@@ -365,6 +397,8 @@ type apiPrepareView struct {
 type apiTransformView struct {
 	Source string `json:"source"`
 	Hash   string `json:"hash"`
+	// MayKeep are the kept variables the transform may write, with their sites in Source.
+	MayKeep []keptMayKeep `json:"mayKeep"`
 }
 
 type apiScriptPayload struct {
@@ -386,7 +420,10 @@ func apiScriptPayloadOf(sc *apiScripts) *apiScriptPayload {
 		}
 	}
 	if sc.Transform != "" {
-		out.Transform = &apiTransformView{Source: sc.Transform, Hash: jsengine.SourceHash(sc.Transform)}
+		out.Transform = &apiTransformView{Source: sc.Transform, Hash: jsengine.SourceHash(sc.Transform), MayKeep: []keptMayKeep{}}
+		if sc.kept != nil {
+			out.Transform.MayKeep = append(out.Transform.MayKeep, sc.kept.mayKeep...)
+		}
 	}
 	return out
 }

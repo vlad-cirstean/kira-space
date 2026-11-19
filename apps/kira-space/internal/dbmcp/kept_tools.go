@@ -16,6 +16,8 @@ import (
 type KeptStore interface {
 	agentapi.KeptReader
 	List(scope string) []keptvars.Meta
+	// Put stores a value a script kept, after the response is final.
+	Put(p keptvars.Put) (keptvars.Meta, error)
 	// OnRemove calls fn once, with the first removal among ids.
 	OnRemove(ids []string, fn func(keptvars.Removal)) (stop func())
 }

@@ -141,6 +141,19 @@ type ApprovalResponse struct {
 	Raw string
 	// Script is the script that produced Text from Raw; nil without one.
 	Script *HeldScript
+	// Keep are the values the script will keep once the user sends the result: previews, never the
+	// agent's text. Empty without kept.set.
+	Keep []HeldKeep
+}
+
+// HeldKeep is one value a held result will keep. Preview is empty for a secret.
+type HeldKeep struct {
+	Name             string
+	Type             string
+	Items, Bytes     int
+	Secret           bool
+	Preview          string
+	PreviewTruncated bool
 }
 
 // HeldScript is the script a held result came from.

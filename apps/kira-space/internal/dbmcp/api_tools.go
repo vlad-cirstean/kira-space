@@ -138,6 +138,9 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		if sc, refusal = s.openScripts(ctx, a.Script); refusal != "" {
 			return errResult(refusal)
 		}
+		if sc.kept, refusal = s.keptRunFor(in.Scope, sc); refusal != "" {
+			return errResult(refusal)
+		}
 		if sc.Prepare != "" {
 			var text string
 			if in, text = s.prepareAPI(ctx, in, sc); text != "" {
@@ -217,7 +220,7 @@ func isReadMethod(m string) bool { return m == "GET" || m == "HEAD" || m == "OPT
 // approveAPI asks the user. A non-nil result stops the call; requested says the user ticked "review the
 // response" on the card.
 func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (res *mcp.CallToolResult, requested bool, err error) {
-	ctx, stop := s.watchKept(ctx, plan.Kept)
+	ctx, stop := s.watchKept(ctx, keptUsesOf(plan, sc))
 	defer stop()
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
@@ -368,6 +371,9 @@ func apiItemParts(r ApprovalRequest) (approvals.Target, approvals.Operation, []b
 	target, op := apiTargetOp(p)
 	payload := apiPayloadOf(p)
 	payload.Script = apiScriptPayloadOf(r.APIScript)
+	if r.APIScript != nil && r.APIScript.kept != nil {
+		payload.Kept = mergeKept(payload.Kept, r.APIScript.kept.uses)
+	}
 	payload.ReviewOffered, payload.ReviewResult = r.OfferReview, r.ReviewOn
 	return target, op, mustJSON(payload)
 }
