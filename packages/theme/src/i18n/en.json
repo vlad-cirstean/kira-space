@@ -8957,6 +8957,25 @@
           "aria": "Estimate unit"
         }
       },
+      "files": {
+        "copyRelPath": {
+          "label": "Copy relative path"
+        },
+        "search": {
+          "stopped": {
+            "status": "{summary} (stopped at 10,000)"
+          },
+          "summary": {
+            "status": "{count} result in {files} | {count} results in {files}"
+          },
+          "truncated": {
+            "tooltip": "This file hit the per-file match cap, so not every match is shown"
+          }
+        },
+        "tree": {
+          "aria": "Repository files"
+        }
+      },
       "flow": {
         "archivePartial": {
           "error": "Archive prompt sent to {sent} of {count} branch: {error}. Archive again when ready. | Archive prompt sent to {sent} of {count} branches: {error}. Archive again when ready."
@@ -11932,11 +11951,6 @@
       "manage": {
         "label": "Manage repositories…"
       },
-      "menu": {
-        "openChanges": {
-          "label": "Open changes"
-        }
-      },
       "newTerminal": {
         "tooltip": "New terminal at repository root"
       },
@@ -11960,9 +11974,6 @@
         "noWorktrees": {
           "empty": "No worktrees"
         },
-        "refreshTree": {
-          "tooltip": "Refresh file tree"
-        },
         "rename": {
           "title": "Rename repository"
         },
@@ -11971,9 +11982,6 @@
         },
         "terminalOpen": {
           "tooltip": "A terminal is open here | {count} terminals are open here"
-        },
-        "treeTruncated": {
-          "hint": "Showing the first 200,000 files."
         }
       },
       "removeConfirm": {
@@ -12006,17 +12014,6 @@
           "error": "No base branch configured for this repository."
         }
       },
-      "search": {
-        "stopped": {
-          "status": "{summary} (stopped at 10,000)"
-        },
-        "summary": {
-          "status": "{count} result in {files} | {count} results in {files}"
-        },
-        "truncated": {
-          "tooltip": "This file hit the per-file match cap, so not every match is shown"
-        }
-      },
       "settingsFile": {
         "copyShared": {
           "label": "Copy for shared config"
@@ -12043,11 +12040,6 @@
         },
         "tabs": {
           "aria": "Settings view"
-        }
-      },
-      "tree": {
-        "files": {
-          "aria": "Repository files"
         }
       },
       "view": {

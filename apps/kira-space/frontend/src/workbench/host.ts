@@ -24,7 +24,7 @@ export function createWorkbenchHost(): WorkbenchHost<WorkspaceKey, TabRecord> {
     views: TAB_VIEWS,
     // A tab kind's icon() returns either a codicon name or a `{ filePath }` marker (only
     // 'repo-file', state/tabKinds.ts's own doc comment) — resolved here into the two disjoint
-    // render shapes the shared TabStrip.vue needs, the same split RepoTreeRow.vue's own
+    // render shapes the shared TabStrip.vue needs, the same split AdeFileTreeRow.vue's own
     // fileIconStyle call site uses for the identical marker.
     iconFor(tab): TabIconRender {
       const icon = TAB_KINDS[tab.kind].icon(tab);

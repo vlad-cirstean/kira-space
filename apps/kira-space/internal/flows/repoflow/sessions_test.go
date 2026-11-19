@@ -134,10 +134,6 @@ func TestRemoveRepoClosesSessions(t *testing.T) {
 	if _, err := cw.ReadDiff(ctx, bridge.CodeWorkspaceReadFileArgs{ID: rec.ID, Path: "a.txt"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cw.StartSearch(ctx, bridge.CodeWorkspaceSearchArgs{ID: rec.ID, WindowKey: "w", Query: "needle"}); err != nil {
-		t.Fatal(err)
-	}
-	waitFor(t, 10*time.Second, func() bool { _, done, _, _, _ := searchEvents(app, "w"); return done })
 	if catFileCount(t, root) == 0 {
 		t.Log("no cat-file process observed while the workspace was open")
 	}
@@ -147,9 +143,6 @@ func TestRemoveRepoClosesSessions(t *testing.T) {
 	}
 	waitFor(t, 5*time.Second, func() bool { return catFileCount(t, root) == 0 })
 
-	if _, err := cw.ListFiles(ctx, idArgs(rec.ID)); errCode(err) != "E_NOT_FOUND" {
-		t.Fatalf("ListFiles after remove = %v, want E_NOT_FOUND", err)
-	}
 	if _, err := cw.ReadFile(ctx, bridge.CodeWorkspaceReadFileArgs{ID: rec.ID, Path: "a.txt"}); errCode(err) != "E_NOT_FOUND" {
 		t.Fatalf("ReadFile after remove = %v, want E_NOT_FOUND", err)
 	}

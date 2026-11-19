@@ -1,51 +1,46 @@
 import type { CodeSearchEvent, FileMatches, SearchStats } from '@shared/domain/repo';
-import { usePersistedState } from '@workbench/behaviour/persisted';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { defineStore } from 'pinia';
 import { markRaw } from 'vue';
-import { control } from '../../bridge/control';
-import { createPerRepoState } from './perRepo.ts';
+import { control } from '../../../../bridge/control';
+import { createPerRepoState } from '../../../../repo/state/perRepo';
 
-// The repository-wide search store — one entry per open repo workspace, the panel's
-// Files/Search switch, the query/options, and the streamed result list. A search runs on
-// Enter or the Search button only — never on every keystroke, since each run reads every
-// non-skipped file in the worktree.
-//
-// The flat "which of GitPanel's three top-level tabs is showing" concern, which is not a search
-// concept at all — that lives in useRepoPanelTabStore below, one store one concern.
+// The task Files tab's content-search store: one entry per task branch worktree, the query and
+// options, and the streamed result list. A search runs on Enter or the Search button only, never
+// on every keystroke: each run reads every non-skipped file in the worktree. TanStack Query is
+// declined here: results arrive as a push stream on kira:code:search routed by searchId, not as a
+// request/response.
 
-export interface RepoSearchOptions {
+export interface FileSearchOptions {
   regex: boolean;
   caseSensitive: boolean;
   wholeWord: boolean;
 }
 
-function defaultOptions(): RepoSearchOptions {
+function defaultOptions(): FileSearchOptions {
   return { regex: false, caseSensitive: false, wholeWord: false };
 }
 
-interface RepoSearchState {
-  view: 'files' | 'search';
+interface FileSearchState {
   query: string;
-  options: RepoSearchOptions;
+  options: FileSearchOptions;
   searchId: string | null; // null when idle
   running: boolean;
   // C14-1: path-sorted (D11), markRaw'd -- see insertByPath's own comment. Never read this
-  // directly outside insertByPath/repoSearchRows; go through `filesVersion` for reactivity.
+  // directly outside insertByPath/searchRows; go through `filesVersion` for reactivity.
   files: FileMatches[];
   // Bumped once per incoming batch that mutates `files` in place. `files` itself is markRaw'd (so
   // splicing it never walks a reactive proxy -- see insertByPath), which means Vue can no longer
-  // see those mutations; this counter is the reactive signal repoSearchRows depends on instead.
+  // see those mutations; this counter is the reactive signal searchRows depends on instead.
   filesVersion: number;
   collapsed: Set<string>;
   stats: SearchStats | null;
   error: string | null;
 }
 
-function emptySearchState(): RepoSearchState {
+function emptySearchState(): FileSearchState {
   return {
-    view: 'files',
     query: '',
     options: defaultOptions(),
     searchId: null,
@@ -77,7 +72,7 @@ function insertByPath(files: FileMatches[], group: FileMatches): void {
 
 // The flat row fold for VirtualList (§7.2): one header row per file followed by its own match rows
 // unless collapsed — uniform row height, so a 10,000-match run still renders a screenful.
-export interface RepoSearchRowVm {
+export interface FileSearchRowVm {
   key: string;
   kind: 'file' | 'match';
   path: string;
@@ -94,54 +89,46 @@ export interface RepoSearchRowVm {
   previewMatchEnd?: number;
 }
 
-export const useRepoSearchStore = defineStore('repoSearch', () => {
-  const perRepo = createPerRepoState(emptySearchState);
-  const byRepo = perRepo.all;
-  const { stateFor } = perRepo;
+export const useAdeFileSearchStore = defineStore('adeFileSearch', () => {
+  const perBranch = createPerRepoState(emptySearchState);
+  const byBranch = perBranch.all;
+  const { stateFor } = perBranch;
 
-  function repoSearchView(repoId: string): 'files' | 'search' {
-    return byRepo.get(repoId)?.view ?? 'files';
+  function searchQuery(branchId: string): string {
+    return byBranch.get(branchId)?.query ?? '';
   }
 
-  function setRepoSearchView(repoId: string, view: 'files' | 'search'): void {
-    stateFor(repoId).view = view;
+  function setSearchQuery(branchId: string, query: string): void {
+    stateFor(branchId).query = query;
   }
 
-  function repoSearchQuery(repoId: string): string {
-    return byRepo.get(repoId)?.query ?? '';
+  function searchOptions(branchId: string): FileSearchOptions {
+    return byBranch.get(branchId)?.options ?? defaultOptions();
   }
 
-  function setRepoSearchQuery(repoId: string, query: string): void {
-    stateFor(repoId).query = query;
-  }
-
-  function repoSearchOptions(repoId: string): RepoSearchOptions {
-    return byRepo.get(repoId)?.options ?? defaultOptions();
-  }
-
-  function toggleRepoSearchOption(repoId: string, key: keyof RepoSearchOptions): void {
-    const state = stateFor(repoId);
+  function toggleSearchOption(branchId: string, key: keyof FileSearchOptions): void {
+    const state = stateFor(branchId);
     state.options[key] = !state.options[key];
   }
 
-  function repoSearchRunning(repoId: string): boolean {
-    return byRepo.get(repoId)?.running ?? false;
+  function searchRunning(branchId: string): boolean {
+    return byBranch.get(branchId)?.running ?? false;
   }
 
-  function repoSearchStats(repoId: string): SearchStats | null {
-    return byRepo.get(repoId)?.stats ?? null;
+  function searchStats(branchId: string): SearchStats | null {
+    return byBranch.get(branchId)?.stats ?? null;
   }
 
-  function repoSearchError(repoId: string): string | null {
-    return byRepo.get(repoId)?.error ?? null;
+  function searchError(branchId: string): string | null {
+    return byBranch.get(branchId)?.error ?? null;
   }
 
-  // searchId -> repoId: an incoming event is routed by searchId only (§4.3), so this is how it
+  // searchId -> branchId: an incoming event is routed by searchId only (§4.3), so this is how it
   // finds its own state entry without scanning every open repo's own state.
-  const repoBySearchId = new Map<string, string>();
+  const branchBySearchId = new Map<string, string>();
 
-  // Created once, lazily, on the first search (D7's own note: a window that never opens a repo
-  // workspace should not hold a listener) — never at module load or app boot.
+  // Created once, lazily, on the first search (D7's own note: a window that never opens a task
+  // Files tab should not hold a listener) — never at module load or app boot.
   let unsubscribe: (() => void) | null = null;
 
   function ensureSubscribed(): void {
@@ -155,13 +142,13 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
   let startsInFlight = 0;
 
   function handleCodeSearchEvent(event: CodeSearchEvent): void {
-    const repoId = repoBySearchId.get(event.searchId);
-    if (!repoId) {
+    const branchId = branchBySearchId.get(event.searchId);
+    if (!branchId) {
       // A superseded (D8) or already-finished search's late batch is dropped.
       if (startsInFlight > 0) earlyEvents.push(event);
       return;
     }
-    const state = byRepo.get(repoId);
+    const state = byBranch.get(branchId);
     if (!state || state.searchId !== event.searchId) return;
 
     // C13-5: each incoming group (and its own nested matches array) is markRaw'd before it ever
@@ -169,13 +156,13 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
     // (insertByPath's own splice, on a same-path recur), never field-mutated, so there is nothing
     // for Vue's deep reactivity to usefully track inside it.
     //
-    // C14-1: `state.files` itself is now ALSO markRaw'd (see emptySearchState/startRepoSearch), so
+    // C14-1: `state.files` itself is now ALSO markRaw'd (see emptySearchState/startSearch), so
     // insertByPath's splice runs against a plain array, never a reactive proxy -- C13-5 alone
     // still left every element-shift from a mid-array splice walking Vue's get/set traps, O(F)
     // per insert and O(F^2) over a streaming search. Measured on a capped 10,000-match search:
     // 41,550ms cumulative main-thread cost (one flush as high as 2,100ms) through the reactive
     // array, vs 2ms for the identical splice sequence on a plain one. Since a raw array's
-    // in-place mutation notifies no one, `filesVersion` below is what tells repoSearchRows' own
+    // in-place mutation notifies no one, `filesVersion` below is what tells searchRows' own
     // computed new rows are ready.
     for (const group of event.files) insertByPath(state.files, markRaw(group));
     if (event.files.length > 0) state.filesVersion++;
@@ -184,19 +171,19 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
       state.running = false;
       state.stats = event.stats ?? null;
       state.error = event.error?.message ?? null;
-      repoBySearchId.delete(event.searchId);
+      branchBySearchId.delete(event.searchId);
     }
   }
 
-  /** Runs repoId's own current query/options — a no-op for a blank query. A rejected call (bad
+  /** Runs branchId's own current query/options — a no-op for a blank query. A rejected call (bad
    *  regex, git unavailable) sets `error` and leaves `running` false, the same "surface it, don't
-   *  throw into the caller" shape refreshRepoTree already uses. */
-  async function startRepoSearch(repoId: string): Promise<void> {
-    const state = stateFor(repoId);
+   *  throw into the caller" shape the Files tab's other loads use. */
+  async function startSearch(branchId: string): Promise<void> {
+    const state = stateFor(branchId);
     if (state.query.trim() === '') return;
     ensureSubscribed();
 
-    if (state.searchId) repoBySearchId.delete(state.searchId); // supersede (D8) our own previous run.
+    if (state.searchId) branchBySearchId.delete(state.searchId); // supersede (D8) our own previous run.
     state.files = markRaw([]);
     state.filesVersion++;
     state.collapsed = new Set();
@@ -207,14 +194,14 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
 
     startsInFlight++;
     try {
-      const { searchId } = await control.codeWorkspaceStartSearch(repoId, {
+      const { searchId } = await control.adeTaskFilesSearch(branchId, {
         query: state.query,
         regex: state.options.regex,
         caseSensitive: state.options.caseSensitive,
         wholeWord: state.options.wholeWord,
       });
       state.searchId = searchId;
-      repoBySearchId.set(searchId, repoId);
+      branchBySearchId.set(searchId, branchId);
     } catch (err) {
       state.running = false;
       state.error = errorText(err);
@@ -224,27 +211,27 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
     }
   }
 
-  /** Stops repoId's own in-flight search, if any — the panel's own Stop button. Fire-and-forget:
+  /** Stops branchId's own in-flight search, if any — the panel's own Stop button. Fire-and-forget:
    *  the terminal event this run still owes (D7/D8) is what actually clears `running`. */
-  function cancelRepoSearch(repoId: string): void {
-    fireAndForget(control.codeWorkspaceCancelSearch(repoId), 'search');
+  function cancelSearch(branchId: string): void {
+    fireAndForget(control.adeTaskFilesCancelSearch(branchId), 'search');
   }
 
-  function toggleRepoSearchCollapse(repoId: string, path: string): void {
-    const state = stateFor(repoId);
+  function toggleSearchCollapse(branchId: string, path: string): void {
+    const state = stateFor(branchId);
     if (state.collapsed.has(path)) state.collapsed.delete(path);
     else state.collapsed.add(path);
   }
 
-  function repoSearchRows(repoId: string): RepoSearchRowVm[] {
-    const state = byRepo.get(repoId);
+  function searchRows(branchId: string): FileSearchRowVm[] {
+    const state = byBranch.get(branchId);
     if (!state) return [];
     // `state.files` is markRaw'd: reading it does not by itself see in-place
     // splice/insert mutations, only reference replacement. `filesVersion` is the reactive
     // dependency this computed needs to re-run as new groups stream in -- read it
     // before touching `files`.
     void state.filesVersion;
-    const rows: RepoSearchRowVm[] = [];
+    const rows: FileSearchRowVm[] = [];
     for (const group of state.files) {
       const collapsed = state.collapsed.has(group.path);
       rows.push({
@@ -273,47 +260,25 @@ export const useRepoSearchStore = defineStore('repoSearch', () => {
     return rows;
   }
 
-  /** Drops repoId's own cached search state — RemoveRepo's own cleanup, mirroring dropRepoTree. */
-  function dropRepoSearch(repoId: string): void {
-    const state = byRepo.get(repoId);
-    if (state?.searchId) repoBySearchId.delete(state.searchId);
-    perRepo.drop(repoId);
+  /** Drops branchId's own cached search state — the Files tab's cleanup when it goes away. */
+  function dropSearch(branchId: string): void {
+    const state = byBranch.get(branchId);
+    if (state?.searchId) branchBySearchId.delete(state.searchId);
+    perBranch.drop(branchId);
   }
 
   return {
-    repoSearchView,
-    setRepoSearchView,
-    repoSearchQuery,
-    setRepoSearchQuery,
-    repoSearchOptions,
-    toggleRepoSearchOption,
-    repoSearchRunning,
-    repoSearchStats,
-    repoSearchError,
-    startRepoSearch,
-    cancelRepoSearch,
-    toggleRepoSearchCollapse,
-    repoSearchRows,
-    dropRepoSearch,
+    searchQuery,
+    setSearchQuery,
+    searchOptions,
+    toggleSearchOption,
+    searchRunning,
+    searchStats,
+    searchError,
+    startSearch,
+    cancelSearch,
+    toggleSearchCollapse,
+    searchRows,
+    dropSearch,
   };
-});
-
-// Which of GitPanel.vue's three top-level tabs is showing. Flat, not per-repo: one
-// persistent panel across every repo workspace. Own store so hostHandlers.ts's review.open can flip
-// the tab without depending on the search store. Persisted (`kira.git.panelTab`), default Repos.
-type RepoPanelTab = 'repos' | 'files' | 'review';
-const PANEL_TABS: readonly string[] = ['repos', 'files', 'review'];
-
-export const useRepoPanelTabStore = defineStore('repoPanelTab', () => {
-  const panelTab = usePersistedState<string>('kira.git.panelTab', 'repos');
-
-  function repoPanelTab(): RepoPanelTab {
-    return PANEL_TABS.includes(panelTab.value) ? (panelTab.value as RepoPanelTab) : 'repos';
-  }
-
-  function setRepoPanelTab(tab: RepoPanelTab): void {
-    panelTab.value = tab;
-  }
-
-  return { repoPanelTab, setRepoPanelTab };
 });

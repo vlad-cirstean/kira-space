@@ -7,91 +7,120 @@ import { useTreeVirtualRows } from '@workbench/behaviour/treeVirtualRows';
 import { STICKY_ROW_CLASS, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
-import { openRepoFileTab } from '../state/repoTabs';
-import { menuForRepoRow } from './menu';
-import RepoTreeRow from './RepoTreeRow.vue';
-import { type RepoTreeRowVm, useFileTreeStore } from './state/fileTree';
+import { computed, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import AdeFileTreeRow from './AdeFileTreeRow.vue';
+import { buildTree, type FileTreeRowVm, flatten } from './fileTreeModel';
+import { menuForFilePath } from './menu';
+import { useAdeFilesUiStore } from './state/filesUi';
+import { useTaskFilesListing } from './useTaskFiles';
 
 const contextMenuStore = useContextMenuStore();
-const fileTreeStore = useFileTreeStore();
+const filesUi = useAdeFilesUiStore();
 
-const props = defineProps<{ repoId: string; search: string }>();
+const props = defineProps<{ branchId: string; worktree: string; filter: string }>();
+const emit = defineEmits<{ open: [path: string] }>();
 
 const { single: rowHeight } = useRowHeight();
-const selected = ref<string | null>(null);
+const selected = computed({
+  get: () => filesUi.selected[props.branchId] ?? null,
+  set: (v: string | null) => {
+    filesUi.selected[props.branchId] = v;
+  },
+});
 
-onMounted(() => fileTreeStore.ensureRepoTreeLoaded(props.repoId));
+const listing = useTaskFilesListing(() => props.branchId);
+const tree = computed(() => buildTree(listing.data.value?.paths ?? []));
+// First load of a branch opens the root's own directories; a later Refresh never re-expands
+// whatever the user has since collapsed.
 watch(
-  () => props.repoId,
-  (id) => fileTreeStore.ensureRepoTreeLoaded(id),
+  tree,
+  (nodes) =>
+    filesUi.initExpanded(
+      props.branchId,
+      nodes.filter((n) => n.isDir).map((n) => n.path),
+    ),
+  { immediate: true },
 );
 
-// project/state/tree.ts's own debounce for the Studio schema tree's identical shape of
-// problem — the input itself (PanelShell's own model-value, bound above props.search) stays
-// instantly responsive, only the expensive filter recompute (a full tree walk) waits for
-// typing to settle. 150ms matches that precedent. Measured (200k files, the cap): 538ms per
-// keystroke reactive vs 200ms plain filter cost — debouncing turns "every keystroke pays this"
-// into "one pause pays this", which is what fixes the perceived lag.
-const debouncedSearch = ref(props.search);
-// SchemaDialog.vue's own useDebounceFn precedent (Part 2) — cancel() in onUnmounted/the repoId
-// watch replaces the clearTimeout below.
-const applySearchDebounced = useDebounceFn((value: string) => {
-  debouncedSearch.value = value;
+// The filter field stays instantly responsive; only the filter fold (a full tree walk, 538ms per
+// keystroke at the 200k-file cap) waits for typing to settle.
+const debouncedFilter = ref(props.filter);
+const applyFilterDebounced = useDebounceFn((value: string) => {
+  debouncedFilter.value = value;
 }, TIMING.search);
 watch(
-  () => props.search,
+  () => props.filter,
   (value) => {
-    void applySearchDebounced(value);
+    void applyFilterDebounced(value);
   },
 );
-// A workspace/repo switch must not show the new repo's tree filtered by a stale debounce timer
-// still counting down from the previous one.
+// A branch switch must not show the new tree filtered by a stale timer from the previous one.
 watch(
-  () => props.repoId,
+  () => props.branchId,
   () => {
-    applySearchDebounced.cancel();
-    debouncedSearch.value = props.search;
+    applyFilterDebounced.cancel();
+    debouncedFilter.value = props.filter;
   },
 );
-onUnmounted(() => applySearchDebounced.cancel());
+onUnmounted(() => applyFilterDebounced.cancel());
 
-const rows = computed(() => fileTreeStore.visibleRepoRows(props.repoId, debouncedSearch.value));
+const rows = computed(() => {
+  const out: FileTreeRowVm[] = [];
+  flatten(
+    tree.value,
+    0,
+    filesUi.expandedOf(props.branchId) ?? new Set<string>(),
+    listing.data.value?.status ?? {},
+    debouncedFilter.value.trim().toLowerCase(),
+    out,
+  );
+  return out;
+});
 
 const scrollEl = ref<HTMLElement | null>(null);
 const { virtualItems, totalSize, band, onScroll, revealKey } = useTreeVirtualRows({
   rows: () => rows.value,
   rowHeight: () => rowHeight.value,
   scrollElement: scrollEl,
-  keepScroll: () => `git:files:${props.repoId}`,
+  keepScroll: () => `ade:files:${props.branchId}`,
 });
 
-function onSelect(row: RepoTreeRowVm): void {
+function onSelect(row: FileTreeRowVm): void {
   selected.value = row.key;
 }
 
-function onToggle(row: RepoTreeRowVm): void {
-  fileTreeStore.toggleRepoDir(props.repoId, row.path);
+function onToggle(row: FileTreeRowVm): void {
+  filesUi.toggleDir(props.branchId, row.path);
 }
 
-// §7.2: single click (row's own onClick) opens a preview tab, double click/Enter a permanent one
-// — RepoTreeRow.vue emits `open` with the `preview` flag already resolved.
-function onOpen(row: RepoTreeRowVm, preview: boolean): void {
+// A row click opens the file in the viewer; the row emits `open` with its preview flag, which a
+// single viewer has no use for.
+function onOpen(row: FileTreeRowVm): void {
   if (row.isDir) return;
-  void openRepoFileTab(props.repoId, row.path, { preview });
+  emit('open', row.path);
+}
+
+function menuFor(row: FileTreeRowVm) {
+  return menuForFilePath({
+    path: row.path,
+    worktree: props.worktree,
+    isDir: row.isDir,
+    expanded: row.expanded,
+    onToggle: () => onToggle(row),
+  });
 }
 
 // Right-click selects the row (without opening anything) before its menu opens.
-function onContextMenu(row: RepoTreeRowVm, event: MouseEvent): void {
+function onContextMenu(row: FileTreeRowVm, event: MouseEvent): void {
   selected.value = row.key;
-  contextMenuStore.openContextMenu(event, menuForRepoRow(props.repoId, row), {
+  contextMenuStore.openContextMenu(event, menuFor(row), {
     onRestoreFocus: () => void nav.focusKey(row.key),
   });
 }
 
 // Arrows, Home/End, Right/Left expand and parent, Enter (permanent open), Space (select, toggle or
 // preview) and Shift+F10 come from the shared list navigation; the selection is the roving stop.
-const nav = useListNavigation<RepoTreeRowVm>({
+const nav = useListNavigation<FileTreeRowVm>({
   container: scrollEl,
   items: () => rows.value,
   key: (row) => row.key,
@@ -105,15 +134,15 @@ const nav = useListNavigation<RepoTreeRowVm>({
   },
   onOpen: (row) => {
     if (row.isDir) onToggle(row);
-    else onOpen(row, false);
+    else onOpen(row);
   },
   onSelect: (row) => {
     onSelect(row);
     if (row.isDir) onToggle(row);
-    else onOpen(row, true);
+    else onOpen(row);
   },
   onMenu: (row, rect) =>
-    contextMenuStore.openContextMenuAt(rect.left, rect.bottom, menuForRepoRow(props.repoId, row), {
+    contextMenuStore.openContextMenuAt(rect.left, rect.bottom, menuFor(row), {
       onRestoreFocus: () => void nav.focusKey(row.key),
     }),
   scrollToIndex: (_index, key) => revealKey(key),
@@ -128,18 +157,18 @@ useEventListener(treeBodyEl, 'contextmenu', (e) => e.preventDefault());
 </script>
 
 <template>
-  <div ref="treeBodyEl" class="h-full" data-testid="tree-background">
+  <div ref="treeBodyEl" class="h-full" data-testid="ade-files-tree">
     <div
       ref="scrollEl"
       class="virtual-list h-full overflow-auto"
-      data-testid="virtual-list"
+      data-testid="ade-files-tree-list"
       role="tree"
-      :aria-label="t('space.repo.tree.files.aria')"
+      :aria-label="t('space.ade.files.tree.aria')"
       @scroll="onScroll"
     >
       <div class="sticky top-0 z-2 h-0" data-testid="tree-sticky-band">
         <template v-for="slot in band" :key="slot.row.key">
-          <RepoTreeRow
+          <AdeFileTreeRow
             :class="STICKY_ROW_CLASS"
             :style="{ top: `${slot.top}px`, height: `${rowHeight}px` }"
             :row="slot.row"
@@ -154,7 +183,7 @@ useEventListener(treeBodyEl, 'contextmenu', (e) => e.preventDefault());
       </div>
       <div class="relative" :style="{ height: `${totalSize}px` }">
         <template v-for="item in virtualItems" :key="String(item.key)">
-          <RepoTreeRow
+          <AdeFileTreeRow
             :class="VIRTUAL_ROW_CLASS"
             :style="{ transform: `translateY(${item.start}px)`, height: `${item.size}px` }"
             :row="rows[item.index]"
@@ -169,7 +198,4 @@ useEventListener(treeBodyEl, 'contextmenu', (e) => e.preventDefault());
       </div>
     </div>
   </div>
-  <!-- P110 I2-15: `.sticky-row`/`.virtual-row` moved to VIRTUAL_ROW_CLASS/STICKY_ROW_CLASS
-       (packages/workbench/src/lib/virtualRows.ts) -- see kira-studio's ProjectTree.vue's
-       identical note. -->
 </template>

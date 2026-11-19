@@ -5,7 +5,7 @@ import { cn } from '@theme/lib/utils';
 import type { HTMLAttributes } from 'vue';
 
 // The disclosure-triangle button shared by TreeRow.vue, CollectionRow.vue,
-// RepoTreeRow.vue and GitPanel.vue's own repo-row expand -- byte-identical utility sets, once the
+// AdeFileTreeRow.vue and GitPanel.vue's own repo-row expand -- byte-identical utility sets, once the
 // retired `.twisty` `@utility` (base.css) is factored out into a real component instead of a
 // class name. `hasChildren` both hides the button (`invisible`, same as the class it replaces —
 // still occupies its layout slot, so sibling content never reflows) and gates the emit, matching

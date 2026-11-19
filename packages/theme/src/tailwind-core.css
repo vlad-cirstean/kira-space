@@ -179,9 +179,9 @@
    check-theme-classes.sh so neither name comes back. */
 
 /* P110 I2-14: `tree-row` (this file's own `@utility tree-row`) retired -- TreeRow.vue/
-   CollectionRow.vue/RepoTreeRow.vue/RepoSearchRow.vue now bind the equivalent literal utility
+   CollectionRow.vue/AdeFileTreeRow.vue/AdeFileSearchRow.vue now bind the equivalent literal utility
    string (`relative flex items-center gap-1 pr-2 h-row text-kira-md whitespace-nowrap select-none
-   cursor-default`, RepoSearchRow.vue's own two roots minus `relative`, each keeping its own
+   cursor-default`, AdeFileSearchRow.vue's own two roots minus `relative`, each keeping its own
    distinct leading padding) directly via `cn()`, folding in a `stateClass` computed for the
    hover/selected/sticky ternary that used to live in each file's own `<style scoped>` block
    (selected beats hover pre-phase on specificity -- the ternary reproduces that exactly). Every
@@ -189,7 +189,7 @@
 
 /* P110 I2-13: `twisty` (this file's own `@utility twisty`) retired in favour of the shared
    TreeTwisty component (packages/workbench/src/components/TreeTwisty.vue) -- TreeRow.vue/
-   CollectionRow.vue/RepoTreeRow.vue/GitPanel.vue's own repo-row expand/RepoSearchRow.vue (the one
+   CollectionRow.vue/AdeFileTreeRow.vue/GitPanel.vue's own repo-row expand/AdeFileSearchRow.vue (the one
    consumer that deliberately keeps no cursor-pointer, passed through via `class`) all take it now.
    Every `.twisty` test locator became `[data-testid="tree-twisty"]`. */
 

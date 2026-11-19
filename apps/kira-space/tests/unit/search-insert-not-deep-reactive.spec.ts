@@ -6,7 +6,7 @@
 // plain array. This pins two things: (1) a large streamed search completes with a generous but
 // regression-catching wall-clock bound -- a return to O(F^2) reactive proxying would blow well past
 // it -- and (2) the result rows are still correct and the view still re-renders incrementally
-// (repoSearchRows reflects each flush), so the `filesVersion` reactivity workaround works.
+// (searchRows reflects each flush), so the `filesVersion` reactivity workaround works.
 import '@workbench/testing/unit/window';
 
 import { describe, expect, test } from 'bun:test';
@@ -20,8 +20,8 @@ setActivePinia(pinia);
 const { control } = await import('../../frontend/src/bridge/control');
 restoreAfterEach(control);
 
-const { useRepoSearchStore } = await import('../../frontend/src/repo/state/search');
-const repoSearchStore = useRepoSearchStore();
+const { useAdeFileSearchStore } = await import('../../frontend/src/ade/v2/files/state/fileSearch');
+const searchStore = useAdeFileSearchStore();
 
 function group(path: string): FileMatches {
   return {
@@ -44,18 +44,18 @@ function group(path: string): FileMatches {
 
 describe('C14-1: state.files insertion stays off Vue deep reactivity at scale', () => {
   test('a 10,000-match streamed search completes without O(F^2) reactive-proxy cost', async () => {
-    const repoId = 'search-perf-c14-1';
+    const branchId = 'search-perf-c14-1';
     let deliver: (event: CodeSearchEvent) => void = () => {};
     (control as unknown as { onCodeSearch: typeof control.onCodeSearch }).onCodeSearch = (cb) => {
       deliver = cb;
       return () => {};
     };
     (
-      control as unknown as { codeWorkspaceStartSearch: typeof control.codeWorkspaceStartSearch }
-    ).codeWorkspaceStartSearch = async () => ({ searchId: 'search-1' });
+      control as unknown as { adeTaskFilesSearch: typeof control.adeTaskFilesSearch }
+    ).adeTaskFilesSearch = async () => ({ searchId: 'search-1' });
 
-    repoSearchStore.setRepoSearchQuery(repoId, 'needle');
-    await repoSearchStore.startRepoSearch(repoId);
+    searchStore.setSearchQuery(branchId, 'needle');
+    await searchStore.startSearch(branchId);
 
     // Workers emit out of order, so insertByPath's own binary search lands mid-array, not just
     // at the tail -- that's what pays the reactive-proxy element-shift cost the fix targets
@@ -104,13 +104,13 @@ describe('C14-1: state.files insertion stays off Vue deep reactivity at scale', 
     // without flaking on ordinary CI scheduling jitter for O(F) work over 10,000 elements.
     expect(elapsedMs).toBeLessThan(5_000);
 
-    expect(repoSearchStore.repoSearchRunning(repoId)).toBe(false);
-    const rows = repoSearchStore.repoSearchRows(repoId);
+    expect(searchStore.searchRunning(branchId)).toBe(false);
+    const rows = searchStore.searchRows(branchId);
     // One file-header row + one match row per path, in sorted order.
     expect(rows.length).toBe(totalPaths * 2);
     expect(rows[0]).toMatchObject({ kind: 'file', path: paths[0] });
     expect(rows[rows.length - 1]).toMatchObject({ kind: 'match', path: paths[paths.length - 1] });
 
-    repoSearchStore.dropRepoSearch(repoId);
+    searchStore.dropSearch(branchId);
   });
 });

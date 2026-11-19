@@ -7,14 +7,14 @@ import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, type HTMLAttributes } from 'vue';
-import { fileIconStyle } from './fileIcon';
-import type { RepoSearchRowVm } from './state/search';
+import { fileIconStyle } from '../../../repo/fileIcon';
+import type { FileSearchRowVm } from './state/fileSearch';
 
 // C7 §7.3: one flat row component for both shapes the store's own row fold produces — a file
 // header (path, match count, collapse chevron) or a match (line:column, highlighted preview) —
-// mirroring RepoTreeRow.vue's own markup/class conventions so the two panels read as one system.
+// mirroring AdeFileTreeRow.vue's own markup/class conventions so the two panels read as one system.
 const props = defineProps<{
-  row: RepoSearchRowVm;
+  row: FileSearchRowVm;
   selected: boolean;
   /** Roving tabindex from `nav.rowProps`. */
   tabindex?: number;
@@ -22,12 +22,12 @@ const props = defineProps<{
 }>();
 
 // P110 I2-14: no sticky branch -- this row is never rendered inside a sticky layer, unlike
-// TreeRow.vue/CollectionRow.vue/RepoTreeRow.vue, which all take a `sticky` prop.
+// TreeRow.vue/CollectionRow.vue/AdeFileTreeRow.vue, which all take a `sticky` prop.
 
 const emit = defineEmits<{
-  select: [row: RepoSearchRowVm];
-  toggleCollapse: [row: RepoSearchRowVm];
-  open: [row: RepoSearchRowVm, preview: boolean];
+  select: [row: FileSearchRowVm];
+  toggleCollapse: [row: FileSearchRowVm];
+  open: [row: FileSearchRowVm, preview: boolean];
 }>();
 
 const fileName = computed(() => {
@@ -70,7 +70,7 @@ function onDblClick(): void {
     v-if="row.kind === 'file'"
     :class="cn(rowVariants({ layout: 'tree', selected }), 'h-row', props.class)"
     :style="rowIndent(0)"
-    data-testid="repo-search-file-row"
+    data-testid="ade-files-search-file-row"
     :data-path="row.path"
     role="option"
     :aria-selected="selected"
@@ -87,10 +87,10 @@ function onDblClick(): void {
     <span class="min-w-0 flex-1"
       ><TruncatedText :text="row.path">{{ fileName }}</TruncatedText></span
     >
-    <span :class="[rowMeta, 'shrink-0']" data-testid="repo-search-match-count">{{
+    <span :class="[rowMeta, 'shrink-0']" data-testid="ade-files-search-count">{{
       row.matchCount
     }}</span>
-    <TextTooltip v-if="row.fileTruncated" :text="t('space.repo.search.truncated.tooltip')"
+    <TextTooltip v-if="row.fileTruncated" :text="t('space.ade.files.search.truncated.tooltip')"
       ><span class="text-kira-sm text-subtle">+</span></TextTooltip
     >
   </div>
@@ -99,7 +99,7 @@ function onDblClick(): void {
     v-else
     :class="cn(rowVariants({ layout: 'tree', selected }), 'h-row font-data', props.class)"
     :style="rowIndent(1)"
-    data-testid="repo-search-match-row"
+    data-testid="ade-files-search-row"
     :data-path="row.path"
     :data-line="row.line"
     role="option"

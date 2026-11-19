@@ -6,12 +6,12 @@ import { CHANGE_TONE, TONE_TEXT } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
 import TreeTwisty from '@workbench/components/TreeTwisty.vue';
 import { computed, type HTMLAttributes } from 'vue';
-import { fileIconStyle } from './fileIcon';
-import type { RepoTreeRowVm } from './state/fileTree';
+import { fileIconStyle } from '../../../repo/fileIcon';
+import type { FileTreeRowVm } from './fileTreeModel';
 
 const props = withDefaults(
   defineProps<{
-    row: RepoTreeRowVm;
+    row: FileTreeRowVm;
     selected: boolean;
     sticky?: boolean;
     class?: HTMLAttributes['class'];
@@ -20,10 +20,10 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  select: [row: RepoTreeRowVm];
-  toggle: [row: RepoTreeRowVm];
-  open: [row: RepoTreeRowVm, preview: boolean];
-  contextmenu: [row: RepoTreeRowVm, event: MouseEvent];
+  select: [row: FileTreeRowVm];
+  toggle: [row: FileTreeRowVm];
+  open: [row: FileTreeRowVm, preview: boolean];
+  contextmenu: [row: FileTreeRowVm, event: MouseEvent];
 }>();
 
 // P67b §6.2: directories keep their folder glyph (OQ-3 — the diff tree has no directory-icon rule
@@ -83,7 +83,7 @@ function onContextMenu(e: MouseEvent): void {
       )
     "
     :style="rowIndent(row.depth)"
-    :data-testid="sticky ? 'repo-tree-sticky-row' : 'repo-tree-row'"
+    :data-testid="sticky ? 'ade-files-sticky-row' : 'ade-files-row'"
     :data-path="row.path"
     :data-status="statusAttr"
     role="treeitem"

@@ -8,7 +8,6 @@ import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, type Ref, watch } from 'vue';
 import { control } from '../../bridge/control';
-import { useFileTreeStore } from '../../repo/state/fileTree';
 import { useFileEditStore } from '../../state/fileEdit';
 import { useTabsStore } from '../../state/tabs';
 import type { MonacoModule } from './monaco';
@@ -42,7 +41,6 @@ export function useFileEdit(o: FileEditOptions) {
   const store = useFileEditStore();
   const tabsStore = useTabsStore();
   const confirmDialog = useConfirmDialogStore();
-  const fileTree = useFileTreeStore();
   const readMutation = useMutation({
     mutationFn: (repoId: string) => control.codeWorkspaceReadFileForEdit(repoId, o.path),
   });
@@ -192,7 +190,6 @@ export function useFileEdit(o: FileEditOptions) {
       store.markSaved(o.tabId, res.hash, versionId);
       // The user may have typed while the write ran.
       store.setDirty(o.tabId, m.getAlternativeVersionId() !== versionId);
-      if (fileTree.isRepoTreeLoaded(repoId)) void fileTree.refreshRepoTree(repoId);
     } catch (err) {
       if (isConflict(err)) {
         const probe = await readFresh();

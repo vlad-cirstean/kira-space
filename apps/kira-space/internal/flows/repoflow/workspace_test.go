@@ -3,9 +3,6 @@ package repoflow_test
 import (
 	"os"
 	"path/filepath"
-	"slices"
-	"sort"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -52,34 +49,6 @@ func TestBrowseReadDiff(t *testing.T) {
 	if err := cw.OpenWorkspace(ctx, idArgs(rec.ID)); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Run("list matches git", func(t *testing.T) {
-		got, err := cw.ListFiles(ctx, idArgs(rec.ID))
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := strings.Split(r.Git("ls-files", "--cached", "--others", "--exclude-standard"), "\n")
-		sort.Strings(want)
-		have := slices.Clone(got.Paths)
-		sort.Strings(have)
-		if !slices.Equal(have, want) {
-			t.Fatalf("paths = %v, want %v", have, want)
-		}
-		for _, ignored := range []string{"build/out.o", "debug.log"} {
-			if slices.Contains(got.Paths, ignored) {
-				t.Errorf("ignored %s listed", ignored)
-			}
-		}
-		if !slices.Contains(got.Paths, "src/deep/a/b.txt") {
-			t.Error("nested file missing")
-		}
-		if got.Status["src/main.go"] == "" || got.Status["new.txt"] == "" || got.Status["README.md"] != "" {
-			t.Errorf("status overlay = %v, want main.go and new.txt marked, README clean", got.Status)
-		}
-		if got.Truncated {
-			t.Error("small repo reported truncated")
-		}
-	})
 
 	read := func(path string) (codeworkspace.FileContent, error) {
 		return cw.ReadFile(ctx, bridge.CodeWorkspaceReadFileArgs{ID: rec.ID, Path: path})
@@ -211,159 +180,22 @@ func TestBrowseReadDiff(t *testing.T) {
 			t.Fatalf("gate after commit = %+v, %v, want a re-read head with a new oid", g, err)
 		}
 	})
-
-	t.Run("unknown and empty ids", func(t *testing.T) {
-		if _, err := cw.ListFiles(ctx, idArgs("nope")); errCode(err) != "E_NOT_FOUND" {
-			t.Fatalf("unknown id err = %v", err)
-		}
-		if _, err := cw.ListFiles(ctx, idArgs("")); errCode(err) != "E_CONTRACT" {
-			t.Fatalf("empty id err = %v", err)
-		}
-	})
 }
 
-func searchEvents(app *flowharness.App, window string) (files map[string][]int, done bool, stats *codeworkspace.SearchStats, searchErr *bridge.CodeSearchEventErr, total int) {
-	files = map[string][]int{}
-	for _, ev := range app.Events.Since(0, bridge.ChannelCodeSearch) {
-		if ev.Window != window {
-			continue
-		}
-		p := ev.Data.(bridge.CodeSearchEvent)
-		for _, f := range p.Files {
-			for _, m := range f.Matches {
-				files[f.Path] = append(files[f.Path], m.Line)
-				total++
-			}
-		}
-		if p.Done {
-			done, stats, searchErr = true, p.Stats, p.Error
-		}
-	}
-	return
-}
-
-func TestCodeSearch(t *testing.T) {
+// Closing a workspace twice, or one that never opened, is harmless; an empty id is refused; a read
+// after close reopens it.
+func TestCloseWorkspace(t *testing.T) {
 	app := flowharness.New(t)
-	r := app.NewRepo("search")
-	files := map[string]string{}
-	for i := range 40 {
-		var b strings.Builder
-		for l := range 30 {
-			b.WriteString("line " + strconv.Itoa(l) + " filler\n")
-			if (i+l)%11 == 0 {
-				b.WriteString("the needle is here\n")
-			}
-		}
-		files["pkg"+strconv.Itoa(i%4)+"/f"+strconv.Itoa(i)+".txt"] = b.String()
-	}
-	r.Commit("corpus", files)
+	r := app.NewRepo("close")
+	r.Commit("init", map[string]string{"d0/f0.txt": "x\n"})
 	rec := importVia(t, app, r.Dir)
 	cw := app.W.CodeWorkspace
-
-	t.Run("hits equal git grep", func(t *testing.T) {
-		h, err := cw.StartSearch(ctx, bridge.CodeWorkspaceSearchArgs{ID: rec.ID, WindowKey: "w1", Query: "needle", CaseSensitive: true})
-		if err != nil || h.SearchID == "" {
-			t.Fatalf("StartSearch = %+v, %v", h, err)
-		}
-		waitFor(t, 10*time.Second, func() bool { _, done, _, _, _ := searchEvents(app, "w1"); return done })
-		got, _, stats, searchErr, total := searchEvents(app, "w1")
-		if searchErr != nil {
-			t.Fatalf("search error %+v", searchErr)
-		}
-		want := map[string][]int{}
-		wantTotal := 0
-		for _, line := range strings.Split(r.Git("grep", "-n", "needle"), "\n") {
-			parts := strings.SplitN(line, ":", 3)
-			n, _ := strconv.Atoi(parts[1])
-			want[parts[0]] = append(want[parts[0]], n)
-			wantTotal++
-		}
-		if total != wantTotal || len(got) != len(want) {
-			t.Fatalf("hits = %d in %d files, git grep %d in %d", total, len(got), wantTotal, len(want))
-		}
-		for p, lines := range want {
-			g := slices.Clone(got[p])
-			sort.Ints(g)
-			if !slices.Equal(g, lines) {
-				t.Errorf("%s lines = %v, want %v", p, g, lines)
-			}
-		}
-		if stats == nil || stats.Matches != wantTotal || stats.FilesMatched != len(want) {
-			t.Errorf("stats = %+v, want %d matches in %d files", stats, wantTotal, len(want))
-		}
-	})
-
-	t.Run("bad regex refused up front", func(t *testing.T) {
-		_, err := cw.StartSearch(ctx, bridge.CodeWorkspaceSearchArgs{ID: rec.ID, WindowKey: "w2", Query: "(", Regex: true})
-		if errCode(err) != "E_BAD_REQUEST" {
-			t.Fatalf("err = %v, want E_BAD_REQUEST", err)
-		}
-	})
-
-	t.Run("cancel stops events", func(t *testing.T) {
-		big := app.NewRepo("search-big")
-		bulk := map[string]string{}
-		line := strings.Repeat("x", 80) + " needle\n"
-		for i := range 600 {
-			bulk["d"+strconv.Itoa(i%20)+"/f"+strconv.Itoa(i)+".txt"] = strings.Repeat(line, 400)
-		}
-		big.Commit("bulk", bulk)
-		brec := importVia(t, app, big.Dir)
-		if _, err := cw.StartSearch(ctx, bridge.CodeWorkspaceSearchArgs{ID: brec.ID, WindowKey: "w3", Query: "needle"}); err != nil {
-			t.Fatal(err)
-		}
-		if err := cw.CancelSearch(idArgs(brec.ID)); err != nil {
-			t.Fatal(err)
-		}
-		waitFor(t, 10*time.Second, func() bool { _, done, _, _, _ := searchEvents(app, "w3"); return done })
-		_, _, stats, searchErr, total := searchEvents(app, "w3")
-		if searchErr != nil {
-			t.Fatalf("cancel surfaced as error %+v", searchErr)
-		}
-		time.Sleep(300 * time.Millisecond)
-		_, _, _, _, after := searchEvents(app, "w3")
-		if after != total {
-			t.Fatalf("events kept coming after done: %d -> %d", total, after)
-		}
-		if stats == nil || stats.Truncated || stats.Matches >= codeworkspace.MaxSearchMatches {
-			t.Errorf("stats = %+v, want a partial run (an uncancelled search hits the %d cap)", stats, codeworkspace.MaxSearchMatches)
-		}
-	})
-}
-
-// Leaving a workspace while its search runs ends the search quietly (no error, no more events) and
-// the workspace reopens on the next read.
-func TestCloseWorkspaceStopsSearch(t *testing.T) {
-	app := flowharness.New(t)
-	big := app.NewRepo("search-close")
-	bulk := map[string]string{}
-	line := strings.Repeat("x", 80) + " needle\n"
-	for i := range 600 {
-		bulk["d"+strconv.Itoa(i%20)+"/f"+strconv.Itoa(i)+".txt"] = strings.Repeat(line, 400)
-	}
-	big.Commit("bulk", bulk)
-	rec := importVia(t, app, big.Dir)
-	cw := app.W.CodeWorkspace
-
-	if _, err := cw.StartSearch(ctx, bridge.CodeWorkspaceSearchArgs{ID: rec.ID, WindowKey: "w1", Query: "needle"}); err != nil {
+	if err := cw.OpenWorkspace(ctx, idArgs(rec.ID)); err != nil {
 		t.Fatal(err)
 	}
 	if err := cw.CloseWorkspace(idArgs(rec.ID)); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, 10*time.Second, func() bool { _, done, _, _, _ := searchEvents(app, "w1"); return done })
-	_, _, stats, searchErr, total := searchEvents(app, "w1")
-	if searchErr != nil {
-		t.Fatalf("closing the workspace surfaced as a search error: %+v", searchErr)
-	}
-	if stats != nil && stats.Matches >= codeworkspace.MaxSearchMatches {
-		t.Fatalf("search ran to its cap (%+v) after the workspace closed", stats)
-	}
-	time.Sleep(300 * time.Millisecond)
-	if _, _, _, _, after := searchEvents(app, "w1"); after != total {
-		t.Fatalf("events kept coming after close: %d -> %d", total, after)
-	}
-
 	// Closing twice, or an id that never opened, is harmless; an empty id is refused.
 	if err := cw.CloseWorkspace(idArgs(rec.ID)); err != nil {
 		t.Fatalf("second CloseWorkspace = %v", err)

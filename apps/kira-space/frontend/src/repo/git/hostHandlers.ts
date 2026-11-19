@@ -41,7 +41,7 @@ import {
   openRepoReviewDiffTab,
 } from '../../state/repoTabs';
 import { useTabsStore } from '../../state/tabs';
-import { useRepoPanelTabStore } from '../state/search';
+import { useRepoPanelTabStore } from '../state/panelTab';
 import { loadReviewSession, pinnedGraphTabId, saveReviewSession } from './reviewSession';
 
 // review.open's own cold-mount hand-off. The local event bus only

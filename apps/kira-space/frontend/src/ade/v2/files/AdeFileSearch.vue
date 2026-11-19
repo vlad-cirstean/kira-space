@@ -9,27 +9,30 @@ import PanelBar from '@workbench/components/PanelBar.vue';
 import SearchOptionToggles from '@workbench/components/SearchOptionToggles.vue';
 import VirtualList from '@workbench/components/VirtualList.vue';
 import { computed, ref, useTemplateRef } from 'vue';
-import { openRepoFileTab } from '../state/repoTabs';
-import RepoSearchRow from './RepoSearchRow.vue';
-import { type RepoSearchRowVm, useRepoSearchStore } from './state/search';
+import AdeFileSearchRow from './AdeFileSearchRow.vue';
+import { type FileSearchRowVm, useAdeFileSearchStore } from './state/fileSearch';
 
 // C7 §7.3: the query field, the three Monaco-find-widget-vocabulary toggles (D13: the same three
 // codicons the in-file find widget and every other search surface in this app already use), the
 // Search/Stop button, and the streamed results list.
-const props = defineProps<{ repoId: string }>();
-const repoSearchStore = useRepoSearchStore();
+const props = defineProps<{ branchId: string }>();
+// A match opens the file in the viewer at its line and column.
+const emit = defineEmits<{
+  open: [path: string, reveal: { line: number; column: number; endColumn?: number }];
+}>();
+const searchStore = useAdeFileSearchStore();
 
 const selected = ref<string | null>(null);
 
 const query = computed({
-  get: () => repoSearchStore.repoSearchQuery(props.repoId),
-  set: (v: string) => repoSearchStore.setRepoSearchQuery(props.repoId, v),
+  get: () => searchStore.searchQuery(props.branchId),
+  set: (v: string) => searchStore.setSearchQuery(props.branchId, v),
 });
-const options = computed(() => repoSearchStore.repoSearchOptions(props.repoId));
-const running = computed(() => repoSearchStore.repoSearchRunning(props.repoId));
-const stats = computed(() => repoSearchStore.repoSearchStats(props.repoId));
-const error = computed(() => repoSearchStore.repoSearchError(props.repoId));
-const rows = computed(() => repoSearchStore.repoSearchRows(props.repoId));
+const options = computed(() => searchStore.searchOptions(props.branchId));
+const running = computed(() => searchStore.searchRunning(props.branchId));
+const stats = computed(() => searchStore.searchStats(props.branchId));
+const error = computed(() => searchStore.searchError(props.branchId));
+const rows = computed(() => searchStore.searchRows(props.branchId));
 
 // §7.3: "Searching…" while running, "N results in M files" when done, "(stopped at 10,000)"
 // appended when the whole run hit the cap, "K files skipped" appended when non-zero — the skip
@@ -38,11 +41,11 @@ const statusLine = computed(() => {
   if (running.value) return t('common.searching.loading');
   const s = stats.value;
   if (!s) return '';
-  let line = t('space.repo.search.summary.status', {
+  let line = t('space.ade.files.search.summary.status', {
     count: s.matches,
     files: t('common.fileCount.label', { count: s.filesMatched }),
   });
-  if (s.truncated) line = t('space.repo.search.stopped.status', { summary: line });
+  if (s.truncated) line = t('space.ade.files.search.stopped.status', { summary: line });
   if (s.filesSkipped > 0) {
     line = t('common.dashPair.label', {
       first: line,
@@ -53,11 +56,11 @@ const statusLine = computed(() => {
 });
 
 function runSearch(): void {
-  void repoSearchStore.startRepoSearch(props.repoId);
+  void searchStore.startSearch(props.branchId);
 }
 
 function onToggleOption(key: 'regex' | 'caseSensitive' | 'wholeWord'): void {
-  repoSearchStore.toggleRepoSearchOption(props.repoId, key);
+  searchStore.toggleSearchOption(props.branchId, key);
 }
 
 // D10: a search runs on Enter or the Search button only, never on every keystroke.
@@ -66,7 +69,7 @@ function onQueryKeydown(e: KeyboardEvent): void {
     e.preventDefault();
     runSearch();
   } else if (e.key === 'Escape') {
-    repoSearchStore.setRepoSearchQuery(props.repoId, '');
+    searchStore.setSearchQuery(props.branchId, '');
   }
 }
 
@@ -75,48 +78,44 @@ function onQueryKeydown(e: KeyboardEvent): void {
 const toolbar = useTemplateRef<{ $el: HTMLElement }>('toolbar');
 useEventListener(() => toolbar.value?.$el, 'keydown', onQueryKeydown);
 
-function onSelect(row: RepoSearchRowVm): void {
+function onSelect(row: FileSearchRowVm): void {
   selected.value = row.key;
 }
 
 // Type-to-search: a printable key on the results lands in the query field.
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 usePanelHeaderSearch(rootEl, {
-  stateKey: 'git:search',
+  stateKey: 'ade:files:search',
   searchable: () => true,
   getSearch: () => query.value,
   setSearch: (v) => {
     query.value = v;
   },
-  searchTestid: 'repo-search-query',
+  searchTestid: 'ade-files-search-input',
 });
 
-function onToggleCollapse(row: RepoSearchRowVm): void {
-  repoSearchStore.toggleRepoSearchCollapse(props.repoId, row.path);
+function onToggleCollapse(row: FileSearchRowVm): void {
+  searchStore.toggleSearchCollapse(props.branchId, row.path);
 }
 
-// §7.4/D12: a single click opens a preview tab, double-click/Enter a permanent one — the tree's
-// own onSelect/onOpen split (RepoSearchRow.vue already resolved which this is). The reveal moves
-// the cursor whether the tab is freshly opened or already mounted and active (D12's own fix).
-function onOpen(row: RepoSearchRowVm, preview: boolean): void {
+// A match opens the file in the viewer and moves its cursor, whether the file is freshly opened
+// or already showing.
+function onOpen(row: FileSearchRowVm): void {
   if (row.kind !== 'match' || row.line === undefined || row.column === undefined) return;
-  void openRepoFileTab(props.repoId, row.path, {
-    preview,
-    reveal: { line: row.line, column: row.column, endColumn: row.endColumn },
-  });
+  emit('open', row.path, { line: row.line, column: row.column, endColumn: row.endColumn });
 }
 
 // Enter: permanent open for a match, collapse toggle for a file header. Space: the single click.
-function onRowOpen(row: RepoSearchRowVm): void {
+function onRowOpen(row: FileSearchRowVm): void {
   onSelect(row);
   if (row.kind === 'file') onToggleCollapse(row);
-  else onOpen(row, false);
+  else onOpen(row);
 }
 
-function onRowSelect(row: RepoSearchRowVm): void {
+function onRowSelect(row: FileSearchRowVm): void {
   onSelect(row);
   if (row.kind === 'file') onToggleCollapse(row);
-  else onOpen(row, true);
+  else onOpen(row);
 }
 </script>
 
@@ -126,7 +125,7 @@ function onRowSelect(row: RepoSearchRowVm): void {
       <div class="flex-1 min-w-0">
         <SearchField
           :model-value="query"
-          data-testid="repo-search-query"
+          data-testid="ade-files-search-input"
           :aria-invalid="!!error"
           @update:model-value="(v) => (query = v)"
         />
@@ -139,8 +138,8 @@ function onRowSelect(row: RepoSearchRowVm): void {
           :match-case="options.caseSensitive"
           :whole-word="options.wholeWord"
           :regex="options.regex"
-          testid-prefix="repo-search-"
-          match-case-testid="repo-search-case"
+          testid-prefix="ade-files-search-"
+          match-case-testid="ade-files-search-case"
           @update:match-case="onToggleOption('caseSensitive')"
           @update:whole-word="onToggleOption('wholeWord')"
           @update:regex="onToggleOption('regex')"
@@ -150,34 +149,34 @@ function onRowSelect(row: RepoSearchRowVm): void {
         v-if="running"
         icon="debug-stop"
         :label="t('common.action.stop.label')"
-        data-testid="repo-search-stop"
-        @click="repoSearchStore.cancelRepoSearch(repoId)"
+        data-testid="ade-files-search-stop"
+        @click="searchStore.cancelSearch(branchId)"
       />
       <TooltipIconButton
         v-else
         icon="search"
         :label="t('common.action.search.label')"
-        data-testid="repo-search-run"
+        data-testid="ade-files-search-run"
         @click="runSearch"
       />
     </PanelBar>
-    <Alert v-if="error" variant="error" data-testid="repo-search-error">
+    <Alert v-if="error" variant="error" data-testid="ade-files-search-error">
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
-    <Alert v-else-if="statusLine" variant="info" data-testid="repo-search-status">
+    <Alert v-else-if="statusLine" variant="info" data-testid="ade-files-search-status">
       <AlertDescription>{{ statusLine }}</AlertDescription>
     </Alert>
     <VirtualList
       v-model:active-key="selected"
       :rows="rows"
-      :keep-scroll-key="`git:search:${repoId}`"
+      :keep-scroll-key="`git:search:${branchId}`"
       testid="virtual-list"
       :aria-label="t('common.searchResults.aria')"
       :open="onRowOpen"
       :select="onRowSelect"
     >
       <template #row="{ row, nav }">
-        <RepoSearchRow
+        <AdeFileSearchRow
           v-bind="nav"
           :row="row"
           :selected="selected === row.key"

@@ -81,10 +81,10 @@ packages/docker-ui/src/components/ImageList.vue
 packages/docker-ui/src/components/VolumeList.vue
 packages/docker-ui/src/components/NetworkList.vue
 packages/workbench/src/components/VirtualList.vue
-apps/kira-space/frontend/src/repo/RepoFileTree.vue
-apps/kira-space/frontend/src/repo/RepoTreeRow.vue
-apps/kira-space/frontend/src/repo/RepoSearchView.vue
-apps/kira-space/frontend/src/repo/RepoSearchRow.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileTree.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileTreeRow.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileSearch.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileSearchRow.vue
 apps/kira-space/frontend/src/repo/RepoReviewView.vue
 packages/git-ui/src/components/review/ReviewView.vue
 packages/git-ui/src/components/review/ReviewCommitRow.vue
@@ -160,7 +160,7 @@ U62 packages/git-ui/src/components/CommitGrid.vue # SlickGrid engine host owns r
 U47 packages/git-ui/src/components/SearchResults.vue # listbox of the SearchBox combobox; keys live in SearchBox
 U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defers each request with its own zero-delay timer; debounce drops concurrent ones
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
-U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
+U109 apps/kira-space/frontend/src/ade/v2/files/AdeFileTree.vue # debounced copy of the name filter, derived not owned
 U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
 # P674 iteration 1: virtual lists VirtualList cannot host
 U164 apps/kira-space/frontend/src/ade/v2/repos/AdeReposPage.vue # grouped windowRows with group heads, not a flat row list
