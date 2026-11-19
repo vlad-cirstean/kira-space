@@ -1490,6 +1490,12 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - Marks render through `HighlightedText` (`markClass` for a non-search meaning) (U174).
 - An approval-card meta link is Button `link-meta` (U175).
 - A QueryState inline load failure shows Retry when retryable; `errorLabel` and `errorTestid` replace the text and testid; an `error` slot only for a host that draws the failure in its own frame (log views) (U176).
+- An HTTP status is `HttpStatusBadge` (Studio): `statusClass` tone, `statusHint` tooltip, data font (U177).
+- A docker section measured on demand is `MeasuredSection`: loading and not-measured as InlineState, first failure InlineState error, re-measure failure Alert error with data kept (U178).
+- A byte size is `formatBytes` passed as `{size}`, never a raw count with "bytes". A binary body and a cut response body read the same in the HTTP pane and the approval card (U179).
+- An approval-card kept name with its type is `KeptNameMark` (U180).
+- Studio JSON pretty-printing goes through `beautify.ts` (`indentJson`, `prettyJson`): lossless, never `JSON.stringify(JSON.parse())` (U181).
+- Catalog ownership: a module's sources use its own namespace plus `common`, `format`, `shared`, `theme`, `backend`; pairs mobile to `space.`, space to `git.`, `studio.proof.`, `memory.distill.` (U182).
 - An expiry clock reads `common.expires.status` with `formatElapsed` under an hour of life; a TTL counted in minutes or hours (key TTL, kept variable) reads `formatCompactDuration` with `ceil`.
 - A numeric settings leaf keeps its range and default constants in `settingsDomain.ts`, a head row with `ResetToDefaultButton`, and `FieldError` in place of `FieldDescription`.
 - Guards U110-U176 in check-ui-primitives.sh hold these rules with zero offenders; a real exception is a built-in exempt name or a reasoned PERMANENT line.
