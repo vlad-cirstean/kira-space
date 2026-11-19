@@ -7,8 +7,8 @@ import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
 import { t } from '@theme/i18n';
 import { useAsyncAction } from '@workbench/behaviour/asyncAction';
-import { useCopy } from '@workbench/behaviour/clipboard';
 import { formatRelative } from '@workbench/behaviour/format';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { computed, ref, watch } from 'vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
 import { useUpdateHandover } from '../queries';
@@ -39,7 +39,6 @@ const props = defineProps<{
 const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] }>();
 const stage = useAdeStageDialogStore();
 const update = useUpdateHandover();
-const { copy, copied, error: copyError } = useCopy();
 const boardUi = useAdeBoardUiStore();
 const child = computed(() => childOf(props.handover));
 const author = computed(() => noteAuthor(props.handover));
@@ -125,13 +124,11 @@ function time(h: Handover): string {
         :archived="readonly"
         @open="emit('openSession', $event)"
       />
-      <TooltipIconButton
+      <CopyIconButton
         v-if="!editing && handover.body.trim()"
-        :icon="copied ? 'check' : 'copy'"
-        :tone="copyError ? 'error' : undefined"
+        :text="handover.body"
         :label="t('space.ade.handover.copy.tooltip')"
         data-testid="ade-handover-copy"
-        @click="copy(handover.body)"
       />
       <TooltipIconButton
         v-if="!readonly && !editing && !isReadOnlyEntry(handover)"

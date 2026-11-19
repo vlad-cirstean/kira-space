@@ -18,6 +18,7 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowVariants } from '@theme/lib/rowVariants';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { computed, useTemplateRef } from 'vue';
 import { keptScrollIf } from '../../lib/reviewKeep.ts';
@@ -103,12 +104,12 @@ keptScrollIf(() => props.keepScroll ?? null, listEl, { ready: () => groups.value
       <span class="text-muted-foreground text-graph-sm" data-testid="review-comments-count">{{
         countLabel
       }}</span>
-      <TooltipIconButton
-        icon="copy"
+      <CopyIconButton
+        :text="() => reviewComments.exportText()"
         :label="t('git.review.comments.copyForAi.tooltip')"
+        :message="t('git.copy.reviewComments.announce')"
         class="ml-auto"
         :disabled="reviewComments.comments.value.length === 0"
-        @click="reviewComments.copyForAi()"
       />
       <TooltipIconButton
         v-if="!reviewComments.confirmingClear.value"
