@@ -179,7 +179,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
           data-testid="repo-file-overwrite"
           @click="draft.overwrite"
         >
-          {{ t('space.ade.workflows.conflict.overwrite.label') }}
+          {{ t('common.action.overwrite.label') }}
         </Button>
       </AlertAction>
     </Alert>

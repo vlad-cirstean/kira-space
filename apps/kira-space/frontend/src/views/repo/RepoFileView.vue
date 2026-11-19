@@ -235,7 +235,7 @@ onUnmounted(teardownEditor);
           data-testid="repo-file-overwrite"
           @click="edit.overwrite()"
         >
-          {{ t('space.ade.workflows.conflict.overwrite.label') }}
+          {{ t('common.action.overwrite.label') }}
         </Button>
       </AlertAction>
     </Alert>

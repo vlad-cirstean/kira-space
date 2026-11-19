@@ -3198,6 +3198,9 @@
       "openTerminal": {
         "label": "Open terminal"
       },
+      "overwrite": {
+        "label": "Overwrite"
+      },
       "paste": {
         "label": "Paste"
       },
@@ -11380,11 +11383,6 @@
         "title": "Discard changes?"
       },
       "workflows": {
-        "conflict": {
-          "overwrite": {
-            "label": "Overwrite"
-          }
-        },
         "editor": {
           "copyYaml": {
             "label": "Copy YAML"

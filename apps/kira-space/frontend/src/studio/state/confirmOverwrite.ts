@@ -8,7 +8,7 @@ export function confirmOverwrite(detail: string): Promise<boolean> {
   return useConfirmDialogStore().confirm({
     title: t('studio.common.overwriteConfirm.title'),
     message: `${detail} ${t('studio.common.overwriteConfirm.body')}`,
-    confirmLabel: t('space.ade.workflows.conflict.overwrite.label'),
+    confirmLabel: t('common.action.overwrite.label'),
     tone: 'danger',
   });
 }

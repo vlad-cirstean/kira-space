@@ -300,7 +300,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 data-testid="api-variables-overwrite"
                 @click="draft.overwrite"
               >
-                {{ t('space.ade.workflows.conflict.overwrite.label') }}
+                {{ t('common.action.overwrite.label') }}
               </Button>
             </AlertAction>
           </Alert>

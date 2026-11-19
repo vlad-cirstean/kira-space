@@ -371,7 +371,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 data-testid="connection-file-overwrite"
                 @click="draft.overwrite"
               >
-                {{ t('space.ade.workflows.conflict.overwrite.label') }}
+                {{ t('common.action.overwrite.label') }}
               </Button>
             </AlertAction>
           </Alert>

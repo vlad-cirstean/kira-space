@@ -102,7 +102,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
               data-testid="ade-settings-overwrite"
               @click="overwrite"
             >
-              {{ t('space.ade.workflows.conflict.overwrite.label') }}
+              {{ t('common.action.overwrite.label') }}
             </Button>
           </AlertAction>
         </Alert>

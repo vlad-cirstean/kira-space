@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RunFile, ScriptParam, SecretValues } from '@shared/domain/scripts';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
-import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
+import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
@@ -25,6 +25,8 @@ import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { errorText } from '../bridge/codedError';
 import ConfigFileProblem from '../config/ConfigFileProblem.vue';
+import ConfigFormProblemAlert from '../config/ConfigFormProblemAlert.vue';
+import SaveConflictAlert from '../config/SaveConflictAlert.vue';
 import { useConfigFormDraft } from '../config/useConfigFormDraft';
 import McpToolsField from './form/McpToolsField.vue';
 import ParamsEditor from './form/ParamsEditor.vue';
@@ -291,24 +293,14 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
                 :shown="draft.problem.value"
                 :show-yaml="() => (section = 'yaml')"
               />
-              <Alert v-if="draft.problem.value" variant="error" data-testid="run-form-problem">
-                <AlertDescription>{{
-                  t('common.configForm.problem.status', {
-                    line: draft.problem.value?.line ?? 0,
-                    message: draft.problem.value?.message ?? '',
-                  })
-                }}</AlertDescription>
-                <AlertAction>
-                  <Button
-                    variant="link"
-                    size="inline"
-                    data-testid="run-form-show-yaml"
-                    @click="section = 'yaml'"
-                  >
-                    {{ t('common.configForm.showYaml.label') }}
-                  </Button>
-                </AlertAction>
-              </Alert>
+              <ConfigFormProblemAlert
+                v-if="draft.problem.value"
+                :problem="draft.problem.value"
+                testid="run-form-problem"
+                show-yaml
+                show-yaml-testid="run-form-show-yaml"
+                @show-yaml="section = 'yaml'"
+              />
               <fieldset
                 v-if="draft.model.value"
                 :disabled="draft.formDisabled.value"
@@ -391,27 +383,14 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void saveNow());
               <RunSecretsSection v-if="script" :script="script" />
             </template>
           </template>
-          <Alert v-if="saveError" variant="error" data-testid="run-file-save-error">
-            <AlertDescription>{{ saveError }}</AlertDescription>
-            <AlertAction v-if="draft.conflict.value">
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="run-file-reload"
-                @click="draft.reload"
-              >
-                {{ t('common.action.refresh.label') }}
-              </Button>
-              <Button
-                variant="link"
-                size="inline"
-                data-testid="run-file-overwrite"
-                @click="draft.overwrite"
-              >
-                {{ t('space.ade.workflows.conflict.overwrite.label') }}
-              </Button>
-            </AlertAction>
-          </Alert>
+          <SaveConflictAlert
+            v-if="saveError"
+            :error="saveError"
+            :conflict="draft.conflict.value"
+            testid-prefix="run-file"
+            @reload="draft.reload"
+            @overwrite="draft.overwrite"
+          />
         </div>
         <Alert v-else-if="query.error.value" variant="error" data-testid="run-file-error">
           <AlertDescription>{{ errorText(query.error.value) }}</AlertDescription>

@@ -105,7 +105,7 @@ onBeforeUnmount(() => {
             {{ t('common.action.refresh.label') }}
           </Button>
           <Button variant="link" size="inline" data-testid="ade-wf-overwrite" @click="overwrite">
-            {{ t('space.ade.workflows.conflict.overwrite.label') }}
+            {{ t('common.action.overwrite.label') }}
           </Button>
         </template>
         <Button
