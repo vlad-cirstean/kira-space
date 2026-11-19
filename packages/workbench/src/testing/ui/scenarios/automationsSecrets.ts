@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { type CustomScript, customScriptSchema } from '@shared/domain/scripts';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
+import { MASKED_TEXT } from '@theme/format';
 import type { ControlSnapshot } from '../mockRuntime';
 import type { ScenarioEnv } from './env';
 
@@ -180,7 +181,7 @@ export function registerSecretScenarios(env: Env): void {
     await eye.click();
     await expect(input).toHaveAttribute('type', 'password');
     await input.fill('');
-    await expect(page.locator('[data-testid="run-env-row"]')).toContainText('••••');
+    await expect(page.locator('[data-testid="run-env-row"]')).toContainText(MASKED_TEXT);
     await expect(page.locator('[data-testid="run-start"]')).toBeEnabled();
     await page.locator('[data-testid="run-start"]').click();
     await expect

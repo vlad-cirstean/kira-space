@@ -5,6 +5,9 @@ import { type FormatTimeAgoOptions, formatTimeAgo } from '@vueuse/core';
 // The one place app code turns a number or instant into text. Anything shown to a user as a size,
 // a count, a duration, an age, a date-time or a missing value comes from here.
 
+/** A hidden secret value shown as text (`MaskedValue` renders it; composed strings use it). */
+export const MASKED_TEXT = '••••••••';
+
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
 
 /** '0 B' / '842 B' / '1.2 KB' / '341 MB': 1024 steps, one decimal under 100, none above. */

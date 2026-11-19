@@ -3,6 +3,7 @@ import type { ScriptRunPreview } from '@shared/domain/scriptRuns';
 import { Card } from '@theme/components/ui/card';
 import { FieldError } from '@theme/components/ui/field';
 import VarText from '@theme/components/VarText.vue';
+import { MASKED_TEXT } from '@theme/format';
 import { type MessageKey, t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import type { TextPart } from '@theme/varText';
@@ -30,7 +31,11 @@ function envParts(e: ScriptRunPreview['env'][number]): TextPart[] {
   return [
     `${e.name}=`,
     ...(e.secret
-      ? [e.saved ? `•••• (${t('automations.params.secretValue.saved.status')})` : '••••']
+      ? [
+          e.saved
+            ? `${MASKED_TEXT} (${t('automations.params.secretValue.saved.status')})`
+            : MASKED_TEXT,
+        ]
       : [{ name: e.fromVar, value: e.value }]),
   ];
 }
