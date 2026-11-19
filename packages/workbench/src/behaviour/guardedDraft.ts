@@ -93,7 +93,9 @@ export function useGuardedDraft<T>(opts: GuardedDraftOptions<T>): GuardedDraftSt
     { queryClient: opts.queryClient },
   );
 
-  const saving = action.pending;
+  // Set before `beforeSave` awaits, so a second Save during it is refused (it would write on the same base hash).
+  const starting = ref(false);
+  const saving = computed(() => action.pending.value || starting.value);
   const saveError = action.error;
   const conflict = computed(() => (action.cause.value ? isConflict(action.cause.value) : false));
   const canSave = computed(() => (dirty.value || sidePending()) && !saving.value);
@@ -116,9 +118,14 @@ export function useGuardedDraft<T>(opts: GuardedDraftOptions<T>): GuardedDraftSt
 
   async function save(): Promise<boolean> {
     if (saving.value) return false;
-    if (opts.beforeSave && !(await opts.beforeSave())) return false;
-    if (!dirty.value && !sidePending()) return false;
-    return action.run();
+    starting.value = true;
+    try {
+      if (opts.beforeSave && !(await opts.beforeSave())) return false;
+      if (!dirty.value && !sidePending()) return false;
+      return await action.run();
+    } finally {
+      starting.value = false;
+    }
   }
 
   function resetTo(src: DraftSource<T> | undefined): void {

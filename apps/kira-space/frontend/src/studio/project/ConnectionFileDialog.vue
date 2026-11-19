@@ -65,7 +65,11 @@ async function flushSecrets(): Promise<void> {
     const value = secrets.value[kind];
     const name = secretNameOf(model[kind]);
     if (!value || !name) continue;
-    await setSecret.mutateAsync({ kind, name, value });
+    try {
+      await setSecret.mutateAsync({ kind, name, value });
+    } finally {
+      setSecret.reset();
+    }
     secrets.value = { ...secrets.value, [kind]: '' };
   }
 }

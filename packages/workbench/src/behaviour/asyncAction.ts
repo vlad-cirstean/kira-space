@@ -1,12 +1,21 @@
-import { type QueryClient, type UseMutationReturnType, useMutation } from '@tanstack/vue-query';
-import { type ComputedRef, computed } from 'vue';
+import {
+  type QueryClient,
+  type UseMutationReturnType,
+  useIsMutating,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/vue-query';
+import { type ComputedRef, computed, shallowRef } from 'vue';
 import { type CodedError, errorText, toCodedError } from '../bridge/codedError';
 
 /**
  * A write's pending and error come from its TanStack mutation, never a hand ref:
  * `useMutationAction(m)` for a mutation from a queries file, `useAsyncAction(fn)` for any other
  * awaited call, `useTaskAction()` for one error surface fed by several writes. `describe` maps or
- * hides the text, `cause` gives the coded error for branching. A component never wraps one
+ * hides the text, `cause` gives the coded error for branching. `useAsyncAction` follows its newest
+ * run only (one action repeated: the newest supersedes). `useTaskAction` serves different writes,
+ * so it keeps every in-flight run in `pending` and holds a failure until the user resets it or a new
+ * run starts while none is in flight. A component never wraps one
  * mutation call in `useAsyncAction` (two observers for one write). Needs a Vue setup (or a
  * `queryClient` option) and the app's `VueQueryPlugin`.
  */
@@ -72,10 +81,46 @@ export function useAsyncAction<Args extends unknown[]>(
   };
 }
 
+let taskSurfaces = 0;
+
 export function useTaskAction(
-  opts?: AsyncActionOptions,
+  opts: AsyncActionOptions = {},
 ): AsyncAction<[task: () => Promise<unknown>]> & { fail: (err: unknown) => void } {
-  return useAsyncAction((task: () => Promise<unknown>) => task(), opts);
+  const client = opts.queryClient ?? useQueryClient();
+  const mutationKey = ['taskAction', taskSurfaces++];
+  // A mutation observer follows one run, so a later write would hide an earlier one's failure and
+  // pending. The unique key lets the cache count every run; failures are held here until seen.
+  const m = useMutation<unknown, unknown, () => Promise<unknown>>(
+    { mutationKey, mutationFn: (task) => task(), networkMode: 'always', gcTime: 0 },
+    client,
+  );
+  const running = useIsMutating({ mutationKey }, client);
+  const failure = shallowRef<{ err: unknown } | null>(null);
+  const describe = opts.describe ?? errorText;
+  async function run(task: () => Promise<unknown>): Promise<boolean> {
+    // The cache count is synchronous; the ref lags a notify batch.
+    if (client.isMutating({ mutationKey }) === 0) failure.value = null;
+    try {
+      await m.mutateAsync(task);
+      return true;
+    } catch (err) {
+      failure.value = { err };
+      return false;
+    }
+  }
+  return {
+    run,
+    pending: computed(() => running.value > 0),
+    error: computed(() => (failure.value ? describe(failure.value.err) : null)),
+    cause: computed(() => (failure.value ? toCodedError(failure.value.err) : null)),
+    reset: () => {
+      failure.value = null;
+      m.reset();
+    },
+    fail: (err) => {
+      failure.value = { err };
+    },
+  };
 }
 
 export function useMutationAction<TData, TVars>(

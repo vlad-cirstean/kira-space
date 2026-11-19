@@ -16,14 +16,18 @@ export function useKeptReveal(id: () => string) {
   const refusal = ref('');
   const timer = useTimeoutFn(hide, REVEAL_MS, { immediate: false });
   // Resolves to nothing: the mutation's `data` would keep the plaintext past hide().
-  const action = useAsyncAction(async () => {
+  // hide() bumps it: a reveal still waiting on the gate or the dialog then settles into nothing.
+  let generation = 0;
+  const action = useAsyncAction(async (started: number) => {
     await runReveal(
       (confirmed) => control.keptReveal(id(), confirmed),
       (v) => {
+        if (started !== generation) return;
         value.value = v;
         timer.start();
       },
       (message) => {
+        if (started !== generation) return;
         refusal.value = message;
       },
       t('studio.kept.reveal.body'),
@@ -31,6 +35,7 @@ export function useKeptReveal(id: () => string) {
   });
 
   function hide(): void {
+    generation++;
     value.value = null;
     timer.stop();
     action.reset();
@@ -38,7 +43,7 @@ export function useKeptReveal(id: () => string) {
 
   async function reveal(): Promise<void> {
     refusal.value = '';
-    await action.run();
+    await action.run(generation);
   }
 
   onScopeDispose(hide);

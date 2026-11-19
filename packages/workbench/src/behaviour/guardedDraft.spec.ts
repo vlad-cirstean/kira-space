@@ -50,6 +50,20 @@ describe('useGuardedDraft', () => {
     stop();
   });
 
+  test('a second save while beforeSave awaits is refused, one write happens', async () => {
+    const gate = deferred<boolean>();
+    const { d, writes, stop } = setup({ beforeSave: () => gate.promise });
+    d.edit('one');
+    const first = d.save();
+    expect(d.saving.value).toBe(true);
+    expect(await d.save()).toBe(false);
+    gate.resolve(true);
+    expect(await first).toBe(true);
+    expect(writes).toHaveLength(1);
+    expect(d.saving.value).toBe(false);
+    stop();
+  });
+
   test('an edit while the write runs keeps the draft dirty', async () => {
     const gate = deferred<{ hash: string }>();
     const { d, stop } = setup({ write: () => gate.promise });

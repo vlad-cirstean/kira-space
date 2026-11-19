@@ -85,6 +85,8 @@ export function useSetConnectionSecret() {
       mutationFn: (args: { kind: ConnectionSecretKind; name: string; value: string }) =>
         control.connectionConfigSetSecret(args.kind, args.name, args.value),
       onSuccess: refreshAfterSecret,
+      // The typed password or URI is the mutation's variables: drop them once settled.
+      gcTime: 0,
     },
     queryClient,
   );
