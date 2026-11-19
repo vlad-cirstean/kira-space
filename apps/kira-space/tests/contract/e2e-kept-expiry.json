@@ -1,0 +1,437 @@
+{
+  "ApprovalsService.List#expiring": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"ids\": {{kept.ids}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 8,
+                "index": 0,
+                "part": "",
+                "to": 20
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#expiringDb": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 3,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_short",
+            "items": 1,
+            "name": "short",
+            "preview": "[1]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 51,
+                "index": 0,
+                "part": "",
+                "to": 52
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "short"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "insert into notes (body) select 'x' from json_each(?)"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#three": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"ids\": {{kept.ids}}}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "body",
+                "from": 8,
+                "index": 0,
+                "part": "",
+                "to": 20
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "method": "POST",
+        "query": [],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:3>",
+      "kind": "db.query",
+      "operation": {
+        "class": "write",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:4>",
+        "detected": "write",
+        "enforcement": "",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "statement",
+                "from": 51,
+                "index": 0,
+                "part": "",
+                "to": 52
+              },
+              {
+                "field": "param",
+                "from": 0,
+                "index": 0,
+                "part": "",
+                "to": 0
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "write",
+        "params": [
+          "ids"
+        ],
+        "placeholders": [
+          "? 1"
+        ],
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "statement": "insert into notes (body) select 'x' from json_each(?)"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:5>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:4>",
+        "detected": "read",
+        "enforcement": "session",
+        "kept": [
+          {
+            "bytes": 5,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_ids",
+            "items": 2,
+            "name": "ids",
+            "preview": "[1,2]",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "script",
+                "from": 7,
+                "index": 0,
+                "part": "transform",
+                "to": 21
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "array"
+          }
+        ],
+        "mode": "read",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "hash": "2daa77d1895d82bba8c93d71c1a06e999d0e9b7d05ceecf4a8e1116191d0a06e",
+          "mayKeep": [],
+          "source": "return kept.get(\"ids\").length;"
+        },
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "KeptVarsService.List#afterClear": {
+    "entries": [],
+    "retentionMinutes": 60
+  },
+  "KeptVarsService.List#waiting": {
+    "entries": [
+      {
+        "bytes": 5,
+        "createdAt": "<masked>",
+        "expiresAt": "<masked>",
+        "id": "kv_ids",
+        "items": 2,
+        "name": "ids",
+        "origin": "",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "scopeLabel": "External clients",
+        "secret": false,
+        "source": {
+          "client": "claude-code",
+          "kind": "script",
+          "mcp": "api",
+          "request": "GET {{base_url}}/users",
+          "tool": "api_request"
+        },
+        "type": "array"
+      }
+    ],
+    "retentionMinutes": 60
+  },
+  "args:SettingsService.Set#retention": {
+    "patch": {
+      "dbMcp": {
+        "keptRetentionMinutes": 5
+      }
+    }
+  }
+}
