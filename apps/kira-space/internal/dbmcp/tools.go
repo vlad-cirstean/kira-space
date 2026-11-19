@@ -281,6 +281,11 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 		return res, out, err
 	}
 
+	// The switch may have flipped while the card waited; a script must not run or keep under a setting that is off.
+	if rv.script != nil && !s.scriptsOn() {
+		return errResult(apiScriptsOff + ". " + queryScriptNothingRan)
+	}
+
 	res, out, err, set, executed := s.executeAndRender(ctx, args, rv, rv.plan, ex)
 	if !executed {
 		return res, out, err
