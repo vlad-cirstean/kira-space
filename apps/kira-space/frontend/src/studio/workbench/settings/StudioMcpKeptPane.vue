@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { KeptEntry } from '@shared/domain/kept';
 import InlineState from '@theme/components/InlineState.vue';
+import ResetToDefaultButton from '@theme/components/ResetToDefaultButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card } from '@theme/components/ui/card';
@@ -19,15 +20,16 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { computed, ref, useId, watch } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
+import {
+  KEPT_RETENTION_MINUTES_DEFAULT,
+  KEPT_RETENTION_MINUTES_RANGE,
+} from '../../../state/settingsDomain';
 import { useClearKept, useKeptVars } from '../../kept/keptQueries';
 import KeptEntryRow from './KeptEntryRow.vue';
 
 // Kept variables live in the backend's memory: list, read in full, clear. Retention applies to values
 // kept from now on. The agent never sees a value; this view is where the user does.
 defineProps<{ active: boolean }>();
-
-const RETENTION_MIN = 5;
-const RETENTION_MAX = 240;
 
 const settingsStore = useSettingsStore();
 const list = useKeptVars();
@@ -47,10 +49,13 @@ watch(minutes, (m) => (draft.value = String(m)));
 const draftNumber = computed(() => (draft.value.trim() === '' ? Number.NaN : Number(draft.value)));
 const retentionError = computed(() =>
   Number.isInteger(draftNumber.value) &&
-  draftNumber.value >= RETENTION_MIN &&
-  draftNumber.value <= RETENTION_MAX
+  draftNumber.value >= KEPT_RETENTION_MINUTES_RANGE.min &&
+  draftNumber.value <= KEPT_RETENTION_MINUTES_RANGE.max
     ? ''
-    : t('studio.settings.kept.retention.error', { min: RETENTION_MIN, max: RETENTION_MAX }),
+    : t('studio.settings.kept.retention.error', {
+        min: KEPT_RETENTION_MINUTES_RANGE.min,
+        max: KEPT_RETENTION_MINUTES_RANGE.max,
+      }),
 );
 const retention = useAsyncAction((value: number) =>
   settingsStore.patchSettings({ dbMcp: { keptRetentionMinutes: value } }),
@@ -77,19 +82,28 @@ function clearAll(): void {
 <template>
   <div class="contents" v-show="active">
     <Field>
-      <FieldLabel :for="retentionId">{{ t('studio.settings.kept.retention.label') }}</FieldLabel>
+      <div class="flex items-center justify-between gap-1">
+        <FieldLabel :for="retentionId">{{ t('studio.settings.kept.retention.label') }}</FieldLabel>
+        <ResetToDefaultButton
+          data-testid="settings-reset-dbMcp-keptRetentionMinutes"
+          :at-default="minutes === KEPT_RETENTION_MINUTES_DEFAULT"
+          @click="retention.run(KEPT_RETENTION_MINUTES_DEFAULT)"
+        />
+      </div>
       <NumberStepperInput
         :id="retentionId"
-        :min="RETENTION_MIN"
-        :max="RETENTION_MAX"
+        :min="KEPT_RETENTION_MINUTES_RANGE.min"
+        :max="KEPT_RETENTION_MINUTES_RANGE.max"
         :model-value="draft"
         data-testid="settings-kept-retention"
         @input="onRetention"
       />
-      <FieldDescription>{{ t('studio.settings.kept.retention.description') }}</FieldDescription>
       <FieldError v-if="retentionError" data-testid="settings-kept-retention-error">{{
         retentionError
       }}</FieldError>
+      <FieldDescription v-else>{{
+        t('studio.settings.kept.retention.description')
+      }}</FieldDescription>
       <Alert
         v-if="retention.error.value"
         variant="error"
@@ -112,21 +126,12 @@ function clearAll(): void {
           {{ t('common.action.clearAll.label') }}
         </Button>
       </div>
-      <QueryState :query="list" variant="inline" :is-empty="() => false">
-        <template #error="{ message, retry }">
-          <Alert variant="error" data-testid="settings-kept-error">
-            <AlertDescription>{{ message }}</AlertDescription>
-          </Alert>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            class="self-start"
-            data-testid="settings-kept-retry"
-            @click="retry"
-          >
-            {{ t('common.action.retry.label') }}
-          </Button>
-        </template>
+      <QueryState
+        :query="list"
+        variant="inline"
+        :is-empty="() => false"
+        error-testid="settings-kept-error"
+      >
         <Card v-if="entries.length" variant="list">
           <ul class="m-0 flex list-none flex-col p-0" data-testid="settings-kept-list">
             <li v-for="e in entries" :key="e.id" data-testid="settings-kept-entry">
