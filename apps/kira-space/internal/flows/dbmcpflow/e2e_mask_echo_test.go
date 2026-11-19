@@ -129,16 +129,15 @@ func TestE2EMaskEcho(t *testing.T) {
 			t.Fatal(err)
 		}
 		args := scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": `kept.set("derived", kept.get("token2") + "-x"); return 1`})
-		pending := callToolAsync(sess, "api_request", args)
-		f.answerItems(t, true, f.pending(t).Item.ID)
-		if res := wait(t, pending); res.IsError {
+		// The transform reads a secret, so its response is held for review.
+		if res := f.finish(t, f.startHeldAfterCard(t, sess, args), true); res.IsError {
 			t.Fatalf("derive = %q", text(res))
 		}
 		e, ok := f.keptValue(t, "derived")
 		if !ok || !e.Secret {
 			t.Fatalf("derived = %+v ok=%v, want a secret entry", e.Meta, ok)
 		}
-		pending = callToolAsync(sess, "api_request", echoCall("{{kept.derived}}", nil))
+		pending := callToolAsync(sess, "api_request", echoCall("{{kept.derived}}", nil))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
 		got := echoed(t, bodyOf(t, text(res)))
