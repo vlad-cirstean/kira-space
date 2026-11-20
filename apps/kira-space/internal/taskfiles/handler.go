@@ -50,11 +50,10 @@ type PendingItem struct {
 	Collision *Collision
 }
 
-// PendingSubmit is the approval one submit raises: every pending file of the call, one reason.
+// PendingSubmit is the approval one submit raises: every pending file of the call.
 type PendingSubmit struct {
 	TaskID  string
 	Session Session
-	Reason  string
 	Items   []PendingItem
 }
 

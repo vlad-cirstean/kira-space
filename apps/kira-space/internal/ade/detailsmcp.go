@@ -3,7 +3,6 @@ package ade
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
@@ -22,42 +21,10 @@ func submitSession(call agentmcp.SpaceCall) detailsSession {
 	return s
 }
 
-// Submit is the submit tool: it sends the named ask-first task files to the user as the calling session.
-func (b *TaskBoard) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	if len(in.Paths) == 0 || strings.TrimSpace(in.Reason) == "" {
-		return "", invalid(agentmcp.SubmitNeedsArgs)
-	}
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), b.relToFolder(call.TaskID, in.Paths), in.Reason, explicitPass)
-	if err != nil {
-		return "", err
-	}
-	return submitReply(res), nil
-}
-
-// relToFolder turns a path inside the task folder that an agent gave absolute (as its Write call did)
-// into the relative path submit takes. Any other path stays, so submit answers it invalid.
-func (b *TaskBoard) relToFolder(taskID string, paths []string) []string {
-	if b.deps.FilesDir == "" {
-		return paths
-	}
-	dir := filepath.Join(b.deps.FilesDir, pathSegment(taskID))
-	out := make([]string, len(paths))
-	for i, p := range paths {
-		out[i] = p
-		if !filepath.IsAbs(p) {
-			continue
-		}
-		if rel, err := filepath.Rel(dir, filepath.Clean(p)); err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			out[i] = filepath.ToSlash(rel)
-		}
-	}
-	return out
-}
-
 // FinishSession is a session's step.finish: it submits the task files, then marks the stage's draft
 // finished.
 func (b *TaskBoard) FinishSession(ctx context.Context, call agentmcp.SpaceCall) (string, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "", explicitPass)
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, explicitPass)
 	if err != nil {
 		return "", err
 	}
@@ -109,7 +76,7 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 // SubmitForFinish is a run's step.finish implicit submit. An ok finish needs the current step's draft:
 // without one the finish is refused, unless its route ends the task or the step is a smart step.
 func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "", explicitPass)
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, explicitPass)
 	if err != nil {
 		return agentmcp.SubmitFinish{}, err
 	}
@@ -197,10 +164,10 @@ func proofLine(sb *strings.Builder, f taskfiles.FileResult) bool {
 		return true
 	case taskfiles.StatusPending:
 		if p.Changed != nil && len(p.Changed.Fields) == 1 && p.Changed.Fields[0] == "delete" {
-			fmt.Fprintf(sb, "\n%s: pending user, delete of %q (%s)", folder, p.Name, p.Reason)
+			fmt.Fprintf(sb, "\n%s: pending user, delete of %q", folder, p.Name)
 			return true
 		}
-		fmt.Fprintf(sb, "\n%s: pending user, change to %q: %s (%s)", folder, p.Name, changeText(p.Changed), p.Reason)
+		fmt.Fprintf(sb, "\n%s: pending user, change to %q: %s", folder, p.Name, changeText(p.Changed))
 		return true
 	case taskfiles.StatusAccepted:
 		if p.New {

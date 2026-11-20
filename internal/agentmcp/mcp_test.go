@@ -130,8 +130,6 @@ type fakeSpace struct {
 	mu     sync.Mutex
 	calls  []string
 	finish SubmitFinish
-	paths  []string
-	reason string
 }
 
 func (f *fakeSpace) rec(s string) {
@@ -193,13 +191,6 @@ func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameB
 func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (CancelOperationResult, error) {
 	f.rec("cancelop|" + task + "|" + opID)
 	return CancelOperationResult{OpID: opID, Cancelled: true}, nil
-}
-
-func (f *fakeSpace) Submit(_ context.Context, _ SpaceCall, in SubmitArgs) (string, error) {
-	f.mu.Lock()
-	f.paths, f.reason = in.Paths, in.Reason
-	f.mu.Unlock()
-	return "accepted 0, pending user 0, invalid 0", nil
 }
 
 func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, string, bool) (SubmitFinish, error) {
@@ -311,7 +302,7 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); len(names) != 2 || !names["submit"] || !names["state"] {
+	if names := toolNames(t, sp); len(names) != 1 || !names["state"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
 	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err == nil && !res.IsError {
@@ -325,8 +316,8 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, both); len(names) != 2 || !names["submit"] || !names["state"] {
-		t.Fatalf("a Space run lists %v, want submit and state: step.finish replaces finish_step", names)
+	if names := toolNames(t, both); len(names) != 1 || !names["state"] {
+		t.Fatalf("a Space run lists %v, want state only: step.finish replaces finish_step", names)
 	}
 	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
 		t.Fatalf("branch.request: %v", reply)
@@ -648,7 +639,7 @@ func TestStepFinishImplicitSubmit(t *testing.T) {
 	}
 }
 
-// A proof is a folder plus submit: no grant lists a proof tool.
+// A proof is a folder the watcher reads: no grant lists a proof tool.
 func TestNoProofTool(t *testing.T) {
 	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
 	t.Cleanup(func() { _ = srv.Close() })

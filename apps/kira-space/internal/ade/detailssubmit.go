@@ -45,14 +45,12 @@ type detailsItemFile struct {
 	Kind      string `json:"kind"`
 	Cause     string `json:"cause"`
 	Text      string `json:"text"`
-	Reason    string `json:"reason"`
 	Collision string `json:"collision,omitempty"`
 }
 
 type detailsPayload struct {
 	TaskID    string            `json:"taskId"`
 	TaskTitle string            `json:"taskTitle"`
-	Reason    string            `json:"reason"`
 	Items     []detailsItemFile `json:"items"`
 }
 
@@ -65,7 +63,7 @@ func (df *detailsFiles) addPending(b *TaskBoard, p taskfiles.PendingSubmit) {
 		df.pending[p.TaskID] = m
 	}
 	for _, it := range p.Items {
-		m[it.Path] = detailsPending{item: it, reason: p.Reason, by: string(p.Session.Role), at: df.b.deps.Now().UnixMilli()}
+		m[it.Path] = detailsPending{item: it, by: string(p.Session.Role), at: df.b.deps.Now().UnixMilli()}
 	}
 	df.mu.Unlock()
 	df.putItem(b, p.TaskID)
@@ -92,12 +90,12 @@ func (df *detailsFiles) putItem(b *TaskBoard, taskID string) {
 				texts = append(texts, c.Text)
 			}
 		}
-		f := detailsItemFile{Path: path, Kind: string(d.item.Kind), Cause: string(d.item.Cause), Text: strings.Join(texts, "\n"), Reason: d.reason}
+		f := detailsItemFile{Path: path, Kind: string(d.item.Kind), Cause: string(d.item.Cause), Text: strings.Join(texts, "\n")}
 		if c := d.item.Collision; c != nil {
 			f.Collision = c.By
 		}
 		pl.Items = append(pl.Items, f)
-		pl.Reason, last = d.reason, d.by
+		last = d.by
 	}
 	df.mu.Unlock()
 	if len(paths) == 0 {
@@ -183,7 +181,7 @@ func (o detailsOwner) Answer(taskID string, a approvals.Answer) error {
 	return errors.Join(errs...)
 }
 
-// submitMode tells SubmitFiles who asked: the agent's own call (or finish), or the file watcher.
+// submitMode tells SubmitFiles who asked: the finish flush, or the file watcher.
 type submitMode int
 
 const (
@@ -194,7 +192,7 @@ const (
 // SubmitFiles walks the named paths (all when empty) of the task folder as the calling session and
 // returns every file's outcome. A watch pass leaves the session's last sync alone: the agent has not
 // read the mirror it triggers.
-func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSession, paths []string, reason string, mode submitMode) (taskfiles.Result, error) {
+func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSession, paths []string, mode submitMode) (taskfiles.Result, error) {
 	if b.files == nil {
 		return taskfiles.Result{}, invalid("task files are off")
 	}
@@ -212,7 +210,7 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 	call := b.taskCallOf(tc)
 	ctx = withDetailsSession(withTaskCall(ctx, call), s)
 	res, err := df.svc.Submit(ctx, taskfiles.Request{
-		TaskID: taskID, Paths: paths, Reason: reason, Watch: mode == watchPass,
+		TaskID: taskID, Paths: paths,
 		Session: taskfiles.Session{Key: s.key, Role: s.role, LastSync: last, Step: fileSlug(call.step)},
 	})
 	if err != nil {
@@ -268,7 +266,7 @@ func (df *detailsFiles) recordFileErrors(taskID string, named []string, res task
 			if m[f.Path] != next {
 				m[f.Path], moved = next, true
 			}
-		case taskfiles.StatusRestored, taskfiles.StatusDeferred:
+		case taskfiles.StatusRestored:
 		default:
 			if _, ok := m[f.Path]; ok {
 				delete(m, f.Path)
@@ -368,9 +366,9 @@ func (b *TaskBoard) clearFileErrors(taskID string) {
 	}
 }
 
-// SyncTaskFiles applies the agent edits the watcher saw; the reason is empty, so ask-first files
-// report a fileErrors entry. Paths with no file and no index row are dropped. The reply is what an
-// explicit submit of the same paths would say; the watcher drops it.
+// SyncTaskFiles applies the agent edits the watcher saw and raises the approval for what touches
+// another agent's content. Paths with no file and no index row are dropped. The reply is what the
+// finish flush of the same paths would say; the watcher drops it.
 func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, rels []string) (string, error) {
 	df := b.files
 	if df == nil {
@@ -406,7 +404,7 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 		return "", nil
 	}
 	sort.Strings(kept)
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), kept, "", watchPass)
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), kept, watchPass)
 	if err != nil {
 		return "", err
 	}

@@ -804,7 +804,7 @@ func (b *TaskBoard) statePending(taskID string) []statePending {
 	if df := b.files; df != nil {
 		df.mu.Lock()
 		for path, p := range df.pending[taskID] {
-			out = append(out, statePending{ID: path, Kind: "submit", Subject: path, Since: kiratime.MsToISO(p.at)})
+			out = append(out, statePending{ID: path, Kind: "details.edit", Subject: path, Since: kiratime.MsToISO(p.at)})
 		}
 		df.mu.Unlock()
 	}

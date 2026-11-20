@@ -46,10 +46,10 @@ func TestBlobSweepLiveSetAndAge(t *testing.T) {
 	step := func(sum string) repos.ProofStepRow {
 		return repos.ProofStepRow{StepKey: "s1", Description: "d", View: "image", Payload: []byte(fmt.Sprintf(`{"format":"png","sha256":%q}`, sum))}
 	}
-	if err := cache.Create(e.repo.DB, repos.ProofNew{ID: "p1", TaskID: e.taskID, Slug: "shot", Name: "n", Steps: []repos.ProofStepRow{step(cur)}, Now: 1}); err != nil {
+	if err := cache.Create(e.repo.DB, repos.ProofNew{ID: "p1", TaskID: e.taskID, Slug: "shot", Name: "n", Source: "agent", Steps: []repos.ProofStepRow{step(cur)}, Now: 1}); err != nil {
 		t.Fatal(err)
 	}
-	if err := cache.Propose(e.repo.DB, repos.ProofEdit{SessionID: "p1", Name: "n", Reason: "r", Steps: []repos.ProofStepRow{step(pend)}, Now: 2}); err != nil {
+	if err := cache.Propose(e.repo.DB, repos.ProofEdit{SessionID: "p1", Name: "n", Steps: []repos.ProofStepRow{step(pend)}, Now: 2}); err != nil {
 		t.Fatal(err)
 	}
 	live, err := e.repo.LiveBlobKeys()

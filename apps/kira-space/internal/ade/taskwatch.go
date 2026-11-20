@@ -18,11 +18,13 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 )
 
-// taskwatch.go: while an agent holds a Space grant on a task, its folder is watched and each edit the
-// agent saves is applied after a short quiet, as the agent's own submit with no reason. Only the event
-// paths go in, so an earlier edit of the user stays on the disk banner. The pass is a Watch pass: it
-// applies free changes only. An ask-first change is deferred untouched (no row, no fileErrors entry,
-// no word to the agent), because the save may be the user's own in an editor; the banner shows it.
+// taskwatch.go: while an agent holds a Space grant on a task, its folder is watched and each edit
+// saved is applied after a short quiet as that agent's. Only the event paths go in, so an earlier
+// edit of the user stays on the disk banner. A change that touches another agent's content raises
+// the details.edit approval at once; nothing is told to the agent, which reads it in state.yaml
+// pending. With no live grant nothing watches, so a user's save in an outside editor only shows on
+// the banner. With several grants a save cannot be attributed: board push only, the next finish
+// flush decides.
 
 const (
 	taskWatchQuiet = 300 * time.Millisecond
@@ -132,7 +134,7 @@ func (b *TaskBoard) unwatchTask(call agentmcp.SpaceCall) {
 	tw := b.watches[call.TaskID]
 	if tw == nil {
 		b.watchMu.Unlock()
-		if live == 0 { // never watched: errors of explicit submits and the finish flush still clear
+		if live == 0 { // never watched: errors of the finish flush still clear
 			b.clearFileErrors(call.TaskID)
 		}
 		return
@@ -270,7 +272,7 @@ func (t *taskWatch) loop() {
 func (t *taskWatch) handle(ev fileservice.Event) {
 	if ev.Rescan {
 		// No path pass: a full walk would apply a user's earlier external edit as the agent's. The banner
-		// refreshes; an explicit submit or the finish flush applies the edits.
+		// refreshes; the finish flush applies the edits.
 		t.b.notifyBoardNow(taskChanged(t.taskID))
 		return
 	}
@@ -329,8 +331,9 @@ func (t *taskWatch) take() (rels []string, call agentmcp.SpaceCall, one bool) {
 	return rels, call, one
 }
 
-// run applies the paths as the one live caller. With none or several the edits wait for an explicit
-// submit or the finish flush, since a write cannot be attributed; the board push refreshes the banner.
+// run applies the paths as the one live caller and raises the approval for what touches another
+// agent's content. With none or several the edits wait for the finish flush, since a write cannot be
+// attributed; the board push refreshes the banner.
 func (t *taskWatch) run(rels []string, call agentmcp.SpaceCall, one bool) {
 	if len(rels) == 0 {
 		return

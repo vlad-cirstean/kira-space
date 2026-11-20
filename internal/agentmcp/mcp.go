@@ -52,7 +52,7 @@ const (
 )
 
 // Grant is what one registration may do. A run grant without Space reports through finish_step; a
-// Space grant gets submit and state, which act on TaskID alone.
+// Space grant gets state, which acts on TaskID alone.
 type Grant struct {
 	RunID  string
 	TaskID string
@@ -274,9 +274,6 @@ func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 			Description: llmprompts.HeadlessToolFinishStep.Text(s.prompts, llmprompts.NoVars{}),
 			InputSchema: schema,
 		}, s.finishStep)
-	}
-	if ts.space {
-		s.addSubmitTool(srv)
 	}
 	if ts.state() {
 		s.addStateTool(srv, ts)

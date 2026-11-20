@@ -187,7 +187,18 @@ type SpaceCall struct {
 	Orchestrator bool
 }
 
-// SpaceTools is what the state and submit tools call; *ade.TaskBoard implements it. Every method acts
+// MaxHandoverBytes bounds a handover body, whoever writes it.
+const MaxHandoverBytes = 16 << 10
+
+// SubmitFinish is step.finish's flush of the task files: the reply to append, or the refusal of an ok finish.
+type SubmitFinish struct {
+	Reply  string
+	Refuse string
+	// Summary is the step's draft handover: the run records it as its summary.
+	Summary string
+}
+
+// SpaceTools is what the state tool calls; *ade.TaskBoard implements it. Every method acts
 // on one task only. RequestBranches, RenameBranch, ChangeBranch and AcquireLease block until the user
 // answers or the call wait ends; ctx ends when the caller is gone.
 type SpaceTools interface {
@@ -196,12 +207,10 @@ type SpaceTools interface {
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
-	// Submit reads the named task files (all when none) as the calling session; the reply is the count line then one line per file.
-	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
-	// SubmitForFinish is a run's step.finish implicit submit; an ok finish with no draft is refused
+	// SubmitForFinish is a run's step.finish flush of the task files; an ok finish with no draft is refused
 	// while its result's route continues, except for a smart step.
 	SubmitForFinish(ctx context.Context, call SpaceCall, status string, ok bool) (SubmitFinish, error)
-	// FinishSession is a session's step.finish: it submits the task files, marks the stage's draft
+	// FinishSession is a session's step.finish: it flushes the task files, marks the stage's draft
 	// finished and asks the user to move the task on. The reply is a note for the agent.
 	FinishSession(ctx context.Context, call SpaceCall) (string, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.

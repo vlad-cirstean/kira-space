@@ -37,10 +37,10 @@ func (b *TaskBoard) filesVars(tc *taskCtx, stepID string, agent harness.Provider
 	return v
 }
 
-// sessionTools are the Kira tools a stage needs at once: submit and state, plus the orchestrator's
+// sessionTools are the Kira tools a stage needs at once: state, plus the orchestrator's
 // create_task. A Space grant has no other tool.
 func sessionTools(orchestrator bool) []harness.MCPTool {
-	tools := []harness.MCPTool{agentmcp.Submit, agentmcp.State}
+	tools := []harness.MCPTool{agentmcp.State}
 	if orchestrator {
 		tools = append(tools, agentmcp.CreateTask)
 	}

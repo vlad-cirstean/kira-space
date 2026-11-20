@@ -19,23 +19,37 @@ type ProofUnit struct {
 	Session ProofSessionRow
 	TaskID  string
 	Slug    string
+	// LinkSource and LinkSession say who wrote the proof: source agent or user, and the writing Kira
+	// session key ("" for a user or a proof made before the key was recorded).
+	LinkSource, LinkSession string
 }
 
 // ByTaskSlug returns the proof of a task folder; nil when none.
 func (c ProofCache) ByTaskSlug(q sqlb.Querier, taskID, slug string) (*ProofUnit, error) {
 	ps, tl := kiraschema.ProofSessions, kiraschema.ProofTaskLinks
-	sb := c.Dialect.Select(proofAlias("s", proofSessionCols...)...).From(tl.Table + " l")
+	cols := append(proofAlias("s", proofSessionCols...), "l."+tl.Source, "l."+tl.KiraSessionID)
+	sb := c.Dialect.Select(cols...).From(tl.Table + " l")
 	sb.Join(ps.Table+" s", "s."+ps.ID+" = l."+tl.SessionID)
 	sb.Where(sb.Equal("l."+tl.TaskID, taskID), sb.Equal("l."+tl.Slug, slug))
-	s, err := scanProofSession(sqlb.QueryRow(q, sb))
+	u := &ProofUnit{TaskID: taskID, Slug: slug}
+	var err error
+	u.Session, err = scanProofSession(withExtra{sqlb.QueryRow(q, sb), []any{&u.LinkSource, &u.LinkSession}})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &ProofUnit{Session: s, TaskID: taskID, Slug: slug}, nil
+	return u, nil
 }
+
+// withExtra scans trailing columns after the ones the wrapped scanner reads.
+type withExtra struct {
+	rowScanner
+	extra []any
+}
+
+func (w withExtra) Scan(dest ...any) error { return w.rowScanner.Scan(append(dest, w.extra...)...) }
 
 // SlugsOfTask lists the slugs of a task's proofs.
 func (c ProofCache) SlugsOfTask(q sqlb.Querier, taskID string) ([]string, error) {
@@ -93,8 +107,10 @@ func (c ProofCache) NameTakenBy(q sqlb.Querier, taskID, name string) (string, er
 // ProofNew is a new proof: session, link and first revision in one write.
 type ProofNew struct {
 	ID, TaskID, Slug, Name, Summary string
-	Steps                           []ProofStepRow
-	Now                             int64
+	// By is the writing Kira session key, "" for a user; Source is agent or user.
+	By, Source string
+	Steps      []ProofStepRow
+	Now        int64
 }
 
 // Create writes a new closed proof with revision 1 as its current one.
@@ -112,7 +128,7 @@ func (c ProofCache) Create(q sqlb.Querier, p ProofNew) error {
 	if err := c.insertSteps(q, p.ID, 1, p.Steps, nil); err != nil {
 		return err
 	}
-	lk := c.Dialect.InsertInto(tl.Table).Cols(tl.SessionID, tl.TaskID, tl.Source, tl.LinkedAt, tl.Slug).Values(p.ID, p.TaskID, "agent", p.Now, p.Slug)
+	lk := c.Dialect.InsertInto(tl.Table).Cols(tl.SessionID, tl.TaskID, tl.Source, tl.KiraSessionID, tl.LinkedAt, tl.Slug).Values(p.ID, p.TaskID, p.Source, p.By, p.Now, p.Slug)
 	if _, err := sqlb.Exec(q, lk); err != nil {
 		return fmt.Errorf("repos/proof: link: %w", err)
 	}
@@ -121,8 +137,8 @@ func (c ProofCache) Create(q sqlb.Querier, p ProofNew) error {
 
 // ProofEdit proposes a new revision of an existing proof.
 type ProofEdit struct {
-	SessionID, Name, Summary, Reason string
-	Steps                            []ProofStepRow
+	SessionID, Name, Summary string
+	Steps                    []ProofStepRow
 	// Origin maps a new step's index to the ordinal of the unchanged or changed step it descends from; nil when added.
 	Origin map[int]int
 	Now    int64
@@ -143,7 +159,7 @@ func (c ProofCache) Propose(q sqlb.Querier, e ProofEdit) error {
 	}
 	rev := cur + 1
 	ins := c.Dialect.InsertInto(pr.Table).Cols(pr.SessionID, pr.Rev, pr.State, pr.CreatedAt, pr.ClosedAt, pr.Name, pr.Summary, pr.Reason).
-		Values(e.SessionID, rev, "pending", e.Now, e.Now, e.Name, e.Summary, e.Reason)
+		Values(e.SessionID, rev, "pending", e.Now, e.Now, e.Name, e.Summary, "")
 	if _, err := sqlb.Exec(q, ins); err != nil {
 		return fmt.Errorf("repos/proof: propose revision: %w", err)
 	}

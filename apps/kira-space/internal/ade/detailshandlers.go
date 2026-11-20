@@ -59,16 +59,15 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 		if err != nil {
 			return nil, err
 		}
-		own := map[string]bool{}
+		author := map[string]taskfiles.Author{}
 		for _, a := range arts {
-			own[entryOfArtifact(a).Key()] = s.key != "" && a.SessionID == s.key
+			author[entryOfArtifact(a).Key()] = taskfiles.AuthorOf(a.Source == model.AdeArtifactSourceAgent, a.SessionID, s.key)
 		}
 		for i := range changes {
 			ch := &changes[i]
-			if ch.Slot {
-				continue
+			if !ch.Slot && ch.Op != taskfiles.OpCreate {
+				ch.Author = author[ch.Key]
 			}
-			ch.Own = ch.Op == taskfiles.OpCreate || own[ch.Key]
 		}
 		return changes, nil
 	case taskfiles.KindReadme, taskfiles.KindTask, taskfiles.KindState:
@@ -89,15 +88,15 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 	case parsed == nil && row == nil:
 		return nil, nil
 	case parsed == nil:
-		return []taskfiles.Change{{Op: taskfiles.OpDelete, Own: h.ownRow(row, s), Text: taskfiles.TextDiff(rel, row.Body, "")}}, nil
+		return []taskfiles.Change{{Op: taskfiles.OpDelete, Author: authorOfRow(row, s), Text: taskfiles.TextDiff(rel, row.Body, "")}}, nil
 	case row == nil:
-		return []taskfiles.Change{{Op: taskfiles.OpCreate, Own: true, Text: taskfiles.TextDiff(rel, "", string(parsed.(textBody)))}}, nil
+		return []taskfiles.Change{{Op: taskfiles.OpCreate, Text: taskfiles.TextDiff(rel, "", string(parsed.(textBody)))}}, nil
 	case row.Body != string(parsed.(textBody)):
 		latest, err := h.isLatest(tx, taskID, rel, c)
 		if err != nil {
 			return nil, err
 		}
-		return []taskfiles.Change{{Op: taskfiles.OpEdit, Own: h.ownRow(row, s), Latest: latest, Text: taskfiles.TextDiff(rel, row.Body, string(parsed.(textBody)))}}, nil
+		return []taskfiles.Change{{Op: taskfiles.OpEdit, Author: authorOfRow(row, s), Latest: latest, Text: taskfiles.TextDiff(rel, row.Body, string(parsed.(textBody)))}}, nil
 	}
 	return nil, nil
 }
@@ -117,8 +116,15 @@ func (h *detailsHandlers) isLatest(tx taskfiles.Tx, taskID, rel string, c taskfi
 	return err == nil && latest == rel, err
 }
 
-func (h *detailsHandlers) ownRow(r *model.AdeHandover, s detailsSession) bool {
-	return s.key != "" && r.SessionID == s.key
+// authorOfRow is who wrote a note or handover row, from the calling session's view. The user, an
+// orchestrator pass and Kira are no other agent; a row an agent wrote with no session id (a legacy
+// row, a child mirror) counts as another agent's.
+func authorOfRow(r *model.AdeHandover, s detailsSession) taskfiles.Author {
+	switch r.Source {
+	case model.AdeHandoverSourceUser, model.AdeHandoverSourcePass:
+		return taskfiles.AuthorNone
+	}
+	return taskfiles.AuthorOf(true, r.SessionID, s.key)
 }
 
 // row is the handover row a file holds: by path, and for a draft also by its step, since a row

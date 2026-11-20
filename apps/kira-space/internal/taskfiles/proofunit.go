@@ -40,7 +40,6 @@ type ProofResult struct {
 	Changed *ProofChanged
 	// Problems are the full lines of an invalid unit.
 	Problems []string
-	Reason   string
 }
 
 // ProofStepInfo is a step id and its view.
@@ -54,6 +53,12 @@ type ProofChanged struct {
 	Added, Changed, Removed []string
 	// Fields names changed proof-level fields: name, summary, order.
 	Fields []string
+}
+
+// proofAuthor is who wrote the proof, from the calling session's view. A proof made before its link
+// carried the session has none, so it counts as another agent's.
+func proofAuthor(u *repos.ProofUnit, caller string) Author {
+	return AuthorOf(u.LinkSource == "agent", u.LinkSession, caller)
 }
 
 func proofFolder(slug string) string { return "proofs/" + slug + "/" }
@@ -385,8 +390,12 @@ func (a *unitTx) nameTaken(u *repos.ProofUnit) (bool, error) {
 
 func (a *unitTx) create() error {
 	pc := a.s.cfg.Proof
-	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpCreate, Reason: a.req.Reason})
-	if err := pc.Cache.Create(a.tx.Querier(), repos.ProofNew{ID: pc.NewID(), TaskID: a.req.TaskID, Slug: a.slug, Name: a.doc.Name, Summary: a.doc.Summary, Steps: stepRows(a.doc), Now: a.s.nowMs()}); err != nil {
+	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpCreate})
+	by, source := a.req.Session.Key, "agent"
+	if a.req.Session.Role == RoleUser {
+		by, source = "", "user"
+	}
+	if err := pc.Cache.Create(a.tx.Querier(), repos.ProofNew{ID: pc.NewID(), TaskID: a.req.TaskID, Slug: a.slug, Name: a.doc.Name, Summary: a.doc.Summary, Steps: stepRows(a.doc), Now: a.s.nowMs(), By: by, Source: source}); err != nil {
 		return err
 	}
 	if err := a.putRows(true); err != nil {
@@ -413,7 +422,7 @@ func (a *unitTx) unchanged(u *repos.ProofUnit) error {
 }
 
 func (a *unitTx) propose(u *repos.ProofUnit, before ProofHead) error {
-	return a.s.cfg.Proof.Cache.Propose(a.tx.Querier(), repos.ProofEdit{SessionID: u.Session.ID, Name: a.doc.Name, Summary: a.doc.Summary, Reason: a.req.Reason,
+	return a.s.cfg.Proof.Cache.Propose(a.tx.Querier(), repos.ProofEdit{SessionID: u.Session.ID, Name: a.doc.Name, Summary: a.doc.Summary,
 		Steps: diffRows(a.doc, before), Origin: originsOf(a.doc, before), Now: a.s.nowMs()})
 }
 
@@ -422,16 +431,9 @@ func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) er
 	if err != nil {
 		return err
 	}
-	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: latest == a.slug, Reason: a.req.Reason})
-	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes), Reason: a.req.Reason}
+	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: latest == a.slug, Author: proofAuthor(u, a.req.Session.Key)})
+	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes)}
 	switch d.Outcome {
-	case Invalid:
-		if a.req.Watch {
-			a.result(StatusDeferred, nil)
-			return nil
-		}
-		a.invalid(d.Message)
-		return nil
 	case Pending:
 		if err := a.propose(u, before); err != nil {
 			return err
@@ -442,7 +444,7 @@ func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) er
 		a.setReview(true)
 		pr.Status = string(StatusPending)
 		a.result(StatusPending, pr)
-		a.res.Message = pendingMessage(a.md, a.req.Reason, nil)
+		a.res.Message = pendingMessage(a.md, d.Cause, nil)
 		return nil
 	}
 	// A user's edit: the revision is proposed and accepted at once, so view state of unchanged steps carries over.
@@ -568,16 +570,9 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 			res = FileResult{Path: md, Status: StatusAccepted}
 			return nil
 		}
-		d := Decide(md, Input{Role: req.Session.Role, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Reason: req.Reason})
-		pr := &ProofResult{Slug: slug, Name: u.Session.Name, Reason: req.Reason}
+		d := Decide(md, Input{Role: req.Session.Role, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Author: proofAuthor(u, req.Session.Key)})
+		pr := &ProofResult{Slug: slug, Name: u.Session.Name}
 		switch d.Outcome {
-		case Invalid:
-			if req.Watch {
-				res = FileResult{Path: md, Status: StatusDeferred}
-				return nil
-			}
-			res = FileResult{Path: md, Status: StatusInvalid, Message: d.Message, Proof: &ProofResult{Slug: slug, Name: u.Session.Name, Status: string(StatusInvalid), Problems: []string{d.Message}}}
-			return nil
 		case Pending:
 			for _, r := range rows {
 				r.Review, r.Problem = model.TaskFilePending, ""
@@ -587,7 +582,7 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 			}
 			pr.Status = string(StatusPending)
 			pr.Changed = &ProofChanged{Fields: []string{"delete"}}
-			msg := fmt.Sprintf("%s: the proof is deleted; waiting for the user (%s).", folder, req.Reason)
+			msg := fmt.Sprintf("%s: the proof is deleted; waiting for the user (%s).", folder, causeText[d.Cause])
 			res = FileResult{Path: md, Status: StatusPending, Message: msg, Proof: pr}
 			item = &PendingItem{Path: md, Kind: KindProof, Cause: CauseProofDelete, Changes: []Change{{Op: OpDelete, Text: "delete proof " + u.Session.Name}}}
 			return nil
