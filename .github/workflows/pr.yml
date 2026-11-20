@@ -145,7 +145,7 @@ jobs:
         run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ipc-frontend
       - name: Real-clipboard grid copy tests (Chromium; the same spec runs in `ui` on WebKit)
         run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-clipboard
-      - name: ADE shell retention after leave (Chromium: CDP heap and DOM counters)
+      - name: "ADE shell retention after leave (Chromium, CDP heap and DOM counters)"
         run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-heap
       - name: Wall-clock budget tests (alone, no other browser contending for the CPU)
         run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-timing --no-deps
