@@ -333,6 +333,7 @@ export const IPC = {
   adeTaskReviewWorkingComments: 'kira:adetask:reviewWorkingComments',
   adeTaskReviewWorkingCommentAdd: 'kira:adetask:reviewWorkingCommentAdd',
   adeTaskArchiveRisk: 'kira:adetask:archiveRisk',
+  adeTaskRequiredServices: 'kira:adetask:requiredServices',
   adeTaskArchiveTask: 'kira:adetask:archiveTask',
   adeTaskArchivedTask: 'kira:adetask:archivedTask',
   adeTaskRestoreTask: 'kira:adetask:restoreTask',

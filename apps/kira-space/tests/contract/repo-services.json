@@ -1,0 +1,73 @@
+{
+  "RepoConfigService.Form#added": {
+    "problem": null,
+    "text": "path: <work>/proj\nservices:\n  - params:\n      port: \"5432\"\n    script: Dev DB\n  - script: Dev server\n",
+    "value": {
+      "path": "<work>/proj",
+      "services": [
+        {
+          "params": {
+            "port": "5432"
+          },
+          "script": "Dev DB"
+        },
+        {
+          "script": "Dev server"
+        }
+      ]
+    }
+  },
+  "RepoConfigService.Form#duplicate": {
+    "problem": {
+      "col": 5,
+      "line": 4,
+      "message": "Each service names a different script.",
+      "path": "/services/1/script"
+    },
+    "text": "path: <work>/proj\nservices:\n  - script: Dev DB\n  - script: Dev DB\n",
+    "value": null
+  },
+  "args:RepoConfigService.Form#added": {
+    "edits": [
+      {
+        "path": [
+          "services"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "params": {
+              "port": "5432"
+            },
+            "script": "Dev DB"
+          },
+          {
+            "script": "Dev server"
+          }
+        ]
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\n"
+  },
+  "args:RepoConfigService.Form#duplicate": {
+    "edits": [
+      {
+        "path": [
+          "services"
+        ],
+        "unset": false,
+        "value": [
+          {
+            "script": "Dev DB"
+          },
+          {
+            "script": "Dev DB"
+          }
+        ]
+      }
+    ],
+    "file": "proj.yaml",
+    "text": "path: <work>/proj\n"
+  }
+}

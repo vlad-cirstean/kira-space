@@ -316,6 +316,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskReviewForwardText: 'AdeTaskService.ReviewForwardText',
   adeTaskLaunchReviewAgent: 'AdeTaskService.LaunchReviewAgent',
   adeTaskArchiveRisk: 'AdeTaskService.ArchiveRisk',
+  adeTaskRequiredServices: 'AdeTaskService.RequiredServices',
   adeTaskArchiveTask: 'AdeTaskService.ArchiveTask',
   adeTaskArchivedTask: 'AdeTaskService.ArchivedTask',
   adeTaskRestoreTask: 'AdeTaskService.RestoreTask',

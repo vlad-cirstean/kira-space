@@ -5,6 +5,7 @@ import {
   type AdeBoardFx,
   adeBoard,
   adeFixture,
+  alertsInPlan,
   emitLog,
   emitRuns,
   openPlan,
@@ -34,15 +35,6 @@ async function open(page: Page, id: string): Promise<void> {
 
 const step = (page: Page, stepId: string) =>
   page.locator(`${t('ade-step-block')}[data-step-id="${stepId}"]`);
-
-/** T_alerts moved to a not yet started Plan step of the standard workflow. */
-function alertsInPlan(b: AdeBoardFx): void {
-  const alerts = b.tasks.find((x) => x.id === 'T_alerts');
-  if (!alerts) throw new Error('fixture tasks missing');
-  alerts.entryStepId = 'plan';
-  alerts.workflowId = 'standard';
-  alerts.runs = [];
-}
 
 test('the Workflow select sends SetTaskWorkflow', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch);

@@ -1,0 +1,96 @@
+{
+  "AdeTaskService.RequiredServices#noWorktree": {
+    "items": [
+      {
+        "branchId": "",
+        "codeRepoId": "<id:1>",
+        "params": {
+          "port": [
+            "5432"
+          ]
+        },
+        "problem": "",
+        "runId": "<id:3>",
+        "script": "Dev DB",
+        "scriptId": "dev-db",
+        "state": "running"
+      },
+      {
+        "branchId": "<id:5>",
+        "codeRepoId": "<id:1>",
+        "params": {},
+        "problem": "",
+        "runId": "",
+        "script": "Dev server",
+        "scriptId": "dev-server",
+        "state": "noWorktree"
+      }
+    ]
+  },
+  "AdeTaskService.RequiredServices#running": {
+    "items": [
+      {
+        "branchId": "",
+        "codeRepoId": "<id:1>",
+        "params": {
+          "port": [
+            "5432"
+          ]
+        },
+        "problem": "",
+        "runId": "<id:3>",
+        "script": "Dev DB",
+        "scriptId": "dev-db",
+        "state": "running"
+      },
+      {
+        "branchId": "<id:2>",
+        "codeRepoId": "<id:1>",
+        "params": {},
+        "problem": "",
+        "runId": "<id:4>",
+        "script": "Dev server",
+        "scriptId": "dev-server",
+        "state": "running"
+      }
+    ]
+  },
+  "AdeTaskService.RequiredServices#stopped": {
+    "items": [
+      {
+        "branchId": "",
+        "codeRepoId": "<id:1>",
+        "params": {
+          "port": [
+            "5432"
+          ]
+        },
+        "problem": "",
+        "runId": "",
+        "script": "Dev DB",
+        "scriptId": "dev-db",
+        "state": "stopped"
+      },
+      {
+        "branchId": "<id:2>",
+        "codeRepoId": "<id:1>",
+        "params": {},
+        "problem": "",
+        "runId": "",
+        "script": "Dev server",
+        "scriptId": "dev-server",
+        "state": "stopped"
+      },
+      {
+        "branchId": "",
+        "codeRepoId": "<id:1>",
+        "params": {},
+        "problem": "not found",
+        "runId": "",
+        "script": "Ghost",
+        "scriptId": "",
+        "state": "invalid"
+      }
+    ]
+  }
+}
