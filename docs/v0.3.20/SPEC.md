@@ -5,7 +5,7 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 | # | Phase | Status |
 |---|-------|--------|
 | P694 | Agent prompts: when to write proofs, where the task Details live | Done |
-| P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
+| P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Done |
 | P696 | Dialogs: remove redundant buttons (audit every dialog) | Done |
 | P697 | Required services: repo scripts that must be running for a task | Done |
 | P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Done |
@@ -32,6 +32,22 @@ Planner note: overlaps P694 on `apps/kira-space/internal/taskfiles/` (`readme.go
 `proofunit.go`), `internal/llmprompts/registry.go`, the finish and files prompts, and `ade/statefile.go`.
 Run after P694 or give a plan file-ownership table. P694's proof line wording must stay consistent with
 the narrowed submit.
+
+Result: fsnotify watcher per task while a Space grant is live (300 ms quiet, event paths only, so an earlier
+user edit stays on the disk banner). With several live callers the watcher skips the pass and only pushes a
+board refresh, since a write cannot be attributed (multi-caller skip); finish still flushes. `submit` needs
+`paths` and `reason` and is for ask-first files. Errors go to the `fileErrors` section of `state.yaml`
+(in memory, cleared when the grant ends), prompts and README tell the agent to read it. "Latest" is the
+newest note or handed handover of any author, or the newest proof (`Input.Latest`): its agent edit is free,
+older ones need a reason. A pending row stays pending on a pass with no reason, and Kira's own writes are
+not read back as agent edits. The final pass at release runs off the task lock (`CloseSession` holds it).
+Flow tests `TestDetailsWatch`, `TestDetailsWatchLatestProof`; UI half `ade-v2-details-watch.spec.ts`
+(contract `ade-details-watch`); `TestProofEditFlow` and `TestProofCharts` now edit an older proof. Go (ade,
+adeflow, proofflow, mobileflow, taskfiles, storage, agentmcp, llmprompts), typecheck, lint, guards and the
+`ade-v2-details-*`, `ade-v2-proof-chain`, `ade-v2-run`, `copy-coverage` specs pass. `-race` not run: disk
+full on the link step. Real `claude` rows `TestAdeDetailsSubmit`, bench serves, proof MCP and chart pass;
+the three TUI tests still fail with no SessionStart hook within 60 s at load1 1 to 2, as in P694, so not
+this change. No visual baseline changes.
 
 ## P696
 
