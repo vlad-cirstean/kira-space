@@ -48,6 +48,9 @@ const errorMessage = computed(() => (query.error.value ? errorText(query.error.v
 const mounted = ref(false);
 let editor: import('monaco-editor').editor.IStandaloneCodeEditor | null = null;
 
+// Re-reads `editor` past an await, where control-flow narrowing would still call it null.
+const liveEditor = () => editor;
+
 async function mountEditor(text: string): Promise<void> {
   viewer.setText(text);
   if (editor) {
@@ -56,7 +59,13 @@ async function mountEditor(text: string): Promise<void> {
   }
   const mod = await loadMonaco();
   // Unmounted while the import was in flight.
-  if (!container.value || !mounted.value || editor) return;
+  if (!container.value || !mounted.value) return;
+  // A newer text landed during the import and the earlier call created the editor: apply it.
+  const raced = liveEditor();
+  if (raced) {
+    raced.getModel()?.setValue(text);
+    return;
+  }
   const uri = taskFileUri(mod, props.branchId, props.path);
   const created = viewer.createEditor(mod, uri, text);
   if (!created) return;
