@@ -119,7 +119,7 @@ func (b *TaskBoard) branchRisk(ctx context.Context, lb linkedBranch) (adewire.Br
 	}
 	risk := adewire.BranchRisk{
 		BranchID: lb.sb.ID, Worktree: lb.path, Dirty: []adewire.DirtyEntry{}, Unmerged: res.Unmerged,
-		DirtyToken: gitsession.DirtyToken(lb.path, status),
+		DirtyToken: pf.ConfirmToken,
 	}
 	for _, d := range dirty {
 		risk.Dirty = append(risk.Dirty, adewire.DirtyEntry{Code: d.Code, Path: d.Path})
@@ -180,15 +180,6 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string, discardToken
 	if len(blocked) > 0 {
 		return invalid("cannot archive: worktree of %s cannot be removed", strings.Join(blocked, ", "))
 	}
-	// Refuse before any work stops: a worktree changed since the dialog is reviewed again.
-	for i, lb := range linked {
-		if len(risks[i].Dirty) > 0 {
-			if err := discardRefusal(lb.sb.Name, len(risks[i].Dirty), risks[i].DirtyToken, discardTokens[lb.sb.ID]); err != nil {
-				return err
-			}
-		}
-	}
-
 	b.abandonBranchRequests(taskID)
 	b.abandonTaskRequests(taskID)
 	if err := b.stopTaskWork(tc); err != nil {
@@ -200,6 +191,13 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string, discardToken
 	defer mu.Unlock()
 	if err := b.closeTaskTerminals(taskID); err != nil {
 		return err
+	}
+	// Work is stopped, so the dirty sets no longer move: compare every token once, before any removal,
+	// so a refusal never leaves some worktrees gone. A refused archive leaves the task live and stopped.
+	for _, lb := range linked {
+		if err := b.checkDiscard(ctx, lb, discardTokens[lb.sb.ID]); err != nil {
+			return err
+		}
 	}
 	for _, lb := range linked {
 		if err := b.removeWorktree(ctx, lb, discardTokens[lb.sb.ID]); err != nil {
@@ -226,6 +224,22 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string, discardToken
 	b.notifyBoard()
 	b.notifySessions()
 	return nil
+}
+
+// checkDiscard refuses when lb's worktree holds uncommitted changes that token does not confirm.
+func (b *TaskBoard) checkDiscard(ctx context.Context, lb linkedBranch, token string) error {
+	pf, err := lb.entry.WorktreeRemovePreflight(ctx, lb.path)
+	if err != nil {
+		return err
+	}
+	if pf.Verdict != "dirty" {
+		return nil
+	}
+	status, err := lb.entry.WorktreeStatus(ctx, lb.path)
+	if err != nil {
+		return err
+	}
+	return b.refuseDiscard(lb.sb.Name, len(toDirtyEntries(status)), pf.ConfirmToken, token)
 }
 
 // snapshotChangeRequests stores each row's change request, so the archived view shows it when the host
@@ -313,24 +327,21 @@ func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch, discard
 
 // removeWorktreeLocked is removeWorktree for a caller holding the repo lock. Uncommitted changes go only
 // with discardToken, the fingerprint of the set the user saw (archive confirm or a discard action). The
-// dirty set is read again here, so a worktree that changed since the user looked stays.
+// op's own preflight reads the dirty set again and compares, so a worktree that changed since the user looked stays.
 func (b *TaskBoard) removeWorktreeLocked(ctx context.Context, lb linkedBranch, discardToken string) error {
-	pf, err := lb.entry.WorktreeRemovePreflight(ctx, lb.path)
-	if err != nil {
-		return err
-	}
 	req := gitsession.OpRequest{Kind: "worktreeRemove", Path: lb.path}
-	if pf.Verdict == "dirty" {
-		if err := discardRefusal(lb.sb.Name, 0, pf.ConfirmToken, discardToken); err != nil {
-			return err
-		}
-		req.ConfirmToken = &pf.ConfirmToken
+	if discardToken != "" {
+		req.ConfirmToken = &discardToken
 	}
 	res, err := lb.entry.RunOp(ctx, b.conn.ID, boardConnLabel, req)
 	if err != nil {
 		return err
 	}
 	if !res.OK {
+		if res.Error != nil && res.Error.Kind == "ConfirmationRequired" {
+			// The op's own preflight found uncommitted changes the token does not confirm.
+			return b.refuseDiscard(lb.sb.Name, 0, "", discardToken)
+		}
 		msg := "worktree remove failed"
 		if res.Error != nil {
 			msg = res.Error.Message

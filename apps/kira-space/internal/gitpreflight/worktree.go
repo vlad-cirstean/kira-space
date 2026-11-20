@@ -150,7 +150,7 @@ type WorktreeRemovePreflight struct {
 	Path                      string                  `json:"path"`
 	Blockers                  []WorktreeRemoveBlocker `json:"blockers"`
 	RequiresTypedConfirmation bool                    `json:"requiresTypedConfirmation"`
-	// ConfirmToken: fingerprint of the uncommitted set (paths, statuses, size and mtime), set only when
+	// ConfirmToken: fingerprint of the uncommitted set (kinds, statuses and paths), set only when
 	// RequiresTypedConfirmation is true. The client echoes the one it showed (the name is historic:
 	// nothing is typed any more); the server re-derives it fresh and refuses a mismatch, so discard
 	// deletes only the set the user saw.

@@ -5,9 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -228,16 +226,17 @@ func (e *RepoEntry) runOneInDir(ctx context.Context, dir string, args []string) 
 	return out, err
 }
 
-// DirtyToken fingerprints the uncommitted set of the worktree at dir: each non-ignored entry's kind,
-// status and path, plus size and mtime of what is on disk (an untracked directory folds in its files).
-// "" means nothing is uncommitted. Discard confirms this token, so it deletes only the set the user saw.
-func DirtyToken(dir string, entries []porcelain.StatusEntry) string {
+// DirtyToken fingerprints the uncommitted set of a worktree as the user is shown it: each non-ignored
+// entry's kind, status and path (an untracked directory is one path). "" means nothing is uncommitted.
+// Discard confirms this token, so it deletes only the paths the user saw. Contents are left out on
+// purpose: saving a listed file again must not invalidate the token, and no file walk is needed.
+func DirtyToken(entries []porcelain.StatusEntry) string {
 	lines := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.Kind == "ignored" {
 			continue
 		}
-		lines = append(lines, fmt.Sprintf("%s %c%c %s <- %s %s", e.Kind, e.Staged, e.Unstaged, e.Path, e.OriginalPath, diskStamp(dir, e.Path)))
+		lines = append(lines, fmt.Sprintf("%s %c%c %s <- %s", e.Kind, e.Staged, e.Unstaged, e.Path, e.OriginalPath))
 	}
 	if len(lines) == 0 {
 		return ""
@@ -245,32 +244,6 @@ func DirtyToken(dir string, entries []porcelain.StatusEntry) string {
 	slices.Sort(lines)
 	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
 	return hex.EncodeToString(sum[:16])
-}
-
-// diskStamp is size and mtime of rel under dir; for a directory path, of every file below it.
-func diskStamp(dir, rel string) string {
-	abs := filepath.Join(dir, filepath.FromSlash(rel))
-	info, err := os.Lstat(abs)
-	if err != nil {
-		return "gone"
-	}
-	if !info.IsDir() {
-		return fmt.Sprintf("%d@%d", info.Size(), info.ModTime().UnixNano())
-	}
-	var sb strings.Builder
-	_ = filepath.WalkDir(abs, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		fi, ierr := d.Info()
-		if ierr != nil {
-			return nil
-		}
-		r, _ := filepath.Rel(abs, path)
-		fmt.Fprintf(&sb, "%s:%d@%d;", r, fi.Size(), fi.ModTime().UnixNano())
-		return nil
-	})
-	return sb.String()
 }
 
 // WorktreeRemovePreflight is preflight.worktreeRemove's own orchestration: notAWorktree
@@ -311,7 +284,7 @@ func (e *RepoEntry) WorktreeRemovePreflight(ctx context.Context, path string) (g
 	if err != nil {
 		return gitpreflight.WorktreeRemovePreflight{}, err
 	}
-	in.DirtyToken = DirtyToken(target.Path, status)
+	in.DirtyToken = DirtyToken(status)
 	return gitpreflight.ClassifyWorktreeRemove(in), nil
 }
 

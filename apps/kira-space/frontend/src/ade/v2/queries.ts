@@ -172,6 +172,8 @@ export function useAddTaskRepo() {
 export function useSetTaskBranch() {
   return useMutation({
     mutationFn: (args: SetTaskBranchArgs) => control.adeTaskSetTaskBranch(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
 }
 
@@ -184,12 +186,16 @@ export function useUpdateTaskRepo() {
 export function useRemoveTaskBranch() {
   return useMutation({
     mutationFn: (args: RemoveTaskRowArgs) => control.adeTaskRemoveTaskBranch(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
 }
 
 export function useRemoveTaskRepo() {
   return useMutation({
     mutationFn: (args: RemoveTaskRowArgs) => control.adeTaskRemoveTaskRepo(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
 }
 

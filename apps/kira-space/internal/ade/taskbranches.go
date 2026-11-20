@@ -115,7 +115,7 @@ func (b *TaskBoard) detachLinked(ctx context.Context, lb linkedBranch, old model
 		return nil, invalid("the worktree of %s cannot be removed: %s", old.Name, text)
 	}
 	if len(risk.Dirty) > 0 {
-		if err := discardRefusal(old.Name, len(risk.Dirty), risk.DirtyToken, discardToken); err != nil {
+		if err := b.refuseDiscard(old.Name, len(risk.Dirty), risk.DirtyToken, discardToken); err != nil {
 			return nil, err
 		}
 	}
@@ -143,6 +143,16 @@ func discardRefusal(name string, count int, current, token string) error {
 		return invalid("the uncommitted changes of %s changed since you reviewed them: review them again before discarding", name)
 	}
 	return nil
+}
+
+// refuseDiscard is discardRefusal that also pushes the board when a token was refused as stale, so the
+// client reloads the current list and token instead of resending the old one.
+func (b *TaskBoard) refuseDiscard(name string, count int, current, token string) error {
+	err := discardRefusal(name, count, current, token)
+	if err != nil && token != "" {
+		b.notifyBoard()
+	}
+	return err
 }
 
 // blockedText is the human reason the preflight blocks removing lb's worktree.

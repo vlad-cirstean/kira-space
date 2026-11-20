@@ -7,7 +7,8 @@ import { IPC } from './support/ipcChannels';
 
 // Removing a worktree needs no confirm dialog (P702): a clean row goes at once, a row with changes
 // shows the labelled discard. Contract ade-worktree-remove; backend half: flows/adeflow
-// TestUserWorktreeRemoveNoConfirm (adeflow/worktreeremove_test.go).
+// TestUserWorktreeRemoveNoConfirm (adeflow/worktreeremove_test.go). A stale-token refusal reloads the
+// board; backend half: TestDiscardTokenFollowsShownSet (adeflow/discardtoken_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -97,4 +98,24 @@ test('changing the branch of a dirty row holds the choice until Discard changes 
     existing: true,
     discardToken: dirtyToken,
   });
+});
+
+test('a discard refused as stale reloads the board for the current list and token', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch, [
+    dirtyBoard,
+    {
+      channel: IPC.adeTaskRemoveTaskBranch,
+      error: {
+        code: 'E_BAD_REQUEST',
+        message: 'the uncommitted changes of feat/cart changed since you reviewed them',
+      },
+    },
+  ]);
+  await openTask(page, 'T_cart');
+  const before = calls(control, IPC.adeTaskBoard).length;
+  await pick(page, 'b_cart', 'ade-task-branch-remove-discard');
+  await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskBranch)).toHaveLength(1);
+  await expect.poll(() => calls(control, IPC.adeTaskBoard).length).toBeGreaterThan(before);
 });
