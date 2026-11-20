@@ -397,11 +397,11 @@ func TestToolSchemaBudget(t *testing.T) {
 		grant  Grant
 		budget int
 	}{
-		{"run", Grant{RunID: "r", TaskID: "t", Space: true}, 900},
-		{"session", Grant{TaskID: "t", SessionID: "s", Space: true}, 900},
-		{"orchestrator", Grant{RunID: "r", TaskID: "t", Space: true, Orchestrator: true}, 1230},
+		{"run", Grant{RunID: "r", TaskID: "t", Space: true}, 500},
+		{"session", Grant{TaskID: "t", SessionID: "s", Space: true}, 500},
+		{"orchestrator", Grant{RunID: "r", TaskID: "t", Space: true, Orchestrator: true}, 880},
 		{"review", Grant{RunID: "r", TaskID: "t", Review: review}, 940},
-		{"push", Grant{RunID: "r", TaskID: "t", Space: true, Sandbox: &SandboxGrant{Push: true}}, 960},
+		{"push", Grant{RunID: "r", TaskID: "t", Space: true, Sandbox: &SandboxGrant{Push: true}}, 540},
 	} {
 		g := c.grant
 		g.Agent = claude.New()
