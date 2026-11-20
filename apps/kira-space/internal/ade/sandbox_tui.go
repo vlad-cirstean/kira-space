@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -159,7 +159,7 @@ func (b *TaskBoard) prepareTUISandbox(ctx context.Context, recordID string, agen
 	}
 	prep, err := b.deps.Sandbox.Prepare(pol, rt)
 	if err != nil {
-		_ = os.RemoveAll(pol.Scratch)
+		_ = fileservice.Host().RemoveAll(pol.Scratch)
 		return nil, err
 	}
 	sr := &sandboxRun{access: agentsandbox.Access(sd.Access), prep: prep, policy: pol, notes: notes, agent: agent, scratch: pol.Scratch}
@@ -226,7 +226,7 @@ func (b *TaskBoard) endTUISandbox(recordID string, live *liveTUISandbox) {
 		live.sr.cleanup()
 		return
 	}
-	_ = os.RemoveAll(live.sr.scratch)
+	_ = fileservice.Host().RemoveAll(live.sr.scratch)
 }
 
 // OnTUIAgentStarted is Tracker's agent-started target: the session row exists and the shell runs,

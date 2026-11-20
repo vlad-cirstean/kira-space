@@ -53,6 +53,7 @@ export function mkBranch(over: Partial<Branch> & Pick<Branch, 'id' | 'taskId'>):
     conflictCheck: 'done',
     conflictCheckReason: '',
     dirty: [],
+    dirtyToken: '',
     lastCommitAt: null,
     addedAt: 0,
     origin: '',

@@ -153,7 +153,7 @@ func TestVariablePrecedence(t *testing.T) {
 			t.Fatalf("variables = %+v (%v), want one", vars, err)
 		}
 		// A history row from before secrets moved to the secret store still carries its sealed value.
-		sealed, err := secrets.New().Encrypt(secrets.ScopeVariableHistory, "legacy-old")
+		sealed, err := secrets.NewInsecure(true).Encrypt(secrets.ScopeVariableHistory, "legacy-old")
 		if err != nil {
 			t.Fatal(err)
 		}

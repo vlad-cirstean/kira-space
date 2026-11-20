@@ -36,7 +36,7 @@
         "updatedAt": 0
       },
       {
-        "body": "Check the error states.",
+        "body": "Agent note.",
         "createdAt": 0,
         "dismissed": false,
         "edited": false,
@@ -45,7 +45,7 @@
         "fromStepName": "one",
         "id": "<masked>",
         "sessionId": "<masked>",
-        "source": "user",
+        "source": "agent",
         "state": "note",
         "taskId": "<masked>",
         "toStepId": "",
@@ -76,12 +76,10 @@
           {
             "cause": "note",
             "kind": "note",
-            "path": "notes/<time>-<id:1>.md",
-            "reason": "typo fixed",
-            "text": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Check the error states.\n+Older note, edited.\n"
+            "path": "notes/<time>-s2.md",
+            "text": "--- a/notes/<time>-s2.md\n+++ b/notes/<time>-s2.md\n@@ -1 +1 @@\n-Agent note.\n+Agent note, edited.\n"
           }
         ],
-        "reason": "typo fixed",
         "taskId": "<masked>",
         "taskTitle": "Fix login"
       },

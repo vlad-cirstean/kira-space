@@ -1,4 +1,4 @@
 Task: Add login form
 - Repo: docs (read only, in /repos/docs)
-Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
+Kira tool: state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
 When this stage is done, write your handover to its draft file in the task folder. Then call state with action step.finish and args status "done".

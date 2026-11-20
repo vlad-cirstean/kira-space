@@ -71,7 +71,7 @@ func TestArchivedTaskKeepsData(t *testing.T) {
 		Range: lineRange(2), Body: "rename this", Kind: "change",
 	}, &added)
 
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.taskID}); err != nil {
 		t.Fatalf("ArchiveTask: %v", err)
 	}
 	// Review sessions are keyed by repo and branch name: archive moves the comments onto the row.
@@ -156,7 +156,7 @@ func TestArchivedTaskKeepsData(t *testing.T) {
 	}
 
 	// Refusal: the branch name is live on another task.
-	if err := app.W.AdeTask.ArchiveTask(ctx, args); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: args.TaskID}); err != nil {
 		t.Fatalf("second archive: %v", err)
 	}
 	other := createTask(t, app, "Other", "flow", f.repoID)
@@ -193,7 +193,7 @@ func TestResumeArchivedSession(t *testing.T) {
 		t.Fatalf("run %+v has no session", run)
 	}
 	args := adewire.TaskArgs{TaskID: f.taskID}
-	if err := app.W.AdeTask.ArchiveTask(ctx, args); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: args.TaskID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := app.W.AdeTask.TakeOver(ctx, adewire.TakeOverArgs{SessionID: run.SessionID}); err == nil {

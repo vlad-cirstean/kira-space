@@ -6,6 +6,7 @@
 package appwire
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -49,6 +50,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/sessionrestore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -125,6 +127,8 @@ type Options struct {
 	// TrackerGrace is how long the ADE tracker waits before it reads a spawned TUI session as
 	// stopped; zero means the tracker default.
 	TrackerGrace time.Duration
+	// SessionRestoreWindow replaces how long after start the restore dialog may open itself (zero: 2 minutes).
+	SessionRestoreWindow time.Duration
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
 	// BranchRequestWait is how long an agent's create_task waits for the user; 0 keeps
@@ -243,6 +247,7 @@ type Wired struct {
 	Tabs            *bridge.TabsService
 	CustomScripts   *bridge.CustomScriptsService
 	ScriptRuns      *bridge.ScriptRunsService
+	SessionRestore  *bridge.SessionRestoreService
 	runs            *scriptruns.Service
 	sched           *scriptruns.Scheduler
 	runLoader       *scripts.Loader
@@ -543,16 +548,18 @@ func Build(opts Options) (*Wired, error) {
 		bridge.CaptureApply(w.Capture, m.Capture)
 	}
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
-	// Archive closes a task's review windows through the registry.
+	// Archive closes a task's review and Files windows through the registry.
 	w.AdeBoard = wireAdeTask(repositories, events, git, adeTracker, adeCloseTerminal(terminalRegistry),
-		closeTaskReviewWindows(repositories, func(key string) bool {
+		func(key string) bool {
 			// Through the bound hook, so a shell that overrides CloseWindow sees archive closes too.
 			if w.AdeTask != nil && w.AdeTask.CloseWindow != nil {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.CallWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}, credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.CallWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
+	// A native close never unmounts the Files window, so the board releases its file sessions.
+	w.OnWindowClosing = append(w.OnWindowClosing, w.AdeBoard.ForgetFilesWindow)
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
@@ -570,6 +577,8 @@ func Build(opts Options) (*Wired, error) {
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
+	w.SessionRestore = &bridge.SessionRestoreService{Svc: sessionrestore.New(runs, sessionrestore.DockerOf(w.Docker.BoundService), w.AdeBoard,
+		sessionrestore.Options{OfferWindow: opts.SessionRestoreWindow, MapError: bridge.AdeAgentRestoreError})}
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —
@@ -605,6 +614,18 @@ func Build(opts Options) (*Wired, error) {
 			info, _ := w.AgentSvc.Info()
 			return info
 		},
+		ScriptRuns: func(_ context.Context, limit int) ([]any, error) {
+			runs, err := w.ScriptRuns.List(scriptruns.ListArgs{Limit: limit})
+			if err != nil {
+				return nil, err
+			}
+			out := make([]any, len(runs))
+			for i, r := range runs {
+				out[i] = r
+			}
+			return out, nil
+		},
+		Computer:  phoneComputer(w),
 		Approvals: w.Approvals,
 		Writer:    &bridge.MobileWriter{Svc: w.AdeTask, Launches: mobileLaunches},
 		Launches:  mobileLaunches,
@@ -706,7 +727,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.GitCredential),
 		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.HostView), application.NewService(w.IssueTracker), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
-		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Terminal),
+		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.SessionRestore), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),
 		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
@@ -750,6 +771,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// (Reconcile marks its row stopped) while the DB is still open. Then shutdownTracker stops the
 	// hooks listener (draining queued hook events) and flushes whatever last-active time is still
 	// only in memory.
+	w.Tracker.MarkQuit() // before the PTYs die: their exits stop the rows, so only this mark says they were open
 	terminal.ShutdownBound(w.Terminal.BoundService)
 	w.sched.Close()
 	w.runLoader.Close()
@@ -874,5 +896,20 @@ func codeRepoIDs(repositories *repos.Repos) func() map[string]string {
 			out[repocfg.Key(r.RepoID)] = r.ID
 		}
 		return out
+	}
+}
+
+// phoneComputer is the phone's computer summary: Docker counts only, null when the module is off.
+func phoneComputer(w *Wired) func(context.Context) (mobileweb.Computer, error) {
+	return func(context.Context) (mobileweb.Computer, error) {
+		if w.Docker == nil {
+			return mobileweb.Computer{}, nil
+		}
+		st := w.Docker.Status(docker.StatusArgs{})
+		d := &mobileweb.DockerSummary{State: st.State, Reason: st.Reason}
+		if e := st.Engine; e != nil {
+			d.Running, d.Stopped, d.Total = e.Running, e.Stopped, e.Containers
+		}
+		return mobileweb.Computer{Docker: d}, nil
 	}
 }

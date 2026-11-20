@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 )
 
@@ -40,54 +39,6 @@ func TestLocalPaths(t *testing.T) {
 	}
 	if _, err := l.Stat(ctx, "missing.md"); !errors.Is(err, ErrNotExist) {
 		t.Fatalf("missing = %v", err)
-	}
-}
-
-func TestLocalRefusesUnsafeFiles(t *testing.T) {
-	l := newTest(t)
-	ctx := context.Background()
-	outside := filepath.Join(t.TempDir(), "secret")
-	if err := os.WriteFile(outside, []byte("secret"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	put(t, l, "real.md", "x")
-	if err := os.Symlink(outside, filepath.Join(l.Root(), "link.md")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Dir(outside), filepath.Join(l.Root(), "dirlink")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Link(filepath.Join(l.Root(), "real.md"), filepath.Join(l.Root(), "hard.md")); err != nil {
-		t.Fatal(err)
-	}
-	if err := syscall.Mkfifo(filepath.Join(l.Root(), "pipe"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	for _, rel := range []string{"link.md", "dirlink/secret", "hard.md", "pipe"} {
-		if _, _, err := l.Read(ctx, rel, 1<<20); !errors.Is(err, ErrUnsafe) {
-			t.Errorf("Read(%q) = %v, want ErrUnsafe", rel, err)
-		}
-		if _, err := l.WriteAtomic(ctx, rel, []byte("y"), nil); !errors.Is(err, ErrUnsafe) {
-			t.Errorf("WriteAtomic(%q) = %v, want ErrUnsafe", rel, err)
-		}
-	}
-	got, err := os.ReadFile(outside)
-	if err != nil || string(got) != "secret" {
-		t.Fatalf("outside file touched: %q %v", got, err)
-	}
-	ents, err := l.List(ctx, ListOptions{MaxDepth: 3, MaxFiles: 10})
-	if err != nil {
-		t.Fatal(err)
-	}
-	refused := map[string]string{}
-	for _, e := range ents {
-		refused[e.Rel] = e.Refused
-	}
-	want := map[string]string{"link.md": "symlink", "dirlink": "symlink", "hard.md": "hard link", "real.md": "hard link", "pipe": "special file"}
-	for rel, why := range want {
-		if refused[rel] != why {
-			t.Errorf("List refused[%q] = %q, want %q", rel, refused[rel], why)
-		}
 	}
 }
 

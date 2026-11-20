@@ -5,26 +5,26 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 )
 
-// taskwatch.go: while an agent holds a Space grant on a task, its folder is watched and each edit the
-// agent saves is applied after a short quiet, as the agent's own submit with no reason. Only the event
-// paths go in, so an earlier edit of the user stays on the disk banner. The pass is a Watch pass: it
-// applies free changes only. An ask-first change is deferred untouched (no row, no fileErrors entry,
-// no word to the agent), because the save may be the user's own in an editor; the banner shows it.
+// taskwatch.go: while an agent holds a Space grant on a task, its folder is watched and each edit
+// saved is applied after a short quiet as that agent's. Only the event paths go in, so an earlier
+// edit of the user stays on the disk banner. A change that touches another agent's content raises
+// the details.edit approval at once; nothing is told to the agent, which reads it in state.yaml
+// pending. With no live grant nothing watches, so a user's save in an outside editor only shows on
+// the banner. With several grants a save cannot be attributed: board push only, the next finish
+// flush decides.
 
 const (
 	taskWatchQuiet = 300 * time.Millisecond
@@ -34,16 +34,6 @@ const (
 	// taskWatchDepth is the deepest folder under the task folder that is watched: proofs/<slug>.
 	taskWatchDepth = 2
 )
-
-// maxTaskWatches caps the live task watchers, 0 for none. kqueue (macOS) holds one fd per watched
-// folder and per file in it, so many busy tasks could reach kern.maxfilesperproc; inotify has no such cost.
-// A task over the cap is unwatched and its edits apply at the finish flush.
-func maxTaskWatches() int {
-	if runtime.GOOS == "darwin" {
-		return 8
-	}
-	return 0
-}
 
 // watchedTopDirs are the folders of the task folder that hold task files.
 var watchedTopDirs = map[string]bool{"notes": true, "handovers": true, "proofs": true}
@@ -58,15 +48,14 @@ type taskWatch struct {
 	b      *TaskBoard
 	taskID string
 	root   string
-	w      *fsnotify.Watcher
+	nroot  string // root, Clean and NFC: the spelling fswatch reports paths in
+	w      *fileservice.Watcher
+	deb    *fileservice.Debouncer
 
 	mu      sync.Mutex
 	callers map[string]*callerRef
 	paths   map[string]struct{} // slash paths relative to root since the last pass
-	first   time.Time           // when the first path of the current batch was queued
-	timer   *time.Timer
 	stopped bool
-	passes  sync.WaitGroup // in-flight pass; stop waits for it
 	done    chan struct{}
 }
 
@@ -100,10 +89,6 @@ func (b *TaskBoard) watchTask(call agentmcp.SpaceCall) {
 	b.grants[call.TaskID]++
 	tw := b.watches[call.TaskID]
 	if tw == nil {
-		if limit := maxTaskWatches(); limit > 0 && len(b.watches) >= limit {
-			slog.Warn(taskWatchEvents, "scope", "ade", "task", call.TaskID, "err", "watcher cap reached")
-			return // the finish flush still applies the edits
-		}
 		var err error
 		if tw, err = b.newTaskWatch(call.TaskID); err != nil {
 			slog.Warn(taskWatchEvents, "scope", "ade", "task", call.TaskID, "err", err)
@@ -129,12 +114,13 @@ func (b *TaskBoard) newTaskWatch(taskID string) (*taskWatch, error) {
 	if err != nil || root == "" {
 		return nil, errors.Join(err, errors.New("no task folder"))
 	}
-	w, err := fsnotify.NewWatcher()
+	tw := &taskWatch{b: b, taskID: taskID, root: root, nroot: gitpath.CleanNFC(root), callers: map[string]*callerRef{}, paths: map[string]struct{}{}, done: make(chan struct{})}
+	w, err := fileservice.Host().Watch(fileservice.WatchOptions{Names: []string{root}, MaxDepth: taskWatchDepth, SkipDir: tw.skipDir})
 	if err != nil {
 		return nil, err
 	}
-	tw := &taskWatch{b: b, taskID: taskID, root: root, w: w, callers: map[string]*callerRef{}, paths: map[string]struct{}{}, done: make(chan struct{})}
-	tw.addTree(root)
+	tw.w = w
+	tw.deb = fileservice.NewDebouncer(taskWatchQuiet, taskWatchMaxWait, tw.fire)
 	go tw.loop()
 	return tw, nil
 }
@@ -148,7 +134,7 @@ func (b *TaskBoard) unwatchTask(call agentmcp.SpaceCall) {
 	tw := b.watches[call.TaskID]
 	if tw == nil {
 		b.watchMu.Unlock()
-		if live == 0 { // never watched: errors of explicit submits and the finish flush still clear
+		if live == 0 { // never watched: errors of the finish flush still clear
 			b.clearFileErrors(call.TaskID)
 		}
 		return
@@ -193,49 +179,78 @@ func (b *TaskBoard) stopTaskWatches() {
 	b.watchWG.Wait()
 }
 
-// addTree watches dir and every task-file folder below it, and returns the files found there.
-func (t *taskWatch) addTree(dir string) []string {
+// skipDir is the watch's SkipDir: only task-file folders (notes, handovers, proofs and below) are watched.
+func (t *taskWatch) skipDir(p string) bool {
+	rel := t.slashRel(p)
+	if rel == "" || !watchedTopDirs[strings.SplitN(rel, "/", 2)[0]] {
+		return true
+	}
+	return hasHiddenSegment(rel)
+}
+
+func hasHiddenSegment(rel string) bool {
+	for _, seg := range strings.Split(rel, "/") {
+		if strings.HasPrefix(seg, ".") {
+			return true
+		}
+	}
+	return false
+}
+
+// walkFiles returns the task-file rels found at and below dir, using the watch's own folder rules.
+func (t *taskWatch) walkFiles(dir string) []string {
+	base, err := filepath.Rel(t.root, dir)
+	if err != nil {
+		return nil
+	}
+	base = filepath.ToSlash(base)
+	if base != "." && t.skipRel(base) {
+		return nil
+	}
 	var files []string
-	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		rel, rerr := filepath.Rel(t.root, p)
-		if rerr != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
-		if !d.IsDir() {
-			if d.Type()&fs.ModeSymlink == 0 && rel != "." {
-				files = append(files, rel)
+	_ = fileservice.Host().Walk(dir, fileservice.WalkOptions{
+		SkipDir: func(rel string) bool {
+			if base != "." {
+				rel = base + "/" + rel
 			}
+			return t.skipRel(rel)
+		},
+	}, func(e fileservice.Entry) error {
+		if e.Dir || e.Mode&fs.ModeSymlink != 0 {
 			return nil
 		}
-		segs := strings.Split(rel, "/")
-		switch {
-		case rel == ".":
-		case strings.HasPrefix(d.Name(), "."), len(segs) > taskWatchDepth, !watchedTopDirs[segs[0]]:
-			return filepath.SkipDir
+		rel := e.Name
+		if base != "." {
+			rel = base + "/" + rel
 		}
-		if err := t.w.Add(p); err != nil {
-			slog.Debug(taskWatchEvents, "scope", "ade", "task", t.taskID, "dir", rel, "err", err)
-		}
+		files = append(files, rel)
 		return nil
 	})
 	return files
 }
 
-// relOf is the task-folder-relative slash path of an event, "" when the event is not about a task file.
-func (t *taskWatch) relOf(name string) string {
-	rel, err := filepath.Rel(t.root, name)
+// skipRel is the walk's folder rule for a slash dir path under the task root.
+func (t *taskWatch) skipRel(rel string) bool {
+	segs := strings.Split(rel, "/")
+	return strings.HasPrefix(segs[len(segs)-1], ".") || len(segs) > taskWatchDepth || !watchedTopDirs[segs[0]]
+}
+
+// slashRel is the task-folder-relative slash path of a reported path, "" outside the folder or for the folder itself.
+func (t *taskWatch) slashRel(name string) string {
+	rel, err := filepath.Rel(t.nroot, name)
 	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
 		return ""
 	}
-	rel = filepath.ToSlash(rel)
-	for _, seg := range strings.Split(rel, "/") {
-		if strings.HasPrefix(seg, ".") {
-			return ""
-		}
+	return filepath.ToSlash(rel)
+}
+
+// relOf is the slash path of an event, "" when the event is not about a task file.
+func (t *taskWatch) relOf(name string) string { return keepTaskFile(t.slashRel(name)) }
+
+// keepTaskFile returns rel when it names a task file, else "".
+func keepTaskFile(rel string) string {
+	if rel == "" || hasHiddenSegment(rel) {
+		return ""
 	}
 	switch rel {
 	case taskfiles.ReadmeFile, taskfiles.TaskFile, taskfiles.StateFile: // Kira's own; finish still restores tampering
@@ -249,36 +264,34 @@ func (t *taskWatch) relOf(name string) string {
 
 func (t *taskWatch) loop() {
 	defer close(t.done)
-	for {
-		select {
-		case ev, ok := <-t.w.Events:
-			if !ok {
-				return
-			}
-			t.handle(ev)
-		case err, ok := <-t.w.Errors:
-			if !ok {
-				return
-			}
-			slog.Warn(taskWatchEvents, "scope", "ade", "task", t.taskID, "err", err)
-		}
+	for ev := range t.w.Events() {
+		t.handle(ev)
 	}
 }
 
-func (t *taskWatch) handle(ev fsnotify.Event) {
-	if ev.Op == fsnotify.Chmod {
+func (t *taskWatch) handle(ev fileservice.Event) {
+	if ev.Rescan {
+		// No path pass: a full walk would apply a user's earlier external edit as the agent's. The banner
+		// refreshes; the finish flush applies the edits.
+		t.b.notifyBoardNow(taskChanged(t.taskID))
 		return
 	}
-	if ev.Has(fsnotify.Create) {
-		if fi, err := os.Lstat(ev.Name); err == nil && fi.IsDir() {
-			// Files written before the watch was added raise no event.
-			for _, rel := range t.addTree(ev.Name) {
-				t.queue(t.relOf(filepath.Join(t.root, filepath.FromSlash(rel))))
+	if ev.Op == fileservice.Meta {
+		return
+	}
+	if ev.Op.Has(fileservice.Create) || ev.Op.Has(fileservice.Rename) {
+		if rel := t.slashRel(ev.Path); rel != "" {
+			dir := filepath.Join(t.root, filepath.FromSlash(rel))
+			if fi, err := fileservice.Host().Lstat(dir); ev.Dir || (err == nil && fi.Dir) {
+				// Files written before the watch covered the dir raise no event.
+				for _, f := range t.walkFiles(dir) {
+					t.queue(keepTaskFile(f))
+				}
+				return
 			}
-			return
 		}
 	}
-	t.queue(t.relOf(ev.Name))
+	t.queue(t.relOf(ev.Path))
 }
 
 func (t *taskWatch) queue(rel string) {
@@ -286,32 +299,16 @@ func (t *taskWatch) queue(rel string) {
 		return
 	}
 	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.stopped {
-		return
-	}
-	now := time.Now()
-	if len(t.paths) == 0 {
-		t.first = now
-	}
-	t.paths[rel] = struct{}{}
-	wait := min(taskWatchQuiet, max(t.first.Add(taskWatchMaxWait).Sub(now), 0))
-	if t.timer == nil {
-		t.timer = time.AfterFunc(wait, t.fire)
-		return
-	}
-	t.timer.Reset(wait)
-}
-
-func (t *taskWatch) fire() {
-	t.mu.Lock()
 	if t.stopped {
 		t.mu.Unlock()
 		return
 	}
-	t.passes.Add(1)
+	t.paths[rel] = struct{}{}
 	t.mu.Unlock()
-	defer t.passes.Done()
+	t.deb.Schedule()
+}
+
+func (t *taskWatch) fire() {
 	rels, call, one := t.take()
 	t.run(rels, call, one)
 }
@@ -334,8 +331,9 @@ func (t *taskWatch) take() (rels []string, call agentmcp.SpaceCall, one bool) {
 	return rels, call, one
 }
 
-// run applies the paths as the one live caller. With none or several the edits wait for an explicit
-// submit or the finish flush, since a write cannot be attributed; the board push refreshes the banner.
+// run applies the paths as the one live caller and raises the approval for what touches another
+// agent's content. With none or several the edits wait for the finish flush, since a write cannot be
+// attributed; the board push refreshes the banner.
 func (t *taskWatch) run(rels []string, call agentmcp.SpaceCall, one bool) {
 	if len(rels) == 0 {
 		return
@@ -353,13 +351,10 @@ func (t *taskWatch) run(rels []string, call agentmcp.SpaceCall, one bool) {
 func (t *taskWatch) stop(last *agentmcp.SpaceCall) {
 	t.mu.Lock()
 	t.stopped = true
-	if t.timer != nil {
-		t.timer.Stop()
-	}
 	t.mu.Unlock()
-	t.w.Close()
+	t.deb.Stop() // waits for an in-flight pass
+	_ = t.w.Close()
 	<-t.done
-	t.passes.Wait()
 	if last == nil {
 		return
 	}

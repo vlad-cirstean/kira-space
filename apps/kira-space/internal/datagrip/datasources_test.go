@@ -1,6 +1,7 @@
 package datagrip
 
 import (
+	"path/filepath"
 	"testing"
 )
 
@@ -121,8 +122,12 @@ func TestParseProjectDirResolvesToParentOfIdea(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseProject(.idea dir): %v", err)
 	}
-	if viaRoot.Dir != "testdata/project-six" {
-		t.Errorf("Dir via project root = %q, want %q", viaRoot.Dir, "testdata/project-six")
+	want, err := filepath.Abs("testdata/project-six")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if viaRoot.Dir != want {
+		t.Errorf("Dir via project root = %q, want %q", viaRoot.Dir, want)
 	}
 	if viaIdea.Dir != viaRoot.Dir {
 		t.Errorf("Dir via .idea pick = %q, want it to resolve to the same project root %q", viaIdea.Dir, viaRoot.Dir)

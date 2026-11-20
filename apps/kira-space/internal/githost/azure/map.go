@@ -24,6 +24,9 @@ type rawPR struct {
 	ForkRepo    string        `json:"forkRepo"`
 	ForkProject string        `json:"forkProject"`
 	Reviewers   []rawReviewer `json:"reviewers"`
+	MergeStatus string        `json:"mergeStatus"` // succeeded | conflicts | ...
+	// AutoComplete is who set auto-complete; "" when off.
+	AutoComplete string `json:"autoComplete"`
 }
 
 type rawReviewer struct {
@@ -56,6 +59,10 @@ type rawRESTPR struct {
 		Vote       int  `json:"vote"`
 		IsRequired bool `json:"isRequired"`
 	} `json:"reviewers"`
+	MergeStatus       string `json:"mergeStatus"`
+	AutoCompleteSetBy *struct {
+		UniqueName string `json:"uniqueName"`
+	} `json:"autoCompleteSetBy"`
 	ForkSource *struct {
 		Repository *struct {
 			Name    string `json:"name"`
@@ -76,6 +83,10 @@ func (p rawRESTPR) raw() rawPR {
 	}
 	if p.CreatedBy != nil {
 		r.Author = p.CreatedBy.UniqueName
+	}
+	r.MergeStatus = p.MergeStatus
+	if p.AutoCompleteSetBy != nil {
+		r.AutoComplete = p.AutoCompleteSetBy.UniqueName
 	}
 	for _, rv := range p.Reviewers {
 		r.Reviewers = append(r.Reviewers, rawReviewer{Vote: rv.Vote, Required: rv.IsRequired})
@@ -128,6 +139,13 @@ func mapPR(r githost.Repo, p rawPR) githost.ChangeRequest {
 		if p.Draft {
 			cr.State, cr.Draft = "draft", true
 		}
+		switch p.MergeStatus {
+		case "succeeded":
+			cr.Mergeable = githost.MergeableYes
+		case "conflicts":
+			cr.Mergeable = githost.MergeableConflict
+		}
+		cr.AutoMerge = p.AutoComplete != ""
 	}
 	return cr
 }

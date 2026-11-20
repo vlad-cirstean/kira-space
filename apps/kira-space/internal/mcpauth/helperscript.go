@@ -2,9 +2,9 @@ package mcpauth
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
 
@@ -34,7 +34,7 @@ func HeaderHelperScriptPath(home string) string {
 // (bridge/dbmcp.go's own startFn) — idempotent and cheap, so a repeat call (a second enable within
 // the same app run) just rewrites the identical content.
 func EnsureHeaderHelperScript(home, tokenPath string) (string, error) {
-	if err := os.MkdirAll(home, 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(home); err != nil {
 		return "", fmt.Errorf("mcpauth: mkdir %s: %w", home, err)
 	}
 	scriptPath := HeaderHelperScriptPath(home)

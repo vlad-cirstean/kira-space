@@ -3,7 +3,6 @@ package gitsession
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // rewrittenPaths reads T — the paths target's checkout would rewrite (gitops.RewrittenPathsArgs).
@@ -617,7 +617,7 @@ func (e *RepoEntry) PreflightStashPop(ctx context.Context, sha string, targetSha
 	existingUntrackedPaths := []string{}
 	root := repoWorkingDir(e.Summary)
 	for _, p := range untrackedPaths {
-		if _, statErr := os.Stat(filepath.Join(root, p)); statErr == nil {
+		if _, statErr := fileservice.Host().Stat(filepath.Join(root, p)); statErr == nil {
 			existingUntrackedPaths = append(existingUntrackedPaths, p)
 		}
 	}

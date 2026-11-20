@@ -6,66 +6,15 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
-import { checkTone, type StatusTone, TONE_TEXT } from '@theme/lib/statusTone';
+import { TONE_TEXT } from '@theme/lib/statusTone';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import PrGlyph from '../ade/v2/pr/PrGlyph.vue';
+import { CHECK_GLYPH, REVIEW_GLYPH } from '../ade/v2/pr/prGlyph';
 import { control } from '../bridge/control';
-import type { ChangeRequestDetail, Check, CheckState, ReviewerState } from './wire';
+import type { ChangeRequestDetail, Check } from './wire';
 
 defineProps<{ detail: ChangeRequestDetail }>();
 
-const REVIEWER_ICON: Record<ReviewerState, string> = {
-  approved: 'check',
-  changesRequested: 'request-changes',
-  rejected: 'error',
-  commented: 'comment',
-  pending: 'clock',
-};
-const REVIEWER_TONE: Record<ReviewerState, StatusTone> = {
-  approved: 'ok',
-  changesRequested: 'warn',
-  rejected: 'error',
-  commented: 'neutral',
-  pending: 'neutral',
-};
-const CHECK_ICON: Record<CheckState, string> = {
-  success: 'check',
-  failure: 'error',
-  error: 'error',
-  pending: 'clock',
-  skipped: 'debug-step-over',
-  neutral: 'circle-outline',
-};
-
-function reviewerLabel(state: ReviewerState): string {
-  switch (state) {
-    case 'approved':
-      return t('space.hostView.review.approved.status');
-    case 'changesRequested':
-      return t('space.hostView.review.changesRequested.status');
-    case 'rejected':
-      return t('space.hostView.review.rejected.status');
-    case 'commented':
-      return t('space.hostView.review.commented.status');
-    default:
-      return t('space.hostView.review.pending.status');
-  }
-}
-function checkLabel(state: CheckState): string {
-  switch (state) {
-    case 'success':
-      return t('space.hostView.check.success.status');
-    case 'failure':
-      return t('common.state.failed.status');
-    case 'error':
-      return t('space.hostView.check.error.status');
-    case 'pending':
-      return t('common.state.pending.status');
-    case 'skipped':
-      return t('common.skipped.status');
-    default:
-      return t('space.hostView.check.neutral.status');
-  }
-}
 function openCheck(c: Check): void {
   if (c.url) fireAndForget(control.openExternal(c.url), 'hostView.check');
 }
@@ -76,12 +25,12 @@ function openCheck(c: Check): void {
     class="flex w-72 shrink-0 flex-col gap-3 overflow-y-auto p-3"
     data-testid="host-view-sidebar"
   >
-    <section
-      v-if="detail.stats || detail.mergeable"
-      class="flex flex-col gap-1"
-      data-testid="host-view-stats"
-    >
-      <p v-if="detail.stats" class="m-0 text-kira-sm">{{
+    <section class="flex flex-col gap-1" data-testid="host-view-status">
+      <PrGlyph variant="inline" :status="detail" line-prefix="host-view" />
+    </section>
+
+    <section v-if="detail.stats" class="flex flex-col gap-1" data-testid="host-view-stats">
+      <p class="m-0 text-kira-sm">{{
         t('space.hostView.stats.summary.label', {
           commits: detail.stats.commits,
           files: detail.stats.files,
@@ -89,18 +38,6 @@ function openCheck(c: Check): void {
           deletions: detail.stats.deletions,
         })
       }}</p>
-      <div v-if="detail.mergeable">
-        <Badge
-          :variant="detail.mergeable === 'conflicting' ? 'error' : 'ok'"
-          :data-mergeable="detail.mergeable"
-          data-testid="host-view-mergeable"
-          >{{
-            detail.mergeable === 'conflicting'
-              ? t('space.hostView.mergeable.conflicting.status')
-              : t('space.hostView.mergeable.clean.status')
-          }}</Badge
-        >
-      </div>
     </section>
 
     <section class="flex flex-col gap-1.5" data-testid="host-view-reviewers">
@@ -116,13 +53,13 @@ function openCheck(c: Check): void {
         data-testid="host-view-reviewer"
       >
         <CodiconIcon
-          :name="REVIEWER_ICON[r.state]"
+          :name="REVIEW_GLYPH[r.state].icon"
           :size="13"
-          :class="TONE_TEXT[REVIEWER_TONE[r.state]]"
+          :class="TONE_TEXT[REVIEW_GLYPH[r.state].tone]"
         />
         <span class="min-w-0 flex-1 truncate">{{ r.person.name || r.person.login }}</span>
         <Badge v-if="r.required">{{ t('common.required.label') }}</Badge>
-        <span class="shrink-0 text-muted-foreground">{{ reviewerLabel(r.state) }}</span>
+        <span class="shrink-0 text-muted-foreground">{{ t(REVIEW_GLYPH[r.state].label) }}</span>
       </div>
     </section>
 
@@ -139,9 +76,9 @@ function openCheck(c: Check): void {
         data-testid="host-view-check"
       >
         <CodiconIcon
-          :name="CHECK_ICON[c.state]"
+          :name="CHECK_GLYPH[c.state].icon"
           :size="13"
-          :class="TONE_TEXT[checkTone(c.state)]"
+          :class="TONE_TEXT[CHECK_GLYPH[c.state].tone]"
         />
         <button
           v-if="c.url"
@@ -154,7 +91,7 @@ function openCheck(c: Check): void {
         >
         <span v-else class="min-w-0 flex-1 truncate">{{ c.name }}</span>
         <Badge v-if="c.required">{{ t('common.required.label') }}</Badge>
-        <span class="shrink-0 text-muted-foreground">{{ checkLabel(c.state) }}</span>
+        <span class="shrink-0 text-muted-foreground">{{ t(CHECK_GLYPH[c.state].label) }}</span>
       </div>
       <FieldDescription v-if="detail.checksTruncated" data-testid="host-view-checks-truncated">{{
         t('space.hostView.checks.truncated.hint')

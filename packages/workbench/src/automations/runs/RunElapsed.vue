@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import type { ScriptRun } from '@shared/domain/scriptRuns';
 import { useIntervalFn } from '@vueuse/core';
 import { formatElapsed } from '@workbench/behaviour/format';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, ref, watchEffect } from 'vue';
-import { runElapsedMs } from './runText';
+import { type RunTimes, runElapsedMs } from './runText';
 
 // A run's elapsed time; ticks each second only while the run is live.
-const props = defineProps<{ run: ScriptRun }>();
+const props = defineProps<{ run: RunTimes }>();
 const now = ref(Date.now());
 const { pause } = useIntervalFn(() => {
   now.value = Date.now();

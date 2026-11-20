@@ -15,7 +15,7 @@ var _ githost.ChangeRequestDetails = (*Provider)(nil)
 // Projections for the PR view, exported so the flow fake can recognise them.
 const (
 	// PRDetailQuery is prShowQuery's keys plus the detail ones; the reviewers key is the detail form.
-	PRDetailQuery = `{` + prBaseFields + `,authorName:createdBy.displayName,description:description,mergeStatus:mergeStatus,` +
+	PRDetailQuery = `{` + prBaseFields + `,authorName:createdBy.displayName,description:description,` +
 		"labels:labels[?active!=`false`].name," +
 		`reviewers:reviewers[].{vote:vote,required:isRequired,name:displayName,login:uniqueName,team:isContainer}}`
 	PolicyDetailQuery = `[].{status:status,type:configuration.type.displayName,name:configuration.settings.displayName,` +
@@ -34,7 +34,6 @@ type rawPRDetail struct {
 	rawPR
 	AuthorName  string   `json:"authorName"`
 	Description string   `json:"description"`
-	MergeStatus string   `json:"mergeStatus"`
 	Labels      []string `json:"labels"`
 }
 
@@ -233,12 +232,6 @@ func mapDetail(r githost.Repo, raw rawPRDetail, pol []rawPolicyDetail, th rawThr
 		Body:          raw.Description,
 		CreatedAt:     parseTime(raw.Created),
 		ClosedAt:      parseTime(raw.Closed),
-	}
-	switch raw.MergeStatus {
-	case "succeeded":
-		d.Mergeable = githost.MergeableYes
-	case "conflicts":
-		d.Mergeable = githost.MergeableConflict
 	}
 	for _, l := range raw.Labels {
 		d.Labels = append(d.Labels, githost.Label{Name: l})

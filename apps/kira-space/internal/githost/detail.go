@@ -102,12 +102,6 @@ type DiffStats struct {
 	Deletions int `json:"deletions"`
 }
 
-// Mergeable values.
-const (
-	MergeableYes      = "mergeable"
-	MergeableConflict = "conflicting"
-)
-
 // ChangeRequestDetail is everything the PR view shows.
 type ChangeRequestDetail struct {
 	ChangeRequest
@@ -122,8 +116,7 @@ type ChangeRequestDetail struct {
 	ChecksTruncated  bool       `json:"checksTruncated,omitempty"`
 	Threads          []Thread   `json:"threads"` // oldest first by first comment
 	ThreadsTruncated bool       `json:"threadsTruncated,omitempty"`
-	Stats            *DiffStats `json:"stats,omitempty"`     // nil when the host gives none
-	Mergeable        string     `json:"mergeable,omitempty"` // MergeableYes | MergeableConflict | ""
+	Stats            *DiffStats `json:"stats,omitempty"` // nil when the host gives none
 }
 
 // Caps shared by every provider. Past one the view keeps the newest and flags truncation.

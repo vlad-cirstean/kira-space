@@ -2,19 +2,20 @@ package ade
 
 import (
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const (
 	folderScanDepth     = 3
 	folderRescanDelay   = 500 * time.Millisecond
 	folderWatcherEvents = "ade folder watch"
+	// folderWatchLatency coalesces FSEvents callbacks: the stream sees every build write below the
+	// folder, and the rescan debounce makes the extra lag irrelevant.
+	folderWatchLatency = time.Second
 )
 
 type folderScan struct {
@@ -28,26 +29,23 @@ func scanFolder(root string) folderScan {
 	var out folderScan
 	var walk func(dir string, depth int)
 	walk = func(dir string, depth int) {
-		if info, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {
-			if info.IsDir() {
+		if repo, stop := stopsFolderWalk(dir); stop {
+			if repo {
 				out.repos = append(out.repos, dir)
 			}
-			return
-		}
-		if isBareRepo(dir) {
 			return
 		}
 		out.dirs = append(out.dirs, dir)
 		if depth >= folderScanDepth {
 			return
 		}
-		entries, err := os.ReadDir(dir)
+		entries, err := fileservice.Host().ReadDir(dir)
 		if err != nil {
 			return
 		}
 		for _, e := range entries {
-			name := e.Name()
-			if !e.IsDir() || strings.HasPrefix(name, ".") || name == "node_modules" {
+			name := e.Name
+			if !e.Dir || skipFolderName(name) {
 				continue
 			}
 			walk(filepath.Join(dir, name), depth+1)
@@ -57,9 +55,26 @@ func scanFolder(root string) folderScan {
 	return out
 }
 
+func skipFolderName(name string) bool { return strings.HasPrefix(name, ".") || name == "node_modules" }
+
+// stopsFolderWalk reports whether a scan stops at dir: a repo root (a .git directory, repo set),
+// a linked worktree (a .git file) or a bare repository.
+func stopsFolderWalk(dir string) (repo, stop bool) {
+	if info, err := fileservice.Host().Lstat(filepath.Join(dir, ".git")); err == nil {
+		return info.Dir, true
+	}
+	return false, isBareRepo(dir)
+}
+
+// skipFolderDir is the watch's SkipDir: the rule scanFolder applies to every directory below the root.
+func skipFolderDir(dir string) bool {
+	_, stop := stopsFolderWalk(dir)
+	return stop || skipFolderName(filepath.Base(dir))
+}
+
 func isBareRepo(dir string) bool {
 	for _, n := range []string{"HEAD", "objects", "refs"} {
-		if _, err := os.Lstat(filepath.Join(dir, n)); err != nil {
+		if _, err := fileservice.Host().Lstat(filepath.Join(dir, n)); err != nil {
 			return false
 		}
 	}
@@ -71,34 +86,28 @@ func isBareRepo(dir string) bool {
 type folderWatcher struct {
 	board *TaskBoard
 	path  string
-	w     *fsnotify.Watcher
-
-	mu      sync.Mutex
-	timer   *time.Timer
-	stopped bool
-	rescans sync.WaitGroup // in-flight rescan; stop waits for it
-	done    chan struct{}
+	w     *fileservice.Watcher
+	deb   *fileservice.Debouncer
+	done  chan struct{}
 }
 
 func (b *TaskBoard) startFolderWatch(path string) {
 	b.folderWMu.Lock()
+	defer b.folderWMu.Unlock()
 	if _, ok := b.folderW[path]; ok {
-		b.folderWMu.Unlock()
 		return
 	}
-	w, err := fsnotify.NewWatcher()
+	w, err := fileservice.Host().Watch(fileservice.WatchOptions{Names: []string{path}, MaxDepth: folderScanDepth, SkipDir: skipFolderDir, Latency: folderWatchLatency})
 	if err != nil {
-		b.folderWMu.Unlock()
 		slog.Warn(folderWatcherEvents, "scope", "ade", "path", path, "err", err)
 		return
 	}
 	fw := &folderWatcher{board: b, path: path, w: w, done: make(chan struct{})}
+	fw.deb = fileservice.NewDebouncer(folderRescanDelay, 0, fw.rescan)
 	b.folderW[path] = fw
-	b.folderWMu.Unlock()
-	fw.addDirs(scanFolder(path).dirs)
 	go fw.loop()
 	// Catch repos created while the app was not running.
-	fw.schedule()
+	fw.deb.Schedule()
 }
 
 func (b *TaskBoard) stopFolderWatch(path string) {
@@ -111,37 +120,7 @@ func (b *TaskBoard) stopFolderWatch(path string) {
 	}
 }
 
-func (f *folderWatcher) addDirs(dirs []string) {
-	for _, d := range dirs {
-		if err := f.w.Add(d); err != nil {
-			slog.Debug(folderWatcherEvents, "scope", "ade", "dir", d, "err", err)
-		}
-	}
-}
-
-func (f *folderWatcher) schedule() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.stopped {
-		return
-	}
-	if f.timer != nil {
-		f.timer.Stop()
-	}
-	f.timer = time.AfterFunc(folderRescanDelay, f.rescan)
-}
-
 func (f *folderWatcher) rescan() {
-	f.mu.Lock()
-	if f.stopped {
-		f.mu.Unlock()
-		return
-	}
-	f.rescans.Add(1)
-	f.mu.Unlock()
-	defer f.rescans.Done()
-	scan := scanFolder(f.path)
-	f.addDirs(scan.dirs)
 	imported, err := f.board.importFolder(f.board.ctx, f.path)
 	if err != nil {
 		slog.Warn(folderWatcherEvents, "scope", "ade", "path", f.path, "err", err)
@@ -154,32 +133,15 @@ func (f *folderWatcher) rescan() {
 
 func (f *folderWatcher) loop() {
 	defer close(f.done)
-	for {
-		select {
-		case ev, ok := <-f.w.Events:
-			if !ok {
-				return
-			}
-			if ev.Has(fsnotify.Create) || ev.Has(fsnotify.Rename) {
-				f.schedule()
-			}
-		case err, ok := <-f.w.Errors:
-			if !ok {
-				return
-			}
-			slog.Warn(folderWatcherEvents, "scope", "ade", "path", f.path, "err", err)
+	for ev := range f.w.Events() {
+		if ev.Rescan || ev.Op.Has(fileservice.Create) || ev.Op.Has(fileservice.Rename) {
+			f.deb.Schedule()
 		}
 	}
 }
 
 func (f *folderWatcher) stop() {
-	f.mu.Lock()
-	f.stopped = true
-	if f.timer != nil {
-		f.timer.Stop()
-	}
-	f.mu.Unlock()
-	f.w.Close()
+	f.deb.Stop()
+	_ = f.w.Close()
 	<-f.done
-	f.rescans.Wait()
 }

@@ -12,10 +12,11 @@ import (
 
 // Agent op kinds (category oplog.CategoryAgent).
 const (
-	opAgentApproval = "agentApproval"
-	opAgentBranches = "agentBranches"
-	opAgentRename   = "agentRename"
-	opAgentChange   = "agentChange"
+	opAgentApproval       = "agentApproval"
+	opAgentBranches       = "agentBranches"
+	opAgentRename         = "agentRename"
+	opAgentChange         = "agentChange"
+	opAgentWorktreeRemove = "agentWorktreeRemove"
 )
 
 // startAgentOp opens an agent-category op for taskID; command is shown when non-empty. A board

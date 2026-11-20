@@ -2,12 +2,12 @@ package agentctx
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const (
@@ -31,12 +31,12 @@ func (s *Store) ContextFile() (string, error) {
 	defer s.mu.Unlock()
 	now := time.Now()
 	fresh := false
-	if _, err := os.Stat(path); err != nil {
-		if err := configfs.WriteAtomic(path, text, 0o600); err != nil {
+	if _, err := fileservice.Host().Stat(path); err != nil {
+		if err := fileservice.Host().WriteFile(path, text, 0o600); err != nil {
 			return "", fmt.Errorf("agentctx: write snapshot: %w", err)
 		}
 		fresh = true
-	} else if err := os.Chtimes(path, now, now); err != nil {
+	} else if err := fileservice.Host().Chtimes(path, now); err != nil {
 		return "", fmt.Errorf("agentctx: touch snapshot: %w", err)
 	}
 	if fresh || !s.pruned {
@@ -48,23 +48,20 @@ func (s *Store) ContextFile() (string, error) {
 
 // prune drops snapshot dirs unused for 30 days, except keep. Best effort.
 func (s *Store) prune(keep string, now time.Time) {
-	entries, err := os.ReadDir(s.o.SnapshotDir)
+	entries, err := fileservice.Host().ReadDir(s.o.SnapshotDir)
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
-		if !e.IsDir() || e.Name() == keep {
+		if !e.Dir || e.Name == keep {
 			continue
 		}
-		info, err := os.Stat(filepath.Join(s.o.SnapshotDir, e.Name(), snapshotName))
+		info, err := fileservice.Host().Stat(filepath.Join(s.o.SnapshotDir, e.Name, snapshotName))
 		if err != nil {
-			info, err = e.Info()
-			if err != nil {
-				continue
-			}
+			info = e.Info
 		}
-		if now.Sub(info.ModTime()) > snapshotKeep {
-			_ = os.RemoveAll(filepath.Join(s.o.SnapshotDir, e.Name()))
+		if now.Sub(info.ModTime) > snapshotKeep {
+			_ = fileservice.Host().RemoveAll(filepath.Join(s.o.SnapshotDir, e.Name))
 		}
 	}
 }

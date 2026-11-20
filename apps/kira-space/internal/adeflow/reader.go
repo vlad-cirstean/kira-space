@@ -10,6 +10,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -154,29 +155,25 @@ func cloneWorkflow(wf adewire.Workflow) adewire.Workflow {
 // getToken stats the workflow file and lists the step library once. ok is false when the file is
 // missing or unreadable: Get then takes the uncached path.
 func (r *Reader) getToken(id string) (getToken, bool) {
-	fi, err := os.Stat(filepath.Join(r.Dir, id+".yaml"))
+	fi, err := fileservice.Host().Stat(filepath.Join(r.Dir, id+".yaml"))
 	if err != nil {
 		return getToken{}, false
 	}
-	tok := getToken{wfMtime: fi.ModTime().UnixNano(), wfSize: fi.Size()}
+	tok := getToken{wfMtime: fi.ModTime.UnixNano(), wfSize: fi.Size}
 	if r.Steps == nil || r.Steps.Dir == "" {
 		return tok, true
 	}
-	ents, err := os.ReadDir(r.Steps.Dir)
+	ents, err := fileservice.Host().ReadDir(r.Steps.Dir)
 	if err != nil {
 		return tok, os.IsNotExist(err)
 	}
 	for _, e := range ents {
-		if e.IsDir() {
+		if e.Dir {
 			continue
 		}
-		info, err := e.Info()
-		if err != nil {
-			return getToken{}, false
-		}
 		tok.stepsFiles++
-		tok.stepsSize += info.Size()
-		tok.stepsMtime = max(tok.stepsMtime, info.ModTime().UnixNano())
+		tok.stepsSize += e.Size
+		tok.stepsMtime = max(tok.stepsMtime, e.ModTime.UnixNano())
 	}
 	return tok, true
 }

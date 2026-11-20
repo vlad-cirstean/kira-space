@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
 	"go.yaml.in/yaml/v3"
@@ -198,7 +199,7 @@ func (s *Store) deleteFiles(files []string) error {
 	s.pend = &Changes{}
 	var err error
 	for _, f := range files {
-		if rerr := os.Remove(filepath.Join(s.o.Dir, f)); rerr != nil && !os.IsNotExist(rerr) {
+		if rerr := fileservice.Host().Remove(filepath.Join(s.o.Dir, f)); rerr != nil && !os.IsNotExist(rerr) {
 			err = fmt.Errorf("apifiles: remove %s: %w", f, rerr)
 			break
 		}

@@ -3,8 +3,9 @@ package ade
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // taskDir is the folder a run or session works in while its task has no branch. It is created on first
@@ -14,7 +15,7 @@ func (b *TaskBoard) taskDir(taskID string) (string, error) {
 		return "", fmt.Errorf("the task folder root is not configured")
 	}
 	dir := filepath.Join(b.deps.TasksDir, pathSegment(taskID))
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(dir); err != nil {
 		return "", fmt.Errorf("create task folder: %w", err)
 	}
 	return dir, nil
@@ -25,7 +26,7 @@ func (b *TaskBoard) removeTaskDir(taskID string) {
 	if b.deps.TasksDir == "" {
 		return
 	}
-	if err := os.RemoveAll(filepath.Join(b.deps.TasksDir, pathSegment(taskID))); err != nil {
+	if err := fileservice.Host().RemoveAll(filepath.Join(b.deps.TasksDir, pathSegment(taskID))); err != nil {
 		slog.Warn("ade: remove task folder", "scope", "ade", "task", taskID, "err", err)
 	}
 }

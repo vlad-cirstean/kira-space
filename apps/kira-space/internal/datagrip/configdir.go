@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // productPrefixByBuildCode maps F2's created-in build-code prefix (before the first '-') to the
@@ -42,7 +44,7 @@ func jetBrainsConfigRoot() (string, error) {
 // c.kdbx or options/security.xml — so an unrelated folder under the same JetBrains/ parent (a
 // plugin cache, a stale product with neither file) is never tried.
 func DiscoverConfigDirs(root, createdIn string) ([]ConfigCandidate, error) {
-	entries, err := os.ReadDir(root)
+	entries, err := fileservice.Host().ReadDir(root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -52,14 +54,14 @@ func DiscoverConfigDirs(root, createdIn string) ([]ConfigCandidate, error) {
 
 	var candidates []ConfigCandidate
 	for _, e := range entries {
-		if !e.IsDir() {
+		if !e.Dir {
 			continue
 		}
-		dir := filepath.Join(root, e.Name())
+		dir := filepath.Join(root, e.Name)
 		if !looksLikeIDEConfigDir(dir) {
 			continue
 		}
-		candidates = append(candidates, ConfigCandidate{Dir: dir, Product: e.Name()})
+		candidates = append(candidates, ConfigCandidate{Dir: dir, Product: e.Name})
 	}
 
 	wantedProduct := productPrefixByBuildCode[productPrefixFromCreatedIn(createdIn)]
@@ -89,10 +91,10 @@ func candidateRank(product, wantedProduct string) int {
 }
 
 func looksLikeIDEConfigDir(dir string) bool {
-	if _, err := os.Stat(filepath.Join(dir, "c.kdbx")); err == nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(dir, "c.kdbx")); err == nil {
 		return true
 	}
-	if _, err := os.Stat(filepath.Join(dir, "options", "security.xml")); err == nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(dir, "options", "security.xml")); err == nil {
 		return true
 	}
 	return false
@@ -121,7 +123,7 @@ type xmlSecurityDoc struct {
 // treated as load-bearing per §1.10.4: a missing or unparseable file returns the zero value, not
 // an error).
 func ReadSecurityXML(configDir string) SecurityConfig {
-	data, err := os.ReadFile(filepath.Join(configDir, "options", "security.xml"))
+	data, err := fileservice.Host().ReadFile(filepath.Join(configDir, "options", "security.xml"))
 	if err != nil {
 		return SecurityConfig{}
 	}

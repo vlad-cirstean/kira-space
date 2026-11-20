@@ -55,6 +55,32 @@ func board(t *testing.T, app *flowharness.App) adewire.Board {
 	return b
 }
 
+// freshBranch is the board row of repoID after a synchronous refresh, so its dirtyToken matches the disk now.
+func freshBranch(t *testing.T, app *flowharness.App, taskID, repoID string) adewire.Branch {
+	t.Helper()
+	if _, err := app.W.AdeTask.Refresh(ctx, adewire.RefreshArgs{CodeRepoIDs: []string{repoID}}); err != nil {
+		t.Fatalf("Refresh: %v", err)
+	}
+	return branchOf(t, board(t, app), taskID, repoID)
+}
+
+// archiveConfirmed archives as the dialog's Delete anyway does: it sends the token of every dirty
+// worktree ArchiveRisk lists.
+func archiveConfirmed(t *testing.T, app *flowharness.App, taskID string) error {
+	t.Helper()
+	risk, err := app.W.AdeTask.ArchiveRisk(ctx, adewire.TaskArgs{TaskID: taskID})
+	if err != nil {
+		t.Fatalf("ArchiveRisk: %v", err)
+	}
+	tokens := map[string]string{}
+	for _, r := range risk.Branches {
+		if r.DirtyToken != "" {
+			tokens[r.BranchID] = r.DirtyToken
+		}
+	}
+	return app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: taskID, DiscardTokens: tokens})
+}
+
 func repoState(b adewire.Board, repoID string) (adewire.RepoState, bool) {
 	for _, r := range b.Repos {
 		if r.CodeRepoID == repoID {

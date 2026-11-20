@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/pathsafe"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // taskWorktree loads a task branch, its repo entry and worktree path ("" when it has none). The
@@ -62,7 +61,7 @@ func (b *TaskBoard) taskSession(ctx context.Context, branchID string) (*codework
 
 // badPath maps a path escape to ErrBadPath; callers map fs.ErrNotExist first, other I/O errors stay internal.
 func badPath(err error) error {
-	if errors.Is(err, pathsafe.ErrPathEscapesRoot) {
+	if errors.Is(err, fileservice.ErrEscapes) || errors.Is(err, fileservice.ErrInvalidPath) {
 		return fmt.Errorf("%w: %v", ErrBadPath, err)
 	}
 	return err
@@ -83,15 +82,14 @@ func (b *TaskBoard) TaskFileRead(ctx context.Context, branchID, rel string, ifSt
 	if err != nil {
 		return codeworkspace.FileContent{}, err
 	}
-	abs, err := pathsafe.ValidateRelPath(sess.Root, rel)
-	if errors.Is(err, fs.ErrNotExist) {
-		// A parent directory is gone: same state as a deleted file.
-		return codeworkspace.FileContent{Kind: "missing", LimitBytes: codeworkspace.MaxReadBytes}, nil
-	}
+	files, err := sess.Files()
 	if err != nil {
+		return codeworkspace.FileContent{}, err
+	}
+	if _, err := files.Path(rel); err != nil {
 		return codeworkspace.FileContent{}, badPath(err)
 	}
-	return codeworkspace.ReadFileIf(abs, rel, ifStat)
+	return codeworkspace.ReadFileIf(files, rel, ifStat)
 }
 
 // TaskFilesSession is the branch's file session, for the bridge's search.
@@ -116,14 +114,15 @@ func (b *TaskBoard) TaskFileTarget(ctx context.Context, branchID, rel string) (r
 	if rel == "" {
 		return sess.Root, sess.Root, nil
 	}
-	abs, err = pathsafe.ValidateRelPath(sess.Root, rel)
-	if errors.Is(err, fs.ErrNotExist) {
-		return "", "", ErrTargetMissing
+	files, err := sess.Files()
+	if err != nil {
+		return "", "", err
 	}
+	abs, err = files.Path(rel)
 	if err != nil {
 		return "", "", badPath(err)
 	}
-	if _, err := os.Stat(abs); err != nil {
+	if _, err := files.Stat(rel); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return "", "", ErrTargetMissing
 		}

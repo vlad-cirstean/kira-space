@@ -1,6 +1,4 @@
-import type { MessageKey } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { checkTone, TONE_TEXT } from '@theme/lib/statusTone';
 import type {
   BranchAction,
   BranchActionKind,
@@ -9,7 +7,7 @@ import type {
   TaskTagKind,
 } from '../board/actions';
 
-// Codicon per tag state and action. Desktop-only: actions.ts is shared with mobile.
+// Codicon per tag state and action. Shared with the mobile app (PhoneBranchRow).
 export interface Glyph {
   icon: string;
   /** Louder look: a solid disc. */
@@ -90,40 +88,3 @@ export function rowActionSplit(actions: readonly BranchAction[]): {
     ? { shown: [...actions], overflow: [] }
     : { shown: actions.slice(0, 1), overflow: actions.slice(1) };
 }
-
-/** A branch's PR checks, by the host's raw state. A state not listed shows nothing. */
-export const CHECKS_GLYPH: Record<string, { icon: string; class: string; tip: MessageKey }> = {
-  SUCCESS: {
-    icon: ICON.success,
-    class: TONE_TEXT[checkTone('SUCCESS')],
-    tip: 'space.ade.mainTab.checksSuccess.tooltip',
-  },
-  FAILURE: {
-    icon: ICON.error,
-    class: TONE_TEXT[checkTone('FAILURE')],
-    tip: 'space.ade.mainTab.checksFailure.tooltip',
-  },
-  ERROR: {
-    icon: ICON.error,
-    class: TONE_TEXT[checkTone('ERROR')],
-    tip: 'space.ade.mainTab.checksFailure.tooltip',
-  },
-  PENDING: {
-    icon: 'watch',
-    class: TONE_TEXT[checkTone('PENDING')],
-    tip: 'space.ade.mainTab.checksPending.tooltip',
-  },
-  EXPECTED: {
-    icon: 'watch',
-    class: TONE_TEXT[checkTone('EXPECTED')],
-    tip: 'space.ade.mainTab.checksPending.tooltip',
-  },
-};
-
-/** Codicon per change-request state, fallback `git-pull-request`. */
-export const PR_GLYPH: Record<string, string> = {
-  open: 'git-pull-request',
-  draft: 'git-pull-request-draft',
-  merged: 'git-merge',
-  closed: 'git-pull-request-closed',
-};

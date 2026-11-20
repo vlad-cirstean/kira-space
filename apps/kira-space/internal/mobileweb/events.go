@@ -18,15 +18,16 @@ import (
 // every window-addressed event are dropped in Publish. A non-nil value projects the payload before
 // it reaches a phone.
 var eventChannels = map[string]func(any) (any, error){
-	adewire.ChannelBoard:             nil,
-	adewire.ChannelWorkflows:         nil,
-	adewire.ChannelRepos:             nil,
-	adewire.ChannelRuns:              nil,
-	adewire.ChannelLog:               nil,
-	adewire.ChannelSessions:          nil,
-	appevent.ChannelAgentSessions:    withoutCwd,
-	appevent.ChannelAgentEvent:       withoutCwd,
-	appevent.ChannelApprovalsChanged: approvalsEvent,
+	adewire.ChannelBoard:              nil,
+	adewire.ChannelWorkflows:          nil,
+	adewire.ChannelRepos:              nil,
+	adewire.ChannelRuns:               nil,
+	adewire.ChannelLog:                nil,
+	adewire.ChannelSessions:           nil,
+	appevent.ChannelAgentSessions:     withoutCwd,
+	appevent.ChannelAgentEvent:        withoutCwd,
+	appevent.ChannelApprovalsChanged:  approvalsEvent,
+	appevent.ChannelScriptRunsChanged: phoneRun,
 }
 
 // withoutCwd drops every "cwd" key: the phone never sees absolute paths.

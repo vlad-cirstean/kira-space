@@ -6,7 +6,7 @@ const branchRequestItemSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   codeRepoId: z.string(),
   repo: z.string(),
-  kind: z.enum(['branch', 'worktree', 'rename', 'switch', 'checkout', 'adopt']),
+  kind: z.enum(['rename', 'switch', 'adopt']),
   branch: z.string(),
   base: z.string(),
   from: z.string(),
@@ -52,13 +52,11 @@ const detailsEditFileSchema = /*#__PURE__*/ z.object({
   kind: z.string(),
   cause: z.string(),
   text: z.string(),
-  reason: z.string(),
   collision: z.string().optional(),
 });
 
 export const detailsEditPayloadSchema = /*#__PURE__*/ z.object({
   taskId: z.string(),
   taskTitle: z.string(),
-  reason: z.string(),
   items: z.array(detailsEditFileSchema),
 });

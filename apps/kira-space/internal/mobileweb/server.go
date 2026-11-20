@@ -33,6 +33,10 @@ type Config struct {
 	AgentSessions     func() any
 	// AgentInfo is the active agent provider's display facts; the phone names the agent from it.
 	AgentInfo func() any
+	// ScriptRuns lists the newest script runs; Computer reads the machine summary. Both are optional:
+	// without them the routes answer an empty list and a null Docker.
+	ScriptRuns func(ctx context.Context, limit int) ([]any, error)
+	Computer   func(ctx context.Context) (Computer, error)
 	// Approvals is the app's approvals queue; without it the approvals routes answer 503.
 	Approvals Approvals
 	Devices   DeviceStore

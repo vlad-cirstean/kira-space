@@ -103,9 +103,8 @@ func TestTaskReposAndBranches(t *testing.T) {
 	}
 
 	// Remove branch: the repo stays, git keeps the ref, the worktree goes.
-	risk, err := app.W.AdeTask.TaskBranchRisk(ctx, adewire.BranchArgs{BranchID: filled.ID})
-	if err != nil || risk.Worktree != filled.Worktree || len(risk.Dirty) != 0 {
-		t.Fatalf("risk = %+v, %v, want a clean worktree", risk, err)
+	if len(filled.Dirty) != 0 {
+		t.Fatalf("dirty = %+v, want a clean worktree", filled.Dirty)
 	}
 	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: filled.ID}); err != nil {
 		t.Fatalf("RemoveTaskBranch: %v", err)
@@ -140,15 +139,15 @@ func TestTaskReposAndBranches(t *testing.T) {
 	if _, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true}); errCode(err) != "E_BAD_REQUEST" {
 		t.Fatalf("SetTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST", err)
 	}
-	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: made.ID}); errCode(err) != "E_BAD_REQUEST" {
-		t.Fatalf("RemoveTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST", err)
+	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: made.ID}); errCode(err) != "E_BAD_REQUEST" || !strings.Contains(err.Error(), "1 uncommitted changes: commit them, or use Discard changes and remove") {
+		t.Fatalf("RemoveTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST naming the discard action", err)
 	}
 	if _, err := os.Stat(made.Worktree); err != nil {
 		t.Fatalf("refused edits removed the worktree: %v", err)
 	}
 
 	// Edit branch: the created row points at another existing branch; the old worktree goes.
-	edited, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true, DiscardChanges: true})
+	edited, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true, DiscardToken: freshBranch(t, app, task.ID, a.ID).DirtyToken})
 	if err != nil || edited.Name != "feat/a-other" || edited.Worktree == "" {
 		t.Fatalf("SetTaskBranch existing = %+v, %v", edited, err)
 	}
@@ -333,7 +332,7 @@ func TestTaskBranchDetachKeepsRunHistory(t *testing.T) {
 	if n := count(`SELECT COUNT(*) FROM ade_task_branches WHERE id = ?`, live.ID); n != 0 {
 		t.Fatalf("run-less repo row survives a remove: %d", n)
 	}
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.taskID}); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ?`, f.taskID); n != 1 {

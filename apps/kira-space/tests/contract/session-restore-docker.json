@@ -1,0 +1,24 @@
+{
+  "SessionRestoreService.State#docker": {
+    "agents": [],
+    "docker": {
+      "bootAt": 0,
+      "context": "<masked>",
+      "detectedAt": 0,
+      "engineId": "<masked>",
+      "items": [
+        {
+          "composeProject": "",
+          "composeService": "",
+          "id": "id-solo",
+          "image": "mirror.gcr.io/library/alpine:3.20",
+          "name": "kira-flow-solo",
+          "status": "restorable"
+        }
+      ],
+      "state": "pending"
+    },
+    "open": true,
+    "scripts": []
+  }
+}

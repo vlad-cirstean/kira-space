@@ -30,6 +30,8 @@ export const TIMING = {
   /** Hover info popup delay. */
   hoverInfo: 400,
   pollFast: 5000,
+  /** Poll of a state with no push (the phone's Docker summary). */
+  pollMedium: 30000,
   pollSlow: 60000,
   /** Mirrors internal/localauth.GraceWindow: the reveal gate's own grace is fixed, not sliding, so a
    *  long editing session cannot hold one authentication open. Keep in sync by hand; a Go

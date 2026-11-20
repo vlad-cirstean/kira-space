@@ -49,9 +49,10 @@ test('the PR line shows state, base and checks under its branch only', async ({ 
   const { window: page } = await openPlan(relaunch);
   await openTask(page, 'T_bill');
   const line = page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_bill"]`);
-  await expect(line.locator(t('ade-task-branch-pr-state'))).toHaveAttribute('data-state', /.+/);
+  const glyph = line.locator(t('ade-task-branch-pr-state'));
+  await expect(glyph).toHaveAttribute('data-pr-state', 'open');
   await expect(line.locator(t('ade-task-branch-pr-base'))).toHaveText('→ main');
-  await expect(line.locator(t('ade-task-branch-pr-checks'))).toBeVisible();
+  await expect(glyph).toHaveAttribute('data-checks', 'failure');
   await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(
     0,
   );

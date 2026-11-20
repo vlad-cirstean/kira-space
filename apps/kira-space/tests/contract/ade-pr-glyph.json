@@ -1,0 +1,45 @@
+{
+  "AdeTaskService.ChangeRequests": {
+    "branchUrls": null,
+    "branches": {
+      "feat/oauth-login-ui": {
+        "baseRef": "main",
+        "checksState": "PENDING",
+        "number": 1425,
+        "state": "draft",
+        "title": "Login screen UI",
+        "url": "https://forge.test/acme/api/pull/1425"
+      },
+      "feat/usage-billing": {
+        "baseRef": "main",
+        "checksState": "FAILURE",
+        "mergeable": "conflicting",
+        "number": 1427,
+        "reviewDecision": "CHANGES_REQUESTED",
+        "state": "open",
+        "title": "Usage-based billing",
+        "url": "https://forge.test/acme/api/pull/1427"
+      },
+      "feat/webhooks": {
+        "autoMerge": true,
+        "baseRef": "main",
+        "checksState": "SUCCESS",
+        "mergeable": "mergeable",
+        "number": 212,
+        "reviewDecision": "APPROVED",
+        "state": "open",
+        "title": "Outgoing webhooks",
+        "url": "https://forge.test/acme/api/pull/212"
+      },
+      "fix/cart-flaky": {
+        "baseRef": "main",
+        "checksState": "",
+        "number": 1431,
+        "state": "merged",
+        "title": "Stabilise cart total test",
+        "url": "https://forge.test/acme/api/pull/1431"
+      }
+    },
+    "repos": null
+  }
+}

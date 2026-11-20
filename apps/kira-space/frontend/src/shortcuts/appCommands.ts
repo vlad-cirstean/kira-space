@@ -2,6 +2,7 @@ import { t } from '@theme/i18n';
 import { openActivePanelSearch } from '@workbench/behaviour/panelSearch';
 import { runCommand } from '@workbench/shortcuts/commands';
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
+import { useAdeFilesWindowStore } from '../ade/v2/state/adeFilesWindow';
 import { useAppUpdateStore } from '../state/appUpdate';
 import { useLayoutStore } from '../state/layout';
 import { useModeStore } from '../state/mode';
@@ -36,10 +37,11 @@ export function appPaletteCommands(): () => PaletteCommand[] {
   const settingsStore = useSettingsStore();
   const appUpdateStore = useAppUpdateStore();
   const filesWindow = useOpenedFilesWindowStore();
+  const taskFilesWindow = useAdeFilesWindowStore();
 
-  // The files window has no settings mount or panels; the toggles would move the shared layout.
+  // The files windows have no settings mount or panels; the toggles would move the shared layout.
   const workbenchOnly = (): PaletteCommand[] =>
-    filesWindow.active
+    filesWindow.active || taskFilesWindow.taskId !== null
       ? []
       : [
           {

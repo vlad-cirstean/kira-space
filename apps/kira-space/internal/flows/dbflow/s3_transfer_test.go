@@ -33,7 +33,7 @@ func s3FlowConn(t *testing.T, app *flowharness.App, fx *testsupport.S3Fixture, e
 
 func noPartials(t *testing.T, dir string) {
 	t.Helper()
-	left, _ := filepath.Glob(filepath.Join(dir, "*.kira-partial-*"))
+	left, _ := filepath.Glob(filepath.Join(dir, ".*"))
 	if len(left) > 0 {
 		t.Fatalf("temp files left behind: %v", left)
 	}
@@ -83,7 +83,7 @@ func TestS3DownloadSafety(t *testing.T) {
 	opID, wait := ds.DownloadFire(conn.ID, s3ObjectPath(bucket, "dl/big.bin"), cancelDest)
 	deadline := time.Now().Add(15 * time.Second)
 	for {
-		if m, _ := filepath.Glob(cancelDest + ".kira-partial-*"); len(m) > 0 {
+		if m, _ := filepath.Glob(filepath.Join(dir, ".cancelled.bin*")); len(m) > 0 {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -114,10 +114,11 @@ func TestS3DownloadSafety(t *testing.T) {
 		}
 		noPartials(t, ro)
 	}
-	// Destination directory that does not exist.
-	if _, err := ds.Download(conn.ID, s3ObjectPath(bucket, "dl/big.bin"), filepath.Join(dir, "nope", "x.bin")); err == nil {
-		t.Fatal("download into a missing directory succeeded")
+	// Destination directory that does not exist: the file service creates it.
+	if _, err := ds.Download(conn.ID, s3ObjectPath(bucket, "dl/big.bin"), filepath.Join(dir, "nope", "x.bin")); err != nil {
+		t.Fatalf("download into a missing directory: %v", err)
 	}
+	noPartials(t, filepath.Join(dir, "nope"))
 
 	// A key that looks like a traversal writes only where the user chose.
 	s3Put(t, fx, bucket, "../escape.txt", "x", nil)

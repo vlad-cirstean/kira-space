@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -16,6 +15,7 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -160,7 +160,7 @@ func (s *Service) localPath(module, file string) string {
 }
 
 func readLocal(path string) ([]byte, bool, error) {
-	b, err := configfs.ReadCapped(path, configfs.MaxFileBytes)
+	b, _, err := fileservice.Host().Read(path, configfs.MaxFileBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
@@ -181,14 +181,14 @@ func (s *Service) baseAt(rel string) string {
 
 // baseFiles lists the shared files last applied for module.
 func (s *Service) baseFiles(module string) []string {
-	ents, err := os.ReadDir(filepath.Join(syncDir(s.o.Home), baseDir, module))
+	ents, err := fileservice.Host().ReadDir(filepath.Join(syncDir(s.o.Home), baseDir, module))
 	if err != nil {
 		return nil
 	}
 	var out []string
 	for _, e := range ents {
-		if !e.IsDir() {
-			out = append(out, strings.TrimSuffix(e.Name(), ".entries.json"))
+		if !e.Dir {
+			out = append(out, strings.TrimSuffix(e.Name, ".entries.json"))
 		}
 	}
 	return out

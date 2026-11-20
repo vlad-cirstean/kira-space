@@ -1,0 +1,292 @@
+{
+  "SessionRestoreService.Restore#mixed": {
+    "agents": [
+      {
+        "code": "",
+        "error": "",
+        "id": "run:<id:2>",
+        "launch": {
+          "command": "<masked>",
+          "cwd": "<home>/kira-space-wts/api/<wt>",
+          "sessionId": "<id:12>",
+          "terminalId": "<masked>"
+        },
+        "runId": "<id:2>"
+      },
+      {
+        "code": "",
+        "error": "",
+        "id": "session:<id:6>",
+        "launch": {
+          "command": "<masked>",
+          "cwd": "<home>/kira-space-wts/api/<wt>",
+          "sessionId": "<id:6>",
+          "terminalId": "<masked>"
+        },
+        "runId": ""
+      },
+      {
+        "code": "",
+        "error": "",
+        "id": "session:<id:9>",
+        "launch": {
+          "command": "<masked>",
+          "cwd": "<home>/kira-space-wts/api/<wt>",
+          "sessionId": "<id:9>",
+          "terminalId": "<masked>"
+        },
+        "runId": ""
+      }
+    ],
+    "docker": null,
+    "scripts": [
+      {
+        "code": "",
+        "error": "",
+        "runId": "<id:11>",
+        "started": {
+          "runId": "",
+          "terminal": {
+            "cwd": "<space>/automations/plain",
+            "token": "<masked>"
+          }
+        }
+      }
+    ]
+  },
+  "SessionRestoreService.Restore#partial": {
+    "agents": [
+      {
+        "code": "",
+        "error": "",
+        "id": "session:<id:1>",
+        "launch": {
+          "command": "<masked>",
+          "cwd": "<home>/kira-space-wts/api/<wt>",
+          "sessionId": "<id:1>",
+          "terminalId": "<masked>"
+        },
+        "runId": ""
+      },
+      {
+        "code": "E_BAD_REQUEST",
+        "error": "That agent isn’t on the restore list.",
+        "id": "session:missing",
+        "launch": null,
+        "runId": ""
+      }
+    ],
+    "docker": null,
+    "scripts": [
+      {
+        "code": "E_NOT_FOUND",
+        "error": "This script no longer exists.",
+        "runId": "<id:2>",
+        "started": null
+      }
+    ]
+  },
+  "SessionRestoreService.State#afterCrash": {
+    "agents": [
+      {
+        "branchId": "<id:1>",
+        "branchLabel": "feat/api-run",
+        "continue": "optional",
+        "continueDefault": true,
+        "id": "run:<id:2>",
+        "kind": "run",
+        "mode": "headless",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "<id:2>",
+        "sessionId": "<id:3>",
+        "state": "ready",
+        "step": "one",
+        "taskId": "<id:4>",
+        "taskTitle": "Run work",
+        "working": true
+      },
+      {
+        "branchId": "<id:5>",
+        "branchLabel": "feat/api-busy",
+        "continue": "optional",
+        "continueDefault": false,
+        "id": "session:<id:6>",
+        "kind": "session",
+        "mode": "tui",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "",
+        "sessionId": "<id:6>",
+        "state": "ready",
+        "step": "",
+        "taskId": "<id:7>",
+        "taskTitle": "Busy work",
+        "working": false
+      },
+      {
+        "branchId": "<id:8>",
+        "branchLabel": "feat/api-idle",
+        "continue": "optional",
+        "continueDefault": false,
+        "id": "session:<id:9>",
+        "kind": "session",
+        "mode": "tui",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "",
+        "sessionId": "<id:9>",
+        "state": "ready",
+        "step": "",
+        "taskId": "<id:10>",
+        "taskTitle": "Idle work",
+        "working": false
+      }
+    ],
+    "docker": {
+      "bootAt": 0,
+      "context": "<masked>",
+      "detectedAt": 0,
+      "engineId": "<masked>",
+      "items": [],
+      "state": "none"
+    },
+    "open": true,
+    "scripts": [
+      {
+        "branchId": "",
+        "branchLabel": "",
+        "color": "blue",
+        "command": "<masked>",
+        "cwd": "<space>/automations/plain",
+        "endedAt": 0,
+        "hash": "<masked>",
+        "kind": "script",
+        "model": "",
+        "params": [],
+        "reason": "",
+        "resume": false,
+        "runId": "<id:11>",
+        "scriptId": "plain",
+        "scriptName": "plain",
+        "status": "ready",
+        "taskId": "",
+        "taskTitle": "",
+        "trigger": "terminal"
+      }
+    ]
+  },
+  "SessionRestoreService.State#afterQuit": {
+    "agents": [
+      {
+        "branchId": "<id:1>",
+        "branchLabel": "feat/api-run",
+        "continue": "optional",
+        "continueDefault": true,
+        "id": "run:<id:2>",
+        "kind": "run",
+        "mode": "headless",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "<id:2>",
+        "sessionId": "<id:3>",
+        "state": "ready",
+        "step": "one",
+        "taskId": "<id:4>",
+        "taskTitle": "Run work",
+        "working": true
+      },
+      {
+        "branchId": "<id:5>",
+        "branchLabel": "feat/api-busy",
+        "continue": "optional",
+        "continueDefault": true,
+        "id": "session:<id:6>",
+        "kind": "session",
+        "mode": "tui",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "",
+        "sessionId": "<id:6>",
+        "state": "ready",
+        "step": "",
+        "taskId": "<id:7>",
+        "taskTitle": "Busy work",
+        "working": true
+      },
+      {
+        "branchId": "<id:8>",
+        "branchLabel": "feat/api-idle",
+        "continue": "optional",
+        "continueDefault": false,
+        "id": "session:<id:9>",
+        "kind": "session",
+        "mode": "tui",
+        "provider": "Claude",
+        "reason": "",
+        "runId": "",
+        "sessionId": "<id:9>",
+        "state": "ready",
+        "step": "",
+        "taskId": "<id:10>",
+        "taskTitle": "Idle work",
+        "working": false
+      }
+    ],
+    "docker": {
+      "bootAt": 0,
+      "context": "<masked>",
+      "detectedAt": 0,
+      "engineId": "<masked>",
+      "items": [],
+      "state": "none"
+    },
+    "open": true,
+    "scripts": [
+      {
+        "branchId": "",
+        "branchLabel": "",
+        "color": "blue",
+        "command": "<masked>",
+        "cwd": "<space>/automations/plain",
+        "endedAt": 0,
+        "hash": "<masked>",
+        "kind": "script",
+        "model": "",
+        "params": [],
+        "reason": "",
+        "resume": false,
+        "runId": "<id:11>",
+        "scriptId": "plain",
+        "scriptName": "plain",
+        "status": "ready",
+        "taskId": "",
+        "taskTitle": "",
+        "trigger": "terminal"
+      }
+    ]
+  },
+  "args:SessionRestoreService.Restore#mixed": {
+    "agents": [
+      {
+        "continue": false,
+        "id": "run:<id:2>"
+      },
+      {
+        "continue": true,
+        "id": "session:<id:6>"
+      },
+      {
+        "continue": false,
+        "id": "session:<id:9>"
+      }
+    ],
+    "docker": null,
+    "scripts": [
+      {
+        "hash": "<masked>",
+        "runId": "<id:11>"
+      }
+    ]
+  }
+}

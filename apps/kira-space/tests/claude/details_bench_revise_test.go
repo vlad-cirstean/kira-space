@@ -6,10 +6,10 @@ package claude
 //
 //	F1b handover revision. T: the handover is in the prompt and every pass resends it whole in finish_step's
 //	    summary (today's only handover call). R: the handover is handovers/draft-implement.md; the model edits
-//	    it, then submit and state step.finish.
+//	    it, then state step.finish.
 //	F3b proof revision. T: the table rows are in the prompt (proof_list lists only ordinals), proof_save resends
 //	    every step (keepOrdinal for the untouched ones). R: proof.md and its data files in the task folder,
-//	    then submit.
+//	    then state step.finish files the edit.
 
 import (
 	"context"
@@ -120,7 +120,7 @@ func f3bRows(r *spikeRun, pass int) [][]any {
 }
 
 func f3bCheck(r *spikeRun, p *spikeProof, pass int) (bool, string) {
-	if strings.TrimSpace(p.Reason) == "" {
+	if r.arm != "R" && strings.TrimSpace(p.Reason) == "" {
 		return false, "no reason"
 	}
 	if len(p.Steps) != 4 || p.Steps[0].View != "table" || p.Steps[1].View != "diagram" || p.Steps[2].View != "document" || p.Steps[3].View != "document" {
@@ -194,7 +194,7 @@ var benchRevisionFlows = []spikeFlow{
 			}
 			return "You are in a Kira Space task.\n\n" + rows +
 				"Your assignment: the closed validation proof \"Orders match ledger\" needs a late correction: " + change +
-				" Keep every other step as it is, and give the reason \"" + reason + "\". Then reply: done." + r.folderLine()
+				" Keep every other step as it is" + r.reasonClause(reason) + ". Then reply: done." + r.folderLine()
 		},
 		oracle: func(r *spikeRun, _ string) (bool, string) {
 			var p *spikeProof
@@ -486,7 +486,7 @@ func TestDetailsBenchReviseServes(t *testing.T) {
 				for pass := 1; pass <= benchPasses; pass++ {
 					r.pass = pass
 					f3bEditFiles(t, r, proofDir, pass)
-					call(sess, "submit", map[string]any{"paths": []string{"proofs/" + filepath.Base(proofDir) + "/proof.md"}, "reason": "late correction"})
+					call(sess, "state", map[string]any{"action": "step.finish", "args": map[string]any{"status": "done"}}) // the finish flush files the edit
 					expect(pass, true, "revised")
 					if r.afterPass != nil {
 						r.afterPass()

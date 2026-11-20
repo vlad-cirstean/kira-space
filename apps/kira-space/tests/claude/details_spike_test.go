@@ -112,12 +112,20 @@ func rowsEqual(got, want [][]any) bool {
 	return true
 }
 
+// reasonClause asks for a revision reason: arm R's edits carry none, Kira's rules need no reason.
+func (r *spikeRun) reasonClause(reason string) string {
+	if r.arm == "R" {
+		return ""
+	}
+	return `, and give the reason "` + reason + `"`
+}
+
 func (r *spikeRun) folderLine() string {
 	if r.arm == "R" { // the files fragment Kira appends to a step prompt
 		v := llmprompts.FilesVars{Folder: r.taskDir}
 		if p, ok := providers.New().Get("claude"); ok {
 			if l, ok := p.(harness.ToolLoader); ok {
-				tools := []harness.MCPTool{agentmcp.Submit, agentmcp.State}
+				tools := []harness.MCPTool{agentmcp.State}
 				if r.flow == "F4" || r.flow == "F6" {
 					tools = append(tools, agentmcp.CreateTask)
 				}
@@ -250,7 +258,7 @@ var spikeFlows = []spikeFlow{
 		},
 		prompt: func(r *spikeRun) string {
 			return `The closed validation proof "Orders match ledger" is wrong: order 2's total is 475, not 450. ` +
-				`The table must then show: 1 and 400, 2 and 475, 3 and 400. Change the table step, keep the screenshot step as it is, and give the reason "order 2 corrected". Then reply: done.` + r.folderLine()
+				`The table must then show: 1 and 400, 2 and 475, 3 and 400. Change the table step, keep the screenshot step as it is` + r.reasonClause("order 2 corrected") + `. Then reply: done.` + r.folderLine()
 		},
 		oracle: func(r *spikeRun, _ string) (bool, string) {
 			want := [][]any{{1.0, 400.0}, {2.0, 475.0}, {3.0, 400.0}}
@@ -269,7 +277,7 @@ var spikeFlows = []spikeFlow{
 					return false, "edit never submitted"
 				}
 			}
-			if strings.TrimSpace(p.Reason) == "" {
+			if r.arm != "R" && strings.TrimSpace(p.Reason) == "" {
 				return false, "no reason"
 			}
 			if !rowsEqual(tableRows(p), want) {

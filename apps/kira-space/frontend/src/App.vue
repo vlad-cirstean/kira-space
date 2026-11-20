@@ -30,10 +30,12 @@ import { runCommand } from '@workbench/shortcuts/commands';
 import { providePaletteCommands, usePaletteStore } from '@workbench/shortcuts/palette';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
 import { computed, markRaw, onMounted, onUnmounted, provide } from 'vue';
+import AdeTaskFilesWindow from './ade/v2/files/AdeTaskFilesWindow.vue';
 import { spaceApprovalKinds } from './ade/v2/request/kinds';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
 import { useAdeAgentsUiStore } from './ade/v2/state/adeAgentsUi';
+import { useAdeFilesWindowStore } from './ade/v2/state/adeFilesWindow';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
 import { useAdeWorkflowsUiStore } from './ade/v2/state/adeWorkflowsUi';
 import { control } from './bridge/control';
@@ -44,6 +46,7 @@ import ConfigSyncToast from './configsync/ConfigSyncToast.vue';
 import HostViewWindow from './hostview/HostViewWindow.vue';
 import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
+import SessionRestoreHost from './restore/SessionRestoreHost.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useConfigSyncWindowStore } from './state/configSyncWindow';
@@ -112,6 +115,7 @@ const promptKinds = {
   masking: markRaw(MaskingReviewPrompt),
 };
 const reviewWindow = useAdeReviewWindowStore();
+const filesWindow = useAdeFilesWindowStore();
 const hostView = useHostViewWindowStore();
 const capture = useCaptureWindowStore();
 const openedFilesWindow = useOpenedFilesWindowStore();
@@ -123,9 +127,11 @@ const fakeDataStore = useFakeDataStore();
 const objectStoreStore = useObjectStoreStore();
 const collectionsStore = useCollectionsStore();
 
-// Review, host-view, capture, opened-files and proof windows own no project or operations panel.
+// Review, task Files, host-view, capture, opened-files and proof windows own no project or
+// operations panel.
 const mainWindow = (): boolean =>
   !reviewWindow.target &&
+  !filesWindow.taskId &&
   !hostView.target &&
   !capture.item &&
   !openedFilesWindow.active &&
@@ -210,6 +216,7 @@ function onToggleKeepAwake(): void {
     <CaptureWindow v-if="capture.item" />
     <HostViewWindow v-else-if="hostView.target" />
     <AdeReviewWindow v-else-if="reviewWindow.target" />
+    <AdeTaskFilesWindow v-else-if="filesWindow.taskId" />
     <OpenedFilesWindow v-else-if="openedFilesWindow.active" />
     <ConfigSyncReviewWindow v-else-if="configSyncWindow.active" />
     <ProofWindow v-else-if="proofWindow.active" />
@@ -252,6 +259,7 @@ function onToggleKeepAwake(): void {
       <PromptsToast />
       <ConfigSyncToast v-if="mainWindow()" />
     </CornerStack>
+    <SessionRestoreHost v-if="mainWindow()" />
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />

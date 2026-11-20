@@ -1,9 +1,9 @@
 # id<TAB>max rendered-example runes (promptsizes). Ratchet: a new or longer prompt needs a visible line change.
 headless.finishStep.suffix	278
-headless.space.suffix	328
+headless.space.suffix	299
 headless.rebase.reportSuffix	508
 headless.script.reportSuffix	269
-headless.space.instructions	417
+headless.space.instructions	415
 headless.sandbox.note	376
 headless.tool.finish_step	78
 headless.tool.finish_step.arg.status	86
@@ -11,10 +11,7 @@ headless.tool.finish_step.arg.reason	79
 headless.tool.finish_step.arg.conflictedFiles	48
 headless.tool.finish_step.arg.lastGitError	30
 headless.tool.finish_step.arg.tried	32
-headless.tool.submit	231
-headless.tool.submit.arg.paths	84
-headless.tool.submit.arg.reason	135
-headless.space.files	388
+headless.space.files	364
 headless.finishStep.ack	19
 headless.artifacts.header	73
 headless.artifacts.more	27
@@ -30,11 +27,11 @@ headless.tool.create_task.arg.repos.repo	54
 headless.tool.create_task.arg.repos.base	85
 headless.tool.create_task.arg.brief	99
 ade.rebase.prompt	338
-ade.step.prompt	880
-ade.manual.message	776
+ade.step.prompt	898
+ade.manual.message	783
 ade.manual.sandboxNote	266
-ade.review.message	901
-ade.start.message	681
+ade.review.message	908
+ade.start.message	688
 ade.repoLine	79
 ade.handoverBlock	59
 ade.handoverLine	164
@@ -43,6 +40,7 @@ ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	314
+restore.continue.line	44
 dbmcp.instructions	1196
 dbmcp.tool.list_connections	653
 dbmcp.tool.list_scripts	130
@@ -158,7 +156,8 @@ headless.tool.state	266
 headless.tool.state.arg.action	37
 headless.tool.state.arg.args	34
 headless.tool.state.action.repo.declare	51
-headless.tool.state.action.branch.request	133
+headless.tool.state.action.branch.request	205
+headless.tool.state.action.worktree.remove	159
 headless.tool.state.action.branch.rename	133
 headless.tool.state.action.branch.change	105
 headless.tool.state.action.lease.acquire	56

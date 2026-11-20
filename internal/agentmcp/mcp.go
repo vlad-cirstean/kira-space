@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -15,7 +14,7 @@ import (
 	"time"
 
 	"github.com/google/jsonschema-go/jsonschema"
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/tokenauth"
@@ -53,7 +52,7 @@ const (
 )
 
 // Grant is what one registration may do. A run grant without Space reports through finish_step; a
-// Space grant gets submit and state, which act on TaskID alone.
+// Space grant gets state, which acts on TaskID alone.
 type Grant struct {
 	RunID  string
 	TaskID string
@@ -275,9 +274,6 @@ func (s *Server) buildMCPServer(ts toolSet, results []ResultSpec) *mcp.Server {
 			Description: llmprompts.HeadlessToolFinishStep.Text(s.prompts, llmprompts.NoVars{}),
 			InputSchema: schema,
 		}, s.finishStep)
-	}
-	if ts.space {
-		s.addSubmitTool(srv)
 	}
 	if ts.state() {
 		s.addStateTool(srv, ts)
@@ -552,7 +548,7 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	if err != nil {
 		return "", nil, err
 	}
-	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(s.dir); err != nil {
 		return "", nil, fmt.Errorf("agentmcp: config dir: %w", err)
 	}
 	s.mu.Lock()
@@ -574,10 +570,10 @@ func (s *Server) Register(g Grant) (configPath string, release func(), err error
 	}
 	path := filepath.Join(s.dir, fmt.Sprintf("%s-%d.mcp.json", name, id))
 	if err == nil {
-		err = renameio.WriteFile(path, cfg, 0o600)
+		err = fileservice.HostPrivate().WriteFile(path, cfg, 0o600)
 	}
 	release = func() {
-		_ = os.Remove(path)
+		_ = fileservice.Host().Remove(path)
 		s.forget(id)
 	}
 	if err != nil {

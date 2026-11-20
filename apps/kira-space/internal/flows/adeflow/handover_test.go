@@ -61,13 +61,12 @@ func handoverPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	return out
 }
 
-// submitCall is a submit of links.yaml, or, when finished, the stage's step.finish (submit is content only).
-func submitCall(finished bool) fakeagent.MCPCall {
+// sessionCall is the stage's step.finish when finished, else a save of no file and no tool call.
+func sessionCall(finished bool) fakeagent.MCPCall {
 	if finished {
 		return stateCall("step.finish", map[string]any{"status": "done"})
 	}
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true,
-		Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "check"}}
+	return fakeagent.MCPCall{}
 }
 
 // writeTaskFile writes a file under the task's folder, as an agent session editing it would.
@@ -102,8 +101,8 @@ func TestStageHandover(t *testing.T) {
 	// Call 1 is run `one`; 2 is the first work session; 3 a session that tries to write after the task moved on.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold1")},
-		{WaitBefore: flag("late"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold2")},
+		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{sessionCall(true)}, WaitFile: flag("hold1")},
+		{WaitBefore: flag("late"), MCP: []fakeagent.MCPCall{sessionCall(true)}, WaitFile: flag("hold2")},
 		{Name: "done"},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))

@@ -90,11 +90,11 @@ test('contract: the link an agent filed in links.yaml shows as a pill', async ({
   await expect(pill(page, agent.title)).toBeVisible();
 });
 
-test('contract: an agent edit that waits shows its reason and files; Approve sends the paths', async ({
+test('contract: an edit of another agent content that waits shows its cause and files; Approve sends the paths', async ({
   relaunch,
 }) => {
   const it = detailsEditItem(SCENARIO);
-  const { reason, items } = it.payload as { reason: string; items: { path: string }[] };
+  const { items } = it.payload as { items: { path: string }[] };
   const paths = items.map((f) => f.path);
   const { window: page, control } = await openPlan(relaunch, [
     ...seedApprovals([it]),
@@ -102,8 +102,9 @@ test('contract: an agent edit that waits shows its reason and files; Approve sen
   ]);
   const dialog = page.locator(t('approvals-dialog'));
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator(t('ade-details-edit-reason'))).toContainText(reason);
+  await expect(dialog.locator(t('ade-details-edit-reason'))).toHaveCount(0);
   await expect(dialog.locator(t('ade-details-edit-file'))).toHaveCount(paths.length);
+  await expect(dialog.locator(t('ade-details-edit-file'))).toContainText('Another agent’s note');
   await dialog.locator(t(`approval-approve-${it.id}`)).click();
   await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
   expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({

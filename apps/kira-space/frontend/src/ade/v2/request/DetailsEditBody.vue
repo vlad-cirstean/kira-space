@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import CodeBlock from '@theme/components/CodeBlock.vue';
-import KeyValueList from '@theme/components/KeyValueList.vue';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
 import { type MessageKey, t } from '@theme/i18n';
@@ -9,7 +8,7 @@ import { computed, ref, watch } from 'vue';
 import { detailsEditPayloadSchema } from './payload';
 
 // One approvals item for a task's pending file edits. Every file starts approved; unchecking one restores
-// its held copy. The agent's reason heads the list.
+// its held copy.
 const props = defineProps<{ item: ApprovalItem }>();
 const emit = defineEmits<{ options: [{ approved: string[] }] }>();
 
@@ -30,10 +29,6 @@ function toggle(path: string): void {
 
 <template>
   <div class="flex flex-col gap-3" data-testid="ade-details-edit-body">
-    <KeyValueList v-if="payload.reason">
-      <dt>{{ t('common.field.reason.label') }}</dt>
-      <dd data-testid="ade-details-edit-reason">{{ payload.reason }}</dd>
-    </KeyValueList>
     <div
       v-for="file in payload.items"
       :key="file.path"

@@ -371,7 +371,7 @@ func TestRunEngine_takeOver(t *testing.T) {
 	}
 	composed := e.spawn(l)
 	if !strings.HasPrefix(composed, e.tracker.deps.AgentBin+" --resume '"+head.AgentSessionID+"' ") ||
-		!strings.Contains(composed, "'--allowedTools' '"+toolName(agentmcp.Submit)+"'") || !strings.Contains(composed, "'"+toolName(agentmcp.State)+"'") {
+		!strings.Contains(composed, "'--allowedTools' '"+toolName(agentmcp.State)+"'") {
 		t.Fatalf("command = %s", composed)
 	}
 	rec, _ := e.repos.AdeSessions.Get(l.SessionID)
@@ -518,7 +518,7 @@ func TestRunEngine_archive(t *testing.T) {
 		t.Fatalf("risk = %+v", risk)
 	}
 	br := risk.Branches[0]
-	if br.Worktree != wt || br.Unmerged != 1 || len(br.Dirty) != 1 || br.Dirty[0].Path != "dirty.txt" || br.Blocked != "" {
+	if br.Worktree != wt || br.Unmerged != 1 || len(br.Dirty) != 1 || br.Dirty[0].Path != "dirty.txt" || br.Blocked != "" || br.DirtyToken == "" {
 		t.Fatalf("branch risk = %+v", br)
 	}
 
@@ -526,7 +526,7 @@ func TestRunEngine_archive(t *testing.T) {
 	if risk, _ = e.board.ArchiveRisk(ctx, id); risk.Branches[0].Blocked == "" {
 		t.Fatal("a locked worktree is not reported blocked")
 	}
-	if err := e.board.ArchiveTask(ctx, id); err == nil || !strings.Contains(err.Error(), "cannot archive") {
+	if err := e.board.ArchiveTask(ctx, id, nil); err == nil || !strings.Contains(err.Error(), "cannot archive") {
 		t.Fatalf("blocked archive: %v", err)
 	}
 	if got := e.runs(id)["one/api"]; got.State != model.AdeRunRunning {
@@ -537,7 +537,10 @@ func TestRunEngine_archive(t *testing.T) {
 	}
 	runGitQueue(t, e.code["api"].Root, "worktree", "unlock", wt)
 
-	if err := e.board.ArchiveTask(ctx, id); err != nil {
+	if err := e.board.ArchiveTask(ctx, id, nil); err == nil || !strings.Contains(err.Error(), "uncommitted changes") {
+		t.Fatalf("archive without a discard token: %v", err)
+	}
+	if err := e.board.ArchiveTask(ctx, id, map[string]string{br.BranchID: br.DirtyToken}); err != nil {
 		t.Fatal(err)
 	}
 	if got := e.attempt(id, "one", 1); got.State != model.AdeRunFailed || got.Note != "stopped: task archived" {

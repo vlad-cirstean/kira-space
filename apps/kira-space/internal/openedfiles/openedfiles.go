@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/filetypes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -66,7 +66,7 @@ type repoRoot struct {
 func resolveRepos(repos []model.CodeRepo) []repoRoot {
 	out := make([]repoRoot, 0, len(repos))
 	for i := range repos {
-		if root, err := filepath.EvalSymlinks(repos[i].Root); err == nil {
+		if root, err := fileservice.Host().Resolve(repos[i].Root); err == nil {
 			out = append(out, repoRoot{repo: &repos[i], root: root})
 		}
 	}
@@ -84,15 +84,15 @@ func resolve(path string, repos []repoRoot, anyTypeInRepo bool) (Target, string,
 	if !supported && !anyTypeInRepo {
 		return Target{}, "", fmt.Errorf("unsupported extension %q", filepath.Ext(abs))
 	}
-	real, err := filepath.EvalSymlinks(abs)
+	real, err := fileservice.Host().Resolve(abs)
 	if err != nil {
 		return Target{}, "", err
 	}
-	info, err := os.Stat(real)
+	info, err := fileservice.Host().Stat(real)
 	if err != nil {
 		return Target{}, "", err
 	}
-	if !info.Mode().IsRegular() {
+	if !info.Mode.IsRegular() {
 		return Target{}, "", errors.New("not a regular file")
 	}
 	var best *model.CodeRepo
@@ -115,7 +115,11 @@ func resolve(path string, repos []repoRoot, anyTypeInRepo bool) (Target, string,
 	if err != nil {
 		return Target{}, "", err
 	}
-	if _, err := codeworkspace.ValidateRelPath(best.Root, rel); err != nil {
+	files, err := codeworkspace.Files(best.Root)
+	if err != nil {
+		return Target{}, "", err
+	}
+	if _, err := files.Path(filepath.ToSlash(rel)); err != nil {
 		return Target{}, "", err
 	}
 	return Target{RepoID: best.ID, RelPath: filepath.ToSlash(rel)}, abs, nil
@@ -254,5 +258,5 @@ func (s *Service) Read(path string) (codeworkspace.FileContent, error) {
 	if !filetypes.Supports(path) {
 		return codeworkspace.FileContent{}, fmt.Errorf("unsupported extension %q", filepath.Ext(path))
 	}
-	return codeworkspace.ReadFile(path, filepath.Base(path))
+	return codeworkspace.ReadFile(fileservice.Host(), path)
 }

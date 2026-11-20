@@ -3,13 +3,13 @@ package scriptruns
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
@@ -49,7 +49,7 @@ func (s *Service) prepareSandbox(ctx context.Context, p *planned, runID string, 
 	}
 	prep, err := s.Sandbox.Prepare(pol, rt)
 	if err != nil {
-		_ = os.RemoveAll(pol.Scratch)
+		_ = fileservice.Host().RemoveAll(pol.Scratch)
 		return nil, err
 	}
 	return &smartSandbox{policy: pol, prep: prep, tools: p.preview.ADE != nil, agent: agent, release: func() { s.Sandbox.Release(runID) }}, nil
@@ -58,7 +58,7 @@ func (s *Service) prepareSandbox(ctx context.Context, p *planned, runID string, 
 func (sb *smartSandbox) cleanup() {
 	if sb != nil {
 		sb.release()
-		_ = os.RemoveAll(sb.policy.Scratch)
+		_ = fileservice.Host().RemoveAll(sb.policy.Scratch)
 	}
 }
 

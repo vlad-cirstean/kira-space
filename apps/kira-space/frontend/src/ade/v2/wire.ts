@@ -237,6 +237,11 @@ export interface ChangeRequest {
   baseRef: string;
   /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
   checksState: string;
+  /** '' | APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED. */
+  reviewDecision?: string;
+  /** '' | mergeable | conflicting. */
+  mergeable?: string;
+  autoMerge?: boolean;
 }
 /** Where a branch is checked out: another task's worktree, the main checkout, any other worktree, or nowhere. */
 interface BranchHolder {
@@ -288,6 +293,8 @@ export interface Branch {
   conflictCheck: 'checking' | 'done' | 'failed';
   conflictCheckReason: string /* '' unless failed */;
   dirty: DirtyEntry[];
+  /** Fingerprint of `dirty`; '' when nothing is uncommitted. Discard sends the one it showed. */
+  dirtyToken: string;
   lastCommitAt: number | null;
   addedAt: number;
   /** '' user-made, 'agent' declared or named by an agent through the Kira Space tools. */
@@ -868,6 +875,8 @@ export interface BranchRisk {
   dirty: DirtyEntry[];
   unmerged: number;
   blocked: string;
+  /** Fingerprint of `dirty`; '' when nothing is uncommitted. */
+  dirtyToken: string;
 }
 export interface ArchiveRisk {
   taskId: string;
@@ -951,6 +960,9 @@ export interface Launch {
 // ---- review (P150)
 export interface WindowKeyArgs {
   windowKey: string;
+}
+export interface TaskFilesWindowTarget {
+  taskId: string;
 }
 export interface ReviewWindowTarget {
   taskId: string;
@@ -1233,13 +1245,21 @@ export interface SetTaskBranchArgs {
   name: string;
   /** true = attach the git branch `name`; false = create a branch of that name. */
   existing: boolean;
-  /** true = delete uncommitted changes in the row's current worktree. */
-  discardChanges: boolean;
+  /** The `Branch.dirtyToken` the user saw: deletes exactly that set of uncommitted changes in the
+   *  row's current worktree. '' discards nothing. */
+  discardToken: string;
 }
 export interface RemoveTaskRowArgs {
   branchId: string;
-  /** true = delete uncommitted changes in the row's worktree. */
-  discardChanges: boolean;
+  /** The `Branch.dirtyToken` the user saw: deletes exactly that set of uncommitted changes in the
+   *  row's worktree. '' discards nothing. */
+  discardToken: string;
+}
+export interface ArchiveTaskArgs {
+  taskId: string;
+  /** Branch id to the `BranchRisk.dirtyToken` the user confirmed; a dirty worktree without a
+   *  matching token refuses the archive. */
+  discardTokens: Record<string, string>;
 }
 export interface UpdateTaskRepoArgs {
   branchId: string;

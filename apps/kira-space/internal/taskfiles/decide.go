@@ -2,9 +2,7 @@ package taskfiles
 
 import (
 	"fmt"
-	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // Role is who writes. Agent roles go through the decision matrix; the user and Kira are accepted.
@@ -49,18 +47,15 @@ const (
 	Reject Outcome = "reject"
 	// Restore rewrites the file from the accepted copy.
 	Restore Outcome = "restore"
-	// Invalid refuses the change with a message the agent can act on.
-	Invalid Outcome = "invalid"
 )
 
-// Cause is why a change needs approval; it picks the reason-error text.
+// Cause is why a change needs approval; it picks the label and the reply phrase.
 type Cause string
 
 // Causes.
 const (
 	CauseNone         Cause = ""
 	CauseLink         Cause = "link"
-	CauseSlot         Cause = "slot"
 	CauseNote         Cause = "note"
 	CauseHandover     Cause = "handover"
 	CauseProof        Cause = "proof"
@@ -85,14 +80,36 @@ type Collision struct {
 	At time.Time
 }
 
+// Author is who wrote the target a change touches, from the calling session's view.
+type Author string
+
+// Authors. AuthorNone covers a target nobody wrote yet, the user's, Kira's and an orchestrator pass's.
+const (
+	AuthorNone  Author = ""
+	AuthorSelf  Author = "self"
+	AuthorAgent Author = "agent"
+)
+
+// AuthorOf classifies a target: agent is whether an agent wrote it, session is the writer's key and
+// caller the calling session's key. An agent target with another or no session id is another agent's.
+func AuthorOf(agent bool, session, caller string) Author {
+	switch {
+	case !agent:
+		return AuthorNone
+	case session != "" && session == caller:
+		return AuthorSelf
+	}
+	return AuthorAgent
+}
+
 // Input is one change to decide.
 type Input struct {
 	Role Role
 	Kind Kind
 	Op   Op
-	// Own is true for a link entry the writer's session reported itself, and for a new entry.
-	Own bool
-	// Slot marks a Jira or PR slot change; Op create means the slot was empty.
+	// Author is who wrote the target. Only another agent's content asks the user.
+	Author Author
+	// Slot marks a Jira or PR slot change; slots carry no author and never ask.
 	Slot bool
 	// Step is the step id of a draft file; CurrentStep is the task's current step id.
 	Step, CurrentStep string
@@ -102,7 +119,6 @@ type Input struct {
 	// needs no approval.
 	Latest    bool
 	Collision *Collision
-	Reason    string
 }
 
 // Decision is the outcome of Input, with what the user or agent is told.
@@ -116,7 +132,7 @@ type Decision struct {
 	Collision *Collision
 }
 
-// Decide applies the matrix of plan section 7.3 to one change. rel names the file in messages.
+// Decide applies the author rule to one change. rel names the file in messages.
 func Decide(rel string, in Input) Decision {
 	switch {
 	case !in.Role.Agent():
@@ -134,86 +150,47 @@ func Decide(rel string, in Input) Decision {
 	if cause == CauseNone {
 		return Decision{Outcome: Accept, Notify: notify}
 	}
-	if strings.TrimSpace(in.Reason) == "" {
-		return Decision{Outcome: Invalid, Cause: cause, Message: ReasonError(rel, cause)}
-	}
 	return Decision{Outcome: Pending, Cause: cause, Collision: in.Collision}
 }
 
 // approvalCause is the cause that puts an agent change behind the user, and the notification of an
-// accepted one.
+// accepted one. Only another agent's content asks.
 func approvalCause(in Input) (Cause, Notify) {
+	other := in.Author == AuthorAgent
 	switch in.Kind {
 	case KindNote:
-		if in.Latest && in.Op == OpEdit {
-			return CauseNone, NotifyNone
+		if other && (in.Op == OpDelete || (in.Op == OpEdit && !in.Latest)) {
+			return CauseNote, NotifyNone
 		}
-		return CauseNote, NotifyNone
 	case KindHandover:
-		if in.Latest && in.Op == OpEdit {
-			return CauseNone, NotifyNone
+		if other && (in.Op == OpDelete || (in.Op == OpEdit && !in.Latest)) {
+			return CauseHandover, NotifyNone
 		}
-		return CauseHandover, NotifyNone
 	case KindLinks:
-		switch {
-		case in.Slot && in.Op != OpCreate:
-			return CauseSlot, NotifyNone
-		case in.Slot, in.Op == OpCreate, in.Own:
-			return CauseNone, NotifyNone
+		if other && !in.Slot && in.Op != OpCreate {
+			return CauseLink, NotifyNone
 		}
-		return CauseLink, NotifyNone
 	case KindProof, KindProofData, KindProofImage:
 		switch {
 		case !in.ProofAccepted:
 			if in.Kind == KindProof && in.Op == OpCreate {
 				return CauseNone, NotifyProofReady
 			}
-			return CauseNone, NotifyNone
-		case in.Latest && in.Op != OpDelete:
-			return CauseNone, NotifyNone
+		case !other:
 		case in.Op == OpDelete && in.Kind == KindProof:
 			return CauseProofDelete, NotifyNone
+		case in.Op == OpDelete || !in.Latest:
+			return CauseProof, NotifyNone
 		}
-		return CauseProof, NotifyNone
 	}
 	return CauseNone, NotifyNone
 }
 
-var reasonText = map[Cause][2]string{
-	CauseLink:        {"the user approves changes to another author's link", "link title fixed"},
-	CauseSlot:        {"the user approves a replaced Jira or PR link", "PR moved to the new branch"},
-	CauseNote:        {"the user approves changes to a note", "typo fixed in the note"},
-	CauseHandover:    {"the user approves changes to a handed handover", "outcome line corrected"},
-	CauseProof:       {"the user approves changes to an accepted proof", "order 12 corrected"},
-	CauseProofDelete: {"the user approves deleting an accepted proof", "proof replaced by a new one"},
-	CauseCollision:   {"the file changed after your last read", "kept my edit after reading the change"},
-}
-
-// ReasonError is the one-line message of a change that needs a reason and has none. It names the
-// field and gives an example, so the agent retries once.
-func ReasonError(rel string, cause Cause) string {
-	t := reasonText[cause]
-	if t[0] == "" {
-		t = [2]string{"the user approves this change", "what changed and why"}
-	}
-	return fmt.Sprintf("%s: needs reason (%s). Call submit with {\"paths\": [%q], \"reason\": %q}.", rel, t[0], rel, t[1])
-}
-
-// Reason limits, in runes.
-const (
-	MinReasonRunes = 1
-	MaxReasonRunes = 500
-)
-
-// CleanReason trims a reason and checks it is 1 to 500 runes of valid text.
-func CleanReason(s string) (string, error) {
-	s = strings.TrimSpace(s)
-	n := utf8.RuneCountInString(s)
-	if n == 0 {
-		return "", nil
-	}
-	if n > MaxReasonRunes || !utf8.ValidString(s) {
-		return "", fmt.Errorf("reason must be %d to %d characters of text", MinReasonRunes, MaxReasonRunes)
-	}
-	return s, nil
+// causeText is the phrase a pending reply line gives for a cause; collision adds the writer.
+var causeText = map[Cause]string{
+	CauseLink:        "another agent's link",
+	CauseNote:        "another agent's note",
+	CauseHandover:    "another agent's handover",
+	CauseProof:       "another agent's proof",
+	CauseProofDelete: "deleting another agent's proof",
 }

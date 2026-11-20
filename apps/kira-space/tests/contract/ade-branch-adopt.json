@@ -25,6 +25,7 @@
         "worktree": "<masked>"
       },
       "dirty": [],
+      "dirtyToken": "",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -65,6 +66,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "dirty": [],
+      "dirtyToken": "",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -177,53 +179,6 @@
             },
             "id": "<masked>",
             "kind": "adopt",
-            "repo": "api",
-            "session": "<masked>",
-            "source": "session",
-            "stacked": [],
-            "stepName": "",
-            "upstream": ""
-          }
-        ],
-        "taskId": "<masked>",
-        "taskTitle": "Adopter"
-      },
-      "reason": "request",
-      "target": {
-        "color": "",
-        "kind": "task",
-        "location": "",
-        "name": "Adopter",
-        "readOnly": false
-      }
-    }
-  ],
-  "ApprovalsService.List#checkout": [
-    {
-      "createdAt": 0,
-      "expiresAt": 0,
-      "id": "<masked>",
-      "kind": "branch.request",
-      "operation": {
-        "class": "create",
-        "tone": "caution"
-      },
-      "origin": {
-        "client": "",
-        "cwd": "",
-        "source": "session",
-        "step": "",
-        "task": "Adopter"
-      },
-      "payload": {
-        "items": [
-          {
-            "base": "<masked>",
-            "branch": "feat/free",
-            "codeRepoId": "<masked>",
-            "from": "",
-            "id": "<masked>",
-            "kind": "checkout",
             "repo": "api",
             "session": "<masked>",
             "source": "session",

@@ -3,19 +3,17 @@ import { ref } from 'vue';
 
 export type FilesMode = 'files' | 'search';
 
-/** One task's Files tab: which branch's worktree it shows, Files or Search, and the name filter. */
+/** The Files window's view: which branch's worktree it shows, Files or Search, and the name filter. */
 interface TaskFilesView {
   branchId: string;
   mode: FilesMode;
   filter: string;
 }
 
-// View state of the task Files tab, in memory only. Entries of tasks and branches that left the
-// board are pruned. Search results live in useAdeFileSearchStore, file lists in TanStack Query.
+// View state of the task Files window, in memory only; one window shows one task. Search results
+// live in useAdeFileSearchStore, file lists in TanStack Query.
 export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
-  const views = ref<Record<string, TaskFilesView>>({});
-  /** Width of the tree and search pane beside the viewer; 0 until the user drags it. */
-  const paneWidth = ref(0);
+  const view = ref<TaskFilesView>({ branchId: '', mode: 'files', filter: '' });
   /** Per branch: expanded directories. Absent until the tree first loads. */
   const expanded = ref<Record<string, Set<string>>>({});
   /** Per branch: the selected tree path and the file open in the viewer. */
@@ -26,10 +24,8 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   /** Per branch: why the last Reveal or Open in VS Code failed. */
   const launchError = ref<Record<string, string>>({});
 
-  const viewOf = (taskId: string): TaskFilesView =>
-    views.value[taskId] ?? { branchId: '', mode: 'files', filter: '' };
-  function patch(taskId: string, p: Partial<TaskFilesView>): void {
-    views.value[taskId] = { ...viewOf(taskId), ...p };
+  function patch(p: Partial<TaskFilesView>): void {
+    view.value = { ...view.value, ...p };
   }
 
   const expandedOf = (branchId: string): Set<string> | undefined => expanded.value[branchId];
@@ -43,36 +39,16 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
     expanded.value[branchId] = set;
   }
 
-  function dropMissing(rec: Record<string, unknown>, keep: ReadonlySet<string>): void {
-    for (const k of Object.keys(rec)) if (!keep.has(k)) delete rec[k];
-  }
-  /** Drops entries of tasks and branches no longer on the board (archived, removed). */
-  function prune(taskIds: ReadonlySet<string>, branchIds: ReadonlySet<string>): void {
-    dropMissing(views.value, taskIds);
-    for (const rec of [
-      expanded.value,
-      selected.value,
-      openFile.value,
-      reading.value,
-      launchError.value,
-    ]) {
-      dropMissing(rec, branchIds);
-    }
-  }
-
   return {
-    views,
-    paneWidth,
+    view,
     expanded,
     selected,
     openFile,
     reading,
     launchError,
-    viewOf,
     patch,
     expandedOf,
     initExpanded,
     toggleDir,
-    prune,
   };
 });

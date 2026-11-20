@@ -1,22 +1,72 @@
-import { withTuiActivity } from '@ade/activity';
-import { type TaskAction, taskCell } from '@ade/board/actions';
+import { ACTIVITY_RANK, withTuiActivity } from '@ade/activity';
+import { type BranchTag, branchTag, type TaskAction, tagLabel, taskCell } from '@ade/board/actions';
+import { buildBranchGraph, isDraft } from '@ade/board/branchGraph';
 import { taskTitle } from '@ade/board/labels';
 import { buildNeedsYou } from '@ade/board/needsYou';
 import { buildTaskProgress, type TaskProgress } from '@ade/board/progress';
 import { blocked as isBlocked, statusOf } from '@ade/board/status';
 import { buildStepBlocks, type StepBlock } from '@ade/board/stepBlocks';
 import { type StepMoves, stepMoves } from '@ade/board/stepMoves';
+import { type TaskSessions, taskSessionsOf } from '@ade/board/taskSessions';
 import { localIso } from '@ade/localDay';
 import { taskColor } from '@ade/palette';
-import { useBoard, useRepoNames, useSessions, useWorkflows } from '@ade/readQueries';
-import type { Branch, Session, Task, TaskStatusDef, Workflow } from '@ade/wire';
+import {
+  useBoard,
+  useChangeRequests,
+  useRepoNames,
+  useSessions,
+  useWorkflows,
+} from '@ade/readQueries';
+import { runStateLabel } from '@ade/runState';
+import {
+  byRunningOrder,
+  type SessionLookup,
+  type SessionView,
+  sessionView,
+} from '@ade/sessions/sessionView';
+import { agentsSummary } from '@ade/status/agentsSummary';
+import type {
+  Branch,
+  ChangeRequest,
+  RepoState,
+  Run,
+  Session,
+  Task,
+  TaskStatusDef,
+  Workflow,
+} from '@ade/wire';
 import { t } from '@theme/i18n';
 import { createSharedComposable, useIntervalFn } from '@vueuse/core';
+import { useAgentInfo } from '@workbench/agent/agentInfo';
 import { formatWeekdayDate } from '@workbench/behaviour/format';
 import { compareNatural } from '@workbench/behaviour/match';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, ref } from 'vue';
 import { useAgentSessionsStore } from './agentSessions';
+
+/** One branch of a task as the phone's expanded card lists it. */
+export interface PhoneBranch {
+  id: string;
+  name: string;
+  repo: string;
+  tag: BranchTag;
+  /** The tag's label with a running setup's elapsed time applied. */
+  tagText: string;
+  ahead: number;
+  behind: number;
+  dirty: number;
+  pr: ChangeRequest | null;
+}
+
+/** The task's newest step run, for the card's run line. */
+export interface PhoneRunLine {
+  state: Run['state'];
+  label: string;
+  startedAt: number | null;
+  finishedAt: number | null;
+  /** Why a failed or stuck run ended; '' otherwise. */
+  reason: string;
+}
 
 export interface PlanCard {
   task: Task;
@@ -37,6 +87,15 @@ export interface PlanCard {
   moves: StepMoves;
   /** Running interactive Claude Code sessions of the task. */
   tuiSessions: Session[];
+  /** One state for the task's agent sessions; null when it has none. */
+  sessions: TaskSessions | null;
+  /** Every session of the task, running first. */
+  sessionViews: SessionView[];
+  run: PhoneRunLine | null;
+  jira: string;
+  /** An agent waits on a branch request for this task. */
+  branchRequest: boolean;
+  branches: PhoneBranch[];
 }
 
 export interface PlanGroup {
@@ -56,13 +115,33 @@ function dayLabel(iso: string, today: string): string {
   return formatWeekdayDate(date);
 }
 
-/** The three tabs' data, derived from the cached read queries. One instance serves every screen. */
+/** Newest step run of a task: rebase and review runs sit outside its workflow. */
+function runLine(runs: readonly Run[]): PhoneRunLine | null {
+  const step = runs.filter((r) => r.purpose === '');
+  const newest = step.reduce<Run | null>(
+    (best, r) => (!best || (r.startedAt ?? 0) >= (best.startedAt ?? 0) ? r : best),
+    null,
+  );
+  if (!newest) return null;
+  const failed = newest.state === 'failed' || newest.state === 'stuck';
+  return {
+    state: newest.state,
+    label: runStateLabel(newest.state),
+    startedAt: newest.startedAt,
+    finishedAt: newest.finishedAt,
+    reason: failed ? (newest.outcome?.reason ?? '') : '',
+  };
+}
+
+/** The tabs' data, derived from the cached read queries. One instance serves every screen. */
 export const useAgentsModel = createSharedComposable(() => {
   const board = useBoard();
   const sessionsQuery = useSessions();
   const workflowsQuery = useWorkflows();
   const repoNames = useRepoNames();
   const agent = useAgentSessionsStore();
+  const changeRequests = useChangeRequests();
+  const { info } = useAgentInfo();
 
   const nowMs = ref(Date.now());
   useIntervalFn(() => {
@@ -93,6 +172,16 @@ export const useAgentsModel = createSharedComposable(() => {
       repoNick: repoLabel,
     });
     const progress = new Map(b.tasks.map((t) => [t.id, buildTaskProgress(input(t))]));
+    const graph = buildBranchGraph(b);
+    const lookup: SessionLookup = {
+      task: (id) => b.tasks.find((x) => x.id === id),
+      branch: (id) => branchById.get(id),
+      repoLabel,
+      workflow: (id) => workflows.get(id),
+      headlessLabel: info.value.headlessLabel,
+    };
+    const mainName = new Map(b.repos.map((r) => [r.codeRepoId, r.mainName]));
+    const prs = changeRequests.data.value?.branches ?? {};
     const needs = buildNeedsYou({
       board: b,
       sessions: sessions.value,
@@ -110,6 +199,7 @@ export const useAgentsModel = createSharedComposable(() => {
       const blocked = isBlocked(task, taskProgress, branches);
       const taskSessions = sessions.value.filter((s) => s.taskId === task.id);
       const blocks = buildStepBlocks(taskProgress, i.workflow);
+      const ownSessions = [...taskSessions].sort(byRunningOrder);
       cards.set(task.id, {
         task,
         title: taskTitle(task, branches[0], ''),
@@ -135,6 +225,35 @@ export const useAgentsModel = createSharedComposable(() => {
           task.runs,
         ),
         tuiSessions: taskSessions.filter((s) => s.mode === 'tui' && s.state === 'running'),
+        sessions: taskSessionsOf(taskSessions),
+        sessionViews: ownSessions.map((s) => sessionView(s, lookup)),
+        run: runLine(task.runs),
+        jira: task.jira?.key ?? '',
+        branchRequest: task.branchRequestId !== '',
+        branches: branches.map((br) => {
+          const tag = branchTag({
+            branch: br,
+            graph,
+            plan: b.plan,
+            // The shared-files tag needs the timeline's merge order, which the phone has no view of.
+            after: new Map(),
+            nowMs: nowMs.value,
+            hadSession: sessions.value.some((x) => x.branchId === br.id),
+            mainName: mainName.get(br.codeRepoId) ?? '',
+            runs: task.runs,
+          });
+          return {
+            id: br.id,
+            name: isDraft(br) ? t('common.newBranch.label') : br.name,
+            repo: repoLabel(br.codeRepoId),
+            tag,
+            tagText: tagLabel(tag, nowMs.value),
+            ahead: br.ahead,
+            behind: br.behind,
+            dirty: br.dirty.length,
+            pr: prs[br.id] ?? null,
+          };
+        }),
       });
     }
 
@@ -159,8 +278,21 @@ export const useAgentsModel = createSharedComposable(() => {
       .sort(([a], [c]) => (a === '' ? 1 : c === '' ? -1 : compareNatural(a, c)))
       .map(([, g]) => g);
 
-    return { needs, cards, plan, today };
+    // Every running session and every finished one not yet viewed: the Activity tab's agent list.
+    const live = sessions.value
+      .filter((s) => s.state === 'running' || s.unseen)
+      .map((s) => sessionView(s, lookup));
+    const agents = {
+      summary: agentsSummary(sessions.value),
+      views: live.sort(
+        (a, c) =>
+          ACTIVITY_RANK[a.kind] - ACTIVITY_RANK[c.kind] || byRunningOrder(a.session, c.session),
+      ),
+    };
+    const repoStates: RepoState[] = b.repos;
+
+    return { needs, cards, plan, today, agents, repoStates };
   });
 
-  return { model, repoLabel, boardQuery: board };
+  return { model, repoLabel, boardQuery: board, nowMs };
 });

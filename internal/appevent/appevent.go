@@ -78,6 +78,8 @@ const (
 	// window-addressed.
 	ChannelAgentSessions = "kira:agent:sessions"
 	ChannelAgentEvent    = "kira:agent:event"
+	// ChannelScriptRunsChanged pushes one changed script run to every window.
+	ChannelScriptRunsChanged = "kira:scriptRuns:changed"
 	// P132 Part 2's hoist: Space's op log dock shares Studio's toggle channel and update push.
 	ChannelToggleOperationsPanel = "kira:menu:toggleOperationsPanel"
 	ChannelOpUpdate              = "kira:op:update"

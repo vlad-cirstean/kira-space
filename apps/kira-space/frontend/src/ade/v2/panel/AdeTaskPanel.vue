@@ -10,6 +10,7 @@ import { Input } from '@theme/components/ui/input';
 import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
+import { errorText } from '@workbench/bridge/codedError';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
@@ -17,10 +18,9 @@ import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
-import AdeFilesTab from '../files/AdeFilesTab.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
-import { useUpdateTask } from '../queries';
+import { useOpenFilesWindow, useUpdateTask } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeTaskActionButton from '../run/AdeTaskActionButton.vue';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
@@ -62,6 +62,36 @@ const reviewDisabled = computed(
     choices.value.every((c) => c.disabled),
 );
 
+// The task's Files window: a quiet icon, below the labelled Review button.
+const openFiles = useOpenFilesWindow();
+const hasBranch = computed(() => props.card.rows.some((r) => r.branch.name !== ''));
+const filesDisabled = computed(
+  () =>
+    openFiles.isPending.value ||
+    !props.card.rows.some((r) => r.branch.name !== '' && r.branch.worktree !== ''),
+);
+const filesTip = computed(() =>
+  props.card.rows.some((r) => r.branch.name !== '' && r.branch.worktree !== '')
+    ? t('space.ade.panel.files.tooltip')
+    : t('space.ade.files.noWorktree.empty'),
+);
+function openFilesWindow(ev: MouseEvent): void {
+  const taskId = props.card.task.id;
+  const returnTo = ev.currentTarget as HTMLElement | null;
+  delete ui.actionError[taskId];
+  openFiles.mutate(
+    { taskId },
+    {
+      onError: (err) => {
+        ui.actionError[taskId] = errorText(err);
+      },
+      onSettled: () => {
+        if (returnTo?.isConnected) returnTo.focus({ preventScroll: true });
+      },
+    },
+  );
+}
+
 const titleEdit = useInlineEdit({
   source: () => props.card.task.title,
   commit: async (title) => {
@@ -85,7 +115,6 @@ const label = computed(() =>
       { value: 'main', label: t('common.main.label') },
       { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
-      { value: 'files', label: t('common.module.files.label') },
     ]"
   >
     <template #actions>
@@ -104,6 +133,16 @@ const label = computed(() =>
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
+      <TooltipIconButton
+        v-if="hasBranch"
+        icon="files"
+        :label="filesTip"
+        disabled-trigger
+        :disabled="filesDisabled"
+        class="shrink-0"
+        data-testid="ade-panel-files"
+        @click="openFilesWindow"
+      />
       <TooltipIconButton
         icon="ellipsis"
         :label="t('common.moreActions.tooltip')"
@@ -163,7 +202,6 @@ const label = computed(() =>
     </template>
     <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
-    <AdeFilesTab v-else-if="tab === 'files'" :card="card" />
     <AdeDetailsTab v-else :task="card.task" :branches="card.rows.map((r) => r.branch)" />
   </AdePanelFrame>
 </template>

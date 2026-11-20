@@ -7,7 +7,7 @@
       "pending": false,
       "proofId": "<id:1>",
       "rev": 1,
-      "sessionId": "",
+      "sessionId": "session-1",
       "slug": "checkout-fix",
       "steps": [
         {

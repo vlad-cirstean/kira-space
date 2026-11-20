@@ -300,7 +300,7 @@ func TestDbAuditTrail(t *testing.T) {
 	}
 	// 10. The trail outlives archiving and dies with the task row.
 	before := len(dbAudit(t, app, task.ID).Entries)
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: task.ID}); err != nil {
 		t.Fatalf("ArchiveTask: %v", err)
 	}
 	if n := len(dbAudit(t, app, task.ID).Entries); n != before || n == 0 {

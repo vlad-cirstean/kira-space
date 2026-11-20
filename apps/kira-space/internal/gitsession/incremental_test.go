@@ -496,7 +496,7 @@ func TestMarkFile_StoredBlobOIDMatchesGit(t *testing.T) {
 }
 
 // waitForRefsChangedInc polls entry.refs until it reports invalid (dropped by note() on
-// refsChanged) or the timeout expires — the watcher's own signal is asynchronous (fsnotify), so a
+// refsChanged) or the timeout expires — the watcher's own signal is asynchronous (file watch), so a
 // test proving cache invalidation on a real ref move cannot call RangeFiles immediately
 // after the commit above.
 func waitForRefsChangedInc(t *testing.T, entry *RepoEntry) {

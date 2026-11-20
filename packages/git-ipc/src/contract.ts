@@ -573,9 +573,10 @@ export interface WorktreeRemovePreflight {
   readonly path: string;
   readonly blockers: readonly WorktreeRemoveBlocker[];
   readonly requiresTypedConfirmation: boolean;
-  /** The worktree's own basename — set only when `requiresTypedConfirmation` is true. Echoed back
-   *  as `op.run`'s own `confirmToken` field; the server always re-derives and re-checks this fresh
-   *  against a freshly re-read status, never trusting a client-echoed value. */
+  /** Fingerprint of the uncommitted set (paths, statuses, size and mtime) — set only when
+   *  `requiresTypedConfirmation` is true (the name is historic: nothing is typed). The discard button
+   *  echoes the one it showed as `op.run`'s own `confirmToken` field; the server re-derives it from a
+   *  freshly re-read status and refuses a mismatch, so a set that changed since is never deleted. */
   readonly confirmToken: string | undefined;
   readonly routes: readonly 'force'[];
   readonly verdict: 'clean' | 'dirty' | 'blocked';
@@ -960,7 +961,7 @@ export type OpRequest =
    *  before the write, never trusted as the client's own claim (the fail-safe-over-fail-open
    *  principle for this destructive path) — `force` becomes true only when the server's own fresh
    *  preflight verdict is `"dirty"`, and `confirmToken` must then equal that same fresh preflight's
-   *  own `confirmToken` (the worktree's basename) exactly. */
+   *  own `confirmToken` (the uncommitted set's fingerprint) exactly. */
   | {
       readonly kind: 'worktreeRemove';
       readonly path: string;

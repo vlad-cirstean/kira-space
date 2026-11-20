@@ -77,7 +77,7 @@ func (f *rbFx) agent(sh string, finish map[string]any) {
 }
 
 // rebaseMask hides what changes per run: times, the agent session and commit shas.
-var rebaseMask = flowharness.Mask("startedAt", "finishedAt", "sessionId", "before", "after", "ontoTip", "exitCode", "tip", "createdAt", "sha", "addedAt", "lastCommitAt")
+var rebaseMask = flowharness.Mask("startedAt", "finishedAt", "sessionId", "before", "after", "ontoTip", "exitCode", "tip", "createdAt", "sha", "addedAt", "lastCommitAt", "dirtyToken")
 
 const rebaseSh = "git fetch -q origin && git rebase -q origin/main"
 

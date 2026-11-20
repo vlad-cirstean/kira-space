@@ -44,26 +44,34 @@ func TestBranchRequestMerge(t *testing.T) {
 	app := flowharness.New(t)
 	apiRepo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	webRepo, _ := cloneWithMain(app, filepath.Join(app.Work, "web"))
-	// Run one creates feat/old in api. Run two, in that worktree, asks three things at once.
+	libRepo, _ := cloneWithMain(app, filepath.Join(app.Work, "lib"))
+	// Run one creates feat/old in api and feat/w-old in web: no approval. Run two asks three things at
+	// once: two renames and an adopt of a branch another task holds. All three need the user.
+	second := []fakeagent.Action{{
+		WaitBefore: filepath.Join(app.Work, "pushed"), Parallel: true, Name: "done",
+		MCP: []fakeagent.MCPCall{
+			adoptCallIn("lib", "feat/held"),
+			renameCall("feat/old", "feat/new", true),
+			webRenameCall("feat/w-old", "feat/w-new"),
+		},
+	}}
 	claude(app, map[string][]fakeagent.Action{
-		"work": {{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/old"})}, Name: "done"}},
-		"api": {{
-			WaitBefore: filepath.Join(app.Work, "pushed"), Parallel: true, Name: "done",
-			MCP: []fakeagent.MCPCall{
-				requestCall([2]string{"web", "feat/b"}),
-				requestCall([2]string{"web", "feat/c"}),
-				renameCall("feat/old", "feat/new", true),
-			},
-		}},
+		"work": {{MCP: requestCalls([2]string{"api", "feat/old"}, [2]string{"web", "feat/w-old"}), Parallel: true, Name: "done"}},
+		"api":  second,
+		"web":  second,
 	})
 	api, web := importRepo(t, app, apiRepo.Dir), importRepo(t, app, webRepo.Dir)
 	saveWorkflow(t, app, "flow", flowYAML("flow", onceStepYML+strings.ReplaceAll(onceStepYML, "one", "two")+noSandbox))
-	f := &brFixture{app: app, api: api.ID, web: web.ID, task: createTask(t, app, "Fix login", "flow", api.ID, web.ID)}
+	f := &brFixture{app: app, repo: apiRepo, api: api.ID, web: web.ID, task: createTask(t, app, "Fix login", "flow", api.ID, web.ID)}
+	// Another task holds feat/held of lib, a repo off this task: adopting it adds the repo.
+	lib := importRepo(t, app, libRepo.Dir)
+	libRepo.Git("branch", "feat/held")
+	donor := createTask(t, app, "Donor", "flow")
+	if _, err := app.W.AdeTask.AddExistingBranch(ctx, adewire.AddExistingBranchArgs{CodeRepoID: lib.ID, Name: "feat/held", TaskID: donor.ID}); err != nil {
+		t.Fatal(err)
+	}
 
-	f.startRun(t)
-	first := f.waitRequest(t)
-	mustApprove(t, app, first.ID, itemIDsOf(first), nil)
-	waitRun(t, app, f.task.ID, "one", "done")
+	f.createFirst(t)
 	apiRepo.Git("push", "-q", "-u", "origin", "feat/old")
 	if err := os.WriteFile(filepath.Join(app.Work, "pushed"), nil, 0o644); err != nil {
 		t.Fatal(err)
@@ -77,8 +85,8 @@ func TestBranchRequestMerge(t *testing.T) {
 		}
 		byBranch[it.Branch] = it
 	}
-	if len(byBranch) != 3 || byBranch["feat/new"].Kind != "rename" || byBranch["feat/b"].Kind != "branch" {
-		t.Fatalf("items = %+v, want one rename and two new branches", req.Items)
+	if len(byBranch) != 3 || byBranch["feat/new"].Kind != "rename" || byBranch["feat/w-new"].Kind != "rename" || byBranch["feat/held"].Kind != "adopt" {
+		t.Fatalf("items = %+v, want two renames and one adopt", req.Items)
 	}
 	if ps := f.requestPrompts(t); len(ps) != 1 {
 		t.Fatalf("prompts = %+v, want one for the merged request", ps)
@@ -102,7 +110,7 @@ func TestBranchRequestMerge(t *testing.T) {
 	mergeMask := brListMask
 	f.app.Contract(t, mergeScenario, "ApprovalsService.List", []approvals.Item{stored}, mergeMask)
 
-	rename, keep, drop := byBranch["feat/new"], byBranch["feat/b"], byBranch["feat/c"]
+	rename, keep, drop := byBranch["feat/new"], byBranch["feat/held"], byBranch["feat/w-new"]
 	shown := make([]string, len(sorted.Items))
 	for i, it := range sorted.Items {
 		shown[i] = stable[it.ID]
@@ -118,47 +126,17 @@ func TestBranchRequestMerge(t *testing.T) {
 	mustApprove(t, app, req.ID, []string{rename.ID, keep.ID}, []string{rename.ID})
 	waitRun(t, app, f.task.ID, "two", "done")
 
-	// Each call reads only its own items, in call order (result 1 is the first run's request).
-	if got := f.result(t, 2); !strings.Contains(got, "feat/b") || !strings.Contains(got, `"status":"done"`) || strings.Contains(got, "feat/c") || strings.Contains(got, "denied") {
-		t.Fatalf("first call = %s, want only feat/b created", got)
-	}
-	if got := f.result(t, 3); !strings.Contains(got, "denied") || strings.Contains(got, "feat/b") {
-		t.Fatalf("second call = %s, want only feat/c denied (%s)", got, drop.ID)
+	// Each call reads only its own item. The adopt is the only branch.request of run two (after run one's two).
+	if got := f.result(t, 3); !strings.Contains(got, "feat/held") || !strings.Contains(got, `"status":"done"`) || strings.Contains(got, "denied") {
+		t.Fatalf("adopt call = %s, want feat/held checked out", got)
 	}
 	if got := f.renameResult(t); !strings.Contains(got, `"status":"done"`) {
-		t.Fatalf("rename call = %s, want done", got)
+		t.Fatalf("api rename call = %s, want done", got)
+	}
+	if got := f.resultOf(t, "branch.rename", 2); !strings.Contains(got, "denied") {
+		t.Fatalf("web rename call = %s, want denied (%s)", got, drop.ID)
 	}
 	if id := taskOf(t, board(t, app), f.task.ID).BranchRequestID; id != "" {
 		t.Fatalf("request %s still open after the answer", id)
 	}
-}
-
-func TestBranchRequestsTwoTasks(t *testing.T) {
-	app := flowharness.New(t)
-	claude(app, map[string][]fakeagent.Action{"*": {
-		{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, Name: "done"},
-		{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/b"})}, Name: "done"},
-	}})
-	apiRepo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
-	api := importRepo(t, app, apiRepo.Dir)
-	saveWorkflow(t, app, "flow", flowYAML("flow", onceStepYML))
-	one := &brFixture{app: app, api: api.ID, task: createTask(t, app, "Task one", "flow", api.ID)}
-	two := &brFixture{app: app, api: api.ID, task: createTask(t, app, "Task two", "flow", api.ID)}
-	one.startRun(t)
-	two.startRun(t)
-
-	reqOne, reqTwo := one.waitRequest(t), two.waitRequest(t)
-	if reqOne.ID == reqTwo.ID || reqOne.TaskID == reqTwo.TaskID {
-		t.Fatalf("requests = %+v and %+v, want one per task", reqOne, reqTwo)
-	}
-	mustDeny(t, app, reqOne.ID)
-	waitRun(t, app, one.task.ID, "one", "done")
-	if run, _ := latestRun(t, app, two.task.ID, "one"); run.State != "running" {
-		t.Fatalf("other task's run = %q, want it still waiting on its own request", run.State)
-	}
-	if _, err := branchRequest(app, reqTwo.ID); err != nil {
-		t.Fatalf("other request: %v", err)
-	}
-	mustDeny(t, app, reqTwo.ID)
-	waitRun(t, app, two.task.ID, "one", "done")
 }

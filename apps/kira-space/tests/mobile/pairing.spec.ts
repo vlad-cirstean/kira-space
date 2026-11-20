@@ -71,7 +71,8 @@ test('a revoked device returns to the pairing screen', async ({ page, app, serve
   await expect(page.locator(t('connection-dot'))).toHaveAttribute('aria-label', 'Connection live');
   await page.waitForLoadState('networkidle');
   server.state.auth = 'revoked';
-  await page.locator(t('refresh')).click();
+  // A push makes the phone read the board, which now meets the revoke.
+  server.emit('kira:adetask:board', null);
   await expect(page.locator(t('pair-screen'))).toBeVisible();
   await expect(page.locator(t('pair-notice'))).toContainText('removed in Kira Space');
 });
@@ -88,7 +89,7 @@ test('contract: an expired device returns to the pairing screen with a notice', 
   await expect(page.locator(t('connection-dot'))).toHaveAttribute('aria-label', 'Connection live');
   await page.waitForLoadState('networkidle');
   server.state.auth = 'expired';
-  await page.locator(t('refresh')).click();
+  server.emit('kira:adetask:board', null);
   await expect(page.locator(t('pair-screen'))).toBeVisible();
   await expect(page.locator(t('pair-notice'))).toContainText('expired');
 });

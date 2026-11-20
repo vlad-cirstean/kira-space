@@ -176,6 +176,10 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   scriptRunsRestoreState: 'ScriptRunsService.RestoreState',
   scriptRunsRestore: 'ScriptRunsService.Restore',
   scriptRunsRestoreDismiss: 'ScriptRunsService.RestoreDismiss',
+  sessionRestoreState: 'SessionRestoreService.State',
+  sessionRestoreClaim: 'SessionRestoreService.Claim',
+  sessionRestoreRestore: 'SessionRestoreService.Restore',
+  sessionRestoreClose: 'SessionRestoreService.Close',
   scriptRunsResolveDir: 'ScriptRunsService.ResolveDir',
   scriptRunsMcpServers: 'ScriptRunsService.McpServers',
   scriptRunsPreview: 'ScriptRunsService.Preview',
@@ -298,6 +302,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskFocusSession: 'AdeTaskService.FocusSession',
   adeTaskOpenReviewWindow: 'AdeTaskService.OpenReviewWindow',
   adeTaskReviewWindowTarget: 'AdeTaskService.ReviewWindowTarget',
+  adeTaskOpenFilesWindow: 'AdeTaskService.OpenFilesWindow',
+  adeTaskFilesWindowTarget: 'AdeTaskService.FilesWindowTarget',
   adeTaskReviewWorking: 'AdeTaskService.ReviewWorking',
   adeTaskReviewWorkingDiff: 'AdeTaskService.ReviewWorkingDiff',
   adeTaskReviewWorkingFile: 'AdeTaskService.ReviewWorkingFile',
@@ -331,7 +337,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskUpdateTaskRepo: 'AdeTaskService.UpdateTaskRepo',
   adeTaskRemoveTaskBranch: 'AdeTaskService.RemoveTaskBranch',
   adeTaskRemoveTaskRepo: 'AdeTaskService.RemoveTaskRepo',
-  adeTaskTaskBranchRisk: 'AdeTaskService.TaskBranchRisk',
   adeTaskHostProviders: 'AdeTaskService.HostProviders',
 
   // Databases module (formerly Kira Studio's own table).
@@ -583,6 +588,15 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.openedFilesTerminalOpen]: 'null',
   [IPC.windowsEnsure]: JSON.stringify({ mode: 'git' }),
   [IPC.windowsSetMode]: 'null',
+  // P701: nothing was cut by a restart unless a spec offers it.
+  [IPC.sessionRestoreState]: JSON.stringify({
+    open: false,
+    scripts: [],
+    docker: { state: 'none', engineId: '', context: '', detectedAt: 0, bootAt: 0, items: [] },
+    agents: [],
+  }),
+  [IPC.sessionRestoreClaim]: 'false',
+  [IPC.sessionRestoreClose]: 'null',
   // P520: nothing pending unless a spec pushes the queue (pushApprovals).
   [IPC.approvalsList]: '[]',
   // P246: the prompt router's calls; a spec drives the list through IPC.promptsChanged pushes.
@@ -674,6 +688,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.captureWindowItem]: 'null',
   [IPC.captureStatus]: JSON.stringify({ state: 'active', accelerator: 'CmdOrCtrl+Shift+K' }),
   [IPC.adeTaskReviewWindowTarget]: 'null',
+  [IPC.adeTaskFilesWindowTarget]: 'null',
   [IPC.adeTaskReviewWorking]: JSON.stringify({
     worktree: '',
     head: '',

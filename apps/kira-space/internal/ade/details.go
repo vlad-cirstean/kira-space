@@ -60,10 +60,9 @@ type fileError struct {
 
 // detailsPending is one file of an open details.edit approval.
 type detailsPending struct {
-	at     int64 // unix ms the approval opened
-	item   taskfiles.PendingItem
-	reason string
-	by     string
+	at   int64 // unix ms the approval opened
+	item taskfiles.PendingItem
+	by   string
 }
 
 func (b *TaskBoard) initDetails() {

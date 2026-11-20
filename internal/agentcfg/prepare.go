@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
@@ -46,7 +47,7 @@ type runFiles struct {
 func (r *runFiles) remove() {
 	r.once.Do(func() {
 		for _, p := range r.paths {
-			if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if err := fileservice.Host().Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
 				slog.Warn("agent settings: remove run file", "scope", "agentcfg", "err", err)
 			}
 		}
@@ -126,11 +127,11 @@ func (s *Store) writeFiles(l Launch, cfg harness.NativeConfig) (*harness.AppConf
 			continue
 		}
 		path := filepath.Join(l.Dir, fmt.Sprintf("%s-app.%s%s", l.Stem, f.Role, filepath.Ext(f.Name)))
-		if err := os.MkdirAll(l.Dir, 0o700); err != nil {
+		if err := fileservice.HostPrivate().MkdirAll(l.Dir); err != nil {
 			files.remove()
 			return nil, nil, fmt.Errorf("agent settings: create %s: %w", l.Dir, err)
 		}
-		if err := configfs.WriteAtomic(path, f.Data, 0o600); err != nil {
+		if err := fileservice.HostPrivate().WriteFile(path, f.Data, 0o600); err != nil {
 			files.remove()
 			return nil, nil, fmt.Errorf("agent settings: %w", err)
 		}
@@ -167,22 +168,22 @@ func (s *Store) Close() error {
 func (s *Store) Sweep(dirs ...string) error {
 	var errs []error
 	for _, d := range dirs {
-		isos, err := filepath.Glob(filepath.Join(d, harness.IsolationGlob))
+		isos, err := fileservice.Host().Glob(filepath.Join(d, harness.IsolationGlob))
 		if err != nil {
 			errs = append(errs, err)
 		}
 		for _, m := range isos {
-			if err := os.RemoveAll(m); err != nil {
+			if err := fileservice.Host().RemoveAll(m); err != nil {
 				errs = append(errs, err)
 			}
 		}
-		matches, err := filepath.Glob(filepath.Join(d, "*-app.*.json"))
+		matches, err := fileservice.Host().Glob(filepath.Join(d, "*-app.*.json"))
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 		for _, m := range matches {
-			if err := os.Remove(m); err != nil && !errors.Is(err, os.ErrNotExist) {
+			if err := fileservice.Host().Remove(m); err != nil && !errors.Is(err, os.ErrNotExist) {
 				errs = append(errs, err)
 			}
 		}

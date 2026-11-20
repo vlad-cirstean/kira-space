@@ -2,8 +2,9 @@ package gitclient
 
 import (
 	"context"
-	"os"
 	"path/filepath"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Capabilities are per-repo facts a later phase's operations branch on — none of P1's own scope
@@ -25,10 +26,10 @@ type Capabilities struct {
 // commitGraphExists checks both the single-file and the chunked/split commit-graph layouts git
 // has used since it introduced the feature — either is enough to answer "present".
 func commitGraphExists(commonDir string) bool {
-	if _, err := os.Stat(filepath.Join(commonDir, "objects", "info", "commit-graph")); err == nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(commonDir, "objects", "info", "commit-graph")); err == nil {
 		return true
 	}
-	entries, err := os.ReadDir(filepath.Join(commonDir, "objects", "info", "commit-graphs"))
+	entries, err := fileservice.Host().ReadDir(filepath.Join(commonDir, "objects", "info", "commit-graphs"))
 	return err == nil && len(entries) > 0
 }
 

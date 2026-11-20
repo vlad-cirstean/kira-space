@@ -1,7 +1,6 @@
 package taskfiles
 
 import (
-	"strings"
 	"testing"
 	"time"
 )
@@ -23,10 +22,10 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-// TestDecide pins the matrix of plan section 7.3 for agent writers: writer, kind, owner, collision
-// and whether the change needs a reason.
+// TestDecide pins the author rule for agent writers: who wrote the target, its age, the op and
+// collisions decide whether the user is asked.
 func TestDecide(t *testing.T) {
-	coll := &Collision{By: "user", At: time.UnixMilli(5)}
+	coll := &Collision{By: "s2", At: time.UnixMilli(5)}
 	cases := []struct {
 		name   string
 		in     Input
@@ -34,40 +33,42 @@ func TestDecide(t *testing.T) {
 		cause  Cause
 		notify Notify
 	}{
-		{"user writes anything", Input{Role: RoleUser, Kind: KindHandover, Op: OpEdit}, Accept, CauseNone, NotifyNone},
-		{"kira writes", Input{Role: RoleKira, Kind: KindReadme, Op: OpEdit}, Accept, CauseNone, NotifyNone},
-		{"draft of current step", Input{Role: RoleRun, Kind: KindDraft, Op: OpEdit, Step: "implement", CurrentStep: "implement"}, Accept, CauseNone, NotifyNone},
-		{"draft created", Input{Role: RoleManual, Kind: KindDraft, Op: OpCreate, Step: "plan", CurrentStep: "plan"}, Accept, CauseNone, NotifyNone},
-		{"draft of another step", Input{Role: RoleRun, Kind: KindDraft, Op: OpCreate, Step: "plan", CurrentStep: "implement"}, Reject, CauseWrongStage, NotifyNone},
-		{"draft collision, no reason", Input{Role: RoleRun, Kind: KindDraft, Op: OpEdit, Step: "a", CurrentStep: "a", Collision: coll}, Invalid, CauseCollision, NotifyNone},
-		{"draft collision, reason", Input{Role: RoleRun, Kind: KindDraft, Op: OpEdit, Step: "a", CurrentStep: "a", Collision: coll, Reason: "mine wins"}, Pending, CauseCollision, NotifyNone},
-		{"handed handover edit, no reason", Input{Role: RoleReview, Kind: KindHandover, Op: OpEdit}, Invalid, CauseHandover, NotifyNone},
-		{"handed handover delete, reason", Input{Role: RoleReview, Kind: KindHandover, Op: OpDelete, Reason: "dup"}, Pending, CauseHandover, NotifyNone},
-		{"note created, reason", Input{Role: RoleOrch, Kind: KindNote, Op: OpCreate, Reason: "add"}, Pending, CauseNote, NotifyNone},
-		{"note edited, no reason", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit}, Invalid, CauseNote, NotifyNone},
-		{"new link", Input{Role: RoleRun, Kind: KindLinks, Op: OpCreate}, Accept, CauseNone, NotifyNone},
-		{"own link edited", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit, Own: true}, Accept, CauseNone, NotifyNone},
-		{"own link removed", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Own: true}, Accept, CauseNone, NotifyNone},
-		{"other's link edited, no reason", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit}, Invalid, CauseLink, NotifyNone},
-		{"other's link removed, reason", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Reason: "gone"}, Pending, CauseLink, NotifyNone},
-		{"empty slot filled", Input{Role: RoleRun, Kind: KindLinks, Op: OpCreate, Slot: true}, Accept, CauseNone, NotifyNone},
-		{"slot replaced, reason", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit, Slot: true, Reason: "new PR"}, Pending, CauseSlot, NotifyNone},
-		{"slot cleared, no reason", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Slot: true}, Invalid, CauseSlot, NotifyNone},
-		{"new proof", Input{Role: RoleRun, Kind: KindProof, Op: OpCreate}, Accept, CauseNone, NotifyProofReady},
-		{"new proof side file", Input{Role: RoleRun, Kind: KindProofImage, Op: OpCreate}, Accept, CauseNone, NotifyNone},
-		{"accepted proof changed, no reason", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true}, Invalid, CauseProof, NotifyNone},
-		{"accepted proof image changed, reason", Input{Role: RoleRun, Kind: KindProofImage, Op: OpEdit, ProofAccepted: true, Reason: "fix"}, Pending, CauseProof, NotifyNone},
-		{"accepted proof deleted, reason", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Reason: "dup"}, Pending, CauseProofDelete, NotifyNone},
-		{"latest note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Latest: true}, Accept, CauseNone, NotifyNone},
-		{"latest note created", Input{Role: RoleRun, Kind: KindNote, Op: OpCreate, Latest: true}, Invalid, CauseNote, NotifyNone},
-		{"latest handed handover edited", Input{Role: RoleRun, Kind: KindHandover, Op: OpEdit, Latest: true}, Accept, CauseNone, NotifyNone},
-		{"latest handed handover deleted", Input{Role: RoleRun, Kind: KindHandover, Op: OpDelete, Latest: true}, Invalid, CauseHandover, NotifyNone},
-		{"latest note edited over a collision", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Latest: true, Collision: coll}, Invalid, CauseCollision, NotifyNone},
-		{"latest accepted proof edited", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: true}, Accept, CauseNone, NotifyNone},
-		{"latest accepted proof file created", Input{Role: RoleRun, Kind: KindProofData, Op: OpCreate, ProofAccepted: true, Latest: true}, Accept, CauseNone, NotifyNone},
-		{"latest accepted proof deleted, no reason", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Latest: true}, Invalid, CauseProofDelete, NotifyNone},
-		{"kira file written", Input{Role: RoleRun, Kind: KindState, Op: OpEdit}, Restore, CauseKiraReadOnly, NotifyNone},
-		{"readme deleted", Input{Role: RoleManual, Kind: KindReadme, Op: OpDelete}, Restore, CauseKiraReadOnly, NotifyNone},
+		{"R1 user writes anything", Input{Role: RoleUser, Kind: KindHandover, Op: OpEdit, Author: AuthorAgent}, Accept, CauseNone, NotifyNone},
+		{"R1 kira writes", Input{Role: RoleKira, Kind: KindReadme, Op: OpEdit}, Accept, CauseNone, NotifyNone},
+		{"R2 kira file written", Input{Role: RoleRun, Kind: KindState, Op: OpEdit}, Restore, CauseKiraReadOnly, NotifyNone},
+		{"R2 readme deleted", Input{Role: RoleManual, Kind: KindReadme, Op: OpDelete}, Restore, CauseKiraReadOnly, NotifyNone},
+		{"R3 draft of another step", Input{Role: RoleRun, Kind: KindDraft, Op: OpCreate, Step: "plan", CurrentStep: "implement"}, Reject, CauseWrongStage, NotifyNone},
+		{"R4 draft of current step", Input{Role: RoleRun, Kind: KindDraft, Op: OpEdit, Step: "implement", CurrentStep: "implement", Author: AuthorAgent}, Accept, CauseNone, NotifyNone},
+		{"R5 note created", Input{Role: RoleOrch, Kind: KindNote, Op: OpCreate}, Accept, CauseNone, NotifyNone},
+		{"R5 new link", Input{Role: RoleRun, Kind: KindLinks, Op: OpCreate}, Accept, CauseNone, NotifyNone},
+		{"R5 new proof", Input{Role: RoleRun, Kind: KindProof, Op: OpCreate}, Accept, CauseNone, NotifyProofReady},
+		{"R5 new proof side file", Input{Role: RoleRun, Kind: KindProofImage, Op: OpCreate}, Accept, CauseNone, NotifyNone},
+		{"R6 own note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Author: AuthorSelf}, Accept, CauseNone, NotifyNone},
+		{"R6 own handover deleted", Input{Role: RoleRun, Kind: KindHandover, Op: OpDelete, Author: AuthorSelf}, Accept, CauseNone, NotifyNone},
+		{"R6 own link removed", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Author: AuthorSelf}, Accept, CauseNone, NotifyNone},
+		{"R6 own older proof edited", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Author: AuthorSelf}, Accept, CauseNone, NotifyNone},
+		{"R7 user note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit}, Accept, CauseNone, NotifyNone},
+		{"R7 user handover deleted", Input{Role: RoleRun, Kind: KindHandover, Op: OpDelete}, Accept, CauseNone, NotifyNone},
+		{"R7 user link edited", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit}, Accept, CauseNone, NotifyNone},
+		{"R8 slot replaced", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit, Slot: true}, Accept, CauseNone, NotifyNone},
+		{"R8 slot cleared", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Slot: true, Author: AuthorAgent}, Accept, CauseNone, NotifyNone},
+		{"R9 latest other note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Author: AuthorAgent, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"R9 latest other handover edited", Input{Role: RoleRun, Kind: KindHandover, Op: OpEdit, Author: AuthorAgent, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"R9 latest other proof edited", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Author: AuthorAgent, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"R9 latest other proof file created", Input{Role: RoleRun, Kind: KindProofData, Op: OpCreate, ProofAccepted: true, Author: AuthorAgent, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"R10 older other note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Author: AuthorAgent}, Pending, CauseNote, NotifyNone},
+		{"R10 older other handover edited", Input{Role: RoleReview, Kind: KindHandover, Op: OpEdit, Author: AuthorAgent}, Pending, CauseHandover, NotifyNone},
+		{"R11 older other proof edited", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Author: AuthorAgent}, Pending, CauseProof, NotifyNone},
+		{"R11 older other proof image edited", Input{Role: RoleRun, Kind: KindProofImage, Op: OpEdit, ProofAccepted: true, Author: AuthorAgent}, Pending, CauseProof, NotifyNone},
+		{"R12 other link edited", Input{Role: RoleRun, Kind: KindLinks, Op: OpEdit, Author: AuthorAgent}, Pending, CauseLink, NotifyNone},
+		{"R12 other link removed", Input{Role: RoleRun, Kind: KindLinks, Op: OpDelete, Author: AuthorAgent}, Pending, CauseLink, NotifyNone},
+		{"R13 latest other note deleted", Input{Role: RoleRun, Kind: KindNote, Op: OpDelete, Author: AuthorAgent, Latest: true}, Pending, CauseNote, NotifyNone},
+		{"R13 latest other handover deleted", Input{Role: RoleRun, Kind: KindHandover, Op: OpDelete, Author: AuthorAgent, Latest: true}, Pending, CauseHandover, NotifyNone},
+		{"R14 other proof deleted", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Author: AuthorAgent}, Pending, CauseProofDelete, NotifyNone},
+		{"R14 latest other proof deleted", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Author: AuthorAgent, Latest: true}, Pending, CauseProofDelete, NotifyNone},
+		{"R15 collision on a free change", Input{Role: RoleRun, Kind: KindDraft, Op: OpEdit, Step: "a", CurrentStep: "a", Collision: coll}, Pending, CauseCollision, NotifyNone},
+		{"R15 collision on a latest note edit", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Author: AuthorAgent, Latest: true, Collision: coll}, Pending, CauseCollision, NotifyNone},
+		{"R15 collision cause stays the author cause", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Author: AuthorAgent, Collision: coll}, Pending, CauseNote, NotifyNone},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -75,29 +76,6 @@ func TestDecide(t *testing.T) {
 			if d.Outcome != tc.want || d.Cause != tc.cause || d.Notify != tc.notify {
 				t.Fatalf("got %+v, want outcome %s cause %q notify %q", d, tc.want, tc.cause, tc.notify)
 			}
-			if d.Outcome == Invalid && !strings.Contains(d.Message, `needs reason`) {
-				t.Fatalf("invalid message = %q", d.Message)
-			}
 		})
-	}
-}
-
-func TestReasonError(t *testing.T) {
-	got := ReasonError("proofs/orders/proof.md", CauseProof)
-	want := `proofs/orders/proof.md: needs reason (the user approves changes to an accepted proof). Call submit with {"paths": ["proofs/orders/proof.md"], "reason": "order 12 corrected"}.`
-	if got != want {
-		t.Fatalf("got %q\nwant %q", got, want)
-	}
-}
-
-func TestCleanReason(t *testing.T) {
-	if r, err := CleanReason("  fix  "); err != nil || r != "fix" {
-		t.Fatalf("%q %v", r, err)
-	}
-	if r, err := CleanReason("   "); err != nil || r != "" {
-		t.Fatalf("blank = %q %v", r, err)
-	}
-	if _, err := CleanReason(strings.Repeat("x", 501)); err == nil {
-		t.Fatal("501 runes accepted")
 	}
 }

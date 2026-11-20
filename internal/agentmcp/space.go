@@ -187,7 +187,18 @@ type SpaceCall struct {
 	Orchestrator bool
 }
 
-// SpaceTools is what the state and submit tools call; *ade.TaskBoard implements it. Every method acts
+// MaxHandoverBytes bounds a handover body, whoever writes it.
+const MaxHandoverBytes = 16 << 10
+
+// SubmitFinish is step.finish's flush of the task files: the reply to append, or the refusal of an ok finish.
+type SubmitFinish struct {
+	Reply  string
+	Refuse string
+	// Summary is the step's draft handover: the run records it as its summary.
+	Summary string
+}
+
+// SpaceTools is what the state tool calls; *ade.TaskBoard implements it. Every method acts
 // on one task only. RequestBranches, RenameBranch, ChangeBranch and AcquireLease block until the user
 // answers or the call wait ends; ctx ends when the caller is gone.
 type SpaceTools interface {
@@ -196,18 +207,19 @@ type SpaceTools interface {
 	RequestBranches(ctx context.Context, call SpaceCall, branches []BranchSpec) (RequestBranchesResult, error)
 	RenameBranch(ctx context.Context, call SpaceCall, args RenameBranchArgs) (RenameBranchResult, error)
 	ChangeBranch(ctx context.Context, call SpaceCall, args ChangeBranchArgs) (ChangeBranchResult, error)
-	// Submit reads the named task files (all when none) as the calling session; the reply is the count line then one line per file.
-	Submit(ctx context.Context, call SpaceCall, in SubmitArgs) (string, error)
-	// SubmitForFinish is a run's step.finish implicit submit; an ok finish with no draft is refused
+	// SubmitForFinish is a run's step.finish flush of the task files; an ok finish with no draft is refused
 	// while its result's route continues, except for a smart step.
 	SubmitForFinish(ctx context.Context, call SpaceCall, status string, ok bool) (SubmitFinish, error)
-	// FinishSession is a session's step.finish: it submits the task files, marks the stage's draft
+	// FinishSession is a session's step.finish: it flushes the task files, marks the stage's draft
 	// finished and asks the user to move the task on. The reply is a note for the agent.
 	FinishSession(ctx context.Context, call SpaceCall) (string, error)
 	// ListArtifacts lists every artifact of the task; a failing source is a gap, not an error.
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
 	// CancelOperation stops one of them; an unknown or finished id is a ToolError.
 	CancelOperation(ctx context.Context, taskID, opID string) (CancelOperationResult, error)
+	// RemoveWorktree removes one of the task's own worktrees the way the UI's Remove branch does. It never
+	// discards uncommitted work: a dirty or busy worktree is a failed result. The git branch stays.
+	RemoveWorktree(ctx context.Context, call SpaceCall, args RemoveWorktreeArgs) (RemoveWorktreeResult, error)
 }
 
 // BranchSpec is one branch an agent asks for: a task or registered repo, the branch name the agent chose
@@ -218,19 +230,6 @@ type BranchSpec struct {
 	Branch   string `json:"branch"`
 	Base     string `json:"base,omitempty"`
 	Existing bool   `json:"existing,omitempty"`
-}
-
-// spaceTask resolves the Space grant behind a call; every Space tool acts on that task alone.
-func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolResult) {
-	var g Grant
-	var ok bool
-	if req.Extra != nil {
-		g, ok = s.grant(req.Extra.TokenInfo)
-	}
-	if !ok || !g.Space || g.TaskID == "" {
-		return SpaceCall{}, toolError("Kira Space tools are not available for this session.")
-	}
-	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}, nil
 }
 
 // cleanBranches trims and dedups specs by (repo, branch, base); it returns the refusal text when the list is
@@ -262,4 +261,22 @@ func fail(tool string, err error) *mcp.CallToolResult {
 	}
 	slog.Warn("agentmcp: space tool", "scope", "ade", "tool", tool, "err", err)
 	return toolError("Kira Space could not complete that. Try again, or ask the user.")
+}
+
+// BranchRemoved is worktree.remove's success outcome; failed reuses the branch.request word.
+const BranchRemoved = "removed"
+
+// RemoveWorktreeArgs names the task branch whose worktree goes.
+type RemoveWorktreeArgs struct {
+	Repo   string `json:"repo"`
+	Branch string `json:"branch"`
+}
+
+// RemoveWorktreeResult is worktree.remove's answer.
+type RemoveWorktreeResult struct {
+	Repo     string `json:"repo"`
+	Branch   string `json:"branch"`
+	Outcome  string `json:"outcome"`
+	Worktree string `json:"worktree"`
+	Next     string `json:"next"`
 }

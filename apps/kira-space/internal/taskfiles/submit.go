@@ -28,9 +28,6 @@ const (
 	StatusRestored  Status = "restored"
 	StatusUnchanged Status = "unchanged"
 	StatusIgnored   Status = "ignored"
-	// StatusDeferred is a file-watcher pass that met an ask-first change: nothing is applied or
-	// recorded, so the disk banner shows it and the explicit submit or finish flush decides.
-	StatusDeferred Status = "deferred"
 )
 
 // FileResult is the answer for one path.
@@ -72,10 +69,10 @@ func (r Result) Counts() Counts {
 	return c
 }
 
-// Touched reports whether any file changed state: anything but unchanged, ignored and deferred.
+// Touched reports whether any file changed state: anything but unchanged and ignored.
 func (r Result) Touched() bool {
 	for _, f := range r.Files {
-		if f.Status != StatusUnchanged && f.Status != StatusIgnored && f.Status != StatusDeferred {
+		if f.Status != StatusUnchanged && f.Status != StatusIgnored {
 			return true
 		}
 	}
@@ -99,11 +96,7 @@ type Request struct {
 	TaskID string
 	// Paths limits the call to these paths; empty scans the whole task folder.
 	Paths   []string
-	Reason  string
 	Session Session
-	// Watch marks a file-watcher pass: an ask-first change of an agent is deferred, since the save may
-	// be the user's and the pass has no reason to send it for approval.
-	Watch bool
 }
 
 // Config wires a Service.
@@ -151,11 +144,6 @@ func writerName(r Role, key string) string {
 // its cache, decides, applies what is accepted, restores what is refused and raises one approval for
 // what waits on the user.
 func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
-	reason, err := CleanReason(req.Reason)
-	if err != nil {
-		return Result{}, err
-	}
-	req.Reason = reason
 	st, err := s.cfg.Open(req.TaskID)
 	if err != nil {
 		return Result{}, err
@@ -169,7 +157,7 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 		return Result{}, err
 	}
 	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)), intents: map[string]string{},
-		pend: PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}}
+		pend: PendingSubmit{TaskID: req.TaskID, Session: req.Session}}
 	for _, in := range intents {
 		if in.TaskID == req.TaskID {
 			run.intents[in.RelPath] = in.SHA256
@@ -453,7 +441,7 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return FileResult{Path: rel, Status: StatusUnchanged}, nil
 	}
 	if hasRow && row.Review == model.TaskFilePending && hash == row.SHA256 {
-		// Still the content that waits on the user: a pass with no reason must not turn it invalid.
+		// Still the content that waits on the user: a later pass must not decide it again.
 		return FileResult{Path: rel, Status: StatusPending, Message: row.Problem}, nil
 	}
 	if class.Kind.KiraOwned() {
@@ -538,7 +526,7 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		}
 		coll := s.collisionOf(req, row, hasRow)
 		v := s.judge(req, rel, class, changes, coll, s.proofAccepted(req.TaskID, class, tx))
-		pending, invalid, reject, notify, cause := v.pending, v.invalid, v.reject, v.notify, v.cause
+		pending, reject, notify, cause := v.pending, v.reject, v.notify, v.cause
 		switch {
 		case len(reject) > 0:
 			res = FileResult{Path: rel, Status: StatusRejected, Message: reject[0].Message}
@@ -547,19 +535,11 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 			res = FileResult{Path: rel, Status: StatusUnchanged}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileAccepted, "", true)
 		}
-		if req.Watch && len(invalid) > 0 {
-			res = FileResult{Path: rel, Status: StatusDeferred}
-			return nil
-		}
 		if err := applyAccepted(ctx, tx, h, req.TaskID, rel, class, parsed, v); err != nil {
 			return err
 		}
-		switch {
-		case len(invalid) > 0:
-			res = FileResult{Path: rel, Status: StatusInvalid, Message: invalidMessage(invalid)}
-			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileInvalid, res.Message, false)
-		case len(pending) > 0:
-			msg := pendingMessage(rel, req.Reason, coll)
+		if len(pending) > 0 {
+			msg := pendingMessage(rel, cause, coll)
 			res = FileResult{Path: rel, Status: StatusPending, Message: msg}
 			item = &PendingItem{Path: rel, Kind: class.Kind, Cause: cause, Changes: pending, Collision: coll}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFilePending, msg, false)
@@ -589,30 +569,23 @@ func applyAccepted(ctx context.Context, tx Tx, h Handler, taskID, rel string, cl
 		return nil
 	case parsed != nil:
 		return h.Apply(ctx, tx, taskID, rel, class, parsed, v.accepted)
-	case len(v.pending) == 0 && len(v.invalid) == 0:
+	case len(v.pending) == 0:
 		return h.Remove(ctx, tx, taskID, rel, class)
 	}
 	return nil
 }
 
-func invalidMessage(invalid []Decision) string {
-	msgs := make([]string, len(invalid))
-	for i, d := range invalid {
-		msgs[i] = d.Message
-	}
-	return strings.Join(dedupe(msgs), " ")
-}
-
-func pendingMessage(rel, reason string, coll *Collision) string {
+func pendingMessage(rel string, cause Cause, coll *Collision) string {
 	if coll != nil {
-		return fmt.Sprintf("%s: %s changed it at %s after your last read; waiting for the user (%s).", rel, coll.By, coll.At.UTC().Format("15:04:05"), reason)
+		return fmt.Sprintf("%s: %s changed it at %s after your last read; waiting for the user.", rel, coll.By, coll.At.UTC().Format("15:04:05"))
 	}
-	return fmt.Sprintf("%s: waiting for the user (%s).", rel, reason)
+	return fmt.Sprintf("%s: waiting for the user (%s).", rel, causeText[cause])
 }
 
-// collisionOf is set when another writer accepted the file after the session's last sync.
+// collisionOf is set when another agent accepted the file after the session's last sync; the user's
+// and Kira's own acceptances are no collision.
 func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Collision {
-	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != string(RoleKira) && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
+	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != string(RoleKira) && row.AcceptedBy != string(RoleUser) && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
 		row.AcceptedAt > req.Session.LastSync.UnixMilli() {
 		return &Collision{By: row.AcceptedBy, At: time.UnixMilli(row.AcceptedAt)}
 	}
@@ -622,7 +595,7 @@ func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Col
 // verdict sorts the changes of one file by their decision.
 type verdict struct {
 	accepted, pending []Change
-	invalid, reject   []Decision
+	reject            []Decision
 	notify            Notify
 	cause             Cause
 }
@@ -631,9 +604,9 @@ func (s *Service) judge(req Request, rel string, class Class, changes []Change, 
 	var v verdict
 	for _, c := range changes {
 		d := Decide(rel, Input{
-			Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
+			Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Author: c.Author, Slot: c.Slot,
 			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted, Latest: c.Latest,
-			Collision: coll, Reason: req.Reason,
+			Collision: coll,
 		})
 		switch d.Outcome {
 		case Accept:
@@ -644,8 +617,6 @@ func (s *Service) judge(req Request, rel string, class Class, changes []Change, 
 		case Pending:
 			v.pending = append(v.pending, c)
 			v.cause = d.Cause
-		case Invalid:
-			v.invalid = append(v.invalid, d)
 		case Reject:
 			v.reject = append(v.reject, d)
 		}
@@ -673,16 +644,6 @@ func (s *Service) proofAccepted(taskID string, class Class, tx Tx) bool {
 	}
 	r, err := tx.File(taskID, "proofs/"+class.Slug+"/"+ProofFile)
 	return err == nil && r != nil && r.AcceptedSHA256 != ""
-}
-
-func dedupe(in []string) []string {
-	var out []string
-	for _, s := range in {
-		if !slices.Contains(out, s) {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // Changed lists the paths whose size or version differ from the index, new and missing files

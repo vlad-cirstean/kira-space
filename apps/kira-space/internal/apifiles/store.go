@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
@@ -457,7 +457,7 @@ var (
 )
 
 func fileExists(dir, name string) bool {
-	_, err := os.Stat(filepath.Join(dir, name))
+	_, err := fileservice.Host().Stat(filepath.Join(dir, name))
 	return err == nil
 }
 

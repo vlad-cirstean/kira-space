@@ -24,8 +24,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// branchrequest.go: an agent asks the user to approve branches and worktrees (P408). The call blocks
-// without holding the task lock. A task has one open request, one approvals item; concurrent calls for the
+// branchrequest.go: an agent creates branches and worktrees; only an adopt item asks the user (P408,
+// P702). The call blocks without holding the task lock. A task has one open request, one approvals item; concurrent calls for the
 // task merge their items into it and one answer settles every call (P520).
 
 const (
@@ -59,6 +59,9 @@ type branchDecision struct {
 	approved map[string]bool // item ids the user kept checked
 	// remote holds the rename items whose same-named remote branch the user also wants renamed.
 	remote map[string]bool
+	// scope limits the decision to these item ids; nil covers every slot. A slot outside it stays
+	// untouched, not denied.
+	scope map[string]bool
 }
 
 // branchCall is one branch.request, branch.rename or branch.change call merged into a request. Its items
@@ -427,16 +430,21 @@ func failedBranch(nick, branch, base, text string) *agentmcp.RequestedBranch {
 	return &agentmcp.RequestedBranch{BranchInfo: noBranchInfo(nick, branch, base, text), Outcome: agentmcp.BranchFailed}
 }
 
-// RequestBranches implements agentmcp.SpaceTools. Branches whose worktree exists answer at once.
-// The rest go to the user in the task's one request and the call waits for the answer, unlocked. Then
-// it waits for a running worktree setup. The whole wait is bounded by the call wait: when it ends the
-// answer is pending (the user has not answered; the request stays open and applies on its own) or
-// waiting (the setup still runs). ctx ends when the caller is gone, which withdraws this call's items.
+// RequestBranches implements agentmcp.SpaceTools. New branches, named-row worktrees and free existing
+// branches are created at once, with no approval (P702). Only an adopt item, which detaches another
+// worktree or the main checkout, goes to the user in the task's one request; the call then waits for the
+// answer, unlocked. Last it waits for a running worktree setup. The whole wait is bounded by the call
+// wait: when it ends the answer is pending (the user has not answered; the request stays open and
+// applies on its own) or waiting (the setup still runs). ctx ends when the caller is gone, which
+// withdraws this call's items.
 func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall, specs []agentmcp.BranchSpec) (agentmcp.RequestBranchesResult, error) {
 	deadline := time.Now().Add(b.callWait())
-	slots, draft, err := b.planBranchRequest(ctx, call, specs)
+	slots, auto, draft, err := b.planBranchRequest(ctx, call, specs)
 	if err != nil {
 		return agentmcp.RequestBranchesResult{}, err
+	}
+	if len(auto) > 0 {
+		b.createAutoSlots(ctx, call, slots, auto)
 	}
 	if draft != nil {
 		late := func(dec branchDecision, prefix string) { b.lateBranchRequest(call, slots, dec, prefix) }
@@ -460,6 +468,21 @@ func (b *TaskBoard) RequestBranches(ctx context.Context, call agentmcp.SpaceCall
 	res.Waited = b.callWait()
 	b.awaitSetups(ctx, call.TaskID, res.Branches, deadline)
 	return res, nil
+}
+
+// createAutoSlots creates the slots that need no approval, under the task lock. Each leaves with its
+// result set and no item, so the adopt decision that follows never touches it.
+func (b *TaskBoard) createAutoSlots(ctx context.Context, call agentmcp.SpaceCall, slots []requestSlot, auto map[string]bool) {
+	mu := b.taskMu(call.TaskID)
+	mu.Lock()
+	b.createApprovedSlots(ctx, call, slots, branchDecision{kind: decisionApproved, approved: auto, scope: auto})
+	mu.Unlock()
+	for i := range slots {
+		if auto[slots[i].id] {
+			slots[i].item = nil
+		}
+	}
+	b.notifyBoard()
 }
 
 // lateBranchRequest applies the user's answer to a call whose wait ended: nobody waits for the result,
@@ -543,23 +566,25 @@ func (b *TaskBoard) branchResults(slots []requestSlot) agentmcp.RequestBranchesR
 	return out
 }
 
-// planBranchRequest validates the call under the task lock. req is nil when no branch needs the user.
-func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCall, specs []agentmcp.BranchSpec) ([]requestSlot, *requestDraft, error) {
+// planBranchRequest validates the call under the task lock. auto holds the ids of the slots created
+// without asking; draft is nil when no adopt item needs the user.
+func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCall, specs []agentmcp.BranchSpec) (slots []requestSlot, auto map[string]bool, draft *requestDraft, err error) {
 	mu := b.taskMu(call.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
 	tc, err := b.spaceCtx(call.TaskID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if err := b.spaceWritable(tc); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	cands, cfgs, err := b.registeredCandidates()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	slots := make([]requestSlot, 0, len(specs))
+	slots = make([]requestSlot, 0, len(specs))
+	auto = map[string]bool{}
 	var items []adewire.BranchRequestItem
 	type asked struct {
 		base     string
@@ -569,30 +594,34 @@ func (b *TaskBoard) planBranchRequest(ctx context.Context, call agentmcp.SpaceCa
 	for i, sp := range specs {
 		id, err := resolveRepoRef(sp.Repo, cands, "registered")
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		key := id + "\x00" + sp.Branch
 		if first, dup := seen[key]; dup {
 			if first.base != sp.Base || first.existing != sp.Existing {
-				return nil, nil, agentmcp.ToolError(fmt.Sprintf("Branch %s of %s is asked twice with different bases or existing flags.", sp.Branch, sp.Repo))
+				return nil, nil, nil, agentmcp.ToolError(fmt.Sprintf("Branch %s of %s is asked twice with different bases or existing flags.", sp.Branch, sp.Repo))
 			}
 			continue
 		}
 		seen[key] = asked{base: sp.Base, existing: sp.Existing}
 		slot, err := b.planItem(ctx, tc, fmt.Sprintf("i%d", i), id, sp.Branch, sp.Base, sp.Existing, cfgs)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		slots = append(slots, slot)
-		if slot.item != nil {
+		switch {
+		case slot.item == nil:
+		case slot.item.Kind == branchKindAdopt:
 			slot.item.Stacked = []string{}
 			items = append(items, *slot.item)
+		default:
+			auto[slot.id] = true
 		}
 	}
 	if len(items) == 0 {
-		return slots, nil, nil
+		return slots, auto, nil, nil
 	}
-	return slots, b.requestDraftOf(tc, call, items), nil
+	return slots, auto, b.requestDraftOf(tc, call, items), nil
 }
 
 // requestDraftOf names who asks for items.
@@ -898,7 +927,7 @@ func groupApproved(slots []requestSlot, dec branchDecision, ctxErr error) (order
 	for i := range slots {
 		s := &slots[i]
 		switch {
-		case s.item == nil:
+		case s.item == nil, dec.scope != nil && !dec.scope[s.id]:
 		case !dec.approved[s.id]:
 			s.result = outcomeBranch(s, agentmcp.BranchDenied, deniedText)
 		case ctxErr != nil:

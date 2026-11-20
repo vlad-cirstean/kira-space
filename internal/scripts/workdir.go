@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -27,7 +28,7 @@ type Dir struct {
 func ResolveDir(s CustomScript, appHome string) Dir {
 	if s.DirMode == DirModeFixed {
 		d := Dir{Path: s.WorkingDir, Mode: DirModeFixed}
-		if info, err := os.Stat(s.WorkingDir); err != nil || !info.IsDir() {
+		if info, err := fileservice.Host().Stat(s.WorkingDir); err != nil || !info.Dir {
 			d.Blocker = i18n.T("backend.core.scriptDir.missing.body", map[string]string{"path": s.WorkingDir})
 		}
 		return d
@@ -53,9 +54,9 @@ func PrepareDir(d Dir) error {
 }
 
 func ensureRealDir(p string) error {
-	info, err := os.Lstat(p)
+	info, err := fileservice.Host().Lstat(p)
 	if os.IsNotExist(err) {
-		if err := os.Mkdir(p, 0o700); err != nil {
+		if err := fileservice.HostPrivate().Mkdir(p); err != nil {
 			return fmt.Errorf("%s could not be created: %w", p, err)
 		}
 		return nil
@@ -63,7 +64,7 @@ func ensureRealDir(p string) error {
 	if err != nil {
 		return fmt.Errorf("%s could not be read: %w", p, err)
 	}
-	if !info.IsDir() {
+	if !info.Dir {
 		return fmt.Errorf("%s is not a real folder: remove it", p)
 	}
 	return nil
@@ -75,8 +76,8 @@ func RemoveDir(appHome, id string) {
 		return
 	}
 	p := filepath.Join(appHome, automationsDir, id)
-	if info, err := os.Lstat(p); err != nil || !info.IsDir() {
+	if info, err := fileservice.Host().Lstat(p); err != nil || !info.Dir {
 		return
 	}
-	_ = os.RemoveAll(p)
+	_ = fileservice.Host().RemoveAll(p)
 }

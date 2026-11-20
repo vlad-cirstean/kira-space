@@ -56,7 +56,7 @@ func TestSpaceTools_declareIsAdditiveAndIdempotent(t *testing.T) {
 	}
 }
 
-// requestBranch asks for one named branch, approves the request when one opens, and returns the result.
+// requestBranch asks for one named branch and returns the result: a new branch needs no approval.
 func requestBranch(ctx context.Context, b *TaskBoard, taskID, repo, branch string) (agentmcp.BranchInfo, error) {
 	rb, err := requestBranchResult(ctx, b, taskID, repo, branch)
 	return rb.BranchInfo, err
@@ -64,37 +64,14 @@ func requestBranch(ctx context.Context, b *TaskBoard, taskID, repo, branch strin
 
 // requestBranchResult is requestBranch with the outcome.
 func requestBranchResult(ctx context.Context, b *TaskBoard, taskID, repo, branch string) (agentmcp.RequestedBranch, error) {
-	type answer struct {
-		res agentmcp.RequestBranchesResult
-		err error
+	res, err := b.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: taskID}, []agentmcp.BranchSpec{{Repo: repo, Branch: branch}})
+	if err != nil {
+		return agentmcp.RequestedBranch{}, err
 	}
-	done := make(chan answer, 1)
-	go func() {
-		res, err := b.RequestBranches(ctx, agentmcp.SpaceCall{TaskID: taskID}, []agentmcp.BranchSpec{{Repo: repo, Branch: branch}})
-		done <- answer{res, err}
-	}()
-	for {
-		select {
-		case a := <-done:
-			if a.err != nil {
-				return agentmcp.RequestedBranch{}, a.err
-			}
-			if len(a.res.Branches) != 1 || a.res.Branches[0].Outcome == agentmcp.BranchFailed {
-				return agentmcp.RequestedBranch{}, errors.New("request failed: " + a.res.Branches[0].Next)
-			}
-			return a.res.Branches[0], nil
-		case <-time.After(10 * time.Millisecond):
-			if id := b.branchRequestOf(taskID); id != "" {
-				if req, err := b.BranchRequest(id); err == nil {
-					ids := make([]string, len(req.Items))
-					for i, it := range req.Items {
-						ids[i] = it.ID
-					}
-					_, _ = b.ApproveBranchRequest(id, ids, nil, nil)
-				}
-			}
-		}
+	if len(res.Branches) != 1 || res.Branches[0].Outcome == agentmcp.BranchFailed {
+		return agentmcp.RequestedBranch{}, errors.New("request failed: " + res.Branches[0].Next)
 	}
+	return res.Branches[0], nil
 }
 
 func TestSpaceTools_requestBranch(t *testing.T) {
@@ -165,7 +142,7 @@ func TestSpaceTools_setupWaitAndArchived(t *testing.T) {
 		t.Fatalf("request after setup = %+v, %v; want ready", rb, err)
 	}
 
-	if err := e.board.ArchiveTask(ctx, id); err != nil {
+	if err := e.board.ArchiveTask(ctx, id, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := requestBranch(ctx, e.board, id, "api", "feat/api-two"); err == nil {

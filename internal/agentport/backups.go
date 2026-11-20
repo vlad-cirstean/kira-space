@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -54,7 +55,7 @@ func (s *Service) listTarget(t target) ([]backupEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	names, err := os.ReadDir(filepath.Dir(real))
+	names, err := fileservice.Host().ReadDir(filepath.Dir(real))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -64,12 +65,12 @@ func (s *Service) listTarget(t target) ([]backupEntry, error) {
 	re := backupPattern(filepath.Base(real))
 	var out []backupEntry
 	for _, d := range names {
-		m := re.FindStringSubmatch(d.Name())
+		m := re.FindStringSubmatch(d.Name)
 		if m == nil {
 			continue
 		}
-		st, err := os.Lstat(filepath.Join(filepath.Dir(real), d.Name()))
-		if err != nil || !st.Mode().IsRegular() {
+		st, err := fileservice.Host().Lstat(filepath.Join(filepath.Dir(real), d.Name))
+		if err != nil || !st.Mode.IsRegular() {
 			continue
 		}
 		at, err := time.Parse(backupStamp, m[1])
@@ -82,7 +83,7 @@ func (s *Service) listTarget(t target) ([]backupEntry, error) {
 				continue
 			}
 		}
-		b := Backup{Role: t.Role, Target: s.display(t.Path), File: d.Name(), Taken: at.UTC().Format(time.RFC3339), Size: st.Size(), Restorable: t.Role != roleMCP}
+		b := Backup{Role: t.Role, Target: s.display(t.Path), File: d.Name, Taken: at.UTC().Format(time.RFC3339), Size: st.Size, Restorable: t.Role != roleMCP}
 		if !b.Restorable {
 			b.Reason = i18n.T("backend.core.agentPort.restore.claudeJSON.body", nil)
 		}
@@ -146,7 +147,7 @@ func (s *Service) Restore(ctx context.Context, args RestoreArgs) (PortResult, er
 		return PortResult{}, ipcerr.BadRequest(i18n.T("backend.core.agentPort.restore.claudeJSON.body", nil))
 	}
 	src := filepath.Join(filepath.Dir(real), args.File)
-	if st, err := os.Lstat(src); err != nil || !st.Mode().IsRegular() {
+	if st, err := fileservice.Host().Lstat(src); err != nil || !st.Mode.IsRegular() {
 		return PortResult{}, unknownBackup()
 	}
 	limit, defMode := int64(maxSettingsFile), os.FileMode(0o600)

@@ -8,9 +8,10 @@ import { createApp, type App as VueApp, watch } from 'vue';
 import App from './App.vue';
 import { installAdeSignals } from './ade/queries';
 import { useAgentSessionsStore } from './ade/state';
-import { reviewTargetKey } from './ade/v2/queries';
+import { filesWindowTargetKey, reviewTargetKey } from './ade/v2/queries';
 import { adeReaderKey } from './ade/v2/reader';
 import { activateAdeStores } from './ade/v2/state/activate';
+import { useAdeFilesWindowStore } from './ade/v2/state/adeFilesWindow';
 import { installAdeOpMirror } from './ade/v2/state/adeOpMirror';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
 import { controlAdeReader } from './bridge/adeReader';
@@ -87,6 +88,7 @@ async function mountShell(): Promise<void> {
   const terminalsStore = useTerminalsStore(pinia);
   const workspaceStore = useWorkspaceStore(pinia);
   const reviewWindowStore = useAdeReviewWindowStore(pinia);
+  const filesWindowStore = useAdeFilesWindowStore(pinia);
   const hostViewStore = useHostViewWindowStore(pinia);
   const captureStore = useCaptureWindowStore(pinia);
   const openedFilesWindowStore = useOpenedFilesWindowStore(pinia);
@@ -197,11 +199,19 @@ async function mountShell(): Promise<void> {
     workspaceStore.openReviewWorkspace(reviewTarget.codeRepoId);
   }
 
+  // A task Files window (ephemeral, one task) answers with its target; any other window gets null.
+  const taskFilesTarget = await queryClient.query({
+    queryKey: filesWindowTargetKey(windowKey),
+    queryFn: () => control.adeTaskFilesWindowTarget({ windowKey }),
+  });
+  if (taskFilesTarget) filesWindowStore.taskId = taskFilesTarget.taskId;
+
   // hydrateTabs (state/tabs.ts) already derived workspaceStore.openRepos from the restored tabs
   // themselves — ensureWorkspaceShell's own doc comment calls for running it once per restored repo
   // right here, after hydrateTabs, since hydrateTabs itself never calls back into it (avoiding a
   // third link in that module pair's existing two-way call graph).
-  const workbenchWindow = !reviewTarget && !hostViewTarget && !captureItem && !filesWindow;
+  const workbenchWindow =
+    !reviewTarget && !hostViewTarget && !captureItem && !filesWindow && !taskFilesTarget;
   if (workbenchWindow) for (const repoId of workspaceStore.openRepos) ensureWorkspaceShell(repoId);
   // Falls forward onto the last active repo (persisted per window), else the first restored one,
   // so a relaunch with open repositories skips the empty GitStart screen. `activateWorkspace`

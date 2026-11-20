@@ -263,26 +263,29 @@ func TestAdeManualSession(t *testing.T) {
 	}
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "Write the text `manual ok` to " + filepath.Join(folder.Path, "handovers", "draft-work.md") + ", then call the submit tool with no arguments, then reply done.",
+		Message:   "Write the text `manual ok` to " + filepath.Join(folder.Path, "handovers", "draft-work.md") + ", then reply done.",
 	}); err != nil {
 		t.Fatalf("third Send: %v", err)
 	}
 	waitStops(3)
-	res, err := f.W.AdeTask.Handovers(ctx, adewire.TaskArgs{TaskID: task.ID})
-	if err != nil {
-		t.Fatalf("Handovers: %v", err)
-	}
-	for _, h := range res.Handovers {
-		if h.State == "draft" && strings.Contains(h.Body, "manual ok") {
-			f.requireCostUnder(t)
-			return
+	// The watcher applies the saved draft shortly after the write; the agent calls no tool for it.
+	var res adewire.HandoversResult
+	ok := false
+	testx.WaitUntil(t, 15*time.Second, func() bool {
+		var err error
+		if res, err = f.W.AdeTask.Handovers(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+			t.Fatalf("Handovers: %v", err)
 		}
-	}
-	t.Fatalf("no draft with the text in %+v", res.Handovers)
+		for _, h := range res.Handovers {
+			ok = ok || h.State == "draft" && strings.Contains(h.Body, "manual ok")
+		}
+		return ok
+	})
+	f.requireCostUnder(t)
 }
 
 // TestAdeAdHocSession opens an agent session with no first message: the agent starts idle, the user's
-// first prompt arrives through Send, and the session holds the Space grant (links.yaml and submit).
+// first prompt arrives through Send, and the session holds the Space grant (links.yaml and the state tool).
 func TestAdeAdHocSession(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	f.saveWorkflow(t, "flow", manualStepYAML)
@@ -324,7 +327,7 @@ func TestAdeAdHocSession(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "With the Write tool, write `links:\n  - {kind: doc, title: adhoc ok, ref: adhoc.md}\n` to " + filepath.Join(folder.Path, "links.yaml") + ", then call the submit tool with no arguments, then reply done.",
+		Message:   "With the Write tool, write `links:\n  - {kind: doc, title: adhoc ok, ref: adhoc.md}\n` to " + filepath.Join(folder.Path, "links.yaml") + ", then reply done.",
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -336,17 +339,20 @@ func TestAdeAdHocSession(t *testing.T) {
 		}
 		return false
 	})
-	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
-	if err != nil {
-		t.Fatalf("Artifacts: %v", err)
-	}
-	for _, a := range res.Artifacts {
-		if a.Kind == "doc" && a.Ref == "adhoc.md" {
-			f.requireCostUnder(t)
-			return
+	// The watcher files the link shortly after the write; the agent calls no tool for it.
+	testx.WaitUntil(t, 15*time.Second, func() bool {
+		res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
+		if err != nil {
+			t.Fatalf("Artifacts: %v", err)
 		}
-	}
-	t.Fatalf("no doc artifact adhoc.md in %+v", res.Artifacts)
+		for _, a := range res.Artifacts {
+			if a.Kind == "doc" && a.Ref == "adhoc.md" {
+				return true
+			}
+		}
+		return false
+	})
+	f.requireCostUnder(t)
 }
 
 // TestAdeRebaseRun rebases a pushed task branch in a background run with the real claude: main
@@ -439,10 +445,10 @@ func TestAdeRebaseRun(t *testing.T) {
 	}
 }
 
-// TestAdeDetailsSubmit runs a step that files a link in links.yaml and writes its draft: Kira applies both on
+// TestAdeDetailsOnSave runs a step that files a link in links.yaml and writes its draft: Kira applies both on
 // save (or at state step.finish, its flush), the link lands as an agent artifact and the draft as the run's
-// handover. The agent needs no submit call.
-func TestAdeDetailsSubmit(t *testing.T) {
+// handover. The agent calls no tool for it.
+func TestAdeDetailsOnSave(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n" +
 		"    prompt: Add one link to links.yaml in the task folder, with kind doc, title Notes and ref notes.md. " +

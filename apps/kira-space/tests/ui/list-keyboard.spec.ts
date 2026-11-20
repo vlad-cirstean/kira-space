@@ -4,7 +4,7 @@ import {
   portSnapshots as redisPorts,
 } from '../ipc/redis/redis.fixture';
 import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../ipc/sqs/sqs.fixture';
-import { expect, studioTest, test } from './fixtures';
+import { expect, studioTest, taskFilesWindowTest, test } from './fixtures';
 import { grpcTab, modeTab, openHttpModeAndNewRequest } from './studio/support/apiMode';
 import {
   connectAndExpand,
@@ -32,7 +32,7 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
-import { gotoAdeRepos, openPlan, openTaskFiles, taskFilesControl } from './support/adeV2';
+import { gotoAdeRepos, openFilesWindow, taskFilesControl } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
@@ -173,65 +173,68 @@ const TASK_FILES = taskFilesControl([
   },
 ]);
 
-test('task file tree — arrows, Home/End, Left/Right parent and child, Shift+F10 menu and focus return', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
-  const row = (path: string) => page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`);
-  await expect(row('a.ts')).toBeVisible();
+taskFilesWindowTest(
+  'task file tree — arrows, Home/End, Left/Right parent and child, Shift+F10 menu and focus return',
+  async ({ relaunch }) => {
+    const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
+    const row = (path: string) =>
+      page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`);
+    await expect(row('a.ts')).toBeVisible();
 
-  // Rows: dir (open on first load), a.ts (folders first). Selecting by click makes the row the
-  // roving stop.
-  await row('dir').click();
-  await expect(row('dir')).toBeFocused();
-  // A click toggles a folder: it was open, so it is closed now.
-  await expect(row('dir/b.ts')).toHaveCount(0);
-  await page.keyboard.press('ArrowRight');
-  await expect(row('dir/b.ts')).toBeVisible();
-  await expect(row('dir')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(row('dir/b.ts')).toBeFocused();
-  await page.keyboard.press('End');
-  await expect(row('a.ts')).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(row('dir')).toBeFocused();
+    // Rows: dir (open on first load), a.ts (folders first). Selecting by click makes the row the
+    // roving stop.
+    await row('dir').click();
+    await expect(row('dir')).toBeFocused();
+    // A click toggles a folder: it was open, so it is closed now.
+    await expect(row('dir/b.ts')).toHaveCount(0);
+    await page.keyboard.press('ArrowRight');
+    await expect(row('dir/b.ts')).toBeVisible();
+    await expect(row('dir')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(row('dir/b.ts')).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(row('a.ts')).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(row('dir')).toBeFocused();
 
-  // Right on an expanded folder enters its first child, Left on a child goes back to the parent.
-  await page.keyboard.press('ArrowRight');
-  await expect(row('dir/b.ts')).toBeFocused();
-  await page.keyboard.press('ArrowLeft');
-  await expect(row('dir')).toBeFocused();
-  // Left on an expanded folder collapses it.
-  await page.keyboard.press('ArrowLeft');
-  await expect(row('dir/b.ts')).toHaveCount(0);
-  // Right on a collapsed folder expands it.
-  await page.keyboard.press('ArrowRight');
-  await expect(row('dir/b.ts')).toBeVisible();
-  await page.keyboard.press('ArrowLeft');
-  await expect(row('dir/b.ts')).toHaveCount(0);
+    // Right on an expanded folder enters its first child, Left on a child goes back to the parent.
+    await page.keyboard.press('ArrowRight');
+    await expect(row('dir/b.ts')).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect(row('dir')).toBeFocused();
+    // Left on an expanded folder collapses it.
+    await page.keyboard.press('ArrowLeft');
+    await expect(row('dir/b.ts')).toHaveCount(0);
+    // Right on a collapsed folder expands it.
+    await page.keyboard.press('ArrowRight');
+    await expect(row('dir/b.ts')).toBeVisible();
+    await page.keyboard.press('ArrowLeft');
+    await expect(row('dir/b.ts')).toHaveCount(0);
 
-  await page.keyboard.press('Shift+F10');
-  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
-  await expect(row('dir')).toBeFocused();
+    await page.keyboard.press('Shift+F10');
+    await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
+    await expect(row('dir')).toBeFocused();
 
-  // Right-click selects and focuses the row it opens the menu on.
-  await row('a.ts').click({ button: 'right' });
-  await expect(row('a.ts')).toHaveAttribute('aria-selected', 'true');
-  await page.keyboard.press('Escape');
-  await expect(row('a.ts')).toBeFocused();
-});
+    // Right-click selects and focuses the row it opens the menu on.
+    await row('a.ts').click({ button: 'right' });
+    await expect(row('a.ts')).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Escape');
+    await expect(row('a.ts')).toBeFocused();
+  },
+);
 
-test('task file tree — Enter on a file opens it in the viewer', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
-  const a = page.locator('[data-testid="ade-files-row"][data-path="a.ts"]');
-  await a.click();
-  await a.press('Enter');
-  await expect(page.locator('[data-testid="ade-files-viewer"][data-path="a.ts"]')).toBeVisible();
-});
+taskFilesWindowTest(
+  'task file tree — Enter on a file opens it in the viewer',
+  async ({ relaunch }) => {
+    const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
+    const a = page.locator('[data-testid="ade-files-row"][data-path="a.ts"]');
+    await a.click();
+    await a.press('Enter');
+    await expect(page.locator('[data-testid="ade-files-viewer"][data-path="a.ts"]')).toBeVisible();
+  },
+);
 
 test('git panel repo list — arrows, Home/End, Enter, Shift+F10 and inline rename with Esc', async ({
   relaunch,
@@ -277,50 +280,50 @@ test('repos page — arrows move the selected repository', async ({ relaunch }) 
   await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
 });
 
-test('task file search results — arrows, Enter on a file header and Home/End', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
-  await page.locator('[data-testid="ade-files-mode-search"]').click();
-  const query = page.locator('[data-testid="ade-files-search-input"]');
-  await query.fill('const');
-  await query.press('Enter');
-  const match = (line: number) => ({
-    line,
-    column: 8,
-    endColumn: 13,
-    preview: 'export const a = 1;',
-    previewMatchStart: 7,
-    previewMatchEnd: 12,
-    truncatedStart: false,
-    truncatedEnd: false,
-  });
-  await emitWailsEvent(page, IPC.codeSearch, {
-    searchId: 'search-1',
-    seq: 0,
-    files: [
-      { path: 'a.ts', matches: [match(1)], truncated: false },
-      { path: 'dir/b.ts', matches: [match(2)], truncated: false },
-    ],
-    done: true,
-    stats: { filesScanned: 2, filesMatched: 2, filesSkipped: 0, matches: 2, truncated: false },
-  });
-  const fileRows = page.locator('[data-testid="ade-files-search-file-row"]');
-  await expect(fileRows).toHaveCount(2);
-  await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(2);
+taskFilesWindowTest(
+  'task file search results — arrows, Enter on a file header and Home/End',
+  async ({ relaunch }) => {
+    const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
+    await page.locator('[data-testid="ade-files-mode-search"]').click();
+    const query = page.locator('[data-testid="ade-files-search-input"]');
+    await query.fill('const');
+    await query.press('Enter');
+    const match = (line: number) => ({
+      line,
+      column: 8,
+      endColumn: 13,
+      preview: 'export const a = 1;',
+      previewMatchStart: 7,
+      previewMatchEnd: 12,
+      truncatedStart: false,
+      truncatedEnd: false,
+    });
+    await emitWailsEvent(page, IPC.codeSearch, {
+      searchId: 'search-1',
+      seq: 0,
+      files: [
+        { path: 'a.ts', matches: [match(1)], truncated: false },
+        { path: 'dir/b.ts', matches: [match(2)], truncated: false },
+      ],
+      done: true,
+      stats: { filesScanned: 2, filesMatched: 2, filesSkipped: 0, matches: 2, truncated: false },
+    });
+    const fileRows = page.locator('[data-testid="ade-files-search-file-row"]');
+    await expect(fileRows).toHaveCount(2);
+    await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(2);
 
-  await fileRows.first().focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-testid="ade-files-search-row"]').first()).toBeFocused();
-  await page.keyboard.press('End');
-  await expect(page.locator('[data-testid="ade-files-search-row"]').last()).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(fileRows.first()).toBeFocused();
-  // Enter on a file header collapses its matches.
-  await page.keyboard.press('Enter');
-  await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(1);
-});
+    await fileRows.first().focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('[data-testid="ade-files-search-row"]').first()).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(page.locator('[data-testid="ade-files-search-row"]').last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(fileRows.first()).toBeFocused();
+    // Enter on a file header collapses its matches.
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(1);
+  },
+);
 
 studioTest.describe('databases module', () => {
   // P264: one key set for every list. The project tree is the Studio list bound through the shared

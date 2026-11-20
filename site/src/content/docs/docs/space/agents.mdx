@@ -92,7 +92,7 @@ Each run line shows its sandbox badge. See [Sandbox](../workflows/#sandbox).
 
 ### Agent tools
 
-Runs and task sessions get extra tools on the `kira-space` MCP server. An agent creates branches and worktrees only with `state` action `branch.request`, and you approve each request in a dialog. An agent records what it made in `links.yaml` and sends it with `submit`. Finishing a step or a task returns every artifact of the task. Kira keeps `state.yaml` in the task folder up to date for the agent to read. See [MCP tools](../../reference/mcp-tools/).
+Runs and task sessions get extra tools on the `kira-space` MCP server. An agent creates branches and worktrees only with `state` action `branch.request`, which applies at once. Only adopting a branch held by another task or folder asks you. `worktree.remove` removes a worktree of the task's own branch and never discards uncommitted changes. An agent records what it made in `links.yaml`; Kira applies the save. An edit of another agent's notes, links or proofs waits for your approval. Finishing a step or a task returns every artifact of the task. Kira keeps `state.yaml` in the task folder up to date for the agent to read. See [MCP tools](../../reference/mcp-tools/).
 
 Branches and repositories an agent adds carry an `agent` chip.
 

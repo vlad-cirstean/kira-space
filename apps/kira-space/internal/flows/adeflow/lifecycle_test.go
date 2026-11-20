@@ -39,9 +39,12 @@ func TestArchiveRisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app.Contract(t, "ade-task", "AdeTaskService.ArchiveRisk#at-risk", risk)
-	app.Contract(t, "ade-task", "args:AdeTaskService.ArchiveTask", adewire.TaskArgs{TaskID: f.taskID})
+	app.Contract(t, "ade-task", "AdeTaskService.ArchiveRisk#at-risk", risk, flowharness.Mask("dirtyToken"))
+	app.Contract(t, "ade-task", "args:AdeTaskService.ArchiveTask", adewire.ArchiveTaskArgs{TaskID: f.taskID, DiscardTokens: map[string]string{}})
 	got := risk.Branches[0]
+	if got.DirtyToken == "" {
+		t.Fatal("at-risk branch has no dirtyToken")
+	}
 	if got.BranchID != br.ID || got.Worktree != br.Worktree || got.Unmerged != 1 || len(got.Dirty) != 1 || got.Dirty[0].Path != "wip.txt" {
 		t.Fatalf("risk = %+v, want 1 unmerged commit and dirty wip.txt in %s", got, br.Worktree)
 	}
@@ -53,7 +56,7 @@ func TestArchiveRisk(t *testing.T) {
 	key := app.WindowMgr.Opened[len(app.WindowMgr.Opened)-1].Key
 
 	liveTitle := taskOf(t, board(t, app), f.taskID).Title
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.taskID, DiscardTokens: map[string]string{br.ID: got.DirtyToken}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(br.Worktree); !os.IsNotExist(err) {

@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // File is the context file name in the agent folder.
@@ -115,7 +116,7 @@ func (s *Store) path() string { return filepath.Join(s.folder.Dir, File) }
 func (s *Store) Save(text, baseHash string) (View, error) {
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	cur, err := os.ReadFile(s.path())
+	cur, err := fileservice.Host().ReadFile(s.path())
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return View{}, fmt.Errorf("agentctx: read %s: %w", File, err)
 	}

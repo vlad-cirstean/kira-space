@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/secrets"
@@ -507,7 +508,7 @@ func toLower(s string) string {
 
 // stemTaken reports whether a file or a row already uses the stem.
 func (l *Loader) stemTaken(stem string) bool {
-	if _, err := os.Stat(filepath.Join(l.o.Dir, FileName(stem))); err == nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(l.o.Dir, FileName(stem))); err == nil {
 		return true
 	}
 	var one int
@@ -663,7 +664,7 @@ func (l *Loader) Delete(id string) error {
 	if !ok {
 		return fmt.Errorf("%w: connection %s", ErrNotFound, id)
 	}
-	if err := os.Remove(filepath.Join(l.o.Dir, FileName(rec.Stem))); err != nil && !os.IsNotExist(err) {
+	if err := fileservice.Host().Remove(filepath.Join(l.o.Dir, FileName(rec.Stem))); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("connfiles: remove %s: %w", FileName(rec.Stem), err)
 	}
 	l.Reload()

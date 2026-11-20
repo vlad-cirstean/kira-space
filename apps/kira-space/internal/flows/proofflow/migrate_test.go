@@ -2,6 +2,7 @@ package proofflow
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"strings"
@@ -67,7 +68,13 @@ func TestProofMigration(t *testing.T) {
 		[]legacyStep{{"keyvalue", "Keep", kv}, {"keyvalue", "New step", `{"entries":[{"field":"x","value":"2"}]}`}})
 	legacyProof(t, f, "legacy-c", "Nobody's proof", "", []legacyStep{{"keyvalue", "Stats", kv}}, nil)
 
-	f.app.Restart()
+	// The first boot's migration may have marked the task done before the legacy rows existed; shutdown
+	// ends it, then the markers go so the next boot migrates the planted rows.
+	f.app.RestartAfter(func(db *sql.DB) {
+		if _, err := db.Exec(`DELETE FROM task_files_migration`); err != nil {
+			t.Fatal(err)
+		}
+	})
 	// The migration runs in the background at start.
 	testx.WaitUntil(t, 10*time.Second, func() bool {
 		var n int

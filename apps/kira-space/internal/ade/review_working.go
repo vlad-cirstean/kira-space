@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"os"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
@@ -75,7 +74,11 @@ func wireHash(c gitsession.WorkingContent) string {
 
 // read returns path's HEAD side and current worktree content.
 func (w *workingReview) read(ctx context.Context, path string) (head, cur gitsession.WorkingContent, err error) {
-	if _, err := codeworkspace.ValidateRelPath(w.worktree, path); err != nil {
+	files, err := codeworkspace.Files(w.worktree)
+	if err != nil {
+		return head, cur, err
+	}
+	if _, err := files.Path(path); err != nil {
 		return head, cur, invalid("bad path: %v", err)
 	}
 	cf := w.entry.CatFile()
@@ -229,20 +232,23 @@ func (b *TaskBoard) ReviewWorkingStamp(ctx context.Context, branchID string, pat
 	if worktree == "" {
 		return "", nil
 	}
+	files, err := codeworkspace.Files(worktree)
+	if err != nil {
+		return "", err
+	}
 	h := sha256.New()
 	for _, p := range paths {
-		abs, err := codeworkspace.ValidateRelPath(worktree, p)
-		if err != nil {
+		if _, err := files.Path(p); err != nil {
 			return "", invalid("bad path: %v", err)
 		}
-		fi, err := os.Lstat(abs)
+		fi, err := files.Stat(p)
 		switch {
 		case errors.Is(err, fs.ErrNotExist):
 			fmt.Fprintf(h, "%s\x00absent\n", p)
 		case err != nil:
 			return "", err
 		default:
-			fmt.Fprintf(h, "%s\x00%d\x00%d\x00%d\n", p, fi.Size(), fi.ModTime().UnixNano(), fi.Mode())
+			fmt.Fprintf(h, "%s\x00%d\x00%d\x00%d\n", p, fi.Size, fi.ModTime.UnixNano(), fi.Mode)
 		}
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil

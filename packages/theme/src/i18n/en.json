@@ -1732,6 +1732,9 @@
             "body": "This file no longer exists in the worktree."
           }
         },
+        "filesWindow": {
+          "title": "Files · {task}"
+        },
         "handoverReadOnly": {
           "body": "This note is a copy of a child task’s handover. Edit the child’s handover instead."
         },
@@ -1771,6 +1774,23 @@
           },
           "unreachable": {
             "body": "Background runs take no messages. Take over a run to send."
+          }
+        },
+        "restore": {
+          "branchGone": {
+            "body": "Its branch is no longer on the task."
+          },
+          "notLatest": {
+            "body": "A newer attempt of this step exists."
+          },
+          "notOffered": {
+            "body": "That agent isn’t on the restore list."
+          },
+          "providerGone": {
+            "body": "Its agent is no longer available."
+          },
+          "taskGone": {
+            "body": "Its task is archived or gone."
           }
         },
         "resumeCwdNotDir": {
@@ -3119,6 +3139,9 @@
       },
       "dismiss": {
         "label": "Dismiss"
+      },
+      "dontRestore": {
+        "label": "Don’t restore"
       },
       "download": {
         "label": "Download"
@@ -5013,9 +5036,6 @@
       "branchName": {
         "label": "Branch name"
       },
-      "confirmToken": {
-        "label": "Confirmation token"
-      },
       "currentBranch": {
         "tooltip": "Current branch"
       },
@@ -6829,6 +6849,12 @@
       "current": {
         "tooltip": "This window"
       },
+      "dirty": {
+        "error": "{path} has uncommitted changes."
+      },
+      "discardRemove": {
+        "label": "Discard changes and remove"
+      },
       "list": {
         "empty": "No worktrees yet"
       },
@@ -6837,10 +6863,6 @@
       },
       "remove": {
         "tooltip": "Remove worktree"
-      },
-      "removeConfirm": {
-        "body": "This worktree has uncommitted changes that will be permanently lost. Type {token} to confirm.",
-        "title": "Remove {path}?"
       },
       "switch": {
         "tooltip": "Switch to this worktree"
@@ -7350,6 +7372,13 @@
           "body": "Added before the finish instruction of every agent step and smart step, and to the first message of manual, review and start sessions."
         }
       },
+      "restoreContinueLine": {
+        "description": "Tells a session reopened after a restart to carry on.",
+        "title": "Continue after restart",
+        "usedBy": {
+          "body": "Restore dialog, for agent sessions the user chose to continue."
+        }
+      },
       "runResumeLine": {
         "description": "First message of a run resumed after Kira quit or crashed.",
         "title": "Resume after restart",
@@ -7536,6 +7565,38 @@
     }
   },
   "mobile": {
+    "activity": {
+      "agents": {
+        "empty": "No agents running"
+      },
+      "computer": {
+        "connection": {
+          "offline": {
+            "status": "Offline"
+          }
+        },
+        "docker": {
+          "counts": {
+            "label": "{running} running, {stopped} stopped"
+          }
+        },
+        "title": "Computer"
+      },
+      "repos": {
+        "fetched": {
+          "label": "Last fetch {ago}"
+        },
+        "updating": {
+          "status": "Updating"
+        }
+      },
+      "runs": {
+        "empty": "No script runs yet",
+        "loadError": {
+          "error": "Couldn’t load the script runs."
+        }
+      }
+    },
     "approvals": {
       "answerOff": {
         "hint": "Answering agent requests is off for this phone."
@@ -7628,6 +7689,9 @@
       }
     },
     "plan": {
+      "branchFacts": {
+        "label": "↑{ahead} ↓{behind}"
+      },
       "list": {
         "empty": "No tasks planned",
         "emptyHint": "Tasks added in Kira Space appear here."
@@ -7693,9 +7757,15 @@
       },
       "offline": {
         "description": "You are offline. Showing what was last loaded."
+      },
+      "updated": {
+        "label": "Updated"
       }
     },
     "tabs": {
+      "activity": {
+        "label": "Activity"
+      },
       "nav": {
         "aria": "Sections"
       }
@@ -8724,12 +8794,6 @@
           "heldByMain": {
             "label": "Held by main checkout"
           },
-          "new": {
-            "label": "New · from {base}"
-          },
-          "newMain": {
-            "label": "New · from main branch"
-          },
           "rename": {
             "label": "Rename from {from}"
           },
@@ -8912,25 +8976,22 @@
             "label": "Conflicting change"
           },
           "handover": {
-            "label": "Handover"
+            "label": "Another agent’s handover"
           },
           "link": {
-            "label": "Another author’s link"
+            "label": "Another agent’s link"
           },
           "note": {
-            "label": "Note edit"
+            "label": "Another agent’s note"
           },
           "proof": {
-            "label": "Proof file"
+            "label": "Another agent’s proof"
           },
           "proofdelete": {
-            "label": "Proof deletion"
+            "label": "Deletes another agent’s proof"
           },
           "readonly": {
             "label": "Read-only file"
-          },
-          "slot": {
-            "label": "Jira or PR slot"
           },
           "stage": {
             "label": "Other stage"
@@ -9014,6 +9075,11 @@
         },
         "viewer": {
           "empty": "Select a file to view it"
+        },
+        "window": {
+          "gone": {
+            "empty": "This task was archived"
+          }
         }
       },
       "flow": {
@@ -9180,15 +9246,6 @@
         }
       },
       "mainTab": {
-        "checksFailure": {
-          "tooltip": "Checks failed"
-        },
-        "checksPending": {
-          "tooltip": "Checks running"
-        },
-        "checksSuccess": {
-          "tooltip": "Checks passed"
-        },
         "prBase": {
           "label": "→ {base}"
         }
@@ -9380,6 +9437,9 @@
         },
         "agentRename": {
           "loading": "Renaming branch…"
+        },
+        "agentWorktreeRemove": {
+          "loading": "Removing worktree…"
         },
         "approve": {
           "loading": "Approving…"
@@ -9579,6 +9639,9 @@
         "empty": {
           "emptyHint": "Select a task to see its details."
         },
+        "files": {
+          "tooltip": "Open files in a window"
+        },
         "resize": {
           "label": "Resize panel"
         }
@@ -9677,6 +9740,9 @@
           },
           "open": {
             "aria": "Open {title}"
+          },
+          "openPr": {
+            "aria": "Open {title} — {status}"
           },
           "sessionsFinished": {
             "tooltip": "Agent finished, no session working"
@@ -10743,37 +10809,35 @@
           "option": "Add repository…",
           "tooltip": "Add a branch in this repository; created when work starts"
         },
+        "branchForm": {
+          "dirty": {
+            "error": "{name} has {count} uncommitted changes."
+          },
+          "discardChange": {
+            "label": "Discard {count} changes and change"
+          }
+        },
         "branchMenu": {
           "addBranch": {
             "label": "Add branch…"
           },
-          "blocked": {
-            "error": "Can’t change {name}: {reason}"
-          },
           "changeBranch": {
             "label": "Change branch…"
-          },
-          "changeBranchConfirm": {
-            "confirm": "Change branch",
-            "title": "Change branch?"
           },
           "changeRepo": {
             "label": "Change repository…"
           },
-          "leaveConfirm": {
-            "body": "{name} leaves the task and its worktree goes. The git branch stays. Lost with the worktree: {risk}."
+          "discardRemoveBranch": {
+            "label": "Discard {count} changes and remove branch"
+          },
+          "discardRemoveRepo": {
+            "label": "Discard {count} changes and remove repository"
           },
           "removeBranch": {
             "label": "Remove branch"
           },
-          "removeBranchConfirm": {
-            "title": "Remove branch from task?"
-          },
           "removeRepo": {
             "label": "Remove repository"
-          },
-          "removeRepoConfirm": {
-            "title": "Remove repository from task?"
           },
           "trigger": {
             "aria": "Change branch or repository"
@@ -11394,6 +11458,66 @@
       "base": {
         "label": "Base"
       },
+      "changeRequest": {
+        "autoMerge": {
+          "on": {
+            "status": "Auto-merge on"
+          }
+        },
+        "check": {
+          "errored": {
+            "status": "Errored"
+          },
+          "neutral": {
+            "status": "Neutral"
+          },
+          "passed": {
+            "status": "Passed"
+          }
+        },
+        "checks": {
+          "expected": {
+            "status": "Checks not reported yet"
+          },
+          "failed": {
+            "status": "Checks failed"
+          },
+          "passed": {
+            "status": "Checks passed"
+          },
+          "running": {
+            "status": "Checks running"
+          }
+        },
+        "mergeable": {
+          "clean": {
+            "status": "No conflicts"
+          },
+          "conflicting": {
+            "status": "Has conflicts"
+          }
+        },
+        "review": {
+          "approved": {
+            "status": "Approved"
+          },
+          "changesRequested": {
+            "status": "Changes requested"
+          },
+          "commented": {
+            "status": "Commented"
+          },
+          "pending": {
+            "status": "Awaiting review"
+          },
+          "rejected": {
+            "status": "Rejected"
+          },
+          "required": {
+            "status": "Review required"
+          }
+        }
+      },
       "day": {
         "earlier": {
           "label": "Earlier"
@@ -11531,17 +11655,6 @@
         },
         "heading": {
           "title": "Assignees"
-        }
-      },
-      "check": {
-        "error": {
-          "status": "Errored"
-        },
-        "neutral": {
-          "status": "Neutral"
-        },
-        "success": {
-          "status": "Passed"
         }
       },
       "checks": {
@@ -11727,31 +11840,6 @@
           "warning": {
             "title": "Warning"
           }
-        }
-      },
-      "mergeable": {
-        "clean": {
-          "status": "No conflicts"
-        },
-        "conflicting": {
-          "status": "Has conflicts"
-        }
-      },
-      "review": {
-        "approved": {
-          "status": "Approved"
-        },
-        "changesRequested": {
-          "status": "Changes requested"
-        },
-        "commented": {
-          "status": "Commented"
-        },
-        "pending": {
-          "status": "Awaiting review"
-        },
-        "rejected": {
-          "status": "Rejected"
         }
       },
       "reviewers": {
@@ -12152,6 +12240,15 @@
         "tooLargePreview": {
           "empty": "This file is too large to preview (over 8 megabytes)"
         }
+      }
+    },
+    "restore": {
+      "dialog": {
+        "description": "Kira stopped while these were running. Nothing starts until you confirm.",
+        "title": "Restore what was running"
+      },
+      "working": {
+        "label": "Was working"
       }
     },
     "settings": {
@@ -18208,9 +18305,6 @@
       "title": "Quit {app}?"
     },
     "restore": {
-      "dismiss": {
-        "label": "Don’t restore"
-      },
       "selection": {
         "status": "{selected} of {total} selected"
       },

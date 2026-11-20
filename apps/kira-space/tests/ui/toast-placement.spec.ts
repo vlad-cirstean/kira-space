@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
-import { adeFixture, FIXED_NOW, openPlan, openTask } from './support/adeV2';
+import { FIXED_NOW, openPlan, openTask } from './support/adeV2';
 import { seedApprovals } from './support/approvals';
 import { pick } from './support/branchMenu';
 import { contract } from './support/contract';
@@ -19,7 +19,6 @@ const SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
 
 type Box = { x: number; y: number; width: number; height: number };
 
-const dirty = { channel: IPC.adeTaskTaskBranchRisk, response: adeFixture('branch-risk-dirty') };
 const syncToast: ControlSnapshot = {
   channel: IPC.configSyncStatus,
   response: {
@@ -68,14 +67,12 @@ const titlebarBottom = async (page: Page) => {
 async function holdToast(page: Page) {
   await openTask(page, 'T_cart');
   await pick(page, 'b_cart', 'ade-task-branch-remove');
-  await page.locator(t('confirm-dialog-confirm')).click();
   const toast = page.locator('[data-sonner-toast]');
   await expect(toast).toContainText('worktree is locked');
   await toast.hover();
 }
 
 const holdControl: ControlSnapshot[] = [
-  dirty,
   {
     channel: IPC.adeTaskRemoveTaskBranch,
     error: { code: 'E_BAD_REQUEST', message: 'worktree is locked' },

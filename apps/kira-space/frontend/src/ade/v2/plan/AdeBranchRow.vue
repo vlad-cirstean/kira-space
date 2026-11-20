@@ -258,15 +258,6 @@ const tagProps = computed(() => ({
   tipParts: props.row.tag.tipParts,
   tone: props.row.tag.tone,
 }));
-function onEditError(message: string): void {
-  const taskId = props.row.branch.taskId;
-  if (message === '') {
-    delete ui.actionError[taskId];
-    return;
-  }
-  ui.actionError[taskId] = message;
-  ui.select(taskId);
-}
 const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'));
 </script>
 
@@ -526,7 +517,6 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               align="end"
               :row="row"
               :draft-repo-ids="draftRepoIds"
-              @error="onEditError"
             />
             <TooltipIconButton
               v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog')"

@@ -3,7 +3,6 @@ package gitsession
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -11,20 +10,21 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // worktreeGitDir is a worktree's per-worktree git dir, read from its `.git` entry without a spawn:
 // a directory (the main worktree) is the dir itself, a file holds `gitdir: <path>` (a linked one).
 func worktreeGitDir(path string) string {
 	dot := filepath.Join(path, ".git")
-	info, err := os.Stat(dot)
+	info, err := fileservice.Host().Stat(dot)
 	if err != nil {
 		return ""
 	}
-	if info.IsDir() {
+	if info.Dir {
 		return dot
 	}
-	raw, err := os.ReadFile(dot)
+	raw, _, err := fileservice.Host().Read(dot, 0)
 	if err != nil {
 		return ""
 	}

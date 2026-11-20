@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appwire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -284,7 +285,7 @@ func purgeReviewWindows(repositories *repos.Repos) {
 	}
 }
 
-// purgeKeyedWindows drops capture popup, host view, files window and proof window rows a previous run left
+// purgeKeyedWindows drops capture popup, host view, opened file, task Files and proof window rows a previous run left
 // behind: they are never restored.
 func purgeKeyedWindows(repositories *repos.Repos) {
 	records, err := repositories.Windows.List()
@@ -302,9 +303,9 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 	}
 }
 
-// ephemeralWindowKey reports a window that is never restored: host view, capture, files, proof or
-// shared-config review.
+// ephemeralWindowKey reports a window that is never restored: host view, capture, opened file, task
+// Files, proof or shared-config review.
 func ephemeralWindowKey(key string) bool {
 	return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) ||
-		proof.IsWindowKey(key) || bridge.IsConfigSyncKey(key)
+		ade.IsFilesWindowKey(key) || proof.IsWindowKey(key) || bridge.IsConfigSyncKey(key)
 }

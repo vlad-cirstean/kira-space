@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // ErrBranchNotFound is RangeFiles/ReviewFileDiff/MarkFile's own answer when branch does not
@@ -478,17 +478,18 @@ func (e *RepoEntry) FileDelta(ctx context.Context, branch, path string, rec gitr
 // contentDelta is the `diff --no-index` of two in-memory contents (old to new), parsed. The one
 // diff path for stored-snapshot vs current content: FileDelta's slow tier and uncommitted review.
 func (e *RepoEntry) contentDelta(ctx context.Context, oldContent, newContent []byte) ([]porcelain.DiffHunk, porcelain.FileDiffBody, int64, error) {
-	dir, err := os.MkdirTemp("", "kira-review-")
+	files := fileservice.Host()
+	dir, cleanup, err := files.TempDir("", "kira-review-")
 	if err != nil {
 		return nil, porcelain.FileDiffBody{}, 0, fmt.Errorf("gitsession: create review temp dir: %w", err)
 	}
-	defer os.RemoveAll(dir)
+	defer cleanup()
 
 	oldPath, newPath := filepath.Join(dir, "old"), filepath.Join(dir, "new")
-	if err := os.WriteFile(oldPath, oldContent, 0o600); err != nil {
+	if _, err := files.Write(oldPath, oldContent, fileservice.WriteOptions{Perm: 0o600}); err != nil {
 		return nil, porcelain.FileDiffBody{}, 0, fmt.Errorf("gitsession: write review snapshot: %w", err)
 	}
-	if err := os.WriteFile(newPath, newContent, 0o600); err != nil {
+	if _, err := files.Write(newPath, newContent, fileservice.WriteOptions{Perm: 0o600}); err != nil {
 		return nil, porcelain.FileDiffBody{}, 0, fmt.Errorf("gitsession: write review current content: %w", err)
 	}
 

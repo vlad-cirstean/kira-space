@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -60,7 +60,7 @@ func (s *ProofService) OpenShotClip() (ProofShotClipResult, error) {
 	if !s.multiImage() {
 		return ProofShotClipResult{}, clipboardUnavailableErr()
 	}
-	dir, err := os.MkdirTemp("", "kira-proof-clip-")
+	dir, _, err := fileservice.Host().TempDir("", "kira-proof-clip-")
 	if err != nil {
 		return ProofShotClipResult{}, ipcerr.InternalErr(err)
 	}
@@ -73,7 +73,7 @@ func (s *ProofService) OpenShotClip() (ProofShotClipResult, error) {
 }
 
 func removeClipDir(path string) {
-	if err := os.RemoveAll(path); err != nil {
+	if err := fileservice.Host().RemoveAll(path); err != nil {
 		slog.Debug("proof: remove clip batch", "scope", "proof", "path", path, "err", err)
 	}
 }
@@ -104,12 +104,12 @@ func (s *ProofService) AddShotClip(args ProofAddShotClipArgs) error {
 		return err
 	}
 	path := filepath.Join(clip.path, safePngName(args.Filename))
-	if _, err := os.Lstat(path); err == nil {
+	if _, err := fileservice.Host().Lstat(path); err == nil {
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotExists.body", nil)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return ipcerr.InternalErr(err)
 	}
-	if err := renameio.WriteFile(path, data, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(path, data, 0o644); err != nil {
 		return ipcerr.InternalErr(err)
 	}
 	return nil
@@ -125,14 +125,14 @@ func (s *ProofService) CommitShotClip(args ProofShotClipArgs) (ProofCommitShotCl
 	if !s.multiImage() {
 		return ProofCommitShotClipResult{}, clipboardUnavailableErr()
 	}
-	entries, err := os.ReadDir(clip.path)
+	entries, err := fileservice.Host().ReadDir(clip.path)
 	if err != nil {
 		return ProofCommitShotClipResult{}, ipcerr.InternalErr(err)
 	}
 	var paths []string
 	for _, e := range entries {
-		if e.Type().IsRegular() && strings.EqualFold(filepath.Ext(e.Name()), ".png") {
-			paths = append(paths, filepath.Join(clip.path, e.Name()))
+		if e.Mode.IsRegular() && strings.EqualFold(filepath.Ext(e.Name), ".png") {
+			paths = append(paths, filepath.Join(clip.path, e.Name))
 		}
 	}
 	if len(paths) == 0 {

@@ -62,13 +62,6 @@ test('contract: taking the main checkout warns about its dirty files', async ({ 
   await expect(dialog.locator(t(`ade-branch-request-dirty-${row.id}`))).toBeVisible();
 });
 
-test('contract: a free existing branch is a plain checkout item', async ({ relaunch }) => {
-  const { dialog, row } = await openRequest(relaunch, 'checkout');
-  expect(row.kind).toBe('checkout');
-  await expect(dialog.locator(t(`ade-branch-request-item-${row.id}`))).toContainText(row.branch);
-  await expect(dialog.locator(t(`ade-branch-request-holder-${row.id}`))).toHaveCount(0);
-});
-
 interface Row extends Record<string, unknown> {
   detached?: { worktree: string; holder: Record<string, unknown> };
   shared: Record<string, unknown>[];

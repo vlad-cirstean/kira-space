@@ -4,8 +4,6 @@
 // Registry.IsOpen) and calls these.
 package gitpreflight
 
-import "path/filepath"
-
 // WorktreeAddBlocker mirrors the wire's own WorktreeAddPreflight blocker union, flattened into one
 // struct with omitempty per kind-specific field — CheckoutBlocker's own convention (D4).
 type WorktreeAddBlocker struct {
@@ -152,9 +150,10 @@ type WorktreeRemovePreflight struct {
 	Path                      string                  `json:"path"`
 	Blockers                  []WorktreeRemoveBlocker `json:"blockers"`
 	RequiresTypedConfirmation bool                    `json:"requiresTypedConfirmation"`
-	// ConfirmToken: the worktree's own basename (F8's own typed-confirmation text) — set only when
-	// RequiresTypedConfirmation is true. The client echoes it as the "type this to confirm" label;
-	// the server re-derives and re-checks it fresh (never trusts a value the client sends back).
+	// ConfirmToken: fingerprint of the uncommitted set (kinds, statuses and paths), set only when
+	// RequiresTypedConfirmation is true. The client echoes the one it showed (the name is historic:
+	// nothing is typed any more); the server re-derives it fresh and refuses a mismatch, so discard
+	// deletes only the set the user saw.
 	ConfirmToken string   `json:"confirmToken,omitempty"`
 	Routes       []string `json:"routes"`  // "force" — offered iff dirty and otherwise unblocked.
 	Verdict      string   `json:"verdict"` // "clean" | "dirty" | "blocked"
@@ -172,7 +171,8 @@ type ClassifyWorktreeRemoveInput struct {
 	IsCurrentWorktree   bool // this session's own repo root — F7's own cross-window hazard, this session's half.
 	OpenInAnotherWindow bool // Registry.IsOpen(repoID) for the OTHER half of F7's hazard.
 	LockedReason        *string
-	Dirty               bool
+	// DirtyToken fingerprints the uncommitted set, computed host-side; "" means clean.
+	DirtyToken string
 }
 
 // ClassifyWorktreeRemove is the classifier: notAWorktree first (the security gate — every
@@ -181,8 +181,8 @@ type ClassifyWorktreeRemoveInput struct {
 // unlocks any of the five — WorktreeRemoveArgs' own force flag is a single `--force`, which git
 // itself only honours for the dirty case, the hint text ("use 'remove -f -f'...")
 // confirms a lock needs a second, undelivered flag this app never sends). Only once ALL FIVE are
-// clear does Dirty get to turn the verdict into "dirty" with a force route and a typed
-// confirmation — fail-safe over fail-open.
+// clear does Dirty get to turn the verdict into "dirty" with a force route and a confirmation
+// token — fail-safe over fail-open.
 func ClassifyWorktreeRemove(in ClassifyWorktreeRemoveInput) WorktreeRemovePreflight {
 	blockers := []WorktreeRemoveBlocker{}
 	if !in.IsWorktree {
@@ -205,10 +205,10 @@ func ClassifyWorktreeRemove(in ClassifyWorktreeRemoveInput) WorktreeRemovePrefli
 		return WorktreeRemovePreflight{Path: in.Path, Blockers: blockers, Routes: []string{}, Verdict: "blocked"}
 	}
 
-	if in.Dirty {
+	if in.DirtyToken != "" {
 		return WorktreeRemovePreflight{
 			Path: in.Path, Blockers: blockers,
-			RequiresTypedConfirmation: true, ConfirmToken: filepath.Base(in.Path),
+			RequiresTypedConfirmation: true, ConfirmToken: in.DirtyToken,
 			Routes: []string{"force"}, Verdict: "dirty",
 		}
 	}

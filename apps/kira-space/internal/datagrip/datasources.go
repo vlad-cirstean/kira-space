@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // maxProjectFileBytes bounds the read of each project XML file — copied from postman.Parse's own
@@ -200,20 +202,25 @@ func dataSourcesFrom(shared xmlSharedDoc, localByUUID map[string]xmlLocalSource)
 
 // resolveIdeaDir implements D13's "accepts either a project folder or its .idea folder directly".
 func resolveIdeaDir(dir string) (string, error) {
-	info, err := os.Stat(dir)
+	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return "", fmt.Errorf("datagrip: %s: %w", dir, err)
 	}
-	if !info.IsDir() {
+	dir = abs
+	info, err := fileservice.Host().Stat(dir)
+	if err != nil {
+		return "", fmt.Errorf("datagrip: %s: %w", dir, err)
+	}
+	if !info.Dir {
 		return "", fmt.Errorf("datagrip: %s is not a directory", dir)
 	}
 	if filepath.Base(dir) == ".idea" {
-		if _, err := os.Stat(filepath.Join(dir, "dataSources.xml")); err == nil {
+		if _, err := fileservice.Host().Stat(filepath.Join(dir, "dataSources.xml")); err == nil {
 			return dir, nil
 		}
 	}
 	ideaDir := filepath.Join(dir, ".idea")
-	if _, err := os.Stat(filepath.Join(ideaDir, "dataSources.xml")); err != nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(ideaDir, "dataSources.xml")); err != nil {
 		return "", fmt.Errorf("datagrip: no .idea/dataSources.xml found under %s", dir)
 	}
 	return ideaDir, nil
@@ -223,7 +230,7 @@ func resolveIdeaDir(dir string) (string, error) {
 // routinely .gitignore'd and legitimately absent) — any other read failure is a real error. The
 // bytes are returned unparsed so the two callers can unmarshal into their own root shape.
 func readBoundedXML(path string) ([]byte, error) {
-	f, err := os.Open(path)
+	f, _, err := fileservice.Host().Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil

@@ -28,7 +28,7 @@ var gitHostCRColumns = []string{
 	kiraschema.GitHostChangeRequests.State, kiraschema.GitHostChangeRequests.Draft, kiraschema.GitHostChangeRequests.Title,
 	kiraschema.GitHostChangeRequests.URL, kiraschema.GitHostChangeRequests.ReviewDecision, kiraschema.GitHostChangeRequests.ChecksState,
 	kiraschema.GitHostChangeRequests.CommentCount, kiraschema.GitHostChangeRequests.Assignees, kiraschema.GitHostChangeRequests.UpdatedAt,
-	kiraschema.GitHostChangeRequests.SyncedAt,
+	kiraschema.GitHostChangeRequests.SyncedAt, kiraschema.GitHostChangeRequests.Mergeable, kiraschema.GitHostChangeRequests.AutoMerge,
 }
 
 // upsertChangeRequestSQL builds the row upsert once per call; the statement is prepared and run per row.
@@ -50,12 +50,12 @@ func (r *GitHostChangeRequestsRepo) upsertChangeRequestSQL() string {
 
 func scanGitHostCR(rows *sql.Rows) (model.GitHostChangeRequest, bool, error) {
 	var c model.GitHostChangeRequest
-	var draft int
+	var draft, autoMerge int
 	var comments sql.NullInt64
 	var assignees sql.NullString
 	err := rows.Scan(&c.Number, &c.NodeID, &c.HeadRef, &c.HeadOwner, &c.HeadSha, &c.BaseRef, &c.State, &draft, &c.Title, &c.URL,
-		&c.ReviewDecision, &c.ChecksState, &comments, &assignees, &c.UpdatedAt, &c.SyncedAt)
-	c.Draft = draft != 0
+		&c.ReviewDecision, &c.ChecksState, &comments, &assignees, &c.UpdatedAt, &c.SyncedAt, &c.Mergeable, &autoMerge)
+	c.Draft, c.AutoMerge = draft != 0, autoMerge != 0
 	if comments.Valid {
 		n := int(comments.Int64)
 		c.CommentCount = &n
@@ -98,7 +98,7 @@ func (r *GitHostChangeRequestsRepo) UpsertChangeRequests(repoKey string, rows []
 			assignees = string(b)
 		}
 		res, err := stmt.Exec(repoKey, c.Number, c.NodeID, c.HeadRef, c.HeadOwner, c.HeadSha, c.BaseRef, c.State, c.Draft,
-			c.Title, c.URL, c.ReviewDecision, c.ChecksState, comments, assignees, c.UpdatedAt, c.SyncedAt)
+			c.Title, c.URL, c.ReviewDecision, c.ChecksState, comments, assignees, c.UpdatedAt, c.SyncedAt, c.Mergeable, c.AutoMerge)
 		if err != nil {
 			return 0, fmt.Errorf("repos: upsert change request %s#%d: %w", repoKey, c.Number, err)
 		}

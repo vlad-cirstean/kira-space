@@ -13,6 +13,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { ref } from 'vue';
+import { REVIEW_GLYPH } from '../ade/v2/pr/prGlyph';
 import CommentComposer from './CommentComposer.vue';
 import MarkdownBody from './MarkdownBody.vue';
 import type { HostViewCompose, ReviewerState, Thread } from './wire';
@@ -32,16 +33,7 @@ function canReply(thread: Thread): boolean {
 }
 
 function reviewLabel(state: ReviewerState | undefined): string {
-  switch (state) {
-    case 'approved':
-      return t('space.hostView.review.approved.status');
-    case 'changesRequested':
-      return t('space.hostView.review.changesRequested.status');
-    case 'rejected':
-      return t('space.hostView.review.rejected.status');
-    default:
-      return t('space.hostView.review.commented.status');
-  }
+  return t(REVIEW_GLYPH[state ?? 'commented'].label);
 }
 </script>
 

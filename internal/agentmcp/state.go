@@ -56,6 +56,8 @@ var stateActions = []stateAction{
 		`"repo": "app", "from": "feature/x", "to": "feature/y"`, llmprompts.HeadlessStateBranchRename, spaceOnly},
 	{"branch.change", []stateField{{"repo", true, kindString}, {"from", true, kindString}, {"to", true, kindString}},
 		`"repo": "app", "from": "feature/x", "to": "feature/x-alt"`, llmprompts.HeadlessStateBranchChange, spaceOnly},
+	{"worktree.remove", []stateField{{"repo", true, kindString}, {"branch", true, kindString}},
+		`"repo": "app", "branch": "feature/x"`, llmprompts.HeadlessStateWorktreeRemove, spaceOnly},
 	{"lease.acquire", []stateField{{"queue", true, kindString}}, `"queue": "deploy-staging"`, llmprompts.HeadlessStateLeaseAcquire, spaceOnly},
 	{"lease.release", []stateField{{"queue", false, kindString}}, `"queue": "deploy-staging"`, llmprompts.HeadlessStateLeaseRelease, spaceOnly},
 	{"operation.cancel", []stateField{{"opId", true, kindString}}, `"opId": "op-7"`, llmprompts.HeadlessStateOperationCancel, spaceOnly},
@@ -321,6 +323,8 @@ func (s *Server) runState(ctx context.Context, req *mcp.CallToolRequest, g Grant
 		return s.stateBranchRequest(ctx, call, d)
 	case "branch.rename", "branch.change":
 		return s.stateBranchMove(ctx, call, d)
+	case "worktree.remove":
+		return s.stateWorktreeRemove(ctx, call, d)
 	case "lease.acquire":
 		return s.stateLeaseAcquire(ctx, call, d)
 	case "lease.release":
@@ -405,6 +409,20 @@ func (s *Server) stateBranchMove(ctx context.Context, call SpaceCall, d stateCal
 		return oneOut(stateFail(d.action, id, err), "")
 	}
 	return oneOut(outcomeItem(call, id, outcome, ok, next, waited, "answers[]"), nextOfOutcome(outcome))
+}
+
+// stateWorktreeRemove is worktree.remove: nothing waits, so the item is done or failed.
+func (s *Server) stateWorktreeRemove(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
+	repo, branch := d.str("repo"), d.str("branch")
+	if repo == "" || branch == "" {
+		return oneOut(invalidItem(d.action, "repo and branch are required."), "")
+	}
+	id := repo + "/" + branch
+	res, err := s.space.RemoveWorktree(ctx, call, RemoveWorktreeArgs{Repo: repo, Branch: branch})
+	if err != nil {
+		return oneOut(stateFail(d.action, id, err), "")
+	}
+	return oneOut(outcomeItem(call, id, res.Outcome, BranchRemoved, res.Next, 0, ""), "")
 }
 
 func (s *Server) stateLeaseAcquire(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {

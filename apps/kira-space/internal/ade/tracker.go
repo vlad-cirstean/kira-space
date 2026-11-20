@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -463,12 +464,12 @@ func (t *Tracker) resumeTarget(args PrepareArgs) (recordID, agentSessionID, cwd 
 	}
 	// Resume always uses the recorded cwd, never args.Cwd — a session must not appear to resume
 	// somewhere it never ran. A missing directory is an error.
-	if info, err := os.Stat(existing.Cwd); err != nil {
+	if info, err := fileservice.Host().Stat(existing.Cwd); err != nil {
 		if !os.IsNotExist(err) {
 			return "", "", "", nil, fmt.Errorf("ade: prepare: stat resume cwd: %w", err)
 		}
 		return "", "", "", nil, fmt.Errorf("%w: %s no longer exists", ErrInvalidInput, existing.Cwd)
-	} else if !info.IsDir() {
+	} else if !info.Dir {
 		return "", "", "", nil, ErrResumeCwdNotDir
 	}
 	cwd = existing.Cwd
@@ -1252,6 +1253,22 @@ func (t *Tracker) RecordOf(terminalID string) (string, bool) {
 // lookup. It reads State/TerminalID only, neither touched by the in-memory lastActive clock.
 func (t *Tracker) Get(id string) (*model.AdeSession, error) {
 	return t.deps.Store.Get(id)
+}
+
+// MarkQuit flags every live TUI record for the restore offer of the next start. Call it before the
+// terminals shut down: the exits then stop the rows, and only this mark says they were open. An agent
+// is working while its turn is busy, background tasks run or a tool call is open. A failure only logs:
+// quitting never waits on it.
+func (t *Tracker) MarkQuit() {
+	t.mu.Lock()
+	marks := make(map[string]bool, len(t.byRecord))
+	for recordID := range t.byRecord {
+		marks[recordID] = t.turn[recordID] == turnBusy || t.background[recordID] > 0 || t.tools[recordID].count() > 0
+	}
+	t.mu.Unlock()
+	if err := t.deps.Store.MarkRestore(marks); err != nil {
+		slog.Warn("ade: mark sessions for restore", "scope", "ade", "err", err)
+	}
 }
 
 // Close flushes every still-in-memory lastActive value to the store — main.go's own teardown,

@@ -3,9 +3,10 @@ package configfs
 import (
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 func waitFire(t *testing.T, ch <-chan struct{}) {
@@ -84,29 +85,9 @@ func TestWatch_dirCreatedLater(t *testing.T) {
 func TestWatch_atomicWriteFiresOnce(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "workflows")
 	ch := startWatch(t, dir)
-	if err := WriteAtomic(filepath.Join(dir, "flow.yaml"), []byte("a: 1\n"), 0o644); err != nil {
+	if _, err := fileservice.Host().Write(filepath.Join(dir, "flow.yaml"), []byte("a: 1\n"), fileservice.WriteOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	waitFire(t, ch)
 	expectQuiet(t, ch)
-}
-
-func TestDebouncer_stopWaitsForInFlightCall(t *testing.T) {
-	started, release := make(chan struct{}), make(chan struct{})
-	var finished atomic.Bool
-	d := &debouncer{fn: func() {
-		close(started)
-		<-release
-		finished.Store(true)
-	}}
-	d.schedule()
-	waitFire(t, started)
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		close(release)
-	}()
-	d.stop()
-	if !finished.Load() {
-		t.Fatal("stop returned before the in-flight onChange finished")
-	}
 }

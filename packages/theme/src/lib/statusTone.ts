@@ -43,18 +43,6 @@ export const ISSUE_CATEGORY_TONE: Readonly<Record<string, StatusTone>> = {
 };
 export const issueTone = (category?: string): StatusTone =>
   (category && ISSUE_CATEGORY_TONE[category]) || 'neutral';
-// CI check state, keyed lowercase.
-export const CHECK_TONE: Readonly<Record<string, StatusTone>> = {
-  success: 'ok',
-  failure: 'error',
-  error: 'error',
-  pending: 'neutral',
-  expected: 'neutral',
-  skipped: 'neutral',
-  neutral: 'neutral',
-};
-export const checkTone = (state: string): StatusTone =>
-  CHECK_TONE[state.toLowerCase()] ?? 'neutral';
 // Added, changed, removed: one tone for every diff and change-kind surface.
 export type ChangeKind = 'added' | 'changed' | 'removed' | 'unchanged';
 export const CHANGE_TONE: Readonly<Record<ChangeKind, StatusTone>> = {

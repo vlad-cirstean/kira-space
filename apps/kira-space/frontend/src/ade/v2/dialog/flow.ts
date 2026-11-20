@@ -3,6 +3,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import { isPreparing } from '../state/useSetupWait';
 import type {
   ArchiveRisk,
+  ArchiveTaskArgs,
   Launch,
   OpenSessionEvent,
   RebaseArgs,
@@ -33,7 +34,7 @@ export interface FlowDeps {
   rebase: (args: RebaseArgs) => Promise<unknown>;
   setBranchBase: (args: SetBranchBaseArgs) => Promise<void>;
   recordMerge: (args: RecordMergeArgs) => Promise<void>;
-  archiveTask: (args: TaskArgs) => Promise<void>;
+  archiveTask: (args: ArchiveTaskArgs) => Promise<void>;
   archiveRisk: (args: TaskArgs) => Promise<ArchiveRisk>;
   /** Asks the person to confirm archiving a task with nothing at risk. */
   confirmArchive: (taskId: string) => Promise<boolean>;
@@ -58,7 +59,7 @@ const BLOCKED_REASON = {
   openInAnotherWindow: 'common.openElsewhere.tooltip',
   locked: 'space.ade.flow.locked.status',
 } as const satisfies Record<string, MessageKey>;
-export const blockedReason = (reason: string): string =>
+const blockedReason = (reason: string): string =>
   reason in BLOCKED_REASON ? t(BLOCKED_REASON[reason as keyof typeof BLOCKED_REASON]) : reason;
 
 /** A launch failure shown in the dialog; a worktree still being prepared holds it open instead. */
@@ -287,7 +288,7 @@ async function archiveIfClear(deps: FlowDeps, taskId: string, confirm = false): 
     return;
   }
   if (confirm && !(await deps.confirmArchive(taskId))) return;
-  await deps.archiveTask({ taskId });
+  await deps.archiveTask({ taskId, discardTokens: {} });
 }
 
 /** The Archive click: nothing at risk asks to confirm, else the dialog. */
@@ -303,11 +304,16 @@ export async function requestArchive(deps: FlowDeps, taskId: string): Promise<vo
   }
 }
 
-/** The archive dialog's `Delete anyway`: no discard flag exists, the dialog is the confirmation. */
+/** The archive dialog's `Delete anyway`: the dialog is the confirmation, and it carries the token of
+ *  each dirty worktree it listed, so a worktree that changed since is refused, not deleted. */
 export async function deleteAnyway(deps: FlowDeps, spec: DialogSpec): Promise<void> {
+  const discardTokens: Record<string, string> = {};
+  for (const r of spec.risk?.branches ?? []) {
+    if (r.dirtyToken !== '') discardTokens[r.branchId] = r.dirtyToken;
+  }
   try {
     deps.closeDialog();
-    await deps.archiveTask({ taskId: spec.taskId ?? '' });
+    await deps.archiveTask({ taskId: spec.taskId ?? '', discardTokens });
   } catch (err) {
     deps.setError(errorText(err));
   }

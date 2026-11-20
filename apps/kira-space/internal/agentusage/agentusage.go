@@ -7,10 +7,10 @@ package agentusage
 import (
 	"encoding/json"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Snapshot states.
@@ -154,7 +154,7 @@ func (s *Service) load() {
 	if s.deps.Path == "" {
 		return
 	}
-	raw, err := os.ReadFile(s.deps.Path)
+	raw, err := fileservice.Host().ReadFile(s.deps.Path)
 	if err != nil {
 		return
 	}
@@ -174,23 +174,7 @@ func (s *Service) persistLocked() {
 	if err != nil {
 		return
 	}
-	if err := writeAtomic(s.deps.Path, raw); err != nil {
+	if err := fileservice.Host().WriteFile(s.deps.Path, raw, 0o600); err != nil {
 		slog.Warn("agent usage: persist", "scope", "usage", "err", err)
 	}
-}
-
-func writeAtomic(path string, data []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".agent-usage-*")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(tmp.Name()) }()
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), path)
 }

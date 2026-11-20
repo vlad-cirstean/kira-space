@@ -17,7 +17,7 @@ func TestReviewUncommittedOnly(t *testing.T) {
 	f, br := doneFixture(t, "feat/api-uncommitted")
 	app, wt := f.app, br.Worktree
 	const contract = "ade-review-uncommitted"
-	branchMask := flowharness.Mask("startedAt", "finishedAt", "tip", "createdAt", "addedAt", "lastCommitAt", "sha")
+	branchMask := flowharness.Mask("startedAt", "finishedAt", "tip", "createdAt", "addedAt", "lastCommitAt", "sha", "dirtyToken")
 	refresh := func() adewire.Branch {
 		t.Helper()
 		if _, err := app.W.AdeTask.Refresh(ctx, adewire.RefreshArgs{CodeRepoIDs: []string{br.CodeRepoID}}); err != nil {

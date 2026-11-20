@@ -79,16 +79,32 @@ async function openDetails(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 }
 
-test('the tabs are Main, Details, Sessions and Files, Main first', async ({ relaunch }) => {
+test('the tabs are Main, Details and Sessions, Main first, and Files is an icon', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openTask(page, 'T_alerts');
   await expect(page.locator(t('ade-main-tab'))).toBeVisible();
   await expect(page.locator(t('ade-panel-tab-main'))).toHaveText(/Main/);
   await expect(page.locator(t('ade-panel-tab-details'))).toBeVisible();
   await expect(page.locator(t('ade-panel-tab-sessions'))).toBeVisible();
-  await expect(page.locator(t('ade-panel-tab-files'))).toBeVisible();
-  await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(4);
+  await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
+  await expect(page.locator(t('ade-panel-tab-files'))).toHaveCount(0);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
+});
+
+test('Files is a header icon: no tab, no right-click or More entry', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, panel());
+  await openTask(page, 'T_cart');
+  await expect(page.locator(t('ade-panel-files'))).toBeVisible();
+  const files = page.locator('[data-testid^="menu-item-"][data-testid*="files"]');
+  await page.locator(t('ade-panel-dot')).click({ button: 'right' });
+  await expect(page.locator('[data-testid^="menu-item-"]').first()).toBeVisible();
+  await expect(files).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.locator(t('ade-panel-more')).click();
+  await expect(page.locator('[data-testid^="menu-item-"]').first()).toBeVisible();
+  await expect(files).toHaveCount(0);
 });
 
 test('Main shows branches with their PR line and never handover text', async ({ relaunch }) => {
@@ -96,7 +112,7 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await openTask(page, 'T_bill');
   await expect(page.locator(t('ade-task-branch-pr'))).toHaveCount(2);
   await expect(page.locator(t('ade-task-branch-pr-base')).first()).toHaveText('→ main');
-  const failed = page.locator(`${t('ade-task-branch-pr-checks')}[data-state="FAILURE"]`);
+  const failed = page.locator(`${t('ade-task-branch-pr-state')}[data-checks="failure"]`);
   await expect(failed).toHaveCount(1);
   await expect(page.locator(`${t('ade-task-branch')}[data-branch-id="b_billdash"]`)).toBeVisible();
   await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(

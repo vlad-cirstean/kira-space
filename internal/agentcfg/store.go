@@ -13,6 +13,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/agentctx"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -177,7 +178,7 @@ func (s *Store) Settings() (Settings, bool) {
 func (s *Store) Save(text, baseHash string) (FileView, error) {
 	s.saveMu.Lock()
 	defer s.saveMu.Unlock()
-	cur, err := os.ReadFile(s.path())
+	cur, err := fileservice.Host().ReadFile(s.path())
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return FileView{}, fmt.Errorf("agentcfg: read %s: %w", File, err)
 	}

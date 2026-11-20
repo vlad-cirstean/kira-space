@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"context"
 	"io/fs"
 	"log/slog"
 	"net/netip"
@@ -113,6 +114,9 @@ type MobileAccessService struct {
 	AgentSessions func() any
 	// AgentInfo is the agent provider's display facts for the phone.
 	AgentInfo func() any
+	// ScriptRuns and Computer feed the phone's runs and computer reads.
+	ScriptRuns func(ctx context.Context, limit int) ([]any, error)
+	Computer   func(ctx context.Context) (mobileweb.Computer, error)
 	// Approvals is the app's approvals queue; the phone sees its Space kinds.
 	Approvals mobileweb.Approvals
 	// Assets is the embedded mobile build.
@@ -156,7 +160,7 @@ func NewMobileAccessService(s *MobileAccessService) *MobileAccessService {
 				return nil, err
 			}
 			srv := mobileweb.New(mobileweb.Config{
-				Reader: s.Reader, AgentSessions: s.AgentSessions, AgentInfo: s.AgentInfo, Approvals: s.Approvals, Devices: s.Deps.Repos.MobileDevices,
+				Reader: s.Reader, AgentSessions: s.AgentSessions, AgentInfo: s.AgentInfo, ScriptRuns: s.ScriptRuns, Computer: s.Computer, Approvals: s.Approvals, Devices: s.Deps.Repos.MobileDevices,
 				Writer: s.Writer, Terminals: s.Terminals, AgentInputEnabled: s.agentInputEnabled,
 				Hub: s.Hub, Broker: s.Broker, Assets: s.Assets,
 				Port: cfg.Mobile.Port, Network: s.sup.network(), IsLAN: s.IsLAN, Now: s.Now,

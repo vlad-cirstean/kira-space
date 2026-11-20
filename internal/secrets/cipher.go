@@ -43,7 +43,20 @@ type Cipher struct {
 // (secret-cipher.ts's createSecretCipher, called once after startup with no Electron
 // app.whenReady() analogue needed — P52 §6.5).
 func New() *Cipher {
-	status, key := probe(runtime.GOOS, os.Getenv("KIRA_INSECURE_SECRETS"), loadOrCreateKey)
+	return build(probe(runtime.GOOS, os.Getenv("KIRA_INSECURE_SECRETS"), loadOrCreateKey))
+}
+
+// NewInsecure is the hardcoded-key cipher on every OS, or an unavailable one when available is false.
+// For test harnesses only: it never reads the OS keychain, which blocks on a CI runner's prompt.
+func NewInsecure(available bool) *Cipher {
+	env := ""
+	if available {
+		env = "1"
+	}
+	return build(probe("linux", env, nil))
+}
+
+func build(status Status, key []byte) *Cipher {
 
 	suffix := ""
 	if status.InsecureFallback {

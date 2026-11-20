@@ -52,9 +52,9 @@ function ctxWith(sessions: Session[], repoName?: (id: string) => string): Dialog
   };
 }
 
-const SPACE_NOTE = 'Kira tools: submit, state.';
+const SPACE_NOTE = 'Kira tool: state.';
 const HANDOVER_LINE =
-  'When this stage is done, write your handover to its draft file in the task folder, then call submit. Then call state with action step.finish and args status "done".';
+  'When this stage is done, write your handover to its draft file in the task folder. Then call state with action step.finish and args status "done".';
 
 const ctx = ctxWith(loadFixture<SessionsResult>('sessions').sessions);
 const STATE = { msg: null, push: false, override: false, autostash: false, preview: null };
@@ -232,6 +232,7 @@ describe('archive', () => {
           dirty: [{ code: 'M', path: 'src/a.ts' }],
           unmerged: 5,
           blocked: '',
+          dirtyToken: 'tok-bill',
         },
         {
           branchId: 'b_meter',
@@ -239,6 +240,7 @@ describe('archive', () => {
           dirty: [],
           unmerged: 0,
           blocked: '',
+          dirtyToken: '',
         },
       ],
     });

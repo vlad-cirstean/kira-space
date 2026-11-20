@@ -319,7 +319,11 @@ func (b *TaskBoard) ReviewWorkingDiff(ctx context.Context, branchID, path string
 	if worktree == "" {
 		return codeworkspace.DiffContent{}, invalid("the branch has no worktree")
 	}
-	if _, err := codeworkspace.ValidateRelPath(worktree, path); err != nil {
+	files, err := codeworkspace.Files(worktree)
+	if err != nil {
+		return codeworkspace.DiffContent{}, err
+	}
+	if _, err := files.Path(path); err != nil {
 		return codeworkspace.DiffContent{}, invalid("bad path: %v", err)
 	}
 	_, head, err := entry.WorktreeHead(ctx, worktree)
@@ -338,16 +342,29 @@ func (b *TaskBoard) ReviewWorkingDiff(ctx context.Context, branchID, path string
 	return d, nil
 }
 
-// closeReviewWindows closes the task's review windows and drops their records (Archive). Review
-// sessions stay pinned: archived work keeps its review comments.
-func (b *TaskBoard) closeReviewWindows(tc *taskCtx) {
+// closeTaskWindows closes the task's review and Files windows and drops their records (Archive).
+// Review sessions stay pinned: archived work keeps its review comments.
+func (b *TaskBoard) closeTaskWindows(tc *taskCtx) {
+	taskID := tc.task.ID
+	if key, ok := b.filesWindowKey(taskID); ok {
+		if b.deps.CloseWindow != nil {
+			b.deps.CloseWindow(key)
+		}
+		b.ForgetFilesWindow(key)
+	}
 	if b.deps.ReviewWindows == nil {
 		return
 	}
-	if b.deps.CloseReviewWindows != nil {
-		b.deps.CloseReviewWindows(tc.task.ID)
+	if b.deps.CloseWindow != nil {
+		keys, err := b.deps.ReviewWindows.KeysByTask(taskID)
+		if err != nil {
+			slog.Warn("ade: list review windows", "scope", "ade", "task", taskID, "err", err)
+		}
+		for _, k := range keys {
+			b.deps.CloseWindow(k)
+		}
 	}
-	if err := b.deps.ReviewWindows.DeleteByTask(tc.task.ID); err != nil {
-		slog.Warn("ade: close review windows", "scope", "ade", "task", tc.task.ID, "err", err)
+	if err := b.deps.ReviewWindows.DeleteByTask(taskID); err != nil {
+		slog.Warn("ade: close review windows", "scope", "ade", "task", taskID, "err", err)
 	}
 }

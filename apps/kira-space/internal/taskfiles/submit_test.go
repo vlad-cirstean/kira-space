@@ -15,7 +15,7 @@ import (
 func TestSubmitDraftAccepted(t *testing.T) {
 	e := newEnv(t)
 	e.disk("handovers/draft-implement.md", "# plan\nbody\n")
-	r := e.submit(RoleRun, "s1", "")
+	r := e.submit(RoleRun, "s1")
 	if f := r.find("handovers/draft-implement.md"); f.Status != StatusAccepted {
 		t.Fatalf("%+v", f)
 	}
@@ -24,13 +24,13 @@ func TestSubmitDraftAccepted(t *testing.T) {
 	}
 	// Unchanged afterwards, and a second submit reads nothing.
 	e.st.reads = 0
-	if f := e.submit(RoleRun, "s1", "").find("handovers/draft-implement.md"); f.Status != StatusUnchanged {
+	if f := e.submit(RoleRun, "s1").find("handovers/draft-implement.md"); f.Status != StatusUnchanged {
 		t.Fatalf("%+v", f)
 	}
 	if e.st.reads != 0 {
 		t.Fatalf("unchanged file was read %d times", e.st.reads)
 	}
-	if c := e.submit(RoleRun, "s1", "").Counts(); c != (Counts{}) {
+	if c := e.submit(RoleRun, "s1").Counts(); c != (Counts{}) {
 		t.Fatalf("counts %+v", c)
 	}
 }
@@ -38,7 +38,7 @@ func TestSubmitDraftAccepted(t *testing.T) {
 func TestSubmitWrongStageDraftRejectedAndRemoved(t *testing.T) {
 	e := newEnv(t)
 	e.disk("handovers/draft-review.md", "x\n")
-	f := e.submit(RoleRun, "s1", "").find("handovers/draft-review.md")
+	f := e.submit(RoleRun, "s1").find("handovers/draft-review.md")
 	if f.Status != StatusRejected {
 		t.Fatalf("%+v", f)
 	}
@@ -47,28 +47,32 @@ func TestSubmitWrongStageDraftRejectedAndRemoved(t *testing.T) {
 	}
 }
 
-func TestSubmitNoteNeedsReason(t *testing.T) {
+func TestSubmitOtherAgentNotePending(t *testing.T) {
 	e := newEnv(t)
 	const rel = "notes/20261101T090000-a1.md"
-	e.seed(rel, "user note\n")
+	e.seed(rel, "other note\n")
+	e.h.author[rel] = AuthorAgent
 	e.disk(rel, "agent edit\n")
-	f := e.submit(RoleRun, "s1", "").find(rel)
-	want := ReasonError(rel, CauseNote)
-	if f.Status != StatusInvalid || f.Message != want {
-		t.Fatalf("got %q %q\nwant %q", f.Status, f.Message, want)
-	}
-	if got, _ := e.h.get(rel); got != "user note\n" {
-		t.Fatalf("cache moved to %q", got)
-	}
-	f = e.submit(RoleRun, "s1", "typo fix", rel).find(rel)
-	if f.Status != StatusPending {
+	f := e.submit(RoleRun, "s1").find(rel)
+	if f.Status != StatusPending || f.Message != rel+": waiting for the user (another agent's note)." {
 		t.Fatalf("%+v", f)
 	}
-	if len(e.ev.pending) != 1 || e.ev.pending[0].Items[0].Path != rel || e.ev.pending[0].Reason != "typo fix" {
+	if len(e.ev.pending) != 1 || e.ev.pending[0].Items[0].Path != rel || e.ev.pending[0].Items[0].Cause != CauseNote {
 		t.Fatalf("pending events %+v", e.ev.pending)
 	}
-	if got, _ := e.h.get(rel); got != "user note\n" {
+	if got, _ := e.h.get(rel); got != "other note\n" {
 		t.Fatal("pending change applied before approval")
+	}
+}
+
+func TestSubmitOwnNoteApplies(t *testing.T) {
+	e := newEnv(t)
+	const rel = "notes/20261101T090000-a1.md"
+	e.seed(rel, "my note\n")
+	e.h.author[rel] = AuthorSelf
+	e.disk(rel, "revised\n")
+	if f := e.submit(RoleRun, "s1").find(rel); f.Status != StatusAccepted {
+		t.Fatalf("%+v", f)
 	}
 }
 
@@ -80,7 +84,7 @@ func TestSubmitRestoresKiraFiles(t *testing.T) {
 	if err := os.Remove(filepath.Join(e.local.Root(), "state.yaml")); err != nil {
 		t.Fatal(err)
 	}
-	r := e.submit(RoleRun, "s1", "")
+	r := e.submit(RoleRun, "s1")
 	for _, rel := range []string{"README.md", "state.yaml"} {
 		if f := r.find(rel); f.Status != StatusRestored {
 			t.Fatalf("%s: %+v", rel, f)
@@ -94,7 +98,7 @@ func TestSubmitRestoresKiraFiles(t *testing.T) {
 func TestSubmitParseErrorHasLine(t *testing.T) {
 	e := newEnv(t)
 	e.disk("links.yaml", "ok\nBAD here\n")
-	f := e.submit(RoleRun, "s1", "").find("links.yaml")
+	f := e.submit(RoleRun, "s1").find("links.yaml")
 	if f.Status != StatusInvalid || f.Line != 2 || !strings.Contains(f.Message, "bad token") {
 		t.Fatalf("%+v", f)
 	}
@@ -103,7 +107,7 @@ func TestSubmitParseErrorHasLine(t *testing.T) {
 		t.Fatalf("rows %+v", rows)
 	}
 	e.disk("links.yaml", "fixed\n")
-	if f := e.submit(RoleRun, "s1", "").find("links.yaml"); f.Status != StatusAccepted {
+	if f := e.submit(RoleRun, "s1").find("links.yaml"); f.Status != StatusAccepted {
 		t.Fatalf("%+v", f)
 	}
 }
@@ -111,21 +115,18 @@ func TestSubmitParseErrorHasLine(t *testing.T) {
 func TestSubmitCollision(t *testing.T) {
 	e := newEnv(t)
 	const rel = "handovers/draft-implement.md"
-	e.seed(rel, "user text\n") // accepted by "user" at e.now
+	e.seedBy("s2", rel, "other text\n") // accepted by another agent at e.now
 	e.disk(rel, "agent text\n")
-	req := func(reason string) FileResult {
-		res, err := e.svc.Submit(context.Background(), Request{TaskID: e.taskID, Paths: []string{rel}, Reason: reason,
+	req := func() FileResult {
+		res, err := e.svc.Submit(context.Background(), Request{TaskID: e.taskID, Paths: []string{rel},
 			Session: Session{Key: "s1", Role: RoleRun, Step: "implement", LastSync: e.now.Add(-time.Minute)}})
 		if err != nil {
 			t.Fatal(err)
 		}
 		return res.find(rel)
 	}
-	if f := req(""); f.Status != StatusInvalid || !strings.Contains(f.Message, "needs reason") {
-		t.Fatalf("%+v", f)
-	}
-	f := req("keep mine")
-	if f.Status != StatusPending || !strings.Contains(f.Message, "user changed it") {
+	f := req()
+	if f.Status != StatusPending || !strings.Contains(f.Message, "s2 changed it") {
 		t.Fatalf("%+v", f)
 	}
 	if e.ev.pending[0].Items[0].Collision == nil {
@@ -143,7 +144,7 @@ func TestSubmitFolderLimits(t *testing.T) {
 	}
 	e.disk(".hidden/x.md", "x")
 	e.disk("random.txt", "x")
-	r := e.submit(RoleRun, "s1", "")
+	r := e.submit(RoleRun, "s1")
 	if f := r.find("notes/20261101T090000-ln.md"); f.Status != StatusInvalid || !strings.Contains(f.Message, "symlink") {
 		t.Fatalf("symlink: %+v", f)
 	}
@@ -159,7 +160,7 @@ func TestSubmitFolderLimits(t *testing.T) {
 	for i := 0; i < MaxFilesPerTask+1; i++ {
 		e.disk(fmt.Sprintf("notes/20261101T0900%02d-%03d.md", i%60, i), "n")
 	}
-	r = e.submit(RoleRun, "s1", "")
+	r = e.submit(RoleRun, "s1")
 	if f := r.find("."); f.Status != StatusInvalid || !strings.Contains(f.Message, "more than 500 files") {
 		t.Fatalf("501 files: %+v", f)
 	}
@@ -169,7 +170,7 @@ func TestSubmitFolderLimits(t *testing.T) {
 	if _, ok := e.h.get(past); !ok {
 		t.Fatal("unlisted indexed file dropped from the cache")
 	}
-	if f := e.submit(RoleRun, "s1", "", past).find(past); f.Status != StatusInvalid || !strings.Contains(f.Message, "not read") {
+	if f := e.submit(RoleRun, "s1", past).find(past); f.Status != StatusInvalid || !strings.Contains(f.Message, "not read") {
 		t.Fatalf("named unlisted file: %+v", f)
 	}
 }
@@ -178,14 +179,12 @@ func TestSubmitDeletedHandedHandoverPending(t *testing.T) {
 	e := newEnv(t)
 	const rel = "handovers/0001-plan-to-implement.md"
 	e.seed(rel, "handed\n")
+	e.h.author[rel] = AuthorAgent
 	if err := os.Remove(filepath.Join(e.local.Root(), rel)); err != nil {
 		t.Fatal(err)
 	}
-	if f := e.submit(RoleRun, "s1", "").find(rel); f.Status != StatusInvalid {
-		t.Fatalf("no reason: %+v", f)
-	}
-	if f := e.submit(RoleRun, "s1", "obsolete", rel).find(rel); f.Status != StatusPending {
-		t.Fatalf("with reason: %+v", f)
+	if f := e.submit(RoleRun, "s1", rel).find(rel); f.Status != StatusPending {
+		t.Fatalf("%+v", f)
 	}
 	if _, ok := e.h.get(rel); !ok {
 		t.Fatal("cache dropped before approval")
@@ -248,7 +247,8 @@ func TestChangedBudget(t *testing.T) {
 func TestSubmitSkipsOpenIntent(t *testing.T) {
 	e := newEnv(t)
 	const rel = "notes/20261101T090000-a1.md"
-	e.seed(rel, "user note\n")
+	e.seed(rel, "other note\n")
+	e.h.author[rel] = AuthorAgent
 	e.disk(rel, "kira rewrite\n")
 	err := e.svc.cfg.Index.InTx(func(tx Tx) error {
 		return tx.PutIntent(model.TaskFileIntent{TaskID: e.taskID, RelPath: rel, SHA256: sum([]byte("kira rewrite\n")), Writer: string(RoleKira), CreatedAt: 1})
@@ -256,11 +256,11 @@ func TestSubmitSkipsOpenIntent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res := e.submit(RoleRun, "s1", "", rel); len(res.Files) != 0 {
+	if res := e.submit(RoleRun, "s1", rel); len(res.Files) != 0 {
 		t.Fatalf("results %+v, want none for a file Kira is writing", res.Files)
 	}
 	e.disk(rel, "agent edit\n")
-	if f := e.submit(RoleRun, "s1", "", rel).find(rel); f.Status != StatusInvalid {
+	if f := e.submit(RoleRun, "s1", rel).find(rel); f.Status != StatusPending {
 		t.Fatalf("a file that is not what Kira writes: %+v", f)
 	}
 }

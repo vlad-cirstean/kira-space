@@ -579,7 +579,8 @@ test.describe('approval dialog alignment (Space)', () => {
           {
             ...row,
             id: 'c0i1',
-            kind: 'checkout',
+            kind: 'rename',
+            from: 'feat/login',
             repo: 'kira-web',
             branch: 'feat/login-redirect',
             holder: undefined,

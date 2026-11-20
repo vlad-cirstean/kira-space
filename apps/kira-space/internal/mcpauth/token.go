@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/tokenauth"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 )
@@ -136,7 +136,7 @@ func HelperTokenPathNamed(home, name string) string {
 // Load reads path's Record. A missing file returns ok=false with no error — there is nothing wrong
 // with a server instance that has never been enabled or started before.
 func Load(path string) (Record, bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := fileservice.Host().ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Record{}, false, nil
@@ -182,7 +182,7 @@ func SaveHelperToken(path, plain string) error {
 // currently-held Record, not just that this process minted a token at some point this run. A
 // missing file returns ok=false with no error, same posture as Load.
 func LoadHelperToken(path string) (plain string, ok bool, err error) {
-	data, err := os.ReadFile(path)
+	data, err := fileservice.Host().ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", false, nil
@@ -192,23 +192,15 @@ func LoadHelperToken(path string) (plain string, ok bool, err error) {
 	return string(data), true, nil
 }
 
-// writeFile writes atomically (temp file plus rename, via renameio) after ensuring the parent
+// writeFile writes atomically (fileservice) after ensuring the parent
 // directory exists at mode 0700.
 func writeFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(dir); err != nil {
 		return fmt.Errorf("mcpauth: mkdir %s: %w", dir, err)
 	}
 	// WriteFile keeps an existing target's mode; static permissions re-tighten a file left looser.
-	f, err := renameio.NewPendingFile(path, renameio.WithStaticPermissions(perm))
-	if err != nil {
-		return fmt.Errorf("mcpauth: write %s: %w", path, err)
-	}
-	defer func() { _ = f.Cleanup() }()
-	if _, err := f.Write(data); err != nil {
-		return fmt.Errorf("mcpauth: write %s: %w", path, err)
-	}
-	if err := f.CloseAtomicallyReplace(); err != nil {
+	if _, err := fileservice.HostPrivate().Write(path, data, fileservice.WriteOptions{Perm: perm, Static: true}); err != nil {
 		return fmt.Errorf("mcpauth: write %s: %w", path, err)
 	}
 	return nil

@@ -9,13 +9,11 @@ import (
 	"io/fs"
 	"log/slog"
 	"maps"
-	"os"
-	"path/filepath"
 	"slices"
 	"sync"
 	"time"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const fileVersion = 1
@@ -143,10 +141,10 @@ func (s *Store) snapshot() Snapshot {
 }
 
 func statOf(path string) (stamp, error) {
-	fi, err := os.Stat(path)
+	fi, err := fileservice.Host().Stat(path)
 	switch {
 	case err == nil:
-		return stamp{mod: fi.ModTime().UnixNano(), size: fi.Size(), ok: true}, nil
+		return stamp{mod: fi.ModTime.UnixNano(), size: fi.Size, ok: true}, nil
 	case errors.Is(err, fs.ErrNotExist):
 		return stamp{}, nil
 	}
@@ -176,7 +174,7 @@ func (s *Store) refresh() {
 }
 
 func (s *Store) read() error {
-	b, err := os.ReadFile(s.path)
+	b, err := fileservice.Host().ReadFile(s.path)
 	if err != nil {
 		return err
 	}
@@ -332,10 +330,7 @@ func (s *Store) write(doc document) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
-		return err
-	}
-	if err := renameio.WriteFile(s.path, b, 0o600); err != nil {
+	if err := fileservice.HostPrivate().WriteFile(s.path, b, 0o600); err != nil {
 		return err
 	}
 	s.doc, s.corrupt = doc, ""

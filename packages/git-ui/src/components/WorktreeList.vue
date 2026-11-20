@@ -10,7 +10,8 @@
  * (`worktree.openWindow`) — also emitted up rather than called directly, since this component
  * has no `BridgeClient` of its own (only `ops`/`worktrees`, matching every other row component in
  * this file's own family). Remove is handled entirely locally: a plain `op.run`, no host
- * involvement, with its own small confirm dialog for the dirty route.
+ * involvement. A refusal (blocked, or uncommitted changes) shows inline under the row; only the
+ * dirty row offers a button that names the loss, no dialog.
  *
  * Renders the already filtered/ordered/capped `section` prop `pickerModel.ts` hands it —
  * the same `TagList.vue` contract. This is also the first cap this list has ever had (it
@@ -24,24 +25,12 @@ import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@theme/components/ui/dialog';
-import { Field, FieldLabel } from '@theme/components/ui/field';
-import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
-import CatalogText from '@theme/i18n/CatalogText.vue';
 import { ICON } from '@theme/icons';
 import { rowMeta } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import Identifier from '@workbench/components/Identifier.vue';
-import { computed, ref, useId } from 'vue';
+import { ref, watch } from 'vue';
 import { type PickerList, worktreeLabel } from '../lib/pickerModel.ts';
 import type { OpsState } from '../state/ops.ts';
 import type { WorktreeState } from '../state/worktrees.ts';
@@ -65,27 +54,29 @@ function switchTo(entry: WorktreeEntry): void {
 }
 
 // ---------------------------------------------------------------------------------------
-// Remove — a small, self-contained confirm dialog: blocked reasons are shown with no route
-// forward; a dirty worktree requires typing the exact confirmation token the server's own fresh
-// preflight names (never a value this component invents), mirroring the typed-
-// confirmation pattern (`ResetDialog.vue`).
+// Remove — a clean worktree goes at once. Blocked reasons and uncommitted changes show inline under
+// the row; the dirty row's button passes the confirmation token the server's own fresh preflight
+// names (never a value this component invents), and the server re-checks it before it removes.
 // ---------------------------------------------------------------------------------------
 
-const pendingRemove = ref<{ entry: WorktreeEntry; preflight: WorktreeRemovePreflight } | undefined>(
-  undefined,
-);
-const typedToken = ref('');
-const confirmTokenId = useId();
+const refusal = ref<{ path: string; preflight: WorktreeRemovePreflight } | undefined>(undefined);
+
+// A list change drops a refusal that may no longer match its row.
+watch(() => props.section.visible.map((e) => e.path).join('\0'), clearRefusal);
 
 async function requestRemove(entry: WorktreeEntry): Promise<void> {
+  refusal.value = undefined;
   const preflight = await props.worktrees.previewRemove(entry.path);
   if (!preflight) return;
   if (preflight.verdict === 'clean') {
     await props.ops.runWorktreeRemove(entry.path);
     return;
   }
-  typedToken.value = '';
-  pendingRemove.value = { entry, preflight };
+  refusal.value = { path: entry.path, preflight };
+}
+
+function clearRefusal(): void {
+  refusal.value = undefined;
 }
 
 function blockerText(preflight: WorktreeRemovePreflight): string {
@@ -105,22 +96,11 @@ function blockerText(preflight: WorktreeRemovePreflight): string {
   }
 }
 
-const canConfirmRemove = computed(
-  () =>
-    pendingRemove.value !== undefined &&
-    pendingRemove.value.preflight.verdict === 'dirty' &&
-    typedToken.value === pendingRemove.value.preflight.confirmToken,
-);
-
-function cancelRemove(): void {
-  pendingRemove.value = undefined;
-}
-
-async function confirmRemove(): Promise<void> {
-  const pending = pendingRemove.value;
-  if (!pending || !canConfirmRemove.value) return;
-  pendingRemove.value = undefined;
-  await props.ops.runWorktreeRemove(pending.entry.path, pending.preflight.confirmToken);
+async function discardRemove(): Promise<void> {
+  const current = refusal.value;
+  if (!current) return;
+  refusal.value = undefined;
+  await props.ops.runWorktreeRemove(current.path, current.preflight.confirmToken);
 }
 </script>
 
@@ -132,102 +112,90 @@ async function confirmRemove(): Promise<void> {
         {{ t('git.worktree.create.label') }}
       </Button>
     </SectionHeading>
-    <div
-      data-testid="branch-row"
-      v-for="entry in section.visible"
-      :key="entry.path"
-      class="flex items-center gap-0.5 px-1"
-      :data-row-id="`worktree:${entry.path}`"
-      :tabindex="focusedRowId === `worktree:${entry.path}` ? 0 : -1"
-    >
-      <div data-testid="branch-row-main" class="flex items-center gap-0.5 flex-1 min-w-0 text-left">
-        <StatusDot
-          v-if="entry.isCurrent"
-          tone="muted"
-          :data-kira-tip="t('git.worktree.current.tooltip')"
+    <template v-for="entry in section.visible" :key="entry.path">
+      <div
+        data-testid="branch-row"
+        class="flex items-center gap-0.5 px-1"
+        :data-row-id="`worktree:${entry.path}`"
+        :tabindex="focusedRowId === `worktree:${entry.path}` ? 0 : -1"
+      >
+        <div
+          data-testid="branch-row-main"
+          class="flex items-center gap-0.5 flex-1 min-w-0 text-left"
+        >
+          <StatusDot
+            v-if="entry.isCurrent"
+            tone="muted"
+            :data-kira-tip="t('git.worktree.current.tooltip')"
+          />
+          <span
+            v-if="entry.isMain"
+            class="text-kira-sm text-subtle"
+            :data-kira-tip="t('common.mainWorktree.tooltip')"
+            >{{
+              t('git.worktree.mainBadge.label')
+            }}</span
+          >
+          <span
+            v-if="entry.locked"
+            class="text-kira-sm text-subtle"
+            :data-kira-tip="entry.locked.reason"
+          >
+            <CodiconIcon name="lock" :size="13" />
+          </span>
+          <span
+            v-if="entry.openElsewhere"
+            class="text-kira-sm text-subtle"
+            :data-kira-tip="t('common.openElsewhere.tooltip')"
+          >
+            <CodiconIcon name="window" :size="13" />
+          </span>
+          <span class="truncate" :data-kira-tip="entry.path">{{ worktreeLabel(entry) }}</span>
+          <span :class="cn('flex-1 min-w-0', rowMeta)">
+            <Identifier split="path" :value="entry.path" />
+          </span>
+        </div>
+        <TooltipIconButton
+          v-if="!entry.isCurrent"
+          icon="arrow-swap"
+          :label="t('git.worktree.switch.tooltip')"
+          @click="switchTo(entry)"
         />
-        <span
-          v-if="entry.isMain"
-          class="text-kira-sm text-subtle"
-          :data-kira-tip="t('common.mainWorktree.tooltip')"
-          >{{
-            t('git.worktree.mainBadge.label')
-          }}</span
-        >
-        <span
-          v-if="entry.locked"
-          class="text-kira-sm text-subtle"
-          :data-kira-tip="entry.locked.reason"
-        >
-          <CodiconIcon name="lock" :size="13" />
-        </span>
-        <span
-          v-if="entry.openElsewhere"
-          class="text-kira-sm text-subtle"
-          :data-kira-tip="t('common.openElsewhere.tooltip')"
-        >
-          <CodiconIcon name="window" :size="13" />
-        </span>
-        <span class="truncate" :data-kira-tip="entry.path">{{ worktreeLabel(entry) }}</span>
-        <span :class="cn('flex-1 min-w-0', rowMeta)">
-          <Identifier split="path" :value="entry.path" />
-        </span>
+        <TooltipIconButton
+          v-if="!entry.isMain && !entry.isCurrent"
+          icon="trash"
+          :label="t('git.worktree.remove.tooltip')"
+          @click="requestRemove(entry)"
+        />
       </div>
-      <TooltipIconButton
-        v-if="!entry.isCurrent"
-        icon="arrow-swap"
-        :label="t('git.worktree.switch.tooltip')"
-        @click="switchTo(entry)"
-      />
-      <TooltipIconButton
-        v-if="!entry.isMain && !entry.isCurrent"
-        icon="trash"
-        :label="t('git.worktree.remove.tooltip')"
-        @click="requestRemove(entry)"
-      />
-    </div>
+      <div
+        v-if="refusal?.path === entry.path"
+        class="flex flex-col gap-1 px-1 pb-1"
+        data-testid="git-worktree-refusal"
+      >
+        <Alert v-if="refusal.preflight.verdict === 'blocked'" variant="error">
+          <AlertDescription>{{ blockerText(refusal.preflight) }}</AlertDescription>
+        </Alert>
+        <template v-else>
+          <Alert variant="warn">
+            <AlertDescription>{{
+              t('git.worktree.dirty.error', { path: entry.path })
+            }}</AlertDescription>
+          </Alert>
+          <Button
+            variant="dialog-danger"
+            size="kira"
+            data-testid="git-worktree-discard-remove"
+            @click="discardRemove"
+            >{{
+              t('git.worktree.discardRemove.label')
+            }}</Button
+          >
+        </template>
+      </div>
+    </template>
     <InlineState v-if="section.visible.length === 0" kind="empty">{{
       t('git.worktree.list.empty')
     }}</InlineState>
-
-    <!-- P131 Part 2 §5: opens inside RefsPopover's own modal Popover panel (§5.2) -- reka's
-         modal content there prevents the panel dismissing under this nested Dialog. -->
-    <Dialog :open="pendingRemove !== undefined" @update:open="(v) => !v && cancelRemove()">
-      <DialogContent :aria-describedby="undefined" size="sm" destructive :dirty="typedToken !== ''">
-        <DialogHeader>
-          <DialogTitle>{{
-            pendingRemove
-              ? t('git.worktree.removeConfirm.title', { path: pendingRemove.entry.path })
-              : ''
-          }}</DialogTitle>
-          <DialogDescription v-if="pendingRemove?.preflight.verdict === 'dirty'">
-            <CatalogText k="git.worktree.removeConfirm.body">
-              <template #token
-                ><Identifier :value="pendingRemove.preflight.confirmToken ?? ''" /></template
-              >
-            </CatalogText>
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <Alert v-if="pendingRemove?.preflight.verdict === 'blocked'" variant="error">
-            <AlertDescription>{{ blockerText(pendingRemove.preflight) }}</AlertDescription>
-          </Alert>
-          <Field v-else-if="pendingRemove?.preflight.verdict === 'dirty'">
-            <FieldLabel :for="confirmTokenId">{{ t('git.common.confirmToken.label') }}</FieldLabel>
-            <Input :id="confirmTokenId" v-model="typedToken" class="w-full" />
-          </Field>
-        </DialogBody>
-        <DialogFooter v-if="pendingRemove?.preflight.verdict === 'dirty'">
-          <Button
-            variant="dialog-danger"
-            size="kira-lg"
-            :disabled="!canConfirmRemove"
-            @click="confirmRemove"
-          >
-            {{ t('common.action.remove.label') }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </section>
 </template>

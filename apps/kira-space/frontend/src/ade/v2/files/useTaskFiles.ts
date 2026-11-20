@@ -10,7 +10,7 @@ import { useAdeFilesUiStore } from './state/filesUi';
 const launchersKey = ['adetask', 'files', 'launchers'] as const;
 const filesKey = (branchId: string) => ['adetask', 'files', branchId] as const;
 
-/** The branch worktree's tracked and untracked files. Refetches on mount and on Refresh. */
+/** The branch worktree's tracked and untracked files. Refetches on mount, window focus and Refresh. */
 export function useTaskFilesListing(branchId: MaybeRefOrGetter<string>) {
   return useQuery<FileListing>(() => {
     const id = toValue(branchId);
@@ -18,6 +18,8 @@ export function useTaskFilesListing(branchId: MaybeRefOrGetter<string>) {
       queryKey: [...filesKey(id), 'list'],
       queryFn: () => control.adeTaskFiles({ branchId: id }),
       enabled: id !== '',
+      staleTime: 0,
+      refetchOnWindowFocus: true,
     };
   });
 }
@@ -41,6 +43,8 @@ export function useTaskFileRead(
         return next.kind === 'unchanged' && prev ? prev : next;
       },
       enabled: id !== '' && p !== '',
+      staleTime: 0,
+      refetchOnWindowFocus: true,
       // A remount re-reads: the editor is rebuilt each time, so nothing is kept past unmount.
       gcTime: 0,
     };

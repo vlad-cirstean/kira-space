@@ -2,10 +2,12 @@ package gitsession
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // ---------------------------------------------------------------------------------------
@@ -143,12 +146,12 @@ func (e *RepoEntry) WorktreeAddPreflight(ctx context.Context, p WorktreeAddParam
 	}
 
 	pathExists := false
-	if _, statErr := os.Stat(p.Path); statErr == nil {
+	if _, statErr := fileservice.Host().Stat(p.Path); statErr == nil {
 		pathExists = true
 	}
 	parentDirMissing := false
 	if !pathExists {
-		if _, statErr := os.Stat(filepath.Dir(p.Path)); statErr != nil {
+		if _, statErr := fileservice.Host().Stat(filepath.Dir(p.Path)); statErr != nil {
 			parentDirMissing = true
 		}
 	}
@@ -223,23 +226,24 @@ func (e *RepoEntry) runOneInDir(ctx context.Context, dir string, args []string) 
 	return out, err
 }
 
-// worktreeIsDirty runs `status --porcelain=v2 -z` IN dir (the target worktree, not necessarily
-// this entry's own) — DirtyPaths already counts untracked files (probe M4's own "modified or
-// untracked files" message is exactly this union).
-func (e *RepoEntry) worktreeIsDirty(ctx context.Context, dir string) (bool, error) {
-	raw, err := e.runOneInDir(ctx, dir, porcelain.StatusArgs())
-	if err != nil {
-		return false, err
+// DirtyToken fingerprints the uncommitted set of a worktree as the user is shown it: each non-ignored
+// entry's kind, status and path (an untracked directory is one path). "" means nothing is uncommitted.
+// Discard confirms this token, so it deletes only the paths the user saw. Contents are left out on
+// purpose: saving a listed file again must not invalidate the token, and no file walk is needed.
+func DirtyToken(entries []porcelain.StatusEntry) string {
+	lines := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.Kind == "ignored" {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("%s %c%c %s <- %s", e.Kind, e.Staged, e.Unstaged, e.Path, e.OriginalPath))
 	}
-	recs, err := allRecords(raw)
-	if err != nil {
-		return false, err
+	if len(lines) == 0 {
+		return ""
 	}
-	statusResult, err := porcelain.ParseStatus(recs)
-	if err != nil {
-		return false, err
-	}
-	return len(gitpreflight.DirtyPaths(statusResult)) > 0, nil
+	slices.Sort(lines)
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:16])
 }
 
 // WorktreeRemovePreflight is preflight.worktreeRemove's own orchestration: notAWorktree
@@ -276,11 +280,11 @@ func (e *RepoEntry) WorktreeRemovePreflight(ctx context.Context, path string) (g
 		return gitpreflight.ClassifyWorktreeRemove(in), nil
 	}
 
-	dirty, err := e.worktreeIsDirty(ctx, target.Path)
+	status, err := e.WorktreeStatus(ctx, target.Path)
 	if err != nil {
 		return gitpreflight.WorktreeRemovePreflight{}, err
 	}
-	in.Dirty = dirty
+	in.DirtyToken = DirtyToken(status)
 	return gitpreflight.ClassifyWorktreeRemove(in), nil
 }
 
@@ -364,12 +368,19 @@ func worktreeRemoveBlockedError(pf gitpreflight.WorktreeRemovePreflight) *OpErro
 	}
 }
 
+// WorktreeRemoveBlockedMessage is the plain-English reason the preflight blocks a removal, for callers
+// that refuse before running the op.
+func WorktreeRemoveBlockedMessage(pf gitpreflight.WorktreeRemovePreflight) string {
+	return worktreeRemoveBlockedError(pf).Message
+}
+
 // prepareWorktreeRemove is worktreeRemove's own opSpec.Prepare: re-runs the FULL
 // preflight classification immediately before the write (never trusting the client's own possibly
 // stale copy), and — for the dirty route — re-derives the confirmation token FRESH from that same
-// re-check and compares it byte for byte against what the client typed; force is decided
+// re-check and compares it byte for byte against what the client sent; force is decided
 // server-side from the fresh verdict, never taken as the client's own claim (fail-safe over
-// fail-open, the stated principle for this destructive path).
+// fail-open, the stated principle for this destructive path). The token hashes the uncommitted set, so
+// a worktree that changed since the user looked is refused.
 func prepareWorktreeRemove(ctx context.Context, e *RepoEntry, _ ConnID, _ string, op OpRequest) (prepared, error) {
 	pf, err := e.WorktreeRemovePreflight(ctx, op.Path)
 	if err != nil {
@@ -381,10 +392,16 @@ func prepareWorktreeRemove(ctx context.Context, e *RepoEntry, _ ConnID, _ string
 
 	force := false
 	if pf.Verdict == "dirty" {
-		if op.ConfirmToken == nil || *op.ConfirmToken != pf.ConfirmToken {
+		if op.ConfirmToken == nil {
 			return prepared{earlyError: &OpError{
 				Kind:    "ConfirmationRequired",
-				Message: fmt.Sprintf("Type %q to confirm — this worktree has uncommitted changes that will be lost.", pf.ConfirmToken),
+				Message: "This worktree has uncommitted changes. Discard them to remove it.",
+			}}, nil
+		}
+		if *op.ConfirmToken != pf.ConfirmToken {
+			return prepared{earlyError: &OpError{
+				Kind:    "ConfirmationRequired",
+				Message: "The uncommitted changes in this worktree changed since you reviewed them. Review them again before discarding.",
 			}}, nil
 		}
 		force = true

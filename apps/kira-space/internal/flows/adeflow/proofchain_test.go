@@ -86,7 +86,7 @@ func TestProofChain(t *testing.T) {
 	app.Contract(t, proofChainScenario, "ProofService.Step#diagram", st, proofChainMask)
 
 	// Archived: reads work.
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: login.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: login.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if ps := taskProofs(t, app, login.ID); len(ps) != 1 || ps[0].Name != "Login checks" {
@@ -134,7 +134,7 @@ func TestProofSurvivesStageMoveAndArchive(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("after the stage move")
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: task.ID}); err != nil {
 		t.Fatal(err)
 	}
 	check("archived")

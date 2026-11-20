@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -34,6 +33,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -122,11 +122,11 @@ type TaskBoardDeps struct {
 	Tracker *Tracker
 	// CloseTerminal closes a running terminal by id (Archive).
 	CloseTerminal func(terminalID string) error
-	// Windows and ReviewWindows back review windows; CloseReviewWindows closes a task's native
-	// review windows (Archive).
-	Windows            *repos.WindowsRepo
-	ReviewWindows      *repos.AdeReviewWindowsRepo
-	CloseReviewWindows func(taskID string)
+	// Windows and ReviewWindows back review and Files windows; CloseWindow closes a native window
+	// by key (Archive).
+	Windows       *repos.WindowsRepo
+	ReviewWindows *repos.AdeReviewWindowsRepo
+	CloseWindow   func(key string) bool
 	// CustomScripts and ScriptsHome resolve the smart script of a workflow step and its own folder.
 	CustomScripts *scripts.Repo
 	ScriptsHome   string
@@ -203,6 +203,8 @@ type TaskBoard struct {
 
 	// taskFiles holds the file session of each task branch's worktree, keyed by branch row id.
 	taskFiles *codeworkspace.Registry
+	// filesWin registers the open task Files windows (fileswindow.go).
+	filesWin filesWindows
 
 	importMu sync.Mutex // serializes repo imports (folder add, folder watch rescans)
 	// afterImport runs after each repo a folder scan imports; tests flip state mid-scan with it.
@@ -245,6 +247,8 @@ type TaskBoard struct {
 	files *detailsFiles // nil without FilesDir and TaskFiles: Details stay in SQLite only
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
+
+	restore restoreOffer // agents a restart cut, offered once per boot (restore.go)
 
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
@@ -904,10 +908,18 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 			kind = res.Kind
 		} else if len(res.ChangeRequests) > 0 {
 			cr := res.ChangeRequests[0]
-			found[br.ID] = adewire.ChangeRequest{Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL, BaseRef: cr.BaseRef, ChecksState: cr.ChecksState}
+			found[br.ID] = wireChangeRequest(cr)
 		}
 	}
 	return kind, host, found, urls
+}
+
+// wireChangeRequest is a live change request with the status the PR glyph shows.
+func wireChangeRequest(cr githost.ChangeRequest) adewire.ChangeRequest {
+	return adewire.ChangeRequest{
+		Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL, BaseRef: cr.BaseRef, ChecksState: cr.ChecksState,
+		ReviewDecision: cr.ReviewDecision, Mergeable: cr.Mergeable, AutoMerge: cr.AutoMerge,
+	}
 }
 
 // Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows)
@@ -1250,11 +1262,11 @@ func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.For
 
 // lastFetchAt reads the worktree's own FETCH_HEAD: git writes it per linked worktree, not in the common dir.
 func lastFetchAt(entry *gitsession.RepoEntry) *int64 {
-	info, err := os.Stat(filepath.Join(entry.Summary.GitDir, "FETCH_HEAD"))
+	info, err := fileservice.Host().Stat(filepath.Join(entry.Summary.GitDir, "FETCH_HEAD"))
 	if err != nil {
 		return nil
 	}
-	v := info.ModTime().UnixMilli()
+	v := info.ModTime.UnixMilli()
 	return &v
 }
 

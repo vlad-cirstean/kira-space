@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // MaxPatchBytes is D2(b)'s own domain cap on one file's raw patch — upstream's own 1 MiB
@@ -453,7 +453,7 @@ func (e *RepoEntry) GoToTarget(ctx context.Context, rev, path string) (GoToTarge
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return GoToTarget{}, ErrPathEscapesRoot
 	}
-	if _, statErr := os.Stat(abs); statErr == nil {
+	if _, statErr := fileservice.Host().Stat(abs); statErr == nil {
 		hunks := e.worktreeDiff(ctx, rev, path)
 		return GoToTarget{Kind: "live", AbsPath: abs, Hunks: hunks}, nil
 	}

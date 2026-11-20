@@ -5,21 +5,23 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // Task file watcher: while an agent run is live, Kira applies its saved free edits, writes the errors
-// into state.yaml fileErrors and asks no approval for the latest note. An ask-first save (an older
-// note) is deferred untouched: it may be the user's own edit, so it stays a disk change with no error. Contract ade-details-watch:
-// tests/ui/ade-v2-details-watch.spec.ts reads these and runs the same scenario through the UI.
+// into state.yaml fileErrors and asks no approval for the user's notes or the latest note. A save that
+// edits another agent's older note raises the details.edit approval at once, with no error filed
+// against the agent. Contract ade-details-watch: tests/ui/ade-v2-details-watch.spec.ts reads these and
+// runs the same scenario through the UI.
 
 const dwScenario = "ade-details-watch"
 
@@ -99,18 +101,26 @@ func dwNoDetailsItem(t *testing.T, f *brFixture) bool {
 	return true
 }
 
-// dwNotes returns the rels of the older and the newer note, told apart by their text.
-func dwNotes(t *testing.T, folder, olderBody string) (older, newer string) {
+// dwNotes writes another agent's note (session-2), then adds a newer user note, and returns the rels of
+// the older agent note and the newer note.
+func dwNotes(t *testing.T, app *flowharness.App, taskID, folder, agentBody string) (older, newer string) {
 	t.Helper()
+	older = "notes/20261101T100000-s2.md"
+	dfWrite(t, folder, older, agentBody)
+	if reply := dfSyncAs(t, app, taskID, "session-2", older); !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("session-2 note reply = %q", reply)
+	}
+	const newBody = "Newer note."
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: taskID, Body: newBody}); err != nil {
+		t.Fatal(err)
+	}
 	for _, rel := range dfNotes(t, folder) {
-		if dfRead(t, folder, rel) == olderBody {
-			older = rel
-		} else {
+		if dfRead(t, folder, rel) == newBody {
 			newer = rel
 		}
 	}
-	if older == "" || newer == "" {
-		t.Fatalf("notes = %v, want an older and a newer one", dfNotes(t, folder))
+	if newer == "" {
+		t.Fatalf("notes = %v, want the newer note", dfNotes(t, folder))
 	}
 	return older, newer
 }
@@ -128,28 +138,23 @@ func TestDetailsWatch(t *testing.T) {
 	f := newBRFixture(t, hold, onceStepYML, false)
 	app := f.app
 	folder := dfFolder(t, app, f.task.ID)
-	const olderBody = "Check the error states."
-	for _, body := range []string{olderBody, "Newer note."} {
-		if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: f.task.ID, Body: body}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	older, newer := dwNotes(t, folder, olderBody)
+	const olderBody = "Agent note."
+	older, newer := dwNotes(t, app, f.task.ID, folder, olderBody)
 
 	// 1. The run saves four files with no call: the draft, the newest note, an invalid links.yaml and
-	// an older note.
+	// another agent's older note.
 	claude(app, map[string][]fakeagent.Action{"*": {{
 		TaskFiles: map[string]string{
 			"handovers/draft-one.md": "Draft v1.",
 			newer:                    "Newer note, edited.",
 			"links.yaml":             "links:\n  - {kind: doc\n",
-			older:                    "Older note, edited.",
+			older:                    "Agent note, edited.",
 		},
 		WaitFile: gate, Name: "done",
 	}}})
 	f.startRun(t)
 
-	// The draft and the newest note apply at once, with no approval and no disk change.
+	// The draft and the newest note apply at once, with no approval.
 	testx.WaitUntil(t, waitFor, func() bool {
 		var body string
 		for _, h := range handovers(t, app, f.task.ID) {
@@ -168,21 +173,31 @@ func TestDetailsWatch(t *testing.T) {
 		return false
 	})
 	// 2. The invalid file is an error in state.yaml and the agent is mid-fix: no banner for it. The older
-	// note is deferred: no error, no row change, and the banner shows it, since the save may be the user's.
+	// note of another agent raises the approval at once: no error, the held text stays, and the banner
+	// and state.yaml pending list it.
 	links := dwWaitError(t, f, "links.yaml")
 	if links.line == 0 || links.msg == "" {
 		t.Fatalf("links.yaml error = %+v, want a message with a line", links)
 	}
-	dwWaitDisk(t, f, older)
+	testx.WaitUntil(t, waitFor, func() bool { return !dwNoDetailsItem(t, f) })
 	if e, ok := dwErrorOf(t, f, older); ok {
-		t.Fatalf("older note error = %+v, want none: a deferred save is not filed against the agent", e)
+		t.Fatalf("older note error = %+v, want none: a held edit is not an error", e)
 	}
-	if got := dfNote(t, app, f.task.ID); got == "Older note, edited." {
-		t.Fatalf("older note applied without a reason: %q", got)
+	if !slices.Contains(dfHandoverBodies(t, app, f.task.ID), "note: "+olderBody) {
+		t.Fatalf("chain = %q, want the older note held", dfHandoverBodies(t, app, f.task.ID))
 	}
-	if !dwNoDetailsItem(t, f) {
-		t.Fatal("an approval is open for edits that needed none")
-	}
+	dwWaitDisk(t, f, older)
+	stateYAML(t, app, f.task.ID, func(d map[string]any) bool {
+		pending, _ := d["pending"].([]any)
+		for _, p := range pending {
+			if m, _ := p.(map[string]any); m["kind"] == "details.edit" && m["subject"] == older {
+				return true
+			}
+		}
+		return false
+	})
+	item := dfDetailsItem(t, app, f.task.ID)
+	app.Contract(t, dwScenario, "ApprovalsService.List#detailsEdit", []approvals.Item{item}, dfMask)
 	app.Contract(t, dwScenario, "AdeTaskService.Handovers#applied", adewire.HandoversResult{Handovers: handovers(t, app, f.task.ID)}, dfMask)
 
 	// 3. The agent fixes links.yaml: the error clears and the link is filed as the run's.
@@ -192,27 +207,7 @@ func TestDetailsWatch(t *testing.T) {
 		t.Fatalf("artifacts = %+v, want the agent's doc link", artifactsOf(t, app, f.task.ID).Artifacts)
 	}
 
-	// 4. submit sends the older note to the user with its reason; the error clears.
-	run := waitRun(t, app, f.task.ID, "one", "running")
-	call := agentmcp.SpaceCall{TaskID: f.task.ID, RunID: run.ID}
-	reply, err := app.W.AdeBoard.Submit(ctx, call, agentmcp.SubmitArgs{Paths: []string{older}, Reason: "typo fixed"})
-	if err != nil || !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0") {
-		t.Fatalf("submit = %q, %v", reply, err)
-	}
-	item := dfDetailsItem(t, app, f.task.ID)
-	app.Contract(t, dwScenario, "ApprovalsService.List#detailsEdit", []approvals.Item{item}, dfMask)
-
-	// 5. submit with no paths or no reason is refused.
-	for name, args := range map[string]agentmcp.SubmitArgs{
-		"no paths":  {Reason: "typo fixed"},
-		"no reason": {Paths: []string{older}, Reason: "  "},
-	} {
-		if _, err := app.W.AdeBoard.Submit(ctx, call, args); err == nil || !strings.Contains(err.Error(), "pass paths and reason") {
-			t.Fatalf("submit with %s: err = %v, want the paths and reason refusal", name, err)
-		}
-	}
-
-	// 6. The run ends: the watcher stops and fileErrors empties. A later save stays a disk change.
+	// 4. The run ends: the watcher stops and fileErrors empties. A later save stays a disk change.
 	_ = os.WriteFile(gate, nil, 0o644)
 	waitRun(t, app, f.task.ID, "one", "done")
 	stateYAML(t, app, f.task.ID, func(d map[string]any) bool {
@@ -234,15 +229,12 @@ func TestDetailsWatch(t *testing.T) {
 	}
 }
 
-// The newest proof of a task is free to edit; an older one needs a reason.
+// The newest proof of a task is free to edit; another agent's older one waits for the user.
 func TestDetailsWatchLatestProof(t *testing.T) {
 	gate := dwHold(t)
 	f := newBRFixture(t, []fakeagent.Action{{WaitFile: gate, Name: "done"}}, onceStepYML, false)
 	app := f.app
 	folder := dfFolder(t, app, f.task.ID)
-	f.startRun(t)
-	waitRun(t, app, f.task.ID, "one", "running")
-
 	proofs := func(n int) []adewire.TaskProof {
 		var got []adewire.TaskProof
 		testx.WaitUntil(t, waitFor, func() bool {
@@ -251,18 +243,31 @@ func TestDetailsWatchLatestProof(t *testing.T) {
 		})
 		return got
 	}
+	// Another agent (session-2) made the first proof.
 	writeProof(t, folder, "first", "First", "diagram", "table")
+	if reply := dfSyncAs(t, app, f.task.ID, "session-2", "proofs/first/proof.md"); !strings.HasPrefix(reply, "accepted 1") {
+		t.Fatalf("session-2 proof reply = %q", reply)
+	}
 	proofs(1)
+	f.startRun(t)
+	waitRun(t, app, f.task.ID, "one", "running")
 	writeProof(t, folder, "second", "Second", "diagram", "table")
 	proofs(2)
 
-	// The older proof: the edit is deferred, a disk change with no error; the proof stays.
+	// The older proof is another agent's: the edit waits for the user with no error; the accepted proof stays.
 	writeProof(t, folder, "first", "First", "table")
-	dwWaitDisk(t, f, "proofs/first/proof.md")
+	testx.WaitUntil(t, waitFor, func() bool {
+		for _, p := range taskProofs(t, app, f.task.ID) {
+			if p.Slug == "first" && p.Pending {
+				return true
+			}
+		}
+		return false
+	})
 	if e, ok := dwErrorOf(t, f, "proofs/first/proof.md"); ok {
 		t.Fatalf("older proof error = %+v, want none", e)
 	}
-	// The newest: applied with no approval.
+	// The newest is the run's own: applied with no approval.
 	writeProof(t, folder, "second", "Second", "table")
 	testx.WaitUntil(t, waitFor, func() bool {
 		for _, p := range taskProofs(t, app, f.task.ID) {
@@ -276,7 +281,7 @@ func TestDetailsWatchLatestProof(t *testing.T) {
 		t.Fatal("the newest proof reports an error")
 	}
 	if !dwNoDetailsItem(t, f) {
-		t.Fatal("an approval is open for the newest proof's edit")
+		t.Fatal("a details approval is open for proof edits, which review as revisions")
 	}
 	for _, p := range taskProofs(t, app, f.task.ID) {
 		if p.Slug == "first" && len(p.Steps) != 2 {
@@ -306,4 +311,36 @@ func TestDetailsWatchGonePathClears(t *testing.T) {
 	dwWaitNoError(t, f, "proofs/Orders_1/")
 	_ = os.WriteFile(gate, nil, 0o644)
 	waitRun(t, f.app, f.task.ID, "one", "done")
+}
+
+// Nine live task watchers apply their saves: no cap on the number of watched tasks (macOS had one of 8).
+func TestDetailsWatchBeyondEight(t *testing.T) {
+	const tasks = 9
+	gate := dwHold(t)
+	hold := []fakeagent.Action{{WaitFile: gate, Name: "done"}}
+	f := newBRFixture(t, hold, onceStepYML, false)
+	app := f.app
+	claude(app, map[string][]fakeagent.Action{"*": {{
+		TaskFiles: map[string]string{"handovers/draft-one.md": "Draft v1."},
+		WaitFile:  gate, Name: "done",
+	}}})
+	ids := []string{f.task.ID}
+	for i := 1; i < tasks; i++ {
+		ids = append(ids, createTask(t, app, "Fix login "+strconv.Itoa(i), "flow", f.api).ID)
+	}
+	for _, id := range ids {
+		if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: id}); err != nil {
+			t.Fatalf("StartRun %s: %v", id, err)
+		}
+	}
+	for _, id := range ids {
+		testx.WaitUntil(t, waitFor, func() bool {
+			for _, h := range handovers(t, app, id) {
+				if h.State == "draft" && h.Body == "Draft v1." {
+					return true
+				}
+			}
+			return false
+		})
+	}
 }

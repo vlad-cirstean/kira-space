@@ -11,6 +11,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -151,7 +152,7 @@ func (s *Store) freeName(stem string, taken map[string]bool) (string, error) {
 		if taken[name] {
 			continue
 		}
-		if _, err := os.Stat(filepath.Join(s.folder.Dir, name)); errors.Is(err, os.ErrNotExist) {
+		if _, err := fileservice.Host().Stat(filepath.Join(s.folder.Dir, name)); errors.Is(err, os.ErrNotExist) {
 			return name, nil
 		} else if err != nil {
 			return "", fmt.Errorf("repocfg: stat %s: %w", name, err)

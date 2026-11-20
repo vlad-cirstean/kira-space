@@ -29,6 +29,7 @@ import { useRunAutomation } from '../automation/useRunAutomation';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
 import { baseNameOf } from '../board/reviewCode';
 import { type CardModel, type PlanModel, usePlanModel } from '../plan/usePlanModel';
+import { prStateLabel } from '../pr/prGlyph';
 import { useChangeRequests, useRetrySetup } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
@@ -43,7 +44,6 @@ import AdePanelFrame from './AdePanelFrame.vue';
 import AdeRunOutcome from './AdeRunOutcome.vue';
 import AdeWorktreeSetup from './AdeWorktreeSetup.vue';
 import { type HeaderAction, headerActions } from './headerActions';
-import { prStateLabel } from './prState';
 
 // Branch mode: header (back link, git status, name, facts, Force push), Details and Sessions tabs.
 const props = defineProps<{ card: CardModel; row: CardModel['rows'][number]; model: PlanModel }>();

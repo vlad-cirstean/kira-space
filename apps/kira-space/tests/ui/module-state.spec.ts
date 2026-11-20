@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { openPlan, openTaskFile, openTaskFiles, taskFilesControl } from './support/adeV2';
+import { openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
@@ -34,22 +34,6 @@ test('Git: repo search survives a module round trip', async ({ relaunch }) => {
   await roundTrip(page, 'automations', 'git');
 
   await expect(search).toHaveValue('state');
-});
-
-test('Agents: the task Files tab, its filter and its open file survive a module round trip', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
-  await openTaskFile(page, 'README.md');
-  await page.locator('[data-testid="ade-files-filter"]').fill('READ');
-
-  await roundTrip(page, 'git', 'ade');
-
-  await expect(page.locator('[data-testid="ade-files-filter"]')).toHaveValue('READ');
-  await expect(
-    page.locator('[data-testid="ade-files-viewer"][data-path="README.md"]'),
-  ).toBeVisible();
 });
 
 const t = (id: string) => `[data-testid="${id}"]`;

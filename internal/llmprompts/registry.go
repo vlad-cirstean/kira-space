@@ -282,7 +282,7 @@ var HeadlessSpaceSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceSuffix.usedBy.body",
-	Default:    `Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
+	Default:    `Kira tool: state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.`,
 }, NoVars{})
 
 // HeadlessSpaceFiles names the task folder, the step's draft file when its route continues and how to load the tools.
@@ -293,7 +293,7 @@ var HeadlessSpaceFiles = define(Entry{
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
 	Default: `This task's Details files live in {{.Folder}}; see README.md there. Kira applies your edits on save; read state.yaml fileErrors after each edit.{{if .Draft}} Write your handover to {{.Draft}} before an ok finish.{{end}} When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
 {{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
-}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
+}, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__state".`})
 
 // HeadlessSandboxNote tells a sandboxed agent what it may write and what to do on a denial.
 var HeadlessSandboxNote = define(Entry{
@@ -334,7 +334,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira tools: submit for ask-first task files, state for everything else. Task state is in state.yaml in the task folder. Create or change branches only with state; never git branch or git worktree. A call that waits returns within 10 minutes; if it is not done, check the state.yaml fields it names. Kira applies task file edits on save; read state.yaml fileErrors after each edit; end the step with state step.finish.`,
+	Default:    `Use the state tool for every task state change. Task state is in state.yaml in the task folder. Create, change or remove branches and worktrees only with state; never git branch or git worktree. A call that waits returns within 10 minutes; if it is not done, check the state.yaml fields it names. Kira applies task file edits on save; read state.yaml fileErrors after each edit; end the step with state step.finish.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -362,17 +362,6 @@ var HeadlessFinishStepAck = define(Entry{
 	Default:    `Recorded. Stop now.`,
 }, NoVars{})
 
-// HeadlessToolSubmit describes the submit tool.
-var HeadlessToolSubmit = define(Entry{
-	ID: "headless.tool.submit", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "submit",
-	Default: `Ask the user to approve changes to ask-first task files (see README.md). Pass paths and reason. Kira applies every other edit on save; errors are in state.yaml fileErrors.`,
-}, NoVars{})
-
-var (
-	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Ask-first files you changed, relative to the task folder, at most {{.Max}}.`, MaxVars{Max: 50})
-	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line for the user: why you changed an older note or handover, an older proof or another author's link.`, NoVars{})
-)
-
 // HeadlessToolState describes the state tool: the header of its description. Each granted action adds
 // its own line (HeadlessStateAction*).
 var HeadlessToolState = define(Entry{
@@ -395,9 +384,10 @@ func defineStateAction(name, text string) Prompt[NoVars] {
 // The state action lines: one entry per action, named in the state description of a grant that holds it.
 var (
 	HeadlessStateRepoDeclare     = defineStateAction("repo.declare", `repo.declare: args {repos}: repos the work touches.`)
-	HeadlessStateBranchRequest   = defineStateAction("branch.request", `branch.request: args {repo, branch, base?, existing?}: new branch (user approves) or existing one; waits until its worktree is ready.`)
+	HeadlessStateBranchRequest   = defineStateAction("branch.request", `branch.request: args {repo, branch, base?, existing?}: create a branch and its worktree, or check out an existing one (user approves only when another worktree holds it); waits until its worktree is ready.`)
 	HeadlessStateBranchRename    = defineStateAction("branch.rename", `branch.rename: args {repo, from, to, renameRemote?}: rename your branch, and with renameRemote its remote branch too (user approves).`)
 	HeadlessStateBranchChange    = defineStateAction("branch.change", `branch.change: args {repo, from, to}: point task branch from at existing local branch to (user approves).`)
+	HeadlessStateWorktreeRemove  = defineStateAction("worktree.remove", `worktree.remove: args {repo, branch}: remove your branch's worktree; the branch stays in git. Refused while it has uncommitted changes or anything works in it.`)
 	HeadlessStateLeaseAcquire    = defineStateAction("lease.acquire", `lease.acquire: args {queue}: wait for the queue's lease.`)
 	HeadlessStateLeaseRelease    = defineStateAction("lease.release", `lease.release: args {queue?}: leave one queue, or every queue.`)
 	HeadlessStateOperationCancel = defineStateAction("operation.cancel", `operation.cancel: args {opId}: stop a running operation (state.yaml operations).`)
@@ -757,6 +747,15 @@ var RunResumeLine = define(Entry{
 	UsedByKey:  "llmPrompts.entry.runResumeLine.usedBy.body",
 	Default:    `Kira {{.App}} closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it.{{if .Leases}} Leases are lost on restart: re-acquire any you held.{{end}} Then continue the task.`,
 }, ResumeVars{App: "Space", Leases: true})
+
+// RestoreContinueLine is sent at a resumed session's input when the user picked Continue after a restart.
+var RestoreContinueLine = define(Entry{
+	ID: "restore.continue.line", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.restoreContinueLine.title",
+	PurposeKey: "llmPrompts.entry.restoreContinueLine.description",
+	UsedByKey:  "llmPrompts.entry.restoreContinueLine.usedBy.body",
+	Default:    `Kira restarted: continue where you left off.`,
+}, NoVars{})
 
 // Database MCP (Kira Space).
 

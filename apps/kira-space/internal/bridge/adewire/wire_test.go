@@ -32,8 +32,6 @@ func TestFixturesMatchWireTypes(t *testing.T) {
 		"refresh.json":             func() any { return new(RefreshResult) },
 		"force-push.json":          func() any { return new(ForcePushResult) },
 		"archive-risk.json":        func() any { return new(ArchiveRisk) },
-		"branch-risk-clean.json":   func() any { return new(BranchRisk) },
-		"branch-risk-dirty.json":   func() any { return new(BranchRisk) },
 		"start-run.json":           func() any { return new(StartRunResult) },
 		"log-page.json":            func() any { return new(LogPage) },
 		"sessions.json":            func() any { return new(SessionsResult) },

@@ -155,7 +155,7 @@ func TestShelves(t *testing.T) {
 		t.Fatal("shelving a review item succeeded")
 	}
 
-	if err := svc.ArchiveTask(ctx, adewire.TaskArgs{TaskID: one.ID}); err != nil {
+	if err := svc.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: one.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if err := shelve(one, adewire.ShelfLater, ""); err == nil {

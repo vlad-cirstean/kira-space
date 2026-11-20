@@ -9,6 +9,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -43,7 +44,7 @@ func (b *TaskBoard) worktreeDirFor(sb model.AdeTaskBranch, repoName, owned strin
 			continue
 		}
 		path := filepath.Join(parent, dir)
-		if _, err := os.Lstat(path); os.IsNotExist(err) || path == owned {
+		if _, err := fileservice.Host().Lstat(path); os.IsNotExist(err) || path == owned {
 			return path, nil
 		}
 		name := ids.New(ids.Worktree)
@@ -209,7 +210,7 @@ func (c *attachCache) worktree(ctx context.Context, sb model.AdeTaskBranch) (att
 	own := c.b.ownWorktreePath(f.rec.Name, sb)
 	ownExists := false
 	if own != "" {
-		_, statErr := os.Lstat(own)
+		_, statErr := fileservice.Host().Lstat(own)
 		ownExists = statErr == nil
 	}
 	at := resolveAttachment(sb, own, holder, f.owners, ownExists)

@@ -17,13 +17,13 @@ import (
 
 // textHandler treats every file as text cached in memory: a stand-in for the Part 3 handlers.
 type textHandler struct {
-	mu    sync.Mutex
-	cache map[string]string
-	own   map[string]bool // rel -> the writer authored the change
+	mu     sync.Mutex
+	cache  map[string]string
+	author map[string]Author // rel -> who wrote the target
 }
 
 func newTextHandler() *textHandler {
-	return &textHandler{cache: map[string]string{}, own: map[string]bool{}}
+	return &textHandler{cache: map[string]string{}, author: map[string]Author{}}
 }
 
 func (h *textHandler) Parse(rel string, _ Class, raw []byte) (Parsed, error) {
@@ -41,13 +41,13 @@ func (h *textHandler) Diff(_ context.Context, _ Tx, _, rel string, _ Class, pars
 	old, had := h.cache[rel]
 	switch {
 	case parsed == nil && had:
-		return []Change{{Op: OpDelete, Own: h.own[rel]}}, nil
+		return []Change{{Op: OpDelete, Author: h.author[rel]}}, nil
 	case parsed == nil:
 		return nil, nil
 	case !had:
-		return []Change{{Op: OpCreate, Own: true, Text: TextDiff(rel, "", parsed.(string))}}, nil
+		return []Change{{Op: OpCreate, Text: TextDiff(rel, "", parsed.(string))}}, nil
 	case old != parsed.(string):
-		return []Change{{Op: OpEdit, Own: h.own[rel], Text: TextDiff(rel, old, parsed.(string))}}, nil
+		return []Change{{Op: OpEdit, Author: h.author[rel], Text: TextDiff(rel, old, parsed.(string))}}, nil
 	}
 	return nil, nil
 }
@@ -151,9 +151,12 @@ func newEnv(t *testing.T) *env {
 }
 
 // seed writes a file as Kira (accepted at once), like a UI edit or the migration.
-func (e *env) seed(rel, body string) {
+func (e *env) seed(rel, body string) { e.seedBy(string(RoleUser), rel, body) }
+
+// seedBy is seed accepted by the named writer.
+func (e *env) seedBy(writer, rel, body string) {
 	e.t.Helper()
-	if err := e.svc.Write(context.Background(), e.taskID, rel, []byte(body), string(RoleUser), func(Tx) error {
+	if err := e.svc.Write(context.Background(), e.taskID, rel, []byte(body), writer, func(Tx) error {
 		e.h.mu.Lock()
 		e.h.cache[rel] = body
 		e.h.mu.Unlock()
@@ -185,9 +188,9 @@ func (e *env) read(rel string) string {
 	return string(b)
 }
 
-func (e *env) submit(role Role, key, reason string, paths ...string) Result {
+func (e *env) submit(role Role, key string, paths ...string) Result {
 	e.t.Helper()
-	res, err := e.svc.Submit(context.Background(), Request{TaskID: e.taskID, Paths: paths, Reason: reason,
+	res, err := e.svc.Submit(context.Background(), Request{TaskID: e.taskID, Paths: paths,
 		Session: Session{Key: key, Role: role, Step: "implement", LastSync: e.now.Add(-time.Hour)}})
 	if err != nil {
 		e.t.Fatal(err)

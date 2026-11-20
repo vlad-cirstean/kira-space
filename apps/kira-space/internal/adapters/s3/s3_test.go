@@ -701,7 +701,7 @@ func TestS3_DownloadObject_ExactBytes(t *testing.T) {
 		t.Fatalf("ReadDir: %v", err)
 	}
 	if len(entries) != 1 || entries[0].Name() != "downloaded.json" {
-		t.Errorf("tmpDir entries = %v, want exactly [downloaded.json] — no .kira-partial-* sibling", entries)
+		t.Errorf("tmpDir entries = %v, want exactly [downloaded.json] — no hidden temp sibling", entries)
 	}
 }
 

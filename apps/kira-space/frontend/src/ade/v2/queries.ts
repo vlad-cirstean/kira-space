@@ -19,6 +19,7 @@ import type {
   AddLinkArgs,
   AddNoteArgs,
   AddTaskRepoArgs,
+  ArchiveTaskArgs,
   Board,
   BranchArgs,
   CaptureTaskArgs,
@@ -107,6 +108,8 @@ export const diskPrefix = ['adetask', 'details-disk'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
   ['adetask', 'reviewTarget', windowKey] as const;
+export const filesWindowTargetKey = (windowKey: string) =>
+  ['adetask', 'filesWindowTarget', windowKey] as const;
 
 /**
  * Branches that can join the plan, of one repo or ('' ) every repo; refetched on every open so a
@@ -169,6 +172,8 @@ export function useAddTaskRepo() {
 export function useSetTaskBranch() {
   return useMutation({
     mutationFn: (args: SetTaskBranchArgs) => control.adeTaskSetTaskBranch(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
 }
 
@@ -181,18 +186,17 @@ export function useUpdateTaskRepo() {
 export function useRemoveTaskBranch() {
   return useMutation({
     mutationFn: (args: RemoveTaskRowArgs) => control.adeTaskRemoveTaskBranch(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
 }
 
 export function useRemoveTaskRepo() {
   return useMutation({
     mutationFn: (args: RemoveTaskRowArgs) => control.adeTaskRemoveTaskRepo(args),
+    // A refused discard (set changed since shown) reloads the board for the current list and token.
+    onError: () => queryClient.invalidateQueries({ queryKey: boardKey, exact: true }),
   });
-}
-
-/** What removing a row's branch would discard; read fresh at click time, like the archive risk. */
-export function useTaskBranchRisk() {
-  return useMutation({ mutationFn: (args: BranchArgs) => control.adeTaskTaskBranchRisk(args) });
 }
 
 /** Applies a task patch to a board snapshot: a `null` field is unchanged, `clearJira` drops Jira. */
@@ -462,6 +466,14 @@ export function useOpenReviewWindow() {
   });
 }
 
+/** Opens a task's Files window; Go focuses an already open one. */
+export function useOpenFilesWindow() {
+  return useMutation({
+    mutationKey: ['adetask', 'openFilesWindow'],
+    mutationFn: (args: TaskArgs) => control.adeTaskOpenFilesWindow(args),
+  });
+}
+
 export function useTakeOver() {
   return useMutation({ mutationFn: (args: TakeOverArgs) => control.adeTaskTakeOver(args) });
 }
@@ -507,7 +519,7 @@ export function useArchiveRisk() {
 }
 
 export function useArchiveTask() {
-  return useMutation({ mutationFn: (args: TaskArgs) => control.adeTaskArchiveTask(args) });
+  return useMutation({ mutationFn: (args: ArchiveTaskArgs) => control.adeTaskArchiveTask(args) });
 }
 
 /** Unarchives a task; the board and sessions refetch and its archived read is dropped (the task

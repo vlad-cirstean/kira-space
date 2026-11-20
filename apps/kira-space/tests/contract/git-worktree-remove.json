@@ -1,0 +1,32 @@
+{
+  "git:op.run#dirty-refused": {
+    "error": {
+      "kind": "ConfirmationRequired",
+      "message": "This worktree has uncommitted changes. Discard them to remove it."
+    },
+    "head": {
+      "kind": "branch",
+      "name": "main"
+    },
+    "inProgress": null,
+    "ok": false,
+    "undo": null
+  },
+  "git:preflight.worktreeRemove#clean": {
+    "blockers": [],
+    "path": "<work>/proj-wt-wt-clean",
+    "requiresTypedConfirmation": false,
+    "routes": [],
+    "verdict": "clean"
+  },
+  "git:preflight.worktreeRemove#dirty": {
+    "blockers": [],
+    "confirmToken": "9972608237e57142fe4b735e4c32a307",
+    "path": "<work>/proj-wt-wt-dirty",
+    "requiresTypedConfirmation": true,
+    "routes": [
+      "force"
+    ],
+    "verdict": "dirty"
+  }
+}

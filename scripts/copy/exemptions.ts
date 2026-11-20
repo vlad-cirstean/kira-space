@@ -54,6 +54,16 @@ export const OWNERSHIP_PAIRS: readonly OwnershipPair[] = [
     reason: 'the phone app renders the Space screens with Space wording',
   },
   {
+    module: 'mobile',
+    prefix: 'automations.',
+    reason: 'the phone lists script runs with Automations wording',
+  },
+  {
+    module: 'mobile',
+    prefix: 'docker.',
+    reason: 'the phone names why Docker is unavailable with the Docker screen wording',
+  },
+  {
     module: 'space',
     prefix: 'git.',
     reason: 'ADE hosts git-ui review comments and git operations',

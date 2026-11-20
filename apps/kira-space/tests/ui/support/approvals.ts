@@ -15,8 +15,8 @@ export function seedApprovals(items: ApprovalItem[]): ControlSnapshot[] {
 }
 
 /** The live details.edit approval a contract scenario recorded. */
-export function detailsEditItem(scenario: string): ApprovalItem {
-  const [it] = contract<ApprovalItem[]>(scenario, 'ApprovalsService.List#detailsEdit');
+export function detailsEditItem(scenario: string, key = 'detailsEdit'): ApprovalItem {
+  const [it] = contract<ApprovalItem[]>(scenario, `ApprovalsService.List#${key}`);
   if (!it) throw new Error('contract has no details.edit item');
   return liveItem(it, 1800, FIXED_NOW);
 }

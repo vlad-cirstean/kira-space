@@ -55,6 +55,19 @@ func (r *restoreTracker) stateNow(ctx context.Context) RestoreState {
 	return r.cur
 }
 
+// current is the last published state without a tick; unreachable or off reads none.
+func (r *restoreTracker) current() RestoreState {
+	if r == nil {
+		return noRestore()
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.reachable {
+		return noRestore()
+	}
+	return r.cur
+}
+
 // pendingFor checks the call targets the engine that is pending right now.
 func (r *restoreTracker) pendingFor(engineID string) (RestoreSnapshot, error) {
 	r.mu.Lock()

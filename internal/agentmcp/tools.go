@@ -9,13 +9,12 @@ const ServerName = "kira-space"
 var (
 	FinishStep = harness.MCPTool{Server: ServerName, Tool: "finish_step"}
 	Git        = harness.MCPTool{Server: ServerName, Tool: "git"}
-	Submit     = harness.MCPTool{Server: ServerName, Tool: "submit"}
 	State      = harness.MCPTool{Server: ServerName, Tool: "state"}
 	CreateTask = harness.MCPTool{Server: ServerName, Tool: "create_task"}
 
 	// SpaceToolIDs are the Kira Space tools; a run and a TUI launch with a Space grant pass them
 	// instead of finish_step.
-	SpaceToolIDs = []harness.MCPTool{Submit, State}
+	SpaceToolIDs = []harness.MCPTool{State}
 
 	// OrchestratorToolIDs are the tools only an orchestrator task carries, next to SpaceToolIDs.
 	OrchestratorToolIDs = []harness.MCPTool{CreateTask}

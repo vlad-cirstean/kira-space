@@ -29,6 +29,7 @@ import * as OpsService from '@bindings/opsservice.js';
 import * as PromptsService from '@bindings/promptsservice.js';
 import * as RepoConfigService from '@bindings/repoconfigservice.js';
 import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
+import * as SessionRestoreService from '@bindings/sessionrestoreservice.js';
 import * as SettingsService from '@bindings/settingsservice.js';
 import * as TabsService from '@bindings/tabsservice.js';
 import * as TerminalService from '@bindings/terminalservice.js';
@@ -87,6 +88,11 @@ import type {
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
+import type {
+  SessionRestoreArgs,
+  SessionRestoreResult,
+  SessionRestoreState,
+} from '@shared/domain/sessionRestore';
 import { CHANNEL } from '@shared/protocol/events';
 import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsStore';
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
@@ -230,6 +236,12 @@ const spaceControl = {
   scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
     unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
   scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
+  sessionRestoreState: (): Promise<SessionRestoreState> =>
+    unwrap(SessionRestoreService.State()).then((r) => trust<SessionRestoreState>(r)),
+  sessionRestoreClaim: (): Promise<boolean> => unwrap(SessionRestoreService.Claim()),
+  sessionRestoreRestore: (args: SessionRestoreArgs): Promise<SessionRestoreResult> =>
+    unwrap(SessionRestoreService.Restore(args)).then((r) => trust<SessionRestoreResult>(r)),
+  sessionRestoreClose: (): Promise<void> => unwrap(SessionRestoreService.Close()),
   scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
     unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
   scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>
@@ -533,8 +545,6 @@ const spaceControl = {
     unwrap(AdeTaskService.RemoveTaskBranch(args)),
   adeTaskRemoveTaskRepo: (args: V2.RemoveTaskRowArgs): Promise<void> =>
     unwrap(AdeTaskService.RemoveTaskRepo(args)),
-  adeTaskTaskBranchRisk: (args: V2.BranchArgs): Promise<V2.BranchRisk> =>
-    unwrap(AdeTaskService.TaskBranchRisk(args)).then((r) => trust<V2.BranchRisk>(r)),
   adeTaskCandidateBranches: (args: V2.CandidateBranchesArgs): Promise<V2.CandidateBranchesResult> =>
     unwrap(AdeTaskService.CandidateBranches(args)).then((r) =>
       trust<V2.CandidateBranchesResult>(r),
@@ -752,7 +762,13 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewWindowTarget(args)).then((r) =>
       trust<V2.ReviewWindowTarget | null>(r),
     ),
-  // Task Files tab: the read-only file view of a task branch's worktree. The worktree root comes
+  adeTaskOpenFilesWindow: (args: V2.TaskArgs): Promise<boolean> =>
+    unwrap(AdeTaskService.OpenFilesWindow(args)),
+  adeTaskFilesWindowTarget: (args: V2.WindowKeyArgs): Promise<V2.TaskFilesWindowTarget | null> =>
+    unwrap(AdeTaskService.FilesWindowTarget(args)).then((r) =>
+      trust<V2.TaskFilesWindowTarget | null>(r),
+    ),
+  // Task Files window: the read-only file view of a task branch's worktree. The worktree root comes
   // from the branch row; only a branch id and a relative path cross the boundary.
   adeTaskFiles: (args: V2.BranchArgs): Promise<FileListing> =>
     unwrap<Awaited<ReturnType<typeof AdeTaskService.TaskFiles>>>(
@@ -822,7 +838,7 @@ const spaceControl = {
     unwrap(AdeTaskService.ArchiveRisk(args)).then((r) => trust<V2.ArchiveRisk>(r)),
   adeTaskRequiredServices: (args: V2.TaskArgs): Promise<V2.RequiredServices> =>
     unwrap(AdeTaskService.RequiredServices(args)).then((r) => trust<V2.RequiredServices>(r)),
-  adeTaskArchiveTask: (args: V2.TaskArgs): Promise<void> =>
+  adeTaskArchiveTask: (args: V2.ArchiveTaskArgs): Promise<void> =>
     unwrap(AdeTaskService.ArchiveTask(args)),
   adeTaskArchivedTask: (args: V2.TaskArgs): Promise<V2.ArchivedTask> =>
     unwrap(AdeTaskService.ArchivedTask(args)).then((r) => trust<V2.ArchivedTask>(r)),

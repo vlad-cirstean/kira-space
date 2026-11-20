@@ -33,6 +33,7 @@ export type AdeOpKind =
   | 'agentBranches'
   | 'agentRename'
   | 'agentChange'
+  | 'agentWorktreeRemove'
   | 'agentFetch'
   | 'agentPush';
 
@@ -97,6 +98,8 @@ export function opLoadingText(kind: AdeOpKind): string {
       return t('space.ade.ops.agentRename.loading');
     case 'agentChange':
       return t('space.ade.ops.agentChange.loading');
+    case 'agentWorktreeRemove':
+      return t('space.ade.ops.agentWorktreeRemove.loading');
     case 'agentFetch':
       return t('space.ade.ops.agentFetch.loading');
     case 'agentPush':

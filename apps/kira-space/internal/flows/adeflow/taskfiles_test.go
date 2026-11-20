@@ -135,7 +135,7 @@ func TestTaskFiles(t *testing.T) {
 	if app.W.AdeBoard.TaskFilesPeek(br.ID) == nil {
 		t.Fatal("no file session after reads")
 	}
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := archiveConfirmed(t, app, f.taskID); err != nil {
 		t.Fatal(err)
 	}
 	if app.W.AdeBoard.TaskFilesPeek(br.ID) != nil {

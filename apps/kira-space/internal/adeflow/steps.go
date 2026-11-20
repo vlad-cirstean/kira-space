@@ -14,6 +14,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // StepsFolder is the library module folder name under <home>/config and its config_last_valid folder name.
@@ -157,7 +158,7 @@ func (l *StepLibrary) Lookup(id string) (*yaml.Node, string) {
 	if err != nil {
 		return nil, "does not exist"
 	}
-	src, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(p, configfs.MaxFileBytes)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, "does not exist"
@@ -180,7 +181,7 @@ func (l *StepLibrary) ReadYaml(file string) (adewire.StepYaml, error) {
 	if err != nil {
 		return adewire.StepYaml{}, err
 	}
-	src, err := os.ReadFile(p)
+	src, err := fileservice.Host().ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return adewire.StepYaml{}, invalidf("step %s does not exist", file)
@@ -229,7 +230,7 @@ func (l *StepLibrary) Save(file, baseHash string, st adewire.WorkflowStep) (adew
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
 	var doc yaml.Node
-	src, err := os.ReadFile(p)
+	src, err := fileservice.Host().ReadFile(p)
 	if baseHash != "" && configfs.TextHash(src) != baseHash {
 		return adewire.StepEntry{}, fmt.Errorf("%w: the file changed since it was loaded", ErrConflict)
 	}
@@ -245,7 +246,7 @@ func (l *StepLibrary) Save(file, baseHash string, st adewire.WorkflowStep) (adew
 	if err != nil {
 		return adewire.StepEntry{}, err
 	}
-	if err := configfs.WriteAtomic(p, out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(p, out, 0o644); err != nil {
 		return adewire.StepEntry{}, err
 	}
 	return l.entry(file)
@@ -271,7 +272,7 @@ func (l *StepLibrary) New(name string, kind adewire.StepKind, from *adewire.Work
 		return adewire.StepEntry{}, err
 	}
 	file := id + ".yaml"
-	if err := configfs.WriteAtomic(filepath.Join(l.Dir, file), out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(l.Dir, file), out, 0o644); err != nil {
 		return adewire.StepEntry{}, err
 	}
 	return l.entry(file)
@@ -335,7 +336,7 @@ func (l *StepLibrary) Delete(file string) error {
 	}
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
-	if err := os.Remove(p); err != nil {
+	if err := fileservice.Host().Remove(p); err != nil {
 		if os.IsNotExist(err) {
 			return invalidf("step %s does not exist", file)
 		}

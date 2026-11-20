@@ -70,7 +70,7 @@ func Readme(in ReadmeInput) string {
 		"Kira applies your edits on save; read state.yaml fileErrors after each edit.",
 		"Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.",
 		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).", oneLine(step, 80)),
-		"Ask first (submit with paths and reason): older notes/*.md and handovers/NNNN-*.md, older proofs, others' links. The newest of each is free to edit.",
+		"Another agent's notes, handovers, proofs and links: editing an older one or deleting any waits for the user's approval; Kira asks.",
 		"Write a proof for any checkable result before finishing.",
 	}...)
 	lines = append(lines, proofExample...)

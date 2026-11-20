@@ -130,8 +130,6 @@ type fakeSpace struct {
 	mu     sync.Mutex
 	calls  []string
 	finish SubmitFinish
-	paths  []string
-	reason string
 }
 
 func (f *fakeSpace) rec(s string) {
@@ -170,6 +168,11 @@ func (f *fakeSpace) ChangeBranch(_ context.Context, call SpaceCall, args ChangeB
 	return ChangeBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchChanged}, nil
 }
 
+func (f *fakeSpace) RemoveWorktree(_ context.Context, call SpaceCall, args RemoveWorktreeArgs) (RemoveWorktreeResult, error) {
+	f.rec("remove|" + call.TaskID + "|" + args.Repo + "/" + args.Branch)
+	return RemoveWorktreeResult{Repo: args.Repo, Branch: args.Branch, Outcome: BranchRemoved, Next: "Removed worktree."}, nil
+}
+
 func (f *fakeSpace) AcquireLease(_ context.Context, call SpaceCall, args AcquireLeaseArgs) (AcquireLeaseResult, error) {
 	f.rec("acquire|" + call.TaskID + "|" + call.SessionID + "|" + args.Queue)
 	return AcquireLeaseResult{Queue: args.Queue, State: LeaseHeld}, nil
@@ -188,13 +191,6 @@ func (f *fakeSpace) RenameBranch(_ context.Context, call SpaceCall, args RenameB
 func (f *fakeSpace) CancelOperation(_ context.Context, task, opID string) (CancelOperationResult, error) {
 	f.rec("cancelop|" + task + "|" + opID)
 	return CancelOperationResult{OpID: opID, Cancelled: true}, nil
-}
-
-func (f *fakeSpace) Submit(_ context.Context, _ SpaceCall, in SubmitArgs) (string, error) {
-	f.mu.Lock()
-	f.paths, f.reason = in.Paths, in.Reason
-	f.mu.Unlock()
-	return "accepted 0, pending user 0, invalid 0", nil
 }
 
 func (f *fakeSpace) SubmitForFinish(context.Context, SpaceCall, string, bool) (SubmitFinish, error) {
@@ -306,7 +302,7 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, sp); len(names) != 2 || !names["submit"] || !names["state"] {
+	if names := toolNames(t, sp); len(names) != 1 || !names["state"] {
 		t.Fatalf("space-only grant tools = %v", names)
 	}
 	if res, err := sp.CallTool(context.Background(), &mcp.CallToolParams{Name: "finish_step", Arguments: map[string]any{"status": "done"}}); err == nil && !res.IsError {
@@ -320,8 +316,8 @@ func TestGrantScopes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if names := toolNames(t, both); len(names) != 2 || !names["submit"] || !names["state"] {
-		t.Fatalf("a Space run lists %v, want submit and state: step.finish replaces finish_step", names)
+	if names := toolNames(t, both); len(names) != 1 || !names["state"] {
+		t.Fatalf("a Space run lists %v, want state only: step.finish replaces finish_step", names)
 	}
 	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
 		t.Fatalf("branch.request: %v", reply)
@@ -329,13 +325,16 @@ func TestGrantScopes(t *testing.T) {
 	if res, reply := stateCall(t, sp, "lease.acquire", map[string]any{"queue": "q"}); res.IsError || firstItem(t, reply)["status"] != "done" {
 		t.Fatalf("lease.acquire: %v", reply)
 	}
+	if res, reply := stateCall(t, sp, "worktree.remove", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("worktree.remove: %v", reply)
+	}
 	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "gone", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "invalid" {
 		t.Fatalf("an agent-fixable refusal must be an invalid item, not an error: %v", reply)
 	}
 	space.mu.Lock()
 	got := space.calls
 	space.mu.Unlock()
-	want := []string{"branch|task-2|api", "acquire|task-1||q", "branch|task-2|gone"}
+	want := []string{"branch|task-2|api", "acquire|task-1||q", "remove|task-1|api/feat/x", "branch|task-2|gone"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("calls = %v, want %v", got, want)
 	}
@@ -373,6 +372,7 @@ func TestStateInvalidCalls(t *testing.T) {
 		"missing field": {"action": "branch.request", "args": map[string]any{"repo": "app"}},
 		"args string":   {"action": "branch.request", "args": `{"repo": "app", "branch": "x"}`},
 		"wrong type":    {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": 7}},
+		"remove blank":  {"action": "worktree.remove", "args": map[string]any{"repo": "", "branch": "x"}},
 	} {
 		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: raw})
 		if err != nil || res.IsError {
@@ -397,11 +397,11 @@ func TestToolSchemaBudget(t *testing.T) {
 		grant  Grant
 		budget int
 	}{
-		{"run", Grant{RunID: "r", TaskID: "t", Space: true}, 900},
-		{"session", Grant{TaskID: "t", SessionID: "s", Space: true}, 900},
-		{"orchestrator", Grant{RunID: "r", TaskID: "t", Space: true, Orchestrator: true}, 1230},
+		{"run", Grant{RunID: "r", TaskID: "t", Space: true}, 500},
+		{"session", Grant{TaskID: "t", SessionID: "s", Space: true}, 500},
+		{"orchestrator", Grant{RunID: "r", TaskID: "t", Space: true, Orchestrator: true}, 880},
 		{"review", Grant{RunID: "r", TaskID: "t", Review: review}, 940},
-		{"push", Grant{RunID: "r", TaskID: "t", Space: true, Sandbox: &SandboxGrant{Push: true}}, 960},
+		{"push", Grant{RunID: "r", TaskID: "t", Space: true, Sandbox: &SandboxGrant{Push: true}}, 540},
 	} {
 		g := c.grant
 		g.Agent = claude.New()
@@ -639,7 +639,7 @@ func TestStepFinishImplicitSubmit(t *testing.T) {
 	}
 }
 
-// A proof is a folder plus submit: no grant lists a proof tool.
+// A proof is a folder the watcher reads: no grant lists a proof tool.
 func TestNoProofTool(t *testing.T) {
 	srv := NewServer(Options{Dir: t.TempDir(), Space: &fakeSpace{}})
 	t.Cleanup(func() { _ = srv.Close() })

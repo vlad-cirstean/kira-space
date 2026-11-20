@@ -17,7 +17,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/httpclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -65,7 +65,7 @@ func TestApiConfigFiles(t *testing.T) {
 	file := filepath.Join(app.W.ApiFiles.Dir(), "orders-api.collection.yaml")
 	readFile := func() string {
 		t.Helper()
-		b, err := os.ReadFile(file)
+		b, err := fileservice.Host().ReadFile(file)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -89,12 +89,12 @@ func TestApiConfigFiles(t *testing.T) {
 	if col.File != "orders-api.collection.yaml" {
 		t.Fatalf("file = %q, want orders-api.collection.yaml", col.File)
 	}
-	if _, err := os.Stat(file); err != nil {
+	if _, err := fileservice.Host().Stat(file); err != nil {
 		t.Fatalf("collection file missing: %v", err)
 	}
 
 	// 2. An external atomic write (as an editor does) reaches the rows.
-	if err := configfs.WriteAtomic(file, ordersFile(srv.URL, "list"), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, ordersFile(srv.URL, "list"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, "the external edit", func() bool { return len(items()) == 1 })
@@ -118,7 +118,7 @@ func TestApiConfigFiles(t *testing.T) {
 
 	// 3. A bad edit keeps the last good rows and refuses app writes until fixed.
 	bad := strings.Replace(string(ordersFile(srv.URL, "list")), "items:\n", "bogus: true\nitems:\n", 1)
-	if err := configfs.WriteAtomic(file, []byte(bad), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var view apifiles.View
@@ -146,7 +146,7 @@ func TestApiConfigFiles(t *testing.T) {
 	if ie := ipcErr(t, err); ie.Code != "E_BAD_REQUEST" {
 		t.Errorf("SaveRequest on a broken file = %v, want E_BAD_REQUEST", ie)
 	}
-	if err := configfs.WriteAtomic(file, ordersFile(srv.URL, "list"), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, ordersFile(srv.URL, "list"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, "the fixed file", func() bool {
@@ -204,7 +204,7 @@ func TestApiConfigFiles(t *testing.T) {
 	}
 
 	// 6. Deleting the file drops the collection and its history.
-	if err := os.Remove(file); err != nil {
+	if err := fileservice.Host().Remove(file); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, "the collection to go", func() bool {
@@ -228,7 +228,7 @@ func problemOf(v apifiles.View, file string) *apifiles.ProblemView {
 // AGENTS.md documents every top-level option of both file kinds.
 func TestApiAgentsDocCoversSchemas(t *testing.T) {
 	app := flowharness.New(t)
-	doc, err := os.ReadFile(filepath.Join(app.W.ApiFiles.Dir(), "AGENTS.md"))
+	doc, err := fileservice.Host().ReadFile(filepath.Join(app.W.ApiFiles.Dir(), "AGENTS.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,13 +359,13 @@ func TestHandEditedCollectionWithBadEntry(t *testing.T) {
 	if ie := ipcErr(t, err); ie.Code != "E_BAD_REQUEST" || !strings.Contains(ie.Message, "Line 9") {
 		t.Errorf("SaveRequest = %v, want E_BAD_REQUEST naming line 9", ie)
 	}
-	if got, _ := os.ReadFile(path); string(got) != text {
+	if got, _ := fileservice.Host().ReadFile(path); string(got) != text {
 		t.Errorf("file changed by a refused edit:\n%s", got)
 	}
 
 	// c. A restart leaves the file and the partial load as they were.
 	app.Restart()
-	if got, _ := os.ReadFile(path); string(got) != text {
+	if got, _ := fileservice.Host().ReadFile(path); string(got) != text {
 		t.Errorf("the app rewrote the hand-edited file:\n%s", got)
 	}
 	if got := names(); got != "Good one,Good two" {

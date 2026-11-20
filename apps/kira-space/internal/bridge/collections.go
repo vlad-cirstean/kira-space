@@ -3,17 +3,17 @@ package bridge
 import (
 	"encoding/json"
 	"errors"
-	"os"
+	"io"
 	"path/filepath"
 	"strconv"
 
-	"github.com/google/renameio/v2"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/postman"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
@@ -526,7 +526,7 @@ type importedFile struct {
 }
 
 func (s *CollectionsService) importFile(path string) (importedFile, error) {
-	f, err := os.Open(path)
+	f, _, err := fileservice.Host().Open(path)
 	if err != nil {
 		return importedFile{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.file.readFailed.error",
 			map[string]string{"path": path, "detail": err.Error()})
@@ -615,28 +615,23 @@ type CollectionsExportArgs struct {
 	Path         string `json:"path"`
 }
 
-// writeExportFile writes to a renameio temp file next to the target and renames it over the target
-// only once write has fully succeeded, so a failed re-export never destroys a good file.
+// writeExportFile streams to an atomic fileservice write next to the target and renames it over the
+// target only once write has fully succeeded, so a failed re-export never destroys a good file.
 //
-// The target is path with any symlink resolved first (EvalSymlinks errors when path doesn't exist
-// yet, in which case path is used as-is), so the rename writes through a link instead of replacing
-// it. An existing target keeps its mode; a fresh one is private (0600).
-func writeExportFile(path string, write func(*os.File) error) error {
-	target := path
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		target = resolved
-	}
-	f, err := renameio.NewPendingFile(target, renameio.WithExistingPermissions())
+// A symlinked target is written through, so the link survives. An existing target keeps its mode; a
+// fresh one is private (0600).
+func writeExportFile(path string, write func(io.Writer) error) error {
+	p, err := fileservice.Host().Create(path, fileservice.WriteOptions{Perm: 0o600, KeepPerm: true})
 	if err != nil {
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.writeFailed.error",
 			map[string]string{"path": path, "detail": err.Error()})
 	}
-	defer func() { _ = f.Cleanup() }()
+	defer func() { _ = p.Discard() }()
 
-	if err := write(f.File); err != nil {
+	if err := write(p); err != nil {
 		return ipcerr.InternalErr(err)
 	}
-	if err := f.CloseAtomicallyReplace(); err != nil {
+	if _, err := p.Commit(); err != nil {
 		return ipcerr.T(ipcerr.CodeInternal, "backend.studio.collection.finishWriteFailed.error",
 			map[string]string{"path": path, "detail": err.Error()})
 	}
@@ -675,7 +670,7 @@ func (s *CollectionsService) Export(args CollectionsExportArgs) (ExportReport, e
 		return ExportReport{}, ipcerr.InternalErr(err)
 	}
 
-	if err := writeExportFile(args.Path, func(f *os.File) error { return postman.Write(f, tree) }); err != nil {
+	if err := writeExportFile(args.Path, func(w io.Writer) error { return postman.Write(w, tree) }); err != nil {
 		return ExportReport{}, err
 	}
 

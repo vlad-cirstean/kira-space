@@ -1,0 +1,57 @@
+{
+  "http:GET /api/computer#docker": {
+    "docker": {
+      "reason": "<masked>",
+      "running": 0,
+      "state": "<masked>",
+      "stopped": 0,
+      "total": 0
+    }
+  },
+  "http:GET /api/runs#failed": {
+    "runs": [
+      {
+        "branchId": "<masked>",
+        "branchLabel": "",
+        "color": "blue",
+        "createdAt": 0,
+        "finishedAt": 0,
+        "id": "<masked>",
+        "kind": "script",
+        "outcome": {
+          "exitCode": 3,
+          "reason": "exited with status 3",
+          "status": "failed"
+        },
+        "resumable": false,
+        "scriptName": "job",
+        "startedAt": 0,
+        "state": "failed",
+        "taskId": "<masked>",
+        "taskTitle": "",
+        "trigger": "terminal"
+      }
+    ]
+  },
+  "sse:kira:scriptRuns:changed#failed": {
+    "branchId": "<masked>",
+    "branchLabel": "",
+    "color": "blue",
+    "createdAt": 0,
+    "finishedAt": 0,
+    "id": "<masked>",
+    "kind": "script",
+    "outcome": {
+      "exitCode": 3,
+      "reason": "exited with status 3",
+      "status": "failed"
+    },
+    "resumable": false,
+    "scriptName": "job",
+    "startedAt": 0,
+    "state": "failed",
+    "taskId": "<masked>",
+    "taskTitle": "",
+    "trigger": "terminal"
+  }
+}

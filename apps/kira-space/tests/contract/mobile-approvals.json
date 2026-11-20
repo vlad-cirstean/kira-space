@@ -217,12 +217,10 @@
           {
             "cause": "note",
             "kind": "note",
-            "path": "notes/<time>-<id:2>.md",
-            "reason": "the empty form case is missing",
-            "text": "--- a/notes/<time>-<id:2>.md\n+++ b/notes/<time>-<id:2>.md\n@@ -1 +1 @@\n-Check the error states.\n+Check the error states and the empty form.\n"
+            "path": "notes/<time>-s2.md",
+            "text": "--- a/notes/<time>-s2.md\n+++ b/notes/<time>-s2.md\n@@ -1 +1 @@\n-Check the error states.\n+Check the error states and the empty form.\n"
           }
         ],
-        "reason": "the empty form case is missing",
         "taskId": "<id:1>",
         "taskTitle": "Login form"
       },

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 )
 
 // syncPageSize is the GraphQL page size of a Page walk; GitHub allows at most 100.
@@ -14,25 +16,29 @@ const syncPageSize = 100
 // checksBatch is how many node ids one Checks call reads.
 const checksBatch = 50
 
-const syncPRFields = `id number title url state isDraft reviewDecision updatedAt headRefName headRefOid baseRefName headRepositoryOwner{login} comments{totalCount} reviews{totalCount} assignees(first:10){nodes{login}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}`
+const syncPRFields = `id number title url state isDraft reviewDecision mergeable autoMergeRequest{enabledAt} updatedAt headRefName headRefOid baseRefName headRepositoryOwner{login} comments{totalCount} reviews{totalCount} assignees(first:10){nodes{login}} commits(last:1){nodes{commit{statusCheckRollup{state}}}}`
 
 const syncPageQuery = `query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){pullRequests(states:[OPEN,CLOSED,MERGED],orderBy:{field:UPDATED_AT,direction:DESC},first:$first,after:$after){pageInfo{endCursor hasNextPage} nodes{` + syncPRFields + `}}} rateLimit{remaining resetAt cost}}`
 
 const syncChecksQuery = `query($ids:[ID!]!){nodes(ids:$ids){... on PullRequest{` + syncPRFields + `}} rateLimit{remaining resetAt cost}}`
 
 type gqlPR struct {
-	ID             string `json:"id"`
-	Number         int    `json:"number"`
-	Title          string `json:"title"`
-	URL            string `json:"url"`
-	State          string `json:"state"`
-	IsDraft        bool   `json:"isDraft"`
-	ReviewDecision string `json:"reviewDecision"`
-	UpdatedAt      string `json:"updatedAt"`
-	HeadRefName    string `json:"headRefName"`
-	HeadRefOid     string `json:"headRefOid"`
-	BaseRefName    string `json:"baseRefName"`
-	HeadOwner      *struct {
+	ID               string `json:"id"`
+	Number           int    `json:"number"`
+	Title            string `json:"title"`
+	URL              string `json:"url"`
+	State            string `json:"state"`
+	IsDraft          bool   `json:"isDraft"`
+	ReviewDecision   string `json:"reviewDecision"`
+	Mergeable        string `json:"mergeable"`
+	UpdatedAt        string `json:"updatedAt"`
+	HeadRefName      string `json:"headRefName"`
+	HeadRefOid       string `json:"headRefOid"`
+	BaseRefName      string `json:"baseRefName"`
+	AutoMergeRequest *struct {
+		EnabledAt string `json:"enabledAt"`
+	} `json:"autoMergeRequest"`
+	HeadOwner *struct {
 		Login string `json:"login"`
 	} `json:"headRepositoryOwner"`
 	Comments struct {
@@ -93,6 +99,13 @@ func (g gqlPR) toPR() PR {
 		if n := g.Commits.Nodes; len(n) > 0 && n[0].Commit.StatusCheckRollup != nil {
 			pr.ChecksState = n[0].Commit.StatusCheckRollup.State
 		}
+		switch g.Mergeable {
+		case "MERGEABLE":
+			pr.Mergeable = githost.MergeableYes
+		case "CONFLICTING":
+			pr.Mergeable = githost.MergeableConflict
+		}
+		pr.AutoMerge = g.AutoMergeRequest != nil
 	default:
 		pr.State = "closed"
 	}

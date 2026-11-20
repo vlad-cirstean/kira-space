@@ -95,7 +95,7 @@ func TestTaskStatuses(t *testing.T) {
 	if _, err := move(old.ID, "in-progress"); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: old.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: old.ID}); err != nil {
 		t.Fatal(err)
 	}
 	archivedStatus := func() string {

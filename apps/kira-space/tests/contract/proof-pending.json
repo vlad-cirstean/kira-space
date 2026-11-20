@@ -45,7 +45,7 @@
     "name": "Edit me",
     "pending": {
       "createdAt": 0,
-      "reason": "tighten",
+      "reason": "",
       "rev": 2,
       "steps": [
         {

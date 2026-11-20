@@ -105,6 +105,8 @@ func (s *Server) routes() []route {
 			}
 			writeJSON(w, http.StatusOK, s.cfg.AgentInfo())
 		}),
+		read("/api/runs", s.handleRuns),
+		read("/api/computer", s.handleComputer),
 		read("/api/approvals", s.handleApprovals),
 		write("/api/ade/later/items", "later.add", permWrite, s.handleLaterAdd),
 		write("/api/ade/shelf/move", "shelf.move", permWrite, s.handleShelfMove),

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/fswatch"
 )
 
 // --- classify: the ordered-rule table, against both a same-dir and a linked-worktree summary ----
@@ -86,7 +88,7 @@ func TestClassify_NFDEventPathMatchesNFCCommonDir(t *testing.T) {
 	composedE := string([]byte{0xc3, 0xa9})         // U+00E9, composed "é"
 	decomposedE := string([]byte{0x65, 0xcc, 0x81}) // "e" + U+0301, decomposed "é"
 
-	// summary.CommonDir/GitDir are NFC, exactly as Identify (D5a) and resolveOrKeep (D5b) leave
+	// summary.CommonDir/GitDir are NFC, exactly as Identify leaves
 	// them; the incoming event path is spelled NFD, exactly as FSEvents would report a name an
 	// NFD-producing filesystem returned from readdir.
 	summary := RepoSummary{
@@ -171,7 +173,7 @@ func TestRepoWatcher_AddProducesWorktreeChanged(t *testing.T) {
 // `worktree add` run as a SEPARATE process (simulating another window/terminal creating a
 // worktree this watcher's own entry did not initiate) writes only under
 // commonDir/worktrees/<name>/ — a real, pre-existing blind spot.
-// Exercises the real fsnotify backend end to end, not just classify()'s own
+// Exercises the real fswatch backend end to end, not just classify()'s own
 // pure table.
 func TestRepoWatcher_DetachedWorktreeAddProducesRefsChanged(t *testing.T) {
 	dir, _, w := newWatcherFixture(t)
@@ -183,7 +185,7 @@ func TestRepoWatcher_DetachedWorktreeAddProducesRefsChanged(t *testing.T) {
 // TestRepoWatcher_SecondDetachedWorktreeAlsoProducesRefsChanged is the worktree-tree analogue of
 // TestRepoWatcher_NewRefNamespaceSeenOnSecondUpdateToo: the FIRST worktree add creates
 // commonDir/worktrees itself, which this backend was not watching at startup — this proves the
-// reactive maybeWatchWorktreesDir extension took effect, by requiring a SECOND, distinct
+// reactive watch of the new worktrees dir took effect, by requiring a SECOND, distinct
 // worktree add (a new sibling directory under the now-existing commonDir/worktrees) to be seen
 // too, not just the one that happened to create the parent directory.
 func TestRepoWatcher_SecondDetachedWorktreeAlsoProducesRefsChanged(t *testing.T) {
@@ -205,6 +207,27 @@ drain:
 	}
 
 	runGit(t, dir, "worktree", "add", "-b", "wt-two", filepath.Join(wtDir, "wt2"))
+	awaitSignal(t, w.Signals(), SignalRefsChanged)
+}
+
+// TestRepoWatcher_LinkedWorktreeHeadChangeProducesRefsChanged: a checkout inside a linked worktree
+// rewrites only commonDir/worktrees/<name>/HEAD (detaching touches no ref), so the watcher must watch
+// that directory, not just worktrees itself.
+func TestRepoWatcher_LinkedWorktreeHeadChangeProducesRefsChanged(t *testing.T) {
+	dir, _, w := newWatcherFixture(t)
+	wt := filepath.Join(t.TempDir(), "wt1")
+	runGit(t, dir, "worktree", "add", "-b", "linked-head", wt)
+	awaitSignal(t, w.Signals(), SignalRefsChanged)
+	drainDeadline := time.After(300 * time.Millisecond)
+drain:
+	for {
+		select {
+		case <-w.Signals():
+		case <-drainDeadline:
+			break drain
+		}
+	}
+	runGit(t, wt, "checkout", "--detach")
 	awaitSignal(t, w.Signals(), SignalRefsChanged)
 }
 
@@ -278,14 +301,14 @@ func TestRepoWatcher_Close_StopsSignals(t *testing.T) {
 
 // TestRepoWatcher_SymlinkedRepoStillClassifies guards: a repository opened through a
 // symlinked ancestor must still classify. `git rev-parse --absolute-git-dir`/`--git-common-dir`
-// do not resolve symlinks, so without NewRepoWatcher resolving CommonDir/GitDir once up
+// do not resolve symlinks, so without fswatch resolving the roots once up
 // front, a real macOS FSEvents backend — which always reports realpaths — would prefix-match
 // nothing and this would hang forever.
 //
 // This is a partial guard, not a reproduction of that failure: fsnotify (this platform's backend)
 // echoes back whatever path it was told to watch, unresolved or not, so it cannot by itself
-// exhibit the mismatch the way FSEvents does. What it does prove is that resolveOrKeep runs,
-// that it does not desync the backend's watch roots from classify's comparison target, and that a
+// exhibit the mismatch the way FSEvents does. What it does prove is that fswatch's re-rooting
+// keeps events in the caller's spelling, matching classify's comparison target, and that a
 // repository whose CommonDir/GitDir contain a symlink component still works end to end.
 func TestRepoWatcher_SymlinkedRepoStillClassifies(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -317,22 +340,22 @@ func TestRepoWatcher_SymlinkedRepoStillClassifies(t *testing.T) {
 // fakeBackend is an in-package backend implementation for driving RepoWatcher's own logic (the
 // debounce and the Rescan rule, D6) with no filesystem and no real git.
 type fakeBackend struct {
-	events chan rawEvent
+	events chan fswatch.Event
 }
 
-func (b *fakeBackend) Events() <-chan rawEvent { return b.events }
-func (b *fakeBackend) Close() error            { return nil }
+func (b *fakeBackend) Events() <-chan fswatch.Event { return b.events }
+func (b *fakeBackend) Close() error                 { return nil }
 
 // TestRepoWatcher_RescanRaisesBothSignals is the first automated coverage of the overflow/dropped-
 // events rule — real fsnotify overflow and real FSEvents drop flags are not producible
 // on demand, but the rule itself lives above the backend seam, so exercising it through a fake
 // backend covers both real backends at once.
 func TestRepoWatcher_RescanRaisesBothSignals(t *testing.T) {
-	fake := &fakeBackend{events: make(chan rawEvent, 1)}
+	fake := &fakeBackend{events: make(chan fswatch.Event, 1)}
 	w := newRepoWatcherWith(RepoSummary{CommonDir: "/repo/.git", GitDir: "/repo/.git"}, fake)
 	t.Cleanup(func() { _ = w.Close() })
 
-	fake.events <- rawEvent{Rescan: true}
+	fake.events <- fswatch.Event{Rescan: true}
 
 	awaitSignal(t, w.Signals(), SignalRefsChanged)
 	awaitSignal(t, w.Signals(), SignalWorktreeChanged)

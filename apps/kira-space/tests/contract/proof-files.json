@@ -39,7 +39,7 @@
     "closedAt": 0,
     "current": {
       "createdAt": 0,
-      "reason": "narrow the query",
+      "reason": "",
       "rev": 2,
       "steps": [
         {
@@ -166,6 +166,6 @@
   },
   "reply#new": "accepted 1, pending user 0, invalid 0\nproofs/checkout-fix/: accepted, new proof \"Checkout fix\": orders (table), shot (image), audit (table); 3 steps, 1 image, 1 data file",
   "reply#overcap": "accepted 0, pending user 0, invalid 1 | proofs/big/: invalid, 1 problem (lines follow) | proofs/big/proof.md:9: steps[rows].inline is 71 KiB; the limit is 64 KiB. Move it to <this folder>/rows.json and set data: rows.json.",
-  "reply#pending": "accepted 0, pending user 1, invalid 0\nproofs/checkout-fix/: pending user, change to \"Checkout fix\": orders changed (narrow the query)",
+  "reply#pending": "accepted 0, pending user 1, invalid 0\nproofs/checkout-fix/: pending user, change to \"Checkout fix\": orders changed",
   "reply#yaml": "accepted 0, pending user 0, invalid 1 | proofs/tabs/: invalid, 1 problem (lines follow) | proofs/tabs/proof.md:5: YAML: found a tab. Indent with spaces."
 }

@@ -2,6 +2,7 @@ package configfs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -63,15 +65,15 @@ func (f *Folder[T]) visible(name string) bool {
 // List loads every config file, sorted by name. It projects valid files, keeps the last good value
 // for invalid ones and forgets projected files that are gone. A missing dir is an empty list.
 func (f *Folder[T]) List() []Entry[T] {
-	entries, err := os.ReadDir(f.Dir)
+	entries, err := fileservice.Host().ReadDir(f.Dir)
 	if err != nil && !os.IsNotExist(err) {
 		slog.Warn("config: read dir", "scope", "config", "dir", f.Dir, "err", err)
 		return []Entry[T]{}
 	}
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
-		if e.Type().IsRegular() && f.visible(e.Name()) {
-			names = append(names, e.Name())
+		if e.Mode.IsRegular() && f.visible(e.Name) {
+			names = append(names, e.Name)
 		}
 	}
 	sort.Strings(names)
@@ -97,7 +99,7 @@ func (f *Folder[T]) Get(file string) (Entry[T], bool) {
 	if file != filepath.Base(file) || !f.visible(file) {
 		return Entry[T]{}, false
 	}
-	if _, err := os.Stat(filepath.Join(f.Dir, file)); err != nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(f.Dir, file)); err != nil {
 		return Entry[T]{}, false
 	}
 	return f.entryFor(file, &lastGood{p: f.Projection}), true
@@ -109,7 +111,10 @@ func (f *Folder[T]) Read(file string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	src, err := ReadCapped(p, MaxFileBytes)
+	src, _, err := fileservice.Host().Read(p, MaxFileBytes)
+	if errors.Is(err, fileservice.ErrTooLarge) {
+		return nil, "", ErrTooLarge
+	}
 	if err != nil {
 		return nil, "", err
 	}
@@ -130,7 +135,7 @@ func (f *Folder[T]) Save(file, baseHash string, src []byte) (Entry[T], error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if baseHash != "" {
-		cur, err := os.ReadFile(p)
+		cur, _, err := fileservice.Host().Read(p, 0)
 		if err != nil && !os.IsNotExist(err) {
 			return Entry[T]{}, fmt.Errorf("configfs: read %s: %w", file, err)
 		}
@@ -138,8 +143,8 @@ func (f *Folder[T]) Save(file, baseHash string, src []byte) (Entry[T], error) {
 			return Entry[T]{}, fmt.Errorf("%w: the file changed since it was loaded", ErrConflict)
 		}
 	}
-	if err := WriteAtomic(p, src, 0o644); err != nil {
-		return Entry[T]{}, err
+	if _, err := fileservice.Host().Write(p, src, fileservice.WriteOptions{}); err != nil {
+		return Entry[T]{}, fmt.Errorf("configfs: write %s: %w", file, err)
 	}
 	e, ok := f.Get(file)
 	if !ok {
@@ -177,7 +182,7 @@ func (l *lastGood) get() map[string]string {
 
 func (f *Folder[T]) entryFor(file string, lg *lastGood) Entry[T] {
 	entry := Entry[T]{File: file, Path: filepath.Join(f.Dir, file)}
-	src, err := ReadCapped(entry.Path, MaxFileBytes)
+	src, _, err := fileservice.Host().Read(entry.Path, MaxFileBytes)
 	entry.Hash = TextHash(src)
 	var v T
 	var prob *Problem

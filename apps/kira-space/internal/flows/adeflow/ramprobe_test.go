@@ -309,7 +309,7 @@ func TestRAMProbeAgents(t *testing.T) {
 	}
 	for i := 0; i < ramArchived; i++ {
 		tk := createTask(t, app, "Archived task "+strconv.Itoa(i)+": ship the billing export", "flow", rec.ID)
-		if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: tk.ID}); err != nil {
+		if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: tk.ID}); err != nil {
 			t.Fatalf("ArchiveTask %d: %v", i, err)
 		}
 	}

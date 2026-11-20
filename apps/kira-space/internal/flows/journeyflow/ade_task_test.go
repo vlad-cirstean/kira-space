@@ -197,7 +197,7 @@ func TestADETaskEveryFailure(t *testing.T) {
 	}
 
 	// Archive: worktrees go, the task moves to history, nothing keeps running.
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: task.ID}); err != nil {
 		t.Fatalf("ArchiveTask: %v", err)
 	}
 	for _, br := range []adewire.Branch{apiBr, webBr} {

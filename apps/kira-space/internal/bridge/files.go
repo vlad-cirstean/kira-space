@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/internal/shell"
 )
@@ -107,13 +108,13 @@ func (s *FilesService) ChooseOpen(args FilesChooseOpenArgs) (FilesChooseOpenResu
 		return FilesChooseOpenResult{Canceled: true}, nil
 	}
 
-	info, err := os.Stat(path)
+	info, err := fileservice.Host().Stat(path)
 	if err != nil {
 		return FilesChooseOpenResult{}, ipcerr.T(ipcerr.CodeInternal, "backend.studio.file.readFailed.error", map[string]string{"path": path, "detail": err.Error()})
 	}
 	return FilesChooseOpenResult{
 		Canceled: false,
-		File:     &ChosenFile{Path: path, Name: filepath.Base(path), Size: info.Size()},
+		File:     &ChosenFile{Path: path, Name: filepath.Base(path), Size: info.Size},
 	}, nil
 }
 
@@ -132,11 +133,11 @@ func (s *FilesService) ChooseOpenMany(args FilesChooseOpenArgs) (FilesChooseOpen
 	}
 	files := make([]ChosenFile, 0, len(paths))
 	for _, path := range paths {
-		info, err := os.Stat(path)
+		info, err := fileservice.Host().Stat(path)
 		if err != nil {
 			return FilesChooseOpenManyResult{}, ipcerr.T(ipcerr.CodeInternal, "backend.studio.file.readFailed.error", map[string]string{"path": path, "detail": err.Error()})
 		}
-		files = append(files, ChosenFile{Path: path, Name: filepath.Base(path), Size: info.Size()})
+		files = append(files, ChosenFile{Path: path, Name: filepath.Base(path), Size: info.Size})
 	}
 	return FilesChooseOpenManyResult{Files: files}, nil
 }

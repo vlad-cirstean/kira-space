@@ -302,6 +302,12 @@ type ChangeRequest struct {
 	BaseRef string `json:"baseRef"`
 	// ChecksState is '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED.
 	ChecksState string `json:"checksState"`
+	// ReviewDecision is '' | APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED.
+	ReviewDecision string `json:"reviewDecision,omitempty"`
+	// Mergeable is '' | mergeable | conflicting.
+	Mergeable string `json:"mergeable,omitempty"`
+	// AutoMerge marks auto-merge on.
+	AutoMerge bool `json:"autoMerge,omitempty"`
 }
 
 type Branch struct {
@@ -333,6 +339,7 @@ type Branch struct {
 	ConflictCheck       string         `json:"conflictCheck"`       // 'checking' | 'done' | 'failed'
 	ConflictCheckReason string         `json:"conflictCheckReason"` // '' unless failed
 	Dirty               []DirtyEntry   `json:"dirty"`
+	DirtyToken          string         `json:"dirtyToken"` // fingerprint of Dirty, "" when clean
 	LastCommitAt        *int64         `json:"lastCommitAt"`
 	AddedAt             int64          `json:"addedAt"`
 	Origin              string         `json:"origin"` // '' user | 'agent'
@@ -552,11 +559,12 @@ type BranchPeer struct {
 	Attached bool   `json:"attached"`
 }
 
-// BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
-// a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
-// not yet checked out Branch. Kind 'checkout': check out the existing Branch, held nowhere. Kind 'adopt':
-// check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
-// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
+// BranchRequestItem is one branch an agent asks the user to approve. ID is the item's key in the request.
+// Kind 'adopt': check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted
+// changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on
+// From. Kind 'switch': change the task's branch. New branches, worktrees and free existing branches are
+// created without asking and never become items.
 type BranchRequestItem struct {
 	ID         string   `json:"id"`
 	CodeRepoID string   `json:"codeRepoId"`
@@ -888,6 +896,8 @@ type BranchRisk struct {
 	Dirty    []DirtyEntry `json:"dirty"`
 	Unmerged int          `json:"unmerged"`
 	Blocked  string       `json:"blocked"`
+	// DirtyToken fingerprints Dirty (see gitsession.DirtyToken); "" when nothing is uncommitted.
+	DirtyToken string `json:"dirtyToken"`
 }
 
 type ArchiveRisk struct {
@@ -1056,14 +1066,23 @@ type SetTaskBranchArgs struct {
 	BranchID string `json:"branchId"`
 	Name     string `json:"name"`
 	Existing bool   `json:"existing"`
-	// DiscardChanges confirms deleting uncommitted changes in the row's current worktree.
-	DiscardChanges bool `json:"discardChanges"`
+	// DiscardToken is the Branch.DirtyToken the user saw: it confirms deleting exactly that set of
+	// uncommitted changes in the row's current worktree. "" discards nothing.
+	DiscardToken string `json:"discardToken"`
 }
 
-// RemoveTaskRowArgs detaches a task row; DiscardChanges confirms deleting uncommitted changes in its worktree.
+// RemoveTaskRowArgs detaches a task row; DiscardToken is the Branch.DirtyToken the user saw, confirming
+// deletion of exactly that set of uncommitted changes in its worktree ("" discards nothing).
 type RemoveTaskRowArgs struct {
-	BranchID       string `json:"branchId"`
-	DiscardChanges bool   `json:"discardChanges"`
+	BranchID     string `json:"branchId"`
+	DiscardToken string `json:"discardToken"`
+}
+
+// ArchiveTaskArgs archives a task. DiscardTokens maps branch id to the BranchRisk.DirtyToken the user
+// confirmed; a worktree with uncommitted changes and no matching token refuses the archive.
+type ArchiveTaskArgs struct {
+	TaskID        string            `json:"taskId"`
+	DiscardTokens map[string]string `json:"discardTokens"`
 }
 
 // UpdateTaskRepoArgs swaps the repo of a row whose branch is not created.
@@ -1214,6 +1233,11 @@ type TaskArgs struct {
 
 type WindowKeyArgs struct {
 	WindowKey string `json:"windowKey"`
+}
+
+// TaskFilesWindowTarget is the task a Files window shows (P704).
+type TaskFilesWindowTarget struct {
+	TaskID string `json:"taskId"`
 }
 
 // ReviewWindowTarget is what a review window reviews (P150).

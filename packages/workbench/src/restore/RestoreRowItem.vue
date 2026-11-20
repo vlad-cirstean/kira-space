@@ -6,14 +6,16 @@ import { Badge } from '@theme/components/ui/badge';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { FieldError } from '@theme/components/ui/field';
 import { Label } from '@theme/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import type { RestoreRow } from './types';
 
 // One listed row of the restore dialog: a checkbox when selectable, a spinner while it starts on its own.
-defineProps<{ row: RestoreRow; checked: boolean }>();
-const emit = defineEmits<{ toggle: [on: boolean] }>();
+defineProps<{ row: RestoreRow; checked: boolean; optionOn?: boolean }>();
+const emit = defineEmits<{ toggle: [on: boolean]; toggleOption: [on: boolean] }>();
 </script>
 
 <template>
+  <!-- The option sits outside the row label: a click on it must not toggle the row. -->
   <component
     :is="row.state === 'ready' ? Label : 'div'"
     :for="row.state === 'ready' ? `restore-${row.id}` : undefined"
@@ -38,6 +40,14 @@ const emit = defineEmits<{ toggle: [on: boolean] }>();
         <span v-if="row.state === 'waiting' && row.reason" class="ml-auto shrink-0 text-kira-sm">{{
           row.reason
         }}</span>
+        <span
+          v-else-if="row.toggleLabel"
+          class="ml-auto shrink-0 text-kira-sm text-muted-foreground"
+          data-testid="restore-row-toggle-label"
+          >{{
+            row.toggleLabel
+          }}</span
+        >
       </div>
       <div
         v-if="row.detail || row.folder"
@@ -61,4 +71,27 @@ const emit = defineEmits<{ toggle: [on: boolean] }>();
       <FieldError v-if="row.error" data-testid="restore-row-error">{{ row.error }}</FieldError>
     </div>
   </component>
+  <Tooltip v-if="row.option && row.state === 'ready'" :disabled="!row.option.unsupportedReason">
+    <TooltipTrigger as-child>
+      <div class="flex items-center gap-2 px-3 pb-2 pl-9">
+        <Checkbox
+          :id="`restore-option-${row.id}`"
+          :model-value="!!optionOn"
+          :disabled="!checked || row.option.required || !!row.option.unsupportedReason"
+          data-testid="restore-option-toggle"
+          @update:model-value="(v) => emit('toggleOption', v === true)"
+        />
+        <Label
+          :for="`restore-option-${row.id}`"
+          class="text-kira-sm font-normal text-muted-foreground"
+          >{{
+            row.option.label
+          }}</Label
+        >
+      </div>
+    </TooltipTrigger>
+    <TooltipContent v-if="row.option.unsupportedReason">{{
+      row.option.unsupportedReason
+    }}</TooltipContent>
+  </Tooltip>
 </template>

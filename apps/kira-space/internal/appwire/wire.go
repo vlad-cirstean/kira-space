@@ -169,26 +169,12 @@ func liveWork(repositories *repos.Repos, registry *terminal.Registry, scriptsLiv
 	}
 }
 
-// closeTaskReviewWindows returns the hook that closes every review window of an archived task.
-func closeTaskReviewWindows(repositories *repos.Repos, closeWindow func(key string) bool) func(taskID string) {
-	return func(taskID string) {
-		keys, err := repositories.AdeReview.KeysByTask(taskID)
-		if err != nil {
-			slog.Warn("ade: list review windows", "scope", "ade", "task", taskID, "err", err)
-			return
-		}
-		for _, k := range keys {
-			closeWindow(k)
-		}
-	}
-}
-
 // wireAdeTask builds the v2 task board engine (P144): its own Conn, the workflow reader over
 // <home>/config/workflows, and the cached git discovery gating merge-tree checks. It recovers rows a
 // restart left running, then starts the board.
 func wireAdeTask(
 	repositories *repos.Repos, events *bridge.Events, git gitWired, tracker *ade.Tracker, closeTerminal func(string) error,
-	closeReviewWindows func(taskID string), credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
+	closeWindow func(key string) bool, credentials *gitcred.Relay, keepAwake *bridge.KeepAwakeService,
 	notifier *agentnotify.Notifier, usage *agentusage.Service, rebaseTimeout, branchRequestWait, callWait, leaseTTL time.Duration, leaseNow func() time.Time, leaseElapsed func() time.Duration, updates ade.UpdatesConfig, runs *scriptruns.Service,
 	agents harness.Selector, promptSink prompts.Sink, approvalQueue *approvals.Queue, repoFiles *repocfg.Store,
 	proofs ade.ProofLinks, dbMcp ade.DbMcpSessions, onReposChanged func(),
@@ -240,7 +226,7 @@ func wireAdeTask(
 		Tracker:       tracker,
 		CloseTerminal: closeTerminal,
 		Windows:       repositories.Windows, ReviewWindows: repositories.AdeReview,
-		CloseReviewWindows: closeReviewWindows,
+		CloseWindow: closeWindow,
 		OnRuns: func(ev adewire.RunsChangedEvent) {
 			bridge.AdeTaskRunsChanged(events, ev)
 			notifier.HandleRuns(ev.Runs)

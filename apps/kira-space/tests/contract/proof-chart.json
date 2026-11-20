@@ -7,7 +7,7 @@
       "pending": false,
       "proofId": "<id:1>",
       "rev": 1,
-      "sessionId": "",
+      "sessionId": "session-1",
       "slug": "deploy-health",
       "steps": [
         {
@@ -219,7 +219,7 @@
     "name": "Deploy health",
     "pending": {
       "createdAt": 0,
-      "reason": "Recount after replay",
+      "reason": "",
       "rev": 2,
       "steps": [
         {

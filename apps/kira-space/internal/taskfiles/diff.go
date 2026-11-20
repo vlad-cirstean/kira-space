@@ -34,8 +34,8 @@ type Change struct {
 	Key string
 	// Slot is true for a Jira or PR slot of links.yaml.
 	Slot bool
-	// Own is true when the writer's session authored the target.
-	Own bool
+	// Author is who wrote the target, from the writing session's view; the handler sets it.
+	Author Author
 	// Latest is true when the target is the newest note or handed handover of the task.
 	Latest bool
 	// Field names a changed top-level field of a keyed target ("name", "summary"); "" for the target itself.

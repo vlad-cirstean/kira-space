@@ -1,31 +1,23 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeFixture, openPlan, openTask } from './support/adeV2';
+import { openPlan, openTask } from './support/adeV2';
 import { pick } from './support/branchMenu';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
-// Remove branch and archive run in the background: the dialog closes at once, a chip shows
-// progress; no toast unless it fails. Backend half: adeflow TestTaskReposAndBranches and TestArchiveRisk.
+// Remove branch and archive run in the background: a chip shows progress; no toast unless it fails. Backend half: adeflow TestTaskReposAndBranches and TestArchiveRisk.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const toast = (page: Page) => page.locator('[data-sonner-toast]');
 const chip = (page: Page) => page.locator(t('ade-op-status'));
 
-const dirty = { channel: IPC.adeTaskTaskBranchRisk, response: adeFixture('branch-risk-dirty') };
-
-test('a confirmed branch removal closes the dialog and runs behind a chip, with no toast', async ({
-  relaunch,
-}) => {
+test('a branch removal runs behind a chip, with no toast', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    dirty,
     { channel: IPC.adeTaskRemoveTaskBranch, hold: true },
   ]);
   await openTask(page, 'T_cart');
   await pick(page, 'b_cart', 'ade-task-branch-remove');
-  await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskBranch)).toHaveLength(1);
-  await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
   await expect(chip(page).first()).toHaveAttribute('data-op', /removeBranch|removeRepo/);
   await expect(toast(page)).toHaveCount(0);
   control.release(IPC.adeTaskRemoveTaskBranch);
@@ -47,7 +39,6 @@ test('a repo removal with nothing at risk also runs in the background', async ({
 
 test('a refused removal ends the chip and shows an error toast', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    dirty,
     {
       channel: IPC.adeTaskRemoveTaskBranch,
       hold: true,
@@ -56,7 +47,6 @@ test('a refused removal ends the chip and shows an error toast', async ({ relaun
   ]);
   await openTask(page, 'T_cart');
   await pick(page, 'b_cart', 'ade-task-branch-remove');
-  await page.locator(t('confirm-dialog-confirm')).click();
   await expect(chip(page).first()).toBeVisible();
   control.release(IPC.adeTaskRemoveTaskBranch);
   await expect(chip(page)).toHaveCount(0);
@@ -78,6 +68,7 @@ test('Delete anyway closes the dialog and archives behind a chip, with no toast'
             dirty: [{ code: 'M', path: 'src/cart.ts' }],
             unmerged: 2,
             blocked: '',
+            dirtyToken: 'tok-cart',
           },
         ],
       },

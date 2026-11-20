@@ -5,11 +5,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
-	"os"
+	"io/fs"
 	"unicode/utf8"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 var (
@@ -37,10 +36,10 @@ func hashBytes(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// ReadFileForEdit reads absPath like ReadFile and adds the SHA-256 of the on-disk bytes. Text that
+// ReadFileForEdit reads name like ReadFile and adds the SHA-256 of the on-disk bytes. Text that
 // is not valid UTF-8 is refused: JSON would replace the bad bytes and a save would corrupt the file.
-func ReadFileForEdit(absPath, relPath string) (EditContent, error) {
-	fc, err := ReadFile(absPath, relPath)
+func ReadFileForEdit(svc *fileservice.Service, name string) (EditContent, error) {
+	fc, err := ReadFile(svc, name)
 	if err != nil {
 		return EditContent{}, err
 	}
@@ -57,60 +56,49 @@ func ReadFileForEdit(absPath, relPath string) (EditContent, error) {
 	return out, nil
 }
 
-// currentHash hashes absPath's bytes, "" when it is absent. Callers have already lstat-checked the
-// type; the read is bounded so a file grown past the limit cannot load unbounded.
-func currentHash(absPath string) (string, error) {
-	f, err := os.Open(absPath) //nolint:gosec // absPath validated by the caller; type checked before.
-	if os.IsNotExist(err) {
+// currentHash hashes name's bytes, "" when it is absent. Callers have already type-checked it; the read
+// is bounded so a file grown past the limit cannot load unbounded (a file over the bound never matches
+// a base hash, so it is a conflict).
+func currentHash(svc *fileservice.Service, name string) (string, error) {
+	data, _, err := svc.Read(name, MaxReadBytes+1)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
 		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("codeworkspace: open for save: %w", err)
-	}
-	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, MaxReadBytes+1))
-	if err != nil {
+	case errors.Is(err, fileservice.ErrTooLarge):
+		return "", ErrConflict
+	case err != nil:
 		return "", fmt.Errorf("codeworkspace: read for save: %w", err)
 	}
 	return hashBytes(data), nil
 }
 
-// WriteFile atomically replaces absPath with text when its current hash equals baseHash ("" means
+// WriteFile atomically replaces name with text when its current hash equals baseHash ("" means
 // the file must be absent), and returns the new hash. The caller serializes calls (steps hash,
 // compare, replace are not atomic against an external writer). Existing permissions are kept; a
 // recreated file gets 0644 minus umask.
-func WriteFile(absPath, text, baseHash string) (string, error) {
+func WriteFile(svc *fileservice.Service, name, text, baseHash string) (string, error) {
 	if len(text) > MaxReadBytes {
 		return "", ErrTooLarge
 	}
 	if !utf8.ValidString(text) {
 		return "", ErrInvalidUTF8
 	}
-	// absPath is the symlink-resolved target, so Stat sees the real file.
-	info, err := os.Stat(absPath)
+	info, err := svc.Stat(name)
 	switch {
-	case err == nil && !info.Mode().IsRegular():
+	case err == nil && !info.Mode.IsRegular():
 		return "", ErrNotRegular
-	case err != nil && !os.IsNotExist(err):
+	case err != nil && !errors.Is(err, fs.ErrNotExist):
 		return "", fmt.Errorf("codeworkspace: stat for save: %w", err)
 	}
-	cur, err := currentHash(absPath)
+	cur, err := currentHash(svc, name)
 	if err != nil {
 		return "", err
 	}
 	if cur != baseHash {
 		return "", ErrConflict
 	}
-	pf, err := renameio.NewPendingFile(absPath, renameio.WithExistingPermissions(), renameio.WithPermissions(0o644))
-	if err != nil {
-		return "", fmt.Errorf("codeworkspace: save %s: %w", absPath, err)
-	}
-	defer func() { _ = pf.Cleanup() }()
-	if _, err := pf.WriteString(text); err != nil {
-		return "", fmt.Errorf("codeworkspace: save %s: %w", absPath, err)
-	}
-	if err := pf.CloseAtomicallyReplace(); err != nil {
-		return "", fmt.Errorf("codeworkspace: save %s: %w", absPath, err)
+	if _, err := svc.Write(name, []byte(text), fileservice.WriteOptions{KeepPerm: true}); err != nil {
+		return "", fmt.Errorf("codeworkspace: save %s: %w", name, err)
 	}
 	return hashBytes([]byte(text)), nil
 }

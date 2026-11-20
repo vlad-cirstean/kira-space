@@ -20,7 +20,7 @@ const (
 // assignees with other arguments, and GitHub rejects two same-name fields with differing arguments
 // (`teamName` likewise: Team.name is String!, User.name is String).
 const detailQuery = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){` +
-	syncPRFields + ` body createdAt mergedAt closedAt mergeable additions deletions changedFiles author{` + detailActor + `}
+	syncPRFields + ` body createdAt mergedAt closedAt additions deletions changedFiles author{` + detailActor + `}
 commitCount: commits{totalCount}
 last: commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){totalCount nodes{__typename
 ... on CheckRun{name status conclusion detailsUrl isRequired(pullRequestNumber:$number) title}
@@ -69,7 +69,6 @@ type gqlDetailPR struct {
 	CreatedAt    string    `json:"createdAt"`
 	ClosedAt     string    `json:"closedAt"`
 	MergedAt     string    `json:"mergedAt"`
-	Mergeable    string    `json:"mergeable"`
 	Additions    int       `json:"additions"`
 	Deletions    int       `json:"deletions"`
 	ChangedFiles int       `json:"changedFiles"`
@@ -250,12 +249,6 @@ func mapDetail(g *gqlDetailPR) githost.ChangeRequestDetail {
 	d.ClosedAt = parseMillis(g.MergedAt)
 	if d.ClosedAt == 0 {
 		d.ClosedAt = parseMillis(g.ClosedAt)
-	}
-	switch g.Mergeable {
-	case "MERGEABLE":
-		d.Mergeable = githost.MergeableYes
-	case "CONFLICTING":
-		d.Mergeable = githost.MergeableConflict
 	}
 	for _, l := range g.Labels.Nodes {
 		d.Labels = append(d.Labels, githost.Label{Name: l.Name, Color: l.Color})

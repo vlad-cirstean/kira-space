@@ -6,6 +6,7 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // StepUsers maps a library step id to the ids of the workflows whose files reference it. It reads the
@@ -16,7 +17,7 @@ func (r *Reader) StepUsers() map[string][]string {
 	for _, e := range r.folder().List() {
 		id := strings.TrimSuffix(e.File, ".yaml")
 		ids := map[string]bool{}
-		if src, err := configfs.ReadCapped(e.Path, configfs.MaxFileBytes); err == nil {
+		if src, _, err := fileservice.Host().Read(e.Path, configfs.MaxFileBytes); err == nil {
 			for _, s := range referencedIDs(src) {
 				ids[s] = true
 			}

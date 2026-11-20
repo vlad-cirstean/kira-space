@@ -9,7 +9,7 @@ import (
 
 // os.Stat never blocks regardless of what the path names, but os.Open does —
 // opening a FIFO for reading blocks until some other process opens its write end. A FIFO reached
-// through a symlink git tracked (never an escape: pathsafe.ValidateRelPath's requireUnder already
+// through a symlink git tracked (never an escape: Contain already
 // rejects anything outside root) passed the old code's stat (size 0, not a dir) straight into a
 // blocking os.ReadFile, pinning the bound call forever. This proves the actual fix — checking
 // Mode().IsRegular() on the stat, before Open is ever attempted — rather than merely asserting it
@@ -22,10 +22,14 @@ func TestReadFile_FIFO_ReturnsMissingWithoutHanging(t *testing.T) {
 		t.Fatalf("Mkfifo: %v", err)
 	}
 
+	svc, err := Files(dir)
+	if err != nil {
+		t.Fatalf("Files: %v", err)
+	}
 	done := make(chan FileContent, 1)
 	errCh := make(chan error, 1)
 	go func() {
-		content, err := ReadFile(fifoPath, "pipe")
+		content, err := ReadFile(svc, "pipe")
 		if err != nil {
 			errCh <- err
 			return

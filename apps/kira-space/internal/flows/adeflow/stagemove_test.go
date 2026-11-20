@@ -128,7 +128,7 @@ func TestStageMoveMixedSessions(t *testing.T) {
 	// Call 1 is run one, 2 the stage session that drafts, 3 a branch session that ends early, 4 one that keeps running.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("s1")},
+		{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: flag("s1")},
 		{WaitFile: flag("gone")},
 		{WaitFile: flag("live")},
 	}})

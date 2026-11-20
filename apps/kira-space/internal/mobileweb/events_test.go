@@ -42,6 +42,25 @@ func TestHub_AllowlistAndFanOut(t *testing.T) {
 	}
 }
 
+func TestHub_ScriptRunPushIsProjected(t *testing.T) {
+	t.Parallel()
+	h := NewHub()
+	a, _ := h.Subscribe("a")
+	h.Publish(appevent.ChannelScriptRunsChanged, map[string]any{
+		"id": "r1", "state": "failed", "cwd": "/home/me/repo", "command": "make", "terminalId": "t1",
+		"outcome": map[string]any{"status": "failed", "reason": "exit 2", "outputTail": "secret", "exitCode": 2},
+	})
+	got := recv(t, a)
+	for _, leak := range []string{"cwd", "command", "terminalId", "outputTail", "secret"} {
+		if strings.Contains(got, leak) {
+			t.Errorf("push leaks %q: %s", leak, got)
+		}
+	}
+	if !strings.Contains(got, `"reason":"exit 2"`) {
+		t.Errorf("push dropped the outcome reason: %s", got)
+	}
+}
+
 func TestHub_SlowSubscriberIsDroppedWithoutBlocking(t *testing.T) {
 	t.Parallel()
 	h := NewHub()
