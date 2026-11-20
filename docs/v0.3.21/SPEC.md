@@ -11,6 +11,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P703 | Edit prompts only when an edit touches another agent's notes | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Planned |
 | P705 | Mobile app: show the status info it is missing | Planned |
+| P706 | Pull request icon: one glyph for every PR status | Planned |
 
 ## P699
 
@@ -99,6 +100,22 @@ loading and offline states. Follow the frontend rules (shadcn-vue, Tailwind, Pin
 keep the mobile bundle small. Tests split at the IPC boundary (flow test plus `mobile-ios` UI spec, same
 scenario). Independent of P699 to P704 except P701 (restore state may also belong on mobile): the
 planner states shared files.
+
+## P706
+
+Keep the generic pull-request icon (no GitHub brand mark), but make that one icon reflect all the PR
+status and info the user expects. Today the PR glyph (`PR_GLYPH` in `ade/v2/plan/glyphs.ts`) shows only
+the change-request state (open, draft, merged, closed), checks sit in a separate icon
+(`CHECKS_GLYPH`, `AdeBranchPr.vue`), and the host sidebar (`HostViewSidebar.vue`) keeps a third table
+(`CHECK_ICON`, `REVIEWER_ICON`). Deliverable: one shared glyph model and one component used by the branch
+row, the host sidebar and mobile, where the icon's shape carries the PR state and a badge or tone carries
+the checks state (pending, passed, failed, expected), with review state (approved, changes requested),
+merge conflicts and auto-merge when the host reports them, plus one tooltip that spells out every part. The
+plan lists every status the host data already carries (`checksState`, reviewers, mergeable, draft) and
+ranks which ones the icon shows. Pending checks must be visible (animated, respecting reduced motion);
+passed checks stop using a second icon. Icons come from Codicons (already shipped); no new pack. Remove the
+duplicated tables, update specs and visual baselines (re-recorded at chapter end), copy keys and the
+ARCHITECTURE entry. Frontend only unless the host data lacks a status the plan needs.
 
 ## Streams
 
