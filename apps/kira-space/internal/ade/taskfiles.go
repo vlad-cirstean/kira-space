@@ -60,6 +60,14 @@ func (b *TaskBoard) taskSession(ctx context.Context, branchID string) (*codework
 	return b.taskFiles.Open(sb.ID, worktree, entry.Repo.Runner(), entry.Repo.GitPath()), nil
 }
 
+// badPath maps a path escape to ErrBadPath; resolve I/O errors (worktree gone on disk) stay internal.
+func badPath(err error) error {
+	if errors.Is(err, pathsafe.ErrPathEscapesRoot) {
+		return fmt.Errorf("%w: %v", ErrBadPath, err)
+	}
+	return err
+}
+
 // TaskFiles lists the tracked and untracked files of the branch's worktree.
 func (b *TaskBoard) TaskFiles(ctx context.Context, branchID string) (codeworkspace.FileListing, error) {
 	sess, err := b.taskSession(ctx, branchID)
@@ -77,7 +85,7 @@ func (b *TaskBoard) TaskFileRead(ctx context.Context, branchID, rel string, ifSt
 	}
 	abs, err := pathsafe.ValidateRelPath(sess.Root, rel)
 	if err != nil {
-		return codeworkspace.FileContent{}, fmt.Errorf("%w: %v", ErrBadPath, err)
+		return codeworkspace.FileContent{}, badPath(err)
 	}
 	return codeworkspace.ReadFileIf(abs, rel, ifStat)
 }
@@ -106,7 +114,7 @@ func (b *TaskBoard) TaskFileTarget(ctx context.Context, branchID, rel string) (r
 	}
 	abs, err = pathsafe.ValidateRelPath(sess.Root, rel)
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %v", ErrBadPath, err)
+		return "", "", badPath(err)
 	}
 	if _, err := os.Stat(abs); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {

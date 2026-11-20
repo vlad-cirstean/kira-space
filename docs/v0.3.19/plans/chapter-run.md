@@ -21,6 +21,6 @@ Not run:
 
 - 12 unit tests: P693 hooks read bare `__KIRA_DEBUG_HOOKS__` at module scope (`createTerminalsStore.ts`, `terminalRenderer.ts`); Bun has no vite `define`, so `ReferenceError`. Fix: define it `false` in `packages/workbench/src/testing/unit/window.ts` preload. Commit `5276bbdcd`.
 - `flowharness` `TestHarnessBootsWithDefaultSettings` (61 services) and `llmpromptsflow` `TestList` (233 prompts): P690 memory removal dropped 3 services and 64 prompts. Fix: counts 58 and 169. Commit `cb37c7747`.
-- knip: `.github/workflows/pr.yml` line 148 step name held an unquoted `: `, invalid YAML (from `36c8e2df1`); would break PR CI. Fix: quote the name. Commit is the one after `cb37c7747`.
+- knip: `.github/workflows/pr.yml` line 148 step name held an unquoted `: `, invalid YAML (from `36c8e2df1`); would break PR CI. Fix: quote the name. Commit `1126c7665`.
 
 Reran only the failing specs and packages; full `test:unit` rerun after the preload fix (shared preload): 2403 pass.
