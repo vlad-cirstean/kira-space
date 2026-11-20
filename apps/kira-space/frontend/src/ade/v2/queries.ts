@@ -107,6 +107,8 @@ export const diskPrefix = ['adetask', 'details-disk'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
   ['adetask', 'reviewTarget', windowKey] as const;
+export const filesWindowTargetKey = (windowKey: string) =>
+  ['adetask', 'filesWindowTarget', windowKey] as const;
 
 /**
  * Branches that can join the plan, of one repo or ('' ) every repo; refetched on every open so a
@@ -459,6 +461,14 @@ export function useOpenReviewWindow() {
   return useMutation({
     mutationKey: openReviewWindowKey,
     mutationFn: (args: BranchArgs) => control.adeTaskOpenReviewWindow(args),
+  });
+}
+
+/** Opens a task's Files window; Go focuses an already open one. */
+export function useOpenFilesWindow() {
+  return useMutation({
+    mutationKey: ['adetask', 'openFilesWindow'],
+    mutationFn: (args: TaskArgs) => control.adeTaskOpenFilesWindow(args),
   });
 }
 

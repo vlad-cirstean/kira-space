@@ -9017,6 +9017,11 @@
         },
         "viewer": {
           "empty": "Select a file to view it"
+        },
+        "window": {
+          "gone": {
+            "empty": "This task was archived"
+          }
         }
       },
       "flow": {
@@ -9581,6 +9586,9 @@
         },
         "empty": {
           "emptyHint": "Select a task to see its details."
+        },
+        "files": {
+          "tooltip": "Open files in a window"
         },
         "resize": {
           "label": "Resize panel"

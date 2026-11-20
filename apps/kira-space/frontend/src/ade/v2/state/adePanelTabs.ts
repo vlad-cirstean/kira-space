@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export type TaskPanelTab = 'main' | 'details' | 'sessions' | 'files';
+export type TaskPanelTab = 'main' | 'details' | 'sessions';
 
 // Last view of each task and branch panel: the tab and the session picked in a task's Sessions tab.
 // In memory only; entries of tasks and branches that left the board are pruned.

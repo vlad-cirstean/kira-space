@@ -10,32 +10,30 @@ import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
 import { t } from '@theme/i18n';
 import { useElementSize } from '@vueuse/core';
+import { usePersistedState } from '@workbench/behaviour/persisted';
 import { errorText } from '@workbench/bridge/codedError';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import { computed, onUnmounted, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
 import { requestReveal } from '../../../views/repo/reveal';
-import { launchTargets } from '../board/taskLaunch';
-import type { CardModel } from '../plan/usePlanModel';
 import AdeFileSearch from './AdeFileSearch.vue';
 import AdeFileTree from './AdeFileTree.vue';
 import AdeFileViewer from './AdeFileViewer.vue';
 import { useAdeFileSearchStore } from './state/fileSearch';
 import { type FilesMode, useAdeFilesUiStore } from './state/filesUi';
 import { taskFileTabId, useTaskFileLaunch, useTaskFilesListing } from './useTaskFiles';
+import { useTaskFileTargets } from './useTaskFileTargets';
 
 // A task's worktree files: tree or content search on the left, a read-only viewer on the right.
-// One branch at a time; the worktree is the agent's, so nothing here edits.
-const props = defineProps<{ card: CardModel }>();
+// One branch at a time; the worktree is the agent's, so nothing here edits. Fills the task Files window.
+const props = defineProps<{ taskId: string }>();
 const filesUi = useAdeFilesUiStore();
 const searchStore = useAdeFileSearchStore();
 const queryClient = useQueryClient();
 
-const targets = computed(() =>
-  launchTargets(props.card.rows, []).filter((target) => target.worktree !== ''),
-);
-const view = computed(() => filesUi.viewOf(props.card.task.id));
+const { targets } = useTaskFileTargets(() => props.taskId);
+const view = computed(() => filesUi.view);
 const branchId = computed(
   () =>
     targets.value.find((x) => x.branchId === view.value.branchId)?.branchId ??
@@ -49,11 +47,11 @@ const branchOptions = computed(() =>
 
 const mode = computed({
   get: () => view.value.mode,
-  set: (v: FilesMode) => filesUi.patch(props.card.task.id, { mode: v }),
+  set: (v: FilesMode) => filesUi.patch({ mode: v }),
 });
 const filter = computed({
   get: () => view.value.filter,
-  set: (v: string) => filesUi.patch(props.card.task.id, { filter: v }),
+  set: (v: string) => filesUi.patch({ filter: v }),
 });
 const modeItems = computed(() => [
   { value: 'files', label: t('common.module.files.label'), testid: 'ade-files-mode-files' },
@@ -83,8 +81,8 @@ function onSearchOpen(
   requestReveal(taskFileTabId(branchId.value, path), reveal);
 }
 
-// The worktree session on the engine side lives while a tab shows it; leaving the branch or the
-// tab releases it, with the branch's search.
+// The worktree session on the engine side lives while the window shows it; leaving the branch or
+// closing the window releases it, with the branch's search. A native close is released in Go too.
 function release(id: string): void {
   if (id === '') return;
   searchStore.cancelSearch(id);
@@ -96,16 +94,17 @@ watch(branchId, (_next, prev) => {
 });
 onUnmounted(() => release(branchId.value));
 
-const DEFAULT_PANE = 220;
 const MIN_PANE = 140;
 const MIN_VIEWER = 160;
 const body = useTemplateRef<HTMLElement>('body');
 const { width: bodyWidth } = useElementSize(body);
 const maxPane = computed(() => Math.max(MIN_PANE, bodyWidth.value - MIN_VIEWER));
+// Per device, like the review window's panes.
+const storedPane = usePersistedState('kira.ade.files.paneWidth', 220);
 const pane = useLiveSize(
-  () => Math.max(MIN_PANE, Math.min(maxPane.value, filesUi.paneWidth || DEFAULT_PANE)),
+  () => Math.max(MIN_PANE, Math.min(maxPane.value, storedPane.value)),
   (w) => {
-    filesUi.paneWidth = Math.round(w);
+    storedPane.value = Math.round(w);
   },
 );
 </script>
@@ -118,7 +117,7 @@ const pane = useLiveSize(
     :title="t('space.ade.files.noWorktree.empty')"
     data-testid="ade-files-empty"
   />
-  <div v-else class="flex h-full min-h-0 flex-col" data-testid="ade-files-tab">
+  <div v-else class="flex h-full min-h-0 flex-col" data-testid="ade-files-body">
     <PanelBar class="flex-row flex-wrap items-center">
       <NativeSelect
         v-if="targets.length > 1"
@@ -126,7 +125,7 @@ const pane = useLiveSize(
         variant="bordered"
         :model-value="branchId"
         data-testid="ade-files-branch"
-        @update:model-value="(v) => filesUi.patch(card.task.id, { branchId: String(v) })"
+        @update:model-value="(v) => filesUi.patch({ branchId: String(v) })"
       >
         <option v-for="o in branchOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </NativeSelect>
