@@ -191,6 +191,11 @@ func (b *Broker) Output(id string, data []byte) {
 	e := b.getOrCreate(id)
 	e.mu.Lock()
 	if e.ring == nil {
+		// Re-check under e.mu: SetRecording(false) sweeps under it, so no ring outlives the sweep.
+		if !b.recording.Load() {
+			e.mu.Unlock()
+			return
+		}
 		e.ring = newRing(ringCap)
 	}
 	e.ring.Append(data)
@@ -471,6 +476,9 @@ func (b *Broker) toDesktop(e *entry, code int, reason string) bool {
 	stopTimers(e)
 	e.gen++
 	e.state = stateDesktop
+	if !b.recording.Load() {
+		e.ring = nil
+	}
 	e.deviceID, e.label, e.returnsAt = "", "", time.Time{}
 	if e.desktopCols > 0 && e.desktopRows > 0 && (e.desktopCols != e.phoneCols || e.desktopRows != e.phoneRows) {
 		b.resize(e, e.desktopCols, e.desktopRows)

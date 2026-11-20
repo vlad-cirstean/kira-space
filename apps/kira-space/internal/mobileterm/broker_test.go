@@ -251,3 +251,20 @@ func TestBroker_ReleasedConnReadsAfterRecordingOff(t *testing.T) {
 		t.Fatal("end must be 0")
 	}
 }
+
+// Releasing a held terminal after recording went off must drop its ring (disable order).
+func TestBroker_ReleaseAfterRecordingOffDropsRing(t *testing.T) {
+	b, _, _ := newTestBroker(t)
+	c, err := b.Attach("s1", phoneA, 50, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Output("t-s1", []byte("x"))
+	b.SetRecording(false)
+	b.ReleaseAll("off")
+	b.Output("t-s1", []byte("y"))
+	if e := b.get("t-s1"); e.ring != nil {
+		t.Fatal("ring kept after release with recording off")
+	}
+	_ = c
+}
