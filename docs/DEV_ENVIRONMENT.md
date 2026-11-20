@@ -990,7 +990,7 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild
   minified afterwards (`build:test:*`). Helpers: `memProbe.ts`, `heapSnapshot.ts` in `testing/ui/`.
 - Agents module RAM audit (P693): probe extensions E1 to E5. E1 `ade-idle` world, E2 `PSS` lines at every
-  `ade20`/`ade200` checkpoint, E3 `ade-agents` checkpoints `log3m`, `files1`, `stopped4`, `left`, `back`
+  `ade20`/`ade200` checkpoint, E3 `ade-agents` checkpoints `log3m`, `stopped4`, `left`, `back`
   (`KIRA_RAM_WORLD=ade-agents,ade-idle,ade`, either `heap` or `heap-webkit` project), E4 `queryBytes`,
   `storeBytes` and the `__kiraTerminalStats` hook in each `RAM` record, E5 Go probe
   `KIRA_RAM_PROBE=1 KIRA_RAM_OUT=<dir> go test ./apps/kira-space/internal/flows/adeflow -run '^TestRAMProbeAgents$' -count=1 -v -timeout 15m`

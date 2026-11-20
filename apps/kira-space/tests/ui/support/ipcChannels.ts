@@ -322,6 +322,8 @@ export const IPC = {
   adeTaskLaunchReviewAgent: 'kira:adetask:launchReviewAgent',
   adeTaskOpenReviewWindow: 'kira:adetask:openReviewWindow',
   adeTaskReviewWindowTarget: 'kira:adetask:reviewWindowTarget',
+  adeTaskOpenFilesWindow: 'kira:adetask:openFilesWindow',
+  adeTaskFilesWindowTarget: 'kira:adetask:filesWindowTarget',
   adeTaskReviewWorking: 'kira:adetask:reviewWorking',
   adeTaskReviewWorkingDiff: 'kira:adetask:reviewWorkingDiff',
   adeTaskReviewWorkingFile: 'kira:adetask:reviewWorkingFile',

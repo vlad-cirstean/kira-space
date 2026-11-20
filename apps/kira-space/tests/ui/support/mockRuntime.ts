@@ -298,6 +298,8 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskFocusSession: 'AdeTaskService.FocusSession',
   adeTaskOpenReviewWindow: 'AdeTaskService.OpenReviewWindow',
   adeTaskReviewWindowTarget: 'AdeTaskService.ReviewWindowTarget',
+  adeTaskOpenFilesWindow: 'AdeTaskService.OpenFilesWindow',
+  adeTaskFilesWindowTarget: 'AdeTaskService.FilesWindowTarget',
   adeTaskReviewWorking: 'AdeTaskService.ReviewWorking',
   adeTaskReviewWorkingDiff: 'AdeTaskService.ReviewWorkingDiff',
   adeTaskReviewWorkingFile: 'AdeTaskService.ReviewWorkingFile',
@@ -674,6 +676,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.captureWindowItem]: 'null',
   [IPC.captureStatus]: JSON.stringify({ state: 'active', accelerator: 'CmdOrCtrl+Shift+K' }),
   [IPC.adeTaskReviewWindowTarget]: 'null',
+  [IPC.adeTaskFilesWindowTarget]: 'null',
   [IPC.adeTaskReviewWorking]: JSON.stringify({
     worktree: '',
     head: '',

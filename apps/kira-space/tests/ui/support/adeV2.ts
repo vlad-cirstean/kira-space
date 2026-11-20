@@ -516,7 +516,7 @@ export async function saved<T>(
   return calls(control, IPC.adeTaskSaveWorkflow)[n - 1]?.args as T;
 }
 
-/** The task whose single branch has a worktree: the Files tab shows no branch picker. */
+/** The task whose single branch has a worktree: the Files window shows no branch picker. */
 export const FILES_TASK = 'T_cart';
 export const FILES_BRANCH = 'b_cart';
 
@@ -524,7 +524,7 @@ interface FileSearchFx {
   [path: string]: number[];
 }
 
-/** Mocks of the task Files tab built from the ade-task-files contract (flows/adeflow
+/** Mocks of the task Files window built from the ade-task-files contract (flows/adeflow
  *  TestTaskFiles): listing, the README read, search start, reveal, open and launchers. */
 export function taskFilesControl(extra: readonly ControlSnapshot[] = []): ControlSnapshot[] {
   const defaults: ControlSnapshot[] = [
@@ -576,13 +576,28 @@ export function taskSearchEvent(searchId = 'search-1') {
   };
 }
 
-/** Selects task `id` and opens its Files tab. */
-export async function openTaskFiles(page: Page, id = FILES_TASK): Promise<void> {
-  await openTask(page, id);
-  await page.locator('[data-testid="ade-panel-tab-files"]').click();
+/**
+ * Boots a task Files window for task `taskId`: the window's boot query answers the contract's
+ * `window` target (flows/adeflow TestTaskFilesWindow) with that task. `control` replaces defaults.
+ */
+export async function openFilesWindow(
+  relaunch: (options?: RelaunchOptions) => Promise<KiraApp>,
+  control: readonly ControlSnapshot[] = taskFilesControl(),
+  taskId = FILES_TASK,
+): Promise<KiraApp> {
+  const target = { ...contract<{ taskId: string }>('ade-task-files', 'window'), taskId };
+  const app = await relaunch({
+    control: adeV2Control([
+      ...control,
+      { channel: IPC.adeTaskFilesWindowTarget, response: target },
+    ]),
+    clockTime: FIXED_NOW,
+  });
+  await app.window.locator('[data-testid="ade-files-window"]').waitFor();
+  return app;
 }
 
-/** Clicks the tree row of `path` in the open Files tab and waits for the viewer to show it. */
+/** Clicks the tree row of `path` in the open Files window and waits for the viewer to show it. */
 export async function openTaskFile(page: Page, path: string): Promise<void> {
   await page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`).click();
   await expect(page.locator(`[data-testid="ade-files-viewer"][data-path="${path}"]`)).toBeVisible();

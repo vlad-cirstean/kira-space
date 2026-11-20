@@ -2,10 +2,8 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import {
   FILES_BRANCH,
-  openPlan,
-  openTask,
+  openFilesWindow,
   openTaskFile,
-  openTaskFiles,
   taskFilesControl,
   taskSearchEvent,
 } from './support/adeV2';
@@ -14,7 +12,7 @@ import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
-// The Files tab of a task panel. Same scenario as flows/adeflow TestTaskFiles; both halves read
+// The task Files window. Same scenario as flows/adeflow TestTaskFiles; both halves read
 // the ade-task-files contract: this one asserts the UI over the mocked IPC, the Go test the
 // bound calls themselves.
 
@@ -30,8 +28,7 @@ interface Listing {
 }
 
 test('contract: the tree lists the worktree files, root directories open', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   const listing = contract<Listing>('ade-task-files', 'list');
   await expect(page.locator(t('ade-files-row')).first()).toBeVisible();
   const paths = await rowPaths(page);
@@ -43,16 +40,14 @@ test('contract: the tree lists the worktree files, root directories open', async
 });
 
 test('the name filter narrows the tree', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page } = await openFilesWindow(relaunch, taskFilesControl());
   await expect(page.locator(t('ade-files-row')).first()).toBeVisible();
   await page.locator(t('ade-files-filter')).fill('REA');
   await expect.poll(() => rowPaths(page)).toEqual(['README.md']);
 });
 
 test('contract: a file opens in the read-only viewer', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   await openTaskFile(page, 'README.md');
   const read = contract<{ text: string }>('ade-task-files', 'read');
   await expect(editorText(page)).toContainText('the needle is here');
@@ -68,8 +63,7 @@ test('contract: a file opens in the read-only viewer', async ({ relaunch }) => {
 });
 
 test('contract: search lists matches and a match opens its file', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   await page.locator(t('ade-files-mode-search')).click();
   const input = page.locator(t('ade-files-search-input'));
   await input.fill('needle');
@@ -93,13 +87,12 @@ test('contract: search lists matches and a match opens its file', async ({ relau
 
 // The kira:code:search subscription and the merge-by-path insert: Go tests cannot reach either.
 test('search results stream out of order and merge by path', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(
+  const { window: page, control } = await openFilesWindow(
     relaunch,
     taskFilesControl([
       { channel: IPC.adeTaskFilesSearch, response: { searchId: 'search-1' }, hold: true },
     ]),
   );
-  await openTaskFiles(page);
   await page.locator(t('ade-files-mode-search')).click();
   const input = page.locator(t('ade-files-search-input'));
   await input.fill('const');
@@ -147,13 +140,12 @@ test('search results stream out of order and merge by path', async ({ relaunch }
 });
 
 test('file rows carry per-language icons, directories keep their codicon', async ({ relaunch }) => {
-  const { window: page } = await openPlan(
+  const { window: page } = await openFilesWindow(
     relaunch,
     taskFilesControl([
       { channel: IPC.adeTaskFiles, response: { paths: ['main.go', 'app.ts', 'src/util.ts'] } },
     ]),
   );
-  await openTaskFiles(page);
   const row = (path: string) => page.locator(`${t('ade-files-row')}[data-path="${path}"]`);
   const goIcon = row('main.go').locator('.node-icon');
   const tsIcon = row('app.ts').locator('.node-icon');
@@ -175,7 +167,7 @@ test('file rows carry per-language icons, directories keep their codicon', async
 
 test('contract: a refused read shows the message in the viewer', async ({ relaunch }) => {
   const refusal = contract<{ code: string; message: string }>('ade-task-files', 'refusal');
-  const { window: page } = await openPlan(
+  const { window: page } = await openFilesWindow(
     relaunch,
     taskFilesControl([
       {
@@ -190,7 +182,6 @@ test('contract: a refused read shows the message in the viewer', async ({ relaun
       },
     ]),
   );
-  await openTaskFiles(page);
   await page.locator(`${t('ade-files-row')}[data-path="escape"]`).click();
   await expect(page.locator(t('ade-files-viewer-error'))).toContainText(refusal.message);
 });
@@ -198,8 +189,7 @@ test('contract: a refused read shows the message in the viewer', async ({ relaun
 test('Reveal acts on the open file, else the worktree root; the label follows the launcher', async ({
   relaunch,
 }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   const reveal = page.locator(t('ade-files-reveal'));
   await expect(reveal).toHaveAttribute('aria-label', /Reveal in file manager/);
   await reveal.click();
@@ -218,8 +208,7 @@ test('Reveal acts on the open file, else the worktree root; the label follows th
 });
 
 test('Open in VS Code sends the open file', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTaskFiles(page);
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   await openTaskFile(page, 'README.md');
   await page.locator(t('ade-files-open-editor')).click();
   await expect.poll(() => calls(control, IPC.adeTaskFileOpenInEditor)).toHaveLength(1);
@@ -232,41 +221,35 @@ test('Open in VS Code sends the open file', async ({ relaunch }) => {
 
 test('contract: a missing editor shows its message', async ({ relaunch }) => {
   const missing = contract<{ code: string; message: string }>('ade-task-files', 'editorMissing');
-  const { window: page } = await openPlan(
+  const { window: page } = await openFilesWindow(
     relaunch,
     taskFilesControl([{ channel: IPC.adeTaskFileOpenInEditor, error: missing }]),
   );
-  await openTaskFiles(page);
   await page.locator(t('ade-files-open-editor')).click();
   await expect(page.locator(t('ade-files-launch-error'))).toContainText(missing.message);
 });
 
 test('a build with no launchers shows neither action', async ({ relaunch }) => {
-  const { window: page } = await openPlan(
+  const { window: page } = await openFilesWindow(
     relaunch,
     taskFilesControl([
       { channel: IPC.adeTaskFilesLaunchers, response: { reveal: 'none', editor: false } },
     ]),
   );
-  await openTaskFiles(page);
   await expect(page.locator(t('ade-files-refresh'))).toBeVisible();
   await expect(page.locator(t('ade-files-reveal'))).toHaveCount(0);
   await expect(page.locator(t('ade-files-open-editor'))).toHaveCount(0);
 });
 
-test('a task without a worktree has an empty Files tab', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, taskFilesControl());
-  await openTask(page, 'T_alerts');
-  await page.locator(t('ade-panel-tab-files')).click();
+test('a task without a worktree has an empty Files window', async ({ relaunch }) => {
+  const { window: page } = await openFilesWindow(relaunch, taskFilesControl(), 'T_alerts');
   await expect(page.locator(t('ade-files-empty'))).toBeVisible();
 });
 
 test('a task with several worktrees picks the branch, and leaving one closes its session', async ({
   relaunch,
 }) => {
-  const { window: page, control } = await openPlan(relaunch, taskFilesControl());
-  await openTask(page, 'T_bill');
-  await page.locator(t('ade-panel-tab-files')).click();
+  const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl(), 'T_bill');
   const branch = page.locator(t('ade-files-branch'));
   await expect(branch.locator('option')).toHaveCount(3);
   await expect.poll(() => calls(control, IPC.adeTaskFiles)).toHaveLength(1);

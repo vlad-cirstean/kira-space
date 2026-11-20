@@ -32,7 +32,7 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
-import { gotoAdeRepos, openPlan, openTaskFiles, taskFilesControl } from './support/adeV2';
+import { gotoAdeRepos, openFilesWindow, taskFilesControl } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
@@ -176,8 +176,7 @@ const TASK_FILES = taskFilesControl([
 test('task file tree — arrows, Home/End, Left/Right parent and child, Shift+F10 menu and focus return', async ({
   relaunch,
 }) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
+  const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
   const row = (path: string) => page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`);
   await expect(row('a.ts')).toBeVisible();
 
@@ -225,8 +224,7 @@ test('task file tree — arrows, Home/End, Left/Right parent and child, Shift+F1
 });
 
 test('task file tree — Enter on a file opens it in the viewer', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
+  const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
   const a = page.locator('[data-testid="ade-files-row"][data-path="a.ts"]');
   await a.click();
   await a.press('Enter');
@@ -280,8 +278,7 @@ test('repos page — arrows move the selected repository', async ({ relaunch }) 
 test('task file search results — arrows, Enter on a file header and Home/End', async ({
   relaunch,
 }) => {
-  const { window: page } = await openPlan(relaunch, TASK_FILES);
-  await openTaskFiles(page);
+  const { window: page } = await openFilesWindow(relaunch, TASK_FILES);
   await page.locator('[data-testid="ade-files-mode-search"]').click();
   const query = page.locator('[data-testid="ade-files-search-input"]');
   await query.fill('const');

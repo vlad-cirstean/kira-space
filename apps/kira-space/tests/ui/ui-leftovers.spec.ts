@@ -32,9 +32,9 @@ import { openRedisBrowse, REDIS_DB0 } from './studio/support/redisFixture';
 import { expandRow, findRow, openBrowseLeaf } from './studio/support/tree';
 import {
   FIXED_NOW,
+  openFilesWindow,
   openPlan,
   openTaskFile,
-  openTaskFiles,
   openWorkflows,
   taskFilesControl,
 } from './support/adeV2';
@@ -191,7 +191,7 @@ test('F2 on a repo row starts the inline rename', async ({ relaunch }) => {
 });
 
 test('a markdown heading link scrolls its target to the pane top', async ({ relaunch }) => {
-  const { window: page } = await openPlan(
+  const { window: page } = await openFilesWindow(
     relaunch,
     taskFilesControl([
       {
@@ -207,7 +207,6 @@ test('a markdown heading link scrolls its target to the pane top', async ({ rela
       },
     ]),
   );
-  await openTaskFiles(page);
   await openTaskFile(page, 'README.md');
   await page.locator(t('ade-files-view-reading')).click();
   const pane = page.locator(t('ade-files-markdown'));

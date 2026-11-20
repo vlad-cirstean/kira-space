@@ -40,7 +40,6 @@ import {
   emitOpenSession,
   emitSessions,
   openTask,
-  openTaskFile,
   taskFilesControl,
 } from '../ui/support/adeV2';
 import { contract } from '../ui/support/contract';
@@ -1146,17 +1145,6 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
         },
         snapshot: true,
         after: pss('log3m'),
-      },
-      {
-        // P693 E3 (P691): task Files tab and one file; Monaco shows here (S7).
-        name: 'files1',
-        run: async () => {
-          await openPanel(page, 'T_cart', 'files');
-          await openTaskFile(page, 'README.md');
-          await page.waitForTimeout(1500);
-        },
-        snapshot: true,
-        after: pss('files1'),
       },
       {
         // P693 E3: the four running sessions stop; adeTerminals must reap their xterms (S4). The exit
