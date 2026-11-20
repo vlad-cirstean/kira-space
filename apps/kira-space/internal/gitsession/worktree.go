@@ -373,7 +373,7 @@ func WorktreeRemoveBlockedMessage(pf gitpreflight.WorktreeRemovePreflight) strin
 // prepareWorktreeRemove is worktreeRemove's own opSpec.Prepare: re-runs the FULL
 // preflight classification immediately before the write (never trusting the client's own possibly
 // stale copy), and — for the dirty route — re-derives the confirmation token FRESH from that same
-// re-check and compares it byte for byte against what the client typed; force is decided
+// re-check and compares it byte for byte against what the client sent; force is decided
 // server-side from the fresh verdict, never taken as the client's own claim (fail-safe over
 // fail-open, the stated principle for this destructive path).
 func prepareWorktreeRemove(ctx context.Context, e *RepoEntry, _ ConnID, _ string, op OpRequest) (prepared, error) {

@@ -573,9 +573,10 @@ export interface WorktreeRemovePreflight {
   readonly path: string;
   readonly blockers: readonly WorktreeRemoveBlocker[];
   readonly requiresTypedConfirmation: boolean;
-  /** The worktree's own basename — set only when `requiresTypedConfirmation` is true. Echoed back
-   *  as `op.run`'s own `confirmToken` field; the server always re-derives and re-checks this fresh
-   *  against a freshly re-read status, never trusting a client-echoed value. */
+  /** The worktree's own basename — set only when `requiresTypedConfirmation` is true (the name is
+   *  historic: nothing is typed). The discard button echoes it as `op.run`'s own `confirmToken`
+   *  field; the server always re-derives and re-checks this fresh against a freshly re-read status,
+   *  never trusting a client-echoed value. */
   readonly confirmToken: string | undefined;
   readonly routes: readonly 'force'[];
   readonly verdict: 'clean' | 'dirty' | 'blocked';

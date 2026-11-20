@@ -1150,8 +1150,8 @@ export class OpsState {
     );
   }
 
-  /** `confirmToken` is present only for the dirty route — WorktreeDialog's own Remove
-   *  confirmation reads it straight off a fresh `preflight.worktreeRemove` call, never typed blind.
+  /** `confirmToken` is present only for the dirty route — the worktree row's
+   *  discard button reads it straight off a fresh `preflight.worktreeRemove` call, never invented.
    *  `force` is derived here from whether a token was supplied at all: the server re-derives it
    *  fresh from its own preflight regardless (the fail-safe-over-fail-open principle), so a
    *  mismatched or stale claim here can only ever be REFUSED, never accepted. */

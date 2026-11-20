@@ -152,9 +152,9 @@ type WorktreeRemovePreflight struct {
 	Path                      string                  `json:"path"`
 	Blockers                  []WorktreeRemoveBlocker `json:"blockers"`
 	RequiresTypedConfirmation bool                    `json:"requiresTypedConfirmation"`
-	// ConfirmToken: the worktree's own basename (F8's own typed-confirmation text) — set only when
-	// RequiresTypedConfirmation is true. The client echoes it as the "type this to confirm" label;
-	// the server re-derives and re-checks it fresh (never trusts a value the client sends back).
+	// ConfirmToken: the worktree's own basename, set only when RequiresTypedConfirmation is true. The
+	// client echoes it from its discard button (the name is historic: nothing is typed any more); the
+	// server re-derives and re-checks it fresh (never trusts a value the client sends back).
 	ConfirmToken string   `json:"confirmToken,omitempty"`
 	Routes       []string `json:"routes"`  // "force" — offered iff dirty and otherwise unblocked.
 	Verdict      string   `json:"verdict"` // "clean" | "dirty" | "blocked"
@@ -181,8 +181,8 @@ type ClassifyWorktreeRemoveInput struct {
 // unlocks any of the five — WorktreeRemoveArgs' own force flag is a single `--force`, which git
 // itself only honours for the dirty case, the hint text ("use 'remove -f -f'...")
 // confirms a lock needs a second, undelivered flag this app never sends). Only once ALL FIVE are
-// clear does Dirty get to turn the verdict into "dirty" with a force route and a typed
-// confirmation — fail-safe over fail-open.
+// clear does Dirty get to turn the verdict into "dirty" with a force route and a confirmation
+// token — fail-safe over fail-open.
 func ClassifyWorktreeRemove(in ClassifyWorktreeRemoveInput) WorktreeRemovePreflight {
 	blockers := []WorktreeRemoveBlocker{}
 	if !in.IsWorktree {

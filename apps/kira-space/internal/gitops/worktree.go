@@ -30,7 +30,7 @@ func WorktreeAddDetachArgs(path, commitish string) []string {
 
 // WorktreeRemoveArgs builds `git worktree remove [--force] <path>` (`remove [-f]
 // <worktree>` is the entire flag surface — no `--` separator exists for this subcommand). force is
-// the dirty-route flag, gated host-side by a freshly re-checked typed confirmation
+// the dirty-route flag, gated host-side by a freshly re-checked confirmation token
 // (gitsession's own prepareWorktreeRemove) before this argv is ever built — never offered for the
 // three unconditional blockers (mainWorktree/currentWorktree/openInAnotherWindow/locked), which
 // have no force route at all.

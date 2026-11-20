@@ -5036,9 +5036,6 @@
       "branchName": {
         "label": "Branch name"
       },
-      "confirmToken": {
-        "label": "Confirmation token"
-      },
       "currentBranch": {
         "tooltip": "Current branch"
       },
@@ -6852,6 +6849,12 @@
       "current": {
         "tooltip": "This window"
       },
+      "dirty": {
+        "error": "{path} has uncommitted changes."
+      },
+      "discardRemove": {
+        "label": "Discard changes and remove"
+      },
       "list": {
         "empty": "No worktrees yet"
       },
@@ -6860,10 +6863,6 @@
       },
       "remove": {
         "tooltip": "Remove worktree"
-      },
-      "removeConfirm": {
-        "body": "This worktree has uncommitted changes that will be permanently lost. Type {token} to confirm.",
-        "title": "Remove {path}?"
       },
       "switch": {
         "tooltip": "Switch to this worktree"
