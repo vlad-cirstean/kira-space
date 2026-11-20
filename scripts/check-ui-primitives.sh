@@ -37,7 +37,7 @@
 # Guards U191-U203: docs/HISTORY.md (v0.3.18).
 # Guard U204: docs/HISTORY.md (v0.3.18).
 # Guards U205-U207: docs/HISTORY.md (v0.3.18).
-# Guards U210-U211: docs/v0.3.19/plans/P692.md.
+# Guards U210-U211: docs/HISTORY.md (v0.3.19).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
