@@ -185,6 +185,12 @@ test('contract: Restore sends the chosen items, opens the script tab and the age
 
   await expect(dialog(page)).toHaveCount(0);
   expect(calls(control, IPC.sessionRestoreRestore)[0]?.args).toEqual(mixedArgs());
+  await page.locator('[data-testid="mode-tab"][data-mode="automations"]').click();
+  await expect(
+    page
+      .locator('[data-testid="tab-strip-wrapper"] [data-testid="tab"]')
+      .filter({ hasText: 'plain' }),
+  ).toHaveCount(1);
   await expect
     .poll(() =>
       calls(control, IPC.terminalOpen).map((c) => (c.args as { terminalId?: string }).terminalId),
