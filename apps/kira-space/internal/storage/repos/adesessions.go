@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/huandu/go-sqlbuilder"
@@ -387,7 +388,7 @@ func (r *AdeSessionsRepo) MarkRestore(marks map[string]bool) error {
 		}
 		workingCase = c.RestoreWorking + " = CASE WHEN " + c.ID + " IN (" + strings.Join(vars, ", ") + ") THEN 1 ELSE 0 END"
 	}
-	ids := append(working, idle...)
+	ids := slices.Concat(working, idle)
 	ub.Set(ub.Assign(c.RestorePending, 1), workingCase).
 		Where(ub.In(c.ID, ids...), ub.Equal(c.State, model.AdeSessionStateRunning), ub.Equal(c.Mode, model.AdeSessionModeTUI))
 	if _, err := sqlb.Exec(r.DB, ub); err != nil {

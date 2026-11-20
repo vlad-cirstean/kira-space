@@ -95,31 +95,9 @@ func (s *Service) Create(name string, o WriteOptions) (*Pending, error) {
 		return nil, err
 	}
 	defer t.close()
-	existing := t.leaf
-	if s.follows() {
-		existing, err = t.fsys.Lstat(t.name)
-		switch {
-		case errors.Is(err, fs.ErrNotExist):
-			existing, err = nil, nil
-		case err != nil:
-			return nil, t.fail("create", err)
-		case existing.Mode()&fs.ModeSymlink != 0 && s.root == "":
-			// Host-wide: write through a link so the link survives.
-			if real, rerr := filepath.EvalSymlinks(t.name); rerr == nil {
-				t.name, t.abs = real, real
-				if existing, err = os.Lstat(real); err != nil {
-					return nil, t.fail("create", err)
-				}
-			}
-		}
-	}
-	if existing != nil {
-		if existing.IsDir() {
-			return nil, t.fail("create", policy(ErrInvalidPath, "%s is a folder", name))
-		}
-		if why := s.refusal(existing); why != "" {
-			return nil, t.fail("create", policy(ErrUnsafe, "%s is a %s", name, why))
-		}
+	existing, err := s.existingTarget(t, name)
+	if err != nil {
+		return nil, err
 	}
 	if v := o.IfVersion; v != nil {
 		switch {
@@ -133,23 +111,65 @@ func (s *Service) Create(name string, o WriteOptions) (*Pending, error) {
 	if perm == 0 {
 		perm = s.filePerm()
 	}
-	opts := []renameio.Option{renameio.WithPermissions(perm)}
+	return s.openPending(t, name, permOptions(o, perm))
+}
+
+// permOptions maps the write's permission flags to renameio options.
+func permOptions(o WriteOptions, perm fs.FileMode) []renameio.Option {
 	switch {
 	case o.Static:
-		opts = []renameio.Option{renameio.WithStaticPermissions(perm)}
+		return []renameio.Option{renameio.WithStaticPermissions(perm)}
 	case o.KeepPerm:
-		opts = append(opts, renameio.WithExistingPermissions())
+		return []renameio.Option{renameio.WithPermissions(perm), renameio.WithExistingPermissions()}
 	}
+	return []renameio.Option{renameio.WithPermissions(perm)}
+}
+
+// existingTarget is the Lstat of the write target: nil when absent. A host-wide leaf symlink is
+// followed so the link survives the write. A folder or a refused file is an error.
+func (s *Service) existingTarget(t *target, name string) (fs.FileInfo, error) {
+	existing := t.leaf
+	if s.follows() {
+		var err error
+		existing, err = t.fsys.Lstat(t.name)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			existing = nil
+		case err != nil:
+			return nil, t.fail("create", err)
+		case existing.Mode()&fs.ModeSymlink != 0 && s.root == "":
+			if real, rerr := filepath.EvalSymlinks(t.name); rerr == nil {
+				t.name, t.abs = real, real
+				if existing, err = os.Lstat(real); err != nil {
+					return nil, t.fail("create", err)
+				}
+			}
+		}
+	}
+	if existing == nil {
+		return nil, nil
+	}
+	if existing.IsDir() {
+		return nil, t.fail("create", policy(ErrInvalidPath, "%s is a folder", name))
+	}
+	if why := s.refusal(existing); why != "" {
+		return nil, t.fail("create", policy(ErrUnsafe, "%s is a %s", name, why))
+	}
+	return existing, nil
+}
+
+// openPending creates the target's parents and its temp file.
+func (s *Service) openPending(t *target, name string, opts []renameio.Option) (*Pending, error) {
+	var err error
 	p := &Pending{disp: name, s: s}
+	dir := filepath.Dir(t.name)
 	if s.root == "" {
-		dir := filepath.Dir(t.name)
 		if err := os.MkdirAll(dir, s.dirPerm()); err != nil {
 			return nil, t.fail("create", err)
 		}
 		p.dir, p.base = dir, filepath.Base(t.name)
 		p.pf, err = renameio.NewPendingFile(t.name, append(opts, renameio.WithTempDir(dir))...)
 	} else {
-		dir := filepath.Dir(t.name)
 		if dir != "." {
 			if err := t.root.MkdirAll(dir, s.dirPerm()); err != nil {
 				return nil, t.fail("create", err)
