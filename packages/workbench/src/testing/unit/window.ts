@@ -18,3 +18,6 @@ import './wailsRuntime';
 // that specifier to resolve under Bun. The './wailsRuntime' import above registers the one shared
 // mock.module for it; see its own comment for why it has to be the only registration in the whole
 // run.
+
+// Vite `define` replaces __KIRA_DEBUG_HOOKS__ in builds; under Bun the bare identifier must exist.
+(globalThis as { __KIRA_DEBUG_HOOKS__?: boolean }).__KIRA_DEBUG_HOOKS__ = false;
