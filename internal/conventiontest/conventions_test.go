@@ -4,6 +4,7 @@
 package conventiontest
 
 import (
+	"cmp"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -19,24 +20,83 @@ import (
 
 // permanentExemptions are `G<n> <path>` pairs that stay forever, each with its reason.
 var permanentExemptions = map[string]string{
-	"G4 apps/kira-space/internal/gitsession/incremental.go": "writes temp files into a per-call os.MkdirTemp dir that is deleted before return; nothing else reads them",
-	"G5 internal/harness/claude/sandbox.go":                 "names ~/.claude.json as a sandbox write path; Kira never opens it",
-	"G5 internal/harness/opencode/hooks/server.go":          "writes Kira's own opencode.json into its private temp dir; never the user's",
-	"G5 internal/harness/opencode/headless.go":              "reads only Kira's own generated MCP config files, to merge them into one",
-	"G5 internal/harness/opencode/sandbox.go":               "names OpenCode's config and data dirs as sandbox paths; Kira never opens them",
+	"G5 internal/harness/claude/sandbox.go":        "names ~/.claude.json as a sandbox write path; Kira never opens it",
+	"G5 internal/harness/opencode/hooks/server.go": "writes Kira's own opencode.json into its private temp dir; never the user's",
+	"G5 internal/harness/opencode/headless.go":     "reads only Kira's own generated MCP config files, to merge them into one",
+	"G5 internal/harness/opencode/sandbox.go":      "names OpenCode's config and data dirs as sandbox paths; Kira never opens them",
 }
 
-// testToolingPackages hold throwaway test fixtures; G4 skips any file under a directory with one
-// of these names (a torn write only fails the test run).
-var testToolingPackages = map[string]bool{"flowharness": true, "flowtest": true, "ipcfixture": true}
+// fileCallDirs are directories (prefix, matched on "/" boundaries) where G8 does not apply, each
+// with its reason. An entry with no G8 hit under it fails as stale.
+var fileCallDirs = map[string]string{
+	"internal/fileservice":                          "the service itself",
+	"internal/fswatch":                              "watch backend under the service",
+	"internal/harness":                              "agent CLI harnesses: hermetic homes, hook sockets, sandbox profiles in Kira's own temp dirs",
+	"internal/agentsandbox":                         "sandbox profiles and test fake in Kira's own temp dirs",
+	"internal/kirapaths":                            "creates the app-home skeleton before any Service exists",
+	"internal/logging":                              "log files and sweep, below the service in the import graph",
+	"internal/startupfail":                          "crash marker written before app services start",
+	"internal/filelock":                             "lock files are kernel handles, not content",
+	"internal/localsock":                            "socket dirs with 0700 and token files, per-process",
+	"internal/appupdate":                            "installs a downloaded bundle over the running app",
+	"apps/kira-space/tools":                         "build-time generators",
+	"internal/llmprompts/cmd":                       "build-time prompt tools",
+	"apps/kira-space/internal/flowharness":          "test fixtures; a torn write only fails the test run",
+	"internal/flowtest":                             "test fixtures; a torn write only fails the test run",
+	"apps/kira-space/internal/ipcfixture":           "test fixtures; a torn write only fails the test run",
+	"internal/testx":                                "test helpers",
+	"apps/kira-space/internal/adapters/testsupport": "test fixtures",
+	"internal/scripts/scriptstest":                  "test fixtures",
+}
 
-func isTestTooling(rel string) bool {
-	for _, seg := range strings.Split(filepath.ToSlash(rel), "/") {
-		if testToolingPackages[seg] {
-			return true
+// fileCallFiles are single files where G8 does not apply, each with its reason.
+var fileCallFiles = map[string]string{
+	"apps/kira-space/internal/config/paths.go":        "resolves the app home before any Service exists",
+	"internal/sqlitex/sqlitex.go":                     "creates the database file and its dir for the SQLite driver",
+	"apps/kira-space/internal/gitclient/runner.go":    "temp files and dirs for git's own argv",
+	"apps/kira-space/internal/editorlaunch/locate.go": "probes the user's installed editors",
+	"apps/kira-space/internal/jsengine/engine.go":     "reads the script files the engine runs",
+	"apps/kira-space/internal/kubernetes/config.go":   "reads the user's kubeconfig",
+	"apps/kira-space/internal/kubernetes/service.go":  "reads the user's kubeconfig",
+	"apps/kira-space/internal/lannet/lannet_linux.go": "reads kernel /proc and /sys files",
+	"internal/docker/endpoint.go":                     "reads docker context metadata",
+	"internal/loginshell/shell.go":                    "probes the user's shells",
+	"internal/terminal/shell.go":                      "probes the user's shells",
+	"internal/terminal/validate.go":                   "probes the shell binary",
+}
+
+// fileCalls are the os functions G8 bans; use internal/fileservice.
+var fileCalls = map[string]bool{
+	"ReadFile": true, "WriteFile": true, "Open": true, "OpenFile": true, "Create": true, "CreateTemp": true,
+	"MkdirTemp": true, "Mkdir": true, "MkdirAll": true, "Remove": true, "RemoveAll": true, "Rename": true,
+	"Stat": true, "Lstat": true, "ReadDir": true, "Readlink": true, "Symlink": true, "Link": true,
+	"Chmod": true, "Chown": true, "Lchown": true, "Chtimes": true, "Truncate": true, "DirFS": true,
+	"OpenRoot": true, "OpenInRoot": true, "CopyFS": true,
+}
+
+// walkCalls are the path/filepath functions G8 bans.
+var walkCalls = map[string]bool{"Walk": true, "WalkDir": true, "EvalSymlinks": true, "Glob": true}
+
+// fileImports are the packages only the allowlist may import (G8).
+var fileImports = map[string]bool{
+	"io/ioutil":                                          true,
+	"github.com/google/renameio/v2":                      true,
+	"github.com/google/renameio/v2/maybe":                true,
+	"github.com/kirathecat/kira-studio/internal/fswatch": true,
+}
+
+// fileCallAllowed returns the allowlist key that exempts rel from G8, or "".
+func fileCallAllowed(rel string) string {
+	rel = filepath.ToSlash(rel)
+	if fileCallFiles[rel] != "" {
+		return rel
+	}
+	for dir := range fileCallDirs {
+		if rel == dir || strings.HasPrefix(rel, dir+"/") {
+			return dir
 		}
 	}
-	return false
+	return ""
 }
 
 // idGenerators are the packages only internal/ids may import (G6).
@@ -171,6 +231,47 @@ func scan(t *testing.T, root, rel string) []finding {
 			return true
 		})
 	}
+	// G8: file access goes through internal/fileservice; allowlisted files and dirs are checked by the caller.
+	osNames, fpNames := map[string]bool{}, map[string]bool{}
+	for _, imp := range f.Imports {
+		path, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		name := ""
+		if imp.Name != nil {
+			name = imp.Name.Name
+		}
+		switch {
+		case path == "os" && name != "_" && name != ".":
+			osNames[cmp.Or(name, "os")] = true
+		case path == "path/filepath" && name != "_" && name != ".":
+			fpNames[cmp.Or(name, "filepath")] = true
+		case fileImports[path]:
+			add("G8", imp.Pos(), "imports "+path+"; use internal/fileservice")
+		}
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		id, ok := sel.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		switch {
+		case osNames[id.Name] && fileCalls[sel.Sel.Name]:
+			add("G8", call.Pos(), "os."+sel.Sel.Name+"; use internal/fileservice")
+		case fpNames[id.Name] && walkCalls[sel.Sel.Name]:
+			add("G8", call.Pos(), "filepath."+sel.Sel.Name+"; use internal/fileservice")
+		}
+		return true
+	})
 	// G7: file watching goes through internal/fswatch; no other package imports a watch library.
 	if dir != "internal/fswatch" {
 		for _, imp := range f.Imports {
@@ -432,10 +533,6 @@ func checkCall(x *ast.CallExpr, inAdapters, inHTTPClient bool, add func(string, 
 			if slogLevels[fun.Sel.Name] && !hasScopeKey(x.Args) {
 				add("G3", x.Pos(), "slog call without a \"scope\" key")
 			}
-		case "os":
-			if fun.Sel.Name == "WriteFile" {
-				add("G4", x.Pos(), "os.WriteFile; use renameio.WriteFile")
-			}
 		}
 	case *ast.Ident:
 		switch {
@@ -514,8 +611,11 @@ func TestGoConventions(t *testing.T) {
 	var failures []string
 	for _, rel := range goFiles(t, root) {
 		for _, f := range scan(t, root, rel) {
-			if f.rule == "G4" && isTestTooling(rel) {
-				continue
+			if f.rule == "G8" {
+				if allow := fileCallAllowed(f.path); allow != "" {
+					hit["G8 "+allow] = true
+					continue
+				}
 			}
 			key := f.rule + " " + f.path
 			hit[key] = true
@@ -528,6 +628,13 @@ func TestGoConventions(t *testing.T) {
 	for key := range permanentExemptions {
 		if !hit[key] {
 			failures = append(failures, "stale exemption: "+key)
+		}
+	}
+	for _, list := range []map[string]string{fileCallDirs, fileCallFiles} {
+		for key := range list {
+			if !hit["G8 "+key] {
+				failures = append(failures, "stale exemption: G8 "+key)
+			}
 		}
 	}
 	sort.Strings(failures)
