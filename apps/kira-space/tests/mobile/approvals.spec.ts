@@ -199,19 +199,20 @@ test('contract: a branch request shows the holder without a path and answers wit
   });
 });
 
-test('contract: a details edit shows the agent reason and its files and answers with the paths', async ({
+test('contract: a details edit shows its cause and files and answers with the paths', async ({
   app,
   page,
   server,
 }) => {
   pair(server);
   const it = detailsItem();
-  const { reason, items } = it.payload as { reason: string; items: { path: string }[] };
+  const { items } = it.payload as { items: { path: string }[] };
   server.state.replies.approvals = [it];
   await app();
   const body = page.locator(t('ade-details-edit-body'));
-  await expect(body.locator(t('ade-details-edit-reason'))).toContainText(reason);
+  await expect(body.locator(t('ade-details-edit-reason'))).toHaveCount(0);
   await expect(body.locator(t('ade-details-edit-file'))).toHaveCount(items.length);
+  await expect(body.locator(t('ade-details-edit-file'))).toContainText('Another agent’s note');
   await page.locator(t(`approval-approve-${it.id}`)).click();
   await expect.poll(() => answers(server).length).toBe(1);
   expect(JSON.parse(answers(server)[0]?.body ?? '{}')).toEqual({

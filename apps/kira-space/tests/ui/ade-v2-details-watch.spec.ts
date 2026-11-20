@@ -7,7 +7,7 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // The task file watcher: Kira applies a live agent's saved edits, so the newest note shows its new
-// text with no banner and no approval, an older note's edit waits with the agent's reason, and a board
+// text with no banner and no approval, another agent's older note edit waits with its cause and diff, and a board
 // push refetches the disk banner. Contract ade-details-watch; backend half: flows/adeflow
 // TestDetailsWatch (detailswatch_test.go).
 
@@ -45,15 +45,18 @@ test('contract: the newest note and the draft show the applied text with no disk
   await expect(page.locator(t('ade-details-disk-banner'))).toHaveCount(0);
 });
 
-test('contract: an older note edit waits with the agent reason', async ({ relaunch }) => {
+test('contract: another agent older note edit waits with its cause and diff', async ({
+  relaunch,
+}) => {
   const it = detailsEditItem(SCENARIO);
-  const { reason, items } = it.payload as { reason: string; items: { path: string }[] };
-  expect(reason).toBe('typo fixed');
+  const { items } = it.payload as { items: { path: string; cause: string }[] };
+  expect(items[0]?.cause).toBe('note');
   const { window: page } = await openPlan(relaunch, [...seedApprovals([it])]);
   const dialog = page.locator(t('approvals-dialog'));
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator(t('ade-details-edit-reason'))).toContainText(reason);
+  await expect(dialog.locator(t('ade-details-edit-reason'))).toHaveCount(0);
   await expect(dialog.locator(t('ade-details-edit-file'))).toHaveCount(items.length);
+  await expect(dialog.locator(t('ade-details-edit-file'))).toContainText('Another agent’s note');
 });
 
 test('a board push refetches the disk changes of the open task', async ({ relaunch }) => {
