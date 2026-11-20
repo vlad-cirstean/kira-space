@@ -50,7 +50,12 @@ interface State {
     /** What `/api/approvals` lists (default none) and what an answer returns (default: ok per id). */
     approvals?: unknown;
     approvalAnswer?: unknown;
+    /** What `/api/runs` and `/api/computer` answer (defaults: no runs, no Docker). */
+    runs?: unknown;
+    computer?: unknown;
   };
+  /** While set, `/api/events` answers 503, so a dropped stream stays down. */
+  eventsDown: boolean;
   pairWaiters: ServerResponse[];
   /** Outcome resolved before the phone's `POST /api/pair` arrived; the request answers on arrival. */
   earlyPair: PairOutcome | null;
@@ -63,6 +68,8 @@ export interface MobileServer {
   reset(): void;
   /** Sends one server-sent event to every open stream. */
   emit(channel: string, data: unknown): void;
+  /** Ends every open stream and keeps `/api/events` down until reset. */
+  dropStreams(): void;
   /** Answers every parked `POST /api/pair`; approving also marks the device paired. */
   resolvePair(outcome: PairOutcome): void;
   /** Requests that changed state, i.e. anything but GET. */
@@ -132,6 +139,7 @@ export async function startMobileServer(): Promise<MobileServer> {
     pairWaiters: [],
     earlyPair: null,
     streams: new Set(),
+    eventsDown: false,
   });
   const state: State = initial();
 
@@ -211,15 +219,21 @@ export async function startMobileServer(): Promise<MobileServer> {
           agentInputGlobal: state.agentInputGlobal,
         },
       );
+    } else if (path === '/api/events' && state.eventsDown) {
+      json(res, 503, { code: 'E_UNAVAILABLE', message: 'events down' });
     } else if (path === '/api/events') {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-store',
         Connection: 'keep-alive',
       });
-      res.write(': open\n\n');
+      res.write('retry: 3000\nevent: ready\ndata: {}\n\n');
       state.streams.add(res);
       res.on('close', () => state.streams.delete(res));
+    } else if (path === '/api/runs' && method === 'GET') {
+      json(res, 200, state.replies.runs ?? { runs: [] });
+    } else if (path === '/api/computer' && method === 'GET') {
+      json(res, 200, state.replies.computer ?? { docker: null });
     } else if (path === '/api/approvals' && method === 'GET') {
       json(res, 200, state.replies.approvals ?? []);
     } else if (path === '/api/approvals/answer' && method === 'POST') {
@@ -272,6 +286,10 @@ export async function startMobileServer(): Promise<MobileServer> {
     reset() {
       for (const res of [...state.streams, ...state.pairWaiters]) res.destroy();
       Object.assign(state, initial());
+    },
+    dropStreams() {
+      state.eventsDown = true;
+      for (const res of state.streams) res.destroy();
     },
     emit(channel, data) {
       for (const res of state.streams)
