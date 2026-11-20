@@ -126,6 +126,8 @@ type Options struct {
 	// TrackerGrace is how long the ADE tracker waits before it reads a spawned TUI session as
 	// stopped; zero means the tracker default.
 	TrackerGrace time.Duration
+	// SessionRestoreWindow replaces how long after start the restore dialog may open itself (zero: 2 minutes).
+	SessionRestoreWindow time.Duration
 	// RebaseTimeout bounds one ADE rebase run; 0 keeps the default (20 minutes).
 	RebaseTimeout time.Duration
 	// BranchRequestWait is how long an agent's create_task waits for the user; 0 keeps
@@ -575,7 +577,7 @@ func Build(opts Options) (*Wired, error) {
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
 	w.SessionRestore = &bridge.SessionRestoreService{Svc: sessionrestore.New(runs, sessionrestore.DockerOf(w.Docker.BoundService), w.AdeBoard,
-		sessionrestore.Options{MapError: bridge.AdeAgentRestoreError})}
+		sessionrestore.Options{OfferWindow: opts.SessionRestoreWindow, MapError: bridge.AdeAgentRestoreError})}
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —

@@ -85,6 +85,7 @@ type options struct {
 	openCode        bool
 	fileHandlers    filehandlers.Registry
 	trackerGrace    time.Duration
+	restoreWindow   time.Duration
 	rebaseTimeout   time.Duration
 	branchWait      time.Duration
 	callWait        time.Duration
@@ -154,6 +155,9 @@ func WithoutClaude() Opt { return func(o *options) { o.noClaude = true } }
 // WithTrackerGrace shortens the ADE tracker's grace window, the wait after a TUI session spawns
 // before a missing process reads as stopped (30s by default).
 func WithTrackerGrace(d time.Duration) Opt { return func(o *options) { o.trackerGrace = d } }
+
+// WithSessionRestoreWindow shortens how long after boot the restore dialog may open itself.
+func WithSessionRestoreWindow(d time.Duration) Opt { return func(o *options) { o.restoreWindow = d } }
 
 // WithSandbox swaps the OS sandbox enforcer for a test one.
 func WithSandbox(e agentsandbox.Enforcer) Opt { return func(o *options) { o.sandbox = e } }
@@ -503,7 +507,7 @@ func (a *App) build() {
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
 		Providers:       registry, IssueTracker: tracker,
-		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
+		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, SessionRestoreWindow: a.opts.restoreWindow, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, TaskRevealer: a.FileOpener, Editor: a.Editor, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},
