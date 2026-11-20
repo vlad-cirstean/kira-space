@@ -3,6 +3,8 @@ package adeflow_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -14,8 +16,9 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// Task file watcher: while an agent run is live, Kira applies its saved edits, writes the errors into
-// state.yaml fileErrors and asks no approval for the latest note. Contract ade-details-watch:
+// Task file watcher: while an agent run is live, Kira applies its saved free edits, writes the errors
+// into state.yaml fileErrors and asks no approval for the latest note. An ask-first save (an older
+// note) is deferred untouched: it may be the user's own edit, so it stays a disk change with no error. Contract ade-details-watch:
 // tests/ui/ade-v2-details-watch.spec.ts reads these and runs the same scenario through the UI.
 
 const dwScenario = "ade-details-watch"
@@ -66,6 +69,19 @@ func dwWaitNoError(t *testing.T, f *brFixture, path string) {
 	testx.WaitUntil(t, waitFor, func() bool {
 		_, ok := dwErrorOf(t, f, path)
 		return !ok
+	})
+}
+
+// dwWaitDisk waits until the disk banner lists exactly the given paths.
+func dwWaitDisk(t *testing.T, f *brFixture, paths ...string) {
+	t.Helper()
+	testx.WaitUntil(t, waitFor, func() bool {
+		var got []string
+		for _, c := range dfDisk(t, f.app, f.task.ID) {
+			got = append(got, c.Path)
+		}
+		sort.Strings(got)
+		return slices.Equal(got, paths)
 	})
 }
 
@@ -151,26 +167,23 @@ func TestDetailsWatch(t *testing.T) {
 		}
 		return false
 	})
-	// 2. The invalid file and the older note are errors in state.yaml, and the agent is mid-fix: no banner.
+	// 2. The invalid file is an error in state.yaml and the agent is mid-fix: no banner for it. The older
+	// note is deferred: no error, no row change, and the banner shows it, since the save may be the user's.
 	links := dwWaitError(t, f, "links.yaml")
 	if links.line == 0 || links.msg == "" {
 		t.Fatalf("links.yaml error = %+v, want a message with a line", links)
 	}
-	olderErr := dwWaitError(t, f, older)
-	if !strings.Contains(olderErr.msg, "needs reason") || !strings.Contains(olderErr.msg, "submit") || !strings.Contains(olderErr.msg, "paths") {
-		t.Fatalf("older note error = %q, want the submit with paths and reason text", olderErr.msg)
+	dwWaitDisk(t, f, older)
+	if e, ok := dwErrorOf(t, f, older); ok {
+		t.Fatalf("older note error = %+v, want none: a deferred save is not filed against the agent", e)
 	}
 	if got := dfNote(t, app, f.task.ID); got == "Older note, edited." {
 		t.Fatalf("older note applied without a reason: %q", got)
-	}
-	if d := dfDisk(t, app, f.task.ID); len(d) != 0 {
-		t.Fatalf("disk changes = %+v, want none: the agent holds an error on each", d)
 	}
 	if !dwNoDetailsItem(t, f) {
 		t.Fatal("an approval is open for edits that needed none")
 	}
 	app.Contract(t, dwScenario, "AdeTaskService.Handovers#applied", adewire.HandoversResult{Handovers: handovers(t, app, f.task.ID)}, dfMask)
-	app.Contract(t, dwScenario, "AdeTaskService.DetailsDiskChanges#applied", dfDisk(t, app, f.task.ID), dfMask)
 
 	// 3. The agent fixes links.yaml: the error clears and the link is filed as the run's.
 	dfWrite(t, folder, "links.yaml", "links:\n  - {kind: doc, title: Design notes, ref: docs/design.md}\n")
@@ -186,7 +199,6 @@ func TestDetailsWatch(t *testing.T) {
 	if err != nil || !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0") {
 		t.Fatalf("submit = %q, %v", reply, err)
 	}
-	dwWaitNoError(t, f, older)
 	item := dfDetailsItem(t, app, f.task.ID)
 	app.Contract(t, dwScenario, "ApprovalsService.List#detailsEdit", []approvals.Item{item}, dfMask)
 
@@ -244,11 +256,11 @@ func TestDetailsWatchLatestProof(t *testing.T) {
 	writeProof(t, folder, "second", "Second", "diagram", "table")
 	proofs(2)
 
-	// The older proof: the edit lands in fileErrors, the proof stays.
+	// The older proof: the edit is deferred, a disk change with no error; the proof stays.
 	writeProof(t, folder, "first", "First", "table")
-	e := dwWaitError(t, f, "proofs/first/proof.md")
-	if !strings.Contains(e.msg, "needs reason") {
-		t.Fatalf("older proof error = %q", e.msg)
+	dwWaitDisk(t, f, "proofs/first/proof.md")
+	if e, ok := dwErrorOf(t, f, "proofs/first/proof.md"); ok {
+		t.Fatalf("older proof error = %+v, want none", e)
 	}
 	// The newest: applied with no approval.
 	writeProof(t, folder, "second", "Second", "table")
@@ -273,4 +285,25 @@ func TestDetailsWatchLatestProof(t *testing.T) {
 	}
 	_ = os.WriteFile(gate, nil, 0o644)
 	waitRun(t, app, f.task.ID, "one", "done")
+}
+
+// A fileErrors entry under a path the agent then removes clears with the next pass.
+func TestDetailsWatchGonePathClears(t *testing.T) {
+	gate := dwHold(t)
+	f := newBRFixture(t, []fakeagent.Action{{WaitFile: gate, Name: "done"}}, onceStepYML, false)
+	folder := dfFolder(t, f.app, f.task.ID)
+	f.startRun(t)
+	waitRun(t, f.app, f.task.ID, "one", "running")
+
+	dfWrite(t, folder, "proofs/Orders_1/proof.md", "x")
+	e := dwWaitError(t, f, "proofs/Orders_1/")
+	if !strings.Contains(e.msg, "rename it") {
+		t.Fatalf("hint error = %q", e.msg)
+	}
+	if err := os.RemoveAll(filepath.Join(folder, "proofs", "Orders_1")); err != nil {
+		t.Fatal(err)
+	}
+	dwWaitNoError(t, f, "proofs/Orders_1/")
+	_ = os.WriteFile(gate, nil, 0o644)
+	waitRun(t, f.app, f.task.ID, "one", "done")
 }

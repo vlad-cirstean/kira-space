@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -21,14 +22,28 @@ import (
 
 // taskwatch.go: while an agent holds a Space grant on a task, its folder is watched and each edit the
 // agent saves is applied after a short quiet, as the agent's own submit with no reason. Only the event
-// paths go in, so an earlier edit of the user stays on the disk banner.
+// paths go in, so an earlier edit of the user stays on the disk banner. The pass is a Watch pass: it
+// applies free changes only. An ask-first change is deferred untouched (no row, no fileErrors entry,
+// no word to the agent), because the save may be the user's own in an editor; the banner shows it.
 
 const (
-	taskWatchQuiet  = 300 * time.Millisecond
-	taskWatchEvents = "ade task watch"
+	taskWatchQuiet = 300 * time.Millisecond
+	// taskWatchMaxWait caps how long a steady stream of saves can defer the pass.
+	taskWatchMaxWait = 2 * time.Second
+	taskWatchEvents  = "ade task watch"
 	// taskWatchDepth is the deepest folder under the task folder that is watched: proofs/<slug>.
 	taskWatchDepth = 2
 )
+
+// maxTaskWatches caps the live task watchers, 0 for none. kqueue (macOS) holds one fd per watched
+// folder and per file in it, so many busy tasks could reach kern.maxfilesperproc; inotify has no such cost.
+// A task over the cap is unwatched and its edits apply at the finish flush.
+func maxTaskWatches() int {
+	if runtime.GOOS == "darwin" {
+		return 8
+	}
+	return 0
+}
 
 // watchedTopDirs are the folders of the task folder that hold task files.
 var watchedTopDirs = map[string]bool{"notes": true, "handovers": true, "proofs": true}
@@ -48,6 +63,7 @@ type taskWatch struct {
 	mu      sync.Mutex
 	callers map[string]*callerRef
 	paths   map[string]struct{} // slash paths relative to root since the last pass
+	first   time.Time           // when the first path of the current batch was queued
 	timer   *time.Timer
 	stopped bool
 	passes  sync.WaitGroup // in-flight pass; stop waits for it
@@ -78,8 +94,16 @@ func (b *TaskBoard) registerSpaceGrant(g agentmcp.Grant) (string, func(), error)
 func (b *TaskBoard) watchTask(call agentmcp.SpaceCall) {
 	b.watchMu.Lock()
 	defer b.watchMu.Unlock()
+	if b.grants == nil {
+		b.grants = map[string]int{}
+	}
+	b.grants[call.TaskID]++
 	tw := b.watches[call.TaskID]
 	if tw == nil {
+		if limit := maxTaskWatches(); limit > 0 && len(b.watches) >= limit {
+			slog.Warn(taskWatchEvents, "scope", "ade", "task", call.TaskID, "err", "watcher cap reached")
+			return // the finish flush still applies the edits
+		}
 		var err error
 		if tw, err = b.newTaskWatch(call.TaskID); err != nil {
 			slog.Warn(taskWatchEvents, "scope", "ade", "task", call.TaskID, "err", err)
@@ -117,9 +141,16 @@ func (b *TaskBoard) newTaskWatch(taskID string) (*taskWatch, error) {
 
 func (b *TaskBoard) unwatchTask(call agentmcp.SpaceCall) {
 	b.watchMu.Lock()
+	if b.grants[call.TaskID]--; b.grants[call.TaskID] <= 0 {
+		delete(b.grants, call.TaskID)
+	}
+	live := b.grants[call.TaskID]
 	tw := b.watches[call.TaskID]
 	if tw == nil {
 		b.watchMu.Unlock()
+		if live == 0 { // never watched: errors of explicit submits and the finish flush still clear
+			b.clearFileErrors(call.TaskID)
+		}
 		return
 	}
 	tw.mu.Lock()
@@ -259,12 +290,17 @@ func (t *taskWatch) queue(rel string) {
 	if t.stopped {
 		return
 	}
+	now := time.Now()
+	if len(t.paths) == 0 {
+		t.first = now
+	}
 	t.paths[rel] = struct{}{}
+	wait := min(taskWatchQuiet, max(t.first.Add(taskWatchMaxWait).Sub(now), 0))
 	if t.timer == nil {
-		t.timer = time.AfterFunc(taskWatchQuiet, t.fire)
+		t.timer = time.AfterFunc(wait, t.fire)
 		return
 	}
-	t.timer.Reset(taskWatchQuiet)
+	t.timer.Reset(wait)
 }
 
 func (t *taskWatch) fire() {

@@ -213,13 +213,17 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 	call := b.taskCallOf(tc)
 	ctx = withDetailsSession(withTaskCall(ctx, call), s)
 	res, err := df.svc.Submit(ctx, taskfiles.Request{
-		TaskID: taskID, Paths: paths, Reason: reason,
+		TaskID: taskID, Paths: paths, Reason: reason, Watch: mode == watchPass,
 		Session: taskfiles.Session{Key: s.key, Role: s.role, LastSync: last, Step: fileSlug(call.step)},
 	})
 	if err != nil {
 		return res, err
 	}
-	errsMoved := s.role.Agent() && df.recordFileErrors(taskID, paths, res)
+	errsMoved := false
+	if s.role.Agent() {
+		errsMoved = df.recordFileErrors(taskID, paths, res)
+		errsMoved = b.pruneGoneFileErrors(taskID) || errsMoved
+	}
 	if mode == watchPass && !errsMoved && !res.Touched() {
 		return res, nil
 	}
@@ -239,7 +243,8 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 
 // recordFileErrors keeps the invalid and rejected results of an agent write for state.yaml and drops
 // the entry of every path a later result settled. It reports whether the set changed. A named path
-// with no result at all (a file removed again, or never a task file) loses its entry too.
+// with no result at all loses its entry too; pruneGoneFileErrors drops the entries of removed paths.
+// A path that is no task-folder path (an explicit submit of "../x") gets no entry: the reply says it.
 func (df *detailsFiles) recordFileErrors(taskID string, named []string, res taskfiles.Result) bool {
 	df.mu.Lock()
 	defer df.mu.Unlock()
@@ -253,6 +258,9 @@ func (df *detailsFiles) recordFileErrors(taskID string, named []string, res task
 		seen[f.Path] = true
 		switch f.Status {
 		case taskfiles.StatusInvalid, taskfiles.StatusRejected:
+			if store.ValidRel(strings.TrimSuffix(f.Path, "/")) != nil {
+				continue
+			}
 			if m == nil {
 				m = map[string]fileError{}
 				df.fileErrs[taskID] = m
@@ -261,7 +269,7 @@ func (df *detailsFiles) recordFileErrors(taskID string, named []string, res task
 			if m[f.Path] != next {
 				m[f.Path], moved = next, true
 			}
-		case taskfiles.StatusRestored:
+		case taskfiles.StatusRestored, taskfiles.StatusDeferred:
 		default:
 			if _, ok := m[f.Path]; ok {
 				delete(m, f.Path)
@@ -276,6 +284,53 @@ func (df *detailsFiles) recordFileErrors(taskID string, named []string, res task
 		}
 	}
 	return moved
+}
+
+// pruneGoneFileErrors drops the entries of paths that are neither on disk nor indexed: the agent
+// renamed or removed them (a proof-folder hint names a folder no result ever names again). It
+// reports whether the set changed.
+func (b *TaskBoard) pruneGoneFileErrors(taskID string) bool {
+	df := b.files
+	df.mu.Lock()
+	paths := make([]string, 0, len(df.fileErrs[taskID]))
+	for p := range df.fileErrs[taskID] {
+		paths = append(paths, p)
+	}
+	df.mu.Unlock()
+	if len(paths) == 0 {
+		return false
+	}
+	root, err := b.TaskFolder(taskID)
+	rows, rerr := df.idx.Files(taskID)
+	if err != nil || rerr != nil {
+		return false
+	}
+	indexed := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		indexed[r.RelPath] = true
+	}
+	var gone []string
+	for _, p := range paths {
+		rel := strings.TrimSuffix(p, "/")
+		if indexed[p] || indexed[rel] {
+			continue
+		}
+		if store.ValidRel(rel) == nil {
+			if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
+				continue
+			}
+		}
+		gone = append(gone, p)
+	}
+	if len(gone) == 0 {
+		return false
+	}
+	df.mu.Lock()
+	defer df.mu.Unlock()
+	for _, p := range gone {
+		delete(df.fileErrs[taskID], p)
+	}
+	return true
 }
 
 // fileErrorsOf lists the task's open file errors, sorted by path; never nil.
@@ -344,6 +399,11 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 		}
 	}
 	if len(kept) == 0 {
+		// Only removed paths: the entries the agent just fixed by removing them clear here.
+		if b.pruneGoneFileErrors(call.TaskID) {
+			b.markStateDirty(call.TaskID, true)
+			b.notifyBoardNow(taskChanged(call.TaskID))
+		}
 		return "", nil
 	}
 	sort.Strings(kept)

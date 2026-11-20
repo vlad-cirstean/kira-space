@@ -28,6 +28,9 @@ const (
 	StatusRestored  Status = "restored"
 	StatusUnchanged Status = "unchanged"
 	StatusIgnored   Status = "ignored"
+	// StatusDeferred is a file-watcher pass that met an ask-first change: nothing is applied or
+	// recorded, so the disk banner shows it and the explicit submit or finish flush decides.
+	StatusDeferred Status = "deferred"
 )
 
 // FileResult is the answer for one path.
@@ -69,10 +72,10 @@ func (r Result) Counts() Counts {
 	return c
 }
 
-// Touched reports whether any file changed state: anything but unchanged and ignored.
+// Touched reports whether any file changed state: anything but unchanged, ignored and deferred.
 func (r Result) Touched() bool {
 	for _, f := range r.Files {
-		if f.Status != StatusUnchanged && f.Status != StatusIgnored {
+		if f.Status != StatusUnchanged && f.Status != StatusIgnored && f.Status != StatusDeferred {
 			return true
 		}
 	}
@@ -98,6 +101,9 @@ type Request struct {
 	Paths   []string
 	Reason  string
 	Session Session
+	// Watch marks a file-watcher pass: an ask-first change of an agent is deferred, since the save may
+	// be the user's and the pass has no reason to send it for approval.
+	Watch bool
 }
 
 // Config wires a Service.
@@ -540,6 +546,10 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		case len(changes) == 0:
 			res = FileResult{Path: rel, Status: StatusUnchanged}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileAccepted, "", true)
+		}
+		if req.Watch && len(invalid) > 0 {
+			res = FileResult{Path: rel, Status: StatusDeferred}
+			return nil
 		}
 		if err := applyAccepted(ctx, tx, h, req.TaskID, rel, class, parsed, v); err != nil {
 			return err

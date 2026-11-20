@@ -426,6 +426,10 @@ func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) er
 	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes), Reason: a.req.Reason}
 	switch d.Outcome {
 	case Invalid:
+		if a.req.Watch {
+			a.result(StatusDeferred, nil)
+			return nil
+		}
 		a.invalid(d.Message)
 		return nil
 	case Pending:
@@ -568,6 +572,10 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 		pr := &ProofResult{Slug: slug, Name: u.Session.Name, Reason: req.Reason}
 		switch d.Outcome {
 		case Invalid:
+			if req.Watch {
+				res = FileResult{Path: md, Status: StatusDeferred}
+				return nil
+			}
 			res = FileResult{Path: md, Status: StatusInvalid, Message: d.Message, Proof: &ProofResult{Slug: slug, Name: u.Session.Name, Status: string(StatusInvalid), Problems: []string{d.Message}}}
 			return nil
 		case Pending:

@@ -36,10 +36,7 @@ test('contract: the newest note and the draft show the applied text with no disk
   if (!newest) throw new Error('contract has no applied note');
   const { window: page } = await openPlan(relaunch, [
     { channel: IPC.adeTaskHandovers, response: { handovers: entries } },
-    {
-      channel: IPC.adeTaskDetailsDiskChanges,
-      response: contract(SCENARIO, 'AdeTaskService.DetailsDiskChanges#applied'),
-    },
+    { channel: IPC.adeTaskDetailsDiskChanges, response: [] },
   ]);
   await openDetails(page, TASK);
   const chain = page.locator(`${t('ade-task-chain')} [data-author]`);
