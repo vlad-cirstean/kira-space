@@ -79,14 +79,15 @@ async function openDetails(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 }
 
-test('the tabs are Main, Details and Sessions, Main first', async ({ relaunch }) => {
+test('the tabs are Main, Details, Sessions and Files, Main first', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await openTask(page, 'T_alerts');
   await expect(page.locator(t('ade-main-tab'))).toBeVisible();
   await expect(page.locator(t('ade-panel-tab-main'))).toHaveText(/Main/);
   await expect(page.locator(t('ade-panel-tab-details'))).toBeVisible();
   await expect(page.locator(t('ade-panel-tab-sessions'))).toBeVisible();
-  await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
+  await expect(page.locator(t('ade-panel-tab-files'))).toBeVisible();
+  await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(4);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
 });
 
