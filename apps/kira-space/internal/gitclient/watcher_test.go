@@ -323,7 +323,7 @@ type fakeBackend struct {
 }
 
 func (b *fakeBackend) Events() <-chan fswatch.Event { return b.events }
-func (b *fakeBackend) Close() error            { return nil }
+func (b *fakeBackend) Close() error                 { return nil }
 
 // TestRepoWatcher_RescanRaisesBothSignals is the first automated coverage of the overflow/dropped-
 // events rule — real fsnotify overflow and real FSEvents drop flags are not producible
