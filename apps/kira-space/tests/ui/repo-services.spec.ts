@@ -58,18 +58,23 @@ const one: ControlSnapshot = {
   },
 };
 
-// The form sends the text it last got back, so the contract's args are matched on edits only.
+// The second pick can land before the first answer does, so this scenario answers with an
+// unchanged text: the next edit then always carries the contract's own args.
+const oneSteady: ControlSnapshot = {
+  ...one,
+  response: { ...(one.response as object), text: BASE.text },
+};
 const duplicate: ControlSnapshot = {
   channel: IPC.repoConfigForm,
-  args: {
-    edits: contract<{ edits: unknown }>(KEY, 'args:RepoConfigService.Form#duplicate').edits,
-    file: BASE.file,
-    text: ONE_TEXT,
-  },
+  args: contract(KEY, 'args:RepoConfigService.Form#duplicate'),
   response: form('duplicate'),
 };
 
-async function open(relaunch: Parameters<typeof openPlan>[0], extra: ControlSnapshot[] = []) {
+async function open(
+  relaunch: Parameters<typeof openPlan>[0],
+  extra: ControlSnapshot[] = [],
+  first = one,
+) {
   const app = await openAdeRepos(relaunch, [
     {
       channel: IPC.repoConfigFile,
@@ -91,7 +96,7 @@ async function open(relaunch: Parameters<typeof openPlan>[0], extra: ControlSnap
       args: { edits: [], file: BASE.file, text: BASE.text },
       response: { problem: null, text: BASE.text, value: { path: '<work>/proj' } },
     },
-    one,
+    first,
     ...extra,
   ]);
   await app.window.locator(t('repo-file')).waitFor();
@@ -115,7 +120,7 @@ test('adding a service through the picker edits the services list', async ({ rel
 });
 
 test('contract: a duplicate service shows the problem under the section', async ({ relaunch }) => {
-  const { window: page } = await open(relaunch, [duplicate]);
+  const { window: page } = await open(relaunch, [duplicate], oneSteady);
   for (let i = 0; i < 2; i++) {
     await page.locator(t('repo-add-service')).click();
     await page.locator(t('repo-service-run-script')).last().selectOption('Dev DB');
