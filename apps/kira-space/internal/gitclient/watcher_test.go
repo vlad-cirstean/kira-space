@@ -210,6 +210,27 @@ drain:
 	awaitSignal(t, w.Signals(), SignalRefsChanged)
 }
 
+// TestRepoWatcher_LinkedWorktreeHeadChangeProducesRefsChanged: a checkout inside a linked worktree
+// rewrites only commonDir/worktrees/<name>/HEAD (detaching touches no ref), so the watcher must watch
+// that directory, not just worktrees itself.
+func TestRepoWatcher_LinkedWorktreeHeadChangeProducesRefsChanged(t *testing.T) {
+	dir, _, w := newWatcherFixture(t)
+	wt := filepath.Join(t.TempDir(), "wt1")
+	runGit(t, dir, "worktree", "add", "-b", "linked-head", wt)
+	awaitSignal(t, w.Signals(), SignalRefsChanged)
+	drainDeadline := time.After(300 * time.Millisecond)
+drain:
+	for {
+		select {
+		case <-w.Signals():
+		case <-drainDeadline:
+			break drain
+		}
+	}
+	runGit(t, wt, "checkout", "--detach")
+	awaitSignal(t, w.Signals(), SignalRefsChanged)
+}
+
 // TestRepoWatcher_BurstCoalesces proves D11's coalescing: a burst of N ref-creating commands
 // produces far fewer than N signals — the honest assertion, not an exact count (CLAUDE.md's own
 // note on timing assertions this container cannot make honestly).

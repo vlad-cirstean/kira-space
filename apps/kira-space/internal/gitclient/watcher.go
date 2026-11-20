@@ -115,8 +115,8 @@ type RepoWatcher struct {
 	closeOnce sync.Once
 }
 
-// NewRepoWatcher starts watching summary's repository: commonDir's top, refs/** and worktrees,
-// plus gitDir's top when it differs. fswatch reports paths in the spelling passed here (it
+// NewRepoWatcher starts watching summary's repository: commonDir's top, refs/**, worktrees and each
+// worktrees/<name>, plus gitDir's top when it differs. fswatch reports paths in the spelling passed here (it
 // resolves symlinks itself, which FSEvents needs), so classify compares against summary directly.
 func NewRepoWatcher(summary RepoSummary) (*RepoWatcher, error) {
 	commonDir := gitpath.CleanNFC(summary.CommonDir)
@@ -137,7 +137,10 @@ func NewRepoWatcher(summary RepoSummary) (*RepoWatcher, error) {
 				return true
 			}
 			rel = filepath.ToSlash(rel)
-			return !(rel == "worktrees" || rel == "refs" || strings.HasPrefix(rel, "refs/"))
+			// worktrees/<name> (one level) holds a linked worktree's own HEAD and index; nothing
+			// deeper is classified.
+			return !(rel == "worktrees" || rel == "refs" || strings.HasPrefix(rel, "refs/") ||
+				(strings.HasPrefix(rel, "worktrees/") && !strings.Contains(strings.TrimPrefix(rel, "worktrees/"), "/")))
 		},
 	})
 	if err != nil {
