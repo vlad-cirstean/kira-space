@@ -222,20 +222,22 @@ func TestDetailsFiles(t *testing.T) {
 	app.Contract(t, dfScenario, "AdeTaskService.Handovers#draft", adewire.HandoversResult{Handovers: handovers(t, app, task.ID)}, dfMask)
 
 	// 4. A newer note makes the first one older. Editing an older note needs a reason (the watcher's pass
-	// has none, so it lands in fileErrors); with one it waits for the user.
+	// has none, so it is deferred to the disk banner); with one it waits for the user.
 	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Newer note."}); err != nil {
 		t.Fatal(err)
 	}
 	const changed = "Check the error states and the empty form."
 	dfWrite(t, folder, noteRel, changed)
 	reply = dfSync(t, app, task.ID, noteRel)
-	if !strings.HasPrefix(reply, "accepted 0, pending user 0, invalid 1\n") || !strings.Contains(reply, "reason") {
-		t.Fatalf("note sync without reason = %q", reply)
+	if !strings.HasPrefix(reply, "accepted 0, pending user 0, invalid 0\n") || !strings.Contains(reply, "deferred") {
+		t.Fatalf("note sync without reason = %q, want it deferred", reply)
 	}
-	stateYAML(t, app, task.ID, func(d map[string]any) bool {
-		errs, _ := d["fileErrors"].([]any)
-		return len(errs) == 1 && errs[0].(map[string]any)["path"] == noteRel
-	})
+	if got := dfNote(t, app, task.ID); got != first {
+		t.Fatalf("note after the deferred pass = %q, want the held text", got)
+	}
+	if changes := dfDisk(t, app, task.ID); len(changes) != 1 || changes[0].Path != noteRel {
+		t.Fatalf("disk changes = %+v, want the deferred note", changes)
+	}
 	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Paths: []string{noteRel}, Reason: "the empty form case is missing"})
 	if !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0\n") {
 		t.Fatalf("note submit with reason = %q", reply)
