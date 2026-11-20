@@ -7127,7 +7127,7 @@
         }
       },
       "adeHandoverLine": {
-        "description": "Tells an interactive session to write its handover draft file and call submit.",
+        "description": "Tells an interactive session to write its handover draft file, then finish the step.",
         "title": "Handover instruction",
         "usedBy": {
           "body": "Ends the manual step, review and start messages."
@@ -7330,14 +7330,14 @@
         }
       },
       "headlessSpaceFiles": {
-        "description": "Names the task’s Details folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
+        "description": "Names the task’s Details folder, points at the readme there, says Kira applies edits on save and where file errors are, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
         "title": "Task files instruction",
         "usedBy": {
           "body": "Follows the Kira Space tools line in every ADE step prompt and session message, and in every resumed step message."
         }
       },
       "headlessSpaceInstructions": {
-        "description": "Tells the agent to create and change branches only through the Kira Space tools, and to edit task files and then submit them.",
+        "description": "Tells the agent to create and change branches only through the Kira Space tools, and that Kira applies task file edits on save, with errors listed in the task state file.",
         "title": "Kira Space tools instructions",
         "usedBy": {
           "body": "Sent to {agent} when a run connects to the Kira Space tools server."

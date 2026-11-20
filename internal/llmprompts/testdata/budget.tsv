@@ -3,7 +3,7 @@ headless.finishStep.suffix	278
 headless.space.suffix	328
 headless.rebase.reportSuffix	508
 headless.script.reportSuffix	269
-headless.space.instructions	360
+headless.space.instructions	417
 headless.sandbox.note	376
 headless.tool.finish_step	78
 headless.tool.finish_step.arg.status	86
@@ -14,7 +14,7 @@ headless.tool.finish_step.arg.tried	32
 headless.tool.submit	231
 headless.tool.submit.arg.paths	84
 headless.tool.submit.arg.reason	135
-headless.space.files	349
+headless.space.files	388
 headless.finishStep.ack	19
 headless.artifacts.header	73
 headless.artifacts.more	27
@@ -167,4 +167,4 @@ headless.tool.state.action.operation.cancel	80
 headless.tool.state.action.remote.fetch	58
 headless.tool.state.action.branch.push	56
 headless.tool.state.action.review.reply	83
-headless.tool.state.action.step.finish	153
+headless.tool.state.action.step.finish	170
