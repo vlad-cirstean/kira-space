@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { expect, taskFilesWindowTest as test } from './fixtures';
 import {
   FILES_BRANCH,
   openFilesWindow,

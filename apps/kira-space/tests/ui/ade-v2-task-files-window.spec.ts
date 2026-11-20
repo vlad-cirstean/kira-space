@@ -1,5 +1,5 @@
-import { expect, test } from './fixtures';
-import { FILES_TASK, openFilesWindow, openPlan, openTask } from './support/adeV2';
+import { expect, taskFilesWindowTest, test } from './fixtures';
+import { adeFixture, FILES_TASK, openFilesWindow, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -37,22 +37,32 @@ test('a refused open shows the action error in the panel', async ({ relaunch }) 
   await expect(page.locator(t('ade-panel-action-error'))).toContainText('no window');
 });
 
-test('a task without a worktree has the icon disabled', async ({ relaunch }) => {
+test('a branch without a worktree disables the icon; a task with no branch has none', async ({
+  relaunch,
+}) => {
+  const board = adeFixture<{ branches: { id: string; worktree: string }[] }>('board');
+  for (const br of board.branches) if (br.id === 'b_cart') br.worktree = '';
   const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: board },
     { channel: IPC.adeTaskOpenFilesWindow, response: true },
   ]);
-  await openTask(page, 'T_alerts');
+  await openTask(page, FILES_TASK);
   const icon = page.locator(t('ade-panel-files'));
   await expect(icon).toBeVisible();
   await expect(icon).toBeDisabled();
+  await openTask(page, 'T_alerts');
+  await expect(page.locator(t('ade-panel-files'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskOpenFilesWindow)).toHaveLength(0);
 });
 
-test('contract: a window booted with the target shows its task', async ({ relaunch }) => {
-  const target = contract<{ taskId: string }>('ade-task-files', 'window');
-  expect(Object.keys(target)).toEqual(['taskId']);
-  const { window: page } = await openFilesWindow(relaunch);
-  await expect(page.locator(t('ade-files-window-title'))).toHaveText(/\S/);
-  await expect(page.locator(t('ade-files-body'))).toBeVisible();
-  await expect(page.locator(t('ade-plan'))).toHaveCount(0);
-});
+taskFilesWindowTest(
+  'contract: a window booted with the target shows its task',
+  async ({ relaunch }) => {
+    const target = contract<{ taskId: string }>('ade-task-files', 'window');
+    expect(Object.keys(target)).toEqual(['taskId']);
+    const { window: page } = await openFilesWindow(relaunch);
+    await expect(page.locator(t('ade-files-window-title'))).toHaveText(/\S/);
+    await expect(page.locator(t('ade-files-body'))).toBeVisible();
+    await expect(page.locator(t('ade-plan'))).toHaveCount(0);
+  },
+);

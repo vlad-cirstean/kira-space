@@ -5,7 +5,7 @@ import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
 } from '../ipc/redis/redis.fixture';
-import { apiTest, expect, studioTest, test } from './fixtures';
+import { apiTest, expect, studioTest, taskFilesWindowTest, test } from './fixtures';
 import { modeTab } from './studio/support/apiMode';
 import { collectionRow } from './studio/support/apiRows';
 import { primaryChord } from './studio/support/chord';
@@ -190,37 +190,40 @@ test('F2 on a repo row starts the inline rename', async ({ relaunch }) => {
   await expect(input).toHaveCount(0);
 });
 
-test('a markdown heading link scrolls its target to the pane top', async ({ relaunch }) => {
-  const { window: page } = await openFilesWindow(
-    relaunch,
-    taskFilesControl([
-      {
-        channel: IPC.adeTaskFileRead,
-        response: {
-          kind: 'found',
-          text: README,
-          bytes: README.length,
-          limitBytes: 8 * 1024 * 1024,
-          language: 'markdown',
-          stat: { hash: 'h', size: README.length },
+taskFilesWindowTest(
+  'a markdown heading link scrolls its target to the pane top',
+  async ({ relaunch }) => {
+    const { window: page } = await openFilesWindow(
+      relaunch,
+      taskFilesControl([
+        {
+          channel: IPC.adeTaskFileRead,
+          response: {
+            kind: 'found',
+            text: README,
+            bytes: README.length,
+            limitBytes: 8 * 1024 * 1024,
+            language: 'markdown',
+            stat: { hash: 'h', size: README.length },
+          },
         },
-      },
-    ]),
-  );
-  await openTaskFile(page, 'README.md');
-  await page.locator(t('ade-files-view-reading')).click();
-  const pane = page.locator(t('ade-files-markdown'));
-  await expect(pane).toBeVisible();
-  const heading = pane.locator('#bottom');
-  await pane.locator('a[href="#bottom"]').click();
-  await expect
-    .poll(async () => {
-      const top = (await pane.boundingBox())?.y ?? 0;
-      const at = (await heading.boundingBox())?.y ?? Number.POSITIVE_INFINITY;
-      return Math.abs(at - top);
-    })
-    .toBeLessThan(48);
-});
+      ]),
+    );
+    await openTaskFile(page, 'README.md');
+    await page.locator(t('ade-files-view-reading')).click();
+    const pane = page.locator(t('ade-files-markdown'));
+    await expect(pane).toBeVisible();
+    const heading = pane.locator('#bottom');
+    await pane.locator('a[href="#bottom"]').click();
+    await expect
+      .poll(async () => {
+        const top = (await pane.boundingBox())?.y ?? 0;
+        const at = (await heading.boundingBox())?.y ?? Number.POSITIVE_INFINITY;
+        return Math.abs(at - top);
+      })
+      .toBeLessThan(48);
+  },
+);
 
 test('a review diff that fails to load shows an Alert with Retry, and Retry reloads', async ({
   relaunch,

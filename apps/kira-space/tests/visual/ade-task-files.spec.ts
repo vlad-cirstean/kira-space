@@ -1,4 +1,4 @@
-import { expect, test } from '../ui/fixtures';
+import { expect, taskFilesWindowTest as test } from '../ui/fixtures';
 import {
   openFilesWindow,
   openTaskFile,
