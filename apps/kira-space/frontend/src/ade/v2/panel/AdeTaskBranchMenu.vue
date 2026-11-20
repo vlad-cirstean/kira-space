@@ -119,7 +119,6 @@ async function remove(what: 'branch' | 'repo'): Promise<void> {
         kind: what === 'branch' ? 'removeBranch' : 'removeRepo',
         taskId,
         branchId,
-        name: label.value,
       },
       async () => {
         await mutation.mutateAsync({ branchId, discardChanges: discard });

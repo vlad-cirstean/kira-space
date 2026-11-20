@@ -43,7 +43,7 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
 <template>
   <Dialog v-if="sessionQuery.isFetched.value" :open="true" @update:open="(v) => !v && emit('hide')">
     <DialogContent size="sm" prompt data-testid="proof-ready-dialog" @keydown="onChord">
-      <DialogHeader>
+      <DialogHeader close-testid="proof-ready-close">
         <DialogTitle>{{ taskTitle || entry.title }}</DialogTitle>
         <DialogDescription v-if="taskTitle" data-testid="proof-ready-proof">
           {{ session?.name || entry.title }}
@@ -55,15 +55,6 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
             t('common.moreWaiting.status', { count: more })
           }}</span>
         </template>
-        <Button
-          :kbd="formatShortcut('prompt.hide')"
-          variant="dialog"
-          size="kira-lg"
-          data-testid="proof-ready-later"
-          @click="emit('hide')"
-        >
-          {{ t('common.later.label') }}
-        </Button>
         <Button
           variant="dialog-primary"
           :kbd="formatShortcut('form.submit')"

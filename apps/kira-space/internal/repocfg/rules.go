@@ -59,6 +59,7 @@ func rules() []configfs.Rule[File] {
 		environmentsRule(),
 		prepareExclusiveRule(),
 		scriptRefsRule(),
+		servicesRule(),
 		prepareTimeoutRule(),
 		basePathRule(),
 	}
@@ -155,6 +156,27 @@ func scriptRefsRule() configfs.Rule[File] {
 				if p := refProblem("/environments/"+strconv.Itoa(i)+"/deployed_sha_run", e.DeployedSHARun); p != nil {
 					return p
 				}
+			}
+			return nil
+		},
+	}
+}
+
+func servicesRule() configfs.Rule[File] {
+	return configfs.Rule[File]{
+		Doc: "Each `services` entry names a script on one line, at most " + strconv.Itoa(model.MaxScriptRefName) + " characters, with valid param names like `prepare_run`, and no two entries name the same script.",
+		Check: func(f File, _ configfs.Locator) *configfs.Problem {
+			seen := map[string]bool{}
+			for i := range f.Services {
+				at := "/services/" + strconv.Itoa(i)
+				if p := refProblem(at, &f.Services[i]); p != nil {
+					return p
+				}
+				name := strings.TrimSpace(f.Services[i].Script)
+				if seen[name] {
+					return problem(at+"/script", "backend.space.repoFiles.serviceDuplicate.body")
+				}
+				seen[name] = true
 			}
 			return nil
 		},

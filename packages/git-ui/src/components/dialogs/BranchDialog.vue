@@ -109,9 +109,6 @@ async function submit(): Promise<void> {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" @click="cancel">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button variant="dialog-primary" size="kira-lg" :disabled="!canSubmit" @click="submit">
           {{ t('common.action.create.label') }}
         </Button>

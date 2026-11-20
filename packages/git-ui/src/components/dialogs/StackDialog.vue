@@ -244,9 +244,6 @@ function closeDialog(): void {
 
       <DialogFooter>
         <template v-if="target?.mode === 'setParent'">
-          <Button variant="dialog" size="kira-lg" @click="closeDialog">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button variant="dialog-primary" size="kira-lg" @click="submitSetParent">{{
             t('common.action.save.label')
           }}</Button>
@@ -258,9 +255,6 @@ function closeDialog(): void {
             }}</Button>
           </template>
           <template v-else>
-            <Button variant="dialog" size="kira-lg" @click="closeDialog">{{
-              t('common.action.close.label')
-            }}</Button>
             <Button
               variant="dialog-primary"
               size="kira-lg"

@@ -165,9 +165,18 @@ type statePending struct {
 	Since   string `yaml:"since,omitempty"`
 }
 
+// stateFileError is one open problem of a task file the agent wrote; Kira cleared it from the
+// accepted copy and waits for the fix.
+type stateFileError struct {
+	Path  string `yaml:"path"`
+	Line  int    `yaml:"line,omitempty"`
+	Error string `yaml:"error"`
+}
+
 type stateDoc struct {
 	Rev        int               `yaml:"rev"`
 	Task       stateTaskInfo     `yaml:"task"`
+	FileErrors []stateFileError  `yaml:"fileErrors"`
 	Repos      []stateRepo       `yaml:"repos"`
 	Registered []stateRegistered `yaml:"registered"`
 	Leases     []stateLease      `yaml:"leases"`
@@ -408,6 +417,7 @@ func (b *TaskBoard) writeStateLocked(df *detailsFiles, taskID string, w *stateWr
 	if doc.Answers == nil {
 		doc.Answers = []stateAnswer{}
 	}
+	doc.FileErrors = df.fileErrorsOf(taskID)
 	body, err := yaml.Marshal(doc)
 	if err != nil {
 		return err
@@ -459,7 +469,10 @@ func (b *TaskBoard) writeArchivedState(taskID string) {
 	if rev == 0 {
 		rev = b.files.diskRev(b.ctx, taskID)
 	}
-	doc := stateDoc{Rev: rev + 1, Task: stateTaskInfo{ID: t.ID, Kind: t.Kind, Status: "archived", Step: stateStep{ID: t.EntryStepID}},
+	b.files.mu.Lock()
+	delete(b.files.fileErrs, taskID)
+	b.files.mu.Unlock()
+	doc := stateDoc{Rev: rev + 1, Task: stateTaskInfo{ID: t.ID, Kind: t.Kind, Status: "archived", Step: stateStep{ID: t.EntryStepID}}, FileErrors: []stateFileError{},
 		Repos: []stateRepo{}, Registered: []stateRegistered{}, Leases: []stateLease{}, Operations: []stateOp{}, Runs: []stateRun{},
 		Pending: []statePending{}, Answers: []stateAnswer{}}
 	full, err := yaml.Marshal(doc)

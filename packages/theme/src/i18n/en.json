@@ -2327,6 +2327,9 @@
         "refScriptBlank": {
           "body": "A script reference needs a script name on one line, at most 200 characters."
         },
+        "serviceDuplicate": {
+          "body": "Each service names a different script."
+        },
         "timeoutInvalid": {
           "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."
         }
@@ -3960,6 +3963,9 @@
     },
     "required": {
       "label": "Required"
+    },
+    "requiredServices": {
+      "title": "Required services"
     },
     "revert": {
       "label": "Revert"
@@ -7121,7 +7127,7 @@
         }
       },
       "adeHandoverLine": {
-        "description": "Tells an interactive session to write its handover draft file and call submit.",
+        "description": "Tells an interactive session to write its handover draft file, then finish the step.",
         "title": "Handover instruction",
         "usedBy": {
           "body": "Ends the manual step, review and start messages."
@@ -7296,7 +7302,7 @@
         }
       },
       "headlessFinishStepSuffix": {
-        "description": "Tells an agent step how to report its result with the finish_step tool, using the results the step declares.",
+        "description": "Tells an agent step how to report its result with the finish_step tool, using the results the step declares, and asks for a proof of any checkable result when Kira Space tools are on.",
         "title": "Finish step instruction",
         "usedBy": {
           "body": "Ends every ADE step prompt and every resumed step message."
@@ -7324,14 +7330,14 @@
         }
       },
       "headlessSpaceFiles": {
-        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
+        "description": "Names the task’s Details folder, points at the readme there, says Kira applies edits on save and where file errors are, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
         "title": "Task files instruction",
         "usedBy": {
-          "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
+          "body": "Follows the Kira Space tools line in every ADE step prompt and session message, and in every resumed step message."
         }
       },
       "headlessSpaceInstructions": {
-        "description": "Tells the agent to create and change branches only through the Kira Space tools, and to edit task files and then submit them.",
+        "description": "Tells the agent to create and change branches only through the Kira Space tools, and that Kira applies task file edits on save, with errors listed in the task state file.",
         "title": "Kira Space tools instructions",
         "usedBy": {
           "body": "Sent to {agent} when a run connects to the Kira Space tools server."
@@ -9361,103 +9367,76 @@
           "loading": "Waiting for your approval…"
         },
         "agentBranches": {
-          "loading": "Creating branches…",
-          "status": "Created branches for {name}"
+          "loading": "Creating branches…"
         },
         "agentChange": {
-          "loading": "Applying branch change…",
-          "status": "Changed branch for {name}"
+          "loading": "Applying branch change…"
         },
         "agentFetch": {
-          "loading": "Fetching remote…",
-          "status": "Fetched remote for {name}"
+          "loading": "Fetching remote…"
         },
         "agentPush": {
-          "loading": "Pushing branch…",
-          "status": "Pushed branch for {name}"
+          "loading": "Pushing branch…"
         },
         "agentRename": {
-          "loading": "Renaming branch…",
-          "status": "Renamed branch for {name}"
+          "loading": "Renaming branch…"
         },
         "approve": {
-          "loading": "Approving…",
-          "status": "Approved {name}"
+          "loading": "Approving…"
         },
         "archive": {
-          "loading": "Closing task…",
-          "status": "Closed {name}"
+          "loading": "Closing task…"
         },
         "attachBranch": {
-          "loading": "Adding branch…",
-          "status": "Branch {name} attached"
+          "loading": "Adding branch…"
         },
         "closeSession": {
-          "loading": "Closing session…",
-          "status": "Closed session {name}"
+          "loading": "Closing session…"
         },
         "finishReview": {
-          "loading": "Finishing review…",
-          "status": "Finished review of {name}"
-        },
-        "forcePush": {
-          "status": "Force pushed {name}"
+          "loading": "Finishing review…"
         },
         "launch": {
-          "loading": "Starting agent…",
-          "status": "Started agent for {name}"
+          "loading": "Starting agent…"
         },
         "leaseRelease": {
-          "loading": "Releasing lease…",
-          "status": "Released {name}"
+          "loading": "Releasing lease…"
         },
         "leaseRequest": {
-          "loading": "Requesting release…",
-          "status": "Requested release of {name}"
+          "loading": "Requesting release…"
         },
         "nextPass": {
-          "loading": "Starting next pass…",
-          "status": "Started next pass for {name}"
+          "loading": "Starting next pass…"
         },
         "removeBranch": {
-          "loading": "Removing branch…",
-          "status": "Removed branch {name}"
+          "loading": "Removing branch…"
         },
         "removeRepo": {
-          "loading": "Removing repository…",
-          "status": "Removed repository {name}"
+          "loading": "Removing repository…"
         },
         "restartSession": {
-          "loading": "Restarting session…",
-          "status": "Restarted session {name}"
+          "loading": "Restarting session…"
         },
         "resume": {
-          "loading": "Resuming…",
-          "status": "Resumed {name}"
+          "loading": "Resuming…"
         },
         "retry": {
-          "loading": "Retrying…",
-          "status": "Retried {name}"
+          "loading": "Retrying…"
         },
         "sendReview": {
-          "loading": "Sending review…",
-          "status": "Sent review for {name}"
+          "loading": "Sending review…"
         },
         "setBranch": {
-          "loading": "Changing branch…",
-          "status": "Changed branch to {name}"
+          "loading": "Changing branch…"
         },
         "setStep": {
-          "loading": "Changing step…",
-          "status": "Changed step of {name}"
+          "loading": "Changing step…"
         },
         "startRun": {
-          "loading": "Starting run…",
-          "status": "Started run for {name}"
+          "loading": "Starting run…"
         },
         "stopRuns": {
-          "loading": "Stopping runs…",
-          "status": "Stopped runs of {name}"
+          "loading": "Stopping runs…"
         }
       },
       "orchestrator": {
@@ -10421,6 +10400,27 @@
         },
         "write": {
           "label": "Write worktree"
+        }
+      },
+      "servicesGate": {
+        "allRunning": {
+          "hint": "Every service is running. Continue to start work."
+        },
+        "body": "“{task}” needs these services running.",
+        "only": {
+          "hint": "Kira Space counts only runs it started. Continue starts work without the missing ones; it won’t ask again for this task until it restarts."
+        },
+        "state": {
+          "invalid": {
+            "error": "Can’t run “{script}”: {reason}.",
+            "status": "Can’t run"
+          },
+          "noWorktree": {
+            "status": "Needs a worktree"
+          },
+          "stopped": {
+            "status": "Not running"
+          }
         }
       },
       "sessionList": {
@@ -11899,6 +11899,12 @@
           "dirRepo": {
             "hint": "Runs in the repository folder."
           },
+          "dirService": {
+            "hint": "Runs in the task’s worktree of this repository, one run per task."
+          },
+          "dirServiceOwn": {
+            "hint": "Runs in the script’s own folder. One run serves every task."
+          },
           "dirWorktree": {
             "hint": "Runs in the worktree."
           },
@@ -11929,6 +11935,18 @@
           },
           "unknownParams": {
             "error": "Not params of “{script}”: {names}."
+          }
+        },
+        "services": {
+          "add": {
+            "label": "Add service"
+          },
+          "empty": "No required services",
+          "intro": {
+            "hint": "Run scripts that must be running before work starts on a task in this repository. Kira Space asks to run any that isn’t, and counts only runs it started."
+          },
+          "remove": {
+            "tooltip": "Remove service"
           }
         },
         "source": {

@@ -28,6 +28,9 @@ const (
 	StatusRestored  Status = "restored"
 	StatusUnchanged Status = "unchanged"
 	StatusIgnored   Status = "ignored"
+	// StatusDeferred is a file-watcher pass that met an ask-first change: nothing is applied or
+	// recorded, so the disk banner shows it and the explicit submit or finish flush decides.
+	StatusDeferred Status = "deferred"
 )
 
 // FileResult is the answer for one path.
@@ -69,6 +72,16 @@ func (r Result) Counts() Counts {
 	return c
 }
 
+// Touched reports whether any file changed state: anything but unchanged, ignored and deferred.
+func (r Result) Touched() bool {
+	for _, f := range r.Files {
+		if f.Status != StatusUnchanged && f.Status != StatusIgnored && f.Status != StatusDeferred {
+			return true
+		}
+	}
+	return false
+}
+
 // Session is the writer of one call.
 type Session struct {
 	// Key identifies the session; it is recorded as the accepting writer of each file.
@@ -88,6 +101,9 @@ type Request struct {
 	Paths   []string
 	Reason  string
 	Session Session
+	// Watch marks a file-watcher pass: an ask-first change of an agent is deferred, since the save may
+	// be the user's and the pass has no reason to send it for approval.
+	Watch bool
 }
 
 // Config wires a Service.
@@ -148,8 +164,17 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)),
+	intents, err := s.cfg.Index.Intents()
+	if err != nil {
+		return Result{}, err
+	}
+	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)), intents: map[string]string{},
 		pend: PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}}
+	for _, in := range intents {
+		if in.TaskID == req.TaskID {
+			run.intents[in.RelPath] = in.SHA256
+		}
+	}
 	for _, r := range rows {
 		run.byPath[r.RelPath] = r
 	}
@@ -177,6 +202,8 @@ type submitRun struct {
 	byPath  map[string]model.TaskFile
 	present map[string]store.Entry
 	over    map[string]string
+	// intents maps the path of an open Kira write to the hash it is writing, "" for a delete.
+	intents map[string]string
 	// truncated: the listing stopped at the file cap, so a path missing from present is unknown, not gone.
 	truncated bool
 	out       []FileResult
@@ -249,7 +276,7 @@ func (r *submitRun) files(paths []string, units map[string]bool) {
 			continue
 		}
 		e, ok := r.present[rel]
-		fr, item := r.s.one(r.ctx, r.st, r.req, rel, e, ok, r.byPath[rel], r.over)
+		fr, item := r.s.one(r.ctx, r.st, r.req, rel, e, ok, r.byPath[rel], r.over, r.intents)
 		if fr.Status == StatusInvalid && hinted[fr.Path] {
 			continue
 		}
@@ -384,38 +411,26 @@ func (s *Service) sizeProblems(entries []store.Entry) map[string]string {
 }
 
 // one processes a single path; the pending item it returns is nil unless the file waits on the user.
-func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string) (FileResult, *PendingItem) {
+func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string, intents map[string]string) (FileResult, *PendingItem) {
 	hasRow := row.TaskID != ""
-	if hint := ProofFolderHint(rel); hint != "" {
-		if !exists && !strings.HasSuffix(rel, "/") {
-			return FileResult{}, nil
-		}
-		return FileResult{Path: hintPath(rel), Status: StatusInvalid, Message: hint}, nil
-	}
-	if strings.HasSuffix(rel, "/") {
-		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, nil
-	}
 	class := Classify(rel)
 	h := s.cfg.Handlers[class.Kind]
-	if class.Kind == KindIgnored || h == nil {
-		if !exists || strings.HasPrefix(e.Rel, ".") || strings.Contains(rel, "/.") {
-			return FileResult{}, nil
-		}
-		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, nil
+	if res, done := skipPath(rel, e, exists, class, h); done {
+		return res, nil
 	}
 	fail := func(msg string, line int) (FileResult, *PendingItem) {
 		return s.markInvalid(req, rel, class, row, hasRow, e, msg, line), nil
 	}
-	if exists && e.Refused != "" {
-		return FileResult{Path: rel, Status: StatusInvalid, Message: fmt.Sprintf("%s: refused, it is a %s. Use a plain file.", rel, e.Refused)}, nil
-	}
-	if exists && hasRow && row.Review == model.TaskFileAccepted && row.Size == e.Size && string(e.Version) == row.Version {
-		return FileResult{Path: rel, Status: StatusUnchanged}, nil
+	if res, done := settledFile(rel, e, exists, row); done {
+		return res, nil
 	}
 	if msg, tooBig := over[rel]; tooBig && exists {
 		return fail(rel+": "+msg, 0)
 	}
 	if !exists {
+		if hash, open := intents[rel]; open && hash == "" {
+			return FileResult{}, nil // Kira is deleting it
+		}
 		return s.gone(ctx, st, req, rel, class, h, row, hasRow)
 	}
 	raw, info, err := st.Read(ctx, rel, MaxBytes(class.Kind, rel))
@@ -426,6 +441,9 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return fail(fmt.Sprintf("%s: cannot read it: %v", rel, err), 0)
 	}
 	hash := sum(raw)
+	if want, open := intents[rel]; open && want == hash {
+		return FileResult{}, nil // Kira is mid-write: its own transaction records the file
+	}
 	if hasRow && hash == row.AcceptedSHA256 {
 		row.Size, row.Version, row.SHA256 = info.Size, string(info.Version), hash
 		row.Review, row.Problem = model.TaskFileAccepted, ""
@@ -433,6 +451,10 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 			return fail(rel+": "+err.Error(), 0)
 		}
 		return FileResult{Path: rel, Status: StatusUnchanged}, nil
+	}
+	if hasRow && row.Review == model.TaskFilePending && hash == row.SHA256 {
+		// Still the content that waits on the user: a pass with no reason must not turn it invalid.
+		return FileResult{Path: rel, Status: StatusPending, Message: row.Problem}, nil
 	}
 	if class.Kind.KiraOwned() {
 		return s.restoreResult(ctx, req.TaskID, rel)
@@ -446,6 +468,40 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return fail(fmt.Sprintf("%s: %v", rel, err), 0)
 	}
 	return s.decide(ctx, st, req, rel, class, h, parsed, info, hash, row, hasRow)
+}
+
+// skipPath short-circuits a path that is no task file: a proof-folder hint, a folder, an ignored kind or none.
+func skipPath(rel string, e store.Entry, exists bool, class Class, h Handler) (FileResult, bool) {
+	if hint := ProofFolderHint(rel); hint != "" {
+		if !exists && !strings.HasSuffix(rel, "/") {
+			return FileResult{}, true
+		}
+		return FileResult{Path: hintPath(rel), Status: StatusInvalid, Message: hint}, true
+	}
+	if strings.HasSuffix(rel, "/") {
+		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, true
+	}
+	if class.Kind == KindIgnored || h == nil {
+		if !exists || strings.HasPrefix(e.Rel, ".") || strings.Contains(rel, "/.") {
+			return FileResult{}, true
+		}
+		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, true
+	}
+	return FileResult{}, false
+}
+
+// settledFile answers a present file that needs no read: refused, or unchanged since accepted.
+func settledFile(rel string, e store.Entry, exists bool, row model.TaskFile) (FileResult, bool) {
+	if !exists {
+		return FileResult{}, false
+	}
+	if e.Refused != "" {
+		return FileResult{Path: rel, Status: StatusInvalid, Message: fmt.Sprintf("%s: refused, it is a %s. Use a plain file.", rel, e.Refused)}, true
+	}
+	if row.TaskID != "" && row.Review == model.TaskFileAccepted && row.Size == e.Size && string(e.Version) == row.Version {
+		return FileResult{Path: rel, Status: StatusUnchanged}, true
+	}
+	return FileResult{}, false
 }
 
 // markInvalid records the problem on the file's row (keeping its accepted copy) and returns the result.
@@ -490,6 +546,10 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		case len(changes) == 0:
 			res = FileResult{Path: rel, Status: StatusUnchanged}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFileAccepted, "", true)
+		}
+		if req.Watch && len(invalid) > 0 {
+			res = FileResult{Path: rel, Status: StatusDeferred}
+			return nil
 		}
 		if err := applyAccepted(ctx, tx, h, req.TaskID, rel, class, parsed, v); err != nil {
 			return err
@@ -552,7 +612,7 @@ func pendingMessage(rel, reason string, coll *Collision) string {
 
 // collisionOf is set when another writer accepted the file after the session's last sync.
 func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Collision {
-	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
+	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != string(RoleKira) && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
 		row.AcceptedAt > req.Session.LastSync.UnixMilli() {
 		return &Collision{By: row.AcceptedBy, At: time.UnixMilli(row.AcceptedAt)}
 	}
@@ -572,7 +632,7 @@ func (s *Service) judge(req Request, rel string, class Class, changes []Change, 
 	for _, c := range changes {
 		d := Decide(rel, Input{
 			Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
-			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted,
+			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted, Latest: c.Latest,
 			Collision: coll, Reason: req.Reason,
 		})
 		switch d.Outcome {

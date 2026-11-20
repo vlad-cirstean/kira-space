@@ -2,6 +2,7 @@ package adeflow_test
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,16 +94,20 @@ func dfAnswer(t *testing.T, app *flowharness.App, taskID string, approve bool, a
 	}
 }
 
-// dfNote is the body of the chain's note entry.
+// dfNote is the body of the chain's oldest note.
 func dfNote(t *testing.T, app *flowharness.App, taskID string) string {
 	t.Helper()
+	var body string
+	found := false
 	for _, h := range handovers(t, app, taskID) {
-		if h.State == "note" {
-			return h.Body
+		if h.State == "note" { // newest first: the last is the oldest, the user's first note
+			body, found = h.Body, true
 		}
 	}
-	t.Fatal("no note in the chain")
-	return ""
+	if !found {
+		t.Fatal("no note in the chain")
+	}
+	return body
 }
 
 func dfHandoverBodies(t *testing.T, app *flowharness.App, taskID string) []string {
@@ -117,6 +122,32 @@ func dfHandoverBodies(t *testing.T, app *flowharness.App, taskID string) []strin
 func dfSubmit(t *testing.T, app *flowharness.App, taskID string, args agentmcp.SubmitArgs) string {
 	t.Helper()
 	reply, err := app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: taskID, SessionID: "session-1"}, args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return reply
+}
+
+// dfSync is the watcher's pass as the one agent session: the named files, or every task file in the
+// folder when none. It returns the reply an explicit submit of the same files would give.
+func dfSync(t *testing.T, app *flowharness.App, taskID string, rels ...string) string {
+	t.Helper()
+	if len(rels) == 0 {
+		folder := dfFolder(t, app, taskID)
+		_ = filepath.WalkDir(folder, func(p string, d fs.DirEntry, err error) error {
+			rel, rerr := filepath.Rel(folder, p)
+			if err != nil || rerr != nil || d.IsDir() || strings.HasPrefix(rel, ".") || strings.Contains(rel, "/.") {
+				return nil
+			}
+			switch rel {
+			case "README.md", "task.yaml", "state.yaml":
+			default:
+				rels = append(rels, filepath.ToSlash(rel))
+			}
+			return nil
+		})
+	}
+	reply, err := app.W.AdeBoard.SyncTaskFiles(ctx, agentmcp.SpaceCall{TaskID: taskID, SessionID: "session-1"}, rels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +194,7 @@ func TestDetailsFiles(t *testing.T) {
 
 	// 2. An agent adds a link by editing links.yaml: accepted at once, no approval.
 	dfWrite(t, folder, "links.yaml", "links:\n  - {kind: doc, title: Design notes, ref: docs/design.md}\n")
-	reply := dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
+	reply := dfSync(t, app, task.ID)
 	if !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0\n") {
 		t.Fatalf("link submit reply = %q", reply)
 	}
@@ -175,7 +206,7 @@ func TestDetailsFiles(t *testing.T) {
 
 	// 3. The agent writes the stage handover and says it is done: a draft row, the move prompt.
 	dfWrite(t, folder, "handovers/draft-work.md", "Form wired; validation missing.")
-	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
+	reply = dfSync(t, app, task.ID)
 	if !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0") {
 		t.Fatalf("draft submit reply = %q", reply)
 	}
@@ -190,12 +221,22 @@ func TestDetailsFiles(t *testing.T) {
 	}
 	app.Contract(t, dfScenario, "AdeTaskService.Handovers#draft", adewire.HandoversResult{Handovers: handovers(t, app, task.ID)}, dfMask)
 
-	// 4. Editing the user's note needs a reason; with one it waits for the user.
+	// 4. A newer note makes the first one older. Editing an older note needs a reason (the watcher's pass
+	// has none, so it is deferred to the disk banner); with one it waits for the user.
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Newer note."}); err != nil {
+		t.Fatal(err)
+	}
 	const changed = "Check the error states and the empty form."
 	dfWrite(t, folder, noteRel, changed)
-	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Paths: []string{noteRel}})
-	if !strings.HasPrefix(reply, "accepted 0, pending user 0, invalid 1\n") || !strings.Contains(reply, "reason") {
-		t.Fatalf("note submit without reason = %q", reply)
+	reply = dfSync(t, app, task.ID, noteRel)
+	if !strings.HasPrefix(reply, "accepted 0, pending user 0, invalid 0\n") || !strings.Contains(reply, "deferred") {
+		t.Fatalf("note sync without reason = %q, want it deferred", reply)
+	}
+	if got := dfNote(t, app, task.ID); got != first {
+		t.Fatalf("note after the deferred pass = %q, want the held text", got)
+	}
+	if changes := dfDisk(t, app, task.ID); len(changes) != 1 || changes[0].Path != noteRel {
+		t.Fatalf("disk changes = %+v, want the deferred note", changes)
 	}
 	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Paths: []string{noteRel}, Reason: "the empty form case is missing"})
 	if !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0\n") {

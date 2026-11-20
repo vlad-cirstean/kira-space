@@ -151,13 +151,12 @@ async function pick(value: string): Promise<void> {
   const b = candidateOf(value);
   const taskId = attachTo.value?.taskId ?? '';
   open.value = false;
-  // Adds in the background: chip on the task when attaching to one, toast past 2 s or on failure.
+  // Adds in the background: chip on the task when attaching to one, error toast on failure.
   await ops.run(
     {
       id: `attachBranch:${b.codeRepoId}:${b.name}`,
       kind: 'attachBranch',
       taskId: taskId || undefined,
-      name: b.name,
     },
     async () => {
       const res = await addBranch.mutateAsync({ codeRepoId: b.codeRepoId, name: b.name, taskId });

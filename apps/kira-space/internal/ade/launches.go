@@ -444,7 +444,7 @@ func (b *TaskBoard) prepareWithGrant(ctx context.Context, tr *Tracker, tc *taskC
 	if err != nil {
 		return adewire.Launch{}, err
 	}
-	cfg, release, err := b.agent.Register(grant)
+	cfg, release, err := b.registerSpaceGrant(grant)
 	if err != nil {
 		releaseDb()
 		return adewire.Launch{}, err

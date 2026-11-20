@@ -15,6 +15,8 @@ worktree:
   prepare_script: bun install
   prepare_timeout: 15m
 integration_branches: [develop]
+services:
+  - script: Dev DB
 environments:
   - name: staging
     deployed_sha_script: curl -fsS https://staging.example.com/version
@@ -73,13 +75,13 @@ graph:
 	if err != nil {
 		t.Fatal(err)
 	}
-	take := []string{"worktree/prepare", "worktree/prepare_timeout", "integration_branches", "environments/staging", "environments/prod", "review/base_candidates"}
+	take := []string{"worktree/prepare", "worktree/prepare_timeout", "integration_branches", "services", "environments/staging", "environments/prod", "review/base_candidates"}
 	out, err := applyRepoEntries([]byte(local), theirs, take)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(out)
-	for _, want := range []string{"# my notes", "path: /work/app", "nickname: App", "base_path: /work/trees", "page_size: 50 # keep", "prepare_script: bun install", "prepare_timeout: 15m", "name: dev"} {
+	for _, want := range []string{"# my notes", "path: /work/app", "nickname: App", "base_path: /work/trees", "page_size: 50 # keep", "prepare_script: bun install", "prepare_timeout: 15m", "script: Dev DB", "name: dev"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("result lost %q:\n%s", want, text)
 		}

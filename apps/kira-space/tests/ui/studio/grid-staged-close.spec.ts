@@ -58,7 +58,7 @@ test('closing a grid tab with staged edits asks, and cancel keeps them', async (
   await tabClose(page, 'data').click();
   const dialog = page.locator('[data-testid="confirm-dialog"]');
   await expect(dialog).toBeVisible();
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(dialog).toHaveCount(0);
   await expect(tabClose(page, 'data')).toHaveCount(1);
   await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
@@ -88,7 +88,7 @@ test('closing a console tab with an open transaction asks, and confirm rolls it 
   await tabClose(page, 'console').click();
   const dialog = page.locator('[data-testid="confirm-dialog"]');
   await expect(dialog).toBeVisible();
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(tabClose(page, 'console')).toHaveCount(1);
 
   await tabClose(page, 'console').click();

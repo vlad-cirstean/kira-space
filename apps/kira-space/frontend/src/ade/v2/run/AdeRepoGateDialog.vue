@@ -65,7 +65,7 @@ function openRepos(): void {
 <template>
   <Dialog :open="open" @update:open="(v) => !v && gate.cancel()">
     <DialogContent size="sm" data-testid="ade-repo-gate">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-repo-gate-close">
         <DialogTitle>{{ t('space.ade.repoGate.title') }}</DialogTitle>
         <DialogDescription>{{
           t('space.ade.repoGate.body', { task: card?.title ?? '' })
@@ -109,15 +109,6 @@ function openRepos(): void {
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          data-dialog-dismiss
-          data-testid="ade-repo-gate-cancel"
-          @click="gate.cancel()"
-        >
-          {{ t('common.action.cancel.label') }}
-        </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

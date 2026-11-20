@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { TIMING } from '@workbench/behaviour/timing';
 import { expect, test } from './fixtures';
 import { adeFixture, openPlan, revealRow } from './support/adeV2';
 import { contract } from './support/contract';
@@ -47,7 +48,7 @@ test('the danger dialog opens with Cancel focused and Escape closes it unsent', 
   await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
-  await expect(dialog.locator('[data-testid="ade-confirm-no"]')).toBeFocused();
+  await expect(dialog.locator('[data-testid="ade-confirm-close"]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   expect(control.log().filter((e) => e.channel === IPC.adeTaskForcePush)).toHaveLength(0);
@@ -96,9 +97,7 @@ for (const key of ['stale-lease', 'unintegrated']) {
   });
 }
 
-test('a push in flight shows the chip, and past 2 s a loading then a success toast', async ({
-  relaunch,
-}) => {
+test('a push in flight shows the chip and no toast even past 2 s', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: unpushedBoard() },
     forcePushSnapshot(adeFixture('force-push'), true),
@@ -106,13 +105,15 @@ test('a push in flight shows the chip, and past 2 s a loading then a success toa
   await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   await page.locator('[data-testid="ade-confirm-yes"]').click();
+  await page.clock.install();
   await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
   const chip = page.locator('[data-testid="ade-op-status"][data-op="forcePush"]');
   await expect(chip.first()).toBeVisible();
-  await expect(toast(page)).toContainText('Force pushing', { timeout: 5000 });
+  await page.clock.runFor(TIMING.slowOp + 500);
+  await expect(toast(page)).toHaveCount(0);
   control.release(IPC.adeTaskForcePush);
-  await expect(toast(page)).toContainText('Force pushed chore/deps-bump');
   await expect(chip).toHaveCount(0);
+  await expect(toast(page)).toHaveCount(0);
 });
 
 test('a force push from the panel branch list shows the chip on that row', async ({ relaunch }) => {
@@ -135,17 +136,4 @@ test('a force push from the panel branch list shows the chip on that row', async
   await expect(chip.first()).toBeVisible();
   control.release(IPC.adeTaskForcePush);
   await expect(chip).toHaveCount(0);
-});
-
-test('a push that finishes within 2 s shows no toast', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskBoard, response: unpushedBoard() },
-    forcePushSnapshot(adeFixture('force-push')),
-  ]);
-  await revealRow(page, 'b_deps', 'board', 'ade-force-push');
-  await page.locator('[data-testid="ade-force-push"]').click();
-  await page.locator('[data-testid="ade-confirm-yes"]').click();
-  await expect(page.locator('[data-testid="ade-confirm-dialog"]')).toHaveCount(0);
-  await page.waitForTimeout(2600);
-  await expect(toast(page)).toHaveCount(0);
 });

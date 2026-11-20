@@ -281,7 +281,7 @@ test('restore cancelled at the confirm sends nothing', async ({ relaunch }) => {
   const first = journeyBackups.find((b) => b.restorable);
   if (!first) throw new Error('no restorable backup in the contract');
   await dialog.locator(t(`ade-port-restore-${first.file}`)).click();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
   expect(calls(control, IPC.agentPortRestore)).toHaveLength(0);
   await expect(dialog.locator(t('ade-port-result'))).toHaveCount(0);

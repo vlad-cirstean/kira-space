@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,10 +156,26 @@ func (f *fixture) write(t *testing.T, name string, steps []map[string]any) strin
 	return slug
 }
 
-// submit runs the agent's submit for the task and returns the reply.
+// submit saves every proof file of the task as the agent and returns the reply: the watcher's pass
+// without a reason, else an explicit submit with it.
 func (f *fixture) submit(t *testing.T, reason string) string {
 	t.Helper()
-	reply, err := f.app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: f.taskID, SessionID: "session-1"}, agentmcp.SubmitArgs{Reason: reason})
+	var rels []string
+	_ = filepath.WalkDir(f.folder, func(p string, d fs.DirEntry, err error) error {
+		if rel, rerr := filepath.Rel(f.folder, p); err == nil && rerr == nil && !d.IsDir() && strings.HasPrefix(filepath.ToSlash(rel), "proofs/") {
+			rels = append(rels, filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	call := agentmcp.SpaceCall{TaskID: f.taskID, SessionID: "session-1"}
+	if reason == "" {
+		reply, err := f.app.W.AdeBoard.SyncTaskFiles(ctx, call, rels)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return reply
+	}
+	reply, err := f.app.W.AdeBoard.Submit(ctx, call, agentmcp.SubmitArgs{Paths: rels, Reason: reason})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,6 +216,12 @@ func (f *fixture) edit(t *testing.T, name, reason string, steps ...map[string]an
 	slug := f.write(t, name, steps)
 	reply := f.submit(t, reason)
 	return saved{ID: f.idOf(t, name), Slug: slug, Name: name, Reply: reply, Pending: strings.Contains(reply, "pending user 1")}
+}
+
+// newest saves a later proof, so every earlier one is older and its edits need a reason.
+func (f *fixture) newest(t *testing.T) {
+	t.Helper()
+	f.save(t, "Newest", keyValueStep("latest"))
 }
 
 // proofs lists the task's proofs.

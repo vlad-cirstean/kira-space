@@ -364,9 +364,6 @@ function onClose(): void {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" @click="cancelCreate">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

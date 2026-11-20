@@ -390,7 +390,7 @@ func TestRunEngine_takeOver(t *testing.T) {
 	}
 
 	cfg := quotedAfter(t, composed, "--mcp-config")
-	if err := fakeFinish(cfg, "Task folder: "+filepath.Join(e.board.files.root, pathSegment(id))+". See README.md there.", "done", "tui-done"); err != nil {
+	if err := fakeFinish(cfg, "This task's Details files live in "+filepath.Join(e.board.files.root, pathSegment(id))+"; see README.md there.", "done", "tui-done"); err != nil {
 		t.Fatal(err)
 	}
 	if r := e.waitRun(id, "first/api", model.AdeRunDone); r.Summary != "tui-done" {
@@ -431,7 +431,7 @@ func TestRunEngine_launchStep(t *testing.T) {
 	}
 	composed := e.spawn(l)
 	head := " -- '" + "Spec: Fix login\n- Repo: api (read only, in " + e.code["api"].Root + ")\nWrite the spec for Fix login\n" + spaceNote
-	if !strings.Contains(composed, head) || !strings.Contains(composed, "\nTask folder: ") || !strings.HasSuffix(composed, handoverLine+"'") {
+	if !strings.Contains(composed, head) || !strings.Contains(composed, "s Details files live in ") || !strings.HasSuffix(composed, handoverLine+"'") {
 		t.Fatalf("command = %q\nwant head %q, the task folder line and the handover line", composed, head)
 	}
 	if _, err := e.board.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: id}); err == nil || !strings.Contains(err.Error(), "Spec session is already running") {
@@ -460,7 +460,7 @@ func TestRunEngine_startBranch(t *testing.T) {
 		}
 		composed := e.spawn(l)
 		head := " -- '" + "Task: Fix login\n- Repo: api · Branch: feat/fix-login · Worktree: " + l.Cwd + "\nHandover from one:\nsummary-done\n" + spaceNote
-		if !strings.Contains(composed, head) || !strings.Contains(composed, "\nTask folder: ") || !strings.HasSuffix(composed, handoverLine+"'") {
+		if !strings.Contains(composed, head) || !strings.Contains(composed, "s Details files live in ") || !strings.HasSuffix(composed, handoverLine+"'") {
 			t.Fatalf("command = %q\nwant head %q, the task folder line and the handover line", composed, head)
 		}
 		if _, err := e.board.StartBranch(ctx, adewire.StartBranchArgs{BranchID: branchOf(t, e, id, "api")}); err == nil || !strings.Contains(err.Error(), "already open") {

@@ -8,7 +8,7 @@ import { useAdeStageDialogStore } from '../state/adeStageDialog';
 const AdeStageDialog = defineAsyncComponent(() => import('./AdeStageDialog.vue'));
 
 // The routed `handover` popup: a session finished its stage and offers the move. `entry.ref` is the
-// task id. Not now keeps the draft and withdraws the popup; Escape and Cancel only hide it here.
+// task id. Not now keeps the draft and withdraws the popup; the X only hides it here.
 const props = defineProps<{ entry: RoutedPrompt; more: number }>();
 const emit = defineEmits<{ hide: [] }>();
 const store = useAdeStageDialogStore();

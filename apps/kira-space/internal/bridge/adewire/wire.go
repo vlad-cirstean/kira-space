@@ -895,6 +895,31 @@ type ArchiveRisk struct {
 	Branches []BranchRisk `json:"branches"`
 }
 
+// Required service states.
+const (
+	ServiceRunning    = "running"
+	ServiceStopped    = "stopped"
+	ServiceNoWorktree = "noWorktree"
+	ServiceInvalid    = "invalid"
+)
+
+// RequiredService is one repo service a task needs, with whether a Kira run of it is live.
+type RequiredService struct {
+	CodeRepoID string              `json:"codeRepoId"`
+	BranchID   string              `json:"branchId"` // "" for a service in its own folder
+	Script     string              `json:"script"`   // the name the repo file gives
+	ScriptID   string              `json:"scriptId"` // "" when State is invalid
+	Params     map[string][]string `json:"params"`
+	State      string              `json:"state"` // running | stopped | noWorktree | invalid
+	RunID      string              `json:"runId"`
+	Problem    string              `json:"problem"`
+}
+
+// RequiredServices is what a task needs running before work starts on it.
+type RequiredServices struct {
+	Items []RequiredService `json:"items"`
+}
+
 type StartRunResult struct {
 	RunIDs []string `json:"runIds"`
 }

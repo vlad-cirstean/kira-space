@@ -104,10 +104,11 @@ test('Schema (DDL)… dialog stages until Save (D3)', async ({ relaunch }) => {
   await openSchemaDialog();
   await typeInto(dialog, page, TWO_TABLE_DDL, { paste: true });
   await expect(summary).toContainText('2 tables, 5 columns');
-  await page.locator('[data-slot="dialog-footer"] button', { hasText: 'Cancel' }).click();
+  await page.click('[data-testid="schema-dialog-close"]');
+  await page.click('[data-testid="confirm-dialog-confirm"]');
   await expect(dialog).toHaveCount(0);
 
-  // Reopening after Cancel shows the document exactly as it was before (empty) — Cancel
+  // Reopening after Discard shows the document exactly as it was before (empty) — Discard
   // discarded the typed draft, and nothing was saved.
   await openSchemaDialog();
   expect(await editorText(dialog)).toBe('');

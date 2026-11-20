@@ -42,7 +42,7 @@ test('unsaved edits ask before switching sub-tab or leaving Agent config', async
   await expect(page.locator(t('confirm-dialog-message'))).toContainText(
     'unsaved changes to the agent context',
   );
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect
     .poll(() => codeEditorText(page.locator(t('ade-context-text'))))
     .toBe('Use spaces.\n');
@@ -57,7 +57,7 @@ test('unsaved edits ask before switching sub-tab or leaving Agent config', async
   await expect(page.locator(t('confirm-dialog-message'))).toContainText(
     'unsaved changes to the agent settings',
   );
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('ade-settings'))).toBeVisible();
   await page.locator(t('ade-tab-plan')).click();
   await page.locator(t('confirm-dialog-confirm')).click();

@@ -93,9 +93,28 @@ func (h *detailsHandlers) Diff(ctx context.Context, tx taskfiles.Tx, taskID, rel
 	case row == nil:
 		return []taskfiles.Change{{Op: taskfiles.OpCreate, Own: true, Text: taskfiles.TextDiff(rel, "", string(parsed.(textBody)))}}, nil
 	case row.Body != string(parsed.(textBody)):
-		return []taskfiles.Change{{Op: taskfiles.OpEdit, Own: h.ownRow(row, s), Text: taskfiles.TextDiff(rel, row.Body, string(parsed.(textBody)))}}, nil
+		latest, err := h.isLatest(tx, taskID, rel, c)
+		if err != nil {
+			return nil, err
+		}
+		return []taskfiles.Change{{Op: taskfiles.OpEdit, Own: h.ownRow(row, s), Latest: latest, Text: taskfiles.TextDiff(rel, row.Body, string(parsed.(textBody)))}}, nil
 	}
 	return nil, nil
+}
+
+// isLatest is whether rel is the newest note or handed handover of the task; other kinds never are.
+func (h *detailsHandlers) isLatest(tx taskfiles.Tx, taskID, rel string, c taskfiles.Class) (bool, error) {
+	var state string
+	switch c.Kind {
+	case taskfiles.KindNote:
+		state = model.AdeHandoverNote
+	case taskfiles.KindHandover:
+		state = model.AdeHandoverHanded
+	default:
+		return false, nil
+	}
+	latest, err := h.cache().LatestRel(tx.Querier(), taskID, state)
+	return err == nil && latest == rel, err
 }
 
 func (h *detailsHandlers) ownRow(r *model.AdeHandover, s detailsSession) bool {

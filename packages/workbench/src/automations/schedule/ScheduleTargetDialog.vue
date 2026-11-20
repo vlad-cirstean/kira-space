@@ -6,7 +6,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -71,11 +70,6 @@ async function save(): Promise<void> {
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <DialogClose as-child>
-          <Button variant="dialog" size="kira-lg" data-testid="schedule-target-cancel">{{
-            t('common.action.cancel.label')
-          }}</Button>
-        </DialogClose>
         <Button
           variant="dialog-primary"
           size="kira-lg"

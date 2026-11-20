@@ -9,10 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
-import { t } from '@theme/i18n';
 
-// The one confirm look. A danger confirm opens with focus on Cancel (Enter cancels); a primary one
-// opens on the confirm button. `touch` gives the phone's 44px buttons. Used by the store host
+// The one confirm look. A danger confirm opens with focus on the header X (Enter closes); a
+// primary one opens on the confirm button. `touch` gives the phone's 44px buttons. Used by the store host
 // (`ConfirmDialog.vue`), the ADE dialogs and the mobile screens; `testids` keeps each host's ids.
 const props = withDefaults(
   defineProps<{
@@ -26,7 +25,7 @@ const props = withDefaults(
     error?: string;
     touch?: boolean;
     testids?: Partial<
-      Record<'root' | 'close' | 'message' | 'cancel' | 'secondary' | 'confirm' | 'error', string>
+      Record<'root' | 'close' | 'message' | 'secondary' | 'confirm' | 'error', string>
     >;
   }>(),
   {
@@ -43,7 +42,6 @@ const ids = {
   root: 'confirm-dialog',
   close: 'confirm-dialog-close',
   message: 'confirm-dialog-message',
-  cancel: 'confirm-dialog-cancel',
   secondary: 'confirm-dialog-secondary',
   confirm: 'confirm-dialog-confirm',
   error: 'confirm-dialog-error',
@@ -69,16 +67,6 @@ const id = (name: keyof typeof ids): string => props.testids[name] ?? ids[name];
       </DialogBody>
 
       <DialogFooter>
-        <Button
-          variant="dialog"
-          :size="touch ? 'touch' : 'kira-lg'"
-          data-dialog-dismiss
-          :class="touch ? 'flex-1' : undefined"
-          :data-testid="id('cancel')"
-          @click="!pending && emit('cancel')"
-        >
-          {{ t('common.action.cancel.label') }}
-        </Button>
         <Button
           v-if="secondaryLabel"
           variant="dialog"

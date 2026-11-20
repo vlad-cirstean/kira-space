@@ -150,7 +150,7 @@ function run(a: HeaderAction, ev?: MouseEvent): void {
   const id = branch.value.id;
   if (a.kind === 'rebase') dialogs.act(a.act);
   else if (a.kind === 'remerge') dialogs.merge(id, a.target);
-  else if (a.kind === 'start') dialogs.start(id);
+  else if (a.kind === 'start') dialogs.start(id).catch(surface.fail);
   else if (a.kind === 'automation') {
     const r = (ev?.currentTarget as Element | null)?.getBoundingClientRect();
     if (r)

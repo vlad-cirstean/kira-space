@@ -17,11 +17,11 @@ export async function acceptConfirm(page: Page): Promise<void> {
 export async function cancelConfirm(page: Page): Promise<void> {
   const dialog = page.locator('[data-testid="confirm-dialog"]');
   await expect(dialog).toBeVisible();
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(dialog).toHaveCount(0);
 }
 
-/** The middle button of a three-choice confirm (Discard beside Save and Cancel). */
+/** The secondary button of a choose() confirm (Discard beside Save). */
 export async function chooseSecondary(page: Page): Promise<void> {
   const dialog = page.locator('[data-testid="confirm-dialog"]');
   await expect(dialog).toBeVisible();

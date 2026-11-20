@@ -1,0 +1,98 @@
+{
+  "AdeTaskService.Handovers#applied": {
+    "handovers": [
+      {
+        "body": "Draft v1.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "run",
+        "state": "draft",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Newer note, edited.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Check the error states.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "ApprovalsService.List#detailsEdit": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "details.edit",
+      "operation": {
+        "class": "review",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "run",
+        "step": "",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "cause": "note",
+            "kind": "note",
+            "path": "notes/<time>-<id:1>.md",
+            "reason": "typo fixed",
+            "text": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Check the error states.\n+Older note, edited.\n"
+          }
+        ],
+        "reason": "typo fixed",
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "review",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ]
+}

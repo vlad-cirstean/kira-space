@@ -48,7 +48,7 @@ type ReadmeInput struct {
 // proofExample is the one proof format block: 8 lines, each at most 300 bytes. It rides the README the
 // agent reads anyway, so a proof needs no tool and no extra file.
 var proofExample = []string{
-	"New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md, then submit once. Example:",
+	"New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md last. Example:",
 	"---",
 	"name: Orders match ledger",
 	"summary: All 20 orders match their ledger lines.",
@@ -67,10 +67,11 @@ func Readme(in ReadmeInput) string {
 	}
 	lines := append(make([]string, 0, MaxReadmeLines), []string{
 		fmt.Sprintf("# Task %s: %s", oneLine(in.TaskID, maxReadmeTitle), oneLine(in.Title, maxReadmeTitle)),
-		"Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.",
+		"Kira applies your edits on save; read state.yaml fileErrors after each edit.",
 		"Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.",
 		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).", oneLine(step, 80)),
-		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.",
+		"Ask first (submit with paths and reason): older notes/*.md and handovers/NNNN-*.md, older proofs, others' links. The newest of each is free to edit.",
+		"Write a proof for any checkable result before finishing.",
 	}...)
 	lines = append(lines, proofExample...)
 	lines = append(lines, proofLines(in.Proofs)...)

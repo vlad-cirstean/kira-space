@@ -306,7 +306,7 @@ test('contract: recreate confirms losses, then selects the new container', async
   await expect(tid(page, 'docker-edit-lost-volume')).toContainText('anon-volume');
   await expect(tid(page, 'docker-edit-compose')).toContainText('proj');
 
-  await tid(page, 'docker-edit-cancel').click();
+  await tid(page, 'docker-edit-close').click();
   await expect(dialog).toHaveCount(0);
   expect(docker.calls('RecreateContainer')).toHaveLength(0);
 
@@ -411,7 +411,7 @@ test('contract: a stopped container applies in place and recreate keeps it stopp
   await page.locator('[data-testid="docker-edit-env-value"]').last().fill('2');
   await tid(page, 'docker-edit-apply-recreate').click();
   await expect(tid(page, 'docker-edit-kept')).toContainText('The new container stays stopped.');
-  await tid(page, 'docker-edit-cancel').click();
+  await tid(page, 'docker-edit-close').click();
   expect(docker.calls('RecreateContainer')).toHaveLength(0);
 });
 

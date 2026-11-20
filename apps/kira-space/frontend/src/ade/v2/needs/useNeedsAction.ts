@@ -12,6 +12,7 @@ import { useAdePanelTabsStore } from '../state/adePanelTabs';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
+import { useServicesGate } from '../state/useServicesGate';
 
 /** The one action behind a needs-you item: the Needs you row button and the `!` circle share it. */
 export function useNeedsAction() {
@@ -24,6 +25,7 @@ export function useNeedsAction() {
   const ops = useAdeOpsStore();
   const reviewCode = useReviewCode();
   const { ensureRepo, opAfterRepo } = useRepoGate();
+  const { ensureServices } = useServicesGate();
   const { model } = usePlanModel();
 
   /** The item's task action as an op on `target` (its runs or step): chip on the card, toast on failure, task selected. */
@@ -33,9 +35,8 @@ export function useNeedsAction() {
     n: NeedsItem,
     call: () => Promise<unknown>,
   ): Promise<void> {
-    const name = model.value?.cardFor(n.taskId)?.title ?? '';
     const ok = await opAfterRepo(n.taskId, call, (fn) =>
-      ops.run({ id: `${kind}:${target}`, kind, taskId: n.taskId, name }, fn),
+      ops.run({ id: `${kind}:${target}`, kind, taskId: n.taskId }, fn),
     );
     if (!ok) ui.select(n.taskId);
   }
@@ -49,17 +50,19 @@ export function useNeedsAction() {
         tabs.setBranchTab(n.branchId, 'details');
       } else if (n.action === 'Take over') await takeOver.request(n.sessionId);
       else if (n.action === 'Retry') {
+        if (!(await ensureServices(n.taskId))) return;
         await op('retry', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
           Promise.all(n.runIds.map((runId) => retry.mutateAsync({ runId }))),
         );
       } else if (n.action === 'Resume') {
+        if (!(await ensureServices(n.taskId))) return;
         await op('resume', runsTarget(n.runIds, n.taskId, n.stepId), n, () =>
           Promise.all(n.runIds.map((runId) => resume.mutateAsync({ runId }))),
         );
       } else if (n.action === 'Open') await openSession(n.sessionId, n.taskId, n.branchId);
       else if (n.action === 'Approve') {
         const needsRepo = model.value?.cardFor(n.taskId)?.progress.step?.needsRepo ?? false;
-        if (await ensureRepo(n.taskId, needsRepo)) {
+        if ((await ensureRepo(n.taskId, needsRepo)) && (await ensureServices(n.taskId))) {
           await op('approve', `${n.taskId}:${n.stepId}`, n, () =>
             approve.mutateAsync({ taskId: n.taskId, stepId: n.stepId }),
           );

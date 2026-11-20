@@ -6,6 +6,7 @@ import { useLaunchOpener } from '../dialog/useLaunchOpener';
 import { useRestoreTask, useTakeOver } from '../queries';
 import { useSessionViews } from '../sessions/useSessionViews';
 import { useAdeBoardUiStore } from './adeBoardUi';
+import { useServicesGate } from './useServicesGate';
 import { isPreparing, useSetupWait } from './useSetupWait';
 
 export interface TakeOverConfirm {
@@ -22,6 +23,7 @@ export const useAdeTakeOverStore = defineStore('adeTakeOver', () => {
   const takeOverM = useTakeOver();
   const restoreM = useRestoreTask();
   const { sessions, view } = useSessionViews();
+  const { ensureServices } = useServicesGate();
 
   /** The confirm for a session whose run is still running; `null` when none is open. */
   const confirm = ref<TakeOverConfirm | null>(null);
@@ -77,6 +79,7 @@ export const useAdeTakeOverStore = defineStore('adeTakeOver', () => {
   /** Takes over `sessionId`, asking first when its run is still running. */
   async function request(sessionId: string): Promise<void> {
     const s = sessions.value.find((x) => x.id === sessionId);
+    if (s?.taskId && !(await ensureServices(s.taskId))) return;
     const v = s ? view(s) : null;
     if (v?.headless && v.run?.state === 'running') {
       confirm.value = {

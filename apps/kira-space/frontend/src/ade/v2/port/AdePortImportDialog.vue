@@ -134,7 +134,7 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
 <template>
   <Dialog v-model:open="open">
     <DialogContent size="2xl" fixed-height :dirty="dirty" data-testid="ade-port-import-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-port-close">
         <DialogTitle>{{
           t('space.ade.port.importDialog.title', { agent: provider.label })
         }}</DialogTitle>
@@ -262,12 +262,8 @@ const stateVariant = { new: 'ok', same: 'default', conflict: 'warn', skipped: 'd
           </template>
         </template>
       </DialogBody>
-      <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="ade-port-close" @click="open = false">
-          {{ t('common.action.close.label') }}
-        </Button>
+      <DialogFooter v-if="!result">
         <Button
-          v-if="!result"
           variant="dialog-primary"
           size="kira-lg"
           :disabled="picked.size === 0"

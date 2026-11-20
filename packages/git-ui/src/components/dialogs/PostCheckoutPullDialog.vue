@@ -57,14 +57,6 @@ function pullNow(): void {
 
       <DialogFooter>
         <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="post-checkout-pull-not-now"
-          @click="notNow"
-        >
-          {{ t('common.action.notNow.label') }}
-        </Button>
-        <Button
           variant="dialog-primary"
           size="kira-lg"
           data-testid="post-checkout-pull-now"

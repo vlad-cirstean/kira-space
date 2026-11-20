@@ -15,11 +15,14 @@ const MaxHandoverBytes = 16 << 10
 // maxSubmitPaths bounds the paths of one submit call.
 const maxSubmitPaths = 50
 
-// SubmitArgs is the submit tool's input: the files to read (all when none) and why, for a change that
-// needs the user's approval. It is content only; state step.finish ends the step.
+// SubmitNeedsArgs is the refusal of a submit with no paths or no reason.
+const SubmitNeedsArgs = "submit sends ask-first files to the user for approval: pass paths and reason. Kira applies every other edit on save; errors are in state.yaml fileErrors."
+
+// SubmitArgs is the submit tool's input: the ask-first files to send to the user and why. Both are
+// required. It is content only; state step.finish ends the step.
 type SubmitArgs struct {
-	Paths  []string `json:"paths,omitempty"`
-	Reason string   `json:"reason,omitempty"`
+	Paths  []string `json:"paths"`
+	Reason string   `json:"reason"`
 }
 
 // SubmitFinish is step.finish's implicit submit: the reply to append, or the refusal of an ok finish.
@@ -46,6 +49,9 @@ func (s *Server) addSubmitTool(srv *mcp.Server) {
 			return toolError("paths has too many entries."), nil, nil
 		}
 		args.Reason = strings.TrimSpace(args.Reason)
+		if len(args.Paths) == 0 || args.Reason == "" {
+			return toolError(SubmitNeedsArgs), nil, nil
+		}
 		ctx, done := s.callCtx(ctx, req)
 		defer done()
 		text, err := s.space.Submit(ctx, call, args)

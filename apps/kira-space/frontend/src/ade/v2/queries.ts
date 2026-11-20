@@ -103,6 +103,7 @@ export const handoversPrefix = ['adetask', 'handovers'] as const;
 export const proofsPrefix = ['adetask', 'proofs'] as const;
 export const dbAuditPrefix = ['adetask', 'dbAudit'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
+export const diskPrefix = ['adetask', 'details-disk'] as const;
 export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
   ['adetask', 'reviewTarget', windowKey] as const;

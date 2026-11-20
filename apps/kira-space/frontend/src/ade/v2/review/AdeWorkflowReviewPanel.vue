@@ -88,7 +88,7 @@ const sendTip = computed(() => {
 
 type ReviewOp = 'sendReview' | 'finishReview' | 'stopRuns' | 'resume';
 
-/** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, toast. */
+/** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, error toast. */
 async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean> {
   if (!kind) return surface.run(fn);
   // The op needs the original failure (an `OpAborted` ends it silently); the surface shows it.
@@ -105,8 +105,8 @@ async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean
     if (!ok) throw failure;
   };
   surface.reset();
-  const { taskId, branchId, branch } = props.target;
-  return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId, name: branch }, capture);
+  const { taskId, branchId } = props.target;
+  return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId }, capture);
 }
 
 function onSend(): Promise<boolean> {
@@ -401,7 +401,7 @@ const stateLabel = (c: ReviewComment): string =>
       tone="primary"
       :testids="{
         root: 'ade-confirm-dialog',
-        cancel: 'ade-confirm-no',
+        close: 'ade-confirm-close',
         confirm: 'ade-confirm-yes',
       }"
       @confirm="confirmFinish"

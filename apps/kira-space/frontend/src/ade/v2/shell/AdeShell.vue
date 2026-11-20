@@ -25,6 +25,9 @@ const AdeNeedsPage = defineAsyncComponent(() => import('../needs/AdeNeedsPage.vu
 const AdeReposPage = defineAsyncComponent(() => import('../repos/AdeReposPage.vue'));
 const AdeRepoGateDialog = defineAsyncComponent(() => import('../run/AdeRepoGateDialog.vue'));
 const AdeRunDialog = defineAsyncComponent(() => import('../run/AdeRunDialog.vue'));
+const AdeServicesGateDialog = defineAsyncComponent(
+  () => import('../services/AdeServicesGateDialog.vue'),
+);
 const AdeTakeOverDialog = defineAsyncComponent(() => import('../sessions/AdeTakeOverDialog.vue'));
 const AdeStageDialog = defineAsyncComponent(() => import('../stage/AdeStageDialog.vue'));
 const AdeWorkflowsPage = defineAsyncComponent(() => import('../workflows/AdeWorkflowsPage.vue'));
@@ -183,6 +186,7 @@ onScopeDispose(() => offReviewCode?.());
     </div>
     <AdeRunDialog />
     <AdeRepoGateDialog />
+    <AdeServicesGateDialog />
     <AdeAgentDialog />
     <AdeAbortRebaseDialog />
     <AdeTakeOverDialog />

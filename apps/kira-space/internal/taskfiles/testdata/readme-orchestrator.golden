@@ -1,9 +1,10 @@
 # Task o-1: Epic
-Edit, then call submit: a change counts only after submit answers per file. Pass reason when the change needs the user's approval.
+Kira applies your edits on save; read state.yaml fileErrors after each edit.
 Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.
 Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).
-Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.
-New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md, then submit once. Example:
+Ask first (submit with paths and reason): older notes/*.md and handovers/NNNN-*.md, older proofs, others' links. The newest of each is free to edit.
+Write a proof for any checkable result before finishing.
+New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md last. Example:
 ---
 name: Orders match ledger
 summary: All 20 orders match their ledger lines.

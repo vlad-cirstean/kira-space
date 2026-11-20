@@ -42,7 +42,7 @@ test('Archive asks first: Cancel sends nothing, Archive sends it', async ({ rela
   await page.locator(t('ade-panel-more')).click();
   await page.locator(t('menu-item-ade-task-archive')).click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskArchiveTask)).toHaveLength(0);
 

@@ -511,7 +511,7 @@ func TestAutomationStep(t *testing.T) {
 			t.Fatalf("run = %+v", r)
 		}
 		got := fakeFile(t, f.app, "api-1.prompt")
-		if !strings.Contains(got, "Task folder: ") || strings.Contains(got, "handovers/draft-s1.md") {
+		if !strings.Contains(got, "This task's Details files live in ") || strings.Contains(got, "handovers/draft-s1.md") {
 			t.Fatalf("prompt = %q, want the task folder and no draft path", got)
 		}
 		if _, err := os.Stat(filepath.Join(f.app.FakeDir, "api-1.draft-asked")); !errors.Is(err, fs.ErrNotExist) {
@@ -531,10 +531,10 @@ func TestAutomationStep(t *testing.T) {
 			t.Fatalf("run = %+v", r)
 		}
 		got := fakeFile(t, f.app, "api-1.prompt")
-		if want := "Lint feat/api-lint at high for Fix login\n\n" + agentmcp.SpaceNote(llmprompts.Defaults()) + "\nTask folder: "; !strings.HasPrefix(got, want) {
+		if want := "Lint feat/api-lint at high for Fix login\n\n" + agentmcp.SpaceNote(llmprompts.Defaults()) + "\nThis task's Details files live in "; !strings.HasPrefix(got, want) {
 			t.Fatalf("prompt = %q, want it to start with %q", got, want)
 		}
-		if want := "See README.md there. Call submit after editing task files."; !strings.Contains(got, want) {
+		if want := "see README.md there. Kira applies your edits on save; read state.yaml fileErrors after each edit."; !strings.Contains(got, want) {
 			t.Fatalf("prompt = %q, want %q", got, want)
 		}
 		if want := "\n\n" + agentmcp.FinishInstruction(llmprompts.Defaults(), nil); !strings.Contains(got, want) {

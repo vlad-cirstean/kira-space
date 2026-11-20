@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
       data-testid="ade-stage-dialog"
       @keydown="onMoveKey"
     >
-      <DialogHeader>
+      <DialogHeader close-testid="ade-stage-dialog-close">
         <DialogTitle>{{
           t(pass ? 'space.ade.stageDialog.passTitle.title' : 'space.ade.stageDialog.title.title', {
             task: store.card?.title ?? '',
@@ -195,9 +195,6 @@ onBeforeUnmount(() => {
             t('common.action.notNow.label')
           }}</Button
         >
-        <Button variant="dialog" size="kira-lg" data-testid="ade-stage-cancel" @click="close">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

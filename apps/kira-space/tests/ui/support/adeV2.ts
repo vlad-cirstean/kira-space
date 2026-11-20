@@ -257,6 +257,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskSend },
     { channel: IPC.adeTaskFocusSession, response: true },
     { channel: IPC.adeTaskArchiveRisk, response: adeFixture('archive-risk') },
+    { channel: IPC.adeTaskRequiredServices, response: { items: [] } },
     { channel: IPC.adeTaskArchiveTask },
     { channel: IPC.adeTaskArchivedTask, response: archivedTaskFx() },
     { channel: IPC.adeTaskRestoreTask, response: adeFixture('task') },
@@ -458,6 +459,15 @@ function script(id: string, name: string, kind: 'script' | 'smart', command: str
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
+}
+
+/** T_alerts moved to a not yet started Plan step of the standard workflow. */
+export function alertsInPlan(b: AdeBoardFx): void {
+  const alerts = b.tasks.find((x) => x.id === 'T_alerts');
+  if (!alerts) throw new Error('fixture tasks missing');
+  alerts.entryStepId = 'plan';
+  alerts.workflowId = 'standard';
+  alerts.runs = [];
 }
 
 export const SMART = script('smart-1', 'Review diff', 'smart', 'Review {branch} of {task}.');

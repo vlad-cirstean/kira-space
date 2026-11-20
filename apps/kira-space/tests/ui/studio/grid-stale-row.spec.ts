@@ -134,7 +134,7 @@ test('cancelling the overwrite keeps the staged edit and sends nothing more', as
     stream: [...FIXTURE.port, CONFLICT_MUTATE],
   });
   await stageAndCommit(page);
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(page.locator('[data-testid="confirm-dialog"]')).toHaveCount(0);
   await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
   await expect(page.locator('[data-testid="toolbar-commit-changes"]')).toBeVisible();

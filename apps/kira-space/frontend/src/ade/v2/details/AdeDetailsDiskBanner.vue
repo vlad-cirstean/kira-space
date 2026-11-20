@@ -18,8 +18,8 @@ import { ref } from 'vue';
 import type { DiskChange } from '../wire';
 import { refreshDisk, useAcceptDisk, useDiscardDisk, useDiskChanges } from './useDetailsDisk';
 
-// The task folder against what Kira holds: files edited outside a submit. Stat on open, window focus and
-// Refresh; no watcher. Accept makes a change the held copy, Discard restores the held copy.
+// The task folder against what Kira holds: files edited outside Kira's apply. Stat on open, window focus,
+// Refresh and board push. Accept makes a change the held copy, Discard restores the held copy.
 const props = defineProps<{ taskId: string; readonly?: boolean }>();
 
 const changes = useDiskChanges(

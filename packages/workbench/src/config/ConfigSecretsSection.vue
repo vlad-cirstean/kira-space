@@ -147,7 +147,7 @@ const refExample = '$' + '{secret:name}';
 
     <Dialog :open="target !== null" @update:open="(v) => !v && close()">
       <DialogContent size="sm" :dirty="value !== ''" :data-testid="tid('dialog')">
-        <DialogHeader>
+        <DialogHeader :close-testid="tid('close')">
           <DialogTitle>{{
             t('common.configSecrets.dialog.title', { name: target ?? '' })
           }}</DialogTitle>
@@ -168,9 +168,6 @@ const refExample = '$' + '{secret:name}';
           </Alert>
         </DialogBody>
         <DialogFooter>
-          <Button variant="dialog" size="kira-lg" @click="close">
-            {{ t('common.action.cancel.label') }}
-          </Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"

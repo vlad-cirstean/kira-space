@@ -157,7 +157,7 @@ filesTest('closing a tab with unsaved edits asks to discard', async ({ relaunch 
   const tab = repoTab(page, 'repo-file');
   await tab.hover();
   await tab.locator('[data-testid="tab-close"]').click();
-  await page.locator('[data-testid="confirm-dialog-cancel"]').click();
+  await page.locator('[data-testid="confirm-dialog-close"]').click();
   await expect(tab).toHaveCount(1);
 
   await tab.hover();

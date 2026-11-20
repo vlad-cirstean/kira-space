@@ -5,8 +5,8 @@ import { pick } from './support/branchMenu';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
-// Remove branch and archive run in the background: the dialog closes at once, a chip and a toast
-// show progress. Backend half: adeflow TestTaskReposAndBranches and TestArchiveRisk.
+// Remove branch and archive run in the background: the dialog closes at once, a chip shows
+// progress; no toast unless it fails. Backend half: adeflow TestTaskReposAndBranches and TestArchiveRisk.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const toast = (page: Page) => page.locator('[data-sonner-toast]');
@@ -14,7 +14,7 @@ const chip = (page: Page) => page.locator(t('ade-op-status'));
 
 const dirty = { channel: IPC.adeTaskTaskBranchRisk, response: adeFixture('branch-risk-dirty') };
 
-test('a confirmed branch removal closes the dialog and runs behind a chip and a toast', async ({
+test('a confirmed branch removal closes the dialog and runs behind a chip, with no toast', async ({
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, [
@@ -27,10 +27,10 @@ test('a confirmed branch removal closes the dialog and runs behind a chip and a 
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskBranch)).toHaveLength(1);
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
   await expect(chip(page).first()).toHaveAttribute('data-op', /removeBranch|removeRepo/);
-  await expect(toast(page)).toContainText('Removing');
+  await expect(toast(page)).toHaveCount(0);
   control.release(IPC.adeTaskRemoveTaskBranch);
   await expect(chip(page)).toHaveCount(0);
-  await expect(toast(page)).toContainText('Removed');
+  await expect(toast(page)).toHaveCount(0);
 });
 
 test('a repo removal with nothing at risk also runs in the background', async ({ relaunch }) => {
@@ -63,7 +63,9 @@ test('a refused removal ends the chip and shows an error toast', async ({ relaun
   await expect(toast(page)).toContainText('worktree is locked');
 });
 
-test('Delete anyway closes the dialog and archives behind a chip', async ({ relaunch }) => {
+test('Delete anyway closes the dialog and archives behind a chip, with no toast', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openPlan(relaunch, [
     {
       channel: IPC.adeTaskArchiveRisk,
@@ -91,8 +93,8 @@ test('Delete anyway closes the dialog and archives behind a chip', async ({ rela
   await expect.poll(() => calls(control, IPC.adeTaskArchiveTask)).toHaveLength(1);
   await expect(page.locator(t('ade-dialog'))).toBeHidden();
   await expect(chip(page).first()).toHaveAttribute('data-op', 'archive');
-  await expect(toast(page)).toContainText('Closing task');
+  await expect(toast(page)).toHaveCount(0);
   control.release(IPC.adeTaskArchiveTask);
   await expect(chip(page)).toHaveCount(0);
-  await expect(toast(page)).toContainText('Closed');
+  await expect(toast(page)).toHaveCount(0);
 });

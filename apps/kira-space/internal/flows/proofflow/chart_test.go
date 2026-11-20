@@ -101,6 +101,7 @@ func TestProofCharts(t *testing.T) {
 	for o := 3; o <= 6; o++ {
 		edited = append(edited, map[string]any{"keepOrdinal": o})
 	}
+	f.newest(t)
 	f.edit(t, "Deploy health", "Recount after replay", edited...)
 	det = session(t, f.app, id)
 	if det.Pending == nil {

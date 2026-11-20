@@ -8,7 +8,7 @@ export interface ConfirmOptions {
   /** Dialog title, a question naming the action. */
   title: string;
   confirmLabel: string;
-  /** `danger` discards or deletes (confirm button red, focus starts on Cancel). Always stated. */
+  /** `danger` discards or deletes (confirm button red, focus starts on the X). Always stated. */
   tone: 'danger' | 'primary';
   /** Work to do on confirm. The dialog stays open with a busy button and shows a rejection inline;
    *  it closes when `run` resolves. */
@@ -21,7 +21,7 @@ export interface ChooseOptions {
   title: string;
   message: string;
   confirmLabel: string;
-  /** Third button between Cancel and confirm (for example Discard beside Save). */
+  /** Second button beside confirm (for example Discard beside Save); the X answers 'cancel'. */
   secondaryLabel: string;
   tone: 'danger' | 'primary';
 }

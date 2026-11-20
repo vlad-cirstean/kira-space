@@ -30,7 +30,7 @@ import {
 } from '../state/schemas';
 
 // The DDL document a user pastes for one connection, staged until Save — the
-// draft is component-local, cloned at open; Cancel, Escape, the ✕ and the backdrop all discard
+// draft is component-local, cloned at open; Escape, the ✕ and the backdrop all discard
 // silently (DialogFrame's own @close); only Save writes. Reuses the landed staging shape
 // exactly rather than inventing a second one. schemaDialectFor/ddlParseSummary (state/schemas.ts)
 // are this file's one dispatch point into the SQL surface — SPEC forbids project/ importing
@@ -188,9 +188,6 @@ async function onSave(): Promise<void> {
             </CatalogText></span
           >
         </template>
-        <Button variant="dialog" size="kira-lg" @click="schemaDialogStore.closeSchemaDialog">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button variant="dialog-primary" size="kira-lg" :pending="saving" @click="onSave">
           {{ t('common.action.save.label') }}
         </Button>

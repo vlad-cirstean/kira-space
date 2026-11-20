@@ -25,7 +25,7 @@ function mirrorKind(rec: SpaceOpRecord): AdeOpKind | null {
 }
 
 /**
- * Mirrors running backend agent ops into `adeOps`, so task cards show a chip and a slow finish toasts.
+ * Mirrors running backend agent ops into `adeOps`, so task cards show a chip and a slow failure toasts.
  * Ops already finished at hydration never track, so a restart replays no toast.
  */
 export function installAdeOpMirror(): () => void {
@@ -45,7 +45,7 @@ export function installAdeOpMirror(): () => void {
         if (rec.status === 'running') {
           if (tracked.has(id)) continue;
           tracked.add(id);
-          ops.track({ id, kind, taskId: rec.taskId, name: rec.subject });
+          ops.track({ id, kind, taskId: rec.taskId });
         } else if (tracked.delete(id)) {
           ops.settle(id, {
             ok: rec.status === 'ok',

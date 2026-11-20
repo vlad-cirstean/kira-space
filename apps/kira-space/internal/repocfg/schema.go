@@ -55,5 +55,8 @@ func assembleSchema(hosts []string) ([]byte, error) {
 	envProps := envs["items"].(map[string]any)["properties"].(map[string]any)
 	envProps["deployed_sha_script"].(map[string]any)["maxLength"] = MaxEnvScriptBytes
 	envProps["deployed_sha_run"].(map[string]any)["properties"].(map[string]any)["script"].(map[string]any)["maxLength"] = model.MaxScriptRefName
+	svcs := props["services"].(map[string]any)
+	svcs["maxItems"] = MaxServices
+	svcs["items"].(map[string]any)["properties"].(map[string]any)["script"].(map[string]any)["maxLength"] = model.MaxScriptRefName
 	return json.Marshal(root)
 }

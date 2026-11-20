@@ -4,8 +4,8 @@ package taskfiles
 // `<!-- -->`); notes and handovers carry none. An agent-created file may omit it and validation never
 // needs it. Kira never rewrites an agent-written file to add one.
 const (
-	headerLinks = "Kira links. Edit, then call submit (reason when you change another author's link)."
-	headerProof = "Kira proof. Edit, then call submit (pass reason to submit when the proof is accepted)."
+	headerLinks = "Kira links. Kira applies edits on save. To change another author's link, call submit with paths and reason."
+	headerProof = "Kira proof. Kira applies edits on save. To change an older proof, call submit with paths and reason."
 	headerState = "Read-only. Kira rewrites this file. State changes: call state. status is done, pending (the user must answer), waiting (Kira or a queue is on it), denied or failed (see note)."
 	headerTask  = "Read-only. Kira rewrites this file. State changes: call state."
 )

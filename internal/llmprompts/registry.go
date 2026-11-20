@@ -273,7 +273,7 @@ var HeadlessFinishStepSuffix = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessFinishStepSuffix.title",
 	PurposeKey: "llmPrompts.entry.headlessFinishStepSuffix.description",
 	UsedByKey:  "llmPrompts.entry.headlessFinishStepSuffix.usedBy.body",
-	Default:    `{{if .Implicit}}When this step is done, call {{if .Plain}}finish_step with status "done"{{else}}state with action step.finish and args status "done"{{end}}. If it failed, use status "failed", what failed and the reason. If you need a decision from me, use status "needs_input" and your question.{{else}}When this step ends, call {{if .Plain}}finish_step once with status one of: {{else}}state with action step.finish once, args status one of: {{end}}{{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}`,
+	Default:    `{{if .Implicit}}When this step is done, call {{if .Plain}}finish_step with status "done"{{else}}state with action step.finish and args status "done"{{end}}. If it failed, use status "failed", what failed and the reason. If you need a decision from me, use status "needs_input" and your question.{{else}}When this step ends, call {{if .Plain}}finish_step once with status one of: {{else}}state with action step.finish once, args status one of: {{end}}{{range $i, $r := .Results}}{{if $i}}, {{end}}{{$r.ID}} ({{if $r.OK}}ok{{else}}not ok{{end}}{{if $r.Description}}: {{$r.Description}}{{end}}){{end}}. For a not-ok status add the reason. If you need a decision from me, use status "needs_input" with your question.{{end}}{{if not .Plain}} Write a proof for any checkable result before finishing.{{end}}`,
 }, FinishVars{Implicit: true, Results: []ResultVar{{ID: "done", OK: true}, {ID: "failed"}}})
 
 // HeadlessSpaceSuffix goes before the finish instruction when the Kira Space tools are on.
@@ -291,7 +291,7 @@ var HeadlessSpaceFiles = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default: `Task folder: {{.Folder}}. See README.md there. Call submit after editing task files.{{if .Draft}} Write your handover to {{.Draft}} before an ok finish.{{end}} When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
+	Default: `This task's Details files live in {{.Folder}}; see README.md there. Kira applies your edits on save; read state.yaml fileErrors after each edit.{{if .Draft}} Write your handover to {{.Draft}} before an ok finish.{{end}} When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
 {{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
 }, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
 
@@ -334,7 +334,7 @@ var HeadlessSpaceInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceInstructions.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceInstructions.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceInstructions.usedBy.body",
-	Default:    `Kira tools: submit for task files, state for everything else. Task state is in state.yaml in the task folder. Create or change branches only with state; never git branch or git worktree. A call that waits returns within 10 minutes; if it is not done, check the state.yaml fields it names. Edit task files, then call submit; end the step with state step.finish.`,
+	Default:    `Kira tools: submit for ask-first task files, state for everything else. Task state is in state.yaml in the task folder. Create or change branches only with state; never git branch or git worktree. A call that waits returns within 10 minutes; if it is not done, check the state.yaml fields it names. Kira applies task file edits on save; read state.yaml fileErrors after each edit; end the step with state step.finish.`,
 }, NoVars{})
 
 // HeadlessToolFinishStep describes the finish_step tool.
@@ -365,12 +365,12 @@ var HeadlessFinishStepAck = define(Entry{
 // HeadlessToolSubmit describes the submit tool.
 var HeadlessToolSubmit = define(Entry{
 	ID: "headless.tool.submit", Kind: KindTool, Apps: spaceApp, Applies: NextCall, Name: "submit",
-	Default: `Tell Kira Space you changed files in the task folder. It reads them, applies what it accepts and replies with a count line, then one line per file. A change that needs the user's approval needs reason. Task state changes use state.`,
+	Default: `Ask the user to approve changes to ask-first task files (see README.md). Pass paths and reason. Kira applies every other edit on save; errors are in state.yaml fileErrors.`,
 }, NoVars{})
 
 var (
-	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Files to read, relative to the task folder, at most {{.Max}}. Default: every changed file.`, MaxVars{Max: 50})
-	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note or another author's link. Required for those; the user reads it.`, NoVars{})
+	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Ask-first files you changed, relative to the task folder, at most {{.Max}}.`, MaxVars{Max: 50})
+	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line for the user: why you changed an older note or handover, an older proof or another author's link.`, NoVars{})
 )
 
 // HeadlessToolState describes the state tool: the header of its description. Each granted action adds
@@ -404,7 +404,7 @@ var (
 	HeadlessStateRemoteFetch     = defineStateAction("remote.fetch", `remote.fetch: args {remote?}: fetch a remote of your repo.`)
 	HeadlessStateBranchPush      = defineStateAction("branch.push", `branch.push: args {force?}: push your worktree's branch.`)
 	HeadlessStateReviewReply     = defineStateAction("review.reply", `review.reply: args {id, reply, resolved?}: answer one review comment you were sent.`)
-	HeadlessStateStepFinish      = defineStateAction("step.finish", `step.finish: args {status, reason?, conflictedFiles?, lastGitError?, tried?}: end the step; submits task files first. Status values: see the step prompt.`)
+	HeadlessStateStepFinish      = defineStateAction("step.finish", `step.finish: args {status, reason?, conflictedFiles?, lastGitError?, tried?}: end the step; applies your latest task file edits first. Status values: see the step prompt.`)
 )
 
 // HeadlessArtifactsHeader opens the artifact list a finishing call returns.
@@ -710,7 +710,7 @@ var AdeHandoverLine = define(Entry{
 	TitleKey:   "llmPrompts.entry.adeHandoverLine.title",
 	PurposeKey: "llmPrompts.entry.adeHandoverLine.description",
 	UsedByKey:  "llmPrompts.entry.adeHandoverLine.usedBy.body",
-	Default:    `When this stage is done, write your handover to its draft file in the task folder, then call submit. Then call state with action step.finish and args status "done".`,
+	Default:    `When this stage is done, write your handover to its draft file in the task folder. Then call state with action step.finish and args status "done".`,
 }, NoVars{})
 
 // AdeRepoLine is one repository line of a launch message.

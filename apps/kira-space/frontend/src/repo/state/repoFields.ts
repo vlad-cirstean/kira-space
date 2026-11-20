@@ -18,6 +18,7 @@ export const REPO_FIELDS: readonly FieldSpec[] = [
   { path: ['worktree', 'base_path'], unsetWhenEmpty: true },
   { path: ['integration_branches'], unsetWhenEmpty: true },
   { path: ['environments'], unsetWhenEmpty: true },
+  { path: ['services'], unsetWhenEmpty: true },
 ];
 
 /** Pointers the form claims; a problem outside them shows on top. */
@@ -26,4 +27,5 @@ export const REPO_FORM_POINTERS = [
   '/worktree',
   '/integration_branches',
   '/environments',
+  '/services',
 ] as const;

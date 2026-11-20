@@ -10,6 +10,7 @@ import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import { useAdeTakeOverStore } from '../state/adeTakeOver';
 import { runsTarget } from '../state/opTarget';
 import { useRepoGate } from '../state/useRepoGate';
+import { useServicesGate } from '../state/useServicesGate';
 
 /** Ops that start or move a task's work: while one runs the task's action buttons are busy. */
 const BUSY_KINDS: ReadonlySet<AdeOpKind> = new Set(['startRun', 'approve', 'retry', 'nextPass']);
@@ -23,6 +24,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   const writes = useTaskWrites();
   const stage = useAdeStageDialogStore();
   const { ensureRepo, opAfterRepo } = useRepoGate();
+  const { ensureServices } = useServicesGate();
 
   const action = computed<TaskAction | null>(() => toValue(card).action);
 
@@ -40,7 +42,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   ): Promise<void> {
     const taskId = c.task.id;
     const ok = await opAfterRepo(taskId, call, (fn) =>
-      ops.run({ id: `${kind}:${target}`, kind, taskId, name: c.title }, fn),
+      ops.run({ id: `${kind}:${target}`, kind, taskId }, fn),
     );
     if (!ok) ui.select(taskId);
   }
@@ -53,18 +55,19 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   ): Promise<void> {
     const taskId = c.task.id;
     if (a.kind === 'run') {
-      if (!(await ensureRepo(taskId, step.needsRepo))) return;
+      if (!(await ensureRepo(taskId, step.needsRepo)) || !(await ensureServices(taskId))) return;
       if (step.kind === 'agent') ui.runTaskId = taskId;
       else
         await runOp('startRun', taskId, c, () =>
           writes.start.mutateAsync({ taskId, branchNames: {}, message: '' }),
         );
     } else if (a.kind === 'approve') {
-      if (!(await ensureRepo(taskId, step.needsRepo))) return;
+      if (!(await ensureRepo(taskId, step.needsRepo)) || !(await ensureServices(taskId))) return;
       await runOp('approve', `${taskId}:${a.stepId ?? ''}`, c, () =>
         writes.approve.mutateAsync({ taskId, stepId: a.stepId ?? '' }),
       );
     } else if (a.kind === 'retry') {
+      if (!(await ensureServices(taskId))) return;
       const runs = c.progress.steps
         .find((s) => s.id === a.stepId)
         ?.runs.filter((r) => r.state === 'failed' || r.state === 'stuck');
@@ -95,7 +98,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     if (a.kind === 'takeOver' || a.kind === 'resume') return takeOver.request(a.sessionId ?? '');
     try {
       if (a.kind === 'session') {
-        if (await ensureRepo(taskId, step?.needsRepo ?? false)) dialogs.session(taskId);
+        if (await ensureRepo(taskId, step?.needsRepo ?? false)) await dialogs.session(taskId);
       } else if (step) {
         await runStep(c, a, step);
       }
@@ -110,7 +113,8 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
     const taskId = c.task.id;
     delete ui.actionError[taskId];
     try {
-      if (await ensureRepo(taskId, c.progress.step?.needsRepo ?? false)) dialogs.session(taskId);
+      if (await ensureRepo(taskId, c.progress.step?.needsRepo ?? false))
+        await dialogs.session(taskId);
     } catch (err) {
       ui.actionError[taskId] = errorText(err);
       ui.select(taskId);

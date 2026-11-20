@@ -6,7 +6,7 @@ import { useForcePush } from './queries';
 import { useAdeOpsStore } from './state/adeOps';
 
 // Force push with lease for one branch. Confirm closes the dialog; the push runs as the branch's op
-// (chip, toast past 2 s, error toast with the backend's refusal such as a stale lease).
+// (chip, error toast with the backend's refusal such as a stale lease).
 const props = defineProps<{ target: ForcePushTarget | null }>();
 const emit = defineEmits<{ close: [] }>();
 
@@ -23,7 +23,6 @@ function confirm(): void {
       kind: 'forcePush',
       taskId: target.taskId || undefined,
       branchId: target.branchId,
-      name: target.branchName,
     },
     async () => throwOnRemoteError(await forcePush.mutateAsync({ branchId: target.branchId })),
   );
@@ -44,7 +43,7 @@ function confirm(): void {
     tone="danger"
     :testids="{
       root: 'ade-confirm-dialog',
-      cancel: 'ade-confirm-no',
+      close: 'ade-confirm-close',
       confirm: 'ade-confirm-yes',
       error: 'ade-confirm-error',
     }"

@@ -454,25 +454,16 @@ function onSequenceStartChange(index: number, start: number): void {
         >
           {{ t('common.action.stop.label') }}
         </Button>
-        <template v-else>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="generate-data-cancel"
-            @click="onClose"
-          >
-            {{ t('common.action.cancel.label') }}
-          </Button>
-          <Button
-            variant="dialog-primary"
-            size="kira-lg"
-            data-testid="generate-data-submit"
-            :disabled="rowCount < 1 || noUsableColumns || (!!tabId && gridViewStore.isStale(tabId))"
-            @click="onGenerate"
-          >
-            {{ t('studio.generateData.submit.label') }}
-          </Button>
-        </template>
+        <Button
+          v-else
+          variant="dialog-primary"
+          size="kira-lg"
+          data-testid="generate-data-submit"
+          :disabled="rowCount < 1 || noUsableColumns || (!!tabId && gridViewStore.isStale(tabId))"
+          @click="onGenerate"
+        >
+          {{ t('studio.generateData.submit.label') }}
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

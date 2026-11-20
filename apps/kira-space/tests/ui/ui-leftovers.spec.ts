@@ -376,7 +376,7 @@ studioTest.describe('databases module', () => {
   }
 
   studioTest(
-    'new connection dialog with a typed name: outside click keeps it open; Esc and X ask to discard; Cancel closes without asking',
+    'new connection dialog with a typed name: outside click keeps it open; Esc and X ask to discard; Discard closes',
     async ({ relaunch }) => {
       const { window: page } = await relaunch({
         control: [{ channel: IPC.connectionsList, response: [] }],
@@ -400,7 +400,8 @@ studioTest.describe('databases module', () => {
       await cancelConfirm(page);
       await expect(dialog).toBeVisible();
 
-      await page.click('[data-testid="new-connection-cancel"]');
+      await page.click('[data-testid="new-connection-close"]');
+      await page.click('[data-testid="confirm-dialog-confirm"]');
       await expect(dialog).toHaveCount(0);
       await expect(page.locator(CONFIRM)).toHaveCount(0);
     },

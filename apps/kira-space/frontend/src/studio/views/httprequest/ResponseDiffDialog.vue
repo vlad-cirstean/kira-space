@@ -5,12 +5,10 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import Disclosure from '@theme/components/Disclosure.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
@@ -362,18 +360,6 @@ onUnmounted(() => {
           </div>
         </QueryState>
       </DialogBody>
-
-      <DialogFooter>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="http-diff-close"
-          @click="emit('close')"
-          >{{
-            t('common.action.close.label')
-          }}</Button
-        >
-      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>

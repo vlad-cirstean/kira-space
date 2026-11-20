@@ -157,7 +157,7 @@ const stopFirst = computed(() => props.card.moves.live);
       :error="actions.error.value"
       :testids="{
         root: 'confirm-dialog',
-        cancel: 'confirm-cancel',
+        close: 'confirm-close',
         confirm: 'confirm-yes',
         error: 'confirm-error',
       }"

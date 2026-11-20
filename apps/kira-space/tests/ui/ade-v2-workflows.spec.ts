@@ -562,7 +562,7 @@ test('Discard restores the saved form, and leaving with edits asks first', async
   await name.fill('Edited again');
   await page.locator(t('ade-tab-plan')).click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('ade-workflows'))).toBeVisible();
   await expect(name).toHaveValue('Edited again');
   await page.locator(t('ade-tab-plan')).click();
@@ -608,7 +608,7 @@ test('leaving Agents with unsaved edits asks first', async ({ relaunch }) => {
   const terminal = page.locator('[data-testid="mode-tab"][data-mode="automations"]');
   await terminal.click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(name).toHaveValue('Edited');
   await terminal.click();
   await page.locator(t('confirm-dialog-confirm')).click();

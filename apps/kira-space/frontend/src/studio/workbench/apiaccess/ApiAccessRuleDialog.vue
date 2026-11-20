@@ -90,7 +90,7 @@ function onSave(): void {
 <template>
   <Dialog v-model:open="open">
     <DialogContent size="lg" :dirty="dirty" data-testid="api-rule-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="api-rule-close">
         <DialogTitle>{{ t('studio.settings.dbMcp.apiRules.dialog.title') }}</DialogTitle>
       </DialogHeader>
       <DialogBody>
@@ -164,9 +164,6 @@ function onSave(): void {
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="api-rule-cancel" @click="open = false">
-          {{ t('common.action.cancel.label') }}
-        </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

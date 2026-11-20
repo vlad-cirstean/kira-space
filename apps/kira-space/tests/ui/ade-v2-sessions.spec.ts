@@ -278,7 +278,7 @@ test('Take over of a running run confirms, stops it and selects the resumed sess
   await expect(dialog).toContainText(
     'is still running on feat/billing-dashboard. Taking over stops it, marks it stuck and continues it in Claude Code.',
   );
-  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await dialog.locator(t('ade-confirm-close')).click();
   expect(calls(control, IPC.adeTaskTakeOver)).toHaveLength(0);
   await page.locator(t('ade-session-takeover')).click();
   await page.locator(t('ade-confirm-yes')).click();

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 )
 
@@ -62,7 +61,7 @@ func TestDetailsStateFile(t *testing.T) {
 	// Agent edit: Kira owns the file, a submit restores it.
 	before := dfRead(t, folder, "state.yaml")
 	dfWrite(t, folder, "state.yaml", "rev: 999\nhacked: true\n")
-	dfSubmit(t, f.app, f.task.ID, agentmcp.SubmitArgs{})
+	dfSync(t, f.app, f.task.ID, "state.yaml")
 	if got := dfRead(t, folder, "state.yaml"); strings.Contains(got, "hacked") || got != before {
 		t.Fatalf("state.yaml after an agent edit and submit:\n%s\nwant Kira's bytes back", got)
 	}

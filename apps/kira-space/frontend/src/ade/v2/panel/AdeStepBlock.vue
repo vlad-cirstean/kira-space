@@ -172,7 +172,7 @@ async function run(
 ): Promise<void> {
   surface.reset();
   const taskId = props.card.task.id;
-  await ops.run({ id: `${kind}:${target}`, kind, taskId, name: props.card.title }, async () => {
+  await ops.run({ id: `${kind}:${target}`, kind, taskId }, async () => {
     // The op needs the original failure; the surface shows it.
     let failure: unknown;
     const ok = await surface.run(async () => {

@@ -64,7 +64,7 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
   }
 
   async function requestRelease(queue: string): Promise<void> {
-    await ops.run({ id: `lease:${queue}`, kind: 'leaseRequest', name: queue }, () =>
+    await ops.run({ id: `lease:${queue}`, kind: 'leaseRequest' }, () =>
       request.mutateAsync({ queue }),
     );
   }
@@ -77,7 +77,7 @@ export const useAdeLeasesStore = defineStore('adeLeases', () => {
       tone: 'danger',
     });
     if (!ok) return;
-    await ops.run({ id: `lease:${q.name}`, kind: 'leaseRelease', name: q.name }, () =>
+    await ops.run({ id: `lease:${q.name}`, kind: 'leaseRelease' }, () =>
       force.mutateAsync({ queue: q.name }),
     );
   }

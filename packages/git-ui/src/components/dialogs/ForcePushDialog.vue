@@ -173,9 +173,6 @@ function confirmPlain(): void {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-dialog-dismiss @click="cancel">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-danger"
           size="kira-lg"

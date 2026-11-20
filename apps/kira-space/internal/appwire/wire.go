@@ -262,10 +262,12 @@ func wireAdeTask(
 			bridge.KeepAwakeRecompute(keepAwake)
 		},
 		CustomScripts: runs.Scripts, ScriptsHome: runs.Home,
-		AgentDir:  adeRunsDir(config.KiraSpaceHome()),
-		TasksDir:  filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
-		FilesDir:  filepath.Join(config.KiraSpaceHome(), "tasks"),
-		TaskFiles: repositories.TaskFiles,
+		ScriptRuns:   runs.Runs,
+		RepoServices: func(id string) []model.ScriptRef { return repoFiles.Repo(id).Services },
+		AgentDir:     adeRunsDir(config.KiraSpaceHome()),
+		TasksDir:     filepath.Join(config.KiraSpaceHome(), "ade", "tasks"),
+		FilesDir:     filepath.Join(config.KiraSpaceHome(), "tasks"),
+		TaskFiles:    repositories.TaskFiles,
 		HeadlessSettingSources: func() string {
 			settings, err := repositories.Settings.GetAll()
 			if err != nil {

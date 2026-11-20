@@ -160,9 +160,6 @@ watch(
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="upload-cancel" @click="onClose">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

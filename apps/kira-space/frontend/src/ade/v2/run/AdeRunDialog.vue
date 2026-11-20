@@ -144,7 +144,7 @@ watch(initial, (next) => {
   message.value = next;
 });
 
-// Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
+// Closes at once; the start runs as the task's op (chip on the card, error toast on failure).
 // A start refused promptly reopens the dialog with the typed names and message, unless another dialog or
 // mode took over; a late refusal keeps them for the task's next open (the error toast reports it).
 async function send(): Promise<void> {
@@ -159,7 +159,7 @@ async function send(): Promise<void> {
   const id = `startRun:${taskId}`;
   const timed = timedCall(() => start.mutateAsync({ taskId, branchNames, message: body }));
   const ok = await opAfterRepo(taskId, timed.call, (fn) =>
-    ops.run({ id, kind: 'startRun', taskId, name: c.title }, fn),
+    ops.run({ id, kind: 'startRun', taskId }, fn),
   );
   if (ok) {
     delete ui.runDrafts[taskId];
@@ -178,7 +178,7 @@ async function send(): Promise<void> {
 <template>
   <Dialog :open="open" @update:open="(v) => !v && close()">
     <DialogContent size="lg" :dirty="dirty" data-testid="ade-run-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-run-close">
         <DialogTitle>
           {{ t('space.ade.runDialog.title.title', { step: step?.name ?? '' }) }}
         </DialogTitle>
@@ -275,9 +275,6 @@ async function send(): Promise<void> {
         </Field>
       </DialogBody>
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="ade-run-cancel" @click="close">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

@@ -23,6 +23,7 @@ export interface RepoFileModel {
   nickname?: string;
   integration_branches?: string[];
   environments?: RepoFileEnvironment[];
+  services?: RepoScriptRefValue[];
   worktree?: RepoFileWorktree;
 }
 export interface RepoFormArgs {

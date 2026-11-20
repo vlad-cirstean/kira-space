@@ -8,7 +8,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -56,7 +55,7 @@ func TestDetailsList(t *testing.T) {
 		return ok
 	})
 	writeProof(t, dfFolder(t, app, task.ID), "login-checks", "Login checks", "diagram", "table")
-	dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
+	dfSync(t, app, task.ID)
 
 	b := board(t, app)
 	tk := taskOf(t, b, task.ID)

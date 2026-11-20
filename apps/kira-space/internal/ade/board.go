@@ -37,6 +37,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
+	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -129,6 +130,10 @@ type TaskBoardDeps struct {
 	// CustomScripts and ScriptsHome resolve the smart script of a workflow step and its own folder.
 	CustomScripts *scripts.Repo
 	ScriptsHome   string
+	// ScriptRuns reads which Run scripts are running, for the required services status; nil reads none.
+	ScriptRuns *scriptruns.Repo
+	// RepoServices returns a repo file's required services; nil = none.
+	RepoServices func(repoID string) []model.ScriptRef
 	// HeadlessSettingSources returns the ade.headlessSettingSources setting, read fresh per run.
 	HeadlessSettingSources func() string
 	// Servers is where a smart step's ticked MCP servers come from; the zero value reads the CLI.
@@ -204,10 +209,15 @@ type TaskBoard struct {
 	afterImport func(codeRepoID string)
 	folderWMu   sync.Mutex
 	folderW     map[string]*folderWatcher
-	stopFlowW   func()
-	stopStepsW  func()
-	wfTimer     *time.Timer
-	startOnce   sync.Once
+	// watches holds the task folder watchers of tasks with a live agent grant (taskwatch.go).
+	watchMu    sync.Mutex
+	watches    map[string]*taskWatch
+	grants     map[string]int // live Space grants per task, watched or not
+	watchWG    sync.WaitGroup // final passes of stopped watchers
+	stopFlowW  func()
+	stopStepsW func()
+	wfTimer    *time.Timer
+	startOnce  sync.Once
 
 	mu      sync.Mutex
 	repoMus map[string]*sync.Mutex
@@ -353,6 +363,7 @@ func (b *TaskBoard) Close() {
 	b.mu.Unlock()
 	b.stopBoardPush()
 	b.stopWatchers()
+	b.stopTaskWatches()
 	b.updates.close()
 	b.checker.close()
 	b.wg.Wait()

@@ -61,12 +61,13 @@ func handoverPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
 	return out
 }
 
-// submitCall is a submit of every file, or, when finished, the stage's step.finish (submit is content only).
+// submitCall is a submit of links.yaml, or, when finished, the stage's step.finish (submit is content only).
 func submitCall(finished bool) fakeagent.MCPCall {
 	if finished {
 		return stateCall("step.finish", map[string]any{"status": "done"})
 	}
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true}
+	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true,
+		Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "check"}}
 }
 
 // writeTaskFile writes a file under the task's folder, as an agent session editing it would.

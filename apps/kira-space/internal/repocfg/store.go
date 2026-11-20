@@ -279,6 +279,10 @@ func (c Config) clone() Config {
 	for i := range c.Environments {
 		c.Environments[i].DeployedShaRun = c.Environments[i].DeployedShaRun.Clone()
 	}
+	c.Services = slices.Clone(c.Services)
+	for i := range c.Services {
+		c.Services[i] = *c.Services[i].Clone()
+	}
 	c.Settings.WorktreePrepareRun = c.Settings.WorktreePrepareRun.Clone()
 	c.Settings.ReviewBaseCandidates = slices.Clone(c.Settings.ReviewBaseCandidates)
 	return c

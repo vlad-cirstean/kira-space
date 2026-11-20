@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
@@ -127,12 +126,6 @@ function close(): void {
           >
         </div>
       </DialogBody>
-
-      <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="dynamic-values-close" @click="close">{{
-          t('common.action.close.label')
-        }}</Button>
-      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>

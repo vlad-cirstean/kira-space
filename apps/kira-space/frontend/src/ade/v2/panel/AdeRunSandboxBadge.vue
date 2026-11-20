@@ -8,7 +8,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -153,21 +152,14 @@ const lists = computed(() =>
         }}</CodeBlock>
       </DialogBody>
       <DialogFooter>
-        <template #start>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="ade-run-sandbox-profile-copy"
-            @click="copy(d?.profile ?? '')"
-          >
-            {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
-          </Button>
-        </template>
-        <DialogClose as-child>
-          <Button variant="dialog" size="kira-lg" data-dialog-dismiss>{{
-            t('common.action.close.label')
-          }}</Button>
-        </DialogClose>
+        <Button
+          variant="dialog"
+          size="kira-lg"
+          data-testid="ade-run-sandbox-profile-copy"
+          @click="copy(d?.profile ?? '')"
+        >
+          {{ copied ? t('common.copy.copied.announce') : t('common.action.copy.label') }}
+        </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

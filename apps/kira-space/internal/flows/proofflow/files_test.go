@@ -179,10 +179,10 @@ func TestProofFiles(t *testing.T) {
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "tabs"))
 	f.submit(t, "")
 
-	// 10. An edit by step id: no reason is invalid, a reason waits for review.
+	// 10. An edit by step id: the watcher's pass without a reason is deferred, a reason waits for review.
 	edited := strings.Replace(filesProofMD, "select id, status from orders", "select id, status from orders where id = 3", 1)
 	f.put(t, "proofs/checkout-fix/proof.md", []byte(edited))
-	mustHave(t, "edit without reason", f.submit(t, ""), "proofs/checkout-fix/proof.md", "needs reason")
+	mustHave(t, "edit without reason", f.submit(t, ""), "proofs/checkout-fix/proof.md", "deferred")
 	if err := f.app.W.Proof.SetViewState(bridge.ProofSetViewStateArgs{SessionID: id, Rev: 1, Ordinal: 3}); err != nil {
 		t.Fatal(err)
 	}

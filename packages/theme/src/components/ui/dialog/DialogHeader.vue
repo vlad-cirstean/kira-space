@@ -34,6 +34,7 @@ const requestClose = inject(DIALOG_REQUEST_CLOSE_KEY, null);
         size="icon-sm"
         class="ml-auto pointer-coarse:size-touch"
         :aria-label="t('common.action.close.label')"
+        data-dialog-dismiss
         :data-testid="closeTestid"
         @click="requestClose"
       >
@@ -45,6 +46,7 @@ const requestClose = inject(DIALOG_REQUEST_CLOSE_KEY, null);
           size="icon-sm"
           class="ml-auto pointer-coarse:size-touch"
           :aria-label="t('common.action.close.label')"
+          data-dialog-dismiss
           :data-testid="closeTestid"
         >
           <CodiconIcon name="close" :size="13" />

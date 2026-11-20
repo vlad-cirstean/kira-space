@@ -439,9 +439,9 @@ func TestAdeRebaseRun(t *testing.T) {
 	}
 }
 
-// TestAdeDetailsSubmit runs a step that files a link in links.yaml and writes its draft: the real claude
-// must call submit (or state step.finish, its implicit submit), the link lands as an agent artifact and the
-// draft as the run's handover.
+// TestAdeDetailsSubmit runs a step that files a link in links.yaml and writes its draft: Kira applies both on
+// save (or at state step.finish, its flush), the link lands as an agent artifact and the draft as the run's
+// handover. The agent needs no submit call.
 func TestAdeDetailsSubmit(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n" +
@@ -454,8 +454,8 @@ func TestAdeDetailsSubmit(t *testing.T) {
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-space__submit") && !strings.Contains(log, "mcp__kira-space__state") {
-		t.Fatalf("run log lacks a submit or state call:\n%s", tail(log, 1500))
+	if !strings.Contains(log, "mcp__kira-space__state") {
+		t.Fatalf("run log lacks a state call:\n%s", tail(log, 1500))
 	}
 	res, err := f.W.AdeTask.Artifacts(ctx, adewire.TaskArgs{TaskID: task.ID})
 	if err != nil {

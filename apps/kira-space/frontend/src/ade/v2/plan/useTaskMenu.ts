@@ -81,14 +81,12 @@ export function useTaskMenu(card: MaybeRefOrGetter<CardModel>) {
           await update.mutateAsync({ taskId, patch: taskPatch({ statusId: cmd.statusId }) });
           return;
         case 'stopRuns': {
-          const ok = await ops.run(
-            { id: `stopRuns:${taskId}`, kind: 'stopRuns', taskId, name: c.title },
-            () =>
-              Promise.all(
-                c.task.runs
-                  .filter((r) => r.state === 'running' || r.state === 'pending')
-                  .map((r) => stopRun.mutateAsync({ runId: r.id })),
-              ),
+          const ok = await ops.run({ id: `stopRuns:${taskId}`, kind: 'stopRuns', taskId }, () =>
+            Promise.all(
+              c.task.runs
+                .filter((r) => r.state === 'running' || r.state === 'pending')
+                .map((r) => stopRun.mutateAsync({ runId: r.id })),
+            ),
           );
           if (!ok) ui.select(taskId);
           return;

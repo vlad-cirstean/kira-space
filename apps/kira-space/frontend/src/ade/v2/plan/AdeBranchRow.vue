@@ -125,6 +125,11 @@ const MENU_KINDS: readonly BranchAction['kind'][] = ['seeError', 'seeLog', 'take
 const tagText = computed(() => tagLabel(props.row.tag, liveNow.value.getTime()));
 const split = computed(() => rowActionSplit(props.row.tag.actions));
 
+function failAction(taskId: string, err: unknown): void {
+  ui.actionError[taskId] = errorText(err);
+  ui.select(taskId);
+}
+
 function act(a: BranchAction): void {
   const row = props.row;
   if (a.act) dialogs.act(a.act);
@@ -139,11 +144,10 @@ function act(a: BranchAction): void {
     ui.focusRebaseLog = true;
   } else if (a.kind === 'takeOver') {
     delete ui.actionError[row.branch.taskId];
-    takeOver.request(a.sessionId ?? '').catch((err: unknown) => {
-      ui.actionError[row.branch.taskId] = errorText(err);
-      ui.select(row.branch.taskId);
-    });
-  } else if (a.kind === 'start') dialogs.start(row.id);
+    takeOver.request(a.sessionId ?? '').catch((err: unknown) => failAction(row.branch.taskId, err));
+  } else if (a.kind === 'start') {
+    dialogs.start(row.id).catch((err: unknown) => failAction(row.branch.taskId, err));
+  }
 }
 
 function menuItems(): MenuItem[] {

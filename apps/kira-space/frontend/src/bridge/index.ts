@@ -820,6 +820,8 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewForwardText(args)).then((r) => trust<V2.ReviewForwardText>(r)),
   adeTaskArchiveRisk: (args: V2.TaskArgs): Promise<V2.ArchiveRisk> =>
     unwrap(AdeTaskService.ArchiveRisk(args)).then((r) => trust<V2.ArchiveRisk>(r)),
+  adeTaskRequiredServices: (args: V2.TaskArgs): Promise<V2.RequiredServices> =>
+    unwrap(AdeTaskService.RequiredServices(args)).then((r) => trust<V2.RequiredServices>(r)),
   adeTaskArchiveTask: (args: V2.TaskArgs): Promise<void> =>
     unwrap(AdeTaskService.ArchiveTask(args)),
   adeTaskArchivedTask: (args: V2.TaskArgs): Promise<V2.ArchivedTask> =>

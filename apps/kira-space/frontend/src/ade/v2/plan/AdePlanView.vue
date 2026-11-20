@@ -484,7 +484,7 @@ useKeptScroll('ade:plan', scrollEl, { ready: () => model.value !== null });
       :error="dayOffRun.error.value ?? ''"
       :testids="{
         root: 'ade-confirm-dialog',
-        cancel: 'ade-confirm-no',
+        close: 'ade-confirm-close',
         confirm: 'ade-confirm-yes',
         error: 'ade-confirm-error',
       }"

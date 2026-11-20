@@ -7,7 +7,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
-  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -172,9 +171,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <DialogClose as-child>
-          <Button variant="dialog" size="kira-lg">{{ t('common.action.cancel.label') }}</Button>
-        </DialogClose>
         <Button
           variant="dialog-primary"
           size="kira-lg"
