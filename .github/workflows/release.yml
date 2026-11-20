@@ -309,7 +309,7 @@ jobs:
             pkill -x "Kira Space" || true; sleep 3
           }
           # Installer stays unauthenticated like real users, so the GitHub API can 403 (shared-IP rate
-          # limit, release not yet visible) right after publish. Delay, then retry with backoff.
+          # limit, release not yet visible) right after publish. Delay 5s, then 2 retries (10s, 15s).
           install() {
             n=1
             while :; do
@@ -317,11 +317,11 @@ jobs:
               rc=0
               sh scripts/install.sh "$@" || rc=$?
               if [ "$rc" -eq 0 ]; then return 0; fi
-              if [ "$n" -ge 5 ]; then return "$rc"; fi
-              sleep $((n * 20)); n=$((n + 1))
+              if [ "$n" -ge 3 ]; then return "$rc"; fi
+              sleep $((n * 5 + 5)); n=$((n + 1))
             done
           }
-          sleep 30
+          sleep 5
           install
           check
           install --tag="$TAG"
