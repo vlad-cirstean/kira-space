@@ -105,6 +105,13 @@ func TestTaskFiles(t *testing.T) {
 	if err := app.W.AdeTask.TaskFileReveal(ctx, bridge.AdeTaskFileArgs{BranchID: br.ID, Path: "nope.txt"}); errCode(err) != "E_NOT_FOUND" {
 		t.Fatalf("reveal of a missing file = %v, want E_NOT_FOUND", err)
 	}
+	goneDir := bridge.AdeTaskFileArgs{BranchID: br.ID, Path: "gone/dir/x.go"}
+	if gone, err := app.W.AdeTask.TaskFileRead(ctx, goneDir); err != nil || gone.Kind != "missing" {
+		t.Fatalf("read under a deleted directory = %+v, %v, want kind missing", gone, err)
+	}
+	if err := app.W.AdeTask.TaskFileReveal(ctx, goneDir); errCode(err) != "E_NOT_FOUND" {
+		t.Fatalf("reveal under a deleted directory = %v, want E_NOT_FOUND", err)
+	}
 
 	if err := app.W.AdeTask.TaskFileOpenInEditor(ctx, bridge.AdeTaskFileArgs{BranchID: br.ID, Path: "src/a.go"}); err != nil {
 		t.Fatal(err)

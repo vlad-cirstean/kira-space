@@ -60,7 +60,7 @@ func (b *TaskBoard) taskSession(ctx context.Context, branchID string) (*codework
 	return b.taskFiles.Open(sb.ID, worktree, entry.Repo.Runner(), entry.Repo.GitPath()), nil
 }
 
-// badPath maps a path escape to ErrBadPath; resolve I/O errors (worktree gone on disk) stay internal.
+// badPath maps a path escape to ErrBadPath; callers map fs.ErrNotExist first, other I/O errors stay internal.
 func badPath(err error) error {
 	if errors.Is(err, pathsafe.ErrPathEscapesRoot) {
 		return fmt.Errorf("%w: %v", ErrBadPath, err)
@@ -84,6 +84,10 @@ func (b *TaskBoard) TaskFileRead(ctx context.Context, branchID, rel string, ifSt
 		return codeworkspace.FileContent{}, err
 	}
 	abs, err := pathsafe.ValidateRelPath(sess.Root, rel)
+	if errors.Is(err, fs.ErrNotExist) {
+		// A parent directory is gone: same state as a deleted file.
+		return codeworkspace.FileContent{Kind: "missing", LimitBytes: codeworkspace.MaxReadBytes}, nil
+	}
 	if err != nil {
 		return codeworkspace.FileContent{}, badPath(err)
 	}
@@ -113,6 +117,9 @@ func (b *TaskBoard) TaskFileTarget(ctx context.Context, branchID, rel string) (r
 		return sess.Root, sess.Root, nil
 	}
 	abs, err = pathsafe.ValidateRelPath(sess.Root, rel)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", "", ErrTargetMissing
+	}
 	if err != nil {
 		return "", "", badPath(err)
 	}
