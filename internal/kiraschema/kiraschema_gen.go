@@ -314,6 +314,8 @@ var AdeSessions = struct {
 	AgentSessionID string
 	Cwd            string
 	UnseenAt       string
+	RestorePending string
+	RestoreWorking string
 }{
 	Table:          "ade_sessions",
 	ID:             "id",
@@ -332,6 +334,8 @@ var AdeSessions = struct {
 	AgentSessionID: "agent_session_id",
 	Cwd:            "cwd",
 	UnseenAt:       "unseen_at",
+	RestorePending: "restore_pending",
+	RestoreWorking: "restore_working",
 }
 
 // AdeTaskArtifacts names table ade_task_artifacts.

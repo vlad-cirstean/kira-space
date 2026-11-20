@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/huandu/go-sqlbuilder"
 
@@ -33,14 +34,16 @@ type AdeSessionsRepo struct {
 	Dialect sqlb.Dialect
 }
 
-func scanAdeSessionRow(row rowScanner) (model.AdeSession, error) {
+// scanAdeSessionRow scans the select columns, then any extra destinations of columns appended after them.
+func scanAdeSessionRow(row rowScanner, extra ...any) (model.AdeSession, error) {
 	var rec model.AdeSession
 	var terminalID sql.NullString
-	if err := row.Scan(
+	dest := append([]any{
 		&rec.ID, &rec.AgentSessionID, &rec.Cwd,
 		&rec.State, &terminalID, &rec.StartedAt, &rec.LastActiveAt,
 		&rec.Mode, &rec.TaskID, &rec.BranchID, &rec.StepID, &rec.RunID, &rec.Resumes, &rec.Purpose, &rec.Provider, &rec.UnseenAt,
-	); err != nil {
+	}, extra...)
+	if err := row.Scan(dest...); err != nil {
 		return model.AdeSession{}, err
 	}
 	rec.TerminalID = terminalID.String
@@ -342,12 +345,88 @@ func (r *AdeSessionsRepo) SetLastActive(id string, lastActiveAt int64) error {
 func (r *AdeSessionsRepo) StopAllTaskRunning(now int64) error {
 	c := kiraschema.AdeSessions
 	ub := r.Dialect.Update(c.Table)
-	ub.Set(ub.Assign(c.State, model.AdeSessionStateStopped), ub.Assign(c.TerminalID, nil), ub.Assign(c.LastActiveAt, now)).
+	// A row still running at boot was cut by a crash: flag the TUI task rows for the restore offer.
+	restore := c.RestorePending + " = CASE WHEN " + c.Mode + " = " + ub.Var(model.AdeSessionModeTUI) + " AND " + c.TaskID +
+		" <> " + ub.Var("") + " THEN " + ub.Var(1) + " ELSE " + c.RestorePending + " END"
+	ub.Set(ub.Assign(c.State, model.AdeSessionStateStopped), ub.Assign(c.TerminalID, nil), ub.Assign(c.LastActiveAt, now), restore).
 		Where(ub.Equal(c.State, model.AdeSessionStateRunning))
 	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: stop all running task sessions: %w", err)
 	}
 	return nil
+}
+
+// RestoreMark is a TUI task row flagged for the restore offer; Working is true when its agent was
+// mid-turn at quit.
+type RestoreMark struct {
+	Session model.AdeSession
+	Working bool
+}
+
+// MarkRestore flags running TUI rows for the restore offer at the next start (quit teardown);
+// marks maps a row id to whether its agent was working.
+func (r *AdeSessionsRepo) MarkRestore(marks map[string]bool) error {
+	if len(marks) == 0 {
+		return nil
+	}
+	c := kiraschema.AdeSessions
+	ub := r.Dialect.Update(c.Table)
+	working, idle := []any{}, []any{}
+	for id, w := range marks {
+		if w {
+			working = append(working, id)
+		} else {
+			idle = append(idle, id)
+		}
+	}
+	workingCase := ub.Assign(c.RestoreWorking, 0)
+	if len(working) > 0 {
+		vars := make([]string, len(working))
+		for i, id := range working {
+			vars[i] = ub.Var(id)
+		}
+		workingCase = c.RestoreWorking + " = CASE WHEN " + c.ID + " IN (" + strings.Join(vars, ", ") + ") THEN 1 ELSE 0 END"
+	}
+	ids := append(working, idle...)
+	ub.Set(ub.Assign(c.RestorePending, 1), workingCase).
+		Where(ub.In(c.ID, ids...), ub.Equal(c.State, model.AdeSessionStateRunning), ub.Equal(c.Mode, model.AdeSessionModeTUI))
+	if _, err := sqlb.Exec(r.DB, ub); err != nil {
+		return fmt.Errorf("repos: mark ade sessions for restore: %w", err)
+	}
+	return nil
+}
+
+// TakeRestoreSessions clears every restore mark and returns the marked rows, oldest start first.
+func (r *AdeSessionsRepo) TakeRestoreSessions() ([]RestoreMark, error) {
+	c := kiraschema.AdeSessions
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("repos: begin take restore sessions: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+	sb := r.Dialect.Select(append(append([]string{}, adeSessionsSelectColumns...), c.RestoreWorking)...).From(c.Table)
+	sb.Where(sb.Equal(c.RestorePending, 1)).OrderBy(c.StartedAt, c.ID)
+	rows, err := sqlb.Query(tx, sb)
+	marks, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (RestoreMark, bool, error) {
+		var working int
+		rec, err := scanAdeSessionRow(rows, &working)
+		return RestoreMark{Session: rec, Working: working != 0}, true, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repos: read restore sessions: %w", err)
+	}
+	if len(marks) == 0 {
+		return nil, nil
+	}
+	ub := r.Dialect.Update(c.Table)
+	ub.Set(ub.Assign(c.RestorePending, 0), ub.Assign(c.RestoreWorking, 0)).Where(ub.Equal(c.RestorePending, 1))
+	if _, err := sqlb.Exec(tx, ub); err != nil {
+		return nil, fmt.Errorf("repos: clear restore sessions: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("repos: commit take restore sessions: %w", err)
+	}
+	return marks, nil
 }
 
 func nullableString(s string) any {
