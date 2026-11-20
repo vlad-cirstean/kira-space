@@ -11,6 +11,7 @@ const AGENT_KINDS: Record<string, AdeOpKind> = {
   agentBranches: 'agentBranches',
   agentRename: 'agentRename',
   agentChange: 'agentChange',
+  agentWorktreeRemove: 'agentWorktreeRemove',
 };
 const MCP_KINDS: Record<string, AdeOpKind> = {
   'remote.fetch': 'agentFetch',

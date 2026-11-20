@@ -364,6 +364,12 @@ func worktreeRemoveBlockedError(pf gitpreflight.WorktreeRemovePreflight) *OpErro
 	}
 }
 
+// WorktreeRemoveBlockedMessage is the plain-English reason the preflight blocks a removal, for callers
+// that refuse before running the op.
+func WorktreeRemoveBlockedMessage(pf gitpreflight.WorktreeRemovePreflight) string {
+	return worktreeRemoveBlockedError(pf).Message
+}
+
 // prepareWorktreeRemove is worktreeRemove's own opSpec.Prepare: re-runs the FULL
 // preflight classification immediately before the write (never trusting the client's own possibly
 // stale copy), and — for the dirty route — re-derives the confirmation token FRESH from that same
@@ -384,7 +390,7 @@ func prepareWorktreeRemove(ctx context.Context, e *RepoEntry, _ ConnID, _ string
 		if op.ConfirmToken == nil || *op.ConfirmToken != pf.ConfirmToken {
 			return prepared{earlyError: &OpError{
 				Kind:    "ConfirmationRequired",
-				Message: fmt.Sprintf("Type %q to confirm — this worktree has uncommitted changes that will be lost.", pf.ConfirmToken),
+				Message: "This worktree has uncommitted changes. Discard them to remove it.",
 			}}, nil
 		}
 		force = true

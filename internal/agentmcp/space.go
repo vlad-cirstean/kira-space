@@ -208,6 +208,9 @@ type SpaceTools interface {
 	ListArtifacts(ctx context.Context, taskID string) (TaskArtifacts, error)
 	// CancelOperation stops one of them; an unknown or finished id is a ToolError.
 	CancelOperation(ctx context.Context, taskID, opID string) (CancelOperationResult, error)
+	// RemoveWorktree removes one of the task's own worktrees the way the UI's Remove branch does. It never
+	// discards uncommitted work: a dirty or busy worktree is a failed result. The git branch stays.
+	RemoveWorktree(ctx context.Context, call SpaceCall, args RemoveWorktreeArgs) (RemoveWorktreeResult, error)
 }
 
 // BranchSpec is one branch an agent asks for: a task or registered repo, the branch name the agent chose
@@ -262,4 +265,22 @@ func fail(tool string, err error) *mcp.CallToolResult {
 	}
 	slog.Warn("agentmcp: space tool", "scope", "ade", "tool", tool, "err", err)
 	return toolError("Kira Space could not complete that. Try again, or ask the user.")
+}
+
+// BranchRemoved is worktree.remove's success outcome; failed reuses the branch.request word.
+const BranchRemoved = "removed"
+
+// RemoveWorktreeArgs names the task branch whose worktree goes.
+type RemoveWorktreeArgs struct {
+	Repo   string `json:"repo"`
+	Branch string `json:"branch"`
+}
+
+// RemoveWorktreeResult is worktree.remove's answer.
+type RemoveWorktreeResult struct {
+	Repo     string `json:"repo"`
+	Branch   string `json:"branch"`
+	Outcome  string `json:"outcome"`
+	Worktree string `json:"worktree"`
+	Next     string `json:"next"`
 }

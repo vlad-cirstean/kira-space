@@ -189,7 +189,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 		return err
 	}
 	for _, lb := range linked {
-		if err := b.removeWorktree(ctx, lb); err != nil {
+		if err := b.removeWorktree(ctx, lb, true); err != nil {
 			return err
 		}
 	}
@@ -289,8 +289,10 @@ func (b *TaskBoard) closeTaskTerminals(taskID string) error {
 	return nil
 }
 
-// removeWorktree removes a linked worktree, discarding uncommitted changes (the archive was confirmed).
-func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch) error {
+// removeWorktree removes a linked worktree. Uncommitted changes go only with discard (the archive was
+// confirmed, or the user took a discard action); the dirty state is read again here, so a worktree that
+// turned dirty since the caller looked stays.
+func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch, discard bool) error {
 	b.taskFiles.Close(lb.sb.ID)
 	mu := b.repoMutex(lb.sb.CodeRepoID)
 	mu.Lock()
@@ -300,9 +302,8 @@ func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch) error {
 		return err
 	}
 	req := gitsession.OpRequest{Kind: "worktreeRemove", Path: lb.path}
-	if pf.Verdict == "dirty" {
-		token := filepath.Base(lb.path)
-		req.ConfirmToken = &token
+	if pf.Verdict == "dirty" && discard {
+		req.ConfirmToken = &pf.ConfirmToken
 	}
 	res, err := lb.entry.RunOp(ctx, b.conn.ID, boardConnLabel, req)
 	if err != nil {
@@ -313,7 +314,7 @@ func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch) error {
 		if res.Error != nil {
 			msg = res.Error.Message
 		}
-		return invalid("archive %s: %s", lb.sb.Name, msg)
+		return invalid("worktree of %s: %s", lb.sb.Name, msg)
 	}
 	return nil
 }

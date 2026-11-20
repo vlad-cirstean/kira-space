@@ -160,6 +160,7 @@ headless.tool.state.arg.action	37
 headless.tool.state.arg.args	34
 headless.tool.state.action.repo.declare	51
 headless.tool.state.action.branch.request	205
+headless.tool.state.action.worktree.remove	159
 headless.tool.state.action.branch.rename	133
 headless.tool.state.action.branch.change	105
 headless.tool.state.action.lease.acquire	56

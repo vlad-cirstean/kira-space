@@ -9442,6 +9442,9 @@
         "agentRename": {
           "loading": "Renaming branch…"
         },
+        "agentWorktreeRemove": {
+          "loading": "Removing worktree…"
+        },
         "approve": {
           "loading": "Approving…"
         },

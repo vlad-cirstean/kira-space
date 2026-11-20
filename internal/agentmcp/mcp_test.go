@@ -170,6 +170,11 @@ func (f *fakeSpace) ChangeBranch(_ context.Context, call SpaceCall, args ChangeB
 	return ChangeBranchResult{Repo: args.Repo, From: args.From, To: args.To, Outcome: BranchChanged}, nil
 }
 
+func (f *fakeSpace) RemoveWorktree(_ context.Context, call SpaceCall, args RemoveWorktreeArgs) (RemoveWorktreeResult, error) {
+	f.rec("remove|" + call.TaskID + "|" + args.Repo + "/" + args.Branch)
+	return RemoveWorktreeResult{Repo: args.Repo, Branch: args.Branch, Outcome: BranchRemoved, Next: "Removed worktree."}, nil
+}
+
 func (f *fakeSpace) AcquireLease(_ context.Context, call SpaceCall, args AcquireLeaseArgs) (AcquireLeaseResult, error) {
 	f.rec("acquire|" + call.TaskID + "|" + call.SessionID + "|" + args.Queue)
 	return AcquireLeaseResult{Queue: args.Queue, State: LeaseHeld}, nil
