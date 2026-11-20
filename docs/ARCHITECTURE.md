@@ -1847,7 +1847,7 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - The reader/writer gate is unchanged from the single-client design but now lives on the shared RepoEntry, so it serializes across connections instead of within one.
 - There is one git watcher per repository, fanned out to subscribers. It covers HEAD, refs/**, packed-refs, index, FETCH_HEAD, MERGE_HEAD, rebase-*, CHERRY_PICK_HEAD, REVERT_HEAD and sequencer in commonDir/gitDir only, never the worktree.
 - A source file saved by an editor produces no event on the git watcher, and its output (chan Signal) carries no path.
-- Nothing else in the app watches the worktree; the task Files tab's tree and search are refresh-on-demand by design, not backed by a second watcher.
+- Nothing else in the app watches the worktree; the task Files window's tree and search are refresh-on-demand by design, not backed by a second watcher.
 - Watcher events are debounced 200 ms and delivered to each subscriber over its own coalescing buffered channel, so one slow client cannot stall the watcher for others.
 - The repo watcher calls `internal/fswatch` (P699); the darwin backend is FSEvents (`internal/fswatch/backend_fsevents_darwin.go`, darwin && cgo), fsnotify the !darwin || !cgo companion used by Linux dev/test. It watches commonDir's top, refs/** and worktrees (plus gitDir's top when it differs); events under another worktree's own dir (`worktrees/<other>/...`) raise nothing on either backend, only worktree add and remove do.
 - FSEvents was chosen over fsnotify on macOS because kqueue needs one open file descriptor per watched directory under commonDir/refs, a cost against kern.maxfilesperproc on repositories with many loose refs; FSEvents watches recursively through one stream. `fswatch` filters that recursive stream down to the same dirs fsnotify would watch.
@@ -1972,13 +1972,13 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - openTab's previewCohort flag (P74 §5.2) lets a bulk opener such as "Open all changes" join several tabs into one replaceable batch: the first file evicts, later files join with the flag set.
 - Pinning is a property of tab kind (TabKindDef.pinned); repo-graph is the only pinned kind: permanently first, unclosable, un-reorderable, un-duplicable.
 - C10 replaced the TAB_VIEWS['repo-graph'] placeholder view (RepoGraphView.vue) in workbench/tabViews.ts with the real packages/git-ui mount (RepoGraphTabView).
-- The project file view lives in agent tasks, not the Git module (P691): the task panel's Files tab (ade/v2/files/) lists, searches and reads a task branch's worktree through AdeTaskService.TaskFiles, TaskFileRead, TaskFilesSearch, TaskFilesCancelSearch and TaskFilesClose. The Git panel has two tabs, Repos and Review; a stored 'files' choice reads as Repos.
-- The client sends a branch row id and a repository-relative path, never a filesystem path. ade.TaskBoard resolves the worktree root from the branch row and keeps one codeworkspace.Session per branch row id (internal/ade/taskfiles.go), opened lazily and dropped by TaskFilesClose, which the Files tab calls on a branch switch and on unmount. A branch without a worktree has an empty Files tab.
-- The Files tab is read-only. A file opens in a viewer inside the panel, not a tab; edit mode, saves and blame stay with the repo-file tabs of the Git module. Editing a task's worktree belongs to the agent, and Open in VS Code covers the user's own edits.
+- The project file view lives in agent tasks, not the Git module (P691): the task Files window (ade/v2/files/, opened from the task panel header icon) lists, searches and reads a task branch's worktree through AdeTaskService.TaskFiles, TaskFileRead, TaskFilesSearch, TaskFilesCancelSearch and TaskFilesClose. The Git panel has two tabs, Repos and Review; a stored 'files' choice reads as Repos.
+- The client sends a branch row id and a repository-relative path, never a filesystem path. ade.TaskBoard resolves the worktree root from the branch row and keeps one codeworkspace.Session per branch row id (internal/ade/taskfiles.go), opened lazily and dropped by TaskFilesClose, which the Files window calls on a branch switch and on unmount, and the board calls through ForgetFilesWindow when the window closes natively (a native close never unmounts). A task without a worktree shows an empty Files window.
+- The Files window is read-only. A file opens in a viewer inside the window, not a tab; edit mode, saves and blame stay with the repo-file tabs of the Git module. Editing a task's worktree belongs to the agent, and Open in VS Code covers the user's own edits.
 - Reveal in file manager and Open in VS Code go through AdeTaskService.TaskFileReveal and TaskFileOpenInEditor, with path "" meaning the worktree root. The bridge defines the seams (TaskRevealer, EditorLauncher); internal/editorlaunch locates VS Code (PATH, then the per-platform install locations) on every call and starts it detached, never waited on. TaskFilesLaunchers reports what a build offers (reveal: finder, explorer, fileManager or none; editor: bool) and the UI hides an action the build lacks. The server build wires neither.
 - The file list comes from codeworkspace.EnumerateAll (internal/codeworkspace/enumerate.go), using git ls-files -z --cached --others --exclude-standard (same argv as the search scanner), unfiltered by extension, capped at 200,000 paths as an IPC-payload limit.
 - The tree virtualizes rendered rows with @tanstack/vue-virtual. The first load of a branch opens the root's own directories; a later Refresh never re-expands what the user collapsed.
-- The file list refreshes only when the Files tab loads and on explicit Refresh; there is no worktree watcher, so outside changes appear only then.
+- The file list and the open file refetch on window open, window focus and explicit Refresh; there is no worktree watcher, so outside changes appear only then.
 - Worktree files are editable only through CodeWorkspaceService.WriteFile (P419); every git invocation stays ReadOnly: true. Monaco opens readOnly and domReadOnly and switches to EDIT_OPTIONS (useReadonlyFileViewer.ts) only in edit mode; only repo-file tabs on the worktree (no revision pin) define a dirty flag and badge. Diff, local-file and revision-pinned tabs never edit.
 - WriteFile is guarded by a base hash: it takes the SHA-256 of the bytes ReadFileForEdit returned, and a file whose current hash differs (or is gone) answers E_CONFLICT with disk untouched. A hash of "" expects the file absent, which recreates a deleted file. A mutex serializes saves inside the process; an external writer racing the microseconds between hash compare and replace is not guarded.
 - WriteFile replaces the file atomically with renameio, keeping its mode; this breaks hard links, and a symlinked leaf keeps its link while the target is replaced. Text over MaxReadBytes is refused.
@@ -2012,8 +2012,8 @@ Conn (internal/gitsession): one per native window key (bridge.GitWindows, shared
 - A NUL found later in a file is checked once per matching line and drops the whole file, including matches already collected; the skip count (FilesSkipped) is always reported, never silent.
 - Match columns are computed by utf16Units, extracted from LineIndex.Position (internal/codeworkspace/textpos.go), so they follow the same UTF-16 rules and a click doesn't land a column off on non-ASCII lines; it is LineIndex's sole surviving consumer since P97 removed native code navigation.
 - Search results stream over the coalescing push channel kira:code:search, flushing on 60 ms, an accumulated match count, or the terminal event (which always fires, even on cancel), emitted only to the window that asked.
-- Only one search runs per session (Session.BeginSearch/CancelSearch), so one per task branch: a new search cancels the previous one and Session.Close cancels it too; it is not a queue because the Files tab has one query box per branch.
-- Search results live in the Files tab's Files/Search switch, beside the viewer, so the result list stays visible while a match shows in the viewer.
+- Only one search runs per session (Session.BeginSearch/CancelSearch), so one per task branch: a new search cancels the previous one and Session.Close cancels it too; it is not a queue because the Files window has one query box per branch.
+- Search results live in the Files window's Files/Search switch, beside the viewer, so the result list stays visible while a match shows in the viewer.
 - In-file search uses Monaco's built-in find widget via the view.find command registered in RepoFileView.vue and RepoDiffView.vue; in the diff editor it runs against getModifiedEditor() because IStandaloneDiffEditor has no getAction and the worktree pane matches the file on disk.
 - Only a true markdown file (monacoLanguageFor in views/repo/language.ts returning 'markdown') gets the Source/Reading toggle; .mdx is excluded because it colors as its own Monaco language, and every other file type is unchanged with no wrapper element or toolbar.
 - Markdown files open on Source like every other file type; the reading view is opt-in. The choice persists per tab via repoFileTabStateSchema's markdownReading field (.default(false)) so tabs saved before the field existed still restore.
@@ -2905,6 +2905,12 @@ role (`harness.UsageReporter`): only a provider that reports it feeds the servic
 - Charts use Apache ECharts 6.1.0 with vue-echarts 8.3.2 (exact pins, Apache-2.0 and MIT, tree-shaken in `charts/echarts.ts`, SVG renderer so P426 can capture exact vector output). Declined: the shadcn-vue chart (Unovis; registry files carry a second plain `<script>` block and `@unovis/ts` pulls `three`, `maplibre-gl`, `leaflet`, `elkjs`), Chart.js (no brush range select), a hand-rolled SVG histogram (brush, ticks, tooltips, time axis).
 - Saved-query link: tab state `kibana.saved` holds `{id, name, body}`, the body as last saved. Dirty is pure over tab state (`discoverDirty`, ignores `dataViewName`), so unmounted tabs show it in the tab strip. Save with no link prompts a name; with a link it updates, and on `E_NOT_FOUND` it unlinks and saves as the old name. Duplicating a tab drops the link. Bridge: `QueriesService.ListDiscover|SaveDiscover|UpdateDiscover`; rename, pin and delete reuse `Update` and `Delete`. `form.save` binds on the view root; the Monaco query bar emits `save` itself because Monaco consumes the chord.
 
+
+### Task Files window (P704)
+
+- The task panel's Files tab became a window. The `ade-panel-files` icon in the task panel header (not a tab, not in useTaskMenu, so not in the right-click or More menu; guard U214) calls AdeTaskService.OpenFilesWindow; a second call focuses the open window. One window per task, with the branch picker for several worktrees.
+- Keys start with `adefiles-` (ade.FilesWindowKeyPrefix). The task-to-key registry lives in memory on TaskBoard (internal/ade/fileswindow.go), not in a table: a Files window pins nothing. It is never restored; ephemeralWindowKey makes the shell delete its window row on close and purge it at boot. FilesWindowTarget answers the boot query of main.ts; the window shows no workbench.
+- Archive closes it with the task's review windows (TaskBoard.closeTaskWindows through Deps.CloseWindow). A native close runs ForgetFilesWindow from OnWindowClosing, which releases the task's file sessions.
 
 ### Review code (P150)
 
@@ -4406,8 +4412,8 @@ workspace and git module both moved there in full, unchanged, so each limitation
 it describes. The items after it are Kira Studio's own (or, for the workflow-coverage item,
 repo-wide).
 
-- **The task Files tab's tree does not follow the filesystem** (§7.1). It refreshes when the tab
-  loads and on an explicit Refresh action only — a file created, deleted or modified outside the app
+- **The task Files window's tree does not follow the filesystem** (§7.1). It refreshes on window
+  open, window focus and an explicit Refresh action only — a file created, deleted or modified outside the app
   is not reflected until one of those happens. There is no worktree watcher of any kind (P97 removed
   the only one this app ever had), so a live-refreshing tree needs one built for this purpose alone —
   a watcher's worth of complexity on a button.
@@ -4415,15 +4421,15 @@ repo-wide).
   exists for either, so a `<script>` block's contents color as HTML text, not as TypeScript/
   JavaScript — the alternative is a hand-written SFC Monarch grammar, which
   `docs/WORKING_AGREEMENT.md`'s library-reuse-first rule declines.
-- **The task Files tab's search has no include/exclude filter.** A repository that commits its
+- **The task Files window's search has no include/exclude filter.** A repository that commits its
   dependencies (a vendored `vendor/` tree) searches them, because enumeration is unchanged
   `codeworkspace.EnumerateAll` — the right answer is a glob library (`bmatcuk/doublestar` or
   `gobwas/glob`, both MIT, since `path.Match` has no `**`) plus a two-field UI, deferred whole
   rather than half-built.
-- **The task Files tab's search results are a point-in-time snapshot with no live update.** A file
+- **The task Files window's search results are a point-in-time snapshot with no live update.** A file
   changed, created or deleted after a search ran is not reflected until the search is re-run — the
-  same posture the tab's tree takes for its own listing.
-- **The task Files tab's search cannot match a pattern spanning multiple lines.** The scanner hands the matcher one
+  same posture the window's tree takes for its own listing.
+- **The task Files window's search cannot match a pattern spanning multiple lines.** The scanner hands the matcher one
   line at a time (`^`/`$` anchor per line, D5); a `--multiline`-equivalent search is out of scope.
 - **Native `review.session.save`/`.load` (`repo/git/reviewSession.ts`, backed by the pinned
   repo-graph tab's own persisted state) has no expiry**, unlike `gitreview`'s own `IdleTTL` reaper window. A native resume point can
