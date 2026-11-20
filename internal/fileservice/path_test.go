@@ -208,3 +208,53 @@ func TestErrorsArePathErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Exclusive create: of N racing writers exactly one wins, the loser sees ErrExist, the winner's bytes
+// stay, and no temp file is left behind (rooted and host-wide).
+func TestExclusiveWriteRace(t *testing.T) {
+	f := newFixture(t)
+	rooted := mustNew(t, Policy{Root: f.root})
+	for name, tc := range map[string]struct {
+		s    *Service
+		path string
+	}{
+		"rooted":    {rooted, "dir/excl.txt"},
+		"host-wide": {Host(), filepath.Join(f.outside, "excl.txt")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			const n = 8
+			errs := make(chan error, n)
+			for i := 0; i < n; i++ {
+				go func() {
+					_, err := tc.s.Write(tc.path, []byte{byte('a' + i)}, WriteOptions{Exclusive: true})
+					errs <- err
+				}()
+			}
+			won := 0
+			for i := 0; i < n; i++ {
+				switch err := <-errs; {
+				case err == nil:
+					won++
+				case !errors.Is(err, fs.ErrExist):
+					t.Fatalf("loser error = %v, want ErrExist", err)
+				}
+			}
+			if won != 1 {
+				t.Fatalf("%d writers won, want 1", won)
+			}
+			dir := filepath.Join(f.root, "dir")
+			if name == "host-wide" {
+				dir = f.outside
+			}
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range entries {
+				if strings.HasPrefix(e.Name(), ".excl.txt") {
+					t.Fatalf("temp file %s left behind", e.Name())
+				}
+			}
+		})
+	}
+}

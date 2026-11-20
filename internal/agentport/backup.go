@@ -31,14 +31,13 @@ func resolveTarget(path string) (string, error) {
 func backup(path string, data []byte, mode os.FileMode, now time.Time) (string, error) {
 	stem := path + ".kira-backup-" + now.UTC().Format(backupStamp)
 	perm := mode.Perm() | 0o600
-	absent := fileservice.Version("")
 	for i := 0; i < maxBackupNames; i++ {
 		dst := stem
 		if i > 0 {
 			dst = fmt.Sprintf("%s-%d", stem, i)
 		}
-		_, err := fileservice.Host().Write(dst, data, fileservice.WriteOptions{Perm: perm, Static: true, IfVersion: &absent})
-		if errors.Is(err, fileservice.ErrConflict) {
+		_, err := fileservice.Host().Write(dst, data, fileservice.WriteOptions{Perm: perm, Static: true, Exclusive: true})
+		if errors.Is(err, fileservice.ErrExist) {
 			continue
 		}
 		if err != nil {

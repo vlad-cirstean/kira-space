@@ -19,6 +19,8 @@ type Pending struct {
 	disp string
 	s    *Service
 	done bool
+	// exclusive: Commit links the temp file to the name (ErrExist if taken) instead of renaming over it.
+	exclusive bool
 }
 
 // Write appends to the temp file; the target is untouched until Commit.
@@ -34,7 +36,11 @@ func (p *Pending) Commit() (Info, error) {
 		return Info{}, wrapErr("commit", p.disp, os.ErrClosed)
 	}
 	defer p.release()
-	if err := p.pf.CloseAtomicallyReplace(); err != nil {
+	commit := p.pf.CloseAtomicallyReplace
+	if p.exclusive {
+		commit = p.linkExclusive
+	}
+	if err := commit(); err != nil {
 		_ = p.pf.Cleanup()
 		return Info{}, wrapErr("commit", p.disp, err)
 	}
@@ -57,6 +63,30 @@ func (p *Pending) Commit() (Info, error) {
 		return Info{}, wrapErr("commit", p.disp, err)
 	}
 	return p.s.infoOf(fi), nil
+}
+
+// linkExclusive fsyncs and closes the temp file, hard-links it to the target (EEXIST when taken) and
+// removes the temp name.
+func (p *Pending) linkExclusive() error {
+	if err := p.pf.Sync(); err != nil {
+		return err
+	}
+	if err := p.pf.File.Close(); err != nil {
+		return err
+	}
+	var err error
+	if p.sub != nil {
+		err = p.sub.Link(filepath.Base(p.pf.Name()), p.base) // File.Name() of a rooted file is not root-relative
+	} else {
+		err = os.Link(p.pf.Name(), filepath.Join(p.dir, p.base))
+	}
+	if err != nil {
+		return err
+	}
+	if err := p.pf.Cleanup(); err != nil && !errors.Is(err, os.ErrClosed) {
+		return err
+	}
+	return nil
 }
 
 // Discard removes the temp file; idempotent and safe after Commit.
@@ -99,7 +129,11 @@ func (s *Service) Create(name string, o WriteOptions) (*Pending, error) {
 	if err != nil {
 		return nil, err
 	}
-	if v := o.IfVersion; v != nil {
+	if o.Exclusive {
+		if existing != nil {
+			return nil, t.fail("create", policy(ErrExist, "%s", name))
+		}
+	} else if v := o.IfVersion; v != nil {
 		switch {
 		case existing == nil && *v != "":
 			return nil, t.fail("create", policy(ErrConflict, "%s is gone", name))
@@ -111,7 +145,11 @@ func (s *Service) Create(name string, o WriteOptions) (*Pending, error) {
 	if perm == 0 {
 		perm = s.filePerm()
 	}
-	return s.openPending(t, name, permOptions(o, perm))
+	p, err := s.openPending(t, name, permOptions(o, perm))
+	if p != nil {
+		p.exclusive = o.Exclusive
+	}
+	return p, err
 }
 
 // permOptions maps the write's permission flags to renameio options.

@@ -23,7 +23,8 @@
 //  5. Atomic write. A hidden temp file in the target dir (renameio), data and file fsync, rename, then
 //     an fsync of the parent dir. A dir-fsync failure returns the error; the new content is in place.
 //     Parents are created first. IfVersion is compared before the write, so a writer racing between
-//     compare and rename still wins (as before the service).
+//     compare and rename still wins (as before the service). Exclusive links the temp file to the name
+//     instead of renaming, so the create is atomic and a racing writer is never replaced.
 //  6. Perms. Files 0644, dirs 0755; Private 0600 and 0700. WriteOptions.Perm overrides, Static ignores
 //     the umask and re-tightens a looser file, KeepPerm copies the existing file's mode.
 //  7. Caps. Read(name, max): max 0 means Policy.MaxRead, else DefaultMaxRead. A file over the cap, or
@@ -198,6 +199,9 @@ type WriteOptions struct {
 	KeepPerm  bool        // keep the existing file's mode
 	Static    bool        // Perm ignores the umask and re-tightens a looser file
 	IfVersion *Version    // nil unconditional; "" must be absent; else must equal the current version
+	// Exclusive creates the file only if the name is absent, atomically (the temp file is hard-linked
+	// to the name, so a racing writer is never replaced): ErrExist otherwise. IfVersion is ignored.
+	Exclusive bool
 }
 
 // RenameOptions tune Rename.
