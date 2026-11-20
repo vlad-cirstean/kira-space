@@ -38,7 +38,17 @@ type ChangeRequest struct {
 	CommentCount *int `json:"commentCount,omitempty"`
 	// Assignees are the assigned logins; nil when the host does not say.
 	Assignees []string `json:"assignees,omitempty"`
+	// Mergeable is MergeableYes | MergeableConflict | "" (unknown, or not open).
+	Mergeable string `json:"mergeable,omitempty"`
+	// AutoMerge marks an open change request set to merge once its requirements pass.
+	AutoMerge bool `json:"autoMerge,omitempty"`
 }
+
+// Mergeable values.
+const (
+	MergeableYes      = "mergeable"
+	MergeableConflict = "conflicting"
+)
 
 // Status kinds.
 const (

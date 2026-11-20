@@ -674,7 +674,8 @@ func hostStatusFrom(s githost.Status) HostStatus {
 	return HostStatus{Kind: s.Kind, Path: s.Path, Version: s.Version, Host: s.Host, Account: s.Account, Reason: s.Reason}
 }
 
-// ChangeRequestRecord mirrors githost.ChangeRequest field for field, camelCased at the wire.
+// ChangeRequestRecord mirrors githost.ChangeRequest camelCased at the wire, minus Mergeable and AutoMerge:
+// those are ADE-only (git-ipc needs neither).
 type ChangeRequestRecord struct {
 	Number    int    `json:"number"`
 	Title     string `json:"title"`

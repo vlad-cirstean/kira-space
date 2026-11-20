@@ -76,11 +76,13 @@ type PR struct {
 	ForkProject string
 	Reviewers   []Reviewer
 	Policies    []Policy
-	// Description, AuthorName, Labels, MergeStatus and Threads print in the detail reads only.
+	// MergeStatus (succeeded | conflicts) and AutoComplete (who set it) print in every read.
+	MergeStatus  string
+	AutoComplete string
+	// Description, AuthorName, Labels and Threads print in the detail reads only.
 	Description string
 	AuthorName  string
 	Labels      []string
-	MergeStatus string
 	Threads     []Thread
 }
 
@@ -389,6 +391,9 @@ type projection struct {
 	ForkRepo    *string    `json:"forkRepo"`
 	ForkProject *string    `json:"forkProject"`
 	Reviewers   []reviewer `json:"reviewers"`
+	MergeStatus string     `json:"mergeStatus"`
+	// AutoComplete is null while auto-complete is off.
+	AutoComplete *string `json:"autoComplete"`
 }
 
 type reviewer struct {
@@ -400,6 +405,10 @@ func project(p PR, repoName string) projection {
 	out := projection{
 		ID: p.ID, Title: p.Title, Status: p.Status, Draft: p.Draft, Src: "refs/heads/" + p.Src, Dst: "refs/heads/" + p.Dst,
 		Head: p.Head, Created: p.Created.UTC().Format(time.RFC3339), Author: p.Author, Repo: repoName, Reviewers: []reviewer{},
+		MergeStatus: p.MergeStatus,
+	}
+	if p.AutoComplete != "" {
+		out.AutoComplete = &p.AutoComplete
 	}
 	if p.Status != "active" {
 		closed := p.Created.Add(time.Hour).UTC().Format(time.RFC3339)
@@ -513,7 +522,6 @@ type detailProjection struct {
 	projection
 	AuthorName  string           `json:"authorName"`
 	Description string           `json:"description"`
-	MergeStatus string           `json:"mergeStatus"`
 	Labels      []string         `json:"labels"`
 	Reviewers   []detailReviewer `json:"reviewers"`
 }
@@ -521,7 +529,7 @@ type detailProjection struct {
 func detailProject(p PR, repoName string) detailProjection {
 	out := detailProjection{
 		projection: project(p, repoName), AuthorName: p.AuthorName, Description: p.Description,
-		MergeStatus: p.MergeStatus, Labels: p.Labels, Reviewers: []detailReviewer{},
+		Labels: p.Labels, Reviewers: []detailReviewer{},
 	}
 	for _, r := range p.Reviewers {
 		out.Reviewers = append(out.Reviewers, detailReviewer{Vote: r.Vote, Required: r.Required, Name: r.Name, Login: r.Login, Team: r.Team})
@@ -800,7 +808,11 @@ func restPR(p PR) map[string]any {
 		"lastMergeSourceCommit": map[string]any{"commitId": p.Head},
 		"createdBy":             map[string]any{"uniqueName": p.Author},
 		"reviewers":             rv,
+		"mergeStatus":           p.MergeStatus,
 		"url":                   fmt.Sprintf("https://dev.azure.com/fake/_apis/git/pullRequests/%d", p.ID),
+	}
+	if p.AutoComplete != "" {
+		out["autoCompleteSetBy"] = map[string]any{"uniqueName": p.AutoComplete}
 	}
 	if p.ForkRepo != "" {
 		out["forkSource"] = map[string]any{"repository": map[string]any{"name": p.ForkRepo, "project": map[string]any{"name": p.ForkProject}}}

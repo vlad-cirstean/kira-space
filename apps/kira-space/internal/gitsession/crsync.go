@@ -709,7 +709,7 @@ func crRow(cr githost.ChangeRequest, nowMs int64) model.GitHostChangeRequest {
 		Number: cr.Number, NodeID: cr.NodeID, HeadRef: cr.HeadRef, HeadOwner: cr.HeadOwner, HeadSha: cr.HeadSha,
 		BaseRef: cr.BaseRef, State: state, Draft: draft, Title: cr.Title, URL: cr.URL,
 		ReviewDecision: cr.ReviewDecision, ChecksState: cr.ChecksState, CommentCount: cr.CommentCount, Assignees: cr.Assignees,
-		UpdatedAt: cr.UpdatedAt, SyncedAt: nowMs,
+		Mergeable: cr.Mergeable, AutoMerge: cr.AutoMerge, UpdatedAt: cr.UpdatedAt, SyncedAt: nowMs,
 	}
 }
 
@@ -722,7 +722,7 @@ func crFromRow(row model.GitHostChangeRequest) githost.ChangeRequest {
 		Number: row.Number, Title: row.Title, URL: row.URL, State: state, HeadRef: row.HeadRef, HeadSha: row.HeadSha,
 		HeadOwner: row.HeadOwner, BaseRef: row.BaseRef, UpdatedAt: row.UpdatedAt, NodeID: row.NodeID,
 		Draft: row.Draft, ReviewDecision: row.ReviewDecision, ChecksState: row.ChecksState,
-		CommentCount: row.CommentCount, Assignees: row.Assignees,
+		CommentCount: row.CommentCount, Assignees: row.Assignees, Mergeable: row.Mergeable, AutoMerge: row.AutoMerge,
 	}
 }
 

@@ -34,6 +34,9 @@ type PR struct {
 	// CommentCount and Assignees are read by the sync queries only.
 	CommentCount *int     `json:"commentCount,omitempty"`
 	Assignees    []string `json:"assignees,omitempty"`
+	// Mergeable and AutoMerge are read by the sync queries only, for open pull requests.
+	Mergeable string `json:"mergeable,omitempty"`
+	AutoMerge bool   `json:"autoMerge,omitempty"`
 }
 
 // rawPull is the GitHub REST response shape, decoded exactly as the API sends it — never exported,

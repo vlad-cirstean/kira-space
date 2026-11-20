@@ -543,7 +543,7 @@ CREATE TABLE "git_host_change_requests" (
   url TEXT NOT NULL,
   review_decision TEXT NOT NULL DEFAULT '',
   checks_state TEXT NOT NULL DEFAULT '',
-  assignees TEXT CHECK (assignees IS NULL OR json_valid(assignees)),
+  assignees TEXT CHECK (assignees IS NULL OR json_valid(assignees)), mergeable TEXT NOT NULL DEFAULT '', auto_merge INTEGER NOT NULL DEFAULT 0 CHECK (auto_merge IN (0, 1)),
   PRIMARY KEY (repo_key, number)
 ) STRICT;
 

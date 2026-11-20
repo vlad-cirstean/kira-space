@@ -153,7 +153,7 @@ func toChangeRequests(prs []PR) []githost.ChangeRequest {
 			Number: p.Number, Title: p.Title, URL: p.URL, State: p.State, HeadRef: p.HeadRef, HeadSha: p.HeadSha,
 			HeadOwner: p.HeadRepoOwner, BaseRef: p.BaseRef, UpdatedAt: p.UpdatedAt,
 			NodeID: p.NodeID, Draft: p.Draft, ReviewDecision: p.ReviewDecision, ChecksState: p.ChecksState,
-			CommentCount: p.CommentCount, Assignees: p.Assignees,
+			CommentCount: p.CommentCount, Assignees: p.Assignees, Mergeable: p.Mergeable, AutoMerge: p.AutoMerge,
 		})
 	}
 	return out

@@ -38,7 +38,8 @@ func argv(sub []string, org string, extra ...string) []string {
 const (
 	prBaseFields = `id:pullRequestId,title:title,status:status,draft:isDraft,src:sourceRefName,dst:targetRefName,` +
 		`head:lastMergeSourceCommit.commitId,created:creationDate,closed:closedDate,author:createdBy.uniqueName,` +
-		`forkRepo:forkSource.repository.name,forkProject:forkSource.repository.project.name`
+		`forkRepo:forkSource.repository.name,forkProject:forkSource.repository.project.name,` +
+		`mergeStatus:mergeStatus,autoComplete:autoCompleteSetBy.uniqueName`
 	prFields    = prBaseFields + `,reviewers:reviewers[].{vote:vote,required:isRequired}`
 	prListQuery = `[].{` + prFields + `}`
 	prShowQuery = `{` + prFields + `}`
