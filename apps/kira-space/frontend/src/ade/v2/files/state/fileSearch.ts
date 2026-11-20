@@ -200,6 +200,13 @@ export const useAdeFileSearchStore = defineStore('adeFileSearch', () => {
         caseSensitive: state.options.caseSensitive,
         wholeWord: state.options.wholeWord,
       });
+      if (byBranch.get(branchId) !== state) {
+        // Released (tab or branch switch) while the start was in flight: the backend reopened the
+        // session for it, so stop the search and close that session again.
+        cancelSearch(branchId);
+        fireAndForget(control.adeTaskFilesClose(branchId), 'files');
+        return;
+      }
       state.searchId = searchId;
       branchBySearchId.set(searchId, branchId);
     } catch (err) {
