@@ -18,6 +18,8 @@ const template = `# nickname: ""
 #     deployed_sha_script: curl -fsS https://staging.example.com/version
 #   - name: prod
 #     deployed_sha_run: { script: Prod sha }
+# services:
+#   - { script: Dev DB }
 # worktree:
 #   prepare_script: bun install
 #   # or a Run script: prepare_run: { script: Install deps, params: { mode: ci } }

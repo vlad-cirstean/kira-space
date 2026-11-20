@@ -17,23 +17,25 @@ const (
 	MaxNicknameRunes  = 40
 	MaxIntegration    = 10
 	MaxEnvironments   = 10
+	MaxServices       = 10
 	MaxEnvScriptBytes = 4 << 10
 	MaxPrepareBytes   = 64 << 10
 )
 
 // File is one repo file as written. A nil leaf is absent: the default applies.
 type File struct {
-	Path                string        `json:"path"`
-	Nickname            string        `json:"nickname,omitempty"`
-	IntegrationBranches []string      `json:"integration_branches,omitempty"`
-	Environments        []Environment `json:"environments,omitempty"`
-	Worktree            *Worktree     `json:"worktree,omitempty"`
-	Graph               *Graph        `json:"graph,omitempty"`
-	Stash               *Stash        `json:"stash,omitempty"`
-	Review              *Review       `json:"review,omitempty"`
-	Pull                *Pull         `json:"pull,omitempty"`
-	GitHost             *GitHost      `json:"git_host,omitempty"`
-	Checkout            *Checkout     `json:"checkout,omitempty"`
+	Path                string            `json:"path"`
+	Nickname            string            `json:"nickname,omitempty"`
+	IntegrationBranches []string          `json:"integration_branches,omitempty"`
+	Environments        []Environment     `json:"environments,omitempty"`
+	Services            []model.ScriptRef `json:"services,omitempty"`
+	Worktree            *Worktree         `json:"worktree,omitempty"`
+	Graph               *Graph            `json:"graph,omitempty"`
+	Stash               *Stash            `json:"stash,omitempty"`
+	Review              *Review           `json:"review,omitempty"`
+	Pull                *Pull             `json:"pull,omitempty"`
+	GitHost             *GitHost          `json:"git_host,omitempty"`
+	Checkout            *Checkout         `json:"checkout,omitempty"`
 }
 
 // Environment is one deploy target.
@@ -90,6 +92,7 @@ type Config struct {
 	Nickname            string
 	IntegrationBranches []string
 	Environments        []model.AdeRepoEnv
+	Services            []model.ScriptRef
 }
 
 // Key is the path as the index keys it.
@@ -97,7 +100,7 @@ func Key(path string) string { return gitpath.CleanNFC(path) }
 
 // Defaults is the config of a repo without a file.
 func Defaults(path string) Config {
-	return Config{Path: path, Settings: model.DefaultGitRepoSettings(), IntegrationBranches: []string{}, Environments: []model.AdeRepoEnv{}}
+	return Config{Path: path, Settings: model.DefaultGitRepoSettings(), IntegrationBranches: []string{}, Environments: []model.AdeRepoEnv{}, Services: []model.ScriptRef{}}
 }
 
 // Config fills the defaults under the file's values.
@@ -109,6 +112,9 @@ func (f File) Config() Config {
 	}
 	for _, e := range f.Environments {
 		c.Environments = append(c.Environments, model.AdeRepoEnv{Name: e.Name, DeployedShaScript: e.DeployedSHAScript, DeployedShaRun: e.DeployedSHARun.Clone()})
+	}
+	for _, r := range f.Services {
+		c.Services = append(c.Services, *r.Clone())
 	}
 	s := &c.Settings
 	if w := f.Worktree; w != nil {
@@ -153,6 +159,9 @@ func FileOf(c Config) File {
 	f := File{Path: c.Path, Nickname: c.Nickname, IntegrationBranches: c.IntegrationBranches}
 	for _, e := range c.Environments {
 		f.Environments = append(f.Environments, Environment{Name: e.Name, DeployedSHAScript: e.DeployedShaScript, DeployedSHARun: e.DeployedShaRun.Clone()})
+	}
+	for _, r := range c.Services {
+		f.Services = append(f.Services, *r.Clone())
 	}
 	d, s := model.DefaultGitRepoSettings(), c.Settings
 	if s.WorktreePrepareScript != d.WorktreePrepareScript || s.WorktreePrepareRun != nil || s.WorktreePrepareTimeout != d.WorktreePrepareTimeout || s.WorktreeBasePath != d.WorktreeBasePath {

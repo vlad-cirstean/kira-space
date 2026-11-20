@@ -2327,6 +2327,9 @@
         "refScriptBlank": {
           "body": "A script reference needs a script name on one line, at most 200 characters."
         },
+        "serviceDuplicate": {
+          "body": "Each service names a different script."
+        },
         "timeoutInvalid": {
           "body": "The prepare timeout must be a duration such as 15m, above 0 and at most 2h."
         }

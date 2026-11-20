@@ -67,6 +67,33 @@
       },
       "description": "Deploy targets the ADE board tracks."
     },
+    "services": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["script"],
+        "properties": {
+          "script": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Name of a normal script of the Run module (a smart script is refused). Params arrive as KIRA_PARAM_<NAME>, secret params come from the script's saved values only and never from this file. It runs in the task's worktree when the script has Run in ADE worktree on, else in the script's own folder, shared by every task. A renamed or deleted script shows as invalid."
+          },
+          "params": {
+            "type": "object",
+            "description": "Param values by lowercase param name: a text, or a list of texts. They prefill a start from the ask.",
+            "additionalProperties": {
+              "type": ["string", "array"],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "description": "Run scripts that must be running before work starts on a task in this repository. Kira counts only runs it started."
+    },
     "worktree": {
       "type": "object",
       "additionalProperties": false,

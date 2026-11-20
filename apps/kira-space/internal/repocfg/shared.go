@@ -17,11 +17,12 @@ const MaxOriginBytes = 2048
 // SharedFile is a repo file as a shared config repository carries it: the repository is named by its
 // origin URL and only the keys that are safe to share are present.
 type SharedFile struct {
-	Origin              string          `json:"origin"`
-	IntegrationBranches []string        `json:"integration_branches,omitempty"`
-	Environments        []Environment   `json:"environments,omitempty"`
-	Worktree            *SharedWorktree `json:"worktree,omitempty"`
-	Review              *Review         `json:"review,omitempty"`
+	Origin              string            `json:"origin"`
+	IntegrationBranches []string          `json:"integration_branches,omitempty"`
+	Environments        []Environment     `json:"environments,omitempty"`
+	Services            []model.ScriptRef `json:"services,omitempty"`
+	Worktree            *SharedWorktree   `json:"worktree,omitempty"`
+	Review              *Review           `json:"review,omitempty"`
 }
 
 // SharedWorktree holds the worktree leaves a shared file may set; base_path stays local.
@@ -33,7 +34,7 @@ type SharedWorktree struct {
 
 // file is a File holding the shared leaves, so the repo rules run on a shared file unchanged.
 func (sf SharedFile) file() File {
-	f := File{IntegrationBranches: sf.IntegrationBranches, Environments: sf.Environments, Review: sf.Review}
+	f := File{IntegrationBranches: sf.IntegrationBranches, Environments: sf.Environments, Services: sf.Services, Review: sf.Review}
 	if w := sf.Worktree; w != nil {
 		f.Worktree = &Worktree{PrepareScript: w.PrepareScript, PrepareRun: w.PrepareRun, PrepareTimeout: w.PrepareTimeout}
 	}
@@ -42,7 +43,7 @@ func (sf SharedFile) file() File {
 
 // sharedOf is the shared leaves of f under origin.
 func sharedOf(origin string, f File) SharedFile {
-	sf := SharedFile{Origin: origin, IntegrationBranches: f.IntegrationBranches, Environments: f.Environments, Review: f.Review}
+	sf := SharedFile{Origin: origin, IntegrationBranches: f.IntegrationBranches, Environments: f.Environments, Services: f.Services, Review: f.Review}
 	if w := f.Worktree; w != nil && (w.PrepareScript != nil || w.PrepareRun != nil || w.PrepareTimeout != nil) {
 		sf.Worktree = &SharedWorktree{PrepareScript: w.PrepareScript, PrepareRun: w.PrepareRun, PrepareTimeout: w.PrepareTimeout}
 	}
@@ -105,7 +106,7 @@ func originHasPassword(raw string) bool {
 
 // sharedRules are the repo rules that apply to the shared keys, plus the origin check.
 func sharedRules() []configfs.Rule[SharedFile] {
-	rules := []configfs.Rule[File]{integrationBranchesRule(), environmentsRule(), prepareExclusiveRule(), scriptRefsRule(), prepareTimeoutRule()}
+	rules := []configfs.Rule[File]{integrationBranchesRule(), environmentsRule(), prepareExclusiveRule(), scriptRefsRule(), servicesRule(), prepareTimeoutRule()}
 	out := make([]configfs.Rule[SharedFile], 0, len(rules)+1)
 	out = append(out, originRule())
 	for _, r := range rules {

@@ -86,6 +86,11 @@ func putTopEntries(set *entrySet, top map[string]any) error {
 			return err
 		}
 	}
+	if v, has := top["services"]; has {
+		if err := set.put("services", v); err != nil {
+			return err
+		}
+	}
 	if r, ok := top["review"].(map[string]any); ok {
 		if v, has := r["base_candidates"]; has {
 			if err := set.put("review/base_candidates", v); err != nil {
@@ -155,6 +160,8 @@ func applyRepoEntries(src []byte, theirs entrySet, take []string) ([]byte, error
 			setOrUnset(id, "worktree", "prepare_timeout")
 		case id == "integration_branches":
 			setOrUnset(id, "integration_branches")
+		case id == "services":
+			setOrUnset(id, "services")
 		case id == "review/base_candidates":
 			setOrUnset(id, "review", "base_candidates")
 		case strings.HasPrefix(id, "environments/"):
