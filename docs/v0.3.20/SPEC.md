@@ -43,12 +43,14 @@ already running. If one is not, Kira asks the user to run it when starting work 
 Name: working title was "dependent scripts". "Required services" chosen; alternatives considered:
 Companion services, Task prerequisites.
 
-Open points for the planner (not decided here):
+Open points for the planner (not decided here, except Detection):
 
 - Declaration: how a repo declares which scripts are required, and where (repo config, the existing repo
   scripts under `internal/scripts` and the Scripts module, Repos config in ade).
-- Detection: how "already running" is found (Kira-started script runs, process or port check, health
-  probe) without touching any credential a driven CLI owns.
+- Detection (decided): only scripts Kira started count. "Already running" means that script's run
+  (a Kira-started run record) is still running. No process scan, no port check, no health probe. A
+  service started outside Kira is not detected, so the user is asked. No credential a driven CLI
+  owns is touched.
 - Trigger: when the check fires (task start, first session launch, resume) and what the ask looks like
   (a dialog; follow P696's dialog button rules: no redundant Cancel beside No when X exists).
 - Modes: behaviour on Start, manual and headless runs, and on server builds.
