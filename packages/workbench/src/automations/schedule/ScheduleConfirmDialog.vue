@@ -233,6 +233,7 @@ function onChord(event: KeyboardEvent): void {
           variant="dialog"
           size="kira-lg"
           :pending="decline.isPending.value"
+          v-if="runId"
           data-testid="schedule-confirm-decline"
           :kbd="formatShortcut('prompt.deny')"
           @click="declineOrClose"

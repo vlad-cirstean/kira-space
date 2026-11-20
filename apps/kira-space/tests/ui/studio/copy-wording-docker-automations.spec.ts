@@ -136,7 +136,7 @@ test('recreate confirm: title, body and buttons', async ({ relaunch }) => {
   await expect(dialog).toContainText(
     'The engine can’t change these settings on an existing container. A new container replaces this one.',
   );
-  await expect(tid(page, 'docker-edit-cancel')).toHaveText('Cancel');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   await expect(tid(page, 'docker-edit-confirm')).toHaveText('Recreate now');
 });
 
@@ -231,7 +231,7 @@ test('run script dialog primary action is Run', async ({ relaunch }) => {
   await tid(page, `script-${SCRIPT.id}`).locator('[data-testid="script-play"]').click();
   await expect(tid(page, 'run-dialog')).toBeVisible();
   await expect(tid(page, 'run-start')).toHaveText('Run');
-  await expect(tid(page, 'run-cancel')).toHaveText('Cancel');
+  await expect(tid(page, 'run-dialog').getByRole('button', { name: 'Cancel' })).toHaveCount(0);
 });
 
 test('tab strip menu offers Close, Close others, Close to the right, Close all', async ({

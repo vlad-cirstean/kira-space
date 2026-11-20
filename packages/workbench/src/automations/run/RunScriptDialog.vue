@@ -7,7 +7,6 @@ import { Button } from '@theme/components/ui/button';
 import {
   Dialog,
   DialogBody,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -153,7 +152,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent @keydown="onSubmitKey" size="lg" :dirty="dirty" data-testid="run-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="run-close">
         <DialogTitle>{{
           script
             ? t('automations.dialog.run.title', { name: script.name })
@@ -252,11 +251,6 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
       </DialogBody>
 
       <DialogFooter>
-        <DialogClose as-child>
-          <Button variant="dialog" size="kira-lg" data-testid="run-cancel">{{
-            t('common.action.cancel.label')
-          }}</Button>
-        </DialogClose>
         <Button
           variant="dialog-primary"
           size="kira-lg"

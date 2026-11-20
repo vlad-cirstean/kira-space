@@ -64,7 +64,7 @@ test('update available: the routed dialog shows, Later dismisses it, the item re
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.promptsRaise)?.args)
     .toEqual({ kind: 'update', ref: '1.3.0' });
-  await window.click('[data-testid="update-dialog-later"]');
+  await window.click('[data-testid="update-dialog-close"]');
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.promptsDismiss)?.args)
     .toEqual({ id: 'update:1.3.0' });
@@ -118,7 +118,7 @@ test('stepped update: offers the next minor and names the newest', async ({ rela
   await expect
     .poll(() => first.control.log().find((e) => e.channel === IPC.promptsRaise)?.args)
     .toEqual({ kind: 'update', ref: '0.4.0' });
-  await first.window.click('[data-testid="update-dialog-later"]');
+  await first.window.click('[data-testid="update-dialog-close"]');
   await emitPrompts(first.window, []);
   await item.hover();
   await expect(

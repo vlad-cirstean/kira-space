@@ -27,7 +27,7 @@ const COMPOSE = 'Compose';
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent size="lg" destructive data-testid="docker-edit-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="docker-edit-close">
         <DialogTitle>{{ t('docker.dialog.recreateConfirm.title') }}</DialogTitle>
         <DialogDescription>{{ t('docker.dialog.recreateConfirm.body') }}</DialogDescription>
       </DialogHeader>
@@ -93,16 +93,6 @@ const COMPOSE = 'Compose';
       </DialogBody>
 
       <DialogFooter>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          data-dialog-dismiss
-          data-testid="docker-edit-cancel"
-          @click="emit('close')"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
-        >
         <Button
           variant="dialog-danger"
           size="kira-lg"

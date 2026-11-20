@@ -134,7 +134,8 @@ export function registerSecretScenarios(env: Env): void {
     await expect(field).toHaveAttribute('type', 'text');
     await eye.click();
     await expect(field).toHaveAttribute('type', 'password');
-    await setDialog(page).getByRole('button', { name: 'Cancel' }).click();
+    await setDialog(page).locator('[data-testid="run-secret-close"]').click();
+    await page.locator('[data-testid="confirm-dialog-confirm"]').click();
 
     await row(page).locator('[data-testid="run-secret-delete"]').click();
     await page.locator('[data-testid="confirm-dialog-confirm"]').click();

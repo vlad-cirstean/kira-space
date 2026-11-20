@@ -63,7 +63,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
       @escape-key-down="onEscapeOrOutside"
       @pointer-down-outside="onEscapeOrOutside"
     >
-      <DialogHeader :closable="state !== 'installing'">
+      <DialogHeader :closable="state !== 'installing'" close-testid="update-dialog-close">
         <DialogTitle>{{ t('workbench.update.dialog.title', { app: store.appName }) }}</DialogTitle>
       </DialogHeader>
 
@@ -143,7 +143,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
         </template>
       </DialogBody>
 
-      <DialogFooter>
+      <DialogFooter v-if="state !== 'checking' && state !== 'upToDate'">
         <template v-if="state === 'installing'">
           <Button
             variant="dialog"
@@ -154,16 +154,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
             {{ t('common.action.cancel.label') }}
           </Button>
         </template>
-        <template v-else-if="state === 'checking'" />
         <template v-else-if="state === 'checkFailed'">
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="update-dialog-close"
-            @click="store.later()"
-          >
-            {{ t('common.action.close.label') }}
-          </Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
@@ -174,27 +165,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
             {{ t('common.action.retry.label') }}
           </Button>
         </template>
-        <template v-else-if="state === 'upToDate'">
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :kbd="formatShortcut('form.submit')"
-            data-testid="update-dialog-close"
-            @click="store.later()"
-          >
-            {{ t('common.action.close.label') }}
-          </Button>
-        </template>
         <template v-else>
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            :kbd="formatShortcut('prompt.hide')"
-            data-testid="update-dialog-later"
-            @click="store.later()"
-          >
-            {{ t('common.later.label') }}
-          </Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
