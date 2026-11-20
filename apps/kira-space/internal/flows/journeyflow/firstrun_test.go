@@ -139,7 +139,7 @@ func TestFirstRunJourney(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: task.ID}); err != nil {
 		t.Fatalf("ArchiveTask: %v", err)
 	}
 

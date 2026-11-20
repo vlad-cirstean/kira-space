@@ -82,7 +82,7 @@ func (b *TaskBoard) RemoveWorktree(ctx context.Context, call agentmcp.SpaceCall,
 		return failed(fmt.Sprintf("Worktree %s has %d uncommitted changes (%s). Commit them first, or ask the user; only the user can discard them.", args.Branch, n, dirtyPaths(risk.Dirty)))
 	}
 	op := b.startAgentOp(ctx, opAgentWorktreeRemove, call.TaskID, nick+"/"+args.Branch)
-	worktreeErr, err := b.removeRowBranch(ctx, tc, *named, false)
+	worktreeErr, err := b.removeRowBranch(ctx, tc, *named, "")
 	b.notifyBoard()
 	switch {
 	case err != nil:

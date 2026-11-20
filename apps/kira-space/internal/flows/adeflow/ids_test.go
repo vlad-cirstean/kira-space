@@ -65,7 +65,7 @@ func TestAdeIDs(t *testing.T) {
 	if got := taskOf(t, board(t, f.app), v4).Title; got != title {
 		t.Fatalf("v4 task title = %q, want %q", got, title)
 	}
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: v4}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: v4}); err != nil {
 		t.Fatalf("archive v4 task: %v", err)
 	}
 

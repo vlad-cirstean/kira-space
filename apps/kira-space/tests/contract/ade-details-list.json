@@ -34,6 +34,7 @@
         "conflictsIfRebased": [],
         "deployments": [],
         "dirty": [],
+        "dirtyToken": "",
         "id": "<masked>",
         "integration": [],
         "kind": "mine",

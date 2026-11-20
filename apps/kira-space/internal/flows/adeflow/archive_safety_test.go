@@ -43,8 +43,9 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 	}
 	gitOut(t, repo.Dir, "worktree", "lock", lockedDir)
 
-	args := adewire.TaskArgs{TaskID: task.ID}
-	risk, err := app.W.AdeTask.ArchiveRisk(ctx, args)
+	riskArgs := adewire.TaskArgs{TaskID: task.ID}
+	args := adewire.ArchiveTaskArgs{TaskID: task.ID}
+	risk, err := app.W.AdeTask.ArchiveRisk(ctx, riskArgs)
 	if err != nil || len(risk.Branches) != 3 {
 		t.Fatalf("ArchiveRisk = %+v, %v, want 3 branches", risk, err)
 	}
@@ -52,7 +53,7 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 	for _, r := range risk.Branches {
 		byTree[r.Worktree] = r
 	}
-	if d := byTree[dirtyDir]; len(d.Dirty) != 2 || d.Unmerged != 2 || d.Blocked != "" {
+	if d := byTree[dirtyDir]; len(d.Dirty) != 2 || d.Unmerged != 2 || d.Blocked != "" || d.DirtyToken == "" {
 		t.Fatalf("dirty risk = %+v, want 2 dirty files and 2 unmerged", d)
 	}
 	if l := byTree[lockedDir]; l.Blocked == "" {
@@ -61,7 +62,7 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 	if c := byTree[cleanDir]; len(c.Dirty) != 0 || c.Unmerged != 0 || c.Blocked != "" {
 		t.Fatalf("clean risk = %+v, want nothing at risk", c)
 	}
-	app.Contract(t, "ade-archive-safety", "AdeTaskService.ArchiveRisk#mixed", risk, flowharness.Mask("taskId", "branchId", "worktree"))
+	app.Contract(t, "ade-archive-safety", "AdeTaskService.ArchiveRisk#mixed", risk, flowharness.Mask("taskId", "branchId", "worktree", "dirtyToken"))
 
 	// Locked worktree refuses the whole archive: nothing stopped or removed, row stays live.
 	err = app.W.AdeTask.ArchiveTask(ctx, args)
@@ -81,10 +82,36 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 		t.Fatal("task archived by a refused archive")
 	}
 
-	// Unlock, archive again: all folders go, branch refs and unmerged commits stay.
+	// Unlock: a dirty worktree with no token refuses the archive and loses nothing.
 	gitOut(t, repo.Dir, "worktree", "unlock", lockedDir)
+	err = app.W.AdeTask.ArchiveTask(ctx, args)
+	if err == nil || !strings.Contains(err.Error(), "uncommitted changes") {
+		t.Fatalf("ArchiveTask without a discard token = %v, want an uncommitted-changes refusal", err)
+	}
+	// A token for a set that changed since the user saw it refuses too.
+	args.DiscardTokens = map[string]string{trees["feat/dirty"].ID: byTree[dirtyDir].DirtyToken}
+	if err := os.WriteFile(filepath.Join(dirtyDir, "later.txt"), []byte("after the dialog\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err = app.W.AdeTask.ArchiveTask(ctx, args)
+	if err == nil || !strings.Contains(err.Error(), "changed since you reviewed") {
+		t.Fatalf("ArchiveTask with a stale token = %v, want a changed-since refusal", err)
+	}
+	if _, err := os.Stat(filepath.Join(dirtyDir, "later.txt")); err != nil {
+		t.Fatalf("later.txt lost by a refused archive: %v", err)
+	}
+	// Archive again with the fresh token: all folders go, branch refs and unmerged commits stay.
+	fresh, err := app.W.AdeTask.ArchiveRisk(ctx, riskArgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range fresh.Branches {
+		if r.DirtyToken != "" {
+			args.DiscardTokens[r.BranchID] = r.DirtyToken
+		}
+	}
 	if err := app.W.AdeTask.ArchiveTask(ctx, args); err != nil {
-		t.Fatalf("ArchiveTask after unlock: %v", err)
+		t.Fatalf("ArchiveTask with the fresh token: %v", err)
 	}
 	for _, d := range []string{dirtyDir, lockedDir, cleanDir} {
 		gone(t, d)
@@ -100,10 +127,10 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 	if wt := gitOut(t, repo.Dir, "worktree", "list", "--porcelain"); strings.Contains(wt, dirtyDir) || strings.Contains(wt, lockedDir) {
 		t.Fatalf("git still lists archived worktrees:\n%s", wt)
 	}
-	if _, err := app.W.AdeTask.ArchivedTask(ctx, args); err != nil {
+	if _, err := app.W.AdeTask.ArchivedTask(ctx, riskArgs); err != nil {
 		t.Fatalf("ArchivedTask: %v", err)
 	}
-	if _, err := app.W.AdeTask.RestoreTask(ctx, args); err != nil {
+	if _, err := app.W.AdeTask.RestoreTask(ctx, riskArgs); err != nil {
 		t.Fatalf("RestoreTask: %v", err)
 	}
 	for _, b := range branchesOf(t, app, task.ID) {
@@ -127,7 +154,7 @@ func TestArchiveWhileRunAndRequestLive(t *testing.T) {
 	run := waitRun(t, f.app, f.task.ID, "one", "running")
 
 	args := adewire.TaskArgs{TaskID: f.task.ID}
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, args); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: args.TaskID}); err != nil {
 		t.Fatalf("ArchiveTask with live work: %v", err)
 	}
 	if _, err := branchRequest(f.app, req.ID); errCode(err) != "E_NOT_FOUND" {
@@ -162,7 +189,7 @@ func TestArchiveWhileRunAndRequestLive(t *testing.T) {
 		t.Fatalf("archived runs = %+v, want %s", got.Task.Runs, run.ID)
 	}
 	// Archiving twice never sets archived_at again.
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, args); err == nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: args.TaskID}); err == nil {
 		t.Fatal("second ArchiveTask accepted")
 	}
 	// A start after archive is refused.
@@ -178,7 +205,7 @@ func TestRestoreBranchCheckedOutElsewhere(t *testing.T) {
 	f.start(t, "feat/x")
 	waitRun(t, app, f.taskID, "one", "done")
 	args := adewire.TaskArgs{TaskID: f.taskID}
-	if err := app.W.AdeTask.ArchiveTask(ctx, args); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: args.TaskID}); err != nil {
 		t.Fatal(err)
 	}
 	// The repo's main checkout takes the branch while the task sleeps in the archive.

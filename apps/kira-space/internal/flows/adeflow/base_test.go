@@ -127,7 +127,7 @@ func TestTaskBase(t *testing.T) {
 		if br.Base != "develop" || br.Ahead != 0 || br.Behind != 0 {
 			t.Fatalf("board branch base=%q ahead=%d behind=%d, want develop 0 0", br.Base, br.Ahead, br.Behind)
 		}
-		f.app.Contract(t, "ade-base", "AdeTaskService.Branch#on-develop", br, flowharness.Mask("startedAt", "finishedAt", "tip", "createdAt", "addedAt", "lastCommitAt"))
+		f.app.Contract(t, "ade-base", "AdeTaskService.Branch#on-develop", br, flowharness.Mask("startedAt", "finishedAt", "tip", "createdAt", "addedAt", "lastCommitAt", "dirtyToken"))
 	})
 
 	t.Run("the remote wins over a stale local twin", func(t *testing.T) {

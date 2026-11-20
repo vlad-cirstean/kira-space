@@ -50,7 +50,10 @@ test('Archive asks first: Cancel sends nothing, Archive sends it', async ({ rela
   await page.locator(t('menu-item-ade-task-archive')).click();
   await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.adeTaskArchiveTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({ taskId: 'T_cart' });
+  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({
+    taskId: 'T_cart',
+    discardTokens: {},
+  });
 });
 
 test('estimate: set, change and clear at any time', async ({ relaunch }) => {

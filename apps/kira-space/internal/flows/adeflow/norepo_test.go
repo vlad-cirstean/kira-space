@@ -114,7 +114,7 @@ func TestRepolessWorkflow(t *testing.T) {
 		}
 
 		// Archive removes the folder.
-		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.task.ID}); err != nil {
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.task.ID}); err != nil {
 			t.Fatalf("ArchiveTask: %v", err)
 		}
 		if _, err := os.Stat(f.dir); !os.IsNotExist(err) {

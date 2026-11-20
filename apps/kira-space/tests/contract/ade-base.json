@@ -14,6 +14,7 @@
     "conflictsIfRebased": [],
     "deployments": [],
     "dirty": [],
+    "dirtyToken": "<masked>",
     "id": "<id:2>",
     "integration": [],
     "kind": "mine",
@@ -60,6 +61,7 @@
         "path": "clash.txt"
       }
     ],
+    "dirtyToken": "<masked>",
     "id": "<id:1>",
     "integration": [],
     "kind": "mine",

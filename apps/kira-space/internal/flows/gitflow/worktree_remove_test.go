@@ -36,7 +36,7 @@ func TestWorktreeRemoveInline(t *testing.T) {
 
 	dirty.Write("wip.txt", "wip\n")
 	pf = r.wtRemovePreflight(id, dirty.Dir)
-	if pf.Verdict != "dirty" || !pf.RequiresTypedConfirmation || pf.ConfirmToken != filepath.Base(dirty.Dir) {
+	if pf.Verdict != "dirty" || !pf.RequiresTypedConfirmation || pf.ConfirmToken == "" {
 		t.Fatalf("dirty preflight = %+v, want dirty with a token", pf)
 	}
 	r.app.Contract(t, scenario, "git:preflight.worktreeRemove#dirty", pf, work(r.app.Work, "<work>"))

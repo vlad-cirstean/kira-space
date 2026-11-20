@@ -10,6 +10,7 @@
           "path": "src/payments/invoice.ts"
         }
       ],
+      "dirtyToken": "tok-dirty",
       "unmerged": 5,
       "blocked": ""
     }

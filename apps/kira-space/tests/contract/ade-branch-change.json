@@ -15,6 +15,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "dirty": [],
+      "dirtyToken": "",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -60,6 +61,7 @@
         "worktree": "<masked>"
       },
       "dirty": [],
+      "dirtyToken": "",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",

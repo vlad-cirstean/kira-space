@@ -72,46 +72,77 @@ func ownKind(kind string) string {
 }
 
 // detachRow takes the row off the task, putting replacement (when given) in its place, then removes
-// the row's linked worktree. A worktree with uncommitted changes needs discard, checked again when the
-// worktree is removed. The caller holds the task mutex and has run editableRow. err is a refusal or fault
-// before the row changed; worktreeErr is a failed removal after it: the row change stands and the folder
-// stays.
-func (b *TaskBoard) detachRow(ctx context.Context, old model.AdeTaskBranch, replacement *model.AdeTaskBranch, discard bool) (worktreeErr, err error) {
+// the row's linked worktree. A worktree with uncommitted changes needs discardToken, the BranchRisk
+// token of the set the user saw; it is checked again when the worktree is removed. The caller holds the
+// task mutex and has run editableRow. err is a refusal or fault before the row changed; worktreeErr is a
+// failed removal after it: the row change stands and the folder stays.
+func (b *TaskBoard) detachRow(ctx context.Context, old model.AdeTaskBranch, replacement *model.AdeTaskBranch, discardToken string) (worktreeErr, err error) {
 	lb, linked, err := b.linkedBranchOf(ctx, old)
 	if err != nil {
 		return nil, err
 	}
 	if linked {
-		risk, err := b.branchRisk(ctx, lb)
-		if err != nil {
-			return nil, err
-		}
-		if risk.Blocked != "" {
-			text, err := b.blockedText(ctx, lb)
-			if err != nil {
-				return nil, err
-			}
-			return nil, invalid("the worktree of %s cannot be removed: %s", old.Name, text)
-		}
-		if len(risk.Dirty) > 0 && !discard {
-			return nil, invalid("the worktree of %s has %d uncommitted changes: commit them, or use Discard changes and remove", old.Name, len(risk.Dirty))
-		}
+		worktreeErr, err = b.detachLinked(ctx, lb, old, replacement, discardToken)
+	} else {
+		err = b.deps.Tasks.DetachBranch(old.ID, replacement, b.deps.Now().UnixMilli())
 	}
-	// Row first: a failed transaction leaves the worktree intact.
-	if err := b.deps.Tasks.DetachBranch(old.ID, replacement, b.deps.Now().UnixMilli()); err != nil {
+	if err != nil {
 		return nil, err
 	}
 	if old.Name != "" {
 		b.snapshotChangeRequests(ctx, old.TaskID, []model.AdeTaskBranch{old})
 		b.snapshotReviewComments(ctx, []model.AdeTaskBranch{old})
 	}
-	if linked {
-		if err := b.removeWorktree(ctx, lb, discard); err != nil {
-			slog.Warn("ade: remove detached worktree", "scope", "ade", "branch", old.ID, "path", lb.path, "err", err)
-			return err, nil
+	return worktreeErr, nil
+}
+
+// detachLinked checks, detaches the row and removes its worktree under the repo lock, so the check
+// that clears the removal sits right before the row change: a tree that turned dirty is refused while
+// the row is still on the task. Row first: a failed transaction leaves the worktree intact.
+func (b *TaskBoard) detachLinked(ctx context.Context, lb linkedBranch, old model.AdeTaskBranch, replacement *model.AdeTaskBranch, discardToken string) (worktreeErr, err error) {
+	mu := b.repoMutex(lb.sb.CodeRepoID)
+	mu.Lock()
+	defer mu.Unlock()
+	risk, err := b.branchRisk(ctx, lb)
+	if err != nil {
+		return nil, err
+	}
+	if risk.Blocked != "" {
+		text, err := b.blockedText(ctx, lb)
+		if err != nil {
+			return nil, err
+		}
+		return nil, invalid("the worktree of %s cannot be removed: %s", old.Name, text)
+	}
+	if len(risk.Dirty) > 0 {
+		if err := discardRefusal(old.Name, len(risk.Dirty), risk.DirtyToken, discardToken); err != nil {
+			return nil, err
 		}
 	}
+	b.taskFiles.Close(lb.sb.ID)
+	if err := b.deps.Tasks.DetachBranch(old.ID, replacement, b.deps.Now().UnixMilli()); err != nil {
+		return nil, err
+	}
+	if err := b.removeWorktreeLocked(ctx, lb, discardToken); err != nil {
+		slog.Warn("ade: remove detached worktree", "scope", "ade", "branch", old.ID, "path", lb.path, "err", err)
+		return err, nil
+	}
 	return nil, nil
+}
+
+// discardRefusal is nil when token confirms the uncommitted changes now in the worktree (current is
+// their fingerprint). A missing token means no discard was asked; a different one means the set changed
+// after the user saw it. Either way nothing is deleted.
+func discardRefusal(name string, count int, current, token string) error {
+	switch {
+	case token == "" && count == 0:
+		return invalid("the worktree of %s has uncommitted changes: commit them, or use Discard changes and remove", name)
+	case token == "":
+		return invalid("the worktree of %s has %d uncommitted changes: commit them, or use Discard changes and remove", name, count)
+	case token != current:
+		return invalid("the uncommitted changes of %s changed since you reviewed them: review them again before discarding", name)
+	}
+	return nil
 }
 
 // blockedText is the human reason the preflight blocks removing lb's worktree.
@@ -127,7 +158,7 @@ func (b *TaskBoard) blockedText(ctx context.Context, lb linkedBranch) (string, e
 // Remove branch menu and the agent's worktree.remove share. The repo keeps a row without a branch, unless
 // the task has another live row in that repo: then the row goes away whole. The git branch stays. The
 // caller holds the task mutex and has run editableRow for old.
-func (b *TaskBoard) removeRowBranch(ctx context.Context, tc *taskCtx, old model.AdeTaskBranch, discard bool) (worktreeErr, err error) {
+func (b *TaskBoard) removeRowBranch(ctx context.Context, tc *taskCtx, old model.AdeTaskBranch, discardToken string) (worktreeErr, err error) {
 	var draft *model.AdeTaskBranch
 	if !slices.ContainsFunc(tc.branches, func(br model.AdeTaskBranch) bool { return br.CodeRepoID == old.CodeRepoID && br.ID != old.ID }) {
 		draft = &model.AdeTaskBranch{
@@ -135,7 +166,7 @@ func (b *TaskBoard) removeRowBranch(ctx context.Context, tc *taskCtx, old model.
 			Base: old.Base, BaseBranchID: old.BaseBranchID, QueuedAfter: old.QueuedAfter,
 		}
 	}
-	return b.detachRow(ctx, old, draft, discard)
+	return b.detachRow(ctx, old, draft, discardToken)
 }
 
 // checkFreshName refuses a new branch name git, the repo or the task list would reject, so a refusal
@@ -220,7 +251,7 @@ func (b *TaskBoard) setTaskBranch(ctx context.Context, args adewire.SetTaskBranc
 		}
 		next.Base, next.BaseBranchID, next.QueuedAfter = old.Base, old.BaseBranchID, old.QueuedAfter
 	}
-	if _, err := b.detachRow(ctx, old, &next, args.DiscardChanges); err != nil {
+	if _, err := b.detachRow(ctx, old, &next, args.DiscardToken); err != nil {
 		return adewire.Branch{}, err
 	}
 	b.notifyBoard()
@@ -279,7 +310,7 @@ func (b *TaskBoard) RemoveTaskBranch(ctx context.Context, args adewire.RemoveTas
 	if old.Name == "" {
 		return invalid("the repo has no branch to remove")
 	}
-	if _, err := b.removeRowBranch(ctx, tc, old, args.DiscardChanges); err != nil {
+	if _, err := b.removeRowBranch(ctx, tc, old, args.DiscardToken); err != nil {
 		return err
 	}
 	b.notifyBoard()
@@ -300,7 +331,7 @@ func (b *TaskBoard) RemoveTaskRepo(ctx context.Context, args adewire.RemoveTaskR
 	if err != nil {
 		return err
 	}
-	if _, err := b.detachRow(ctx, old, nil, args.DiscardChanges); err != nil {
+	if _, err := b.detachRow(ctx, old, nil, args.DiscardToken); err != nil {
 		return err
 	}
 	b.notifyBoard()
@@ -333,7 +364,7 @@ func (b *TaskBoard) UpdateTaskRepo(ctx context.Context, args adewire.UpdateTaskR
 		return adewire.Branch{}, repos.ErrDraftInRepo
 	}
 	next := model.AdeTaskBranch{ID: ids.NewID(), TaskID: old.TaskID, CodeRepoID: args.CodeRepoID, Kind: old.Kind, AddedAt: b.deps.Now().UnixMilli()}
-	if _, err := b.detachRow(ctx, old, &next, false); err != nil {
+	if _, err := b.detachRow(ctx, old, &next, ""); err != nil {
 		return adewire.Branch{}, err
 	}
 	b.notifyBoard()

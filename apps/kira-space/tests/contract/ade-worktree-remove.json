@@ -15,6 +15,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "dirty": [],
+      "dirtyToken": "<masked>",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -48,6 +49,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "dirty": [],
+      "dirtyToken": "<masked>",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -81,6 +83,7 @@
       "conflictsIfRebased": [],
       "deployments": [],
       "dirty": [],
+      "dirtyToken": "<masked>",
       "id": "<masked>",
       "integration": [],
       "kind": "mine",
@@ -149,6 +152,7 @@
         "path": "wip.txt"
       }
     ],
+    "dirtyToken": "<masked>",
     "id": "<masked>",
     "integration": [],
     "kind": "mine",

@@ -37,7 +37,7 @@ test('the row pencil opens Change branch under itself and sends the existing bra
   expect(calls(control, IPC.adeTaskSetTaskBranch)[0]?.args).toMatchObject({
     branchId: 'b_cart',
     existing: true,
-    discardChanges: false,
+    discardToken: '',
   });
 });
 

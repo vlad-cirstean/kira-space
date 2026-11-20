@@ -152,7 +152,7 @@ func TestPhoneReadsRealAde(t *testing.T) {
 
 func TestPhoneReadsArchivedTask(t *testing.T) {
 	f := newFixture(t)
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.task.ID}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.task.ID}); err != nil {
 		t.Fatalf("archive: %v", err)
 	}
 	p, _ := pairedPhone(t, f)

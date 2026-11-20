@@ -204,7 +204,7 @@ func TestWorktreeRemoveBlockersAndRecheck(t *testing.T) {
 		t.Fatalf("fresh.txt lost: %v", err)
 	}
 	dirty := r.wtRemovePreflight(id, wt.Dir)
-	if dirty.Verdict != "dirty" || !dirty.RequiresTypedConfirmation || dirty.ConfirmToken != filepath.Base(wt.Dir) {
+	if dirty.Verdict != "dirty" || !dirty.RequiresTypedConfirmation || dirty.ConfirmToken == "" {
 		t.Fatalf("dirty preflight = %+v, want a token form", dirty)
 	}
 	wrong := "nope"
@@ -214,8 +214,17 @@ func TestWorktreeRemoveBlockersAndRecheck(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(wt.Dir, "fresh.txt")); err != nil {
 		t.Fatalf("fresh.txt lost after a wrong token: %v", err)
 	}
+	// The token fingerprints the set the user saw: a file written after the preflight voids it.
+	oldToken := dirty.ConfirmToken
+	wt.Write("later.txt", "written after the user looked\n")
+	if res := r.op(id, gitsession.OpRequest{Kind: "worktreeRemove", Path: wt.Dir, ConfirmToken: &oldToken}); res.OK || res.Error == nil || res.Error.Kind != "ConfirmationRequired" {
+		t.Fatalf("stale token = %+v, want ConfirmationRequired", res)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Dir, "later.txt")); err != nil {
+		t.Fatalf("later.txt lost after a stale token: %v", err)
+	}
 	tip := repo.Git("rev-parse", "refs/heads/wt-a")
-	token := dirty.ConfirmToken
+	token := r.wtRemovePreflight(id, wt.Dir).ConfirmToken
 	r.mustOp(id, gitsession.OpRequest{Kind: "worktreeRemove", Path: wt.Dir, ConfirmToken: &token})
 	if _, err := os.Stat(wt.Dir); !os.IsNotExist(err) {
 		t.Fatalf("worktree directory survived the confirmed remove: %v", err)

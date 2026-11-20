@@ -68,6 +68,7 @@ test('Delete anyway closes the dialog and archives behind a chip, with no toast'
             dirty: [{ code: 'M', path: 'src/cart.ts' }],
             unmerged: 2,
             blocked: '',
+            dirtyToken: 'tok-cart',
           },
         ],
       },

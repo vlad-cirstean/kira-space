@@ -19,6 +19,7 @@ import type {
   AddLinkArgs,
   AddNoteArgs,
   AddTaskRepoArgs,
+  ArchiveTaskArgs,
   Board,
   BranchArgs,
   CaptureTaskArgs,
@@ -512,7 +513,7 @@ export function useArchiveRisk() {
 }
 
 export function useArchiveTask() {
-  return useMutation({ mutationFn: (args: TaskArgs) => control.adeTaskArchiveTask(args) });
+  return useMutation({ mutationFn: (args: ArchiveTaskArgs) => control.adeTaskArchiveTask(args) });
 }
 
 /** Unarchives a task; the board and sessions refetch and its archived read is dropped (the task

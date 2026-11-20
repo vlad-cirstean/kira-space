@@ -15,7 +15,7 @@ import (
 
 // archive.go archives a whole task (SPEC2 section 10, R18): its live work stops, its worktrees go
 // and the task moves to history. The caller shows ArchiveRisk first; ArchiveTask is the confirmed
-// delete, uncommitted changes included.
+// delete, uncommitted changes included only as far as the tokens it carries (BranchRisk.DirtyToken).
 
 // archiveSnapshotTimeout bounds the host lookups of the archive-time change request snapshot.
 const archiveSnapshotTimeout = 5 * time.Second
@@ -117,7 +117,10 @@ func (b *TaskBoard) branchRisk(ctx context.Context, lb linkedBranch) (adewire.Br
 	if err != nil {
 		return adewire.BranchRisk{}, err
 	}
-	risk := adewire.BranchRisk{BranchID: lb.sb.ID, Worktree: lb.path, Dirty: []adewire.DirtyEntry{}, Unmerged: res.Unmerged}
+	risk := adewire.BranchRisk{
+		BranchID: lb.sb.ID, Worktree: lb.path, Dirty: []adewire.DirtyEntry{}, Unmerged: res.Unmerged,
+		DirtyToken: gitsession.DirtyToken(lb.path, status),
+	}
 	for _, d := range dirty {
 		risk.Dirty = append(risk.Dirty, adewire.DirtyEntry{Code: d.Code, Path: d.Path})
 	}
@@ -147,7 +150,7 @@ func (b *TaskBoard) aheadOfMain(ctx context.Context, lb linkedBranch) (int, erro
 }
 
 // ArchiveTask stops the task's runs, setups and terminals, removes its worktrees and archives it.
-func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
+func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string, discardTokens map[string]string) error {
 	// Block new launches first, then wait out any launch already past its check: the task mutex is
 	// held for a launch's whole critical section, so one lock/unlock drains them.
 	defer b.beginArchive(taskID)()
@@ -163,6 +166,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 		return err
 	}
 	var blocked []string
+	var risks []adewire.BranchRisk
 	for _, lb := range linked {
 		risk, err := b.branchRisk(ctx, lb)
 		if err != nil {
@@ -171,9 +175,18 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 		if risk.Blocked != "" {
 			blocked = append(blocked, fmt.Sprintf("%s (%s)", lb.sb.Name, risk.Blocked))
 		}
+		risks = append(risks, risk)
 	}
 	if len(blocked) > 0 {
 		return invalid("cannot archive: worktree of %s cannot be removed", strings.Join(blocked, ", "))
+	}
+	// Refuse before any work stops: a worktree changed since the dialog is reviewed again.
+	for i, lb := range linked {
+		if len(risks[i].Dirty) > 0 {
+			if err := discardRefusal(lb.sb.Name, len(risks[i].Dirty), risks[i].DirtyToken, discardTokens[lb.sb.ID]); err != nil {
+				return err
+			}
+		}
 	}
 
 	b.abandonBranchRequests(taskID)
@@ -189,7 +202,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 		return err
 	}
 	for _, lb := range linked {
-		if err := b.removeWorktree(ctx, lb, true); err != nil {
+		if err := b.removeWorktree(ctx, lb, discardTokens[lb.sb.ID]); err != nil {
 			return err
 		}
 	}
@@ -289,20 +302,28 @@ func (b *TaskBoard) closeTaskTerminals(taskID string) error {
 	return nil
 }
 
-// removeWorktree removes a linked worktree. Uncommitted changes go only with discard (the archive was
-// confirmed, or the user took a discard action); the dirty state is read again here, so a worktree that
-// turned dirty since the caller looked stays.
-func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch, discard bool) error {
+// removeWorktree removes a linked worktree under the repo lock.
+func (b *TaskBoard) removeWorktree(ctx context.Context, lb linkedBranch, discardToken string) error {
 	b.taskFiles.Close(lb.sb.ID)
 	mu := b.repoMutex(lb.sb.CodeRepoID)
 	mu.Lock()
 	defer mu.Unlock()
+	return b.removeWorktreeLocked(ctx, lb, discardToken)
+}
+
+// removeWorktreeLocked is removeWorktree for a caller holding the repo lock. Uncommitted changes go only
+// with discardToken, the fingerprint of the set the user saw (archive confirm or a discard action). The
+// dirty set is read again here, so a worktree that changed since the user looked stays.
+func (b *TaskBoard) removeWorktreeLocked(ctx context.Context, lb linkedBranch, discardToken string) error {
 	pf, err := lb.entry.WorktreeRemovePreflight(ctx, lb.path)
 	if err != nil {
 		return err
 	}
 	req := gitsession.OpRequest{Kind: "worktreeRemove", Path: lb.path}
-	if pf.Verdict == "dirty" && discard {
+	if pf.Verdict == "dirty" {
+		if err := discardRefusal(lb.sb.Name, 0, pf.ConfirmToken, discardToken); err != nil {
+			return err
+		}
 		req.ConfirmToken = &pf.ConfirmToken
 	}
 	res, err := lb.entry.RunOp(ctx, b.conn.ID, boardConnLabel, req)

@@ -23,7 +23,7 @@ import (
 
 const removeScenario = "ade-worktree-remove"
 
-var rowMask = flowharness.Mask("id", "taskId", "codeRepoId", "worktree", "addedAt", "tip", "base", "setup", "createdAt")
+var rowMask = flowharness.Mask("id", "taskId", "codeRepoId", "worktree", "addedAt", "tip", "base", "setup", "createdAt", "dirtyToken")
 
 // agentCreate creates name for the task as the agent does and returns its row.
 func (f *brFixture) agentCreate(t *testing.T, repo, name string) adewire.Branch {
@@ -255,7 +255,22 @@ func TestUserWorktreeRemoveNoConfirm(t *testing.T) {
 		t.Fatalf("SetTaskBranch dirty = %v, want E_BAD_REQUEST", err)
 	}
 	f.app.Contract(t, removeScenario, "AdeTaskService.Board#dirty", branchOf(t, board(t, f.app), f.task.ID, f.api), rowMask)
-	changed, err := f.app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: dirty.ID, Name: "feat/user-other", DiscardChanges: true})
+	seen := freshBranch(t, f.app, f.task.ID, f.api).DirtyToken
+	if seen == "" {
+		t.Fatal("dirty row carries no dirtyToken")
+	}
+	// A file written after the user looked voids the token: nothing is discarded.
+	if err := os.WriteFile(filepath.Join(dirty.Worktree, "late.txt"), []byte("late\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: dirty.ID, Name: "feat/user-other", DiscardToken: seen}); errCode(err) != "E_BAD_REQUEST" || !strings.Contains(err.Error(), "changed since you reviewed") {
+		t.Fatalf("SetTaskBranch with a stale token = %v, want E_BAD_REQUEST naming the change", err)
+	}
+	if _, err := os.Stat(filepath.Join(dirty.Worktree, "late.txt")); err != nil {
+		t.Fatalf("late.txt lost by a stale token: %v", err)
+	}
+	seen = freshBranch(t, f.app, f.task.ID, f.api).DirtyToken
+	changed, err := f.app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: dirty.ID, Name: "feat/user-other", DiscardToken: seen})
 	if err != nil || changed.Name != "feat/user-other" {
 		t.Fatalf("SetTaskBranch with discard = %+v, %v", changed, err)
 	}
@@ -263,7 +278,7 @@ func TestUserWorktreeRemoveNoConfirm(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(changed.Worktree, "wip.txt"), []byte("wip\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: changed.ID, DiscardChanges: true}); err != nil {
+	if err := f.app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: changed.ID, DiscardToken: freshBranch(t, f.app, f.task.ID, f.api).DirtyToken}); err != nil {
 		t.Fatalf("RemoveTaskBranch with discard: %v", err)
 	}
 	gone(t, changed.Worktree)

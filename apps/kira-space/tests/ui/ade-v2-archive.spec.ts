@@ -23,12 +23,15 @@ const branchRisk = (over: Record<string, unknown> = {}) => ({
   dirty: [],
   unmerged: 0,
   blocked: '',
+  dirtyToken: '',
   ...over,
 });
 
 const risk = (branches: Record<string, unknown>[]) => ({ taskId: 'T_cart', branches });
 
-const AT_RISK = risk([branchRisk({ dirty: [{ code: 'M', path: 'src/cart.ts' }], unmerged: 2 })]);
+const AT_RISK = risk([
+  branchRisk({ dirty: [{ code: 'M', path: 'src/cart.ts' }], dirtyToken: 'tok-cart', unmerged: 2 }),
+]);
 
 test('nothing at risk asks to confirm, then archives', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
@@ -37,7 +40,10 @@ test('nothing at risk asks to confirm, then archives', async ({ relaunch }) => {
   await openArchive(page);
   await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.adeTaskArchiveTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({ taskId: 'T_cart' });
+  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({
+    taskId: 'T_cart',
+    discardTokens: {},
+  });
   await expect(page.locator(t('ade-dialog'))).toHaveCount(0);
 });
 
@@ -53,7 +59,10 @@ test('work at risk opens the dialog and Delete anyway archives', async ({ relaun
   expect(calls(control, IPC.adeTaskArchiveTask)).toHaveLength(0);
   await page.locator(t('ade-dialog-delete')).click();
   await expect.poll(() => calls(control, IPC.adeTaskArchiveTask)).toHaveLength(1);
-  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({ taskId: 'T_cart' });
+  expect(calls(control, IPC.adeTaskArchiveTask)[0]?.args).toEqual({
+    taskId: 'T_cart',
+    discardTokens: { b_cart: 'tok-cart' },
+  });
   await expect(page.locator(t('ade-dialog'))).toBeHidden();
 });
 

@@ -61,6 +61,7 @@
     "conflictCheck": "done",
     "conflictCheckReason": "",
     "dirty": [],
+    "dirtyToken": "",
     "lastCommitAt": 1789893600000,
     "addedAt": 1790067540000,
     "origin": ""

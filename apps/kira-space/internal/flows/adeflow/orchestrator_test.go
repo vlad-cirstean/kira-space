@@ -265,7 +265,7 @@ func TestOrchestratorSpawn(t *testing.T) {
 
 	// Archiving the orchestrator withdraws a pending call; its children stay.
 	waitTaskItem(t, f.app)
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.orch.ID}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.orch.ID}); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return len(taskItems(f.app)) == 0 })
@@ -427,7 +427,7 @@ func TestOrchestratorChildChain(t *testing.T) {
 	}
 
 	// Archived children stay listed, flagged; a child's own state.yaml names its parent.
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: ids[1]}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: ids[1]}); err != nil {
 		t.Fatal(err)
 	}
 	doc = stateYAML(t, f.app, f.orch.ID, func(d map[string]any) bool {
@@ -530,7 +530,7 @@ func TestOrchestratorArchivedChildStepName(t *testing.T) {
 		}
 	}
 	stateYAML(t, f.app, f.orch.ID, stepOf(false))
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: id}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: id}); err != nil {
 		t.Fatal(err)
 	}
 	stateYAML(t, f.app, f.orch.ID, stepOf(true))

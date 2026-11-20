@@ -57,12 +57,14 @@ async function submitBranch(name: string, existing: boolean, discard = false): P
     return;
   }
   held.value = null;
+  // The changes the button named are the ones on the row now; the server refuses a set that changed.
+  const discardToken = discard ? props.branch.dirtyToken : '';
   await surface.run(async () => {
     open.value = false;
     // The change runs as the branch's op (chip on the row, error toast on failure).
     const ok = await ops.run(
       { id: `setBranch:${branchId}`, kind: 'setBranch', taskId, branchId },
-      () => setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard }),
+      () => setBranch.mutateAsync({ branchId, name, existing, discardToken }),
     );
     if (!ok) ui.select(taskId);
   });

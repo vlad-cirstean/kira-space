@@ -188,7 +188,7 @@ func TestUnifiedNotes(t *testing.T) {
 	}
 
 	// An archived task takes no new note and keeps the derived notes.
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: task.ID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: task.ID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "late"}); err == nil {

@@ -10,6 +10,7 @@
             "path": "wip.txt"
           }
         ],
+        "dirtyToken": "<masked>",
         "unmerged": 1,
         "worktree": "<home>/kira-space-wts/api/<wt>"
       }
@@ -22,6 +23,7 @@
         "blocked": "",
         "branchId": "<id:1>",
         "dirty": [],
+        "dirtyToken": "",
         "unmerged": 0,
         "worktree": "<home>/kira-space-wts/api/<wt>"
       }
@@ -29,6 +31,7 @@
     "taskId": "<id:2>"
   },
   "args:AdeTaskService.ArchiveTask": {
+    "discardTokens": {},
     "taskId": "<id:2>"
   }
 }

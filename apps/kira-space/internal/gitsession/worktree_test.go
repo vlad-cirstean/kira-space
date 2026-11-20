@@ -119,8 +119,7 @@ func TestWorktreeRemovePreflight_MainAndCurrentBlocked(t *testing.T) {
 
 // TestRunOp_WorktreeRemove_DirtyRequiresConfirmation is the "confirmation-refusal test" ("a dirty
 // forced removal requires a typed token re-checked against a freshly-read status"): no token ->
-// refused; wrong token -> refused; the worktree survives both refusals; the correct token (the
-// worktree's own basename) succeeds.
+// refused; wrong token -> refused; stale token (set changed since) -> refused; the fresh token succeeds.
 func TestRunOp_WorktreeRemove_DirtyRequiresConfirmation(t *testing.T) {
 	t.Parallel()
 	skipWithoutGitQueries(t)
@@ -162,8 +161,26 @@ func TestRunOp_WorktreeRemove_DirtyRequiresConfirmation(t *testing.T) {
 		t.Fatal("worktree was removed despite both confirmations being refused")
 	}
 
-	// Correct token (the worktree's own basename) succeeds.
-	correct := filepath.Base(wtPath)
+	// A token fingerprinting an earlier dirty set is refused after the set changes.
+	pf, err := entry.WorktreeRemovePreflight(ctx, wtPath)
+	if err != nil || pf.ConfirmToken == "" {
+		t.Fatalf("preflight = %+v, %v", pf, err)
+	}
+	if err := os.WriteFile(filepath.Join(wtPath, "more.txt"), []byte("later"), 0o644); err != nil {
+		t.Fatalf("write more.txt: %v", err)
+	}
+	stale := pf.ConfirmToken
+	result, err = entry.RunOp(ctx, ConnID("c"), "label", OpRequest{Kind: "worktreeRemove", Path: wtPath, ConfirmToken: &stale})
+	if err != nil || result.OK || result.Error == nil || result.Error.Kind != "ConfirmationRequired" {
+		t.Fatalf("stale token: %+v, %v, want ConfirmationRequired", result, err)
+	}
+
+	// The fresh token succeeds.
+	fresh, err := entry.WorktreeRemovePreflight(ctx, wtPath)
+	if err != nil {
+		t.Fatalf("preflight: %v", err)
+	}
+	correct := fresh.ConfirmToken
 	result, err = entry.RunOp(ctx, ConnID("c"), "label", OpRequest{Kind: "worktreeRemove", Path: wtPath, ConfirmToken: &correct})
 	if err != nil {
 		t.Fatalf("RunOp (correct token): %v", err)

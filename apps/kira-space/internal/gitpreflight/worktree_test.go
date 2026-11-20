@@ -202,7 +202,7 @@ func TestClassifyWorktreeRemove_NotAWorktree(t *testing.T) {
 func TestClassifyWorktreeRemove_MainAndCurrentUnconditional(t *testing.T) {
 	t.Parallel()
 	got := gitpreflight.ClassifyWorktreeRemove(gitpreflight.ClassifyWorktreeRemoveInput{
-		Path: "/repos/main", IsWorktree: true, IsMainWorktree: true, IsCurrentWorktree: true, Dirty: true,
+		Path: "/repos/main", IsWorktree: true, IsMainWorktree: true, IsCurrentWorktree: true, DirtyToken: "tok",
 	})
 	if got.Verdict != "blocked" || len(got.Routes) != 0 {
 		t.Fatalf("got %+v", got)
@@ -215,7 +215,7 @@ func TestClassifyWorktreeRemove_MainAndCurrentUnconditional(t *testing.T) {
 func TestClassifyWorktreeRemove_OpenInAnotherWindow(t *testing.T) {
 	t.Parallel()
 	got := gitpreflight.ClassifyWorktreeRemove(gitpreflight.ClassifyWorktreeRemoveInput{
-		Path: "/repos/wt", IsWorktree: true, OpenInAnotherWindow: true, Dirty: true,
+		Path: "/repos/wt", IsWorktree: true, OpenInAnotherWindow: true, DirtyToken: "tok",
 	})
 	if got.Verdict != "blocked" || len(got.Routes) != 0 || len(got.Blockers) != 1 || got.Blockers[0].Kind != "openInAnotherWindow" {
 		t.Fatalf("got %+v", got)
@@ -226,7 +226,7 @@ func TestClassifyWorktreeRemove_LockedUnconditional(t *testing.T) {
 	t.Parallel()
 	reason := "testing lock reason"
 	got := gitpreflight.ClassifyWorktreeRemove(gitpreflight.ClassifyWorktreeRemoveInput{
-		Path: "/repos/wt", IsWorktree: true, LockedReason: &reason, Dirty: true,
+		Path: "/repos/wt", IsWorktree: true, LockedReason: &reason, DirtyToken: "tok",
 	})
 	if got.Verdict != "blocked" || len(got.Routes) != 0 || len(got.Blockers) != 1 {
 		t.Fatalf("got %+v", got)
@@ -237,17 +237,17 @@ func TestClassifyWorktreeRemove_LockedUnconditional(t *testing.T) {
 }
 
 // TestClassifyWorktreeRemove_DirtyRequiresTypedConfirmation proves D8/F8: a dirty, otherwise-clear
-// worktree gets verdict "dirty", a "force" route, and a typed confirmation token equal to the
-// worktree's own basename — never a caller-supplied value.
+// worktree gets verdict "dirty", a "force" route, and a confirmation token equal to the
+// fingerprint the host computed — never a caller-supplied value.
 func TestClassifyWorktreeRemove_DirtyRequiresTypedConfirmation(t *testing.T) {
 	t.Parallel()
 	got := gitpreflight.ClassifyWorktreeRemove(gitpreflight.ClassifyWorktreeRemoveInput{
-		Path: "/repos/feature-wt", IsWorktree: true, Dirty: true,
+		Path: "/repos/feature-wt", IsWorktree: true, DirtyToken: "tok",
 	})
 	if got.Verdict != "dirty" || len(got.Blockers) != 0 {
 		t.Fatalf("got %+v", got)
 	}
-	if !got.RequiresTypedConfirmation || got.ConfirmToken != "feature-wt" {
+	if !got.RequiresTypedConfirmation || got.ConfirmToken != "tok" {
 		t.Fatalf("got %+v", got)
 	}
 	if len(got.Routes) != 1 || got.Routes[0] != "force" {
@@ -263,7 +263,7 @@ func TestClassifyWorktreeRemove_NotAWorktreeBeatsEveryOtherBlocker(t *testing.T)
 	reason := "x"
 	got := gitpreflight.ClassifyWorktreeRemove(gitpreflight.ClassifyWorktreeRemoveInput{
 		Path: "/etc/passwd", IsWorktree: false, IsMainWorktree: true, IsCurrentWorktree: true,
-		OpenInAnotherWindow: true, LockedReason: &reason, Dirty: true,
+		OpenInAnotherWindow: true, LockedReason: &reason, DirtyToken: "tok",
 	})
 	if got.Verdict != "blocked" || len(got.Blockers) != 5 {
 		t.Fatalf("got %+v", got)

@@ -80,7 +80,7 @@ func TestTaskFilesWindow(t *testing.T) {
 	}
 	key = keys[1]
 
-	if err := svc.ArchiveTask(ctx, taskArgs); err != nil {
+	if err := svc.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: taskArgs.TaskID}); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(app.WindowMgr.Closed, key) || target(key) != nil {

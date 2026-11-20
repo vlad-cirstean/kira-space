@@ -142,7 +142,7 @@ func TestSpaceTools_setupWaitAndArchived(t *testing.T) {
 		t.Fatalf("request after setup = %+v, %v; want ready", rb, err)
 	}
 
-	if err := e.board.ArchiveTask(ctx, id); err != nil {
+	if err := e.board.ArchiveTask(ctx, id, nil); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := requestBranch(ctx, e.board, id, "api", "feat/api-two"); err == nil {

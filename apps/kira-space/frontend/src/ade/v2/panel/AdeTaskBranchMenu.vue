@@ -100,7 +100,8 @@ function openForm(next: 'branch' | 'repo'): void {
 function remove(what: 'branch' | 'repo'): void {
   const branchId = props.row.id;
   const taskId = props.row.branch.taskId;
-  const discardChanges = dirty.value > 0;
+  // The token of the changes the menu item named; the server refuses a set that changed since.
+  const discardToken = dirty.value > 0 ? props.row.branch.dirtyToken : '';
   delete ui.actionError[taskId];
   const mutation = what === 'branch' ? removeBranch : removeRepo;
   ops.run(
@@ -111,7 +112,7 @@ function remove(what: 'branch' | 'repo'): void {
       branchId,
     },
     async () => {
-      await mutation.mutateAsync({ branchId, discardChanges });
+      await mutation.mutateAsync({ branchId, discardToken });
       if (ui.selectedBranchId === branchId) ui.select(taskId);
     },
   );

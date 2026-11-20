@@ -147,7 +147,7 @@ func TestTaskReposAndBranches(t *testing.T) {
 	}
 
 	// Edit branch: the created row points at another existing branch; the old worktree goes.
-	edited, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true, DiscardChanges: true})
+	edited, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true, DiscardToken: freshBranch(t, app, task.ID, a.ID).DirtyToken})
 	if err != nil || edited.Name != "feat/a-other" || edited.Worktree == "" {
 		t.Fatalf("SetTaskBranch existing = %+v, %v", edited, err)
 	}
@@ -332,7 +332,7 @@ func TestTaskBranchDetachKeepsRunHistory(t *testing.T) {
 	if n := count(`SELECT COUNT(*) FROM ade_task_branches WHERE id = ?`, live.ID); n != 0 {
 		t.Fatalf("run-less repo row survives a remove: %d", n)
 	}
-	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.taskID}); err != nil {
 		t.Fatal(err)
 	}
 	if n := count(`SELECT COUNT(*) FROM ade_task_branches WHERE task_id = ?`, f.taskID); n != 1 {

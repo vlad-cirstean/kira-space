@@ -114,7 +114,7 @@ func TestScheduleADE(t *testing.T) {
 		fields := smartFields("audit", "Audit {branch}")
 		fields.Schedule = targeted(f)
 		rec := f.script(t, fields)
-		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.task}); err != nil {
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.task}); err != nil {
 			t.Fatal(err)
 		}
 		tick(t, clock, 30*time.Second)

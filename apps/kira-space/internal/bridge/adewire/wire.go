@@ -339,6 +339,7 @@ type Branch struct {
 	ConflictCheck       string         `json:"conflictCheck"`       // 'checking' | 'done' | 'failed'
 	ConflictCheckReason string         `json:"conflictCheckReason"` // '' unless failed
 	Dirty               []DirtyEntry   `json:"dirty"`
+	DirtyToken          string         `json:"dirtyToken"` // fingerprint of Dirty, "" when clean
 	LastCommitAt        *int64         `json:"lastCommitAt"`
 	AddedAt             int64          `json:"addedAt"`
 	Origin              string         `json:"origin"` // '' user | 'agent'
@@ -895,6 +896,8 @@ type BranchRisk struct {
 	Dirty    []DirtyEntry `json:"dirty"`
 	Unmerged int          `json:"unmerged"`
 	Blocked  string       `json:"blocked"`
+	// DirtyToken fingerprints Dirty (see gitsession.DirtyToken); "" when nothing is uncommitted.
+	DirtyToken string `json:"dirtyToken"`
 }
 
 type ArchiveRisk struct {
@@ -1063,14 +1066,23 @@ type SetTaskBranchArgs struct {
 	BranchID string `json:"branchId"`
 	Name     string `json:"name"`
 	Existing bool   `json:"existing"`
-	// DiscardChanges confirms deleting uncommitted changes in the row's current worktree.
-	DiscardChanges bool `json:"discardChanges"`
+	// DiscardToken is the Branch.DirtyToken the user saw: it confirms deleting exactly that set of
+	// uncommitted changes in the row's current worktree. "" discards nothing.
+	DiscardToken string `json:"discardToken"`
 }
 
-// RemoveTaskRowArgs detaches a task row; DiscardChanges confirms deleting uncommitted changes in its worktree.
+// RemoveTaskRowArgs detaches a task row; DiscardToken is the Branch.DirtyToken the user saw, confirming
+// deletion of exactly that set of uncommitted changes in its worktree ("" discards nothing).
 type RemoveTaskRowArgs struct {
-	BranchID       string `json:"branchId"`
-	DiscardChanges bool   `json:"discardChanges"`
+	BranchID     string `json:"branchId"`
+	DiscardToken string `json:"discardToken"`
+}
+
+// ArchiveTaskArgs archives a task. DiscardTokens maps branch id to the BranchRisk.DirtyToken the user
+// confirmed; a worktree with uncommitted changes and no matching token refuses the archive.
+type ArchiveTaskArgs struct {
+	TaskID        string            `json:"taskId"`
+	DiscardTokens map[string]string `json:"discardTokens"`
 }
 
 // UpdateTaskRepoArgs swaps the repo of a row whose branch is not created.

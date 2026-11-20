@@ -306,7 +306,7 @@ func TestTaskArtifacts(t *testing.T) {
 
 	// 7. An archived task keeps its PR from the archive snapshot, no deployment, and takes no new row.
 	forge.SetOffline(false)
-	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.taskID}); err != nil {
+	if err := app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.taskID}); err != nil {
 		t.Fatal(err)
 	}
 	app.Restart()

@@ -332,7 +332,7 @@ func TestBranchAdopt(t *testing.T) {
 			t.Fatalf("donor worktree HEAD = %q, want it left detached by the refused start", head)
 		}
 
-		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.adopter.ID}); err != nil {
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.adopter.ID}); err != nil {
 			t.Fatalf("ArchiveTask adopter: %v", err)
 		}
 		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.donor.ID}); err != nil {
@@ -358,7 +358,7 @@ func TestBranchAdopt(t *testing.T) {
 		a := f.ask(f.adopter, existing("feat/x"))
 		a.approve(t, a.request(t))
 		got := a.result(t)
-		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.donor.ID}); err != nil {
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.donor.ID}); err != nil {
 			t.Fatalf("ArchiveTask donor: %v", err)
 		}
 		gone(t, donorRow.Worktree)
@@ -420,7 +420,7 @@ func TestBranchAdopt(t *testing.T) {
 		got := a.result(t)
 		commit(got.Worktree, "adopter-1.txt")
 		// The adopter leaves; the donor's start reattaches its own folder at the adopter's tip.
-		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.TaskArgs{TaskID: f.adopter.ID}); err != nil {
+		if err := f.app.W.AdeTask.ArchiveTask(ctx, adewire.ArchiveTaskArgs{TaskID: f.adopter.ID}); err != nil {
 			t.Fatalf("ArchiveTask adopter: %v", err)
 		}
 		if _, err := f.app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: f.donor.ID}); err != nil {

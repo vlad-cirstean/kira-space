@@ -32,7 +32,7 @@ test('a repo without a branch gets an existing branch from its menu', async ({ r
     branchId: 'd_alerts_web',
     name: 'fix/invoice-rounding',
     existing: true,
-    discardChanges: false,
+    discardToken: '',
   });
   await expect(page.locator(t('ade-branch-form'))).toHaveCount(0);
 });
@@ -74,7 +74,7 @@ test('a repo without a branch gets a new branch name', async ({ relaunch }) => {
     branchId: 'd_alerts_api',
     name: 'feat/alerts-api',
     existing: false,
-    discardChanges: false,
+    discardToken: '',
   });
 });
 
@@ -112,7 +112,7 @@ test('Remove repo on a clean row asks nothing', async ({ relaunch }) => {
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskRepo)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRemoveTaskRepo)[0]?.args).toEqual({
     branchId: 'd_alerts_web',
-    discardChanges: false,
+    discardToken: '',
   });
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
 });

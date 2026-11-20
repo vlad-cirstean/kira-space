@@ -1346,12 +1346,12 @@ func (s *AdeTaskService) RequiredServices(ctx context.Context, args adewire.Task
 	return r, adeTaskError(err)
 }
 
-func (s *AdeTaskService) ArchiveTask(ctx context.Context, args adewire.TaskArgs) error {
+func (s *AdeTaskService) ArchiveTask(ctx context.Context, args adewire.ArchiveTaskArgs) error {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
 		return err
 	}
-	return adeTaskError(s.Engine.ArchiveTask(ctx, args.TaskID))
+	return adeTaskError(s.Engine.ArchiveTask(ctx, args.TaskID, args.DiscardTokens))
 }
 
 // ArchivedTask reads an archived task with everything it kept.

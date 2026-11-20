@@ -5,6 +5,7 @@
         "blocked": "",
         "branchId": "<masked>",
         "dirty": [],
+        "dirtyToken": "<masked>",
         "unmerged": 0,
         "worktree": "<masked>"
       },
@@ -21,6 +22,7 @@
             "path": "untracked.txt"
           }
         ],
+        "dirtyToken": "<masked>",
         "unmerged": 2,
         "worktree": "<masked>"
       },
@@ -28,6 +30,7 @@
         "blocked": "locked",
         "branchId": "<masked>",
         "dirty": [],
+        "dirtyToken": "<masked>",
         "unmerged": 0,
         "worktree": "<masked>"
       }

@@ -19,6 +19,7 @@
         "path": "more.txt"
       }
     ],
+    "dirtyToken": "<masked>",
     "id": "<id:2>",
     "integration": [],
     "kind": "mine",
@@ -63,6 +64,7 @@
         "path": "wip.txt"
       }
     ],
+    "dirtyToken": "<masked>",
     "id": "<id:2>",
     "integration": [],
     "kind": "mine",

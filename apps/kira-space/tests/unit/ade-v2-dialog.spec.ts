@@ -232,6 +232,7 @@ describe('archive', () => {
           dirty: [{ code: 'M', path: 'src/a.ts' }],
           unmerged: 5,
           blocked: '',
+          dirtyToken: 'tok-bill',
         },
         {
           branchId: 'b_meter',
@@ -239,6 +240,7 @@ describe('archive', () => {
           dirty: [],
           unmerged: 0,
           blocked: '',
+          dirtyToken: '',
         },
       ],
     });

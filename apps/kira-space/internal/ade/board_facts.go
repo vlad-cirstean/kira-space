@@ -377,6 +377,7 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 		for _, d := range toDirtyEntries(status) {
 			wb.Dirty = append(wb.Dirty, adewire.DirtyEntry{Code: d.Code, Path: d.Path})
 		}
+		wb.DirtyToken = gitsession.DirtyToken(wb.Worktree, status)
 		wb.RebaseInProgress = sc.entry.WorktreeInProgress(wb.Worktree, status) != nil
 	}
 

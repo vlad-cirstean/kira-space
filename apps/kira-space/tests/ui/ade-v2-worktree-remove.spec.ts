@@ -11,17 +11,17 @@ import { IPC } from './support/ipcChannels';
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
-const { dirty } = contract<{ dirty: { code: string; path: string }[] }>(
-  'ade-worktree-remove',
-  'AdeTaskService.Board#dirty',
-);
+const { dirty, dirtyToken } = contract<{
+  dirty: { code: string; path: string }[];
+  dirtyToken: string;
+}>('ade-worktree-remove', 'AdeTaskService.Board#dirty');
 
 const dirtyBoard = {
   channel: IPC.adeTaskBoard,
   response: adeBoard((b) => {
     const row = b.branches.find((x) => x.id === 'b_cart');
     if (!row) throw new Error('b_cart missing');
-    Object.assign(row, { dirty });
+    Object.assign(row, { dirty, dirtyToken });
   }),
 };
 
@@ -36,7 +36,7 @@ test('contract: a clean row removes its branch with no dialog and no discard', a
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskBranch)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRemoveTaskBranch)[0]?.args).toEqual({
     branchId: 'b_cart',
-    discardChanges: false,
+    discardToken: '',
   });
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
 });
@@ -57,7 +57,7 @@ test('contract: a dirty row offers Discard N changes and remove branch, and send
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskBranch)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRemoveTaskBranch)[0]?.args).toEqual({
     branchId: 'b_cart',
-    discardChanges: true,
+    discardToken: dirtyToken,
   });
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
 });
@@ -71,7 +71,7 @@ test('a dirty row offers Discard N changes and remove repository, and sends the 
   await expect.poll(() => calls(control, IPC.adeTaskRemoveTaskRepo)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRemoveTaskRepo)[0]?.args).toEqual({
     branchId: 'b_cart',
-    discardChanges: true,
+    discardToken: dirtyToken,
   });
   await expect(page.locator(t('confirm-dialog'))).toHaveCount(0);
 });
@@ -95,6 +95,6 @@ test('changing the branch of a dirty row holds the choice until Discard changes 
   expect(calls(control, IPC.adeTaskSetTaskBranch)[0]?.args).toMatchObject({
     branchId: 'b_cart',
     existing: true,
-    discardChanges: true,
+    discardToken: dirtyToken,
   });
 });
