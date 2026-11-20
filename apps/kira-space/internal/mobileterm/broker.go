@@ -68,6 +68,7 @@ type entry struct {
 	writeMu     sync.Mutex
 	id          string
 	ring        *Ring
+	ringBase    int64 // End of the last dropped ring
 	state       state
 	sessionID   string
 	deviceID    string
@@ -153,9 +154,17 @@ func (b *Broker) SetRecording(on bool) {
 	for _, e := range all {
 		e.mu.Lock()
 		if e.conn == nil {
-			e.ring = nil
+			e.dropRing()
 		}
 		e.mu.Unlock()
+	}
+}
+
+// dropRing needs e.mu. Offsets stay monotonic across drops so a stale phone offset reads as overrun.
+func (e *entry) dropRing() {
+	if e.ring != nil {
+		e.ringBase = e.ring.End()
+		e.ring = nil
 	}
 }
 
@@ -196,7 +205,7 @@ func (b *Broker) Output(id string, data []byte) {
 			e.mu.Unlock()
 			return
 		}
-		e.ring = newRing(ringCap)
+		e.ring = newRing(ringCap, e.ringBase)
 	}
 	e.ring.Append(data)
 	c := e.conn
@@ -268,7 +277,7 @@ func (b *Broker) Attach(sessionID string, dev repos.MobileDeviceRow, cols, rows 
 		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.space.mobileterm.controlledElsewhere.body", nil)
 	}
 	if e.ring == nil {
-		e.ring = newRing(ringCap)
+		e.ring = newRing(ringCap, e.ringBase)
 	}
 	c := &phoneConn{e: e, device: dev.ID, notify: make(chan struct{}, 1), done: make(chan struct{})}
 	if old := e.conn; old != nil {
@@ -477,7 +486,7 @@ func (b *Broker) toDesktop(e *entry, code int, reason string) bool {
 	e.gen++
 	e.state = stateDesktop
 	if !b.recording.Load() {
-		e.ring = nil
+		e.dropRing()
 	}
 	e.deviceID, e.label, e.returnsAt = "", "", time.Time{}
 	if e.desktopCols > 0 && e.desktopRows > 0 && (e.desktopCols != e.phoneCols || e.desktopRows != e.phoneRows) {
