@@ -1,4 +1,7 @@
 {
+  "args:AdeTaskService.OpenFilesWindow": {
+    "taskId": "<id:1>"
+  },
   "args:AdeTaskService.TaskFileRead": {
     "branchId": "<id:1>",
     "path": "README.md"
@@ -58,5 +61,8 @@
     "src/a.go": [
       3
     ]
+  },
+  "window": {
+    "taskId": "<id:1>"
   }
 }

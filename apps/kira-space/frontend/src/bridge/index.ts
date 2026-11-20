@@ -752,7 +752,13 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewWindowTarget(args)).then((r) =>
       trust<V2.ReviewWindowTarget | null>(r),
     ),
-  // Task Files tab: the read-only file view of a task branch's worktree. The worktree root comes
+  adeTaskOpenFilesWindow: (args: V2.TaskArgs): Promise<boolean> =>
+    unwrap(AdeTaskService.OpenFilesWindow(args)),
+  adeTaskFilesWindowTarget: (args: V2.WindowKeyArgs): Promise<V2.TaskFilesWindowTarget | null> =>
+    unwrap(AdeTaskService.FilesWindowTarget(args)).then((r) =>
+      trust<V2.TaskFilesWindowTarget | null>(r),
+    ),
+  // Task Files window: the read-only file view of a task branch's worktree. The worktree root comes
   // from the branch row; only a branch id and a relative path cross the boundary.
   adeTaskFiles: (args: V2.BranchArgs): Promise<FileListing> =>
     unwrap<Awaited<ReturnType<typeof AdeTaskService.TaskFiles>>>(

@@ -543,16 +543,18 @@ func Build(opts Options) (*Wired, error) {
 		bridge.CaptureApply(w.Capture, m.Capture)
 	}
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
-	// Archive closes a task's review windows through the registry.
+	// Archive closes a task's review and Files windows through the registry.
 	w.AdeBoard = wireAdeTask(repositories, events, git, adeTracker, adeCloseTerminal(terminalRegistry),
-		closeTaskReviewWindows(repositories, func(key string) bool {
+		func(key string) bool {
 			// Through the bound hook, so a shell that overrides CloseWindow sees archive closes too.
 			if w.AdeTask != nil && w.AdeTask.CloseWindow != nil {
 				return w.AdeTask.CloseWindow(key)
 			}
 			return w.Windows.Close(key)
-		}), credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.CallWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
+		}, credentialRelay, w.KeepAwake, w.AgentNotify, w.AgentUsage, opts.RebaseTimeout, opts.BranchRequestWait, opts.CallWait, opts.LeaseTTL, opts.LeaseNow, opts.LeaseElapsed, opts.TrackedUpdates, runs, w.Agents, w.Prompts, w.Approvals, w.RepoConfig, proofSvc, dbMcpSessions, func() { w.ConfigSync.RefreshAsync() })
 	runs.ADE = w.AdeBoard
+	// A native close never unmounts the Files window, so the board releases its file sessions.
+	w.OnWindowClosing = append(w.OnWindowClosing, w.AdeBoard.ForgetFilesWindow)
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{

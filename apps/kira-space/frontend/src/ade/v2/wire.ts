@@ -952,6 +952,9 @@ export interface Launch {
 export interface WindowKeyArgs {
   windowKey: string;
 }
+export interface TaskFilesWindowTarget {
+  taskId: string;
+}
 export interface ReviewWindowTarget {
   taskId: string;
   branchId: string;

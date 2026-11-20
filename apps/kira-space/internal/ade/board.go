@@ -122,11 +122,11 @@ type TaskBoardDeps struct {
 	Tracker *Tracker
 	// CloseTerminal closes a running terminal by id (Archive).
 	CloseTerminal func(terminalID string) error
-	// Windows and ReviewWindows back review windows; CloseReviewWindows closes a task's native
-	// review windows (Archive).
-	Windows            *repos.WindowsRepo
-	ReviewWindows      *repos.AdeReviewWindowsRepo
-	CloseReviewWindows func(taskID string)
+	// Windows and ReviewWindows back review and Files windows; CloseWindow closes a native window
+	// by key (Archive).
+	Windows       *repos.WindowsRepo
+	ReviewWindows *repos.AdeReviewWindowsRepo
+	CloseWindow   func(key string) bool
 	// CustomScripts and ScriptsHome resolve the smart script of a workflow step and its own folder.
 	CustomScripts *scripts.Repo
 	ScriptsHome   string
@@ -203,6 +203,8 @@ type TaskBoard struct {
 
 	// taskFiles holds the file session of each task branch's worktree, keyed by branch row id.
 	taskFiles *codeworkspace.Registry
+	// filesWin registers the open task Files windows (fileswindow.go).
+	filesWin filesWindows
 
 	importMu sync.Mutex // serializes repo imports (folder add, folder watch rescans)
 	// afterImport runs after each repo a folder scan imports; tests flip state mid-scan with it.

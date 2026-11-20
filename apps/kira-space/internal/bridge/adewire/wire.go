@@ -1216,6 +1216,11 @@ type WindowKeyArgs struct {
 	WindowKey string `json:"windowKey"`
 }
 
+// TaskFilesWindowTarget is the task a Files window shows (P704).
+type TaskFilesWindowTarget struct {
+	TaskID string `json:"taskId"`
+}
+
 // ReviewWindowTarget is what a review window reviews (P150).
 type ReviewWindowTarget struct {
 	TaskID     string `json:"taskId"`

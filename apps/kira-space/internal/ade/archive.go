@@ -193,7 +193,7 @@ func (b *TaskBoard) ArchiveTask(ctx context.Context, taskID string) error {
 			return err
 		}
 	}
-	b.closeReviewWindows(tc)
+	b.closeTaskWindows(tc)
 	b.snapshotChangeRequests(ctx, taskID, tc.branches)
 	err = b.deps.Tasks.ArchiveTask(taskID, b.deps.Now().UnixMilli())
 	if err == nil {

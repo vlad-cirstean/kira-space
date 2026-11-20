@@ -1384,6 +1384,43 @@ func (s *AdeTaskService) RestoreTask(ctx context.Context, args adewire.TaskArgs)
 	return t, adeTaskError(err)
 }
 
+// OpenFilesWindow opens the task's Files window, or focuses it when already open. true = opened.
+func (s *AdeTaskService) OpenFilesWindow(ctx context.Context, args adewire.TaskArgs) (bool, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return false, err
+	}
+	if s.OpenWindow == nil || s.FocusWindow == nil {
+		return false, adeTaskInvalid("files windows are not available")
+	}
+	for {
+		res, err := s.Engine.OpenFilesWindow(ctx, args.TaskID)
+		if err != nil {
+			return false, adeTaskError(err)
+		}
+		if !res.Existing {
+			s.OpenWindow(shell.WindowRecord{Key: res.Key, Order: res.Order})
+			if s.SetWindowTitle != nil {
+				s.SetWindowTitle(res.Key, res.Title)
+			}
+			return true, nil
+		}
+		if s.FocusWindow(res.Key) {
+			return false, nil
+		}
+		// The window was closed without the close hook running: drop the stale entry and open again.
+		s.Engine.ForgetFilesWindow(res.Key)
+	}
+}
+
+// FilesWindowTarget returns the task a Files window shows, null when windowKey is not one.
+func (s *AdeTaskService) FilesWindowTarget(ctx context.Context, args adewire.WindowKeyArgs) (*adewire.TaskFilesWindowTarget, error) {
+	if err := validateAdeItemID(args.WindowKey, "windowKey"); err != nil {
+		return nil, err
+	}
+	return s.Engine.FilesWindowTarget(args.WindowKey), nil
+}
+
 // OpenReviewWindow opens the branch's review window, or focuses it when already open. true = opened.
 func (s *AdeTaskService) OpenReviewWindow(ctx context.Context, args adewire.BranchArgs) (bool, error) {
 	ctx = adeUserCtx(ctx)

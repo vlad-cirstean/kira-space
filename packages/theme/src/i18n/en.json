@@ -1732,6 +1732,9 @@
             "body": "This file no longer exists in the worktree."
           }
         },
+        "filesWindow": {
+          "title": "Files · {task}"
+        },
         "handoverReadOnly": {
           "body": "This note is a copy of a child task’s handover. Edit the child’s handover instead."
         },
