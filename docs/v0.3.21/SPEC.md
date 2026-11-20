@@ -11,7 +11,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Done |
 | P705 | Mobile app: show the status info it is missing | Planned |
-| P706 | Pull request icon: one glyph for every PR status | Planned |
+| P706 | Pull request icon: one glyph for every PR status | Done |
 
 ## P699
 
@@ -155,6 +155,20 @@ ranks which ones the icon shows. Pending checks must be visible (animated, respe
 passed checks stop using a second icon. Icons come from Codicons (already shipped); no new pack. Remove the
 duplicated tables, update specs and visual baselines (re-recorded at chapter end), copy keys and the
 ARCHITECTURE entry. Frontend only unless the host data lacks a status the plan needs.
+
+Result: `ade/v2/pr/prGlyph.ts` is the one PR status table and `PrGlyph.vue` the one component (button on
+the branch row, tooltip on the task panel PR line, inline in the host view sidebar and on mobile plan
+cards through `PlanTaskPrs.vue`). Shape is the state; a StatusDot badge is the checks (pulse while
+pending, static under reduced motion, passed keeps the dot); tone ranks conflicts, changes requested,
+auto-merge, approved for open and draft. One tooltip lists every part, one line each. `CHECKS_GLYPH`,
+`PR_GLYPH`, `CHECK_ICON`, `REVIEWER_ICON`, `CHECK_TONE` and `panel/prState.ts` deleted; the host view
+conversation reads `REVIEW_GLYPH` too; guard U215, and U125 lists `PrGlyph.vue` as a board tone owner.
+Backend: `githost.ChangeRequest` carries `Mergeable` and `AutoMerge` (GitHub sync fields, Azure list
+projection), index migration 0104 and schema version 3; the ADE wire carries review, mergeable and
+auto-merge through `wireChangeRequest`. Fixture `change-requests.json` moved to wire vocabulary. Flow
+`TestChangeRequestGlyphStatus` and UI spec `ade-v2-pr-glyph.spec.ts` share contract `ade-pr-glyph`;
+mobile spec `plan-prs.spec.ts`. Baselines with a PR row on the Plan board are re-recorded at chapter
+end (candidates: `ade-plan-branches` and the other Plan specs using the default change-requests mock).
 
 ## Streams
 
