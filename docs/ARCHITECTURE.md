@@ -339,7 +339,7 @@ whatever sandbox a session happens to be in),
 - fileTransfer is orthogonal to the three write flags: Download reads regardless of a connection's read-only flag, while Upload is gated on fileTransfer && canInsert together.
 - S3 sets caps.keyBrowser = true (P41) because a bucket's prefix/object space has no fixed size and can nest arbitrarily deep; the bucket node in s3/catalog.go is hasChildren: false, and /-delimited prefix/object navigation happens in a Browse tab (SPEC.md §8.18).
 - S3 object node paths carry the full bucket-relative key on their own object segment, nested under every ancestor prefix segment (e.g. bucket:b/prefix:reports/object:reports%2Fnote.txt), not a bare local filename.
-- DownloadObject writes to a sibling .kira-partial-<uuid> temp file and renames on success, unlinking it on any failure or cancellation.
+- DownloadObject writes through the file service: a hidden sibling temp file, renamed on success and discarded on any failure or cancellation. Missing destination parents are created.
 - DownloadObject's temp-file cleanup is safe only because the copy runs on the caller's own goroutine, with the op's own context passed directly into io.Copy via the SDK call (no detached context, as SQS does), so cancelled-download cleanup never races a background writer left by RunWithAbortRace.
 - PutObject's insert path detects a collision structurally on *types.NotFound rather than a mapped error code, a narrowing from the original TypeScript which treated any query-level error as probably not found and proceeded.
 - S3 object metadata keys come back lowercased from HeadObject/GetObject regardless of the case sent (real S3/LocalStack x-amz-meta-* behavior), not a casing bug in the adapter.
