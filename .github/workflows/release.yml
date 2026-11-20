@@ -308,8 +308,22 @@ jobs:
             codesign --verify --deep --strict "/Applications/Kira Space.app"
             pkill -x "Kira Space" || true; sleep 3
           }
-          sh scripts/install.sh
+          # Installer stays unauthenticated like real users, so the GitHub API can 403 (shared-IP rate
+          # limit, release not yet visible) right after publish. Delay, then retry with backoff.
+          install() {
+            n=1
+            while :; do
+              echo "install attempt $n: sh scripts/install.sh $*"
+              rc=0
+              sh scripts/install.sh "$@" || rc=$?
+              if [ "$rc" -eq 0 ]; then return 0; fi
+              if [ "$n" -ge 5 ]; then return "$rc"; fi
+              sleep $((n * 20)); n=$((n + 1))
+            done
+          }
+          sleep 30
+          install
           check
-          sh scripts/install.sh --tag="$TAG"
+          install --tag="$TAG"
           check
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/Kira Space.app/Contents/Info.plist")" = "${TAG#v}"

@@ -435,7 +435,7 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    the previous last patch. Installed copies are not downgraded. Never delete a kept
    release, or its assets, by hand: retention (below) keeps each minor's `.0`, first and last release because the
    updater steps to them. `install-smoke` runs `install.sh` twice: first the latest-release path,
-   then `--tag=<tag>` over it. Never re-dispatch `release.yml` for a tag retention deleted: `publish`
+   then `--tag=<tag>` over it. Each run retries up to 5 times with 20s growing backoff after a 30s initial delay (unauthenticated GitHub API 403s right after publish). Never re-dispatch `release.yml` for a tag retention deleted: `publish`
    refuses only a tag that has a published release, so it would republish an old version.
 
 Recovery:
