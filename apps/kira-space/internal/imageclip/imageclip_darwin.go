@@ -46,6 +46,8 @@ import (
 	"os"
 	"sync"
 	"unsafe"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 var (
@@ -81,7 +83,7 @@ func (c *Clipboard) writeImagesTo(name string, paths []string) error {
 	datas := make([]unsafe.Pointer, len(paths))
 	lens := make([]C.long, len(paths))
 	for i, p := range paths {
-		data, err := os.ReadFile(p)
+		data, err := fileservice.Host().ReadFile(p)
 		if err != nil {
 			return errUnreadable
 		}

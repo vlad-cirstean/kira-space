@@ -14,6 +14,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentctx"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
 )
@@ -144,7 +145,7 @@ func (s *Service) openCodeTargets(ctx context.Context) []target {
 	dir := filepath.Join(base, "opencode")
 	cfg := filepath.Join(dir, "opencode.json")
 	for _, n := range openCodeConfigNames {
-		if _, err := os.Stat(filepath.Join(dir, n)); err == nil {
+		if _, err := fileservice.Host().Stat(filepath.Join(dir, n)); err == nil {
 			cfg = filepath.Join(dir, n)
 			break
 		}
@@ -201,7 +202,7 @@ func (s *Service) List(ctx context.Context) []PortProvider {
 		files, _, _ := s.targets(ctx, id)
 		pp := PortProvider{ID: id, Label: p.Label(), Files: []PortFile{}}
 		for _, t := range files {
-			_, err := os.Stat(t.Path)
+			_, err := fileservice.Host().Stat(t.Path)
 			pp.Files = append(pp.Files, PortFile{Role: t.Role, Path: s.display(t.Path), Exists: err == nil})
 		}
 		out = append(out, pp)

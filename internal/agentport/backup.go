@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // backupStamp is the UTC time suffix of a backup name.
@@ -18,7 +18,7 @@ const maxBackupNames = 1000
 
 // resolveTarget follows a symlink (a dotfile manager's) to the file that gets written; the link stays.
 func resolveTarget(path string) (string, error) {
-	real, err := filepath.EvalSymlinks(path)
+	real, err := fileservice.Host().Resolve(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return path, nil
 	}
@@ -31,25 +31,15 @@ func resolveTarget(path string) (string, error) {
 func backup(path string, data []byte, mode os.FileMode, now time.Time) (string, error) {
 	stem := path + ".kira-backup-" + now.UTC().Format(backupStamp)
 	perm := mode.Perm() | 0o600
+	absent := fileservice.Version("")
 	for i := 0; i < maxBackupNames; i++ {
 		dst := stem
 		if i > 0 {
 			dst = fmt.Sprintf("%s-%d", stem, i)
 		}
-		f, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, perm)
-		if errors.Is(err, os.ErrExist) {
+		_, err := fileservice.Host().Write(dst, data, fileservice.WriteOptions{Perm: perm, Static: true, IfVersion: &absent})
+		if errors.Is(err, fileservice.ErrConflict) {
 			continue
-		}
-		if err == nil {
-			if _, err = f.Write(data); err == nil {
-				err = f.Chmod(perm)
-			}
-			if cerr := f.Close(); err == nil {
-				err = cerr
-			}
-			if err != nil {
-				_ = os.Remove(dst)
-			}
 		}
 		if err != nil {
 			return "", fmt.Errorf("agentport: back up %s: %w", filepath.Base(path), err)
@@ -62,13 +52,13 @@ func backup(path string, data []byte, mode os.FileMode, now time.Time) (string, 
 // writeFile writes data atomically, creating parent directories 0700; an existing file keeps its mode.
 func writeFile(path string, data []byte, defMode os.FileMode) error {
 	mode := defMode
-	if st, err := os.Stat(path); err == nil {
-		mode = st.Mode().Perm()
+	if st, err := fileservice.Host().Stat(path); err == nil {
+		mode = st.Mode.Perm()
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(filepath.Dir(path)); err != nil {
 		return fmt.Errorf("agentport: create %s: %w", filepath.Dir(path), err)
 	}
-	if err := renameio.WriteFile(path, data, mode); err != nil {
+	if err := fileservice.Host().WriteFile(path, data, mode); err != nil {
 		return fmt.Errorf("agentport: write %s: %w", filepath.Base(path), err)
 	}
 	return nil
@@ -76,21 +66,21 @@ func writeFile(path string, data []byte, defMode os.FileMode) error {
 
 // readIfExists reads path; exists is false for a missing file. Files over max bytes are an error.
 func readIfExists(path string, max int64) (data []byte, mode os.FileMode, exists bool, err error) {
-	st, err := os.Stat(path)
+	st, err := fileservice.Host().Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, 0, false, nil
 	}
 	if err != nil {
 		return nil, 0, false, err
 	}
-	if st.IsDir() {
+	if st.Dir {
 		return nil, 0, false, fmt.Errorf("agentport: %s is a directory", filepath.Base(path))
 	}
-	if st.Size() > max {
+	if st.Size > max {
 		return nil, 0, true, errTooLarge
 	}
-	data, err = os.ReadFile(path)
-	return data, st.Mode().Perm(), true, err
+	data, err = fileservice.Host().ReadFile(path)
+	return data, st.Mode.Perm(), true, err
 }
 
 var errTooLarge = errors.New("agentport: file is too large")

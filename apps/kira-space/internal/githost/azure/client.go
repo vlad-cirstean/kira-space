@@ -3,13 +3,13 @@ package azure
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -185,19 +185,16 @@ func (c *Client) invoke(ctx context.Context, org string, write bool, method, res
 	extra := append(append([]string{"--area", "git", "--resource", resource, "--route-parameters"}, route...),
 		"--http-method", method)
 	if body != nil {
-		f, err := os.CreateTemp("", "kira-az-*.json")
+		raw, err := json.Marshal(body)
 		if err != nil {
 			return status(org, githost.KindForbidden, "could not write the request body: "+err.Error())
 		}
-		defer os.Remove(f.Name())
-		if err := json.NewEncoder(f).Encode(body); err != nil {
-			f.Close()
+		path, cleanup, err := fileservice.Host().TempFile("", "kira-az-*.json", append(raw, '\n'))
+		if err != nil {
 			return status(org, githost.KindForbidden, "could not write the request body: "+err.Error())
 		}
-		if err := f.Close(); err != nil {
-			return status(org, githost.KindForbidden, "could not write the request body: "+err.Error())
-		}
-		extra = append(extra, "--in-file", f.Name())
+		defer cleanup()
+		extra = append(extra, "--in-file", path)
 	}
 	extra = append(extra, "--api-version", apiVersion)
 	if query != "" {

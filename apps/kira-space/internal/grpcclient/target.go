@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -16,6 +15,8 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Target is D6's normalised dial target and the TLS decision that goes with it.
@@ -102,7 +103,7 @@ func dialConn(ctx context.Context, target string, tlsCfg TLSConfig) (*grpc.Clien
 	if norm.TLS {
 		conf := &tls.Config{ServerName: tlsCfg.ServerName}
 		if tlsCfg.CAFile != "" {
-			pem, err := os.ReadFile(tlsCfg.CAFile)
+			pem, err := fileservice.Host().ReadFile(tlsCfg.CAFile)
 			if err != nil {
 				return nil, BadRequest("could not read CA file: " + err.Error())
 			}

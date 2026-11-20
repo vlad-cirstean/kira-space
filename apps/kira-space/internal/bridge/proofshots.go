@@ -12,7 +12,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -147,8 +147,8 @@ func desktopDir() (string, error) {
 }
 
 func isDir(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && fi.IsDir()
+	fi, err := fileservice.Host().Stat(path)
+	return err == nil && fi.Dir
 }
 
 func (s *ProofService) shotLocation() (ProofShotLocation, error) {
@@ -195,11 +195,12 @@ func checkWritableDir(path string) error {
 	if !filepath.IsAbs(path) || !isDir(path) {
 		return os.ErrInvalid
 	}
-	probe, err := os.MkdirTemp(path, ".kira-shot-*")
+	_, cleanup, err := fileservice.Host().TempDir(path, ".kira-shot-*")
 	if err != nil {
 		return err
 	}
-	return os.Remove(probe)
+	cleanup()
+	return nil
 }
 
 // ResetShotLocation drops the custom folder, back to the Desktop default.
@@ -238,7 +239,7 @@ func mkFreshDir(parent, name string) (string, error) {
 		if i > 1 {
 			p = filepath.Join(parent, fmt.Sprintf("%s-%d", name, i))
 		}
-		err := os.Mkdir(p, 0o755)
+		err := fileservice.Host().Mkdir(p)
 		if err == nil {
 			return p, nil
 		}
@@ -279,12 +280,12 @@ func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResu
 		return ProofSaveJpegToResult{}, err
 	}
 	path := filepath.Join(dir, safeJpegName(args.Filename))
-	if _, err := os.Lstat(path); err == nil {
+	if _, err := fileservice.Host().Lstat(path); err == nil {
 		return ProofSaveJpegToResult{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.proof.shotExists.body", nil)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return ProofSaveJpegToResult{}, ipcerr.InternalErr(err)
 	}
-	if err := renameio.WriteFile(path, data, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(path, data, 0o644); err != nil {
 		return ProofSaveJpegToResult{}, ipcerr.InternalErr(err)
 	}
 	return ProofSaveJpegToResult{Path: path}, nil
@@ -294,7 +295,7 @@ func (s *ProofService) SaveJpegTo(args ProofSaveJpegToArgs) (ProofSaveJpegToResu
 func (s *ProofService) CloseShotFolder(args ProofShotFolderArgs) error {
 	if path, ok := s.shots.close(args.FolderID); ok {
 		// os.Remove only succeeds on an empty directory.
-		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err := fileservice.Host().Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			slog.Debug("proof: keep shot folder", "scope", "proof", "path", path, "err", err)
 		}
 	}

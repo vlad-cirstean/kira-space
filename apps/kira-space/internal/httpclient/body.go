@@ -11,9 +11,10 @@ import (
 	"mime/multipart"
 	"net/textproto"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // BodyMode is this app's own `mode` spelling, originally Postman's own (D2) before the raw/code
@@ -160,7 +161,7 @@ func buildURLEncoded(fields []Field) (io.ReadCloser, func() (io.ReadCloser, erro
 }
 
 // buildFile is the binary body: one whole local file, streamed by Go and never by the renderer.
-// Postman sets no Content-Type for this mode, and neither do we. Re-`os.Stat`s at send
+// Postman sets no Content-Type for this mode, and neither do we. Re-stats at send
 // time rather than trusting a stored size — the file may have changed or vanished since it was
 // picked.
 func buildFile(path string) (io.ReadCloser, func() (io.ReadCloser, error), int64, string, error) {
@@ -168,25 +169,25 @@ func buildFile(path string) (io.ReadCloser, func() (io.ReadCloser, error), int64
 	if trimmed == "" {
 		return nil, nil, 0, "", newErrorT(CodeBadRequest, "backend.studio.http.bodyFileMissing.body", nil, nil)
 	}
-	info, err := os.Stat(trimmed)
+	info, err := fileservice.Host().Stat(trimmed)
 	if err != nil {
 		return nil, nil, 0, "", newErrorT(CodeBadRequest, "backend.studio.http.localFileUnreadable.error", map[string]string{"path": trimmed, "detail": err.Error()}, err)
 	}
-	if info.IsDir() {
+	if info.Dir {
 		return nil, nil, 0, "", newErrorT(CodeBadRequest, "backend.studio.http.pathIsDirectory.body", map[string]string{"path": trimmed}, nil)
 	}
-	f, err := os.Open(trimmed)
+	f, _, err := fileservice.Host().Open(trimmed)
 	if err != nil {
 		return nil, nil, 0, "", newErrorT(CodeBadRequest, "backend.studio.http.localFileUnreadable.error", map[string]string{"path": trimmed, "detail": err.Error()}, err)
 	}
 	getBody := func() (io.ReadCloser, error) {
-		reopened, openErr := os.Open(trimmed)
+		reopened, _, openErr := fileservice.Host().Open(trimmed)
 		if openErr != nil {
 			return nil, openErr
 		}
 		return reopened, nil
 	}
-	return f, getBody, info.Size(), "", nil
+	return f, getBody, info.Size, "", nil
 }
 
 // formPart pairs a FormField with the file size resolved once, at prepare time — reused for both
@@ -212,15 +213,15 @@ func prepareFormParts(fields []FormField) ([]formPart, error) {
 		if trimmed == "" {
 			return nil, newErrorT(CodeBadRequest, "backend.studio.http.formFieldFileMissing.body", map[string]string{"name": f.Name}, nil)
 		}
-		info, err := os.Stat(trimmed)
+		info, err := fileservice.Host().Stat(trimmed)
 		if err != nil {
 			return nil, newErrorT(CodeBadRequest, "backend.studio.http.localFileUnreadable.error", map[string]string{"path": trimmed, "detail": err.Error()}, err)
 		}
-		if info.IsDir() {
+		if info.Dir {
 			return nil, newErrorT(CodeBadRequest, "backend.studio.http.pathIsDirectory.body", map[string]string{"path": trimmed}, nil)
 		}
 		f.Path = trimmed
-		parts = append(parts, formPart{field: f, size: info.Size()})
+		parts = append(parts, formPart{field: f, size: info.Size})
 	}
 	return parts, nil
 }
@@ -311,7 +312,7 @@ func streamFormData(parts []formPart, boundary string) *io.PipeReader {
 				return
 			}
 			if p.field.Kind == "file" {
-				f, openErr := os.Open(p.field.Path)
+				f, _, openErr := fileservice.Host().Open(p.field.Path)
 				if openErr != nil {
 					werr = openErr
 					return

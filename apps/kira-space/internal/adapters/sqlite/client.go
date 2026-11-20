@@ -2,11 +2,11 @@ package sqlite
 
 import (
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // busyTimeoutMS is client.ts's BUSY_TIMEOUT_MS — node:sqlite's own default is 0 (fail immediately
@@ -79,11 +79,11 @@ func rejectDSNMetacharacters(path string) error {
 // that DDL is read-only. Checked before the driver ever touches the path, so a typo fails as
 // E_NOT_FOUND rather than "connecting" to a database Kira itself just created.
 func assertFileExists(path string) error {
-	info, err := os.Stat(path)
+	info, err := fileservice.Host().Stat(path)
 	if err != nil {
 		return adapters.New(adapters.CodeNotFound, "no database file at \""+path+"\"", nil)
 	}
-	if !info.Mode().IsRegular() {
+	if !info.Mode.IsRegular() {
 		return adapters.New(adapters.CodeConnect, "\""+path+"\" is not a regular file", nil)
 	}
 	return nil

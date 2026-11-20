@@ -3,10 +3,10 @@ package jira
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 var _ issuetracker.IssueComments = (*Provider)(nil)
@@ -29,22 +29,14 @@ func (c *client) postComment(ctx context.Context, ref issuetracker.Ref, body str
 	if err != nil {
 		return errors.New("jira: comment could not be converted")
 	}
-	f, err := os.CreateTemp("", "kira-acli-comment-*.json")
+	bodyPath, cleanup, err := fileservice.Host().TempFile("", "kira-acli-comment-*.json", adf)
 	if err != nil {
 		return errors.New("jira: could not write the comment body")
 	}
-	defer os.Remove(f.Name())
-	if err := f.Chmod(0o600); err != nil {
-		f.Close()
-		return errors.New("jira: could not write the comment body")
-	}
-	_, werr := f.Write(adf)
-	if cerr := f.Close(); werr != nil || cerr != nil {
-		return errors.New("jira: could not write the comment body")
-	}
+	defer cleanup()
 	wctx, cancel := context.WithTimeout(ctx, writeTimeout)
 	defer cancel()
-	_, err = c.runner.Run(wctx, st.Path, []string{"jira", "workitem", "comment", "create", "--key", ref.Key, "--body-file", f.Name()})
+	_, err = c.runner.Run(wctx, st.Path, []string{"jira", "workitem", "comment", "create", "--key", ref.Key, "--body-file", bodyPath})
 	if err != nil {
 		return classify(err, wctx, "workitem comment create")
 	}

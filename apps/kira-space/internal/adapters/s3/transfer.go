@@ -11,7 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/page"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/ids"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // downloadObject is transfer.ts's downloadObject — the only code that writes to a user's
@@ -20,20 +20,15 @@ import (
 //  1. CheckNotStarted: an already-cancelled op never creates a file.
 //  2. op.SetCommand before any call (Adapter rule 3).
 //  3. HeadObject first — a real "no such object" error before any local file exists.
-//  4. tmp is a SIBLING of destPath, never os.TempDir() — the rename must be atomic on one
-//     filesystem.
-//  5. Create the temp file.
-//  6. GetObject.
-//  7. io.Copy streams the body in — ctx cancellation surfaces here, mid-stream, since the op's own
+//  4. fileservice Create opens an atomic write: a temp sibling of destPath, so the rename is atomic.
+//  5. GetObject.
+//  6. io.Copy streams the body in — ctx cancellation surfaces here, mid-stream, since the op's own
 //     ctx goes directly to the SDK call (never adapters.RunWithAbortRace, which would let
 //     a cancelled download keep writing after the caller's cleanup already ran).
-//  8. Sync and close.
-//  9. Rename — the last step, never retried; a cross-device rename is impossible by construction
-//     (step 4's sibling-temp-file rule), so there is no fallback copy on purpose.
+//  7. Commit syncs, renames and syncs the folder — the last step, never retried.
 //
-// On any error from steps 5-9, the temp file is unlinked (error ignored) before the mapped error
-// is returned — and that cleanup runs on the caller's own goroutine, which is only safe because
-// the copy itself never outlives this call.
+// On any error before Commit the temp file is discarded (error ignored) before the mapped error
+// is returned.
 func downloadObject(ctx context.Context, client *s3.Client, bucket, key, destPath string, op *adapters.OpCtx) (model.ObjectTransferResult, error) {
 	if err := adapters.CheckNotStarted(ctx); err != nil {
 		return model.ObjectTransferResult{}, err
@@ -44,43 +39,28 @@ func downloadObject(ctx context.Context, client *s3.Client, bucket, key, destPat
 		return model.ObjectTransferResult{}, mapError(err)
 	}
 
-	tmpPath := destPath + ".kira-partial-" + ids.New(ids.Temp)
-	f, err := os.Create(tmpPath)
+	pending, err := fileservice.Host().Create(destPath, fileservice.WriteOptions{})
 	if err != nil {
 		return model.ObjectTransferResult{}, mapError(err)
 	}
-	cleanup := func() { _ = os.Remove(tmpPath) }
 
 	res, err := client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
 	if err != nil {
-		f.Close()
-		cleanup()
+		_ = pending.Discard()
 		return model.ObjectTransferResult{}, mapError(err)
 	}
 	if res.Body == nil {
-		f.Close()
-		cleanup()
+		_ = pending.Discard()
 		return model.ObjectTransferResult{}, mapError(errNoBody(key))
 	}
 	defer res.Body.Close()
 
-	n, err := io.Copy(f, res.Body)
+	n, err := io.Copy(pending, res.Body)
 	if err != nil {
-		f.Close()
-		cleanup()
+		_ = pending.Discard()
 		return model.ObjectTransferResult{}, mapError(err)
 	}
-	if err := f.Sync(); err != nil {
-		f.Close()
-		cleanup()
-		return model.ObjectTransferResult{}, mapError(err)
-	}
-	if err := f.Close(); err != nil {
-		cleanup()
-		return model.ObjectTransferResult{}, mapError(err)
-	}
-	if err := os.Rename(tmpPath, destPath); err != nil {
-		cleanup()
+	if _, err := pending.Commit(); err != nil {
 		return model.ObjectTransferResult{}, mapError(err)
 	}
 
@@ -100,21 +80,21 @@ func errNoBody(key string) error { return queryError(key + " has no body to down
 // defer (mutate.go's applyInsert) — the TypeScript never closes its createReadStream because the
 // SDK consumes it and Node's GC finishes the job, but a leaked fd in Go is real.
 func openUploadBody(sourcePath string) (*os.File, int64, error) {
-	info, err := os.Stat(sourcePath)
+	info, err := fileservice.Host().Stat(sourcePath)
 	if err != nil {
 		return nil, 0, adapters.New(adapters.CodeQuery, "could not read local file "+sourcePath+": "+err.Error(), err)
 	}
 	// A named pipe blocks os.Open outside ctx, and a device such as /dev/zero stats as 0 bytes.
-	if !info.Mode().IsRegular() {
+	if !info.Mode.IsRegular() {
 		return nil, 0, adapters.New(adapters.CodeQuery, "local path "+sourcePath+" is not a regular file", nil)
 	}
-	if info.Size() > int64(page.ObjectUploadMaxBytes) {
+	if info.Size > int64(page.ObjectUploadMaxBytes) {
 		return nil, 0, adapters.New(adapters.CodeUnsupported,
-			"file is "+formatBytes(info.Size())+", over the "+formatBytes(int64(page.ObjectUploadMaxBytes))+" single-upload limit — multipart upload is not supported", nil)
+			"file is "+formatBytes(info.Size)+", over the "+formatBytes(int64(page.ObjectUploadMaxBytes))+" single-upload limit — multipart upload is not supported", nil)
 	}
-	f, err := os.Open(sourcePath)
+	f, _, err := fileservice.Host().Open(sourcePath)
 	if err != nil {
 		return nil, 0, adapters.New(adapters.CodeQuery, "could not read local file "+sourcePath+": "+err.Error(), err)
 	}
-	return f, info.Size(), nil
+	return f, info.Size, nil
 }

@@ -2,6 +2,7 @@ package apiflow
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -232,7 +233,7 @@ func TestApiAgentsDocCoversSchemas(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"collection", "environment"} {
-		raw, err := fileservice.Host().ReadFile(filepath.Join("..", "..", "apifiles", "schema", name+".schema.json"))
+		raw, err := os.ReadFile(filepath.Join("..", "..", "apifiles", "schema", name+".schema.json"))
 		if err != nil {
 			t.Fatal(err)
 		}

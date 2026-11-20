@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/renameio/v2"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/localsock"
 )
 
@@ -90,7 +90,7 @@ func New(opts Options) (*Broker, error) {
 	}
 
 	shimPath := filepath.Join(ln.Dir, "shim")
-	if err := renameio.WriteFile(shimPath, []byte(shimBody), 0o700); err != nil {
+	if err := fileservice.Host().WriteFile(shimPath, []byte(shimBody), 0o700); err != nil {
 		_ = ln.Close()
 		return nil, fmt.Errorf("gitaskpass: write shim: %w", err)
 	}
