@@ -28,7 +28,7 @@ import (
 // The dialog offers what a restart cut: a terminal script, a held headless run and two open TUI
 // sessions (one mid-turn, one idle).
 
-var restoreMask = flowharness.Mask("hash", "token", "endedAt", "terminalId", "command")
+var restoreMask = flowharness.Mask("hash", "token", "endedAt", "terminalId", "command", "engineId", "context")
 
 type restoreFix struct {
 	app      *flowharness.App

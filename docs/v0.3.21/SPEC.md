@@ -6,7 +6,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 |---|-------|--------|
 | P699 | File watching: one shared seam, FSEvents on macOS | Done |
 | P700 | File interactions: one shared file service | Planned |
-| P701 | Restore after restart: dialog to resume scripts, Docker and agents | Planned |
+| P701 | Restore after restart: dialog to resume scripts, Docker and agents | Done |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Done |
@@ -68,6 +68,17 @@ dialog learns it (TanStack Query over a bridge call), restore actions for each k
 run, Docker and agent-resume paths, the continue message in the prompt registry (one very short
 sentence), and UI plus flow tests split at the IPC boundary. Interaction with P697 required services:
 restoring scripts satisfies the required-services gate.
+
+**Result.** Launch dialog lists scripts, Docker (only when pending) and agents; Resume per row, Continue
+needs Resume (required for review runs); X restores nothing. Migration 0103 marks TUI rows at quit
+(`Tracker.MarkQuit`, working flag) and crash. `sessionrestore.Service` joins the three offers (`Claim`
+once per process inside a 2 min window, scripts first, Docker and agents after, each item alone).
+Prompt `restore.continue.line`. Shared `RestoreDialog` gained groups and an option; row builders moved
+to `automations/restore/rows.ts` and `docker-ui/src/restoreRows.ts`. Flows: adeflow
+`TestSessionRestore*`, dockerflow `TestSessionRestoreDocker`; UI `session-restore.spec.ts`; real
+`claude` `TestAdeRestoreRunResumeOnly` passes, `TestAdeRestoreSessionContinue` blocked by the baseline
+TUI `no SessionStart hook event` failure. Deviations: no `unsupported` Continue state, `Claim` takes no
+window key, takeover reuses `opTakeOver`. Visual baselines unchanged.
 
 ## P702
 

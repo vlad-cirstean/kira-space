@@ -842,7 +842,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - ScriptLauncher.Exited finishes a run from the session's exit code and the registry's close cause (CauseUser from Terminal.Close or ScriptRuns.Stop, CauseWindow, CauseQuit).
 - Recover runs at boot and fails every run a dead process left running, with the reason "interrupted: Kira Studio closed while it ran".
 - Recover also flags those runs `restore_pending` (migrations Space 0061, Studio 0050). `TakeRestore` hands them to an in-memory offer for the session, so a second restart does not repeat it. A user stop never flags. `RestoreState`, `Restore` and `RestoreDismiss` serve the offer; `Restore` re-checks the script hash per item (`E_CONFLICT` on drift) and resumes smart runs.
-- The Runs module shows a banner for the offer (`automations/restore/`); clicking it opens the shared restore dialog. No startup auto-open.
+- The Runs module shows a banner for the offer (`automations/restore/`); clicking it opens the shared restore dialog. In Space the offer is also listed by the launch restore dialog (P701); the banner stays and Restore there starts the same runs through the same hash check.
 - The scriptRuns frontend query is keyed ['scriptRuns','list'] and is patched in place by the push channel, with no polling. The Runs panel (RunsSection.vue) lists only running and waiting runs; finished runs live in the Operations panel.
 - `runoutcome.Outcome.outputTail` holds the last 40 sanitized lines (8 KiB cap) of a failed terminal or headless script run. A `termtext.Tail` on the script session tap (`ScriptLauncher.Output`) feeds terminal runs; the headless log sink feeds the rest. It lives in `outcome_json`, so it survives tab close and restart. Copy for agent falls back to it once the terminal tab is gone.
 - `internal/termtext` is the one ANSI stripper and line sanitizer (gitprepare and scriptruns).
@@ -2652,6 +2652,18 @@ Every SecondaryTabs `count` renders `Badge variant="count"`, in ADE and elsewher
 - Closing the last window and OnShutdown never ask for quit confirmation.
 - Not solved: there is no detached runner and no PTY survival across restart.
 
+### Restore after restart (P701)
+
+- One dialog at launch lists what a quit or crash cut: script runs, Docker containers and agents. Nothing starts until the user confirms. Space only; phones never show it.
+- Marks: migration 0103 adds `ade_sessions.restore_pending` and `restore_working`. `Tracker.MarkQuit` runs in the appwire teardown just before the PTYs shut down and flags every running TUI row; `working` is a busy turn, a background task or an open tool call. `StopAllTaskRunning` flags task TUI rows after a crash (`working` unknown, 0). A user close or stop never flags.
+- The agent offer (`ade/restore.go`) is built once per boot after `RecoverRunning`: stuck runs with a resumable conversation, plus the marked TUI rows read and cleared by `TakeRestoreSessions`. A run whose `Launch.ResumeID` equals an offered TUI row's agent session is dropped (the TUI row wins). Ids are `run:<id>` and `session:<id>`. Each read re-plans against the board; an item resumed elsewhere leaves the offer, a missing task, branch or provider shows as unavailable with a reason.
+- `sessionrestore.Service` (`SessionRestoreService`: `State`, `Claim`, `Restore`, `Close`) joins the script, Docker and agent offers. `State` reads Docker from the tracker's last tick (`docker.RestoreCurrentBound`), never a live probe. `Claim` answers true once per process and only inside the offer window (2 min from start, `Options.OfferWindow`), so one window opens the dialog. `Close` ends the auto-open and drops the agent offer; the Runs and Docker banners keep their own offers.
+- `Restore` order: scripts first and synchronously (a normal script's run row exists once its tab opens), then Docker and agents side by side. Each item succeeds or fails alone; a stale id fails its own row.
+- Resume and Continue per agent row. A run with Continue, or any review run, queues attempt+1 in the background with `run.resume.line` (`ResumeRun`). A run without Continue reopens in a TUI with no message and its launch spec is cleared, so the board cannot resume it twice. A TUI row reopens through `takeOverLocked`; with Continue the prompt `restore.continue.line` is the launch message. Continue defaults on for a run and for a TUI row that was working at quit, off for an idle one.
+- The restore dialog never calls `ensureServices`: restoring is the explicit choice. Restored script runs are Kira-started `running` runs, so `RequiredServices` reads them `running`.
+- Frontend: `apps/kira-space/frontend/src/restore/` (`SessionRestoreHost` claims when the offer is open and a row is ready, polls while open with nothing ready, `SessionRestoreDialog`). It builds rows with `runRestoreRows`, `dockerRestoreRows` and the shared `RestoreDialog` (groups, a Continue option per row). The X is the only way out and restores nothing (P696); there is no success toast.
+- Tests: adeflow `TestSessionRestore*`, dockerflow `TestSessionRestoreDocker`, UI spec `session-restore.spec.ts`, real `claude` `TestAdeRestoreSessionContinue` and `TestAdeRestoreRunResumeOnly`.
+
 ### Task base and rebase runs (P241)
 
 - base_pending_from on ade_task_branches is set when a base change is stored and cleared only after a rebase is verified in git.
@@ -3167,7 +3179,7 @@ Memory module removed in P690 (v0.3.19); full source, eval corpus and site pages
 - Snapshot rules: never written while the engine is unreachable. A stopped container leaves after a 30 s grace. Pending is frozen until Restore clears it or Dismiss. Testcontainers, buildx, kind, kubernetes, swarm and `--rm` containers are never snapshotted.
 - Storage: tables docker_restore_engines and docker_restore_containers (migration 0044). Snapshots not updated for 30 days are pruned at start. internal/docker sees only the RestoreStore interface.
 - Restore is click-only. A Compose project starts as one unit in depends_on order (service_healthy waits up to 60 s). Deleted containers are listed, never recreated. Boot-time restore is out of scope.
-- Channel kira:docker:restore; query key ['docker-restore'] sits outside ['docker']. The banner shows only inside the Docker module.
+- Channel kira:docker:restore; query key ['docker-restore'] sits outside ['docker']. The banner shows only inside the Docker module. In Space the launch restore dialog (P701) also lists the pending containers and restores them through the same call; the banner stays.
 - The restore dialog is the shared presentational `workbench/restore/RestoreDialog.vue` (P441); docker-ui and the Runs module each wrap it with their own data and calls.
 - Flow seams: docker.WithRestoreTiming, docker.WithBootProbe, flowharness.BootGen (simulates a daemon restart). A real dockerd restart runs only with KIRA_FLOW_DOCKER_RESTART=1.
 - UI styling: start uses text-ok and stop text-error module-wide; selected rows use neutral bg-select; left-panel section tabs are the git module's ToggleGroup.
@@ -4247,7 +4259,7 @@ place. `docs/WORKING_AGREEMENT.md` states the process rule; this is the list its
 - **The sandbox is unverified on a real Mac (P287, P510, P511).** Linux checks the generator and flows only. The sandboxed TUI launch (`$SHELL -l -i -c` wrapper, `Input.ReadFiles`, denial watch by pid) has not run under Seatbelt. Delete once
   the Mac checklist in `docs/DEV_ENVIRONMENT.md` passes.
 
-- **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The external `kira-studio` MCP stops with Studio; a step's `kira-studio-session` stops with its session. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume". OpenCode resumes from its own session store.
+- **No detached runner for agent runs and PTYs (P279).** Quit or crash stops every agent and PTY. The restore dialog (P701) offers the stopped agents again at launch, once per boot; a restart before the user chooses leaves them on the board (Resume, Take over). Resume restores the Claude conversation; the turn in flight is lost and its tool effects may be half-applied. The external `kira-studio` MCP stops with Studio; a step's `kira-studio-session` stops with its session. Resume needs the saved transcript under `~/.claude`; without it the run fails with "could not resume". OpenCode resumes from its own session store.
 
 - **Quit discards staged grid edits and dirty edit buffers (P267).** Tab close and dialogs guard unsaved edits; app quit does not. Accepted by the user (P266 decision).
 - **Backend, git-core and flow engine text is English-only (P265).** Accepted by the user. Go errors outside the catalog, `packages/git-core` strings and `@vue-flow`'s hardcoded `vue-flow__*` ARIA hints stay English; `copyCoverage` skips the vue-flow subtree.
