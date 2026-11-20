@@ -8,7 +8,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P700 | File interactions: one shared file service | Planned |
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Planned |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
-| P703 | Edit prompts only when an edit touches another agent's notes | Planned |
+| P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Planned |
 | P705 | Mobile app: show the status info it is missing | Planned |
 | P706 | Pull request icon: one glyph for every PR status | Planned |
@@ -77,6 +77,15 @@ on the P695 rules (latest edit by any author needs no approval; the watcher defe
 to the disk banner): the plan reconciles the three rule sets into one table (author, age, kind, who
 edited) with a flow test per row. Update the submit reason prompt and the README line if the rule
 shifts, and the approvals copy.
+
+Remove the `submit` tool: the watcher already sees every task-file change, so it raises the approval
+itself when an edit touches another agent's notes, with nothing for the agent to call. Drop the tool,
+its registry prompts and reason argument, the README and prompt lines that mention it (including the
+P694 files prompt's "Call submit" wording), the proof and link file header text, the `fileErrors`
+guidance that points at it, and the flow, UI and real `claude` tests that call it. The step finish flush
+stays. The plan decides where the approval row gets its explanation (a short `reason:` line in the file,
+or none, since the diff shows the change) and states how a watcher pass without a live agent (an outside
+edit by the user) never raises an approval.
 
 ## P704
 
