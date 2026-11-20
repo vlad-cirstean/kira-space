@@ -17,7 +17,7 @@ export interface PrStatus {
 
 type PrState = 'open' | 'draft' | 'merged' | 'closed';
 
-export const PR_STATE_GLYPH: Record<PrState, { icon: string; tone: Tone; label: MessageKey }> = {
+const PR_STATE_GLYPH: Record<PrState, { icon: string; tone: Tone; label: MessageKey }> = {
   open: { icon: 'git-pull-request', tone: 'blue', label: 'common.action.open.label' },
   draft: { icon: 'git-pull-request-draft', tone: 'grey', label: 'common.draft.status' },
   merged: { icon: 'git-merge', tone: 'purple', label: 'common.merged.status' },
@@ -92,7 +92,7 @@ export const CHECK_GLYPH: Record<
 };
 
 /** The host's raw check state (any case); an unknown one is `null`. */
-export function checkKey(raw: string | undefined): CheckKey | null {
+function checkKey(raw: string | undefined): CheckKey | null {
   const key = (raw ?? '').toLowerCase();
   return key in CHECK_GLYPH ? (key as CheckKey) : null;
 }
@@ -149,12 +149,11 @@ const REVIEW_DECISION: Record<string, ReviewKey> = {
 };
 
 /** The host's review rollup; `''` and unknown are `null`. */
-export const reviewKey = (raw: string | undefined): ReviewKey | null =>
-  REVIEW_DECISION[raw ?? ''] ?? null;
+const reviewKey = (raw: string | undefined): ReviewKey | null => REVIEW_DECISION[raw ?? ''] ?? null;
 
-export type MergeableKey = 'mergeable' | 'conflicting';
+type MergeableKey = 'mergeable' | 'conflicting';
 
-export const MERGEABLE_GLYPH: Record<MergeableKey, { tone: StatusTone; label: MessageKey }> = {
+const MERGEABLE_GLYPH: Record<MergeableKey, { tone: StatusTone; label: MessageKey }> = {
   mergeable: { tone: 'ok', label: 'space.common.changeRequest.mergeable.clean.status' },
   conflicting: { tone: 'error', label: 'space.common.changeRequest.mergeable.conflicting.status' },
 };
@@ -164,7 +163,7 @@ const isMergeable = (raw: string | undefined): raw is MergeableKey =>
 
 const AUTO_MERGE_LABEL: MessageKey = 'space.common.changeRequest.autoMerge.on.status';
 
-export type PrPart = 'checks' | 'review' | 'mergeable' | 'autoMerge';
+type PrPart = 'checks' | 'review' | 'mergeable' | 'autoMerge';
 
 export interface PrGlyphModel {
   icon: string;

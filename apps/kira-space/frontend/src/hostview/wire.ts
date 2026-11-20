@@ -50,7 +50,7 @@ interface HostStatus {
 }
 
 export type ReviewerState = 'approved' | 'changesRequested' | 'rejected' | 'commented' | 'pending';
-export type CheckState = 'success' | 'failure' | 'error' | 'pending' | 'skipped' | 'neutral';
+type CheckState = 'success' | 'failure' | 'error' | 'pending' | 'skipped' | 'neutral';
 type ThreadKind = 'comment' | 'review' | 'code';
 
 interface Person {

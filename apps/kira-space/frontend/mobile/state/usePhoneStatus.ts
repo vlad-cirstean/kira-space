@@ -10,8 +10,8 @@ import { getPhoneComputer, getPhoneRuns } from '../api/status';
 // push-fed; Docker has no push (its events are per desktop window), so it polls.
 
 export const phoneKey = ['phone'] as const;
-export const phoneRunsKey = [...phoneKey, 'runs'] as const;
-export const phoneComputerKey = [...phoneKey, 'computer'] as const;
+const phoneRunsKey = [...phoneKey, 'runs'] as const;
+const phoneComputerKey = [...phoneKey, 'computer'] as const;
 
 const RUN_LIMIT = 30;
 
