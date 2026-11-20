@@ -8795,12 +8795,6 @@
           "heldByMain": {
             "label": "Held by main checkout"
           },
-          "new": {
-            "label": "New · from {base}"
-          },
-          "newMain": {
-            "label": "New · from main branch"
-          },
           "rename": {
             "label": "Rename from {from}"
           },

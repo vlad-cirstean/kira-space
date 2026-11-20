@@ -2,6 +2,6 @@ Task: Add login form
 - Repo: kira-space · Branch: feat/login · Worktree: /wt/kira-space/feat-login
 Step 1/1: Implement
 
-Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
+Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.
 
 When this step is done, call state with action step.finish and args status "done". If it failed, use status "failed", what failed and the reason. If you need a decision from me, use status "needs_input" and your question. Write a proof for any checkable result before finishing.

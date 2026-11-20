@@ -6,7 +6,7 @@ const branchRequestItemSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   codeRepoId: z.string(),
   repo: z.string(),
-  kind: z.enum(['branch', 'worktree', 'rename', 'switch', 'checkout', 'adopt']),
+  kind: z.enum(['rename', 'switch', 'adopt']),
   branch: z.string(),
   base: z.string(),
   from: z.string(),

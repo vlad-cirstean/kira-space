@@ -558,11 +558,12 @@ type BranchPeer struct {
 	Attached bool   `json:"attached"`
 }
 
-// BranchRequestItem is one branch an agent asks work for. ID is the item's key in the request. Kind 'branch':
-// a new branch named Branch from Base (” = the repo's main branch). Kind 'worktree': a worktree for the named,
-// not yet checked out Branch. Kind 'checkout': check out the existing Branch, held nowhere. Kind 'adopt':
-// check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
-// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on From.
+// BranchRequestItem is one branch an agent asks the user to approve. ID is the item's key in the request.
+// Kind 'adopt': check out the existing Branch after detaching it in Holder; Dirty counts the uncommitted
+// changes that stay there. Kind 'rename': rename From to Branch; Upstream names the same-named remote branch
+// (such as origin/feat/x) the user may rename too, ” when there is none; Stacked lists the branches built on
+// From. Kind 'switch': change the task's branch. New branches, worktrees and free existing branches are
+// created without asking and never become items.
 type BranchRequestItem struct {
 	ID         string   `json:"id"`
 	CodeRepoID string   `json:"codeRepoId"`
