@@ -15,6 +15,7 @@ import { computed } from 'vue';
 import { useAuthStore } from '../state/auth';
 import type { PlanCard } from '../state/useAgentsModel';
 import { useTaskActions } from '../state/useTaskActions';
+import PlanTaskPrs from './PlanTaskPrs.vue';
 
 // One planned task: status, current step and progress, expanding to every step.
 const props = defineProps<{ card: PlanCard; open: boolean }>();
@@ -50,6 +51,7 @@ const stopFirst = computed(() => props.card.moves.live);
           }}</span>
           <AdeChip v-for="repo in card.repos" :key="repo" :label="repo" tone="grey" />
         </span>
+        <PlanTaskPrs :branch-ids="card.task.branchIds" />
         <span v-if="card.progress.showBar" class="flex items-center gap-2">
           <Progress :model-value="card.progress.percent" />
           <span class="text-kira-sm text-fg">{{ formatPercent(card.progress.percent) }}</span>

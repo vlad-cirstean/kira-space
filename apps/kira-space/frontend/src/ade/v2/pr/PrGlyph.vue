@@ -110,7 +110,7 @@ const attrs = computed(() => ({
       <PrStatusLines :lines="model.lines" as="div" />
     </TooltipContent>
   </Tooltip>
-  <div v-else class="flex min-w-0 items-start gap-2 text-kira-sm" v-bind="attrs">
+  <span v-else class="flex min-w-0 items-start gap-2 text-kira-sm" v-bind="attrs">
     <span
       class="relative inline-flex size-4.5 shrink-0 items-center justify-center"
       :class="toneClass"
@@ -128,5 +128,5 @@ const attrs = computed(() => ({
       <span data-part="state">{{ stateLine }}</span>
       <PrStatusLines :lines="model.lines" tinted :line-prefix="linePrefix" />
     </span>
-  </div>
+  </span>
 </template>
