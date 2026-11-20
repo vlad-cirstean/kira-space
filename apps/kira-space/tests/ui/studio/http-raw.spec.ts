@@ -239,7 +239,6 @@ test('Http raw — the editor', async ({ relaunch }) => {
   await expect(modeChanged).toContainText('urlencoded');
   await expect(modeChanged).toContainText('raw');
   await page.click('[data-testid="edit-raw-dialog-close"]');
-  await page.click('[data-testid="confirm-dialog-confirm"]');
   await expect(dialog).toHaveCount(0);
 
   // D10: disabled with its tooltip for a formdata body.

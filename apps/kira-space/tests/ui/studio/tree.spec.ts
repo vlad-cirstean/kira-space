@@ -757,7 +757,7 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
   await expect(filterObjectRow(APP_PATH)).toHaveCount(0);
   await page.fill('[data-testid="filter-name-input"]', '.*');
   await expect(page.locator('[data-testid="filter-object-row"]')).toHaveCount(0);
-  await cancelFilters(true);
+  await cancelFilters(false);
 
   // --- unticking one schema hides exactly it, and costs no *engine* op (a FiltersService.Replace
   // call is not one — confirmed by reading apps/kira-space/internal/storage/model/ops.go directly, and

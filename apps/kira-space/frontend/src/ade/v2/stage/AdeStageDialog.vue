@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
       data-testid="ade-stage-dialog"
       @keydown="onMoveKey"
     >
-      <DialogHeader close-testid="ade-stage-close">
+      <DialogHeader close-testid="ade-stage-dialog-close">
         <DialogTitle>{{
           t(pass ? 'space.ade.stageDialog.passTitle.title' : 'space.ade.stageDialog.title.title', {
             task: store.card?.title ?? '',
