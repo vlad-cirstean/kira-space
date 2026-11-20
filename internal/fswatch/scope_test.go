@@ -34,7 +34,9 @@ func newScopeFixture(t *testing.T, o Options, dirs ...string) *scopeFixture {
 	return f
 }
 
-func (f *scopeFixture) path(rel string) string { return filepath.Join(f.root, rel) }
+// path spells rel as the OS reports it: symlink-resolved, which differs from the caller's t.TempDir on
+// macOS (/var is /private/var). Backend events carry this spelling.
+func (f *scopeFixture) path(rel string) string { return filepath.Join(f.s.roots[0].disk, rel) }
 
 func (f *scopeFixture) watchedRels() []string {
 	var out []string
