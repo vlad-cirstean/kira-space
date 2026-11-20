@@ -38,6 +38,7 @@
 # Guard U204: docs/HISTORY.md (v0.3.18).
 # Guards U205-U207: docs/HISTORY.md (v0.3.18).
 # Guards U210-U211: docs/HISTORY.md (v0.3.19).
+# Guard U212: docs/HISTORY.md (v0.3.20).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -388,6 +389,7 @@ U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHas
 U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
 U210@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
 U211@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
+U212@@v@@GitCredentialDialog.vue|UpdateDialog.vue@@dismiss-only button in a dialog footer (the header X closes; keep buttons with their own outcome, P696)@@<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?(?:<DialogClose\b|t\('common\.action\.(?:cancel|close)\.label'\))
 GUARDS
 
 # hits: "U<n> path"
