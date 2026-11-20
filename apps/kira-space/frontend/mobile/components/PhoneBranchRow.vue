@@ -10,7 +10,7 @@ import type { PhoneBranch } from '../state/useAgentsModel';
 
 // One branch of an expanded card: tag glyph and label, repo, ahead and behind, uncommitted count,
 // and the change request through the shared PrGlyph.
-const props = defineProps<{ branch: PhoneBranch }>();
+defineProps<{ branch: PhoneBranch }>();
 </script>
 
 <template>
