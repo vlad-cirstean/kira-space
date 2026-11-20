@@ -104,9 +104,12 @@ func (b *TaskBoard) branchServices(ctx context.Context, tc *taskCtx, taskID stri
 		seen[scriptID+"/"+sb.ID] = true
 		per := item
 		per.BranchID = sb.ID
+		// One unreadable branch is that row's problem, not the whole task's.
 		at, err := cache.worktree(ctx, sb)
 		if err != nil {
-			return nil, err
+			per.State, per.Problem = adewire.ServiceInvalid, err.Error()
+			out = append(out, per)
+			continue
 		}
 		if at.attached == "" {
 			per.State = adewire.ServiceNoWorktree
@@ -114,7 +117,9 @@ func (b *TaskBoard) branchServices(ctx context.Context, tc *taskCtx, taskID stri
 			var run *scriptruns.Run
 			if b.deps.ScriptRuns != nil {
 				if run, err = b.deps.ScriptRuns.Running(scriptID, taskID, sb.ID); err != nil {
-					return nil, err
+					per.State, per.Problem = adewire.ServiceInvalid, err.Error()
+					out = append(out, per)
+					continue
 				}
 			}
 			per.State, per.RunID = serviceState(run)

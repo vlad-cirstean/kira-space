@@ -131,3 +131,17 @@ test('a branch Start asks too', async ({ relaunch }) => {
   await expect(page.locator(t('ade-dialog'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskStartBranch)).toHaveLength(0);
 });
+
+test('a failed read of the services does not block Run', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    ...planBoard(),
+    scripts,
+    {
+      channel: IPC.adeTaskRequiredServices,
+      error: { code: 'E_CONFLICT', message: 'repo folder moved' },
+    },
+  ]);
+  await page.locator(cellAction('T_alerts', 'run')).click();
+  await expect(page.locator(t('ade-run-dialog'))).toBeVisible();
+  await expect(gate(page)).toHaveCount(0);
+});
