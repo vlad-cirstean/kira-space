@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
-// P643 task files. Contract ade-details-files: tests/ui/ade-v2-details-files.spec.ts reads these and
+// P643 task files, P703 edit approvals by author. Contract ade-details-files: tests/ui/ade-v2-details-files.spec.ts reads these and
 // runs the same scenario through the UI.
 
 const dfScenario = "ade-details-files"
@@ -77,6 +78,21 @@ func dfDetailsItem(t *testing.T, app *flowharness.App, taskID string) approvals.
 	return approvals.Item{}
 }
 
+// dfNoItem reports that no details.edit approval is open for the task.
+func dfNoItem(t *testing.T, app *flowharness.App, taskID string) bool {
+	t.Helper()
+	all, err := app.W.ApprovalsSvc.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, it := range all {
+		if it.ID == approvals.KindDetailsEdit+":"+taskID {
+			return false
+		}
+	}
+	return true
+}
+
 func dfAnswer(t *testing.T, app *flowharness.App, taskID string, approve bool, approved ...string) {
 	t.Helper()
 	id := approvals.KindDetailsEdit + ":" + taskID
@@ -119,18 +135,15 @@ func dfHandoverBodies(t *testing.T, app *flowharness.App, taskID string) []strin
 	return out
 }
 
-func dfSubmit(t *testing.T, app *flowharness.App, taskID string, args agentmcp.SubmitArgs) string {
+// dfSync is the watcher's pass as agent session-1: the named files, or every task file in the
+// folder when none. It returns the reply the finish flush of the same files would give.
+func dfSync(t *testing.T, app *flowharness.App, taskID string, rels ...string) string {
 	t.Helper()
-	reply, err := app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: taskID, SessionID: "session-1"}, args)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return reply
+	return dfSyncAs(t, app, taskID, "session-1", rels...)
 }
 
-// dfSync is the watcher's pass as the one agent session: the named files, or every task file in the
-// folder when none. It returns the reply an explicit submit of the same files would give.
-func dfSync(t *testing.T, app *flowharness.App, taskID string, rels ...string) string {
+// dfSyncAs is dfSync as the named agent session.
+func dfSyncAs(t *testing.T, app *flowharness.App, taskID, session string, rels ...string) string {
 	t.Helper()
 	if len(rels) == 0 {
 		folder := dfFolder(t, app, taskID)
@@ -147,7 +160,7 @@ func dfSync(t *testing.T, app *flowharness.App, taskID string, rels ...string) s
 			return nil
 		})
 	}
-	reply, err := app.W.AdeBoard.SyncTaskFiles(ctx, agentmcp.SpaceCall{TaskID: taskID, SessionID: "session-1"}, rels)
+	reply, err := app.W.AdeBoard.SyncTaskFiles(ctx, agentmcp.SpaceCall{TaskID: taskID, SessionID: session}, rels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,53 +234,66 @@ func TestDetailsFiles(t *testing.T) {
 	}
 	app.Contract(t, dfScenario, "AdeTaskService.Handovers#draft", adewire.HandoversResult{Handovers: handovers(t, app, task.ID)}, dfMask)
 
-	// 4. A newer note makes the first one older. Editing an older note needs a reason (the watcher's pass
-	// has none, so it is deferred to the disk banner); with one it waits for the user.
+	// 4. A user's note is nobody's but the user's: an agent edit of it applies at once, newer note or not.
 	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Newer note."}); err != nil {
 		t.Fatal(err)
 	}
 	const changed = "Check the error states and the empty form."
 	dfWrite(t, folder, noteRel, changed)
 	reply = dfSync(t, app, task.ID, noteRel)
-	if !strings.HasPrefix(reply, "accepted 0, pending user 0, invalid 0\n") || !strings.Contains(reply, "deferred") {
-		t.Fatalf("note sync without reason = %q, want it deferred", reply)
+	if !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0\n") {
+		t.Fatalf("user note edit reply = %q, want it applied", reply)
 	}
-	if got := dfNote(t, app, task.ID); got != first {
-		t.Fatalf("note after the deferred pass = %q, want the held text", got)
+	if got := dfNote(t, app, task.ID); got != changed {
+		t.Fatalf("note after the agent's edit = %q, want the agent's text", got)
 	}
-	if changes := dfDisk(t, app, task.ID); len(changes) != 1 || changes[0].Path != noteRel {
-		t.Fatalf("disk changes = %+v, want the deferred note", changes)
+	if !dfNoItem(t, app, task.ID) {
+		t.Fatal("an approval is open for an edit of the user's note")
 	}
-	reply = dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Paths: []string{noteRel}, Reason: "the empty form case is missing"})
-	if !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0\n") {
-		t.Fatalf("note submit with reason = %q", reply)
+
+	// 5. Another agent's note is its own: session-2 writes one, a newer note makes it older, and session-1
+	// (session-3) editing it waits for the user, with the cause and the diff.
+	const agentRel, agentBody = "notes/20261101T100000-s2.md", "Agent note."
+	dfWrite(t, folder, agentRel, agentBody)
+	if reply = dfSyncAs(t, app, task.ID, "session-2", agentRel); !strings.HasPrefix(reply, "accepted 1, pending user 0, invalid 0") {
+		t.Fatalf("session-2 note reply = %q", reply)
+	}
+	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Last note."}); err != nil {
+		t.Fatal(err)
+	}
+	const agentEdit = "Agent note, edited."
+	dfWrite(t, folder, agentRel, agentEdit)
+	// session-3 never synced, so no collision: the cause is the author.
+	reply = dfSyncAs(t, app, task.ID, "session-3", agentRel)
+	if !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0\n") || !strings.Contains(reply, "another agent's note") {
+		t.Fatalf("other agent's note edit reply = %q", reply)
 	}
 	item := dfDetailsItem(t, app, task.ID)
 	app.Contract(t, dfScenario, "ApprovalsService.List#detailsEdit", []approvals.Item{item}, dfMask)
-	if got := dfNote(t, app, task.ID); got != first {
-		t.Fatalf("note before the answer = %q, want the held text", got)
+	if !slices.Contains(dfHandoverBodies(t, app, task.ID), "note: "+agentBody) {
+		t.Fatalf("chain before the answer = %q, want the held text", dfHandoverBodies(t, app, task.ID))
 	}
-	app.Contract(t, dfScenario, "args:ApprovalsService.Answer#approve", map[string]any{"approved": []string{noteRel}})
-	dfAnswer(t, app, task.ID, true, noteRel)
-	if got := dfNote(t, app, task.ID); got != changed {
-		t.Fatalf("note after approve = %q, want the agent's text", got)
+	app.Contract(t, dfScenario, "args:ApprovalsService.Answer#approve", map[string]any{"approved": []string{agentRel}})
+	dfAnswer(t, app, task.ID, true, agentRel)
+	if !slices.Contains(dfHandoverBodies(t, app, task.ID), "note: "+agentEdit) {
+		t.Fatalf("chain after approve = %q, want the agent's text", dfHandoverBodies(t, app, task.ID))
 	}
-	if got := dfRead(t, folder, noteRel); got != changed {
+	if got := dfRead(t, folder, agentRel); got != agentEdit {
 		t.Fatalf("note file after approve = %q", got)
 	}
 
-	// 5. A denied edit restores the file.
-	dfWrite(t, folder, noteRel, "Drop the second check.")
-	dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{Paths: []string{noteRel}, Reason: "the second check is a duplicate"})
+	// 6. A denied edit restores the file.
+	dfWrite(t, folder, agentRel, "Drop the second check.")
+	dfSyncAs(t, app, task.ID, "session-3", agentRel)
 	dfAnswer(t, app, task.ID, false)
-	if got := dfRead(t, folder, noteRel); got != changed {
-		t.Fatalf("note file after deny = %q, want it restored to %q", got, changed)
+	if got := dfRead(t, folder, agentRel); got != agentEdit {
+		t.Fatalf("note file after deny = %q, want it restored to %q", got, agentEdit)
 	}
-	if got := dfNote(t, app, task.ID); got != changed {
-		t.Fatalf("note after deny = %q", got)
+	if !slices.Contains(dfHandoverBodies(t, app, task.ID), "note: "+agentEdit) {
+		t.Fatalf("chain after deny = %q", dfHandoverBodies(t, app, task.ID))
 	}
 
-	// 6. A hand edit outside any submit shows as a disk change; Accept keeps it, Discard restores the held copy.
+	// 7. A hand edit outside any pass shows as a disk change; Accept keeps it, Discard restores the held copy.
 	dfWrite(t, folder, noteRel, "Edited by hand.")
 	changes := dfDisk(t, app, task.ID)
 	if len(changes) != 1 || changes[0].Path != noteRel || changes[0].State != "edited" || changes[0].Pending || changes[0].Diff == "" {

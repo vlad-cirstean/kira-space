@@ -25,7 +25,7 @@ func TestDetailsList(t *testing.T) {
 	hold := filepath.Join(dir, "hold")
 	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
 	claude(app, map[string][]fakeagent.Action{"*": {
-		{WaitBefore: hold + ".go", MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold},
+		{WaitBefore: hold + ".go", MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: hold},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	rec := importRepo(t, app, repo.Dir)

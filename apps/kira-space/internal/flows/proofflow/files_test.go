@@ -90,7 +90,7 @@ func TestProofFiles(t *testing.T) {
 	f.put(t, "proofs/checkout-fix/proof.md", []byte(filesProofMD))
 	f.put(t, "proofs/checkout-fix/shot.jpg", jpg)
 	f.put(t, "proofs/checkout-fix/audit.json", []byte(audit))
-	reply := f.submit(t, "")
+	reply := f.submit(t)
 	mustHave(t, "first submit reply", reply, "accepted 1", `new proof "Checkout fix"`, "orders (table)", "shot (image)", "audit (table)", "3 steps")
 	list := f.proofs(t)
 	if len(list) != 1 || list[0].Slug != "checkout-fix" || len(list[0].Steps) != 3 || list[0].Steps[1].ID != "shot" {
@@ -124,7 +124,7 @@ func TestProofFiles(t *testing.T) {
 	}
 
 	// 2. Nothing changed: unchanged.
-	mustHave(t, "second submit", f.submit(t, ""), "accepted 0", "invalid 0")
+	mustHave(t, "second submit", f.submit(t), "accepted 0", "invalid 0")
 
 	// 3. README and prompt name the proof; the README holds the example.
 	readme := string(f.read(t, "README.md"))
@@ -134,60 +134,59 @@ func TestProofFiles(t *testing.T) {
 	big := "---\nname: Big\nsummary: x\nsteps:\n  - id: rows\n    description: Many rows\n    view: table\n    inline:\n      columns:\n        - {name: a, type: text}\n      rows:\n" +
 		strings.Repeat("        - [\""+strings.Repeat("x", 100)+"\"]\n", 700) + "---\n"
 	f.put(t, "proofs/big/proof.md", []byte(big))
-	msg := f.submit(t, "")
+	msg := f.submit(t)
 	mustHave(t, "over-cap reply", msg, "proofs/big/proof.md", "steps[rows].inline is 71 KiB", "Move it to <this folder>/rows.json")
 	f.app.Contract(t, filesScenario, "reply#overcap", strings.ReplaceAll(msg, "\n", " | "))
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "big"))
-	f.submit(t, "")
+	f.submit(t)
 
 	// 5. proof.md names a missing image: the whole unit is invalid and no file is touched; the image
 	// written later plus submit accepts the proof as new.
 	md := "---\nname: Login page\nsummary: x\nsteps:\n  - id: shot\n    description: The login page\n    view: image\n    data: shot.png\n---\n"
 	f.put(t, "proofs/login-page/proof.md", []byte(md))
-	msg = f.submit(t, "")
+	msg = f.submit(t)
 	mustHave(t, "missing image reply", msg, "proofs/login-page/proof.md:8", "shot.png not found in this folder")
 	if string(f.read(t, "proofs/login-page/proof.md")) != md || len(f.proofs(t)) != 1 {
 		t.Fatalf("an invalid unit changed files or rows: %+v", f.proofs(t))
 	}
 	f.put(t, "proofs/login-page/shot.png", pngBytes(t))
-	mustHave(t, "image written later", f.submit(t, ""), `new proof "Login page"`)
+	mustHave(t, "image written later", f.submit(t), `new proof "Login page"`)
 
 	// 6. A side file nothing names is invalid.
 	f.put(t, "proofs/login-page/extra.jpg", jpg)
-	mustHave(t, "unreferenced file", f.submit(t, ""), "proofs/login-page/extra.jpg", "not used by proof.md")
+	mustHave(t, "unreferenced file", f.submit(t), "proofs/login-page/extra.jpg", "not used by proof.md")
 	_ = os.Remove(filepath.Join(f.folder, "proofs/login-page/extra.jpg"))
-	f.submit(t, "")
+	f.submit(t)
 
 	// 7. A folder name that breaks the slug rule says the slug to use.
 	f.put(t, "proofs/Bad Name/proof.md", []byte(md))
-	mustHave(t, "bad folder", f.submit(t, ""), "proofs/Bad Name/", "proofs/bad-name/")
+	mustHave(t, "bad folder", f.submit(t), "proofs/Bad Name/", "proofs/bad-name/")
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "Bad Name"))
-	f.submit(t, "")
+	f.submit(t)
 
 	// 8. A second folder with a taken name names the other folder.
 	f.put(t, "proofs/dup/proof.md", []byte(strings.Replace(md, "Login page", "login PAGE", 1)))
 	f.put(t, "proofs/dup/shot.png", pngBytes(t))
-	mustHave(t, "duplicate name", f.submit(t, ""), "proofs/dup/proof.md", "proofs/login-page/", "Pick another name")
+	mustHave(t, "duplicate name", f.submit(t), "proofs/dup/proof.md", "proofs/login-page/", "Pick another name")
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "dup"))
-	f.submit(t, "")
+	f.submit(t)
 
 	// 9. A YAML error answers file:line and the fix.
 	f.put(t, "proofs/tabs/proof.md", []byte("---\nname: Tabs\nsummary: x\nsteps:\n\t- id: a\n---\n"))
-	msg = f.submit(t, "")
+	msg = f.submit(t)
 	mustHave(t, "yaml error", msg, "proofs/tabs/proof.md:5", "tab")
 	f.app.Contract(t, filesScenario, "reply#yaml", strings.ReplaceAll(msg, "\n", " | "))
 	_ = os.RemoveAll(filepath.Join(f.folder, "proofs", "tabs"))
-	f.submit(t, "")
+	f.submit(t)
 
-	// 10. An edit by step id: the watcher's pass without a reason is deferred, a reason waits for review.
+	// 10. An edit by step id from another agent (session-2) of an older proof waits for review.
 	edited := strings.Replace(filesProofMD, "select id, status from orders", "select id, status from orders where id = 3", 1)
 	f.put(t, "proofs/checkout-fix/proof.md", []byte(edited))
-	mustHave(t, "edit without reason", f.submit(t, ""), "proofs/checkout-fix/proof.md", "deferred")
 	if err := f.app.W.Proof.SetViewState(bridge.ProofSetViewStateArgs{SessionID: id, Rev: 1, Ordinal: 3}); err != nil {
 		t.Fatal(err)
 	}
-	reply = f.submit(t, "narrow the query")
-	mustHave(t, "edit with reason", reply, "pending user 1", "orders")
+	reply = f.submitAs(t, "session-2")
+	mustHave(t, "edit by another agent", reply, "pending user 1", "orders")
 	for _, p := range f.proofs(t) {
 		if p.ProofID == id && !p.Pending {
 			t.Fatalf("proof = %+v, want the edit pending", p)
@@ -199,8 +198,8 @@ func TestProofFiles(t *testing.T) {
 	}
 	f.app.Contract(t, filesScenario, "reply#pending", reply)
 
-	// 11. A resubmit of the pending edit replaces its approval item.
-	f.submit(t, "narrow the query")
+	// 11. A resave of the pending edit replaces its approval item.
+	f.submitAs(t, "session-2")
 	if again := reviewItems(t, f.app); len(again) != 1 {
 		t.Fatalf("review items after resubmit = %+v, want one", again)
 	}
@@ -215,7 +214,7 @@ func TestProofFiles(t *testing.T) {
 
 	// 13. Approve keeps the view state by step id.
 	f.put(t, "proofs/checkout-fix/proof.md", []byte(edited))
-	f.submit(t, "narrow the query")
+	f.submitAs(t, "session-2")
 	if res, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{"proof.review:" + id}, Approve: true}); err != nil || res[0].Error != "" {
 		t.Fatalf("approve = %+v, %v", res, err)
 	}

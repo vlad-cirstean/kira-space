@@ -1,0 +1,145 @@
+{
+  "AdeTaskService.DetailsDiskChanges#outside": [
+    {
+      "diff": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Newer note, tuned.\n+Edited in an outside editor.\n",
+      "kind": "note",
+      "path": "notes/<time>-<id:1>.md",
+      "pending": false,
+      "problem": "",
+      "state": "edited"
+    }
+  ],
+  "AdeTaskService.Handovers#ownApplied": {
+    "handovers": [
+      {
+        "body": "Mine, edited.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Newer note, tuned.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Agent note.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "one",
+        "fromStepName": "one",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      }
+    ]
+  },
+  "ApprovalsService.List#otherAgentLink": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "details.edit",
+      "operation": {
+        "class": "review",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "manual",
+        "step": "",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "cause": "link",
+            "kind": "links",
+            "path": "links.yaml",
+            "text": "edit Design notes"
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "review",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#otherAgentNote": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "details.edit",
+      "operation": {
+        "class": "review",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "",
+        "cwd": "",
+        "source": "manual",
+        "step": "",
+        "task": "Fix login"
+      },
+      "payload": {
+        "items": [
+          {
+            "cause": "note",
+            "kind": "note",
+            "path": "notes/<time>-s2.md",
+            "text": "--- a/notes/<time>-s2.md\n+++ b/notes/<time>-s2.md\n@@ -1 +1 @@\n-Agent note.\n+Agent note, edited.\n"
+          }
+        ],
+        "taskId": "<masked>",
+        "taskTitle": "Fix login"
+      },
+      "reason": "review",
+      "target": {
+        "color": "",
+        "kind": "task",
+        "location": "",
+        "name": "Fix login",
+        "readOnly": false
+      }
+    }
+  ]
+}

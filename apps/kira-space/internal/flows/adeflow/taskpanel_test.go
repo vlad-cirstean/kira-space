@@ -47,8 +47,8 @@ func TestTaskPanelOrigins(t *testing.T) {
 	// Call 1 is run `one`; 2 the first work session; 3 its resume.
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{Name: "done"},
-		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("hold1")},
-		{WaitBefore: flag("go2"), MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: flag("hold2")},
+		{WaitBefore: flag("go1"), MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: flag("hold1")},
+		{WaitBefore: flag("go2"), MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: flag("hold2")},
 	}})
 	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	gitOut(t, repo.Dir, "remote", "set-url", "origin", "https://forge.test/acme/api.git")

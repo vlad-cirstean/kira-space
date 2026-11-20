@@ -119,7 +119,8 @@ func (a *Action) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MCPCall is one tool call on a server named in --mcp-config.
+// MCPCall is one tool call on a server named in --mcp-config. An empty Tool only writes Files: an
+// agent saving task files with no call.
 type MCPCall struct {
 	Server string         `json:"server"`
 	Tool   string         `json:"tool"`
@@ -374,6 +375,9 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 	play := func(i int) {
 		c := action.MCP[i]
 		writeTaskFiles(c.Files)
+		if c.Tool == "" {
+			return
+		}
 		outs[i].res, outs[i].err = callTool(lastPrompt, cfg, args, c.Server, c.Tool, c.Args)
 	}
 	if action.Parallel {
@@ -387,6 +391,9 @@ func runMCPCalls(action Action, dir string, args []string) (code int, done bool)
 	for i, c := range action.MCP {
 		if !action.Parallel {
 			play(i)
+		}
+		if c.Tool == "" {
+			continue
 		}
 		o := outs[i]
 		if o.err != nil && o.res != nil && c.Tolerate {

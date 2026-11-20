@@ -89,7 +89,7 @@ func TestProofEditFlow(t *testing.T) {
 	}
 	r := keyValueStep("replaced")
 	r["replacesOrdinal"] = 2
-	if c := f.edit(t, "Edit me", "tighten", map[string]any{"keepOrdinal": 1}, r, keyValueStep("brand new")); !c.Pending {
+	if c := f.edit(t, "Edit me", map[string]any{"keepOrdinal": 1}, r, keyValueStep("brand new")); !c.Pending {
 		t.Fatalf("edit reply = %q, want pending", c.Reply)
 	}
 
@@ -140,7 +140,7 @@ func TestProofEditFlow(t *testing.T) {
 	}
 
 	// A rejected edit leaves the current revision alone.
-	f.edit(t, "Edit me", "again", map[string]any{"keepOrdinal": 1})
+	f.edit(t, "Edit me", map[string]any{"keepOrdinal": 1})
 	if len(reviewItems(t, f.app)) != 1 {
 		t.Fatal("second edit not queued for review")
 	}
@@ -152,14 +152,14 @@ func TestProofEditFlow(t *testing.T) {
 	}
 
 	// The bound methods still work on their own.
-	f.edit(t, "Edit me", "direct", map[string]any{"keepOrdinal": 1})
+	f.edit(t, "Edit me", map[string]any{"keepOrdinal": 1})
 	if err := f.app.W.Proof.RejectEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
 		t.Fatal(err)
 	}
 	if left := reviewItems(t, f.app); len(left) != 0 {
 		t.Fatalf("rejected edit still queued: %+v", left)
 	}
-	f.edit(t, "Edit me", "direct accept", map[string]any{"keepOrdinal": 1})
+	f.edit(t, "Edit me", map[string]any{"keepOrdinal": 1})
 	if err := f.app.W.Proof.AcceptEdit(bridge.ProofSessionArgs{SessionID: id}); err != nil {
 		t.Fatal(err)
 	}

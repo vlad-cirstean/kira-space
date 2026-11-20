@@ -156,9 +156,11 @@ func (f *fixture) write(t *testing.T, name string, steps []map[string]any) strin
 	return slug
 }
 
-// submit saves every proof file of the task as the agent and returns the reply: the watcher's pass
-// without a reason, else an explicit submit with it.
-func (f *fixture) submit(t *testing.T, reason string) string {
+// submit saves every proof file of the task as agent session-1 (the watcher's pass) and returns the reply.
+func (f *fixture) submit(t *testing.T) string { return f.submitAs(t, "session-1") }
+
+// submitAs is submit as the named agent session.
+func (f *fixture) submitAs(t *testing.T, session string) string {
 	t.Helper()
 	var rels []string
 	_ = filepath.WalkDir(f.folder, func(p string, d fs.DirEntry, err error) error {
@@ -167,15 +169,7 @@ func (f *fixture) submit(t *testing.T, reason string) string {
 		}
 		return nil
 	})
-	call := agentmcp.SpaceCall{TaskID: f.taskID, SessionID: "session-1"}
-	if reason == "" {
-		reply, err := f.app.W.AdeBoard.SyncTaskFiles(ctx, call, rels)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return reply
-	}
-	reply, err := f.app.W.AdeBoard.Submit(ctx, call, agentmcp.SubmitArgs{Paths: rels, Reason: reason})
+	reply, err := f.app.W.AdeBoard.SyncTaskFiles(ctx, agentmcp.SpaceCall{TaskID: f.taskID, SessionID: session}, rels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +180,7 @@ func (f *fixture) submit(t *testing.T, reason string) string {
 func (f *fixture) save(t *testing.T, name string, steps ...map[string]any) saved {
 	t.Helper()
 	slug := f.write(t, name, steps)
-	reply := f.submit(t, "")
+	reply := f.submit(t)
 	if !strings.Contains(reply, "accepted") || strings.Contains(reply, "invalid 1") {
 		t.Fatalf("submit of %q = %q, want accepted", name, reply)
 	}
@@ -197,7 +191,7 @@ func (f *fixture) save(t *testing.T, name string, steps ...map[string]any) saved
 func (f *fixture) saveFail(t *testing.T, name string, steps ...map[string]any) string {
 	t.Helper()
 	slug := f.write(t, name, steps)
-	reply := f.submit(t, "")
+	reply := f.submit(t)
 	if !strings.Contains(reply, "invalid") || strings.Contains(reply, "invalid 0") {
 		t.Fatalf("submit of %q = %q, want invalid", name, reply)
 	}
@@ -205,20 +199,21 @@ func (f *fixture) saveFail(t *testing.T, name string, steps ...map[string]any) s
 	if err := os.RemoveAll(filepath.Join(f.folder, "proofs", slug)); err != nil {
 		t.Fatal(err)
 	}
-	f.submit(t, "")
+	f.submit(t)
 	delete(f.last, name)
 	return reply
 }
 
-// edit rewrites an accepted proof and submits with a reason; the edit waits for review.
-func (f *fixture) edit(t *testing.T, name, reason string, steps ...map[string]any) saved {
+// edit rewrites an accepted proof and saves it as another agent (session-2); on an older proof the edit
+// waits for review.
+func (f *fixture) edit(t *testing.T, name string, steps ...map[string]any) saved {
 	t.Helper()
 	slug := f.write(t, name, steps)
-	reply := f.submit(t, reason)
+	reply := f.submitAs(t, "session-2")
 	return saved{ID: f.idOf(t, name), Slug: slug, Name: name, Reply: reply, Pending: strings.Contains(reply, "pending user 1")}
 }
 
-// newest saves a later proof, so every earlier one is older and its edits need a reason.
+// newest saves a later proof, so every earlier one is older and another agent's edit of it waits for review.
 func (f *fixture) newest(t *testing.T) {
 	t.Helper()
 	f.save(t, "Newest", keyValueStep("latest"))

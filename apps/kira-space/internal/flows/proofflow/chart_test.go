@@ -102,7 +102,7 @@ func TestProofCharts(t *testing.T) {
 		edited = append(edited, map[string]any{"keepOrdinal": o})
 	}
 	f.newest(t)
-	f.edit(t, "Deploy health", "Recount after replay", edited...)
+	f.edit(t, "Deploy health", edited...)
 	det = session(t, f.app, id)
 	if det.Pending == nil {
 		t.Fatal("no pending revision")

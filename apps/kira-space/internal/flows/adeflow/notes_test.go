@@ -35,7 +35,7 @@ func TestUnifiedNotes(t *testing.T) {
 	app := flowharness.New(t, flowharness.WithTrackerGrace(time.Second))
 	// The Design session runs in the task folder (work), the Build run in the repo (api).
 	claude(app, map[string][]fakeagent.Action{
-		"work": {{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{submitCall(true)}, WaitFile: flag("hold")}},
+		"work": {{WaitBefore: flag("go"), MCP: []fakeagent.MCPCall{sessionCall(true)}, WaitFile: flag("hold")}},
 		"api":  {{Name: "done"}},
 	})
 	t.Cleanup(func() { _ = os.WriteFile(flag("hold"), nil, 0o644) })

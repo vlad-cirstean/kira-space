@@ -84,6 +84,40 @@
   "AdeTaskService.Handovers#final": {
     "handovers": [
       {
+        "body": "Last note.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
+        "body": "Agent note, edited.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": true,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
         "body": "Newer note.",
         "createdAt": 0,
         "dismissed": false,
@@ -158,12 +192,10 @@
           {
             "cause": "note",
             "kind": "note",
-            "path": "notes/<time>-<id:1>.md",
-            "reason": "the empty form case is missing",
-            "text": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-Check the error states.\n+Check the error states and the empty form.\n"
+            "path": "notes/<time>-s2.md",
+            "text": "--- a/notes/<time>-s2.md\n+++ b/notes/<time>-s2.md\n@@ -1 +1 @@\n-Agent note.\n+Agent note, edited.\n"
           }
         ],
-        "reason": "the empty form case is missing",
         "taskId": "<masked>",
         "taskTitle": "Login form"
       },
@@ -193,7 +225,7 @@
   },
   "args:ApprovalsService.Answer#approve": {
     "approved": [
-      "notes/<time>-<id:1>.md"
+      "notes/<time>-s2.md"
     ]
   }
 }

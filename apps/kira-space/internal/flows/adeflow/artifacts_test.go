@@ -31,10 +31,14 @@ const (
 
 var artMask = flowharness.Mask("id", "createdAt", "ref", "taskId", "sessionId")
 
-// reportCall writes links.yaml with the slots the task already holds plus the items, then submits it.
+// reportFiles is links.yaml with the slots the task already holds plus the items.
+func reportFiles(items ...map[string]any) map[string]string {
+	return map[string]string{"links.yaml": linksYAML(artSlots, items...)}
+}
+
+// reportCall saves reportFiles with no tool call: the watcher or the finish flush applies it.
 func reportCall(items ...map[string]any) fakeagent.MCPCall {
-	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true,
-		Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML(artSlots, items...)}}
+	return fakeagent.MCPCall{Files: reportFiles(items...)}
 }
 
 // artSlots keeps the Jira and PR slots TestTaskArtifacts sets, so a rewrite of links.yaml does not clear them.
@@ -124,17 +128,15 @@ func TestTaskArtifacts(t *testing.T) {
 		Number: 7, Title: "Fix login", State: "open", HeadRef: artBranch, HeadOwner: "acme", BaseRef: "main", URL: artPRURL,
 	})
 	f := newRunFixtureWith(t, []fakeagent.Action{
-		{Sh: rvImplement + " && until [ -f " + ready + " ]; do sleep 0.1; done", MCP: []fakeagent.MCPCall{
-			reportCall(design, artItem("deployment", "Preview", artPreview, ""), thePR),
-			reportCall(design, artItem("deployment", "Preview env", artPreview, ""), thePR),
-			reportCall(artItem("link", "bad", "javascript:alert(1)", "")),
-			reportCall(artItem("branch", "b", "", "b")),
-			reportCall(artItem("doc", "nothing", "", "")),
-			reportCall(design, artItem("deployment", "Preview env", artPreview, ""), thePR),
-			finish,
-		}, Name: "nofinish"},
-		{MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold1},
-		{MCP: []fakeagent.MCPCall{submitCall(false)}, WaitFile: hold2},
+		// The first report is saved before the shell: the watcher applies it while the run waits. The
+		// second renames the preview and is applied by the finish flush.
+		{TaskFiles: reportFiles(design, artItem("deployment", "Preview", artPreview, ""), thePR),
+			Sh: rvImplement + " && until [ -f " + ready + " ]; do sleep 0.1; done", MCP: []fakeagent.MCPCall{
+				reportCall(design, artItem("deployment", "Preview env", artPreview, ""), thePR),
+				finish,
+			}, Name: "nofinish"},
+		{MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: hold1},
+		{MCP: []fakeagent.MCPCall{sessionCall(false)}, WaitFile: hold2},
 	}, agentStep("one", "")+manualStep, flowharness.WithGitHost(forge), flowharness.WithoutGh(), flowharness.WithTrackerGrace(time.Second))
 	app := f.app
 	gitOut(t, f.repo.Dir, "remote", "set-url", "origin", "https://forge.test/acme/api.git")
@@ -218,13 +220,17 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 
 	// 3. An invalid links.yaml is reported as invalid and stores nothing.
-	for _, n := range []string{"mcp-submit-3.json", "mcp-submit-4.json", "mcp-submit-5.json"} {
-		if text, _ := mcpReply(t, app, n); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 1\nlinks.yaml: invalid") {
-			t.Fatalf("%s = %q, want links.yaml invalid", n, text)
+	folder := dfFolder(t, app, f.taskID)
+	for _, bad := range []map[string]any{
+		artItem("link", "bad", "javascript:alert(1)", ""), artItem("branch", "b", "", "b"), artItem("doc", "nothing", "", ""),
+	} {
+		dfWrite(t, folder, "links.yaml", linksYAML(artSlots, bad))
+		if text := dfSync(t, app, f.taskID, "links.yaml"); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 1\nlinks.yaml: invalid") {
+			t.Fatalf("sync of %v = %q, want links.yaml invalid", bad, text)
 		}
 	}
 	stored := 0
-	for _, a := range res.Artifacts {
+	for _, a := range artifactsOf(t, app, f.taskID).Artifacts {
 		if a.ID != "" {
 			stored++
 		}
@@ -263,15 +269,16 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatalf("artifacts after add and remove = %+v", after.Artifacts)
 	}
 
-	// 5. A submit from an interactive session leaves the links as they are.
+	// 5. An interactive session that saves nothing leaves the links as they are.
 	app.WindowMgr.OpenWindow(shell.WindowRecord{Key: sessionWindow})
 	launch, err := app.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: f.taskID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, launch)
-	if text, _ := mcpReply(t, app, "mcp-submit-7.json"); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 0") {
-		t.Fatalf("session submit reply = %q, want nothing to apply", text)
+	waitSession(t, app, launch.SessionID, "running")
+	if got := artifactsOf(t, app, f.taskID); len(got.Artifacts) != len(after.Artifacts) {
+		t.Fatalf("artifacts after an idle session = %+v, want %+v", got.Artifacts, after.Artifacts)
 	}
 	if err := os.WriteFile(hold1, nil, 0o644); err != nil {
 		t.Fatal(err)
@@ -287,9 +294,7 @@ func TestTaskArtifacts(t *testing.T) {
 		t.Fatal(err)
 	}
 	openLaunch(t, app, second)
-	if text, _ := mcpReply(t, app, "mcp-submit-8.json"); !strings.HasPrefix(text, "accepted 0, pending user 0, invalid 0") {
-		t.Fatalf("session submit reply = %q, want nothing to apply", text)
-	}
+	waitSession(t, app, second.SessionID, "running")
 	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 2 || gaps[0].Source != "host" || gaps[0].Repo != "api" || gaps[1].Source != "jira" {
 		t.Fatalf("panel gaps = %+v, want a host gap for api and the jira gap", gaps)
 	}
@@ -322,7 +327,7 @@ func TestTaskArtifacts(t *testing.T) {
 	app.Contract(t, "ade-artifacts", "AdeTaskService.Artifacts#archived", arch, artMask)
 }
 
-// J-LINK-011: an agent writes 201 links. The task keeps exactly the cap, the refused submit says why and
+// J-LINK-011: an agent writes 201 links. The task keeps exactly the cap, the refused pass says why and
 // stores nothing, and no earlier link is dropped.
 func TestTaskArtifactsCapAtTwoHundred(t *testing.T) {
 	const capN = agentmcp.MaxArtifactsPerTask
@@ -332,22 +337,20 @@ func TestTaskArtifactsCapAtTwoHundred(t *testing.T) {
 	}
 	// The first 200 are accepted; the 201st is refused; a rename of a known link at the cap is accepted.
 	renamed := append([]map[string]any{artItem("link", "Link 0 again", "https://x.example/0", "")}, items[1:capN]...)
-	calls := []fakeagent.MCPCall{
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", items[:capN]...)}},
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", items...)}},
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", renamed...)}},
+	f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, agentStep("one", ""))
+	folder := dfFolder(t, f.app, f.taskID)
+	pass := func(links []map[string]any) string {
+		dfWrite(t, folder, "links.yaml", linksYAML("", links...))
+		return dfSync(t, f.app, f.taskID, "links.yaml")
 	}
-	f := newRunFixture(t, []fakeagent.Action{{MCP: calls, Name: "done"}}, agentStep("one", ""))
-	f.start(t, "feat/api-cap")
-	waitRun(t, f.app, f.taskID, "one", "done")
 
-	if text := leaseRaw(t, f.app, "mcp-submit-1.json"); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
+	if text := pass(items[:capN]); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
 		t.Fatalf("first 200 links reply = %q, want accepted", text)
 	}
-	if text := leaseRaw(t, f.app, "mcp-submit-2.json"); !strings.Contains(text, "at most 200 links") {
+	if text := pass(items); !strings.Contains(text, "at most 200 links") {
 		t.Fatalf("201st link reply = %q, want the cap message", text)
 	}
-	if text := leaseRaw(t, f.app, "mcp-submit-3.json"); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
+	if text := pass(renamed); !strings.Contains(text, "accepted 1, pending user 0, invalid 0") {
 		t.Fatalf("rename at the cap = %q, want accepted", text)
 	}
 	var stored, hasFirst, hasLast int
