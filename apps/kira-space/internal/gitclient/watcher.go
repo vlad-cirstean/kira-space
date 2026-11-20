@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
+	"github.com/kirathecat/kira-studio/internal/fswatch"
 )
 
 // Signal is one coalesced, debounced repository-change notification (SPEC §6's repo.changed
@@ -58,11 +59,9 @@ func stripLockSuffix(name string) string {
 // only then do the ref-ish basenames (checked in either commonDir or gitDir, so a linked
 // worktree's own MERGE_HEAD/sequencer/rebase-* are covered too) apply.
 //
-// Path is normalized to NFC (not just Cleaned) because it is the one raw, OS-supplied
-// byte string in this whole comparison — commonDir/gitDir arrive already NFC (resolveOrKeep below
-// normalizes them, and Identify normalized summary's originals). Without this, a repository
-// at a non-ASCII path could see every rule below fall through on a form mismatch and the watcher
-// would go permanently, silently dead rather than merely misclassifying one path.
+// Both sides are normalized to NFC (not just Cleaned): without it, a repository at a non-ASCII
+// path could see every rule below fall through on a form mismatch and the watcher would go
+// permanently, silently dead rather than merely misclassifying one path.
 func classify(summary RepoSummary, path string) (Signal, bool) {
 	commonDir := gitpath.CleanNFC(summary.CommonDir)
 	gitDir := gitpath.CleanNFC(summary.GitDir)
@@ -97,34 +96,17 @@ func classify(summary RepoSummary, path string) (Signal, bool) {
 	return "", false
 }
 
-// rawEvent is one filesystem notification, stripped of every backend-specific concept.
-// Path is meaningless when Rescan is set. classify normalizes both sides of every comparison to
-// NFC, which is what makes Path agree with classify's comparison target regardless
-// of the byte form the backend or the filesystem itself hands back. Path is still resolved
-// once in NewRepoWatcher against a watcher-local copy of the summary — necessary because
-// FSEvents itself always reports realpaths — normalization is what covers the rest.
-type rawEvent struct {
-	Path   string
-	Rescan bool
-}
-
-// backend is the OS event source, and the only part of the watcher's job that differs by
-// platform (G9 D6). Events is closed once the backend stops on its own (after Close, or if the
-// underlying source ends); Close stops the backend and is idempotent.
-type backend interface {
-	Events() <-chan rawEvent
+// source is the event feed: *fswatch.Watcher, or a fake in tests.
+type source interface {
+	Events() <-chan fswatch.Event
 	Close() error
 }
-
-// newBackend is implemented once per platform: watcher_fsevents_darwin.go (darwin && cgo) and
-// watcher_fsnotify.go (!darwin || !cgo). commonDir and gitDir are already symlink-resolved (D7).
-// watcherBackend, a const naming which one is active, is declared alongside each implementation.
 
 // RepoWatcher watches one repository's .git directories and reports debounced, coalesced signals.
 // Closing it stops its goroutine and closes Signals.
 type RepoWatcher struct {
-	summary RepoSummary // watcher-local: CommonDir/GitDir are resolved (D7); RepoID is not.
-	src     backend
+	summary RepoSummary
+	src     source
 
 	out  chan Signal
 	stop chan struct{}
@@ -133,43 +115,40 @@ type RepoWatcher struct {
 	closeOnce sync.Once
 }
 
-// resolveOrKeep resolves path to its realpath, falling back to path unchanged if it does not
-// exist yet (a repository mid-init) or cannot be resolved for any other reason. The result is
-// normalized to NFC on both the success and fallback arms — filepath.EvalSymlinks reads link
-// *targets* from the filesystem, so its output is not guaranteed to inherit Identify's already-NFC
-// form the way a value merely copied from summary would.
-func resolveOrKeep(path string) string {
-	resolved, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return gitpath.CleanNFC(path)
-	}
-	return gitpath.CleanNFC(resolved)
-}
-
-// NewRepoWatcher starts watching summary's repository.
-//
-// FSEvents reports realpaths, always: on macOS /tmp and /var are symlinks into /private, so
-// an unresolved commonDir would never prefix-match an event path and the watcher would silently
-// classify nothing, forever. Resolving once here — into a copy local to the watcher — is what
-// makes the backend's watch roots and classify's comparisons agree by construction, on every
-// platform. The resolved copy never escapes this file: summary.RepoID and every wire/cache
-// value elsewhere keep using the original, unresolved paths.
+// NewRepoWatcher starts watching summary's repository: commonDir's top, refs/** and worktrees,
+// plus gitDir's top when it differs. fswatch reports paths in the spelling passed here (it
+// resolves symlinks itself, which FSEvents needs), so classify compares against summary directly.
 func NewRepoWatcher(summary RepoSummary) (*RepoWatcher, error) {
-	resolved := summary
-	resolved.CommonDir = resolveOrKeep(summary.CommonDir)
-	resolved.GitDir = resolveOrKeep(summary.GitDir)
-
-	src, err := newBackend(resolved.CommonDir, resolved.GitDir)
+	commonDir := gitpath.CleanNFC(summary.CommonDir)
+	gitDir := gitpath.CleanNFC(summary.GitDir)
+	roots := []string{summary.CommonDir}
+	if gitDir != commonDir {
+		roots = append(roots, summary.GitDir)
+	}
+	src, err := fswatch.Watch(fswatch.Options{
+		Roots:    roots,
+		MaxDepth: fswatch.Unlimited,
+		SkipDir: func(p string) bool {
+			if gitDir != commonDir && (p == gitDir || strings.HasPrefix(p, gitDir+string(filepath.Separator))) {
+				return true
+			}
+			rel, err := filepath.Rel(commonDir, p)
+			if err != nil {
+				return true
+			}
+			rel = filepath.ToSlash(rel)
+			return !(rel == "worktrees" || rel == "refs" || strings.HasPrefix(rel, "refs/"))
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
-	return newRepoWatcherWith(resolved, src), nil
+	return newRepoWatcherWith(summary, src), nil
 }
 
-// newRepoWatcherWith is the shared constructor: NewRepoWatcher calls it with a real backend over
-// a resolved summary, and watcher_test.go calls it directly with a fake backend to drive the
-// debounce/Rescan rule (which lives here, above the seam, D6) without a filesystem or real git.
-func newRepoWatcherWith(summary RepoSummary, src backend) *RepoWatcher {
+// newRepoWatcherWith is the shared constructor: NewRepoWatcher calls it with a real source, and
+// watcher_test.go calls it with a fake to drive the debounce/Rescan rule without a filesystem.
+func newRepoWatcherWith(summary RepoSummary, src source) *RepoWatcher {
 	w := &RepoWatcher{
 		summary: summary,
 		src:     src,
@@ -183,7 +162,7 @@ func newRepoWatcherWith(summary RepoSummary, src backend) *RepoWatcher {
 		watchedPaths = append(watchedPaths, summary.GitDir)
 	}
 	slog.Info("gitclient: repo watcher started", "scope", "watcher",
-		"backend", watcherBackend, "paths", watchedPaths)
+		"backend", fswatch.Backend(), "paths", watchedPaths)
 
 	go w.run()
 	return w

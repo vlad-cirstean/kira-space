@@ -100,7 +100,7 @@ type Registry struct {
 	entries map[string]*slot
 }
 
-// NewRegistry constructs a Registry over runner, with the real fsnotify-backed watcher and
+// NewRegistry constructs a Registry over runner, with the real file-watch watcher and
 // defaultLingerFor.
 func NewRegistry(runner gitclient.Runner) *Registry {
 	return &Registry{

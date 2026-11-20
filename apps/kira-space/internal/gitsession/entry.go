@@ -365,7 +365,7 @@ func (e *RepoEntry) setHead(h gitclient.HeadState) {
 // invalidateAfterWrite drops exactly what a completed local write can have invalidated, without
 // waiting for the watcher's own debounced signal: the same four drops note() makes on
 // refsChanged. It is a second line of defence for OUR OWN writes, for the case a watch was lost
-// (fsnotify's Add can fail with EMFILE, logs-and-skips; ErrEventOverflow is documented) — the
+// (a watch Add can fail with EMFILE, logs-and-skips; ErrEventOverflow is documented) — the
 // watcher remains the ONLY thing that notices a write made outside this app, and the only thing
 // that fans repo.changed out to subscribers. This emits no event (a second emitter would double
 // every event a client sees) and marks no Walk stale (a Walk is per-connection; reaching from an
