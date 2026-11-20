@@ -1,5 +1,6 @@
 import { t } from '@theme/i18n';
 import { useAgentInfo, useAgentList } from '@workbench/agent/agentInfo';
+import { errorText } from '@workbench/bridge/codedError';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { openRepoTerminalTab } from '../../../state/repoTabs';
@@ -9,6 +10,7 @@ import { usePlanModel } from '../plan/usePlanModel';
 import { useStartAdHoc } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeOpsStore } from '../state/adeOps';
+import { useServicesGate } from '../state/useServicesGate';
 
 /** The task plus menu: a terminal in the Git module, or an agent session with no first message,
  *  in a named branch's worktree. `branchId` narrows it to one branch. */
@@ -23,6 +25,7 @@ export function useTaskLaunch(
   const start = useStartAdHoc();
   const { info } = useAgentInfo();
   const { list } = useAgentList();
+  const { ensureServices } = useServicesGate();
 
   const card = computed(() => model.value?.cardFor(toValue(taskId)) ?? null);
   const targets = computed(() => {
@@ -43,6 +46,13 @@ export function useTaskLaunch(
   /** `provider` "" runs the Agent setting's provider. */
   async function startAgent(target: LaunchTarget, provider = ''): Promise<void> {
     const id = toValue(taskId);
+    try {
+      if (!(await ensureServices(id))) return;
+    } catch (err) {
+      ui.actionError[id] = errorText(err);
+      ui.select(id);
+      return;
+    }
     const ok = await ops.run(
       {
         id: `launch:${target.branchId}`,

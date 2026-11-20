@@ -27,6 +27,7 @@ import {
 } from '../queries';
 import AdeTuiPane from '../sessions/AdeTuiPane.vue';
 import { type SessionLookup, sessionView } from '../sessions/sessionView';
+import { useServicesGate } from '../state/useServicesGate';
 import { isPreparing, useSetupWait } from '../state/useSetupWait';
 import type { ReviewWindowTarget } from '../wire';
 import { useReviewComments } from './useReviewComments';
@@ -56,6 +57,7 @@ const waitingSetup = setupWait.waiting;
 
 const note = ref('');
 const surface = useTaskAction();
+const { ensureServices } = useServicesGate();
 const error = surface.error;
 const missing = ref(false);
 
@@ -133,6 +135,15 @@ async function start(): Promise<void> {
       await agent.refetch();
     }
   });
+}
+
+/** The Start button: asks about the task's required services first; a setup-wait retry does not. */
+async function begin(): Promise<void> {
+  let go = false;
+  await surface.run(async () => {
+    go = await ensureServices(props.target.taskId);
+  });
+  if (go) await start();
 }
 
 async function focus(): Promise<void> {
@@ -227,7 +238,7 @@ async function focus(): Promise<void> {
         :pending="launchM.isPending.value"
         :disabled="waitingSetup"
         data-testid="ade-review-start"
-        @click="start"
+        @click="begin"
         ><CodiconIcon name="play" :size="13" />
         {{
           waitingSetup

@@ -3964,6 +3964,9 @@
     "required": {
       "label": "Required"
     },
+    "requiredServices": {
+      "title": "Required services"
+    },
     "revert": {
       "label": "Revert"
     },
@@ -10426,6 +10429,27 @@
           "label": "Write worktree"
         }
       },
+      "servicesGate": {
+        "allRunning": {
+          "hint": "Every service is running. Continue to start work."
+        },
+        "body": "“{task}” needs these services running.",
+        "only": {
+          "hint": "Kira Space counts only runs it started. Continue starts work without the missing ones; it won’t ask again for this task until it restarts."
+        },
+        "state": {
+          "invalid": {
+            "error": "Can’t run “{script}”: {reason}.",
+            "status": "Can’t run"
+          },
+          "noWorktree": {
+            "status": "Needs a worktree"
+          },
+          "stopped": {
+            "status": "Not running"
+          }
+        }
+      },
       "sessionList": {
         "empty": {
           "empty": "Nothing running"
@@ -11950,8 +11974,7 @@
           },
           "remove": {
             "tooltip": "Remove service"
-          },
-          "title": "Required services"
+          }
         },
         "source": {
           "added": {

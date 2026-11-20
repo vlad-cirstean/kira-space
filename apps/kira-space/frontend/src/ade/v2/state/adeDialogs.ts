@@ -31,6 +31,7 @@ import type { BaseChoice } from '../wire';
 import { useAdeBoardUiStore } from './adeBoardUi';
 import { useAdeOpsStore } from './adeOps';
 import { useRepoGate } from './useRepoGate';
+import { useServicesGate } from './useServicesGate';
 import { useSetupWait } from './useSetupWait';
 
 // The Claude dialog: which one is open, its edits and the work in flight behind it. One concern:
@@ -43,6 +44,7 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
   const launchOpener = useLaunchOpener();
   const confirmDialog = useConfirmDialogStore();
   const { retryAfterRepo } = useRepoGate();
+  const { ensureServices } = useServicesGate();
 
   const spec = ref<DialogSpec | null>(null);
   /** `null` = the unedited template. */
@@ -200,13 +202,16 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
     if (c) open(mergeSpec(c, branchId, target));
   }
 
-  function session(taskId: string): void {
+  /** Opens the new session dialog once the task's required services are settled. */
+  async function session(taskId: string): Promise<void> {
     const c = ctx.value;
-    if (c) open(sessionSpec(c, taskId));
+    if (c && (await ensureServices(taskId))) open(sessionSpec(c, taskId));
   }
 
-  function start(branchId: string): void {
-    open(startSpec(branchId));
+  /** Opens the branch Start dialog once its task's required services are settled. */
+  async function start(branchId: string): Promise<void> {
+    const taskId = ctx.value?.graph.byBranch.get(branchId)?.taskId ?? '';
+    if (await ensureServices(taskId)) open(startSpec(branchId));
   }
 
   function pick(branchId: string, choice: string): void {

@@ -262,7 +262,7 @@ function removeService(i: number): void {
     </FieldSet>
 
     <FieldSet>
-      <FieldLegend>{{ t('space.repo.config.services.title') }}</FieldLegend>
+      <FieldLegend>{{ t('common.requiredServices.title') }}</FieldLegend>
       <FieldDescription>{{ t('space.repo.config.services.intro.hint') }}</FieldDescription>
       <InlineState
         v-if="!file.services?.length && !blankService"

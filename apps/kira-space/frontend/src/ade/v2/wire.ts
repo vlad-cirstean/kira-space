@@ -874,6 +874,24 @@ export interface ArchiveRisk {
   branches: BranchRisk[];
 }
 
+// ---- required services (P697)
+export type RequiredServiceState = 'running' | 'stopped' | 'noWorktree' | 'invalid';
+export interface RequiredService {
+  codeRepoId: string;
+  /** Empty for a service that runs in its own folder. */
+  branchId: string;
+  script: string;
+  /** Empty when the state is invalid. */
+  scriptId: string;
+  params: Record<string, string[]>;
+  state: RequiredServiceState;
+  runId: string;
+  problem: string;
+}
+export interface RequiredServices {
+  items: RequiredService[];
+}
+
 // ---- runs, logs, sessions (§5, §5.1.2, §7, D3)
 export interface StartRunResult {
   runIds: string[];
