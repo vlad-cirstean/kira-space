@@ -510,7 +510,8 @@ test('a pending edit shows the diff, compares old to new, and accepts', async ({
   await stepsReady(page);
 
   await expect(page.locator('[data-testid="proof-pending"]')).toBeVisible();
-  await expect(page.locator('[data-testid="proof-change-reason"]')).toHaveText('tighten');
+  // P703: an edit carries no reason, so the panel shows no reason line.
+  await expect(page.locator('[data-testid="proof-change-reason"]')).toHaveCount(0);
   // Proposed by default.
   expect((await tabTitles(page)).map((t) => t.trim())).toEqual([
     '#1 keep',
