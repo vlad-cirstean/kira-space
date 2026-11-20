@@ -114,9 +114,9 @@ func TestNewDirWithinDepth(t *testing.T) {
 	eachBackend(t, func(t *testing.T, start startFunc) {
 		root := t.TempDir()
 		w := newWatch(t, start, Options{Roots: []string{root}, MaxDepth: 3})
-		deep := filepath.Join(root, "a", "b")
-		mkdirs(t, deep)
-		ev := waitEvent(t, w, "new dir", atPath(deep, Create))
+		top, deep := filepath.Join(root, "a"), filepath.Join(root, "a", "b")
+		mkdirs(t, deep) // a burst: b may exist before a is watched, so only a is certain to announce itself
+		ev := waitEvent(t, w, "new dir", atPath(top, Create))
 		if !ev.Dir {
 			t.Errorf("Dir not set on a dir create: %+v", ev)
 		}

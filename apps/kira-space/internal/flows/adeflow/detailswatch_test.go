@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -306,4 +307,36 @@ func TestDetailsWatchGonePathClears(t *testing.T) {
 	dwWaitNoError(t, f, "proofs/Orders_1/")
 	_ = os.WriteFile(gate, nil, 0o644)
 	waitRun(t, f.app, f.task.ID, "one", "done")
+}
+
+// Nine live task watchers apply their saves: no cap on the number of watched tasks (macOS had one of 8).
+func TestDetailsWatchBeyondEight(t *testing.T) {
+	const tasks = 9
+	gate := dwHold(t)
+	hold := []fakeagent.Action{{WaitFile: gate, Name: "done"}}
+	f := newBRFixture(t, hold, onceStepYML, false)
+	app := f.app
+	claude(app, map[string][]fakeagent.Action{"*": {{
+		TaskFiles: map[string]string{"handovers/draft-one.md": "Draft v1."},
+		WaitFile:  gate, Name: "done",
+	}}})
+	ids := []string{f.task.ID}
+	for i := 1; i < tasks; i++ {
+		ids = append(ids, createTask(t, app, "Fix login "+strconv.Itoa(i), "flow", f.api).ID)
+	}
+	for _, id := range ids {
+		if _, err := app.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: id}); err != nil {
+			t.Fatalf("StartRun %s: %v", id, err)
+		}
+	}
+	for _, id := range ids {
+		testx.WaitUntil(t, waitFor, func() bool {
+			for _, h := range handovers(t, app, id) {
+				if h.State == "draft" && h.Body == "Draft v1." {
+					return true
+				}
+			}
+			return false
+		})
+	}
 }
