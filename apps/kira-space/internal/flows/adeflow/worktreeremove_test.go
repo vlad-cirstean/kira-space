@@ -254,8 +254,10 @@ func TestUserWorktreeRemoveNoConfirm(t *testing.T) {
 	if _, err := f.app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: dirty.ID, Name: "feat/user-other"}); errCode(err) != "E_BAD_REQUEST" {
 		t.Fatalf("SetTaskBranch dirty = %v, want E_BAD_REQUEST", err)
 	}
-	f.app.Contract(t, removeScenario, "AdeTaskService.Board#dirty", branchOf(t, board(t, f.app), f.task.ID, f.api), rowMask)
-	seen := freshBranch(t, f.app, f.task.ID, f.api).DirtyToken
+	// Refresh first: the board is a cache and the file write above reaches it only through the watcher.
+	fresh := freshBranch(t, f.app, f.task.ID, f.api)
+	f.app.Contract(t, removeScenario, "AdeTaskService.Board#dirty", fresh, rowMask)
+	seen := fresh.DirtyToken
 	if seen == "" {
 		t.Fatal("dirty row carries no dirtyToken")
 	}

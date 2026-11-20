@@ -21,7 +21,7 @@
   },
   "git:preflight.worktreeRemove#dirty": {
     "blockers": [],
-    "confirmToken": "d05cf8a18e7cc216726e2890d89c5253",
+    "confirmToken": "9972608237e57142fe4b735e4c32a307",
     "path": "<work>/proj-wt-wt-dirty",
     "requiresTypedConfirmation": true,
     "routes": [
