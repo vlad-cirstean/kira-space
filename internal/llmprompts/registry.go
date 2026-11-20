@@ -370,7 +370,7 @@ var HeadlessToolSubmit = define(Entry{
 
 var (
 	_ = arg(HeadlessToolSubmit.id, "paths", spaceApp, NextCall, `Files to read, relative to the task folder, at most {{.Max}}. Default: every changed file.`, MaxVars{Max: 50})
-	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note or another author's link. Required for those; the user reads it.`, NoVars{})
+	_ = arg(HeadlessToolSubmit.id, "reason", spaceApp, NextCall, `One line: why you changed a handed handover, a note, an accepted proof or another author's link. Required for those; the user reads it.`, NoVars{})
 )
 
 // HeadlessToolState describes the state tool: the header of its description. Each granted action adds
