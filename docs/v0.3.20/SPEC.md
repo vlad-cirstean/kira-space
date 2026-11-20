@@ -18,8 +18,9 @@ finishing.`; `headless.space.files` opens with `This task's Details files live i
 updated; `Details` added to `PROPER_NOUNS` (check-catalog). Flow test `TestRunPromptAsksForProofAndNamesDetails`;
 UI half is `ade-v2-run.spec.ts` replaying the contract. Go, typecheck, lint, `ade-v2-run` and `copy-coverage`
 specs pass. Real `claude` ADE row passes except the three TUI tests (`TestAdeManualSession`,
-`TestAdeAdHocSession`, `TestAdeManualSessionStageSettings`): no SessionStart hook within 60 s at load1 10 to 18,
-also with the pre-P694 registry restored, so not this change. `test:claude:db` passes.
+`TestAdeAdHocSession`, `TestAdeManualSessionStageSettings`): `no SessionStart hook event` within 60 s at load1
+10 to 18, also with the pre-P694 registry restored, so not this change. Cause unconfirmed; the same three fail
+at baseline. `test:claude:db` passes.
 
 ## P695
 
@@ -48,6 +49,13 @@ adeflow, proofflow, mobileflow, taskfiles, storage, agentmcp, llmprompts), typec
 full on the link step. Real `claude` rows `TestAdeDetailsSubmit`, bench serves, proof MCP and chart pass;
 the three TUI tests still fail with no SessionStart hook within 60 s at load1 1 to 2, as in P694, so not
 this change. No visual baseline changes.
+Review round 1 changed it: an ask-first save seen by the watcher (older note, handed handover, accepted
+proof, deletes) is deferred untouched, with no row and no `fileErrors` entry, so a user's outside edit stays
+on the disk banner and an explicit `submit` with a reason or the finish flush decides; `fileErrors` entries
+for paths gone from disk and index are pruned; a never-watched task clears them at release; a steady write
+stream fires within 2 s; on macOS at most 8 task watchers (kqueue fd cost), a task beyond that is unwatched and
+the finish flush covers it. The cap is an ARCHITECTURE Known open item. Flow test `TestDetailsWatch`
+reworked for the deferral.
 
 ## P696
 
@@ -68,7 +76,8 @@ Dialog X testids are new where a footer id was removed; `ade-stage-dialog-close`
 `ade-stage-close`, which the stage close-sessions toggle already uses. Specs updated (UI 43 spec files
 plus 86 related, all pass; mobile-ios all 54 pass, X measures 44px so no `touch` prop). Visual baselines
 git-stash, git-repo-settings, git-reset, repo-gate, new-connection, schema-dialog are re-recorded at
-chapter end; orphan `script-dialog` baseline removed. Frontend only.
+chapter end; orphan `script-dialog` baseline removed. Visual baselines were re-recorded at chapter end
+(`test: re-record visual baselines for v0.3.20`). Frontend only.
 
 ## P697
 
@@ -99,7 +108,8 @@ service (Kira-started runs only; a script with "run in ADE worktree" is per mine
 section "Required services". Gate dialog (Pinia `adeServicesGate`, TanStack Query) asks before Run,
 session launch, branch Start, Approve, Take over and needs-you actions; Continue skips the task until
 restart, the X cancels, a row Run opens the script run dialog. No Cancel beside the X. Engine starts and
-the phone never ask. Tests: flows `TestRequiredServices`, `TestRepoServicesFile`; UI
+the phone never ask. Review round 1: the gate fails open, so a failed `RequiredServices` read no longer blocks
+a start. Tests: flows `TestRequiredServices`, `TestRepoServicesFile`; UI
 `ade-v2-required-services.spec.ts`, `repo-services.spec.ts`. Architecture: "Required services (P697)".
 
 ## P698
@@ -125,6 +135,14 @@ pending button, the result the board and the Operations panel row. Kept every er
 errors show only in the open task's panel, lease and attach ops have no other surface) and the corner
 chips. slowNotice, TOAST_POLICY, opDoneText, AdeOp.name and 25 space.ade.ops.*.status keys removed. Guard
 U213 (only toast.error). Specs updated to assert no toast past 2 s. Frontend only.
+
+Also in this chapter, outside any row: release install-smoke retry (5 s delay, then 2 retries at 10 s and
+15 s) after a flaky first attempt (`fix: retry and delay release install smoke`, `fix: shorten release install
+smoke retries`).
+
+Chapter end: non-UI full run passed after fixing a biome warning and gocognit and gocyclo findings (`-race`,
+Docker suites and full `golangci-lint` not run, disk and no daemon); code review round 1 fixes landed as
+described under P695 and P697.
 
 ## Streams
 
