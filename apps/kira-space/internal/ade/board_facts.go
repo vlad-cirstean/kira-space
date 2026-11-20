@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // repoResult is one repo's computed branch facts. jobs holds the rebase-conflict check of every
@@ -529,7 +529,7 @@ func (b *TaskBoard) fillAttach(sc *boardCtx, wb *adewire.Branch, sb model.AdeTas
 	own := b.ownWorktreePath(sc.repoName, sb)
 	ownExists := false
 	if own != "" {
-		_, err := os.Lstat(own)
+		_, err := fileservice.Host().Lstat(own)
 		ownExists = err == nil
 	}
 	at := resolveAttachment(sb, own, holder, sc.owners, ownExists)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // repoConfigCache holds RepoConfig.List between writes. Reads are read-only; gen stops a read that a
@@ -181,7 +181,7 @@ func (b *TaskBoard) AddFolder(ctx context.Context, path string, watch bool) (ade
 		return adewire.FolderImportResult{}, invalid("path must be absolute")
 	}
 	path = filepath.Clean(path)
-	if info, err := os.Stat(path); err != nil || !info.IsDir() {
+	if info, err := fileservice.Host().Stat(path); err != nil || !info.Dir {
 		return adewire.FolderImportResult{}, invalid("%s is not a folder", path)
 	}
 	if err := b.deps.RepoConfig.AddFolder(path, watch); err != nil {

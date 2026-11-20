@@ -18,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -463,12 +464,12 @@ func (t *Tracker) resumeTarget(args PrepareArgs) (recordID, agentSessionID, cwd 
 	}
 	// Resume always uses the recorded cwd, never args.Cwd — a session must not appear to resume
 	// somewhere it never ran. A missing directory is an error.
-	if info, err := os.Stat(existing.Cwd); err != nil {
+	if info, err := fileservice.Host().Stat(existing.Cwd); err != nil {
 		if !os.IsNotExist(err) {
 			return "", "", "", nil, fmt.Errorf("ade: prepare: stat resume cwd: %w", err)
 		}
 		return "", "", "", nil, fmt.Errorf("%w: %s no longer exists", ErrInvalidInput, existing.Cwd)
-	} else if !info.IsDir() {
+	} else if !info.Dir {
 		return "", "", "", nil, ErrResumeCwdNotDir
 	}
 	cwd = existing.Cwd

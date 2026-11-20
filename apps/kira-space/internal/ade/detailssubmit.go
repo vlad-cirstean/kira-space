@@ -5,20 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
-	"github.com/kirathecat/kira-studio/internal/approvals"
-	"github.com/kirathecat/kira-studio/internal/ipcerr"
-	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
-
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
+	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
+	"github.com/kirathecat/kira-studio/internal/ipcerr"
+	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
 const detailsEditKind = approvals.KindDetailsEdit
@@ -316,7 +315,7 @@ func (b *TaskBoard) pruneGoneFileErrors(taskID string) bool {
 			continue
 		}
 		if store.ValidRel(rel) == nil {
-			if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
+			if _, err := fileservice.Host().Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
 				continue
 			}
 		}
@@ -394,7 +393,7 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 		if slices.Contains(kept, rel) {
 			continue
 		}
-		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil || indexed[rel] {
+		if _, err := fileservice.Host().Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil || indexed[rel] {
 			kept = append(kept, rel)
 		}
 	}

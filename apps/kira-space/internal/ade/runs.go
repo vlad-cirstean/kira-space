@@ -23,6 +23,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -2010,7 +2011,7 @@ func toWireSession(s model.AdeSession) adewire.Session {
 		}
 	}
 	if s.State == model.AdeSessionStateStopped {
-		_, err := os.Stat(s.Cwd)
+		_, err := fileservice.Host().Stat(s.Cwd)
 		w.CwdMissing = err != nil
 	}
 	return w

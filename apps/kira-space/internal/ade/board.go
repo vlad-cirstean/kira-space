@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -34,6 +33,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
 	"github.com/kirathecat/kira-studio/internal/approvals"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -1262,11 +1262,11 @@ func (b *TaskBoard) forcePush(ctx context.Context, branchID string) (adewire.For
 
 // lastFetchAt reads the worktree's own FETCH_HEAD: git writes it per linked worktree, not in the common dir.
 func lastFetchAt(entry *gitsession.RepoEntry) *int64 {
-	info, err := os.Stat(filepath.Join(entry.Summary.GitDir, "FETCH_HEAD"))
+	info, err := fileservice.Host().Stat(filepath.Join(entry.Summary.GitDir, "FETCH_HEAD"))
 	if err != nil {
 		return nil
 	}
-	v := info.ModTime().UnixMilli()
+	v := info.ModTime.UnixMilli()
 	return &v
 }
 

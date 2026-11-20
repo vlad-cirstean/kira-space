@@ -3,10 +3,10 @@ package ade
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 )
 
@@ -22,7 +22,7 @@ func (b *TaskBoard) filesDir(taskID string) (string, error) {
 		return "", nil
 	}
 	dir := filepath.Join(b.deps.FilesDir, pathSegment(taskID))
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(dir); err != nil {
 		return "", fmt.Errorf("create task files folder: %w", err)
 	}
 	return dir, nil
@@ -84,7 +84,7 @@ func (b *TaskBoard) withTaskFolder(spec harness.HeadlessSpec, taskID string) (ha
 	if err != nil || dir == "" {
 		return spec, err
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(filepath.Join(dir, "handovers")); err != nil {
 		return spec, fmt.Errorf("create handovers folder: %w", err)
 	}
 	b.writeStateNow(taskID)
@@ -101,7 +101,7 @@ func (b *TaskBoard) withTaskFolderArgs(pa *PrepareArgs, taskID string) error {
 	if err != nil || dir == "" {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(dir, "handovers"), 0o700); err != nil {
+	if err := fileservice.HostPrivate().MkdirAll(filepath.Join(dir, "handovers")); err != nil {
 		return fmt.Errorf("create handovers folder: %w", err)
 	}
 	b.writeStateNow(taskID)

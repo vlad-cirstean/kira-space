@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
@@ -365,7 +366,7 @@ func (b *TaskBoard) takeOverCwd(ctx context.Context, tc *taskCtx, rec *model.Ade
 			return "", false, err
 		}
 	}
-	if info, statErr := os.Stat(rec.Cwd); statErr != nil || !info.IsDir() {
+	if info, statErr := fileservice.Host().Stat(rec.Cwd); statErr != nil || !info.Dir {
 		if gatePath == "" {
 			return "", false, invalid("%s no longer exists", rec.Cwd)
 		}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/runoutcome"
 )
 
@@ -42,9 +43,9 @@ func (b *TaskBoard) Recover() error {
 	}
 	b.fillRestoreOffer(runs)
 	if b.deps.AgentDir != "" {
-		stale, _ := filepath.Glob(filepath.Join(b.deps.AgentDir, "*.mcp.json"))
+		stale, _ := fileservice.Host().Glob(filepath.Join(b.deps.AgentDir, "*.mcp.json"))
 		for _, f := range stale {
-			if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			if err := fileservice.Host().Remove(f); err != nil && !os.IsNotExist(err) {
 				slog.Warn("ade: recover: remove mcp config", "scope", "ade", "file", f, "err", err)
 			}
 		}

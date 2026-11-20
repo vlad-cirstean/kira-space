@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/agentsandbox"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
@@ -134,7 +134,7 @@ func (b *TaskBoard) requestedWorktreeDirs(taskID string) ([]string, error) {
 			continue
 		}
 		dir := filepath.Join(WorktreesBase(b.deps.HomeDir), pathSegment(rec.Name))
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := fileservice.Host().MkdirAll(dir); err != nil {
 			return nil, err
 		}
 		if !slices.Contains(dirs, dir) {
@@ -171,7 +171,7 @@ func (b *TaskBoard) prepareSandbox(ctx context.Context, run model.AdeRun, l agen
 	}
 	prep, err := b.deps.Sandbox.Prepare(pol, rt)
 	if err != nil {
-		_ = os.RemoveAll(pol.Scratch)
+		_ = fileservice.Host().RemoveAll(pol.Scratch)
 		return nil, err
 	}
 	sr.policy, sr.prep, sr.notes, sr.scratch = pol, prep, notes, pol.Scratch
@@ -215,7 +215,7 @@ func (b *TaskBoard) prepareScriptSandbox(ctx context.Context, run model.AdeRun, 
 	}
 	prep, err := b.deps.Sandbox.Prepare(pol, rt)
 	if err != nil {
-		_ = os.RemoveAll(pol.Scratch)
+		_ = fileservice.Host().RemoveAll(pol.Scratch)
 		return nil, err
 	}
 	sr := &sandboxRun{access: agentsandbox.Access(sd.Access), prep: prep, policy: pol, notes: notes, scratch: pol.Scratch}
@@ -254,7 +254,7 @@ func (sr *sandboxRun) cleanup() {
 		sr.release()
 	}
 	if sr.scratch != "" {
-		_ = os.RemoveAll(sr.scratch)
+		_ = fileservice.Host().RemoveAll(sr.scratch)
 	}
 }
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -13,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
@@ -69,7 +69,7 @@ func (b *TaskBoard) classifyHolder(rec model.CodeRepo, root string, live []model
 	if clean == filepath.Clean(root) {
 		return holderInfo{class: holderMain, path: path}
 	}
-	if _, err := os.Lstat(path); err != nil {
+	if _, err := fileservice.Host().Lstat(path); err != nil {
 		return holderInfo{class: holderMissing, path: path}
 	}
 	return holderInfo{class: holderOther, path: path}

@@ -3,11 +3,11 @@ package ade
 import (
 	"context"
 	"log/slog"
-	"os"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -42,7 +42,7 @@ func (b *TaskBoard) launchReviewAgent(ctx context.Context, tc *taskCtx, tr *Trac
 	}
 	note := ""
 	if row != nil {
-		if info, serr := os.Stat(row.Cwd); serr == nil && info.IsDir() {
+		if info, serr := fileservice.Host().Stat(row.Cwd); serr == nil && info.Dir {
 			l, err := b.prepareWithGrant(ctx, tr, tc, PrepareArgs{TaskID: tc.task.ID, Resume: row.ID, Message: message, AddDirs: extra, Provider: row.Provider, Settings: settings}, opReviewAgent, "", stepID, nil)
 			if err != nil {
 				return adewire.Launch{}, false, "", err

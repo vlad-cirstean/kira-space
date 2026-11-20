@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -13,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // branchchange.go: an agent asks the user to point one of its task's branch rows at another existing
@@ -189,7 +189,7 @@ func (b *TaskBoard) changeRefusal(ctx context.Context, call agentmcp.SpaceCall, 
 		plan.refusal = fmt.Sprintf("Branch %s has no worktree folder yet.", sb.Name)
 		return nil
 	}
-	if _, err := os.Lstat(own); err != nil {
+	if _, err := fileservice.Host().Lstat(own); err != nil {
 		plan.refusal = fmt.Sprintf("The worktree folder %s of %s is missing.", own, sb.Name)
 		return nil
 	}

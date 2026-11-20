@@ -13,7 +13,7 @@ import (
 
 // adetask_files.go: the file view of a task branch's worktree, read-only, plus Reveal and Open in
 // VS Code. The client sends a branch id and a relative path; the worktree root comes from the
-// branch row and every path is contained under it (ade.TaskFileTarget, pathsafe).
+// branch row and every path is contained under it (ade.TaskFileTarget, fileservice Contain).
 
 // EditorLauncher opens paths in the user's code editor, detached. Nil means this build has none.
 type EditorLauncher interface {

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Manifest is what an exporter wrote for one task part: the paths, for the verify and record steps.
@@ -112,10 +112,10 @@ func (m *Migrator) migrate(ctx context.Context, taskID string, ex Exporter) (err
 		}
 	}()
 	staging := filepath.Join(m.Root, taskID+".migrating")
-	if err := os.RemoveAll(staging); err != nil { // a crash left it: the task part is redone
+	if err := fileservice.Host().RemoveAll(staging); err != nil { // a crash left it: the task part is redone
 		return err
 	}
-	defer os.RemoveAll(staging) //nolint:errcheck
+	defer fileservice.Host().RemoveAll(staging) //nolint:errcheck
 	stage, err := store.NewLocal(staging)
 	if err != nil {
 		return err

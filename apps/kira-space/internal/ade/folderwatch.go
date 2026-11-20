@@ -2,12 +2,11 @@ package ade
 
 import (
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/kirathecat/kira-studio/internal/fswatch"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const (
@@ -40,13 +39,13 @@ func scanFolder(root string) folderScan {
 		if depth >= folderScanDepth {
 			return
 		}
-		entries, err := os.ReadDir(dir)
+		entries, err := fileservice.Host().ReadDir(dir)
 		if err != nil {
 			return
 		}
 		for _, e := range entries {
-			name := e.Name()
-			if !e.IsDir() || skipFolderName(name) {
+			name := e.Name
+			if !e.Dir || skipFolderName(name) {
 				continue
 			}
 			walk(filepath.Join(dir, name), depth+1)
@@ -61,8 +60,8 @@ func skipFolderName(name string) bool { return strings.HasPrefix(name, ".") || n
 // stopsFolderWalk reports whether a scan stops at dir: a repo root (a .git directory, repo set),
 // a linked worktree (a .git file) or a bare repository.
 func stopsFolderWalk(dir string) (repo, stop bool) {
-	if info, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {
-		return info.IsDir(), true
+	if info, err := fileservice.Host().Lstat(filepath.Join(dir, ".git")); err == nil {
+		return info.Dir, true
 	}
 	return false, isBareRepo(dir)
 }
@@ -75,7 +74,7 @@ func skipFolderDir(dir string) bool {
 
 func isBareRepo(dir string) bool {
 	for _, n := range []string{"HEAD", "objects", "refs"} {
-		if _, err := os.Lstat(filepath.Join(dir, n)); err != nil {
+		if _, err := fileservice.Host().Lstat(filepath.Join(dir, n)); err != nil {
 			return false
 		}
 	}
@@ -87,8 +86,8 @@ func isBareRepo(dir string) bool {
 type folderWatcher struct {
 	board *TaskBoard
 	path  string
-	w     *fswatch.Watcher
-	deb   *fswatch.Debouncer
+	w     *fileservice.Watcher
+	deb   *fileservice.Debouncer
 	done  chan struct{}
 }
 
@@ -98,13 +97,13 @@ func (b *TaskBoard) startFolderWatch(path string) {
 	if _, ok := b.folderW[path]; ok {
 		return
 	}
-	w, err := fswatch.Watch(fswatch.Options{Roots: []string{path}, MaxDepth: folderScanDepth, SkipDir: skipFolderDir, Latency: folderWatchLatency})
+	w, err := fileservice.Host().Watch(fileservice.WatchOptions{Names: []string{path}, MaxDepth: folderScanDepth, SkipDir: skipFolderDir, Latency: folderWatchLatency})
 	if err != nil {
 		slog.Warn(folderWatcherEvents, "scope", "ade", "path", path, "err", err)
 		return
 	}
 	fw := &folderWatcher{board: b, path: path, w: w, done: make(chan struct{})}
-	fw.deb = fswatch.NewDebouncer(folderRescanDelay, 0, fw.rescan)
+	fw.deb = fileservice.NewDebouncer(folderRescanDelay, 0, fw.rescan)
 	b.folderW[path] = fw
 	go fw.loop()
 	// Catch repos created while the app was not running.
@@ -135,7 +134,7 @@ func (f *folderWatcher) rescan() {
 func (f *folderWatcher) loop() {
 	defer close(f.done)
 	for ev := range f.w.Events() {
-		if ev.Rescan || ev.Op.Has(fswatch.Create) || ev.Op.Has(fswatch.Rename) {
+		if ev.Rescan || ev.Op.Has(fileservice.Create) || ev.Op.Has(fileservice.Rename) {
 			f.deb.Schedule()
 		}
 	}

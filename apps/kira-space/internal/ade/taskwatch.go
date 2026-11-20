@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -13,7 +12,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
-	"github.com/kirathecat/kira-studio/internal/fswatch"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
@@ -48,8 +47,8 @@ type taskWatch struct {
 	taskID string
 	root   string
 	nroot  string // root, Clean and NFC: the spelling fswatch reports paths in
-	w      *fswatch.Watcher
-	deb    *fswatch.Debouncer
+	w      *fileservice.Watcher
+	deb    *fileservice.Debouncer
 
 	mu      sync.Mutex
 	callers map[string]*callerRef
@@ -114,12 +113,12 @@ func (b *TaskBoard) newTaskWatch(taskID string) (*taskWatch, error) {
 		return nil, errors.Join(err, errors.New("no task folder"))
 	}
 	tw := &taskWatch{b: b, taskID: taskID, root: root, nroot: gitpath.CleanNFC(root), callers: map[string]*callerRef{}, paths: map[string]struct{}{}, done: make(chan struct{})}
-	w, err := fswatch.Watch(fswatch.Options{Roots: []string{root}, MaxDepth: taskWatchDepth, SkipDir: tw.skipDir})
+	w, err := fileservice.Host().Watch(fileservice.WatchOptions{Names: []string{root}, MaxDepth: taskWatchDepth, SkipDir: tw.skipDir})
 	if err != nil {
 		return nil, err
 	}
 	tw.w = w
-	tw.deb = fswatch.NewDebouncer(taskWatchQuiet, taskWatchMaxWait, tw.fire)
+	tw.deb = fileservice.NewDebouncer(taskWatchQuiet, taskWatchMaxWait, tw.fire)
 	go tw.loop()
 	return tw, nil
 }
@@ -198,31 +197,40 @@ func hasHiddenSegment(rel string) bool {
 
 // walkFiles returns the task-file rels found at and below dir, using the watch's own folder rules.
 func (t *taskWatch) walkFiles(dir string) []string {
+	base, err := filepath.Rel(t.root, dir)
+	if err != nil {
+		return nil
+	}
+	base = filepath.ToSlash(base)
+	if base != "." && t.skipRel(base) {
+		return nil
+	}
 	var files []string
-	_ = filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		rel, rerr := filepath.Rel(t.root, p)
-		if rerr != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
-		if !d.IsDir() {
-			if d.Type()&fs.ModeSymlink == 0 && rel != "." {
-				files = append(files, rel)
+	_ = fileservice.Host().Walk(dir, fileservice.WalkOptions{
+		SkipDir: func(rel string) bool {
+			if base != "." {
+				rel = base + "/" + rel
 			}
+			return t.skipRel(rel)
+		},
+	}, func(e fileservice.Entry) error {
+		if e.Dir || e.Mode&fs.ModeSymlink != 0 {
 			return nil
 		}
-		segs := strings.Split(rel, "/")
-		switch {
-		case rel == ".":
-		case strings.HasPrefix(d.Name(), "."), len(segs) > taskWatchDepth, !watchedTopDirs[segs[0]]:
-			return filepath.SkipDir
+		rel := e.Name
+		if base != "." {
+			rel = base + "/" + rel
 		}
+		files = append(files, rel)
 		return nil
 	})
 	return files
+}
+
+// skipRel is the walk's folder rule for a slash dir path under the task root.
+func (t *taskWatch) skipRel(rel string) bool {
+	segs := strings.Split(rel, "/")
+	return strings.HasPrefix(segs[len(segs)-1], ".") || len(segs) > taskWatchDepth || !watchedTopDirs[segs[0]]
 }
 
 // slashRel is the task-folder-relative slash path of a reported path, "" outside the folder or for the folder itself.
@@ -259,20 +267,20 @@ func (t *taskWatch) loop() {
 	}
 }
 
-func (t *taskWatch) handle(ev fswatch.Event) {
+func (t *taskWatch) handle(ev fileservice.Event) {
 	if ev.Rescan {
 		// No path pass: a full walk would apply a user's earlier external edit as the agent's. The banner
 		// refreshes; an explicit submit or the finish flush applies the edits.
 		t.b.notifyBoardNow(taskChanged(t.taskID))
 		return
 	}
-	if ev.Op == fswatch.Meta {
+	if ev.Op == fileservice.Meta {
 		return
 	}
-	if ev.Op.Has(fswatch.Create) || ev.Op.Has(fswatch.Rename) {
+	if ev.Op.Has(fileservice.Create) || ev.Op.Has(fileservice.Rename) {
 		if rel := t.slashRel(ev.Path); rel != "" {
 			dir := filepath.Join(t.root, filepath.FromSlash(rel))
-			if fi, err := os.Lstat(dir); ev.Dir || (err == nil && fi.IsDir()) {
+			if fi, err := fileservice.Host().Lstat(dir); ev.Dir || (err == nil && fi.Dir) {
 				// Files written before the watch covered the dir raise no event.
 				for _, f := range t.walkFiles(dir) {
 					t.queue(keepTaskFile(f))
