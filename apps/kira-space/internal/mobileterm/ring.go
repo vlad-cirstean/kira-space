@@ -9,7 +9,7 @@ const ringCap = 1 << 20
 // reconnecting phone resumes from where it stopped. Not safe for concurrent use.
 type Ring struct {
 	buf []byte // grows with output up to cap
-	end int64 // relative to base
+	end int64  // relative to base
 	cap int64
 	// base is the absolute offset of the first byte, so a ring rebuilt after a drop continues the
 	// old numbering and a stale resume offset reads as overrun.
