@@ -47,6 +47,12 @@ var idGenerators = map[string]bool{
 	"github.com/oklog/ulid/v2":        true,
 }
 
+// watchLibs are the packages only internal/fswatch may import (G7), test files included.
+var watchLibs = map[string]bool{
+	"github.com/fsnotify/fsnotify": true,
+	"github.com/fsnotify/fsevents": true,
+}
+
 // ipcerrMsg maps an ipcerr constructor to its message argument index.
 var ipcerrMsg = map[string]int{"New": 1, "BadRequest": 0, "NotFound": 0, "Internal": 0, "SecretStore": 0}
 
@@ -164,6 +170,14 @@ func scan(t *testing.T, root, rel string) []finding {
 			}
 			return true
 		})
+	}
+	// G7: file watching goes through internal/fswatch; no other package imports a watch library.
+	if dir != "internal/fswatch" {
+		for _, imp := range f.Imports {
+			if path, err := strconv.Unquote(imp.Path.Value); err == nil && watchLibs[path] {
+				add("G7", imp.Pos(), "imports "+path+"; watch files with internal/fswatch")
+			}
+		}
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
@@ -461,6 +475,37 @@ func goFiles(t *testing.T, root string) []string {
 		}
 	}
 	return files
+}
+
+// G7 also covers test files, which the other rules skip.
+func TestWatchLibsOnlyInFswatch(t *testing.T) {
+	root := repoRoot(t)
+	for _, base := range []string{"apps", "internal"} {
+		err := filepath.WalkDir(filepath.Join(root, base), func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if d.Name() == "node_modules" || d.Name() == "vendor" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			rel, _ := filepath.Rel(root, p)
+			if !strings.HasSuffix(p, "_test.go") || filepath.ToSlash(filepath.Dir(rel)) == "internal/fswatch" {
+				return nil
+			}
+			for _, f := range scan(t, root, rel) {
+				if f.rule == "G7" {
+					t.Errorf("%s:%d: G7 %s", f.path, f.line, f.msg)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestGoConventions(t *testing.T) {

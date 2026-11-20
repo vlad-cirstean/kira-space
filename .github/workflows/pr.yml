@@ -17,11 +17,12 @@ concurrency:
 # Shared setup lives in .github/actions/setup.
 jobs:
   # Only the work that genuinely needs macOS: cgo-aware go vet/build (catches darwin build-tag
-  # breaks) and the darwin&&cgo-only test packages.
+  # breaks) and the darwin&&cgo-only test packages (secrets, metrics, localauth, imageclip, datagrip,
+  # and the file-watch seam: fswatch, configfs, gitclient, the ade folder watch, the adeflow task watch).
   checks:
     name: checks (macOS)
     runs-on: macos-26
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -38,15 +39,20 @@ jobs:
       - run: bun run lint:go
       - name: Go compile check, every package (darwin build-tag breaks caught here even though the test run below is scoped)
         run: go build ./...
-      - name: Go unit tests, darwin-relevant packages only (secrets, metrics, localauth, imageclip, gitclient, datagrip have darwin&&cgo files; the Linux jobs run every other package)
+      - name: Go unit tests, darwin-relevant packages only (secrets, metrics, localauth, imageclip, gitclient, datagrip have darwin&&cgo files; fswatch runs both backends; configfs, the ade folder watch and the adeflow task watch run on FSEvents; the Linux jobs run every other package)
         run: |
           go test \
             ./internal/secrets/... \
             ./internal/metrics/... \
             ./apps/kira-space/internal/localauth/... \
             ./apps/kira-space/internal/gitclient \
-            ./apps/kira-space/internal/datagrip/...
+            ./apps/kira-space/internal/datagrip/... \
+            ./internal/fswatch \
+            ./internal/configfs
+          go test -run '^TestFolderWatch' ./apps/kira-space/internal/ade
+          go test -run '^TestDetailsWatch' ./apps/kira-space/internal/flows/adeflow
           go test -tags imagecliptest ./apps/kira-space/internal/imageclip/...
+          CGO_ENABLED=0 go vet ./internal/fswatch
 
   # Lint, typecheck, frontend builds, lint:dead, verify:packaging and the bun unit tests: nothing
   # here touches cgo or darwin build tags.
