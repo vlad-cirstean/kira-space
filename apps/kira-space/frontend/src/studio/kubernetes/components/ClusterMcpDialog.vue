@@ -60,7 +60,7 @@ const idBase = useId();
 <template>
   <Dialog v-model:open="open">
     <DialogContent size="lg" :dirty="dirty" data-testid="kube-mcp-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="kube-mcp-close">
         <DialogTitle>{{
           t('kubernetes.mcp.dialog.title', { cluster: cluster?.context ?? '' })
         }}</DialogTitle>
@@ -110,9 +110,6 @@ const idBase = useId();
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="kube-mcp-cancel" @click="open = false">
-          {{ t('common.action.cancel.label') }}
-        </Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

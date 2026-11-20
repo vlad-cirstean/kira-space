@@ -309,48 +309,29 @@ function reportOutcome(row: DataGripReportRow): { label: string; tone: 'ok' | 'w
         </div>
       </DialogBody>
 
-      <DialogFooter>
-        <template v-if="!report" #start>
+      <DialogFooter v-if="!report">
+        <template #start>
           <span class="font-data">{{ datagripImportStore.projectPath }}</span>
         </template>
-        <template v-if="!report">
-          <Button
-            variant="dialog"
-            size="kira-lg"
-            data-testid="datagrip-import-cancel"
-            @click="datagripImportStore.closeDataGripImportDialog"
-          >
-            {{ t('common.action.cancel.label') }}
-          </Button>
-          <Button
-            v-if="!datagripImportStore.preview"
-            variant="dialog"
-            size="kira-lg"
-            data-testid="datagrip-import-choose-another"
-            :pending="datagripImportStore.picking"
-            @click="datagripImportStore.pickAndScanDataGripProject"
-          >
-            {{ t('studio.project.dataGripImport.chooseAnother.label') }}
-          </Button>
-          <Button
-            variant="dialog-primary"
-            size="kira-lg"
-            data-testid="datagrip-import-confirm"
-            :disabled="checkedCount === 0"
-            :pending="datagripImportStore.confirming"
-            @click="datagripImportStore.confirmDataGripImport"
-          >
-            {{ t('studio.project.dataGripImport.import.label', { count: checkedCount }) }}
-          </Button>
-        </template>
         <Button
-          v-else
+          v-if="!datagripImportStore.preview"
           variant="dialog"
           size="kira-lg"
-          data-testid="datagrip-import-report-close"
-          @click="datagripImportStore.closeDataGripImportDialog"
+          data-testid="datagrip-import-choose-another"
+          :pending="datagripImportStore.picking"
+          @click="datagripImportStore.pickAndScanDataGripProject"
         >
-          {{ t('common.action.close.label') }}
+          {{ t('studio.project.dataGripImport.chooseAnother.label') }}
+        </Button>
+        <Button
+          variant="dialog-primary"
+          size="kira-lg"
+          data-testid="datagrip-import-confirm"
+          :disabled="checkedCount === 0"
+          :pending="datagripImportStore.confirming"
+          @click="datagripImportStore.confirmDataGripImport"
+        >
+          {{ t('studio.project.dataGripImport.import.label', { count: checkedCount }) }}
         </Button>
       </DialogFooter>
     </DialogContent>

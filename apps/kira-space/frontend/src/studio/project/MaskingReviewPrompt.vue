@@ -42,7 +42,7 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('hide')">
     <DialogContent size="sm" prompt data-testid="masking-review-dialog" @keydown="onChord">
-      <DialogHeader>
+      <DialogHeader close-testid="masking-review-close">
         <DialogTitle>{{ entry.title }}</DialogTitle>
         <DialogDescription data-testid="masking-review-body">
           {{ t('studio.prompt.maskingReview.body', { count: pending.data.value?.count ?? 0 }) }}
@@ -54,15 +54,6 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
             t('common.moreWaiting.status', { count: more })
           }}</span>
         </template>
-        <Button
-          :kbd="formatShortcut('prompt.hide')"
-          variant="dialog"
-          size="kira-lg"
-          data-testid="masking-review-later"
-          @click="emit('hide')"
-        >
-          {{ t('common.later.label') }}
-        </Button>
         <Button
           variant="dialog-primary"
           :kbd="formatShortcut('form.submit')"

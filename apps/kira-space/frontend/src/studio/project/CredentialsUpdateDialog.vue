@@ -61,7 +61,6 @@ function onOpenChange(open: boolean): void {
           :allowed="ALLOWED"
           retain
           @apply="(values) => update.mutate(values)"
-          @cancel="dialogStore.close()"
         />
         <FieldDescription v-if="live" data-testid="credentials-update-live-note">
           {{ t('studio.project.credentialsDialog.liveNote.hint') }}

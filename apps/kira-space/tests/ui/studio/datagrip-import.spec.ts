@@ -182,7 +182,7 @@ test('datagrip import — the preview lists every row, greys the unsupported one
     'Created',
   );
 
-  await page.click('[data-testid="datagrip-import-report-close"]');
+  await page.click('[data-testid="datagrip-import-dialog-close"]');
   await expect(dialog).toHaveCount(0);
 });
 
@@ -235,7 +235,7 @@ test('datagrip import — the report renders every row outcome, including a fail
   // Escape/click-outside is still a valid way to dismiss it — only the auto-close on confirm is
   // gone — but the dialog must never disappear on its own.
   await expect(dialog).toBeVisible();
-  await page.click('[data-testid="datagrip-import-report-close"]');
+  await page.click('[data-testid="datagrip-import-dialog-close"]');
   await expect(dialog).toHaveCount(0);
 });
 
@@ -245,7 +245,7 @@ test('datagrip import — cancelling the dialog never calls Import', async ({ re
   await importFromMenu(page);
   await expect(page.locator('[data-testid="datagrip-import-dialog"]')).toBeVisible();
 
-  await page.click('[data-testid="datagrip-import-cancel"]');
+  await page.click('[data-testid="datagrip-import-dialog-close"]');
   await expect(page.locator('[data-testid="datagrip-import-dialog"]')).toHaveCount(0);
   expect(control.log().filter((e) => e.channel === IPC.datagripImport)).toHaveLength(0);
 });

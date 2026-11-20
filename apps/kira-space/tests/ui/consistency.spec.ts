@@ -485,7 +485,7 @@ studioTest.describe('databases module', () => {
     });
     await emitWailsEvent(page, IPC.newConnection, null);
     await expect(page.locator('[data-testid="new-connection-dialog"]')).toBeVisible();
-    await page.click('[data-testid="new-connection-cancel"]');
+    await page.click('[data-testid="new-connection-close"]');
     await expect(page.locator('[data-testid="new-connection-dialog"]')).toHaveCount(0);
 
     await emitWailsEvent(page, IPC.openSettings, null);

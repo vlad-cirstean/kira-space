@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
@@ -362,18 +361,6 @@ onUnmounted(() => {
           </div>
         </QueryState>
       </DialogBody>
-
-      <DialogFooter>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="http-diff-close"
-          @click="emit('close')"
-          >{{
-            t('common.action.close.label')
-          }}</Button
-        >
-      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>

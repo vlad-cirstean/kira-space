@@ -162,23 +162,14 @@ async function browse(): Promise<void> {
         </div>
       </DialogBody>
 
-      <DialogFooter>
-        <template v-if="step === 'details'" #start>
+      <DialogFooter v-if="step === 'details'">
+        <template #start>
           <Button variant="dialog" size="kira-lg" @click="step = 'engine'">
             <CodiconIcon name="chevron-left" :size="13" />
             {{ t('studio.project.connectionDialog.changeEngine.title') }}
           </Button>
         </template>
         <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="new-connection-cancel"
-          @click="dialogStore.closeNew"
-        >
-          {{ t('common.action.cancel.label') }}
-        </Button>
-        <Button
-          v-if="step === 'details'"
           variant="dialog-primary"
           size="kira-lg"
           :disabled="!canCreate"

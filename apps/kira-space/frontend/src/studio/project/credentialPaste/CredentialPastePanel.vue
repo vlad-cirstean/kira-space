@@ -33,7 +33,6 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   apply: [values: Partial<Record<PasteField, string>>];
-  cancel: [];
 }>();
 
 const FIELD_LABEL_KEY: Record<PasteField, MessageKey> = {
@@ -117,10 +116,6 @@ function onApply(): void {
   for (const row of rows.value) values[row.field] = chosen(row).value;
   if (!props.retain) reset();
   emit('apply', values);
-}
-function onCancel(): void {
-  reset();
-  emit('cancel');
 }
 </script>
 
@@ -227,15 +222,6 @@ function onCancel(): void {
     </div>
 
     <div class="flex justify-end gap-1">
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        data-testid="paste-credentials-cancel"
-        @click="onCancel"
-        >{{
-          t('common.action.cancel.label')
-        }}</Button
-      >
       <Button
         variant="dialog-primary"
         size="kira-lg"

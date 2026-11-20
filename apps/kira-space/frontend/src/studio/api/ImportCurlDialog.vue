@@ -95,9 +95,6 @@ useFocusOnMount(curlEl);
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="import-curl-cancel" @click="close">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

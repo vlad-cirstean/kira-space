@@ -337,9 +337,6 @@ const connectionName = computed(
             </CatalogText></span
           >
         </template>
-        <Button variant="dialog" size="kira-lg" @click="filtersDialogStore.closeFiltersDialog">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

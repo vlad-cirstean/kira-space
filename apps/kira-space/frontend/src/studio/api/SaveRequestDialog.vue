@@ -153,15 +153,6 @@ function splitTarget(value: string): [string, string | null] {
 
       <DialogFooter>
         <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="save-request-cancel"
-          @click="saveDialogStore.closeSaveDialog()"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
-        >
-        <Button
           variant="dialog-primary"
           size="kira-lg"
           data-testid="save-request-submit"

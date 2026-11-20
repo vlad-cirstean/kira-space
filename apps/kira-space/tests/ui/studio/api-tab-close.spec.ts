@@ -175,7 +175,7 @@ test('a new tab with content asks on close: Save opens Save as, Discard writes n
   // Dismissing Save as… leaves the tab open.
   await acceptConfirm(page);
   await expect(page.locator('[data-testid="save-request-dialog"]')).toBeVisible();
-  await page.click('[data-testid="save-request-cancel"]');
+  await page.click('[data-testid="save-request-close"]');
   await expect(page.locator('[data-testid="save-request-dialog"]')).toHaveCount(0);
   await expect(tabs(page)).toHaveCount(1);
   expect(logOf(control, IPC.collectionsCreateItem)).toHaveLength(0);

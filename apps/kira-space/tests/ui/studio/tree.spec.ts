@@ -664,8 +664,10 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
     await page.locator('[data-slot="dialog-footer"] button', { hasText: 'Save' }).click();
     await expect(filtersDialog).toHaveCount(0);
   }
-  async function cancelFilters(): Promise<void> {
-    await page.locator('[data-slot="dialog-footer"] button', { hasText: 'Cancel' }).click();
+  // The X asks to discard when the dialog changed; `dirty` says which path the caller is on.
+  async function cancelFilters(dirty: boolean): Promise<void> {
+    await page.click('[data-testid="filters-dialog-close"]');
+    if (dirty) await page.click('[data-testid="confirm-dialog-confirm"]');
     await expect(filtersDialog).toHaveCount(0);
   }
 
@@ -683,15 +685,15 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
   await expect(filterObjectRow(WIDE_TABLE_PATH)).toBeVisible();
   await filterObjectCheckbox(APP_PATH).click();
   await expect(filterObjectRow(APP_PATH)).toHaveAttribute('data-state', 'off');
-  await cancelFilters();
+  await cancelFilters(true);
   expect(opsCount(control.log())).toBe(opsBeforeDialog);
-  // Reopening shows the box still ticked — Cancel discarded the untick above. Focused on
+  // Reopening shows the box still ticked — Discard dropped the untick above. Focused on
   // APP_PATH again so its ancestor (the database) is pre-expanded, revealing it without a
   // manual expand click (D20).
   await openFilters(APP_PATH);
   await expect(filterObjectCheckbox(APP_PATH)).toBeChecked();
   await expect(filterObjectRow(APP_PATH)).toHaveAttribute('data-state', 'on');
-  await cancelFilters();
+  await cancelFilters(false);
 
   // --- tri-state: unticking both schemas of kira_test partials the database row;
   // ticking the database row restores both and leaves the persisted path set empty -----------
@@ -755,7 +757,7 @@ test('project tree — expansion, caching, disconnect/reconnect, search, filters
   await expect(filterObjectRow(APP_PATH)).toHaveCount(0);
   await page.fill('[data-testid="filter-name-input"]', '.*');
   await expect(page.locator('[data-testid="filter-object-row"]')).toHaveCount(0);
-  await cancelFilters();
+  await cancelFilters(true);
 
   // --- unticking one schema hides exactly it, and costs no *engine* op (a FiltersService.Replace
   // call is not one — confirmed by reading apps/kira-space/internal/storage/model/ops.go directly, and

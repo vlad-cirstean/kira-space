@@ -106,7 +106,7 @@ test('a variables change for the active environment resolves the URL chip and Co
   await page.click('[data-testid="http-copy-as-curl"]');
   await expect(page.locator('[data-testid="copy-as-curl-dialog"]')).toBeVisible();
   await expect(page.locator('[data-testid="copy-as-curl-command"]')).toHaveValue(/\{\{host\}\}/);
-  await page.click('[data-testid="copy-as-curl-close"]');
+  await page.click('[data-testid="copy-as-curl-dialog-close"]');
   await expect(page.locator('[data-testid="copy-as-curl-dialog"]')).toHaveCount(0);
 
   // Another window added "host" to the same environment's own variables — no local mutation here.

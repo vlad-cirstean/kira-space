@@ -87,7 +87,8 @@ test('contract: add, edit and remove rules send the same lists the backend enfor
   await input.press('Enter');
   await expect(page.locator('[data-testid="api-rule-host-error"]')).toBeVisible();
   await expect(page.locator('[data-testid="api-rule-save"]')).toBeDisabled();
-  await page.click('[data-testid="api-rule-cancel"]');
+  await page.click('[data-testid="api-rule-close"]');
+  await page.click('[data-testid="confirm-dialog-confirm"]');
 
   await rows(page).first().locator('[data-testid="api-rule-remove"]').click();
   await expect.poll(lastSet).toEqual(remove);

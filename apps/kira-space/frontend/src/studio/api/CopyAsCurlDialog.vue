@@ -120,9 +120,6 @@ function close(): void {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="copy-as-curl-close" @click="close">{{
-          t('common.action.close.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

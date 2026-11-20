@@ -420,7 +420,7 @@ test('switching environment after a copy leaves the copied command alone', async
   await page.click('[data-testid="copy-as-curl-copy"]');
   const copied = await lastClipboardWrite(page);
   expect(copied).toContain('prod.example.com');
-  await page.click('[data-testid="copy-as-curl-close"]');
+  await page.click('[data-testid="copy-as-curl-dialog-close"]');
 
   await page.click('[data-testid="api-environment-select"]');
   await page.click('[data-testid="api-environment-option"][data-value="env-2"]');
