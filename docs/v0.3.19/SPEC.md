@@ -9,7 +9,7 @@ Phases from `P690` (highest shipped: `P689`, chapter v0.3.18). Next new phase: `
 | P690 | Remove the memory module; keep it on an archive tag | Done |
 | P691 | Project file view moves from the Git module into agent tasks; Reveal in file manager, Open in VS Code | Done |
 | P692 | Agents module: color-coded task Start and Finish buttons | Done |
-| P693 Part 1 | Agents module RAM: measure and audit | Planned |
+| P693 Part 1 | Agents module RAM: measure and audit | Done |
 | P693 Part 2 | Agents module RAM: implement the fixes, re-measure | Planned |
 
 Chapter end (unasked, per working agreement): non-UI full run, code review rounds (user has not set a count; default 1, ask before planning the close), visual baseline re-record in this sandbox (fonts match CI, check `fc-match sans-serif` prints `Inter` first), close, PR.
@@ -126,6 +126,8 @@ Open design questions: record figure and platform (above); whether the ade20 ret
 Done when: the audit file is committed with the baseline table, the ranked attribution, the proposed numbers and the Part 2 fix list; the procedure reruns from the doc alone; no source change except probe extensions (own commit).
 
 Plan: `plans/P693-part1.md` (audit method) and `plans/P693-audit.md` (findings).
+
+Result (P693 Part 1): audit in `plans/P693-audit.md`. Probe extended (commits `1276c7691`, `0107b563d`; no product change). Record baseline 610.5 MB (WebKit WebContent 556.0 [24.6] at `ade-agents` `final` + Go app anon 54.5 [2.8]); 71% is the app frontend floor. Fix list: F1 retained ADE tree (WebKit +51.3 to +78.0 MB back - board, `AdeShell` instance pinned through a Pinia store-scope effect), F2 reap stopped-session headless terminals (8.2 MB at 4), F3 lazy mobile replay ring (4.3 MB Go), F4 diagnose native renderer growth after session launch (gated). Dropped under noise: run log cap, board history, stores, push churn. Mac figure not supplied.
 
 ### P693 Part 2: implement the fixes, re-measure
 
