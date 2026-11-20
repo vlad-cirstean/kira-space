@@ -29,6 +29,12 @@ caveat below for exactly which of those numbers that affects and which it doesn'
 | Tab switch ≤ 50 ms (product budget) | click tab → the other table's header cell present, p95 over 20 alternations | `tests/ui/budgets.spec.ts` | **asserted at p95 ≤ 300 ms** (WebKit sandbox bound) plus a machine-independent guard (no `<style>`/`<link>` churn, no `.slickgrid_` rule); 50 ms unverified on WKWebView after P139 Part 2 — see §2.1 |
 | Tree node expand (cached) ≤ 50 ms | click twisty → child rows present, p95 over 20 collapse/expand cycles of an already-cached schema node | `tests/ui/budgets.spec.ts` | **asserted** |
 | Console keystroke → completion popup visible ≤ 50 ms (p50) | last keypress → suggest widget on screen (computed `visibility: visible` and a list row; Monaco's own suggest widget, P60b — was `.cm-tooltip-autocomplete`), p50 over 20 keystrokes. Not `.visible`: Monaco adds that class 100 ms after the widget is on screen | `tests/ui/budgets.spec.ts` | **asserted** |
+| ADE leave and return, ade20 WebKit WebContent PSS (P693) | `back` - `board` of `ade20`, 3 repeats, median; was +78.0, now +70.8 [6.9], threshold = after + noise; target 10 MB missed, see §2.17 and Known open items | `heap-ram.spec.ts` (`--project=heap-webkit`) | manual probe, <= 78 MB |
+| ADE leave and return, ade-idle Chromium JS heap (P693) | `back` - `board` of `ade-idle` after two GCs, was +16.2, now +0.9 | `heap-ram.spec.ts` (`--project=heap`) | manual probe, <= 2 MB |
+| ADE shell collected after leave, DOM nodes `back` - `task` (P693) | WeakRef to `ade-shell` is dead after two GCs; DOM nodes after return minus the `task` checkpoint <= 810 (measured 195) | `tests/ui/ade-v2-retention.spec.ts` (`ui-heap`) | **asserted** |
+| Stopped agent sessions, ade-agents ArrayBuffer retained at `stopped4` (P693) | Pass B `JSArrayBufferData` after 4 stops with exit events, 0.33 MB (probe before the correction read 8.4 MB; product already freed it) | `heap-ram.spec.ts` Pass B | manual probe, <= 0.5 MB |
+| Agent terminal replay ring (P693) | Go probe `pprof -base heap-boot heap-idle60`, `mobileterm` inuse at `idle60`, was 4.3 MB, now 0 | `flows/adeflow` `TestRAMProbeAgents` | manual probe, <= 0.3 MB |
+| Kira-owned PSS, agents fixture (P693) | WebKit WebContent `ade-agents` `final` + Go anon `idle60` minus harness base64: 619.4 MB (a 572.4 [14.1], b 47.0); `back` 801.8, `stopped4` 749.2 | `heap-ram.spec.ts` + `TestRAMProbeAgents` | manual probe, `final` <= 647 MB (target 606 missed, see §2.17) |
 | Any DB round-trip async/cancellable | — | covered by every adapter's cancel scenario (P1–P10) | n/a |
 | < 350 MB total RSS, 5 connections / 10 tabs | min of 10 `app.getAppMetrics()` sums over an idle window | removed — see §2.2 below | **not automated; documented structural finding** |
 | Same, packaged | `ps -o rss` sum for the same scenario | §3 procedure below | manual (macOS) |
@@ -1039,6 +1045,58 @@ append (20 inserts, prefix read, delete). Cost now scales with chunks dropped, n
 
 `EXPLAIN QUERY PLAN` on `LatestRunsOf` after migration 0100: `SEARCH b USING COVERING INDEX
 ade_runs_latest (task_id=? AND step_id=? AND branch_id=? AND purpose=?)`.
+
+### 2.17 P693 — agents module RAM
+
+Base `b34439d0d` (audit numbers, `plans/P693-audit.md`, product unchanged since); tip `2e23b2473`. Host: Linux
+6.18.44, 4 vCPU, 16087 MB, no swap, go1.27.3, Playwright 1.64.1, chromium-1243, webkit-2370. Gate:
+`load1 <= 1.0` and nothing else running; Pass A 3 repeats (median [spread], noise = max(spread, floor):
+heap 2, PSS 10, Go inuse 2 MB), Pass B and the base run 1 repeat for attribution. Commands (worktree
+root): `bun run build:test`, then `KIRA_RAM_WORLD=ade-agents,ade-idle,ade bunx playwright test
+--config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram --repeat-each=3` (and
+`--project=heap-webkit`); Pass B `KIRA_DEBUG_HOOKS=1 bunx vite build --minify false` plus
+`KIRA_RAM_SNAPSHOTS=1`; Go `KIRA_RAM_PROBE=1 go test ./apps/kira-space/internal/flows/adeflow -run
+'^TestRAMProbeAgents$' -count=1 -v` x3 with `go tool pprof -sample_index=inuse_space -top -base
+heap-boot heap-idle60`. Full tables and discarded repeats: the P693 Part 2 measurements in history.
+
+Fixes. F1 (retained ADE tree): four pins, all via Vue 3.5 `doWatch` capturing `currentInstance` or a
+timer closure: nine ADE Pinia stores plus `repoLinks` created inside the first consumer, the
+`candidates` query held by its gc timer, and `usePaneResize.abort()` reading a stale computed on
+unmount. Fixed by `activateAdeStores`, `gcTime: 0`, a plain flag. F2 (stopped sessions): declined, the
+product already ends the pty on every stop path; the audit probe skipped the exit event
+(`stopped4` ArrayBuffer 0.33 MB on the base plus corrected probe, same as tip). F3: replay ring
+allocated only while phone access is on. F4: breakdown below, no fix.
+
+| row | before | after | target | |
+|---|---|---|---|---|
+| R6 Chromium ade-idle heap `back` - `board` | +16.2 | +0.9 [0.0] | <= 2 | met |
+| R6 Chromium ade-idle PSS | +12.0 | -5.5 [0.3] | <= 10 | met |
+| R6 Chromium ade20 heap, vs `task` | +20.0 | +3.8, +0.8 | <= 2 | met net of restored panel |
+| R6 Chromium ade20 DOM nodes | +9429 | +1531, +193 vs `task` | - | |
+| R6 Pass B Vue instances at `left` | 5461 to 10750 at `back` | 409 / 374 (ade20 / ade-idle), no duplicate at `back` | - | |
+| R6 WebKit ade-idle PSS | +51.3 [6.4] | +33.4 [9.9] | <= 10 | missed |
+| R6 WebKit ade20 PSS | +78.0 [8.5] | +70.8 [6.9] | <= 10 | missed |
+| R9 ArrayBuffer at `stopped4` | 8.4 (probe) | 0.33 | <= 0.5 | met |
+| R8 Go `mobileterm` inuse `idle60` | 4.3 | 0 rows | <= 0.3 | met |
+| Go heapInuse `idle60` | 29.0 [0.5] | 24.6 [1.2] | - | -4.4 |
+| record (a)+(b)+(c) | 610.5 | 619.4 | 606.2 | missed |
+
+Record: (a) WebKit WebContent `ade-agents` `final` 572.4 [14.1] (556.0 [24.6]); (b) Go anon `idle60`
+58.6 [2.9] minus harness base64 11.55 [0.62] = 47.0 (54.5); (c) 0. (a) moved +16.4 inside its 24.6
+noise and no fix acts on it; (b) moved -7.5. The WebKit side of R6 is not provable: the probe cannot
+force a GC on WebKit, and `left` reads at or above `board`. Chromium, with forced GC and heap
+snapshots, shows the tree collected. Secondary: `back` 801.8 (814.4), `stopped4` 749.2 (766.6),
+inside noise.
+
+R2, F4 breakdown, Chromium Pass B: `launch4` PSS +20.4: xterm buffers (`JSArrayBufferData`, 4220
+`Uint32Array`) +7.8 MB native, compiled code +1.5, lazy terminal chunk strings +0.85, 1 `.xterm`, 53
+rows, 3 `<style>` of 55 KB. `switch10` +12.8: first task panel mount, V8 +5.7 over many small owners
+(Vue instances, vnodes, Link/Dep, arrays; none at the 2 MB heap floor), native +1.3. No owner reaches
+its floor with a no-loss mechanism (the buffer lever is scrollback depth). Not fixed. Other
+checkpoints of every world sit inside the audit noise. `bun run test:ui:timing`: 4 passed.
+
+F3 edge change: `Broker.Output` returns early while recording is off, so a phone that attaches
+sees history from the moment access was turned on, not from process start.
 
 ## 3. Manual procedures (macOS, packaged build)
 

@@ -995,6 +995,8 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   `storeBytes` and the `__kiraTerminalStats` hook in each `RAM` record, E5 Go probe
   `KIRA_RAM_PROBE=1 KIRA_RAM_OUT=<dir> go test ./apps/kira-space/internal/flows/adeflow -run '^TestRAMProbeAgents$' -count=1 -v -timeout 15m`
   (prints `GORAM` lines, heap and goroutine profiles, process-table PSS per class).
+- P693 Part 2 probe changes: `ade-agents` `stopped4` emits `IPC.terminal` exit events before the sessions push (a stop without them leaves the ptys looking alive and over-reads ArrayBuffer by 8 MB); `ade-agents` prints an `ADEDOM` JSON line (DOM nodes per region, `.xterm` hosts and rows, canvases, `<style>` count and size, font faces, Chromium DOM counters) at `board`, `launch4`, `panes2`, `switch10`, `final`, and takes Pass B snapshots at `board`, `launch4`, `switch10`, `final`. Pass B costs about 0.9 GB of snapshots per pass; free disk first. The probe waits for `load1 <= 1.0`: a wrapper that gates with `pgrep -f 'playwright test'` matches its own command line, put the run in a script file.
+- ADE retention spec: `bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-heap` (`tests/ui/ade-v2-retention.spec.ts`, Chromium, forces GC over CDP; part of `test:ui` and PR CI). It asserts the ADE shell is collected after leaving ADE and DOM nodes on return stay within 810 of the `task` checkpoint.
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant
@@ -1011,7 +1013,10 @@ Per-process memory with ADE open and agents running. Mac only; the sandbox has n
    `com.apple.WebKit.WebContent`, `com.apple.WebKit.GPU`, `com.apple.WebKit.Networking`, each
    `claude`.
 3. Read the tooltip App/Agents/Scripts totals next to the footprint sum.
-4. Sandbox proxy for the same fixture: `KIRA_RAM_WORLD=ade-agents bunx playwright test
+4. Sandbox figures, same fixture (P693, Linux, median of 3): Kira-owned = WebKit WebContent + Go anon
+   minus harness base64. At `final` 619.4 MB, at `back` 801.8, at `stopped4` 749.2. Compare Mac
+   footprint against these by component, not in total.
+5. Sandbox proxy for the same fixture: `KIRA_RAM_WORLD=ade-agents bunx playwright test
    --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram` prints `PSS` lines
    per step. Footprint, not RSS, is the figure of record on Mac. Never `vmmap`.
 
