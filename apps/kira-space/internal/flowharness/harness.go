@@ -287,12 +287,14 @@ type App struct {
 	Clipboard *Clipboard
 	Shortcuts *Shortcuts
 
-	db       *storage.DB
-	repos    *repos.Repos
-	stopped  bool
-	built    int
-	scenario fakeagent.Scenario
-	opts     options
+	db      *storage.DB
+	repos   *repos.Repos
+	stopped bool
+	// beforeBoot runs once on the next build's database, before repos wrap it.
+	beforeBoot func(*sql.DB)
+	built      int
+	scenario   fakeagent.Scenario
+	opts       options
 }
 
 // New boots the app; the test is skipped without git on PATH. Everything is torn down in main's
@@ -466,6 +468,10 @@ func (a *App) build() {
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
+	if a.beforeBoot != nil {
+		a.beforeBoot(db.DB)
+		a.beforeBoot = nil
+	}
 	r, err := repos.New(db.DB)
 	if err != nil {
 		a.t.Fatalf("repos.New: %v", err)
@@ -573,12 +579,17 @@ func (a *App) Quit(t testing.TB) {
 
 // Restart tears the app down and rebuilds it on the same home, as a relaunch does. Open streams
 // and service references from before are dead.
-func (a *App) Restart() {
+func (a *App) Restart() { a.RestartAfter(nil) }
+
+// RestartAfter is Restart that hands the reopened database to between before anything boots on it.
+// Shutdown has ended every background job by then, so a boot-time job cannot write behind the callback.
+func (a *App) RestartAfter(between func(*sql.DB)) {
 	a.t.Helper()
 	if m := dbMcpPortRe.FindStringSubmatch(a.W.DbMcp.Status().Command); m != nil {
 		a.dbMcpPort, _ = strconv.Atoi(m[1])
 	}
 	a.Quit(a.t)
+	a.beforeBoot = between
 	a.build()
 }
 
