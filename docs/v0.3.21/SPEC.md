@@ -10,7 +10,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Done |
-| P705 | Mobile app: show the status info it is missing | Planned |
+| P705 | Mobile app: show the status info it is missing | Done |
 | P706 | Pull request icon: one glyph for every PR status | Done |
 
 ## P699
@@ -154,6 +154,13 @@ loading and offline states. Follow the frontend rules (shadcn-vue, Tailwind, Pin
 keep the mobile bundle small. Tests split at the IPC boundary (flow test plus `mobile-ios` UI spec, same
 scenario). Independent of P699 to P704 except P701 (restore state may also belong on mobile): the
 planner states shared files.
+
+Result: Phone gains Activity tab (agents, script runs, computer: connection, repos, Docker), richer Plan
+cards (sessions, run line, Jira, branch rows with tag, ahead/behind, PR state and checks). New
+`/api/runs` and `/api/computer`, script runs push with keep-list projection. Refresh button removed;
+header shows update age, stream reopens on visible/online. Flow `TestPhoneStatus` plus
+`tests/mobile/status.spec.ts` share contract `mobile-status.json`. Bundle `dist-mobile/assets` 1,585,470
+B to 1,629,350 B; index js gzip 298.54 KB to 310.88 KB (+12.3 KB).
 
 ## P706
 

@@ -45,3 +45,11 @@ Agent input also needs the global switch **Let phones reply to agents and contro
 When a phone controls a terminal, the desktop window shows **Reconnect here** to take control back.
 
 Tap a link in a terminal to open it on the phone.
+
+## Status on the phone
+
+The phone shows the same status as the desktop, read-only, and updates by itself:
+
+- **Activity tab**: running agents and their last activity. Script runs show state and failure reason. The computer section shows connection, last fetch per repository and Docker.
+- **Plan cards**: sessions, the latest script run and the Jira key. Each branch shows state, ahead and behind counts, and pull request state with checks.
+- There is no Refresh button. When the connection drops, the header shows when the phone last heard from the computer. It reconnects when you return to the page or the network is back.
