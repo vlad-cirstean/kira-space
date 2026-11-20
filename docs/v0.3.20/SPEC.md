@@ -7,7 +7,7 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 | P694 | Agent prompts: when to write proofs, where the task Details live | Done |
 | P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
 | P696 | Dialogs: remove redundant buttons (audit every dialog) | Done |
-| P697 | Required services: repo scripts that must be running for a task | Planned |
+| P697 | Required services: repo scripts that must be running for a task | Done |
 | P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Planned |
 
 ## P694
@@ -76,6 +76,15 @@ Open points for the planner (not decided here, except Detection):
 - Modes: behaviour on Start, manual and headless runs, and on server builds.
 - Memory: whether the choice is remembered per task or per repo.
 - Ownership: whether Kira stops services it started when the task finishes (default no, ask).
+
+Result: repo file key `services` (list of Run script refs, max 10, unique, also in shared files and
+config sync). `AdeTaskService.RequiredServices` reports running, stopped, noWorktree or invalid per
+service (Kira-started runs only; a script with "run in ADE worktree" is per mine branch). Repo form
+section "Required services". Gate dialog (Pinia `adeServicesGate`, TanStack Query) asks before Run,
+session launch, branch Start, Approve, Take over and needs-you actions; Continue skips the task until
+restart, the X cancels, a row Run opens the script run dialog. No Cancel beside the X. Engine starts and
+the phone never ask. Tests: flows `TestRequiredServices`, `TestRepoServicesFile`; UI
+`ade-v2-required-services.spec.ts`, `repo-services.spec.ts`. Architecture: "Required services (P697)".
 
 ## P698
 
