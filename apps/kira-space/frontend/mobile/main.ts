@@ -16,11 +16,13 @@ import { onChannel, sseSignalSource } from './api/events';
 import { getJson, setUnauthorizedHandler } from './api/http';
 import { router } from './router';
 import { useAuthStore } from './state/auth';
+import { installPhoneReadSignals } from './state/usePhoneStatus';
 import './styles.css';
 
 // Reads are push-invalidated (staleTime Infinity); a reconnect or a refocus refetches the rest.
 const queryClient = createQueryClient({ remote: true });
 installAdeReadSignals(queryClient, sseSignalSource);
+installPhoneReadSignals(queryClient);
 onChannel('kira:adetask:repos', () => {
   void queryClient.invalidateQueries({ queryKey: repoNamesKey, exact: true });
 });

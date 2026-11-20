@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { scriptRunStateSchema } from './scriptRuns';
 
 // P212: the Mobile access pane's domain. bridge/mobile.go never carries a token or hash across
 // this boundary.
@@ -92,3 +93,42 @@ export const mobileTerminalHoldSchema = /*#__PURE__*/ z.object({
   returnsAt: z.number(),
 });
 export type MobileTerminalHold = z.infer<typeof mobileTerminalHoldSchema>;
+
+// What a phone reads from /api/runs: a keep-list projection of scriptruns.Run. Never a cwd,
+// command, prompt, params, terminal id or output (internal/mobileweb/scriptruns.go).
+export const phoneRunSchema = /*#__PURE__*/ z.object({
+  id: z.string(),
+  scriptName: z.string(),
+  color: z.string(),
+  kind: z.enum(['script', 'smart']),
+  trigger: z.enum(['terminal', 'manual', 'ade', 'scheduled', 'mcp']),
+  state: scriptRunStateSchema,
+  createdAt: z.number(),
+  startedAt: z.number().nullable(),
+  finishedAt: z.number().nullable(),
+  taskId: z.string(),
+  taskTitle: z.string(),
+  branchId: z.string(),
+  branchLabel: z.string(),
+  resumable: z.boolean(),
+  outcome: /*#__PURE__*/ z
+    .object({ status: z.string(), reason: z.string(), exitCode: z.number().optional() })
+    .nullable(),
+});
+export type PhoneRun = z.infer<typeof phoneRunSchema>;
+
+export const phoneRunsSchema = /*#__PURE__*/ z.object({ runs: z.array(phoneRunSchema) });
+
+// What a phone reads from /api/computer. `docker` is null while the Docker module is off.
+export const phoneComputerSchema = /*#__PURE__*/ z.object({
+  docker: /*#__PURE__*/ z
+    .object({
+      state: z.enum(['ok', 'unavailable']),
+      reason: z.string(),
+      running: z.number(),
+      stopped: z.number(),
+      total: z.number(),
+    })
+    .nullable(),
+});
+export type PhoneComputer = z.infer<typeof phoneComputerSchema>;

@@ -2,7 +2,7 @@ import { normalizeBoardEvent } from '@ade/boardEvent';
 import type { AdeSignalSource } from '@ade/readSignals';
 import type { BoardChangedEvent, LogEvent, RunsChangedEvent } from '@ade/wire';
 import { CHANNEL } from '@shared/protocol/events';
-import { useEventSource } from '@vueuse/core';
+import { useDocumentVisibility, useEventSource, useOnline } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import { computed, onScopeDispose, ref, watch } from 'vue';
 import { getJson } from './http';
@@ -20,6 +20,7 @@ const CHANNELS = [
   CHANNEL.agentSessions,
   CHANNEL.agentEvent,
   CHANNEL.approvalsChanged,
+  CHANNEL.scriptRunsChanged,
 ] as const;
 
 type Listener = (data: unknown) => void;
@@ -35,7 +36,12 @@ export function onChannel(channel: string, cb: Listener): () => void {
   return () => set.delete(cb);
 }
 
+/** Epoch ms of the last frame the stream delivered (the opening `ready` included); null before the
+ *  first. Module-level like the listeners: the header reads it while the stream is down. */
+export const lastFrameAt = ref<number | null>(null);
+
 function dispatch(channel: string, raw: string): void {
+  lastFrameAt.value = Date.now();
   let data: unknown;
   try {
     data = JSON.parse(raw);
@@ -59,7 +65,7 @@ export type ConnectionStatus = 'live' | 'reconnecting' | 'offline';
 /** Opens the stream for the calling scope and closes it with the scope. `onResync` fires after
  *  every reconnect: pushes sent while disconnected are gone, so callers refetch. */
 export function useServerEvents(onResync: () => void) {
-  const { eventSource, status, error } = useEventSource('/api/events', [], {
+  const { eventSource, status, error, open } = useEventSource('/api/events', [], {
     autoReconnect: { retries: -1, delay: TIMING.reconnect },
   });
   const opened = ref(false);
@@ -68,6 +74,9 @@ export function useServerEvents(onResync: () => void) {
     eventSource,
     (es) => {
       if (!es) return;
+      es.addEventListener('ready', () => {
+        lastFrameAt.value = Date.now();
+      });
       for (const channel of CHANNELS) {
         es.addEventListener(channel, (e) => dispatch(channel, (e as MessageEvent<string>).data));
       }
@@ -86,6 +95,13 @@ export function useServerEvents(onResync: () => void) {
       void getJson('/api/me').catch(() => {
         // Any 401 already navigated through the shared handler; other failures change nothing here.
       });
+  });
+  // iOS freezes a backgrounded page's socket without an error event: reopen as soon as the page is
+  // visible or the network is back and the stream is not open.
+  const visibility = useDocumentVisibility();
+  const online = useOnline();
+  watch([visibility, online], ([v, on]) => {
+    if (v === 'visible' && on && status.value !== 'OPEN') open();
   });
   onScopeDispose(() => eventSource.value?.close());
 

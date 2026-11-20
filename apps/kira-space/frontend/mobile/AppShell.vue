@@ -11,6 +11,7 @@ import { useAgentMessageDefaults } from '@workbench/agent/agentInfo';
 import { onMounted } from 'vue';
 import { useServerEvents } from './api/events';
 import { useAgentSessionsStore } from './state/agentSessions';
+import { phoneKey } from './state/usePhoneStatus';
 import TabBar from './TabBar.vue';
 
 const queryClient = useQueryClient();
@@ -26,6 +27,7 @@ function refresh(): void {
 const { connection } = useServerEvents(() => {
   void queryClient.invalidateQueries({ queryKey: ['adetask'] });
   void queryClient.invalidateQueries({ queryKey: ['approvals'] });
+  void queryClient.invalidateQueries({ queryKey: phoneKey });
   void agentSessions.initAgentSessions();
 });
 onMounted(() => void agentSessions.initAgentSessions());
