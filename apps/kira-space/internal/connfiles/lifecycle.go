@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // DeleteFile removes a file that has no connection row, one that never held a valid connection. A
@@ -27,7 +29,7 @@ func (l *Loader) DeleteFile(file string) error {
 	if ids[stem] != "" {
 		return fmt.Errorf("%w: %s holds a connection; delete the connection instead", ErrExists, file)
 	}
-	if err := os.Remove(filepath.Join(l.o.Dir, file)); err != nil && !os.IsNotExist(err) {
+	if err := fileservice.Host().Remove(filepath.Join(l.o.Dir, file)); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("connfiles: remove %s: %w", file, err)
 	}
 	l.Reload()

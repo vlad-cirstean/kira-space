@@ -17,7 +17,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
-	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -173,7 +173,7 @@ func New(o Options) *Service {
 		o.Now = time.Now
 	}
 	if o.Write == nil {
-		o.Write = func(path string, data []byte) error { return configfs.WriteAtomic(path, data, 0o644) }
+		o.Write = func(path string, data []byte) error { return fileservice.Host().WriteFile(path, data, 0o644) }
 	}
 	if o.StartDelay <= 0 {
 		o.StartDelay = defaultStartLag
@@ -331,7 +331,7 @@ func (s *Service) SetRepo(ctx context.Context, url, branch, windowKey string) (S
 	_ = s.load()
 	same := s.set.Repo != nil && s.set.Repo.URL == url && s.set.branch() == branch
 	if !same {
-		if err := os.RemoveAll(syncDir(s.o.Home)); err != nil {
+		if err := fileservice.Host().RemoveAll(syncDir(s.o.Home)); err != nil {
 			s.mu.Unlock()
 			s.opMu.Unlock()
 			s.fetchMu.Unlock()
@@ -364,7 +364,7 @@ func (s *Service) RemoveRepo() (Status, error) {
 	}
 	s.timerMu.Unlock()
 	s.mu.Lock()
-	if err := os.RemoveAll(syncDir(s.o.Home)); err != nil {
+	if err := fileservice.Host().RemoveAll(syncDir(s.o.Home)); err != nil {
 		s.mu.Unlock()
 		return Status{}, internal(err)
 	}
@@ -499,8 +499,8 @@ func modeOf(path, fallback string) os.FileMode {
 		if p == "" {
 			continue
 		}
-		if fi, err := os.Stat(p); err == nil {
-			return fi.Mode().Perm()
+		if fi, err := fileservice.Host().Stat(p); err == nil {
+			return fi.Mode.Perm()
 		}
 	}
 	return 0o644
@@ -508,7 +508,7 @@ func modeOf(path, fallback string) os.FileMode {
 
 // checkJournal refreshes interrupted from the journal file and reports it.
 func (s *Service) checkJournal() bool {
-	_, err := os.Stat(s.journalPath())
+	_, err := fileservice.Host().Stat(s.journalPath())
 	s.mu.Lock()
 	s.interrupted = err == nil
 	s.mu.Unlock()

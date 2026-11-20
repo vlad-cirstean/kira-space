@@ -68,7 +68,7 @@ func TestRootedNames(t *testing.T) {
 	contain := mustNew(t, Policy{Root: f.root})
 	refuse := mustNew(t, Policy{Root: f.root, Symlinks: Refuse, PlainOnly: true})
 	cases := []struct {
-		name          string
+		name            string
 		contain, strict error
 	}{
 		{"/abs", ErrEscapes, ErrInvalidPath},

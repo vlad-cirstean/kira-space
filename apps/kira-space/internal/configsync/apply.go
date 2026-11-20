@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -15,7 +14,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/fsmove"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Preview is what a pull would do.
@@ -152,7 +151,7 @@ func (s *Service) Apply(ctx context.Context, token string, choices map[string]st
 func (s *Service) freshBackupDir(now time.Time) string {
 	base := filepath.Join(s.o.Home, "backups", "configsync-"+now.UTC().Format("20060102T150405Z"))
 	dir := base
-	for i := 2; fsmove.Exists(dir); i++ {
+	for i := 2; exists(dir); i++ {
 		dir = base + "-" + strconv.Itoa(i)
 	}
 	return dir
@@ -249,7 +248,7 @@ func (s *Service) commit(p *plan, jr journal, work []pending, skipBase map[*file
 		return err
 	}
 	if err := s.writeJournal(jr); err != nil {
-		_ = os.RemoveAll(jr.Backup)
+		_ = fileservice.Host().RemoveAll(jr.Backup)
 		return err
 	}
 	if err := s.stageBase(p, skipBase); err != nil {
@@ -275,7 +274,7 @@ func (s *Service) writeOne(w pending) error {
 	if !w.res.remove {
 		return s.o.Write(path, w.res.data)
 	}
-	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := fileservice.Host().Remove(path); err != nil {
 		return err
 	}
 	return nil
@@ -288,7 +287,7 @@ func (s *Service) writeJournal(jr journal) error {
 	if err != nil {
 		return err
 	}
-	return configfs.WriteAtomic(s.journalPath(), b, 0o644)
+	return fileservice.Host().WriteFile(s.journalPath(), b, 0o644)
 }
 
 // backup copies every file the apply replaces or removes.
@@ -298,10 +297,7 @@ func (s *Service) backup(jr journal, work []pending) error {
 			continue
 		}
 		dst := filepath.Join(jr.Backup, w.fp.module, w.fp.file)
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return err
-		}
-		if err := fsmove.CopyVerified(s.localPath(w.fp.module, w.fp.file), dst); err != nil {
+		if err := fileservice.Host().Copy(s.localPath(w.fp.module, w.fp.file), fileservice.Host(), dst); err != nil {
 			return err
 		}
 	}
@@ -312,14 +308,14 @@ func (s *Service) backup(jr journal, work []pending) error {
 func (s *Service) stageBase(p *plan, skip map[*filePlan]bool) error {
 	root := syncDir(s.o.Home)
 	next := filepath.Join(root, baseNextDir)
-	if err := os.RemoveAll(next); err != nil {
+	if err := fileservice.Host().RemoveAll(next); err != nil {
 		return err
 	}
-	if fsmove.Exists(filepath.Join(root, baseDir)) {
-		if err := fsmove.CopyTree(filepath.Join(root, baseDir), next); err != nil {
+	if exists(filepath.Join(root, baseDir)) {
+		if err := fileservice.Host().Copy(filepath.Join(root, baseDir), fileservice.Host(), next); err != nil {
 			return err
 		}
-	} else if err := os.MkdirAll(next, 0o755); err != nil {
+	} else if err := fileservice.Host().MkdirAll(next); err != nil {
 		return err
 	}
 	for _, fp := range p.files {
@@ -328,12 +324,12 @@ func (s *Service) stageBase(p *plan, skip map[*filePlan]bool) error {
 		}
 		path := filepath.Join(next, fp.baseRel)
 		if !fp.newBaseExist {
-			if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			if err := fileservice.Host().Remove(path); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := configfs.WriteAtomic(path, fp.newBaseFile, 0o644); err != nil {
+		if err := fileservice.Host().WriteFile(path, fp.newBaseFile, 0o644); err != nil {
 			return err
 		}
 	}
@@ -344,19 +340,19 @@ func (s *Service) stageBase(p *plan, skip map[*filePlan]bool) error {
 func (s *Service) finish(jr journal) error {
 	root := syncDir(s.o.Home)
 	next, cur, prev := filepath.Join(root, baseNextDir), filepath.Join(root, baseDir), filepath.Join(root, baseDir+".prev")
-	if fsmove.Exists(next) {
-		if err := os.RemoveAll(prev); err != nil {
+	if exists(next) {
+		if err := fileservice.Host().RemoveAll(prev); err != nil {
 			return err
 		}
-		if fsmove.Exists(cur) {
-			if err := os.Rename(cur, prev); err != nil {
+		if exists(cur) {
+			if err := fileservice.Host().Rename(cur, prev, fileservice.RenameOptions{}); err != nil {
 				return err
 			}
 		}
-		if err := os.Rename(next, cur); err != nil {
+		if err := fileservice.Host().Rename(next, cur, fileservice.RenameOptions{}); err != nil {
 			return err
 		}
-		_ = os.RemoveAll(prev)
+		_ = fileservice.Host().RemoveAll(prev)
 	}
 	return finishState(s.o.Home, jr)
 }
@@ -367,7 +363,7 @@ func finishState(home string, jr journal) error {
 	if err := saveState(home, st); err != nil {
 		return err
 	}
-	if err := os.Remove(filepath.Join(syncDir(home), journalFile)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := fileservice.Host().Remove(filepath.Join(syncDir(home), journalFile)); err != nil {
 		return err
 	}
 	return nil
@@ -385,16 +381,16 @@ func rollbackFiles(home string, jr journal) error {
 	for _, f := range jr.Files {
 		path := filepath.Join(configfs.ModuleDir(home, f.Module), f.File)
 		if f.Existed {
-			data, err := os.ReadFile(filepath.Join(jr.Backup, f.Module, f.File))
+			data, err := fileservice.Host().ReadFile(filepath.Join(jr.Backup, f.Module, f.File))
 			if err == nil {
-				err = configfs.WriteAtomic(path, data, modeOf(path, filepath.Join(jr.Backup, f.Module, f.File)))
+				err = fileservice.Host().WriteFile(path, data, modeOf(path, filepath.Join(jr.Backup, f.Module, f.File)))
 			}
 			if err != nil && first == nil {
 				first = err
 			}
 			continue
 		}
-		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) && first == nil {
+		if err := fileservice.Host().Remove(path); err != nil && first == nil {
 			first = err
 		}
 	}
@@ -402,10 +398,10 @@ func rollbackFiles(home string, jr journal) error {
 		return first
 	}
 	root := syncDir(home)
-	if err := os.RemoveAll(filepath.Join(root, baseNextDir)); err != nil {
+	if err := fileservice.Host().RemoveAll(filepath.Join(root, baseNextDir)); err != nil {
 		return err
 	}
-	if err := os.Remove(filepath.Join(root, journalFile)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := fileservice.Host().Remove(filepath.Join(root, journalFile)); err != nil {
 		return err
 	}
 	return nil
@@ -414,7 +410,7 @@ func rollbackFiles(home string, jr journal) error {
 // Recover settles an apply a crash cut short: an applying journal rolls back, a committed one
 // finishes. Run at boot before the module stores start.
 func Recover(home string) error {
-	b, err := os.ReadFile(filepath.Join(syncDir(home), journalFile))
+	b, err := fileservice.Host().ReadFile(filepath.Join(syncDir(home), journalFile))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -430,11 +426,11 @@ func Recover(home string) error {
 	}
 	root := syncDir(home)
 	next, cur := filepath.Join(root, baseNextDir), filepath.Join(root, baseDir)
-	if fsmove.Exists(next) {
-		if err := os.RemoveAll(cur); err != nil {
+	if exists(next) {
+		if err := fileservice.Host().RemoveAll(cur); err != nil {
 			return err
 		}
-		if err := os.Rename(next, cur); err != nil {
+		if err := fileservice.Host().Rename(next, cur, fileservice.RenameOptions{}); err != nil {
 			return err
 		}
 	}
@@ -444,19 +440,19 @@ func Recover(home string) error {
 // pruneBackups keeps the newest keepBackups configsync backups.
 func (s *Service) pruneBackups() {
 	dir := filepath.Join(s.o.Home, "backups")
-	ents, err := os.ReadDir(dir)
+	ents, err := fileservice.Host().ReadDir(dir)
 	if err != nil {
 		return
 	}
 	var names []string
 	for _, e := range ents {
-		if e.IsDir() && strings.HasPrefix(e.Name(), "configsync-") {
-			names = append(names, e.Name())
+		if e.Dir && strings.HasPrefix(e.Name, "configsync-") {
+			names = append(names, e.Name)
 		}
 	}
 	sort.Strings(names)
 	for len(names) > keepBackups {
-		if err := os.RemoveAll(filepath.Join(dir, names[0])); err != nil {
+		if err := fileservice.Host().RemoveAll(filepath.Join(dir, names[0])); err != nil {
 			slog.Warn("config sync: prune backup", "scope", "configsync", "err", err)
 		}
 		names = names[1:]

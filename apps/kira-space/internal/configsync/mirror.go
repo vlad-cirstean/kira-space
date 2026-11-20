@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/catfile"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -103,10 +103,10 @@ func classifyFetch(stderr string, exit int) *syncError {
 // an explicit fetch; a background fetch passes none and fails fast on a credential prompt.
 func (m *mirror) fetch(ctx context.Context, url, branch string, env []string) (string, *syncError) {
 	parent := filepath.Dir(m.dir)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := fileservice.Host().MkdirAll(parent); err != nil {
 		return "", &syncError{kind: ProblemGit, message: err.Error()}
 	}
-	if _, err := os.Stat(filepath.Join(m.dir, "HEAD")); err != nil {
+	if _, err := fileservice.Host().Stat(filepath.Join(m.dir, "HEAD")); err != nil {
 		if _, e := m.run(ctx, parent, []string{"init", "--bare", "--quiet", filepath.Base(m.dir)}, nil, false); e != nil {
 			return "", e
 		}

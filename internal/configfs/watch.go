@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
-	"github.com/kirathecat/kira-studio/internal/fswatch"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const watchDebounce = 200 * time.Millisecond
@@ -28,13 +28,13 @@ func WatchDir(dir, ext string, onChange func()) (stop func(), err error) {
 	// fswatch reports Clean, NFC paths; compare against that spelling.
 	ndir := norm.NFC.String(dir)
 	// MaxDepth 1 with only dir let through: the seam adds dir when it appears, so a missing dir is fine.
-	w, err := fswatch.Watch(fswatch.Options{Roots: []string{parent}, MaxDepth: 1, SkipDir: func(p string) bool { return p != ndir }})
+	w, err := fileservice.Host().Watch(fileservice.WatchOptions{Names: []string{parent}, MaxDepth: 1, SkipDir: func(p string) bool { return p != ndir }})
 	if err != nil {
 		return nil, fmt.Errorf("configfs: watch %s: %w", parent, err)
 	}
 
 	done := make(chan struct{})
-	d := fswatch.NewDebouncer(watchDebounce, 0, onChange)
+	d := fileservice.NewDebouncer(watchDebounce, 0, onChange)
 	go func() {
 		defer close(done)
 		for ev := range w.Events() {
@@ -51,7 +51,7 @@ func WatchDir(dir, ext string, onChange func()) (stop func(), err error) {
 }
 
 // relevantEvent reports whether ev touches dir itself or a visible *<ext> file in it; a Rescan always does.
-func relevantEvent(dir, ext string, ev fswatch.Event) bool {
+func relevantEvent(dir, ext string, ev fileservice.Event) bool {
 	if ev.Rescan || ev.Path == dir {
 		return true
 	}

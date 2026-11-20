@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Folder is the runs module folder name under <home>/config.
@@ -236,7 +237,7 @@ func (l *Loader) get(id string) (CustomScript, error) {
 func (l *Loader) freeID(base string) string {
 	id := base
 	for n := 2; ; n++ {
-		if _, err := os.Stat(filepath.Join(l.o.Dir, FileName(id))); errors.Is(err, os.ErrNotExist) {
+		if _, err := fileservice.Host().Stat(filepath.Join(l.o.Dir, FileName(id))); errors.Is(err, os.ErrNotExist) {
 			return id
 		}
 		id = fmt.Sprintf("%s-%d", base, n)
@@ -252,11 +253,11 @@ func (l *Loader) Delete(id string) error {
 	if err != nil {
 		return err
 	}
-	_, statErr := os.Stat(filepath.Join(l.o.Dir, FileName(id)))
+	_, statErr := fileservice.Host().Stat(filepath.Join(l.o.Dir, FileName(id)))
 	if rec == nil && statErr != nil {
 		return fmt.Errorf("scripts: delete %s: %w", id, sql.ErrNoRows)
 	}
-	if err := os.Remove(filepath.Join(l.o.Dir, FileName(id))); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := fileservice.Host().Remove(filepath.Join(l.o.Dir, FileName(id))); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("scripts: delete %s: %w", id, err)
 	}
 	l.Reload()

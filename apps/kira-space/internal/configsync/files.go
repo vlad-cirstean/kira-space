@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"go.yaml.in/yaml/v3"
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -127,7 +127,7 @@ var decodeSettings = func() configfs.DecodeFunc[Settings] {
 
 // loadSettings reads sync.yaml; a missing file is no repository.
 func loadSettings(home string) (Settings, error) {
-	src, err := configfs.ReadCapped(filepath.Join(syncDir(home), settingsFile), configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(filepath.Join(syncDir(home), settingsFile), configfs.MaxFileBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return Settings{}, nil
 	}
@@ -158,7 +158,7 @@ func saveSettings(home string, s Settings) error {
 	if err := enc.Close(); err != nil {
 		return err
 	}
-	return configfs.WriteAtomic(filepath.Join(syncDir(home), settingsFile), buf.Bytes(), 0o644)
+	return fileservice.Host().WriteFile(filepath.Join(syncDir(home), settingsFile), buf.Bytes(), 0o644)
 }
 
 // Problem is why sync is stuck, shown in Settings.
@@ -183,7 +183,7 @@ var stateMu sync.Mutex
 
 func loadState(home string) State {
 	var st State
-	b, err := os.ReadFile(filepath.Join(syncDir(home), stateFile))
+	b, err := fileservice.Host().ReadFile(filepath.Join(syncDir(home), stateFile))
 	if err == nil {
 		_ = json.Unmarshal(b, &st)
 	}
@@ -197,5 +197,11 @@ func saveState(home string, st State) error {
 	if err != nil {
 		return err
 	}
-	return configfs.WriteAtomic(filepath.Join(syncDir(home), stateFile), b, 0o644)
+	return fileservice.Host().WriteFile(filepath.Join(syncDir(home), stateFile), b, 0o644)
+}
+
+// exists reports whether p exists; a dangling symlink counts.
+func exists(p string) bool {
+	ok, _ := fileservice.Host().Exists(p)
+	return ok
 }

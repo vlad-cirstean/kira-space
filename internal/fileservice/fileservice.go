@@ -111,10 +111,16 @@ type Service struct {
 	root string // resolved Root, "" host-wide
 }
 
-var host = &Service{}
+var (
+	host        = &Service{}
+	hostPrivate = &Service{p: Policy{Private: true}}
+)
 
 // Host is the shared host-wide Service: names are absolute, symlinks are followed.
 func Host() *Service { return host }
+
+// HostPrivate is Host with owner-only perms for what it creates: files 0600, dirs 0700.
+func HostPrivate() *Service { return hostPrivate }
 
 // New returns the Service of p. A rooted Policy creates Root and resolves its own symlinks once;
 // nothing below it is resolved again except under Contain.

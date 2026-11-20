@@ -9,6 +9,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
@@ -43,7 +44,7 @@ type Seeder struct{ Store *apifiles.Store }
 // WriteFile writes a file into the api folder and loads it, as an external edit would.
 func (s Seeder) WriteFile(t testing.TB, file string, text []byte) {
 	t.Helper()
-	if err := configfs.WriteAtomic(filepath.Join(s.Store.Dir(), file), text, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(s.Store.Dir(), file), text, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	s.Store.Sync()

@@ -261,3 +261,9 @@ func (s *Service) Chtimes(name string, at time.Time) error {
 	defer t.close()
 	return t.fail("chtimes", t.fsys.Chtimes(t.name, at, at))
 }
+
+// WriteFile is Write with a mode and no Info, the shape of os.WriteFile: perm 0 means the policy default.
+func (s *Service) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	_, err := s.Write(name, data, WriteOptions{Perm: perm})
+	return err
+}

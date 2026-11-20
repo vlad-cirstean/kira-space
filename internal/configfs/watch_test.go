@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 func waitFire(t *testing.T, ch <-chan struct{}) {
@@ -83,7 +85,7 @@ func TestWatch_dirCreatedLater(t *testing.T) {
 func TestWatch_atomicWriteFiresOnce(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "workflows")
 	ch := startWatch(t, dir)
-	if err := WriteAtomic(filepath.Join(dir, "flow.yaml"), []byte("a: 1\n"), 0o644); err != nil {
+	if _, err := fileservice.Host().Write(filepath.Join(dir, "flow.yaml"), []byte("a: 1\n"), fileservice.WriteOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	waitFire(t, ch)

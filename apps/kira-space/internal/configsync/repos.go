@@ -17,6 +17,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/credshape"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/gitremote"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -250,21 +251,21 @@ func repoBaseName(repoID string) string {
 
 // repoBaseDirs lists the shared files that have a stored base.
 func (s *Service) repoBaseDirs() []string {
-	ents, err := os.ReadDir(s.baseAt(reposModule))
+	ents, err := fileservice.Host().ReadDir(s.baseAt(reposModule))
 	if err != nil {
 		return nil
 	}
 	var out []string
 	for _, e := range ents {
-		if e.IsDir() {
-			out = append(out, e.Name())
+		if e.Dir {
+			out = append(out, e.Name)
 		}
 	}
 	return out
 }
 
 func (s *Service) readRepoOrigin(shared string) string {
-	b, err := os.ReadFile(s.baseAt(filepath.Join(reposModule, shared, "origin")))
+	b, err := fileservice.Host().ReadFile(s.baseAt(filepath.Join(reposModule, shared, "origin")))
 	if err != nil {
 		return ""
 	}
@@ -523,13 +524,13 @@ func (s *Service) stageRepoBase(p *plan, next string) error {
 			return err
 		}
 		if p.repoGone[name] && left == 0 {
-			if err := os.RemoveAll(dir); err != nil {
+			if err := fileservice.Host().RemoveAll(dir); err != nil {
 				return err
 			}
 			continue
 		}
 		if key := p.repoOrigin[name]; key != "" {
-			if err := configfs.WriteAtomic(filepath.Join(dir, "origin"), []byte(key+"\n"), 0o644); err != nil {
+			if err := fileservice.Host().WriteFile(filepath.Join(dir, "origin"), []byte(key+"\n"), 0o644); err != nil {
 				return err
 			}
 		}
@@ -539,16 +540,16 @@ func (s *Service) stageRepoBase(p *plan, next string) error {
 
 // pruneRepoBaseDir removes the base files of dir no plan keeps and counts those left.
 func pruneRepoBaseDir(dir, name string, keep map[string]bool) (left int, err error) {
-	ents, err := os.ReadDir(dir)
+	ents, err := fileservice.Host().ReadDir(dir)
 	if err != nil && !os.IsNotExist(err) {
 		return 0, err
 	}
 	for _, e := range ents {
-		if e.IsDir() || e.Name() == "origin" {
+		if e.Dir || e.Name == "origin" {
 			continue
 		}
-		if !keep[reposModule+"/"+name+"/"+e.Name()] {
-			if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+		if !keep[reposModule+"/"+name+"/"+e.Name] {
+			if err := fileservice.Host().Remove(filepath.Join(dir, e.Name)); err != nil {
 				return left, err
 			}
 			continue

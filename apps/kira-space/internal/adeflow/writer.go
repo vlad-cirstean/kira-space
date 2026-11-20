@@ -15,6 +15,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 )
 
@@ -50,7 +51,7 @@ func (r *Reader) ReadYaml(file string) (adewire.WorkflowYaml, error) {
 	if err != nil {
 		return adewire.WorkflowYaml{}, err
 	}
-	src, err := os.ReadFile(p)
+	src, err := fileservice.Host().ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return adewire.WorkflowYaml{}, invalidf("workflow %s does not exist", file)
@@ -95,7 +96,7 @@ func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.Workf
 	r.wmu.Lock()
 	defer r.wmu.Unlock()
 	var doc yaml.Node
-	src, err := os.ReadFile(p)
+	src, err := fileservice.Host().ReadFile(p)
 	if baseHash != "" && configfs.TextHash(src) != baseHash {
 		return adewire.WorkflowEntry{}, fmt.Errorf("%w: the file changed since it was loaded", ErrConflict)
 	}
@@ -111,7 +112,7 @@ func (r *Reader) Save(file, baseHash string, wf adewire.Workflow) (adewire.Workf
 	if err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
-	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(r.Dir, file), out, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, p)
@@ -123,14 +124,14 @@ func (r *Reader) Import(srcPath string) (adewire.WorkflowEntry, error) {
 	if !filepath.IsAbs(srcPath) {
 		return adewire.WorkflowEntry{}, invalidf("path must be absolute")
 	}
-	info, err := os.Stat(srcPath)
-	if err != nil || !info.Mode().IsRegular() {
+	info, err := fileservice.Host().Stat(srcPath)
+	if err != nil || !info.Mode.IsRegular() {
 		return adewire.WorkflowEntry{}, invalidf("%s is not a readable file", srcPath)
 	}
-	if info.Size() > maxYamlBytes {
+	if info.Size > maxYamlBytes {
 		return adewire.WorkflowEntry{}, invalidf("the workflow file is larger than 1 MiB")
 	}
-	src, err := os.ReadFile(srcPath)
+	src, err := fileservice.Host().ReadFile(srcPath)
 	if err != nil {
 		return adewire.WorkflowEntry{}, invalidf("cannot read %s: %v", srcPath, err)
 	}
@@ -144,10 +145,10 @@ func (r *Reader) Import(srcPath string) (adewire.WorkflowEntry, error) {
 	r.wmu.Lock()
 	defer r.wmu.Unlock()
 	p := filepath.Join(r.Dir, file)
-	if _, err := os.Lstat(p); err == nil {
+	if _, err := fileservice.Host().Lstat(p); err == nil {
 		return adewire.WorkflowEntry{}, invalidf("%s already exists in the workflows folder", file)
 	}
-	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), src, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(r.Dir, file), src, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, p)
@@ -164,7 +165,7 @@ func (r *Reader) New(name string) (adewire.WorkflowEntry, error) {
 	r.wmu.Lock()
 	defer r.wmu.Unlock()
 	id := freeStem(base, func(s string) bool {
-		_, err := os.Lstat(filepath.Join(r.Dir, s+".yaml"))
+		_, err := fileservice.Host().Lstat(filepath.Join(r.Dir, s+".yaml"))
 		return err == nil
 	})
 	wf := adewire.Workflow{ID: id, Name: name, Steps: []adewire.WorkflowStep{
@@ -175,7 +176,7 @@ func (r *Reader) New(name string) (adewire.WorkflowEntry, error) {
 		return adewire.WorkflowEntry{}, err
 	}
 	file := id + ".yaml"
-	if err := configfs.WriteAtomic(filepath.Join(r.Dir, file), out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(r.Dir, file), out, 0o644); err != nil {
 		return adewire.WorkflowEntry{}, err
 	}
 	return r.entry(file, filepath.Join(r.Dir, file))

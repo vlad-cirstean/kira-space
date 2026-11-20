@@ -15,8 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
-	"github.com/kirathecat/kira-studio/internal/configfs"
-
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -71,7 +70,7 @@ func TestConnectionConfigFile(t *testing.T) {
 		t.Fatalf("file = %q, want local.yaml", conn.File)
 	}
 	file := filepath.Join(app.W.ConnectionFiles.Dir(), conn.File)
-	if _, err := os.Stat(file); err != nil {
+	if _, err := fileservice.Host().Stat(file); err != nil {
 		t.Fatalf("connection file missing: %v", err)
 	}
 	list, err := app.W.Connections.List()
@@ -86,7 +85,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	app.Contract(t, sc, "ConnectionConfigService.View", view, paths)
 
 	// 2. An external atomic write moves the color and the name with the file.
-	text, err := os.ReadFile(file)
+	text, err := fileservice.Host().ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +93,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if edited == string(text) {
 		t.Fatalf("the edit changed nothing in:\n%s", text)
 	}
-	if err := configfs.WriteAtomic(file, []byte(edited), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte(edited), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool {
@@ -109,7 +108,7 @@ func TestConnectionConfigFile(t *testing.T) {
 
 	// 3. A bad edit keeps the last good row and refuses app writes until fixed.
 	bad := strings.Replace(edited, "kind: sqlite", "kind: nosuchkind", 1)
-	if err := configfs.WriteAtomic(file, []byte(bad), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte(bad), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) != nil })
@@ -128,13 +127,13 @@ func TestConnectionConfigFile(t *testing.T) {
 	if ie := testx.AsIpcErr(t, err); ie.Code != "E_BAD_REQUEST" {
 		t.Errorf("Filters.Replace on a broken file = %v, want E_BAD_REQUEST", ie)
 	}
-	if err := configfs.WriteAtomic(file, []byte(edited), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte(edited), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) == nil })
 
 	// A file that is not YAML at all is the same: a problem with a line, the last good row kept.
-	if err := configfs.WriteAtomic(file, []byte("name: [unclosed\nkind: sqlite\n"), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte("name: [unclosed\nkind: sqlite\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) != nil })
@@ -144,7 +143,7 @@ func TestConnectionConfigFile(t *testing.T) {
 	if c, _ := connectionNamed(t, app, conn.ID); c.Name != "Local (edited)" || c.Color != "green" {
 		t.Errorf("row after invalid YAML = %+v, want the last good name and color", c)
 	}
-	if err := configfs.WriteAtomic(file, []byte(edited), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, []byte(edited), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, conn.File) == nil })
@@ -156,7 +155,7 @@ func TestConnectionConfigFile(t *testing.T) {
 		t.Fatalf("Filters.Replace = %+v (%v)", got, err)
 	}
 	app.Contract(t, sc, "FiltersService.Replace", got)
-	if b, _ := os.ReadFile(file); !strings.Contains(string(b), "hidden_kinds") || !strings.Contains(string(b), "(edited)") {
+	if b, _ := fileservice.Host().ReadFile(file); !strings.Contains(string(b), "hidden_kinds") || !strings.Contains(string(b), "(edited)") {
 		t.Errorf("file after Filters.Replace lost the filters or the edit:\n%s", b)
 	}
 
@@ -183,14 +182,14 @@ func TestConnectionConfigFile(t *testing.T) {
 	if err != nil || dup.File != "local-copy.yaml" {
 		t.Fatalf("Duplicate = %+v (%v), want local-copy.yaml", dup, err)
 	}
-	if err := os.Remove(filepath.Join(app.W.ConnectionFiles.Dir(), dup.File)); err != nil {
+	if err := fileservice.Host().Remove(filepath.Join(app.W.ConnectionFiles.Dir(), dup.File)); err != nil {
 		t.Fatal(err)
 	}
 	testx.WaitUntil(t, waitFor, func() bool { _, ok := connectionNamed(t, app, dup.ID); return !ok })
 	if err := app.W.Connections.Delete(bridge.ConnectionsIDArgs{ID: conn.ID}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(file); !errors.Is(err, os.ErrNotExist) {
+	if _, err := fileservice.Host().Stat(file); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("file after Delete: %v, want it removed", err)
 	}
 }
@@ -208,7 +207,7 @@ func TestConnectionSecrets(t *testing.T) {
 	conn := createConn(t, app, in)
 
 	file := filepath.Join(app.W.ConnectionFiles.Dir(), conn.File)
-	b, err := os.ReadFile(file)
+	b, err := fileservice.Host().ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,11 +236,11 @@ func TestConnectionSecrets(t *testing.T) {
 	}
 
 	// Rotating the secret leaves the file alone.
-	before, _ := os.ReadFile(file)
+	before, _ := fileservice.Host().ReadFile(file)
 	if _, err := cfg.SetSecret(bridge.ConnectionSecretArgs{Kind: connfiles.KindPassword, Name: "pg.password", Value: "rotated"}); err != nil {
 		t.Fatal(err)
 	}
-	if after, _ := os.ReadFile(file); !bytes.Equal(after, before) {
+	if after, _ := fileservice.Host().ReadFile(file); !bytes.Equal(after, before) {
 		t.Errorf("SetSecret rewrote the file:\n%s", after)
 	}
 	if r := reveal(); r.Password == nil || *r.Password != "rotated" {
@@ -322,7 +321,7 @@ func TestConnectionDuplicateKeepsRenamedFileSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := app.W.ConnectionFiles.Dir()
-	if err := os.Rename(filepath.Join(dir, dup.File), filepath.Join(dir, "staging.yaml")); err != nil {
+	if err := fileservice.Host().Rename(filepath.Join(dir, dup.File), filepath.Join(dir, "staging.yaml"), fileservice.RenameOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	var staging model.ConnectionSummary

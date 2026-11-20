@@ -81,7 +81,9 @@ func wrapErr(op, disp string, err error) error {
 func (t *target) fail(op string, err error) error { return wrapErr(op, t.disp, err) }
 
 // notExist is the error for a missing name.
-func (t *target) notExist(op string) error { return &fs.PathError{Op: op, Path: t.disp, Err: fs.ErrNotExist} }
+func (t *target) notExist(op string) error {
+	return &fs.PathError{Op: op, Path: t.disp, Err: fs.ErrNotExist}
+}
 
 // cleanName applies rule 1 and returns the name to resolve. root true allows "." (the root itself).
 func (s *Service) cleanName(name string, root bool) (string, error) {

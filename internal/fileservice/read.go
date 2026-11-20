@@ -150,3 +150,9 @@ func (s *Service) Open(name string) (*os.File, Info, error) {
 	}
 	return f, s.infoOf(fi), nil
 }
+
+// ReadFile is Read with the default cap and no Info, the shape of os.ReadFile.
+func (s *Service) ReadFile(name string) ([]byte, error) {
+	data, _, err := s.Read(name, 0)
+	return data, err
+}

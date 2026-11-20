@@ -15,7 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
-	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 const (
@@ -32,7 +32,7 @@ func configPath(app *flowharness.App, rel string) string {
 
 func read(t *testing.T, path string) string {
 	t.Helper()
-	b, err := os.ReadFile(path)
+	b, err := fileservice.Host().ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,10 +41,10 @@ func read(t *testing.T, path string) string {
 
 func write(t *testing.T, path, text string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := fileservice.Host().MkdirAll(filepath.Dir(path)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -147,7 +147,7 @@ func TestConfigSync(t *testing.T) {
 	if read(t, configPath(app, "team.yaml")) != "name: team\nhost: db.example.com\n" {
 		t.Fatal("team.yaml not applied")
 	}
-	if _, err := os.Stat(configPath(app, "extra.yaml")); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(configPath(app, "extra.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("deactivated unit applied: %v", err)
 	}
 	if st := mustStatus(t, svc); st.Applied != head || st.Changes != 0 {
@@ -231,7 +231,7 @@ func TestConfigSync(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, f := range []string{"leaky.yaml", "plain.yaml"} {
-		if _, err := os.Stat(configPath(app, f)); !os.IsNotExist(err) {
+		if _, err := fileservice.Host().Stat(configPath(app, f)); !os.IsNotExist(err) {
 			t.Fatalf("blocked unit %s applied: %v", f, err)
 		}
 	}
@@ -249,7 +249,7 @@ func TestConfigSync(t *testing.T) {
 	if st, err = svc.RemoveRepo(); err != nil || st.Configured {
 		t.Fatalf("remove = %+v, %v", st, err)
 	}
-	if _, err := os.Stat(configPath(app, "team.yaml")); err != nil {
+	if _, err := fileservice.Host().Stat(configPath(app, "team.yaml")); err != nil {
 		t.Fatalf("applied file removed: %v", err)
 	}
 }
@@ -311,7 +311,7 @@ func TestApplyRollsBackOnWriteFailure(t *testing.T) {
 		if writes == 2 {
 			return os.ErrPermission
 		}
-		return configfs.WriteAtomic(path, data, 0o644)
+		return fileservice.Host().WriteFile(path, data, 0o644)
 	})
 	pv, err := svc.Preview(ctx)
 	if err != nil {
@@ -320,11 +320,11 @@ func TestApplyRollsBackOnWriteFailure(t *testing.T) {
 	if _, err := svc.Apply(ctx, pv.Token, nil); err == nil {
 		t.Fatal("apply succeeded despite a failed write")
 	}
-	ents, _ := os.ReadDir(filepath.Join(home, "config", "connections"))
+	ents, _ := fileservice.Host().ReadDir(filepath.Join(home, "config", "connections"))
 	if len(ents) != 0 {
 		t.Fatalf("files left after rollback: %v", ents)
 	}
-	if _, err := os.Stat(journalPath(home)); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(journalPath(home)); !os.IsNotExist(err) {
 		t.Fatalf("journal left: %v", err)
 	}
 	if st := svc.Status(); st.Applied != "" {
@@ -340,7 +340,7 @@ func TestRecoverRollsBackInterruptedApply(t *testing.T) {
 		if writes == 2 {
 			runtime.Goexit()
 		}
-		return configfs.WriteAtomic(path, data, 0o644)
+		return fileservice.Host().WriteFile(path, data, 0o644)
 	})
 	pv, err := svc.Preview(ctx)
 	if err != nil {
@@ -356,7 +356,7 @@ func TestRecoverRollsBackInterruptedApply(t *testing.T) {
 	case <-time.After(wait):
 		t.Fatal("apply goroutine did not stop")
 	}
-	if _, err := os.Stat(journalPath(home)); err != nil {
+	if _, err := fileservice.Host().Stat(journalPath(home)); err != nil {
 		t.Fatalf("no journal after the interrupted apply: %v", err)
 	}
 	// While the journal stays, a new preview is refused and the status says why.
@@ -369,11 +369,11 @@ func TestRecoverRollsBackInterruptedApply(t *testing.T) {
 	if err := configsync.Recover(home); err != nil {
 		t.Fatalf("Recover: %v", err)
 	}
-	ents, _ := os.ReadDir(filepath.Join(home, "config", "connections"))
+	ents, _ := fileservice.Host().ReadDir(filepath.Join(home, "config", "connections"))
 	if len(ents) != 0 {
 		t.Fatalf("files left after recovery: %v", ents)
 	}
-	if _, err := os.Stat(journalPath(home)); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(journalPath(home)); !os.IsNotExist(err) {
 		t.Fatalf("journal left: %v", err)
 	}
 	if err := configsync.Recover(home); err != nil {
@@ -390,7 +390,9 @@ func preview(t *testing.T, svc *configsync.Service) configsync.Preview {
 	return pv
 }
 
-func plainWrite(path string, data []byte) error { return configfs.WriteAtomic(path, data, 0o644) }
+func plainWrite(path string, data []byte) error {
+	return fileservice.Host().WriteFile(path, data, 0o644)
+}
 
 // J-CFG-010: two applies in one second keep both backups, each with its own bytes.
 func TestSameSecondBackupsStayDistinct(t *testing.T) {
@@ -450,9 +452,9 @@ func TestMidApplyFailureRestoresReplacedFiles(t *testing.T) {
 		writes++
 		if failAt != 0 && writes == failAt {
 			// A directory at the target makes the atomic rename fail even as root.
-			_ = os.MkdirAll(path, 0o755)
+			_ = fileservice.Host().MkdirAll(path)
 		}
-		return configfs.WriteAtomic(path, data, 0o644)
+		return fileservice.Host().WriteFile(path, data, 0o644)
 	})
 	home = h
 	conn := filepath.Join(home, "config", "connections")
@@ -475,17 +477,17 @@ func TestMidApplyFailureRestoresReplacedFiles(t *testing.T) {
 		t.Fatal("apply succeeded despite failing write")
 	}
 	for name, want := range map[string]string{"one.yaml": "name: one\nmine: 1\n", "two.yaml": "name: two\nmine: 2\n"} {
-		fi, err := os.Stat(filepath.Join(conn, name))
-		if err != nil || fi.IsDir() {
+		fi, err := fileservice.Host().Stat(filepath.Join(conn, name))
+		if err != nil || fi.Dir {
 			// Our injected directory is the failing target; remove it before comparing.
-			_ = os.RemoveAll(filepath.Join(conn, name))
+			_ = fileservice.Host().RemoveAll(filepath.Join(conn, name))
 			continue
 		}
 		if got := read(t, filepath.Join(conn, name)); got != want {
 			t.Fatalf("%s = %q, want %q", name, got, want)
 		}
 	}
-	if _, err := os.Stat(journalPath(home)); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(journalPath(home)); !os.IsNotExist(err) {
 		t.Fatalf("journal left: %v", err)
 	}
 	if st := svc.Status(); st.Problem != nil && st.Problem.Kind == configsync.ProblemInterrupted {
@@ -501,7 +503,7 @@ func TestRecoverFinishesCommittedJournal(t *testing.T) {
 		if writes == 2 {
 			runtime.Goexit()
 		}
-		return configfs.WriteAtomic(path, data, 0o644)
+		return fileservice.Host().WriteFile(path, data, 0o644)
 	})
 	pv := preview(t, svc)
 	done := make(chan struct{})
@@ -515,7 +517,7 @@ func TestRecoverFinishesCommittedJournal(t *testing.T) {
 		t.Fatal("apply goroutine did not stop")
 	}
 	jp := journalPath(home)
-	b, err := os.ReadFile(jp)
+	b, err := fileservice.Host().ReadFile(jp)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,14 +538,14 @@ func TestRecoverFinishesCommittedJournal(t *testing.T) {
 		t.Fatalf("Recover: %v", err)
 	}
 	for _, name := range []string{"one.yaml", "two.yaml", "three.yaml"} {
-		if _, err := os.Stat(filepath.Join(conn, name)); err != nil {
+		if _, err := fileservice.Host().Stat(filepath.Join(conn, name)); err != nil {
 			t.Fatalf("%s missing after recovery: %v", name, err)
 		}
 	}
-	if _, err := os.Stat(jp); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(jp); !os.IsNotExist(err) {
 		t.Fatalf("journal left: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(home, "config", ".sync", "base.next")); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(filepath.Join(home, "config", ".sync", "base.next")); !os.IsNotExist(err) {
 		t.Fatalf("base.next left: %v", err)
 	}
 }
@@ -557,7 +559,7 @@ func TestStalePreviewWritesNothing(t *testing.T) {
 	if _, err := svc.Apply(ctx, pv.Token, nil); err == nil {
 		t.Fatal("apply accepted after a target changed")
 	}
-	if _, err := os.Stat(filepath.Join(conn, "two.yaml")); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(filepath.Join(conn, "two.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("two.yaml written by a stale apply: %v", err)
 	}
 	if got := read(t, filepath.Join(conn, "one.yaml")); got != "name: edited\n" {
@@ -572,7 +574,7 @@ func TestStalePreviewWritesNothing(t *testing.T) {
 	if _, err := svc.Apply(ctx, pv.Token, nil); err == nil {
 		t.Fatal("apply accepted after a newer fetch")
 	}
-	if _, err := os.Stat(filepath.Join(conn, "four.yaml")); !os.IsNotExist(err) {
+	if _, err := fileservice.Host().Stat(filepath.Join(conn, "four.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("four.yaml written: %v", err)
 	}
 }

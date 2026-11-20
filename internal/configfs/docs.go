@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // DocModel is the neutral source of a folder's AGENTS.md. App, Title, Intro and the file facts come
@@ -286,10 +287,11 @@ func RenderAgentsMD(m DocModel) []byte {
 func (f *Folder[T]) WriteDocs(m DocModel) error {
 	path := filepath.Join(f.Dir, DocsFile)
 	out := RenderAgentsMD(m)
-	if cur, err := os.ReadFile(path); err == nil && bytes.Equal(cur, out) {
+	if cur, _, err := fileservice.Host().Read(path, 0); err == nil && bytes.Equal(cur, out) {
 		return nil
 	}
-	return WriteAtomic(path, out, 0o644)
+	_, err := fileservice.Host().Write(path, out, fileservice.WriteOptions{})
+	return err
 }
 
 func sizeText(n int) string {

@@ -19,7 +19,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/internal/configfs"
-	"github.com/kirathecat/kira-studio/internal/fsmove"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // A config file's stem is its id. A structured save renames the file when the name's slug stops matching
@@ -217,21 +217,21 @@ func (r *Reader) writeJournal(j renameJournal) error {
 	}
 	// One slot: an earlier rename that failed mid-way keeps its journal for recovery at start. Overwriting
 	// it would strand that rename's half-moved files.
-	if _, err := os.Stat(r.Journal); err == nil {
+	if _, err := fileservice.Host().Stat(r.Journal); err == nil {
 		return fmt.Errorf("%w: an earlier rename is unfinished; restart the app to complete it first", ErrConflict)
 	}
 	b, err := json.Marshal(j)
 	if err != nil {
 		return err
 	}
-	return configfs.WriteAtomic(r.Journal, b, 0o600)
+	return fileservice.HostPrivate().WriteFile(r.Journal, b, 0o600)
 }
 
 func (r *Reader) dropJournal() {
 	if r.Journal == "" {
 		return
 	}
-	if err := os.Remove(r.Journal); err != nil && !os.IsNotExist(err) {
+	if err := fileservice.Host().Remove(r.Journal); err != nil && !os.IsNotExist(err) {
 		slog.Warn("ade rename: remove journal", "scope", "ade", "err", err)
 	}
 }
@@ -251,17 +251,14 @@ func (b *backupper) save(module, path, file string) error {
 	if b.done[key] {
 		return nil
 	}
-	if _, err := os.Stat(path); err != nil {
+	if _, err := fileservice.Host().Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
 	dst := filepath.Join(b.dir, module, file)
-	if err := os.MkdirAll(filepath.Dir(dst), 0o700); err != nil {
-		return fmt.Errorf("adeflow: backup %s: %w", file, err)
-	}
-	if err := fsmove.CopyVerified(path, dst); err != nil {
+	if err := fileservice.HostPrivate().Copy(path, fileservice.HostPrivate(), dst); err != nil {
 		return fmt.Errorf("adeflow: backup %s: %w", file, err)
 	}
 	if b.done == nil {
@@ -313,7 +310,7 @@ func (r *Reader) SaveLibraryStep(file, baseHash string, st adewire.WorkflowStep,
 // nameChanged reports whether the file at path exists, parses and holds a different `name`. A save that
 // leaves the name alone never moves a file, so a hand-named file keeps its name until it is renamed.
 func nameChanged(path, name string) bool {
-	src, err := configfs.ReadCapped(path, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(path, configfs.MaxFileBytes)
 	if err != nil {
 		return false
 	}
@@ -334,7 +331,7 @@ func stepTakenIn(dir string) func(string) bool {
 		if reservedStepIDs[s] {
 			return true
 		}
-		_, err := os.Lstat(filepath.Join(dir, s+".yaml"))
+		_, err := fileservice.Host().Lstat(filepath.Join(dir, s+".yaml"))
 		return err == nil
 	}
 }
@@ -345,7 +342,7 @@ func (r *Reader) renameStep(old, baseHash, name string, build func(newStem strin
 	l := r.Steps
 	oldStem := strings.TrimSuffix(old, ".yaml")
 	oldPath := filepath.Join(l.Dir, old)
-	src, err := configfs.ReadCapped(oldPath, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(oldPath, configfs.MaxFileBytes)
 	if err != nil {
 		return "", fmt.Errorf("adeflow: read %s: %w", old, err)
 	}
@@ -361,7 +358,7 @@ func (r *Reader) renameStep(old, baseHash, name string, build func(newStem strin
 	files := make([]string, 0, len(users))
 	for _, u := range users {
 		wfile := u + ".yaml"
-		wsrc, err := configfs.ReadCapped(filepath.Join(r.Dir, wfile), configfs.MaxFileBytes)
+		wsrc, _, err := fileservice.Host().Read(filepath.Join(r.Dir, wfile), configfs.MaxFileBytes)
 		if err != nil {
 			return "", invalidf("workflow %s cannot be read; fix it before renaming step %q", u, oldStem)
 		}
@@ -389,7 +386,7 @@ func (r *Reader) renameStep(old, baseHash, name string, build func(newStem strin
 	if err := r.writeJournal(j); err != nil {
 		return "", fmt.Errorf("adeflow: write rename journal: %w", err)
 	}
-	if err := configfs.WriteAtomic(filepath.Join(l.Dir, newFile), out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(filepath.Join(l.Dir, newFile), out, 0o644); err != nil {
 		r.dropJournal()
 		return "", err
 	}
@@ -417,7 +414,7 @@ func (r *Reader) finishStepRename(j renameJournal) error {
 // retargetWorkflowFile applies retargetLibrary to one workflow file; a missing file is skipped.
 func (r *Reader) retargetWorkflowFile(file, oldStem, newStem string) error {
 	p := filepath.Join(r.Dir, file)
-	src, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(p, configfs.MaxFileBytes)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -435,16 +432,16 @@ func (r *Reader) retargetWorkflowFile(file, oldStem, newStem string) error {
 	if err != nil {
 		return err
 	}
-	return configfs.WriteAtomic(p, out, 0o644)
+	return fileservice.Host().WriteFile(p, out, 0o644)
 }
 
 // removeOld removes the renamed-away file only while its text is still the one the rename read.
 func (r *Reader) removeOld(dir string, j renameJournal) {
 	p := filepath.Join(dir, j.Old)
-	cur, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
+	cur, _, err := fileservice.Host().Read(p, configfs.MaxFileBytes)
 	switch {
 	case err == nil && configfs.TextHash(cur) == j.OldHash:
-		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		if err := fileservice.Host().Remove(p); err != nil && !os.IsNotExist(err) {
 			slog.Warn("ade rename: remove old file", "scope", "ade", "file", j.Old, "err", err)
 		}
 	case err == nil:
@@ -489,7 +486,7 @@ func (r *Reader) SaveRenaming(file, baseHash string, wf adewire.Workflow, keep b
 // renameWorkflow renames workflow file old for name; wmu is held.
 func (r *Reader) renameWorkflow(old, baseHash, name string, retarget func(oldID, newID string) error, bk *backupper, build func(newStem string, doc *yaml.Node) ([]byte, error)) (string, error) {
 	oldPath := filepath.Join(r.Dir, old)
-	src, err := configfs.ReadCapped(oldPath, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(oldPath, configfs.MaxFileBytes)
 	if err != nil {
 		return "", fmt.Errorf("adeflow: read %s: %w", old, err)
 	}
@@ -501,7 +498,7 @@ func (r *Reader) renameWorkflow(old, baseHash, name string, retarget func(oldID,
 		return "", invalidf("fix the YAML error on line %d first", yamlErrLineOf(err))
 	}
 	newStem := freeStem(slug(name, "workflow"), func(s string) bool {
-		_, err := os.Lstat(filepath.Join(r.Dir, s+".yaml"))
+		_, err := fileservice.Host().Lstat(filepath.Join(r.Dir, s+".yaml"))
 		return err == nil
 	})
 	out, err := build(newStem, &doc)
@@ -517,13 +514,13 @@ func (r *Reader) renameWorkflow(old, baseHash, name string, retarget func(oldID,
 		return "", fmt.Errorf("adeflow: write rename journal: %w", err)
 	}
 	newPath := filepath.Join(r.Dir, newFile)
-	if err := configfs.WriteAtomic(newPath, out, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(newPath, out, 0o644); err != nil {
 		r.dropJournal()
 		return "", err
 	}
 	if err := r.finishWorkflowRename(j, retarget); err != nil {
 		// Nothing outside the files changed yet in the common failure (retarget): back out.
-		if rmErr := os.Remove(newPath); rmErr == nil || os.IsNotExist(rmErr) {
+		if rmErr := fileservice.Host().Remove(newPath); rmErr == nil || os.IsNotExist(rmErr) {
 			r.dropJournal()
 		}
 		return "", err
@@ -550,7 +547,7 @@ func (r *Reader) RecoverRename(retarget func(oldID, newID string) error) {
 	if r.Journal == "" {
 		return
 	}
-	b, err := os.ReadFile(r.Journal)
+	b, err := fileservice.Host().ReadFile(r.Journal)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			slog.Warn("ade rename: read journal", "scope", "ade", "err", err)
@@ -577,7 +574,7 @@ func (r *Reader) RecoverRename(retarget func(oldID, newID string) error) {
 		}
 		dir = r.Steps.Dir
 	}
-	if _, err := os.Lstat(filepath.Join(dir, j.New)); errors.Is(err, os.ErrNotExist) {
+	if _, err := fileservice.Host().Lstat(filepath.Join(dir, j.New)); errors.Is(err, os.ErrNotExist) {
 		r.dropJournal()
 		return
 	}
@@ -614,7 +611,7 @@ func (r *Reader) MigrateNames(o MigrateOptions) error {
 	if o.Marker == "" {
 		return nil
 	}
-	if _, err := os.Stat(o.Marker); err == nil {
+	if _, err := fileservice.Host().Stat(o.Marker); err == nil {
 		return nil
 	}
 	r.wmu.Lock()
@@ -645,7 +642,7 @@ func (r *Reader) MigrateNames(o MigrateOptions) error {
 	if skipped > 0 {
 		return nil
 	}
-	return configfs.WriteAtomic(o.Marker, []byte(now().UTC().Format(time.RFC3339)+"\n"), 0o644)
+	return fileservice.Host().WriteFile(o.Marker, []byte(now().UTC().Format(time.RFC3339)+"\n"), 0o644)
 }
 
 func backupPath(b *backupper) string {
@@ -657,7 +654,7 @@ func backupPath(b *backupper) string {
 
 // migrateInlineIDs renames every legacy stp_ step id to the slug of its step name. Returns the count.
 func (r *Reader) migrateInlineIDs(bk *backupper, skipped *int) int {
-	entries, err := os.ReadDir(r.Dir)
+	entries, err := fileservice.Host().ReadDir(r.Dir)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			slog.Warn("ade names migration: read workflows", "scope", "ade", "err", err)
@@ -667,8 +664,8 @@ func (r *Reader) migrateInlineIDs(bk *backupper, skipped *int) int {
 	}
 	count := 0
 	for _, de := range entries {
-		file := de.Name()
-		if !de.Type().IsRegular() || !fileNamePattern.MatchString(file) {
+		file := de.Name
+		if !de.Mode.IsRegular() || !fileNamePattern.MatchString(file) {
 			continue
 		}
 		n, ok := r.migrateInlineIDsFile(bk, file)
@@ -684,7 +681,7 @@ func (r *Reader) migrateInlineIDs(bk *backupper, skipped *int) int {
 // migrateInlineIDsFile rewrites legacy step ids in one workflow file. ok is false when the file was skipped.
 func (r *Reader) migrateInlineIDsFile(bk *backupper, file string) (changed int, ok bool) {
 	p := filepath.Join(r.Dir, file)
-	src, err := configfs.ReadCapped(p, configfs.MaxFileBytes)
+	src, _, err := fileservice.Host().Read(p, configfs.MaxFileBytes)
 	if err != nil {
 		slog.Warn("ade names migration: read", "scope", "ade", "file", file, "err", err)
 		return 0, false
@@ -703,7 +700,7 @@ func (r *Reader) migrateInlineIDsFile(bk *backupper, file string) (changed int, 
 		err = bk.save(WorkflowsFolder, p, file)
 	}
 	if err == nil {
-		err = configfs.WriteAtomic(p, out, 0o644)
+		err = fileservice.Host().WriteFile(p, out, 0o644)
 	}
 	if err != nil {
 		slog.Warn("ade names migration: workflow ids", "scope", "ade", "file", file, "err", err)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/configfs"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 	"github.com/kirathecat/kira-studio/internal/testx"
 	"go.yaml.in/yaml/v3"
 )
@@ -107,12 +107,12 @@ func TestSavedRequestTwoWindows(t *testing.T) {
 
 	// A hand edit of the file is another window.
 	file := filepath.Join(app.W.ApiFiles.Dir(), col.File)
-	raw, err := os.ReadFile(file)
+	raw, err := fileservice.Host().ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 	edited := []byte(strings.Replace(string(raw), "https://x.test/c", "https://x.test/by-hand", 1))
-	if err := configfs.WriteAtomic(file, edited, 0o644); err != nil {
+	if err := fileservice.Host().WriteFile(file, edited, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	app.W.ApiFiles.Sync()
@@ -121,7 +121,7 @@ func TestSavedRequestTwoWindows(t *testing.T) {
 	if ie := testx.AsIpcErr(t, save("https://x.test/d", &seen, "")); ie.Code != "E_CONFLICT" {
 		t.Errorf("save over a hand edit = %v, want E_CONFLICT", ie)
 	}
-	if got, _ := os.ReadFile(file); !bytes.Equal(got, edited) {
+	if got, _ := fileservice.Host().ReadFile(file); !bytes.Equal(got, edited) {
 		t.Error("a refused save changed the file")
 	}
 }
