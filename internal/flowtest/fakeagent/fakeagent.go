@@ -1016,7 +1016,7 @@ func recordMCPResult(dir, tool string, args map[string]any, res *mcp.CallToolRes
 		return
 	}
 	n := nextCount(dir, "mcp-"+tool)
-	_ = os.WriteFile(filepath.Join(dir, fmt.Sprintf("mcp-%s-%d.json", tool, n)), raw, 0o644)
+	writeFile(filepath.Join(dir, fmt.Sprintf("mcp-%s-%d.json", tool, n)), raw) // atomic: readers poll for the file
 }
 
 type echoArgs struct {
