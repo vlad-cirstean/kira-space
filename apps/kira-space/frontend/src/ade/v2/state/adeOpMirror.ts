@@ -45,7 +45,7 @@ export function installAdeOpMirror(): () => void {
         if (rec.status === 'running') {
           if (tracked.has(id)) continue;
           tracked.add(id);
-          ops.track({ id, kind, taskId: rec.taskId, name: rec.subject });
+          ops.track({ id, kind, taskId: rec.taskId });
         } else if (tracked.delete(id)) {
           ops.settle(id, {
             ok: rec.status === 'ok',

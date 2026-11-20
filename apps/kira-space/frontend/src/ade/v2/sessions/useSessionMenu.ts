@@ -36,7 +36,6 @@ export function useSessionMenu(): {
     kind,
     sessionId: view.session.id,
     taskId: view.session.taskId || undefined,
-    name: view.tabName,
   });
 
   async function restart(view: SessionView): Promise<void> {

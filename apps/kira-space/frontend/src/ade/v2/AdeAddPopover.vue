@@ -157,7 +157,6 @@ async function pick(value: string): Promise<void> {
       id: `attachBranch:${b.codeRepoId}:${b.name}`,
       kind: 'attachBranch',
       taskId: taskId || undefined,
-      name: b.name,
     },
     async () => {
       const res = await addBranch.mutateAsync({ codeRepoId: b.codeRepoId, name: b.name, taskId });

@@ -41,8 +41,6 @@ export interface AdeOp {
    *  task, or the run or step of a task, so two runs of one task do not collide); backend ops `be:<record id>`. */
   id: string;
   kind: AdeOpKind;
-  /** What the op acts on, named in the toast. */
-  name: string;
   taskId?: string;
   branchId?: string;
   sessionId?: string;

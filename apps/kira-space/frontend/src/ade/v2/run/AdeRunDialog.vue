@@ -159,7 +159,7 @@ async function send(): Promise<void> {
   const id = `startRun:${taskId}`;
   const timed = timedCall(() => start.mutateAsync({ taskId, branchNames, message: body }));
   const ok = await opAfterRepo(taskId, timed.call, (fn) =>
-    ops.run({ id, kind: 'startRun', taskId, name: c.title }, fn),
+    ops.run({ id, kind: 'startRun', taskId }, fn),
   );
   if (ok) {
     delete ui.runDrafts[taskId];

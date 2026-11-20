@@ -42,7 +42,7 @@ export function useTaskAction(card: MaybeRefOrGetter<CardModel>) {
   ): Promise<void> {
     const taskId = c.task.id;
     const ok = await opAfterRepo(taskId, call, (fn) =>
-      ops.run({ id: `${kind}:${target}`, kind, taskId, name: c.title }, fn),
+      ops.run({ id: `${kind}:${target}`, kind, taskId }, fn),
     );
     if (!ok) ui.select(taskId);
   }

@@ -105,8 +105,8 @@ async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean
     if (!ok) throw failure;
   };
   surface.reset();
-  const { taskId, branchId, branch } = props.target;
-  return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId, name: branch }, capture);
+  const { taskId, branchId } = props.target;
+  return ops.run({ id: `${kind}:${branchId}`, kind, taskId, branchId }, capture);
 }
 
 function onSend(): Promise<boolean> {

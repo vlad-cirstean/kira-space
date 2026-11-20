@@ -109,7 +109,6 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
             id: `archive:${a.taskId}`,
             kind: 'archive',
             taskId: a.taskId,
-            name: c.taskTitle(a.taskId),
           },
           () => archiveM.mutateAsync(a),
         );

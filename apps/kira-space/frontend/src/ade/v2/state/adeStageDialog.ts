@@ -160,7 +160,6 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
     const m = moves.value;
     if (!c || !m || !toStepId.value) return false;
     const id = c.task.id;
-    const name = c.title;
     const sendNotes = notes.value !== prefill.value ? { notes: notes.value } : {};
     const closing =
       closable.value.length > 0 && closeChoice.value === 'close' ? { closeSessions: true } : {};
@@ -196,7 +195,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
         });
       }
     });
-    void ops.run({ id: opId, kind, taskId: id, name }, timed.call).then((ok) => {
+    void ops.run({ id: opId, kind, taskId: id }, timed.call).then((ok) => {
       if (ok) return;
       // A live op of the same id means the submit was a duplicate, not a failure.
       if (ops.isRunning(opId)) return;

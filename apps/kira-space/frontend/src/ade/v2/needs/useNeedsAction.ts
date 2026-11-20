@@ -35,9 +35,8 @@ export function useNeedsAction() {
     n: NeedsItem,
     call: () => Promise<unknown>,
   ): Promise<void> {
-    const name = model.value?.cardFor(n.taskId)?.title ?? '';
     const ok = await opAfterRepo(n.taskId, call, (fn) =>
-      ops.run({ id: `${kind}:${target}`, kind, taskId: n.taskId, name }, fn),
+      ops.run({ id: `${kind}:${target}`, kind, taskId: n.taskId }, fn),
     );
     if (!ok) ui.select(n.taskId);
   }

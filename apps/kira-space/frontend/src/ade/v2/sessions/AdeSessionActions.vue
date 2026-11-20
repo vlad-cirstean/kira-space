@@ -27,7 +27,6 @@ async function onStop(): Promise<void> {
       kind: 'stopRuns',
       sessionId: id,
       taskId: taskId || undefined,
-      name: props.view.tabName,
     },
     () => stop.mutateAsync({ runId }),
   );

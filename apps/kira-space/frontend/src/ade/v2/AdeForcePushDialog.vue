@@ -23,7 +23,6 @@ function confirm(): void {
       kind: 'forcePush',
       taskId: target.taskId || undefined,
       branchId: target.branchId,
-      name: target.branchName,
     },
     async () => throwOnRemoteError(await forcePush.mutateAsync({ branchId: target.branchId })),
   );

@@ -59,7 +59,6 @@ export function useTaskLaunch(
         kind: 'launch',
         taskId: id,
         branchId: target.branchId,
-        name: card.value?.title ?? '',
       },
       async () => {
         const launch = await start.mutateAsync({ branchId: target.branchId, provider });

@@ -68,7 +68,7 @@ async function submitBranch(name: string, existing: boolean): Promise<void> {
     open.value = false;
     // The change runs as the branch's op (chip on the row, error toast on failure).
     const ok = await ops.run(
-      { id: `setBranch:${branchId}`, kind: 'setBranch', taskId, branchId, name },
+      { id: `setBranch:${branchId}`, kind: 'setBranch', taskId, branchId },
       () => setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard }),
     );
     if (!ok) ui.select(taskId);
