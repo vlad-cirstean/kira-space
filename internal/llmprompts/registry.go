@@ -758,6 +758,15 @@ var RunResumeLine = define(Entry{
 	Default:    `Kira {{.App}} closed while you worked; your last turn was cut off. A tool call marked interrupted has an unknown outcome: it may have run in part. Check that action's current state (files, git, running processes) before you redo or skip it.{{if .Leases}} Leases are lost on restart: re-acquire any you held.{{end}} Then continue the task.`,
 }, ResumeVars{App: "Space", Leases: true})
 
+// RestoreContinueLine is sent at a resumed session's input when the user picked Continue after a restart.
+var RestoreContinueLine = define(Entry{
+	ID: "restore.continue.line", Kind: KindMessage, Apps: spaceApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.restoreContinueLine.title",
+	PurposeKey: "llmPrompts.entry.restoreContinueLine.description",
+	UsedByKey:  "llmPrompts.entry.restoreContinueLine.usedBy.body",
+	Default:    `Kira restarted: continue where you left off.`,
+}, NoVars{})
+
 // Database MCP (Kira Space).
 
 // DbmcpInstructions is what the database MCP server tells a client when it connects.

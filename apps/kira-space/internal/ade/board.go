@@ -248,6 +248,8 @@ type TaskBoard struct {
 
 	panelEdits panelEdits // pending task panel edits per task (panelforward.go)
 
+	restore restoreOffer // agents a restart cut, offered once per boot (restore.go)
+
 	runMu            sync.Mutex                 // guards live, setupLive, archiving, taskMus, finishes, stepMsgs
 	live             map[string]*liveRun        // run id -> its process
 	tuiGrants        map[string]tuiBinding      // TUI record id -> the agent MCP grant its launch registered

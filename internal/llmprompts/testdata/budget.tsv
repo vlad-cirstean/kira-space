@@ -43,6 +43,7 @@ ade.jiraLine	55
 ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	314
+restore.continue.line	44
 dbmcp.instructions	1196
 dbmcp.tool.list_connections	653
 dbmcp.tool.list_scripts	130

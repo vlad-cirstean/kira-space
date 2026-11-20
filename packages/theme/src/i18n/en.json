@@ -1776,6 +1776,23 @@
             "body": "Background runs take no messages. Take over a run to send."
           }
         },
+        "restore": {
+          "branchGone": {
+            "body": "Its branch is no longer on the task."
+          },
+          "notLatest": {
+            "body": "A newer attempt of this step exists."
+          },
+          "notOffered": {
+            "body": "That agent isn’t on the restore list."
+          },
+          "providerGone": {
+            "body": "Its agent is no longer available."
+          },
+          "taskGone": {
+            "body": "Its task is archived or gone."
+          }
+        },
         "resumeCwdNotDir": {
           "body": "The folder to resume in is a file, not a folder."
         },
@@ -7351,6 +7368,13 @@
         "title": "Kira Space tools notice",
         "usedBy": {
           "body": "Added before the finish instruction of every agent step and smart step, and to the first message of manual, review and start sessions."
+        }
+      },
+      "restoreContinueLine": {
+        "description": "Tells a session reopened after a restart to carry on.",
+        "title": "Continue after restart",
+        "usedBy": {
+          "body": "Restore dialog, for agent sessions the user chose to continue."
         }
       },
       "runResumeLine": {

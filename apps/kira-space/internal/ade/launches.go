@@ -146,11 +146,12 @@ func (b *TaskBoard) TakeOver(ctx context.Context, args adewire.TakeOverArgs) (ad
 	mu := b.taskMu(rec.TaskID)
 	mu.Lock()
 	defer mu.Unlock()
-	return b.takeOverLocked(ctx, tr, rec, opTakeOver)
+	return b.takeOverLocked(ctx, tr, rec, opTakeOver, "")
 }
 
-// takeOverLocked opens the row's conversation in a TUI. The task lock is held.
-func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.AdeSession, kind string) (adewire.Launch, error) {
+// takeOverLocked opens the row's conversation in a TUI. The task lock is held. A message is
+// submitted at the input when the session opens.
+func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.AdeSession, kind, message string) (adewire.Launch, error) {
 	// The check in takeOverSession ran before the lock, so a concurrent call may have opened it since.
 	if err := b.ensureNotOpen(tr, rec); err != nil {
 		return adewire.Launch{}, err
@@ -160,7 +161,7 @@ func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.
 		return adewire.Launch{}, err
 	}
 	if rec.Purpose == model.AdeSessionPurposeReview {
-		l, _, _, err := b.launchReviewAgent(ctx, tc, tr, "", nil)
+		l, _, _, err := b.launchReviewAgent(ctx, tc, tr, message, nil)
 		return l, err
 	}
 	if err := b.snapshotWorkflow(&tc.task); err != nil {
@@ -181,7 +182,7 @@ func (b *TaskBoard) takeOverLocked(ctx context.Context, tr *Tracker, rec *model.
 		rec.AgentSessionID = id
 	}
 
-	pa := PrepareArgs{TaskID: rec.TaskID, BranchID: rec.BranchID, StepID: rec.StepID, Cwd: cwd}
+	pa := PrepareArgs{TaskID: rec.TaskID, BranchID: rec.BranchID, StepID: rec.StepID, Cwd: cwd, Message: message}
 	if rec.StepID != "" {
 		pa.Settings = stepSettingsOf(tc, rec.StepID)
 	}
@@ -305,7 +306,7 @@ func (b *TaskBoard) RestartSession(ctx context.Context, args adewire.RestartSess
 	if rec, err = b.deps.Sessions.Get(rec.ID); err != nil {
 		return adewire.Launch{}, err
 	}
-	return b.takeOverLocked(ctx, tr, rec, opRestart)
+	return b.takeOverLocked(ctx, tr, rec, opRestart, "")
 }
 
 // ensureNotOpen rejects a session whose conversation runs in a TUI or has one prepared and not yet

@@ -752,6 +752,7 @@ func (w *Wired) teardown(db io.Closer) {
 	// (Reconcile marks its row stopped) while the DB is still open. Then shutdownTracker stops the
 	// hooks listener (draining queued hook events) and flushes whatever last-active time is still
 	// only in memory.
+	w.Tracker.MarkQuit() // before the PTYs die: their exits stop the rows, so only this mark says they were open
 	terminal.ShutdownBound(w.Terminal.BoundService)
 	w.sched.Close()
 	w.runLoader.Close()

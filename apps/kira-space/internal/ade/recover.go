@@ -16,7 +16,8 @@ const appName = "Space"
 var restartOutcome = model.AdeRunOutcome{Outcome: runoutcome.ForProcess(runoutcome.Process{End: runoutcome.EndRestart, App: appName})}
 
 // Recover settles what the previous process life left behind: running runs become stuck,
-// running setups failed, session rows stopped, orphaned MCP configs go. Held (pending) runs keep
+// running setups failed, session rows stopped, orphaned MCP configs go. The runs and TUI sessions a restart cut become the
+// restore offer (restore.go). Held (pending) runs keep
 // their launch spec and launch when their gate opens. Nothing resumes by itself.
 // Call it once at boot, before Start and before any window exists.
 func (b *TaskBoard) Recover() error {
@@ -39,6 +40,7 @@ func (b *TaskBoard) Recover() error {
 	if err := b.deps.Sessions.StopAllTaskRunning(now); err != nil {
 		return fmt.Errorf("ade: recover: %w", err)
 	}
+	b.fillRestoreOffer(runs)
 	if b.deps.AgentDir != "" {
 		stale, _ := filepath.Glob(filepath.Join(b.deps.AgentDir, "*.mcp.json"))
 		for _, f := range stale {
