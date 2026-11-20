@@ -37,6 +37,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 	"github.com/kirathecat/kira-studio/internal/prompts"
+	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
@@ -129,6 +130,10 @@ type TaskBoardDeps struct {
 	// CustomScripts and ScriptsHome resolve the smart script of a workflow step and its own folder.
 	CustomScripts *scripts.Repo
 	ScriptsHome   string
+	// ScriptRuns reads which Run scripts are running, for the required services status; nil reads none.
+	ScriptRuns *scriptruns.Repo
+	// RepoServices returns a repo file's required services; nil = none.
+	RepoServices func(repoID string) []model.ScriptRef
 	// HeadlessSettingSources returns the ade.headlessSettingSources setting, read fresh per run.
 	HeadlessSettingSources func() string
 	// Servers is where a smart step's ticked MCP servers come from; the zero value reads the CLI.

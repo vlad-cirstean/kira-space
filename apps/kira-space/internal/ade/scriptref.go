@@ -40,29 +40,10 @@ func (b *TaskBoard) resolveScriptRef(all []scripts.CustomScript, use scriptUse, 
 	if b.deps.CustomScripts == nil {
 		return nil, refFail("scripts are not available")
 	}
-	var found []scripts.CustomScript
-	otherKind := false
-	for _, s := range all {
-		if s.Name != name {
-			continue
-		}
-		if s.Kind == use.kind && (use.kind != scripts.KindSmart || s.Smart != nil) {
-			found = append(found, s)
-		} else {
-			otherKind = true
-		}
+	script, err := findRefScript(all, use, name)
+	if err != nil {
+		return nil, err
 	}
-	switch len(found) {
-	case 0:
-		if otherKind && use.kind == scripts.KindScript {
-			return nil, refFail("is a smart script: a %s runs a normal script", use.file)
-		}
-		return nil, refFail("not found")
-	case 1:
-	default:
-		return nil, refFail("%d scripts have that name", len(found))
-	}
-	script := found[0]
 	params, err := b.secretParams(script, given, use.file)
 	if err != nil {
 		var r refReason
@@ -101,6 +82,33 @@ func (b *TaskBoard) resolveScriptRef(all []scripts.CustomScript, use scriptUse, 
 		res.dir = dir.Path
 	}
 	return res, nil
+}
+
+// findRefScript finds the one script of use.kind named name. A problem is a refReason.
+func findRefScript(all []scripts.CustomScript, use scriptUse, name string) (scripts.CustomScript, error) {
+	var found []scripts.CustomScript
+	otherKind := false
+	for _, s := range all {
+		if s.Name != name {
+			continue
+		}
+		if s.Kind == use.kind && (use.kind != scripts.KindSmart || s.Smart != nil) {
+			found = append(found, s)
+		} else {
+			otherKind = true
+		}
+	}
+	switch len(found) {
+	case 0:
+		if otherKind && use.kind == scripts.KindScript {
+			return scripts.CustomScript{}, refFail("is a smart script: a %s runs a normal script", use.file)
+		}
+		return scripts.CustomScript{}, refFail("not found")
+	case 1:
+		return found[0], nil
+	default:
+		return scripts.CustomScript{}, refFail("%d scripts have that name", len(found))
+	}
 }
 
 // listScripts reads the Run scripts, once per caller.

@@ -326,6 +326,23 @@ func (r *Repo) Running(scriptID, taskID, branchID string) (*Run, error) {
 	return &run, nil
 }
 
+// RunningScript returns the newest running run of one script, whatever task or branch started it,
+// (nil, nil) when none.
+func (r *Repo) RunningScript(scriptID string) (*Run, error) {
+	c := kiraschema.ScriptRuns
+	sb := r.Dialect.Select(columns...).From(c.Table)
+	sb.Where(sb.Equal(c.ScriptID, scriptID), sb.Equal(c.State, StateRunning)).
+		OrderBy(c.CreatedAt+" DESC", c.ID+" DESC").Limit(1)
+	run, err := scan(sqlb.QueryRow(r.DB, sb))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scriptruns: running run of %s: %w", scriptID, err)
+	}
+	return &run, nil
+}
+
 // Waiting returns the runs waiting for the user's answer, oldest first.
 func (r *Repo) Waiting() ([]Run, error) {
 	c := kiraschema.ScriptRuns

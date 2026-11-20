@@ -1346,6 +1346,16 @@ func (s *AdeTaskService) ArchiveRisk(ctx context.Context, args adewire.TaskArgs)
 	return r, adeTaskError(err)
 }
 
+// RequiredServices reads the repo services the task needs and whether Kira runs each.
+func (s *AdeTaskService) RequiredServices(ctx context.Context, args adewire.TaskArgs) (adewire.RequiredServices, error) {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return adewire.RequiredServices{}, err
+	}
+	r, err := s.Engine.RequiredServices(ctx, args.TaskID)
+	return r, adeTaskError(err)
+}
+
 func (s *AdeTaskService) ArchiveTask(ctx context.Context, args adewire.TaskArgs) error {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
