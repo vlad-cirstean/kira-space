@@ -26,12 +26,11 @@ func openFDs(t *testing.T) int {
 	return len(ents)
 }
 
-// 64 streams over trees of 500 files start and deliver, with no descriptor per file.
-func TestFSEventsManyStreamsNoFDPerFile(t *testing.T) {
-	const streams, files = 64, 500
-	before := openFDs(t)
-	roots := make([]string, streams)
-	ws := make([]*Watcher, streams)
+// startStreams starts n watchers over fresh roots of files files each.
+func startStreams(t *testing.T, n, files int) ([]string, []*Watcher) {
+	t.Helper()
+	roots := make([]string, n)
+	ws := make([]*Watcher, n)
 	for i := range ws {
 		roots[i] = t.TempDir()
 		for j := range files {
@@ -42,10 +41,23 @@ func TestFSEventsManyStreamsNoFDPerFile(t *testing.T) {
 			t.Fatalf("stream %d: %v", i, err)
 		}
 		ws[i] = w
-		defer w.Close()
+		t.Cleanup(func() { _ = w.Close() })
 	}
-	if grew := openFDs(t) - before; grew > 64 {
-		t.Fatalf("open fds grew by %d across %d watchers of %d files each", grew, streams, files)
+	return roots, ws
+}
+
+// 64 streams over trees of 500 files start and deliver. A stream holds a fixed handful of
+// descriptors in the OS framework (about 11), so the bound is the measured cost of a stream over an
+// empty root: descriptors per file would blow past it.
+func TestFSEventsManyStreamsNoFDPerFile(t *testing.T) {
+	const probe, streams, files = 8, 64, 500
+	before := openFDs(t)
+	startStreams(t, probe, 0)
+	mid := openFDs(t)
+	perStream := (mid - before + probe - 1) / probe
+	roots, ws := startStreams(t, streams, files)
+	if grew, limit := openFDs(t)-mid, streams*(perStream+1); grew > limit {
+		t.Fatalf("open fds grew by %d across %d watchers of %d files each, want at most %d (%d per empty stream)", grew, streams, files, limit, perStream)
 	}
 	for i, w := range ws {
 		p := filepath.Join(roots[i], "new")
