@@ -7296,7 +7296,7 @@
         }
       },
       "headlessFinishStepSuffix": {
-        "description": "Tells an agent step how to report its result with the finish_step tool, using the results the step declares.",
+        "description": "Tells an agent step how to report its result with the finish_step tool, using the results the step declares, and asks for a proof of any checkable result when Kira Space tools are on.",
         "title": "Finish step instruction",
         "usedBy": {
           "body": "Ends every ADE step prompt and every resumed step message."
@@ -7324,10 +7324,10 @@
         }
       },
       "headlessSpaceFiles": {
-        "description": "Names the task folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
+        "description": "Names the task’s Details folder, points at the readme there, tells the agent to call submit after editing task files, names the step draft to write before an ok finish that continues the route, and says how to load the tools.",
         "title": "Task files instruction",
         "usedBy": {
-          "body": "Follows the Kira Space tools line in every ADE step prompt and session message."
+          "body": "Follows the Kira Space tools line in every ADE step prompt and session message, and in every resumed step message."
         }
       },
       "headlessSpaceInstructions": {

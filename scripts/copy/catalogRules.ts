@@ -28,6 +28,7 @@ export const PROPER_NOUNS: readonly string[] = [
   'File Explorer',
   'VS Code',
   'Desktop',
+  'Details',
   'Get Info',
   'Open with',
   'Change All',
