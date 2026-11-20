@@ -54,6 +54,32 @@ func waitEvent(t *testing.T, w *Watcher, what string, pred func(Event) bool) Eve
 	}
 }
 
+// waitEvents waits until every predicate has matched some event, in any order: kqueue reports the
+// directory change that creates a rename target and the file's own rename in no fixed order.
+func waitEvents(t *testing.T, w *Watcher, what string, preds map[string]func(Event) bool) {
+	t.Helper()
+	left := map[string]func(Event) bool{}
+	for k, p := range preds {
+		left[k] = p
+	}
+	deadline := time.After(10 * time.Second)
+	for len(left) > 0 {
+		select {
+		case ev, ok := <-w.Events():
+			if !ok {
+				t.Fatalf("events closed waiting for %s", what)
+			}
+			for k, p := range left {
+				if p(ev) {
+					delete(left, k)
+				}
+			}
+		case <-deadline:
+			t.Fatalf("timed out waiting for %s: still missing %d of %d", what, len(left), len(preds))
+		}
+	}
+}
+
 func atPath(p string, op Op) func(Event) bool {
 	return func(ev Event) bool { return ev.Path == p && (op == 0 || ev.Op.Has(op)) }
 }
@@ -101,8 +127,9 @@ func TestFileOpsInRoot(t *testing.T) {
 		if err := os.Rename(a, b); err != nil {
 			t.Fatal(err)
 		}
-		waitEvent(t, w, "rename source", atPath(a, Rename|Remove))
-		waitEvent(t, w, "rename target", atPath(b, 0))
+		waitEvents(t, w, "rename source and target", map[string]func(Event) bool{
+			"source": atPath(a, Rename|Remove), "target": atPath(b, 0),
+		})
 		if err := os.Remove(b); err != nil {
 			t.Fatal(err)
 		}
