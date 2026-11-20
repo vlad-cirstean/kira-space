@@ -31,7 +31,7 @@ import { useAdeDialogsStore } from '../state/adeDialogs';
 import { composeDialog, isRebaseKind } from './compose';
 
 // The one Claude dialog every opener shares (mockup `dlg`): kind-specific title, busy alert, targets,
-// editable message, push switch and archive risk, then Cancel and the kind's send button.
+// editable message, push switch and archive risk, then the kind's send button.
 const dialogs = useAdeDialogsStore();
 // The dialogs store owns the failure text; these only track pending.
 const sendAction = useAsyncAction(() => dialogs.send());
@@ -127,7 +127,7 @@ async function discard(): Promise<void> {
 <template>
   <Dialog v-if="view" :open="true" @update:open="(v) => !v && dialogs.close()">
     <DialogContent size="lg" :dirty="view.edited" data-testid="ade-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-dialog-close">
         <DialogTitle data-testid="ade-dialog-title">{{ view.title }}</DialogTitle>
       </DialogHeader>
 
@@ -281,15 +281,6 @@ async function discard(): Promise<void> {
       </DialogBody>
 
       <DialogFooter>
-        <Button
-          variant="dialog"
-          size="kira-lg"
-          data-testid="ade-dialog-cancel"
-          @click="dialogs.close()"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
-        >
         <TextTooltip v-if="view.isArchive" :text="t('space.ade.agentDialog.deleteAnyway.tooltip')">
           <!-- conventions-allow N17: second footer action; one emphasised button rightmost (RD.2) -->
           <Button

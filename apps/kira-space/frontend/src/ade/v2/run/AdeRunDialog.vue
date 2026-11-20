@@ -178,7 +178,7 @@ async function send(): Promise<void> {
 <template>
   <Dialog :open="open" @update:open="(v) => !v && close()">
     <DialogContent size="lg" :dirty="dirty" data-testid="ade-run-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-run-close">
         <DialogTitle>
           {{ t('space.ade.runDialog.title.title', { step: step?.name ?? '' }) }}
         </DialogTitle>
@@ -275,9 +275,6 @@ async function send(): Promise<void> {
         </Field>
       </DialogBody>
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="ade-run-cancel" @click="close">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           variant="dialog-primary"
           size="kira-lg"

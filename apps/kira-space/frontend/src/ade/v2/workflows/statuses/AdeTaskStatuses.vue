@@ -306,9 +306,6 @@ async function confirmRemove(): Promise<void> {
           </Field>
         </DialogBody>
         <DialogFooter>
-          <Button variant="dialog" size="kira-lg" @click="removing = null">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"

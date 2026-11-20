@@ -111,7 +111,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 <template>
   <Dialog v-model:open="open">
     <DialogContent size="2xl" fixed-height data-testid="ade-port-export-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-port-close">
         <DialogTitle>{{
           t('space.ade.port.exportDialog.title', { agent: provider.label })
         }}</DialogTitle>
@@ -251,12 +251,8 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
           </template>
         </template>
       </DialogBody>
-      <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="ade-port-close" @click="open = false">
-          {{ t('common.action.close.label') }}
-        </Button>
+      <DialogFooter v-if="!result">
         <Button
-          v-if="!result"
           variant="dialog-primary"
           size="kira-lg"
           :disabled="!preview || nothing"

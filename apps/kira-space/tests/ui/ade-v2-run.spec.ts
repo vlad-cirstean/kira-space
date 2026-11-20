@@ -142,10 +142,10 @@ test('an edited message is sent and Reset restores the default', async ({ relaun
   });
 });
 
-test('Cancel closes the Run dialog without a call', async ({ relaunch }) => {
+test('the X closes the Run dialog without a call', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, boardWith(alertsInPlan));
   await page.locator(cellAction('T_alerts', 'run')).click();
-  await page.locator(t('ade-run-cancel')).click();
+  await page.locator(t('ade-run-close')).click();
   await expect(page.locator(t('ade-run-dialog'))).toBeHidden();
   expect(calls(control, IPC.adeTaskStartRun)).toHaveLength(0);
 });

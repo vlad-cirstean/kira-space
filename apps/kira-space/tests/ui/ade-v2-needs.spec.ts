@@ -48,7 +48,7 @@ test('Re-merge opens the merge dialog, See error opens the branch setup', async 
     .first()
     .click();
   await expect(page.locator(t('ade-dialog-title'))).toHaveText('Re-merge into develop');
-  await page.locator(t('ade-dialog-cancel')).click();
+  await page.locator(t('ade-dialog-close')).click();
   await page.locator(`${item('setup failed')} ${t('ade-needs-action')}`).click();
   await expect(page.locator(t('ade-plan'))).toBeVisible();
   await expect(page.locator(t('ade-panel-tab-details'))).toBeVisible();

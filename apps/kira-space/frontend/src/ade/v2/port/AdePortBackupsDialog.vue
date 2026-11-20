@@ -8,7 +8,6 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@theme/components/ui/dialog';
@@ -66,7 +65,7 @@ async function restore(b: Backup): Promise<void> {
 <template>
   <Dialog v-model:open="open">
     <DialogContent size="lg" data-testid="ade-port-backups-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="ade-port-close">
         <DialogTitle>{{
           t('space.ade.port.backupList.title', { agent: provider.label })
         }}</DialogTitle>
@@ -120,11 +119,6 @@ async function restore(b: Backup): Promise<void> {
           data-testid="ade-port-backups-empty"
         />
       </DialogBody>
-      <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-testid="ade-port-close" @click="open = false">
-          {{ t('common.action.close.label') }}
-        </Button>
-      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
