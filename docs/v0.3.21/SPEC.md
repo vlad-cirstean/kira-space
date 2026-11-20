@@ -160,7 +160,7 @@ live grants on a task. Real `claude`: `TestAdeDetailsSubmit` is `TestAdeDetailsO
 `submit` (arm T and the spikes keep the frozen tool), its F3 oracles read the finish flush reply, and a
 task's only proof is its latest, so the late correction applies at once. New Known open item: an
 outside-editor save under one live grant is credited to the agent. Baselines to re-record at chapter end:
-contracts `ade-details-files`, `ade-details-watch`, `ade-details-rules`, `mobile-approvals`, `proof`,
+contracts `ade-automation`, `ade-details-files`, `ade-details-watch`, `ade-details-rules`, `mobile-approvals`, `proof`,
 `proof-chart`, `proof-diagram`, `proof-explained`, `proof-files`, `proof-image` and `proof-pending` (proof
 `sessionId` is now the writing session; already re-recorded here), llmprompts goldens and `budget.tsv`,
 tool schema budget (unchanged numbers).
