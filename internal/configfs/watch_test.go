@@ -3,7 +3,6 @@ package configfs
 import (
 	"os"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -89,24 +88,4 @@ func TestWatch_atomicWriteFiresOnce(t *testing.T) {
 	}
 	waitFire(t, ch)
 	expectQuiet(t, ch)
-}
-
-func TestDebouncer_stopWaitsForInFlightCall(t *testing.T) {
-	started, release := make(chan struct{}), make(chan struct{})
-	var finished atomic.Bool
-	d := &debouncer{fn: func() {
-		close(started)
-		<-release
-		finished.Store(true)
-	}}
-	d.schedule()
-	waitFire(t, started)
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		close(release)
-	}()
-	d.stop()
-	if !finished.Load() {
-		t.Fatal("stop returned before the in-flight onChange finished")
-	}
 }

@@ -2,13 +2,13 @@ package configfs
 
 import (
 	"fmt"
-	"log/slog"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
+	"golang.org/x/text/unicode/norm"
+
+	"github.com/kirathecat/kira-studio/internal/fswatch"
 )
 
 const watchDebounce = 200 * time.Millisecond
@@ -25,97 +25,36 @@ func (f *Folder[T]) Watch(onChange func()) (stop func(), err error) {
 func WatchDir(dir, ext string, onChange func()) (stop func(), err error) {
 	dir = filepath.Clean(dir)
 	parent := filepath.Dir(dir)
-	w, err := fsnotify.NewWatcher()
+	// fswatch reports Clean, NFC paths; compare against that spelling.
+	ndir := norm.NFC.String(dir)
+	// MaxDepth 1 with only dir let through: the seam adds dir when it appears, so a missing dir is fine.
+	w, err := fswatch.Watch(fswatch.Options{Roots: []string{parent}, MaxDepth: 1, SkipDir: func(p string) bool { return p != ndir }})
 	if err != nil {
-		return nil, fmt.Errorf("configfs: watcher: %w", err)
-	}
-	if err := w.Add(parent); err != nil {
-		w.Close()
 		return nil, fmt.Errorf("configfs: watch %s: %w", parent, err)
 	}
-	// Add after the parent: a dir created in between is caught by the parent's event.
-	_ = w.Add(dir)
 
 	done := make(chan struct{})
-	d := &debouncer{fn: onChange}
+	d := fswatch.NewDebouncer(watchDebounce, 0, onChange)
 	go func() {
 		defer close(done)
-		for {
-			select {
-			case ev, ok := <-w.Events:
-				if !ok {
-					return
-				}
-				if relevantEvent(dir, ext, ev) {
-					if filepath.Clean(ev.Name) == dir && ev.Has(fsnotify.Create) {
-						_ = w.Add(dir)
-					}
-					d.schedule()
-				}
-			case err, ok := <-w.Errors:
-				if !ok {
-					return
-				}
-				slog.Warn("config watch", "scope", "config", "dir", dir, "err", err)
+		for ev := range w.Events() {
+			if relevantEvent(ndir, ext, ev) {
+				d.Schedule()
 			}
 		}
 	}()
 	return func() {
-		d.stop()
-		w.Close()
+		d.Stop()
+		_ = w.Close()
 		<-done
 	}, nil
 }
 
-// relevantEvent reports whether ev touches dir itself or a visible *<ext> file in it.
-func relevantEvent(dir, ext string, ev fsnotify.Event) bool {
-	name := filepath.Clean(ev.Name)
-	if name == dir {
+// relevantEvent reports whether ev touches dir itself or a visible *<ext> file in it; a Rescan always does.
+func relevantEvent(dir, ext string, ev fswatch.Event) bool {
+	if ev.Rescan || ev.Path == dir {
 		return true
 	}
-	base := filepath.Base(name)
-	return filepath.Dir(name) == dir && strings.HasSuffix(base, ext) && !strings.HasPrefix(base, ".") && base != DocsFile
-}
-
-// debouncer coalesces bursts into one fn call after watchDebounce and drops calls once stopped.
-type debouncer struct {
-	fn      func()
-	mu      sync.Mutex
-	timer   *time.Timer
-	stopped bool
-	running sync.WaitGroup // in-flight fn calls; stop waits for them
-}
-
-func (d *debouncer) schedule() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.stopped {
-		return
-	}
-	if d.timer != nil {
-		d.timer.Stop()
-	}
-	d.timer = time.AfterFunc(watchDebounce, d.fire)
-}
-
-func (d *debouncer) fire() {
-	d.mu.Lock()
-	if d.stopped {
-		d.mu.Unlock()
-		return
-	}
-	d.running.Add(1)
-	d.mu.Unlock()
-	defer d.running.Done()
-	d.fn()
-}
-
-func (d *debouncer) stop() {
-	d.mu.Lock()
-	d.stopped = true
-	if d.timer != nil {
-		d.timer.Stop()
-	}
-	d.mu.Unlock()
-	d.running.Wait()
+	base := filepath.Base(ev.Path)
+	return filepath.Dir(ev.Path) == dir && strings.HasSuffix(base, ext) && !strings.HasPrefix(base, ".") && base != DocsFile
 }
