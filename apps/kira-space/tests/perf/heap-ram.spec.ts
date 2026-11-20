@@ -428,6 +428,43 @@ async function logAdeDom(page: Page, label: string): Promise<void> {
   console.log(`ADEDOM ${label} ${JSON.stringify(c)}`);
 }
 
+/** F4: where ADE DOM, xterm, style and font cost sits. Report-only; one JSON line per checkpoint. */
+async function logAdeBreakdown(page: Page, label: string): Promise<void> {
+  const c = await page.evaluate(() => {
+    const count = (sel: string) =>
+      Array.from(document.querySelectorAll(sel)).reduce(
+        (n, e) => n + e.querySelectorAll('*').length + 1,
+        0,
+      );
+    const regions: Record<string, number> = {};
+    for (const id of ['ade-shell-bar', 'ade-plan', 'ade-panel', 'ade-tui-pane']) {
+      regions[id] = count(`[data-testid="${id}"]`);
+    }
+    const shell = count('[data-testid="ade-shell"]');
+    const styles = Array.from(document.querySelectorAll('style'));
+    return {
+      total: document.querySelectorAll('*').length,
+      shell,
+      regions,
+      xtermHosts: document.querySelectorAll('.xterm').length,
+      xtermRows: document.querySelectorAll('.xterm-rows > div').length,
+      canvases: document.querySelectorAll('canvas').length,
+      styleTags: styles.length,
+      styleChars: styles.reduce((n, e) => n + (e.textContent?.length ?? 0), 0),
+      fontFaces: document.fonts.size,
+    };
+  });
+  let counters: unknown = null;
+  try {
+    const cdp = await page.context().newCDPSession(page);
+    counters = await cdp.send('Memory.getDOMCounters' as never);
+    await cdp.detach();
+  } catch {
+    // WebKit has no CDP.
+  }
+  console.log(`ADEDOM ${label} ${JSON.stringify({ ...c, counters })}`);
+}
+
 for (const tasks of [20, 200]) {
   test(`ram: ade ${tasks} tasks`, async ({ relaunch }, info) => {
     test.skip(!worldEnabled('ade'));
@@ -984,7 +1021,12 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
     page,
     info,
     steps: [
-      { name: 'board', run: async () => {}, after: pss('board') },
+      {
+        name: 'board',
+        run: () => logAdeBreakdown(page, 'agents board'),
+        snapshot: true,
+        after: pss('board'),
+      },
       {
         name: 'launch4',
         run: async () => {
@@ -1008,7 +1050,9 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             );
           }
           await page.waitForTimeout(1500);
+          await logAdeBreakdown(page, 'agents launch4');
         },
+        snapshot: true,
         after: pss('launch4'),
       },
       {
@@ -1019,6 +1063,7 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             await expect(page.locator('[data-testid="ade-tui-pane"]')).toBeVisible();
             await page.waitForTimeout(500);
           }
+          await logAdeBreakdown(page, 'agents panes2');
         },
         after: pss('panes2'),
       },
@@ -1037,13 +1082,18 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             await expect(page.locator('[data-testid="ade-panel"]')).toBeVisible();
             await page.waitForTimeout(200);
           }
+          await logAdeBreakdown(page, 'agents switch10');
         },
+        snapshot: true,
         after: pss('switch10'),
       },
       ...[10, 20, 30, 40, 50].map(pushes),
       {
         name: 'final',
-        run: () => page.waitForTimeout(5000),
+        run: async () => {
+          await page.waitForTimeout(5000);
+          await logAdeBreakdown(page, 'agents final');
+        },
         snapshot: true,
         after: pss('final'),
       },
