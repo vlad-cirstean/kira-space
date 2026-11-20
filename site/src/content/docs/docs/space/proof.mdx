@@ -14,7 +14,7 @@ sidebar:
 
 import DocShot from '../../../../components/DocShot.astro';
 
-An agent records proof that its work does what the task asks. A proof is a folder `proofs/<slug>/` in the task folder: a `proof.md` file with ordered steps, plus any image and data files. A step is a table, a chart, a diagram, an image, a document or a list of key values. The agent writes the files and calls `submit`. Kira accepts the whole folder or none of it, and shows it in the task. A proof shows behavior (data, responses, screenshots), not code. There is no proof tool.
+An agent records proof that its work does what the task asks. A proof is a folder `proofs/<slug>/` in the task folder: a `proof.md` file with ordered steps, plus any image and data files. A step is a table, a chart, a diagram, an image, a document or a list of key values. The agent writes the files; Kira picks them up from the folder. Kira accepts the whole folder or none of it, and shows it in the task. A proof shows behavior (data, responses, screenshots), not code. There is no proof tool.
 
 A `proof.md` starts with `name` and `summary`, then `steps`. Each step has an `id`, a `description` and a `view`, and its data either inline or as a file in the folder. The task's `README.md` shows an example.
 
@@ -34,7 +34,7 @@ A chart step draws a line, bar, histogram, area, scatter or pie chart. A diagram
 
 <DocShot id="build-proof-diagram" />
 
-An image step shows a PNG, JPEG, WebP or SVG file from the proof folder, such as a screenshot of the interface the agent checked. The window fits it to the width and scrolls a tall one. A GIF, an animated image or an SVG with scripts or outside references is refused, and the answer to `submit` says why.
+An image step shows a PNG, JPEG, WebP or SVG file from the proof folder, such as a screenshot of the interface the agent checked. The window fits it to the width and scrolls a tall one. A GIF, an animated image or an SVG with scripts or outside references is refused, and the reply to `step.finish` says why.
 
 ## Edits wait for you
 

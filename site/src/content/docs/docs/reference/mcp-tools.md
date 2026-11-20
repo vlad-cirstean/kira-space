@@ -33,16 +33,18 @@ Server name `kira-studio`. Workflow steps with `db_mcp` reach the same tools as 
 
 ## Agent tools (Kira Space)
 
-Server name `kira-space`. A run or session on a task has `submit` and `state`. A rebase run has `finish_step` and `git`. See [Agents](../../space/agents/).
+Server name `kira-space`. A run or session on a task has `state`. A rebase run has `finish_step` and `git`. See [Agents](../../space/agents/).
 
-- `submit`: hand the task folder's files to Kira, such as the handover draft, notes and links. A proof is a folder in the task folder and needs no report: see [Proof](../../space/proof/). Arguments: `paths` (default every changed file), `reason`. It never finishes a step.
+Files in the task folder need no tool: Kira watches the folder and applies saves, such as the handover draft, notes, links and proofs. An edit of another agent's note, link or proof waits for the user's approval. See [Proof](../../space/proof/).
+
 - `state`: ask Kira for something, or finish the step. Arguments: `action` and `args`. Every reply lists items, each with a status. Statuses: `done`, `pending` (awaiting the user), `waiting` (Kira is working), `denied`, `failed` and `invalid` (the call is wrong; the item shows a fixed example). Read `state.yaml` in the task folder for what Kira knows: repositories, setup, leases, operations, runs and late answers.
 
 Actions of `state`:
 
 - `repo.declare`: add registered repositories to the task. Args: `repos`.
-- `branch.request`: ask the user to approve a branch and its worktree. You name the branch. The call waits for the answer, then for the worktree setup, up to 10 minutes; after that read `state.yaml`, the request stays open. Args: `repo`, `branch`, optional `base` and `existing`.
+- `branch.request`: create a branch and its worktree. You name the branch. A new branch or a free existing one needs no approval. The call waits for the worktree setup, up to 10 minutes, then read `state.yaml`. Only adopting a branch held by another task or folder asks the user. Args: `repo`, `branch`, optional `base` and `existing`.
 - `branch.rename`: ask the user to approve renaming one of the task's branches. The worktree folder stays. The remote branch is renamed only if the user agrees. Args: `repo`, `from`, `to`, `renameRemote`.
+- `worktree.remove`: remove the worktree of one of the task's own branches, with no prompt. The git branch stays; check it out again with `branch.request` and `existing`. Refused when the branch is not the task's own, has no worktree or is your working folder. Also refused when it is busy, open, blocked (locked, open elsewhere, main checkout) or has uncommitted changes. There is no discard argument. Args: `repo`, `branch`.
 - `branch.change`: ask the user to approve pointing one of the task's branches at another existing local branch, when the worktree folder holds a different one. Args: `repo`, `from`, `to`.
 - `lease.acquire`: take a named lease on a shared resource the user set up, such as a port, the full test suite, push or merge. The answer is `done` (held) or `waiting` with your position; calling again keeps your place. A lease ends with the session, or after 10 minutes of silence. Args: `queue`.
 - `lease.release`: give a lease back, or leave its line. Without `queue` it leaves every queue. Args: `queue`.
