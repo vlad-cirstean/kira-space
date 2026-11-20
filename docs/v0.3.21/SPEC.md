@@ -5,7 +5,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | # | Phase | Status |
 |---|-------|--------|
 | P699 | File watching: one shared seam, FSEvents on macOS | Done |
-| P700 | File interactions: one shared file service | Planned |
+| P700 | File interactions: one shared file service | Done |
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Done |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
@@ -49,6 +49,17 @@ list in the plan (every direct `os`/`ioutil`/`filepath.Walk` use outside tests a
 keep or move and why: build tooling, harness and tests may stay), the service, migration in commit
 groups, and a guard in `scripts/` or golangci config that rejects new direct file calls outside the
 service. Order dependency: after P699 (the service owns the watcher API).
+
+Result: `internal/fileservice` is the one file seam: rooted (`Contain` or `Refuse`, `PlainOnly`) and host-wide
+Services; atomic write with file and dir fsync, perms, read caps, `*fs.PathError` errors, verified copy,
+capped walk, hashing, watch over fswatch. pathsafe, fsmove and the configfs atomic helpers are folded and
+deleted. 289 call sites in 87 files moved (repo files, config and config sync, task files and ADE,
+import/export, proofs, transfers); 246 sites in 70 files stay allowlisted (the service, fswatch, harness,
+bootstrap, build tooling, test tooling, host probes) by guard G8, which also folds G4. Fixed: blob and usage
+writes had no fsync; no write fsynced its dir. Deviations: `configsync` uses `Host()` (its names are
+regex-validated); proof shot files use `Host()` with sanitized names, not a rooted Service; the service
+gained `Lstat`, `Resolve`, `ReadFile`, `WriteFile`, `HostPrivate`, `ValidName`, `Policy.Existing`. Behaviour:
+host-wide Services refuse relative names; a write keeps an existing file's mode only with `KeepPerm`.
 
 ## P701
 
