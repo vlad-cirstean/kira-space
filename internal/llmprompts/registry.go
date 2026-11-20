@@ -291,7 +291,7 @@ var HeadlessSpaceFiles = define(Entry{
 	TitleKey:   "llmPrompts.entry.headlessSpaceFiles.title",
 	PurposeKey: "llmPrompts.entry.headlessSpaceFiles.description",
 	UsedByKey:  "llmPrompts.entry.headlessSpaceFiles.usedBy.body",
-	Default: `Task folder: {{.Folder}}. See README.md there. Call submit after editing task files.{{if .Draft}} Write your handover to {{.Draft}} before an ok finish.{{end}} When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
+	Default: `This task's Details files live in {{.Folder}}; see README.md there. Call submit after editing task files.{{if .Draft}} Write your handover to {{.Draft}} before an ok finish.{{end}} When the step is done, call state with step.finish.{{range $i, $p := .Proofs}}
 {{if eq $i 0}}Proofs: {{else}}  {{end}}{{$p}}{{end}}{{if .Load}} {{.Load}}{{end}}`,
 }, FilesVars{Folder: "/home/me/.kira-space/tasks/t1", Draft: "handovers/draft-implement.md", Load: `Load the tools first: ToolSearch with query "select:mcp__kira-space__submit,mcp__kira-space__state".`})
 

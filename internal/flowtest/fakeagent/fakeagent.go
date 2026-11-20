@@ -440,7 +440,7 @@ func finishAction(action Action, args []string, headless bool) int {
 var (
 	lastPrompt  []byte
 	curStem     string // the picked call's file stem
-	promptFiles = regexp.MustCompile(`Task folder: (.+?)\. See README\.md there\.`)
+	promptFiles = regexp.MustCompile(`This task's Details files live in (.+?); see README\.md there\.`)
 	draftAsked  = regexp.MustCompile(`write (handovers/draft-[^ ,]+?\.md), then call state step\.finish`)
 )
 

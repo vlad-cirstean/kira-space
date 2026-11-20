@@ -139,7 +139,7 @@ func (b fakeBearer) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 var (
-	fakeFilesRe = regexp.MustCompile(`Task folder: (\S+)\. See README\.md there\.`)
+	fakeFilesRe = regexp.MustCompile(`This task's Details files live in (\S+?); see README\.md there\.`)
 	fakeDraftRe = regexp.MustCompile(`write (handovers/draft-\S+?\.md), then call state step\.finish`)
 )
 
