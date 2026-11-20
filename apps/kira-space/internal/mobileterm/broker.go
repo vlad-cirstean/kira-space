@@ -286,22 +286,32 @@ func (b *Broker) Attach(sessionID string, dev repos.MobileDeviceRow, cols, rows 
 	return c, nil
 }
 
-// Snapshot and Read give Serve its view of the ring.
+// Snapshot and Read give Serve its view of the ring. The ring is nil once SetRecording(false) ran
+// after the terminal went back to the desktop while pump still holds c: read as empty.
 func (c *phoneConn) Snapshot() (data []byte, end int64) {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return nil, 0
+	}
 	return c.e.ring.Snapshot()
 }
 
 func (c *phoneConn) ReadFrom(off int64, limit int) (data []byte, next int64, overrun bool) {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return nil, 0, false
+	}
 	return c.e.ring.ReadFrom(off, limit)
 }
 
 func (c *phoneConn) End() int64 {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return 0
+	}
 	return c.e.ring.End()
 }
 

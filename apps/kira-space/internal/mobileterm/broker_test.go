@@ -231,3 +231,23 @@ func TestBroker_InputDoesNotBlockEntry(t *testing.T) {
 	close(reg.release)
 	<-done
 }
+
+// A pump still holding a released conn must read an empty ring, not panic, after recording stops.
+func TestBroker_ReleasedConnReadsAfterRecordingOff(t *testing.T) {
+	b, _, _ := newTestBroker(t)
+	c, err := b.Attach("s1", phoneA, 50, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Release(c)
+	b.SetRecording(false)
+	if d, end := c.Snapshot(); len(d) != 0 || end != 0 {
+		t.Fatalf("snapshot = %q, %d", d, end)
+	}
+	if d, next, over := c.ReadFrom(0, 10); len(d) != 0 || next != 0 || over {
+		t.Fatalf("read = %q, %d, %v", d, next, over)
+	}
+	if c.End() != 0 {
+		t.Fatal("end must be 0")
+	}
+}
