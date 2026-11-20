@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"github.com/kirathecat/kira-studio/internal/agentcfg"
+	"github.com/kirathecat/kira-studio/internal/appevent"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 )
@@ -12,7 +13,7 @@ type ScriptRunsService struct {
 }
 
 // ChannelScriptRunsChanged pushes one changed script run to every window.
-const ChannelScriptRunsChanged = "kira:scriptRuns:changed"
+const ChannelScriptRunsChanged = appevent.ChannelScriptRunsChanged
 
 // ChannelScriptRunLog pushes the log lines a smart run just stored: {runId, chunks}.
 const ChannelScriptRunLog = "kira:scriptRunLog:appended"
