@@ -354,7 +354,6 @@ export const IPC = {
   adeTaskUpdateTaskRepo: 'kira:adetask:updateTaskRepo',
   adeTaskRemoveTaskBranch: 'kira:adetask:removeTaskBranch',
   adeTaskRemoveTaskRepo: 'kira:adetask:removeTaskRepo',
-  adeTaskTaskBranchRisk: 'kira:adetask:taskBranchRisk',
   adeTaskHostProviders: 'kira:adetask:hostProviders',
   adeTaskBoardChanged: 'kira:adetask:board',
   adeTaskReposChanged: 'kira:adetask:repos',

@@ -103,9 +103,8 @@ func TestTaskReposAndBranches(t *testing.T) {
 	}
 
 	// Remove branch: the repo stays, git keeps the ref, the worktree goes.
-	risk, err := app.W.AdeTask.TaskBranchRisk(ctx, adewire.BranchArgs{BranchID: filled.ID})
-	if err != nil || risk.Worktree != filled.Worktree || len(risk.Dirty) != 0 {
-		t.Fatalf("risk = %+v, %v, want a clean worktree", risk, err)
+	if len(filled.Dirty) != 0 {
+		t.Fatalf("dirty = %+v, want a clean worktree", filled.Dirty)
 	}
 	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: filled.ID}); err != nil {
 		t.Fatalf("RemoveTaskBranch: %v", err)
@@ -140,8 +139,8 @@ func TestTaskReposAndBranches(t *testing.T) {
 	if _, err := app.W.AdeTask.SetTaskBranch(ctx, adewire.SetTaskBranchArgs{BranchID: made.ID, Name: "feat/a-other", Existing: true}); errCode(err) != "E_BAD_REQUEST" {
 		t.Fatalf("SetTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST", err)
 	}
-	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: made.ID}); errCode(err) != "E_BAD_REQUEST" {
-		t.Fatalf("RemoveTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST", err)
+	if err := app.W.AdeTask.RemoveTaskBranch(ctx, adewire.RemoveTaskRowArgs{BranchID: made.ID}); errCode(err) != "E_BAD_REQUEST" || !strings.Contains(err.Error(), "1 uncommitted changes: commit them, or use Discard changes and remove") {
+		t.Fatalf("RemoveTaskBranch over a dirty worktree = %v, want E_BAD_REQUEST naming the discard action", err)
 	}
 	if _, err := os.Stat(made.Worktree); err != nil {
 		t.Fatalf("refused edits removed the worktree: %v", err)

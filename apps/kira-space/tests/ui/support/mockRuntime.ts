@@ -337,7 +337,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskUpdateTaskRepo: 'AdeTaskService.UpdateTaskRepo',
   adeTaskRemoveTaskBranch: 'AdeTaskService.RemoveTaskBranch',
   adeTaskRemoveTaskRepo: 'AdeTaskService.RemoveTaskRepo',
-  adeTaskTaskBranchRisk: 'AdeTaskService.TaskBranchRisk',
   adeTaskHostProviders: 'AdeTaskService.HostProviders',
 
   // Databases module (formerly Kira Studio's own table).

@@ -111,12 +111,7 @@ async function onAddRepo(id: string): Promise<void> {
           :tip="(byBranch.get(row.id) ?? []).map(describe).join('; ')"
           :testid="`ade-branch-updated-${row.id}`"
         />
-        <AdeTaskBranchMenu
-          v-if="!review"
-          :row="row"
-          :draft-repo-ids="draftRepoIds"
-          @error="(m: string) => emit('error', m)"
-        />
+        <AdeTaskBranchMenu v-if="!review" :row="row" :draft-repo-ids="draftRepoIds" />
       </AdeBranchRow>
       <AdeRow
         v-if="pr"

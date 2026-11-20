@@ -138,30 +138,6 @@ func (b *TaskBoard) removeRowBranch(ctx context.Context, tc *taskCtx, old model.
 	return b.detachRow(ctx, old, draft, discard)
 }
 
-// TaskBranchRisk reports what removing the row's branch would discard.
-func (b *TaskBoard) TaskBranchRisk(ctx context.Context, branchID string) (adewire.BranchRisk, error) {
-	sb, err := b.deps.Tasks.GetBranch(branchID)
-	if err != nil {
-		return adewire.BranchRisk{}, err
-	}
-	tc, err := b.loadTaskCtx(sb.TaskID)
-	if err != nil {
-		return adewire.BranchRisk{}, err
-	}
-	row, ok := tc.branch(branchID)
-	if !ok {
-		return adewire.BranchRisk{}, repos.ErrBranchMissing
-	}
-	lb, linked, err := b.linkedBranchOf(ctx, row)
-	if err != nil {
-		return adewire.BranchRisk{}, err
-	}
-	if !linked {
-		return adewire.BranchRisk{BranchID: branchID, Dirty: []adewire.DirtyEntry{}}, nil
-	}
-	return b.branchRisk(ctx, lb)
-}
-
 // checkFreshName refuses a new branch name git, the repo or the task list would reject, so a refusal
 // changes nothing.
 func (b *TaskBoard) checkFreshName(ctx context.Context, repoID, name string) error {

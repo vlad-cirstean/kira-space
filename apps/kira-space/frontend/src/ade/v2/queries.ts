@@ -192,11 +192,6 @@ export function useRemoveTaskRepo() {
   });
 }
 
-/** What removing a row's branch would discard; read fresh at click time, like the archive risk. */
-export function useTaskBranchRisk() {
-  return useMutation({ mutationFn: (args: BranchArgs) => control.adeTaskTaskBranchRisk(args) });
-}
-
 /** Applies a task patch to a board snapshot: a `null` field is unchanged, `clearJira` drops Jira. */
 function withTaskPatch(board: Board, args: UpdateTaskArgs): Board {
   const p = args.patch;

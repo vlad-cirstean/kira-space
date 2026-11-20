@@ -8,7 +8,6 @@ import {
 } from '@theme/components/ui/dropdown-menu';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { errorText } from '@workbench/bridge/codedError';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref } from 'vue';
@@ -17,7 +16,6 @@ import { useRemoveTaskBranch, useRemoveTaskRepo } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeOpsStore } from '../state/adeOps';
 import AdeTaskBranchForm from './AdeTaskBranchForm.vue';
-import { useDiscardGuard } from './useDiscardGuard';
 
 // Row menu of the Task tab: add or change the branch, change or remove the repo (P397).
 const props = defineProps<{
@@ -26,10 +24,8 @@ const props = defineProps<{
   draftRepoIds: readonly string[];
   align?: 'start' | 'end';
 }>();
-const emit = defineEmits<{ error: [message: string] }>();
 
 const ui = useAdeBoardUiStore();
-const guard = useDiscardGuard();
 const ops = useAdeOpsStore();
 const removeBranch = useRemoveTaskBranch();
 const removeRepo = useRemoveTaskRepo();
@@ -37,7 +33,7 @@ const removeRepo = useRemoveTaskRepo();
 const formOpen = ref(false);
 const menuOpen = ref(false);
 const mode = ref<'branch' | 'repo'>('branch');
-const label = computed(() => props.row.name || props.row.repo);
+const dirty = computed(() => props.row.branch.dirty.length);
 
 const menuItems = computed<MenuItem[]>(() => [
   ...(props.row.draft
@@ -70,9 +66,11 @@ const menuItems = computed<MenuItem[]>(() => [
         },
         {
           type: 'item',
-          id: 'remove',
-          testId: 'ade-task-branch-remove',
-          label: t('space.ade.taskTab.branchMenu.removeBranch.label'),
+          id: dirty.value ? 'remove-discard' : 'remove',
+          testId: dirty.value ? 'ade-task-branch-remove-discard' : 'ade-task-branch-remove',
+          label: dirty.value
+            ? t('space.ade.taskTab.branchMenu.discardRemoveBranch.label', { count: dirty.value })
+            : t('space.ade.taskTab.branchMenu.removeBranch.label'),
           icon: 'trash',
           danger: true,
           run: () => remove('branch'),
@@ -81,9 +79,11 @@ const menuItems = computed<MenuItem[]>(() => [
   { type: 'separator' },
   {
     type: 'item',
-    id: 'repo-remove',
-    testId: 'ade-task-repo-remove',
-    label: t('space.ade.taskTab.branchMenu.removeRepo.label'),
+    id: dirty.value ? 'repo-remove-discard' : 'repo-remove',
+    testId: dirty.value ? 'ade-task-repo-remove-discard' : 'ade-task-repo-remove',
+    label: dirty.value
+      ? t('space.ade.taskTab.branchMenu.discardRemoveRepo.label', { count: dirty.value })
+      : t('space.ade.taskTab.branchMenu.removeRepo.label'),
     icon: 'trash',
     danger: true,
     run: () => remove('repo'),
@@ -95,39 +95,26 @@ function openForm(next: 'branch' | 'repo'): void {
   formOpen.value = true;
 }
 
-async function remove(what: 'branch' | 'repo'): Promise<void> {
-  emit('error', '');
+// A dirty row's item is the explicit discard; the server re-reads the changes and refuses a row that turned
+// dirty after the board did.
+function remove(what: 'branch' | 'repo'): void {
   const branchId = props.row.id;
   const taskId = props.row.branch.taskId;
-  try {
-    const { proceed, discard } = await guard({
+  const discardChanges = dirty.value > 0;
+  delete ui.actionError[taskId];
+  const mutation = what === 'branch' ? removeBranch : removeRepo;
+  ops.run(
+    {
+      id: `${what === 'branch' ? 'removeBranch' : 'removeRepo'}:${branchId}`,
+      kind: what === 'branch' ? 'removeBranch' : 'removeRepo',
+      taskId,
       branchId,
-      name: label.value,
-      title:
-        what === 'branch'
-          ? t('space.ade.taskTab.branchMenu.removeBranchConfirm.title')
-          : t('space.ade.taskTab.branchMenu.removeRepoConfirm.title'),
-      body: (risk) =>
-        t('space.ade.taskTab.branchMenu.leaveConfirm.body', { name: label.value, risk }),
-      confirmLabel: t('common.action.remove.label'),
-    });
-    if (!proceed) return;
-    const mutation = what === 'branch' ? removeBranch : removeRepo;
-    ops.run(
-      {
-        id: `${what === 'branch' ? 'removeBranch' : 'removeRepo'}:${branchId}`,
-        kind: what === 'branch' ? 'removeBranch' : 'removeRepo',
-        taskId,
-        branchId,
-      },
-      async () => {
-        await mutation.mutateAsync({ branchId, discardChanges: discard });
-        if (ui.selectedBranchId === branchId) ui.select(taskId);
-      },
-    );
-  } catch (err) {
-    emit('error', errorText(err));
-  }
+    },
+    async () => {
+      await mutation.mutateAsync({ branchId, discardChanges });
+      if (ui.selectedBranchId === branchId) ui.select(taskId);
+    },
+  );
 }
 </script>
 

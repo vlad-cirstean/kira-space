@@ -592,16 +592,6 @@ func (s *AdeTaskService) RemoveTaskRepo(ctx context.Context, args adewire.Remove
 	return adeTaskError(s.Engine.RemoveTaskRepo(ctx, args))
 }
 
-// TaskBranchRisk reports what removing a row's branch would discard.
-func (s *AdeTaskService) TaskBranchRisk(ctx context.Context, args adewire.BranchArgs) (adewire.BranchRisk, error) {
-	ctx = adeUserCtx(ctx)
-	if err := validateAdeItemID(args.BranchID, "branchId"); err != nil {
-		return adewire.BranchRisk{}, err
-	}
-	r, err := s.Engine.TaskBranchRisk(ctx, args.BranchID)
-	return r, adeTaskError(err)
-}
-
 // RepoBranches lists the bases the picker offers for a repo.
 func (s *AdeTaskService) RepoBranches(ctx context.Context, args adewire.RepoBranchesArgs) (adewire.RepoBranches, error) {
 	ctx = adeUserCtx(ctx)
