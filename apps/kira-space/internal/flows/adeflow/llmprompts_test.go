@@ -47,6 +47,27 @@ func TestRunUsesEditedFinishInstruction(t *testing.T) {
 	}
 }
 
+// A Space step prompt names the Details folder and ends with the proof ask; the README repeats it.
+func TestRunPromptAsksForProofAndNamesDetails(t *testing.T) {
+	f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, agentStep("one", "")+manualStep)
+	f.start(t, "feat/api-work")
+	if r := waitRun(t, f.app, f.taskID, "one", "done"); r.State != "done" {
+		t.Fatalf("run = %+v", r)
+	}
+	const proof = "Write a proof for any checkable result before finishing."
+	folder := dfFolder(t, f.app, f.taskID)
+	got := strings.TrimRight(fakeFile(t, f.app, "api-1.prompt"), "\n")
+	if want := "This task's Details files live in " + folder + "; see README.md there."; !strings.Contains(got, want) {
+		t.Fatalf("prompt = %q, want %q", got, want)
+	}
+	if !strings.HasSuffix(got, proof) {
+		t.Fatalf("prompt = %q, want it to end with %q", got, proof)
+	}
+	if readme := dfRead(t, folder, "README.md"); !strings.Contains("\n"+readme, "\n"+proof+"\n") {
+		t.Fatalf("README = %q, want the proof line", readme)
+	}
+}
+
 // The Run dialog renders its message, Kira Space note and finish suffix through Preview.
 func TestRunDialogPreview(t *testing.T) {
 	f := newRunFixture(t, nil, agentStep("one", "")+manualStep)

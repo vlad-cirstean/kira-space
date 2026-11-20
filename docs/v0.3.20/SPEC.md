@@ -4,15 +4,22 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 
 | # | Phase | Status |
 |---|-------|--------|
-| P694 | Agent prompts: when to write proofs, where the task Details live | Planned |
+| P694 | Agent prompts: when to write proofs, where the task Details live | Done |
 | P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
 | P696 | Dialogs: remove redundant buttons (audit every dialog) | Planned |
 | P697 | Required services: repo scripts that must be running for a task | Planned |
 | P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Planned |
 
-P694 note: partly implemented. Resume from commit `b4a4f7808` and stash `P694-wip`; the plan's file and
-test list is the source of truth. Chapter rebases onto `main` after PR #52 (`chapter/v0.3.19`) merges,
-before its own PR opens.
+## P694
+
+Result: finish instruction (Space runs only) and README end with `Write a proof for any checkable result before
+finishing.`; `headless.space.files` opens with `This task's Details files live in {{.Folder}}; see README.md there.`;
+`submit` `reason` arg names accepted proofs. Goldens, `ade-run.json` contract, budget, i18n and ARCHITECTURE
+updated; `Details` added to `PROPER_NOUNS` (check-catalog). Flow test `TestRunPromptAsksForProofAndNamesDetails`;
+UI half is `ade-v2-run.spec.ts` replaying the contract. Go, typecheck, lint, `ade-v2-run` and `copy-coverage`
+specs pass. Real `claude` ADE row passes except the three TUI tests (`TestAdeManualSession`,
+`TestAdeAdHocSession`, `TestAdeManualSessionStageSettings`): no SessionStart hook within 60 s at load1 10 to 18,
+also with the pre-P694 registry restored, so not this change. `test:claude:db` passes.
 
 ## P695
 
