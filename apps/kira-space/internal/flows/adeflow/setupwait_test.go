@@ -11,7 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
-// P643 branch.request waits for setup: after approval the reply holds back until setup is ready, so
+// P643 branch.request waits for setup: with no approval to wait on, the reply holds back until setup is ready, so
 // it reports done with setup ready, and state.yaml agrees. A gated prepare script holds setup open.
 func TestBranchRequestWaitsForSetup(t *testing.T) {
 	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/wait"})}, Name: "done"}}, onceStepYML, false)
@@ -19,10 +19,6 @@ func TestBranchRequestWaitsForSetup(t *testing.T) {
 	t.Cleanup(func() { _ = os.WriteFile(gate, nil, 0o644) })
 	setPrepare(t, f.app, f.api, "while [ ! -f "+strconv.Quote(gate)+" ]; do sleep 0.05; done")
 	f.startRun(t)
-	req := f.waitRequest(t)
-	if _, err := approveBR(f.app, req.ID, []string{req.Items[0].ID}, nil); err != nil {
-		t.Fatal(err)
-	}
 	reply := filepath.Join(f.app.FakeDir, "mcp-branch.request-1.json")
 	stateYAML(t, f.app, f.task.ID, func(d map[string]any) bool {
 		repos, _ := d["repos"].([]any)

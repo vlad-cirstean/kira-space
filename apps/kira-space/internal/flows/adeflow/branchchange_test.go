@@ -40,12 +40,7 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 func newChangeFixture(t *testing.T, from, to string) (*brFixture, *flowharness.Repo, string) {
 	t.Helper()
 	f, _, repo := newRenameFixture(t, changeCall(from, to), noSandbox)
-	f.startRun(t)
-	first := f.waitRequest(t)
-	if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
-		t.Fatal(err)
-	}
-	waitRun(t, f.app, f.task.ID, "one", "done")
+	f.createFirst(t)
 	own := branchOf(t, board(t, f.app), f.task.ID, f.api).Worktree
 	if own == "" {
 		t.Fatal("feat/old has no worktree after the first run")

@@ -85,18 +85,6 @@ func TestRepolessWorkflow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		var id string
-		testx.WaitUntil(t, waitFor, func() bool {
-			id = taskOf(t, board(t, f.app), f.task.ID).BranchRequestID
-			return id != ""
-		})
-		req, err := branchRequest(f.app, id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := approveBR(f.app, id, []string{req.Items[0].ID}, nil); err != nil {
-			t.Fatal(err)
-		}
 		waitRun(t, f.app, f.task.ID, "one", "done")
 		two := waitRun(t, f.app, f.task.ID, "two", "done")
 		br := branchOf(t, board(t, f.app), f.task.ID, f.api)

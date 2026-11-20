@@ -30,16 +30,29 @@ func renameCall(from, to string, remote bool) fakeagent.MCPCall {
 	return c
 }
 
+// webRenameCall renames a branch of web, local only.
+func webRenameCall(from, to string) fakeagent.MCPCall {
+	c := stateCall("branch.rename", map[string]any{"repo": "web", "from": from, "to": to, "renameRemote": false})
+	c.Tolerate = true
+	return c
+}
+
 // newRenameFixture sets up two agent runs: the first creates feat/old, the second asks to rename it.
 // sandbox is extra YAML for the second step; a sandboxed run is bound to its branch and cannot rename it.
-func newRenameFixture(t *testing.T, rename fakeagent.MCPCall, sandbox string) (*brFixture, *flowharness.Bare, *flowharness.Repo) {
+func newRenameFixture(t *testing.T, rename fakeagent.MCPCall, sandbox string, opts ...flowharness.Opt) (*brFixture, *flowharness.Bare, *flowharness.Repo) {
 	t.Helper()
-	app := flowharness.New(t)
+	return newHeldRenameFixture(t, rename, sandbox, "", opts...)
+}
+
+// newHeldRenameFixture is newRenameFixture whose second run waits for the hold file after its call.
+func newHeldRenameFixture(t *testing.T, rename fakeagent.MCPCall, sandbox, hold string, opts ...flowharness.Opt) (*brFixture, *flowharness.Bare, *flowharness.Repo) {
+	t.Helper()
+	app := flowharness.New(t, opts...)
 	apiRepo, bare := cloneWithMain(app, filepath.Join(app.Work, "api"))
 	// The first run starts in the repo folder ("work"), the second in the new worktree ("api").
 	claude(app, map[string][]fakeagent.Action{
 		"work": {{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/old"})}, Name: "done"}},
-		"api":  {{WaitBefore: filepath.Join(app.Work, "pushed"), MCP: []fakeagent.MCPCall{rename}, Name: "done"}},
+		"api":  {{WaitBefore: filepath.Join(app.Work, "pushed"), MCP: []fakeagent.MCPCall{rename}, WaitFile: hold, Name: "done"}},
 	})
 	api := importRepo(t, app, apiRepo.Dir)
 	saveWorkflow(t, app, "flow", flowYAML("flow", onceStepYML+strings.ReplaceAll(onceStepYML, "one", "two")+sandbox))
@@ -51,12 +64,7 @@ func newRenameFixture(t *testing.T, rename fakeagent.MCPCall, sandbox string) (*
 // then lets the second step run and returns its rename request.
 func (f *brFixture) answerCreate(t *testing.T, repo *flowharness.Repo) adewire.BranchRequest {
 	t.Helper()
-	f.startRun(t)
-	first := f.waitRequest(t)
-	if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
-		t.Fatal(err)
-	}
-	waitRun(t, f.app, f.task.ID, "one", "done")
+	f.createFirst(t)
 	if repo != nil {
 		repo.Git("push", "-q", "-u", "origin", "feat/old")
 	}
@@ -144,12 +152,7 @@ func TestBranchRename(t *testing.T) {
 
 	t.Run("main is refused before any prompt", func(t *testing.T) {
 		f, _, _ := newRenameFixture(t, renameCall("feat/old", "main", false), noSandbox)
-		f.startRun(t)
-		first := f.waitRequest(t)
-		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
-			t.Fatal(err)
-		}
-		waitRun(t, f.app, f.task.ID, "one", "done")
+		f.createFirst(t)
 		if err := os.WriteFile(filepath.Join(f.app.Work, "pushed"), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -163,12 +166,7 @@ func TestBranchRename(t *testing.T) {
 
 	t.Run("a sandboxed run keeps its branch name", func(t *testing.T) {
 		f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/new", false), writeSandbox)
-		f.startRun(t)
-		first := f.waitRequest(t)
-		if _, err := approveBR(f.app, first.ID, []string{first.Items[0].ID}, nil); err != nil {
-			t.Fatal(err)
-		}
-		waitRun(t, f.app, f.task.ID, "one", "done")
+		f.createFirst(t)
 		if err := os.WriteFile(filepath.Join(f.app.Work, "pushed"), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}

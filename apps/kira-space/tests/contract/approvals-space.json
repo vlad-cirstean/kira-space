@@ -20,26 +20,18 @@
         "items": [
           {
             "base": "",
-            "branch": "feat/b",
+            "branch": "feat/held",
             "codeRepoId": "<masked>",
             "from": "",
+            "holder": {
+              "branchId": "<id:2>",
+              "kind": "task",
+              "taskId": "<masked>",
+              "worktree": "<home>/kira-space-wts/lib/<wt>"
+            },
             "id": "c0i0",
-            "kind": "branch",
-            "repo": "web",
-            "session": "",
-            "source": "run",
-            "stacked": [],
-            "stepName": "two",
-            "upstream": ""
-          },
-          {
-            "base": "",
-            "branch": "feat/c",
-            "codeRepoId": "<masked>",
-            "from": "",
-            "id": "c1i0",
-            "kind": "branch",
-            "repo": "web",
+            "kind": "adopt",
+            "repo": "lib",
             "session": "",
             "source": "run",
             "stacked": [],
@@ -51,7 +43,7 @@
             "branch": "feat/new",
             "codeRepoId": "<masked>",
             "from": "feat/old",
-            "id": "c2i0",
+            "id": "c1i0",
             "kind": "rename",
             "repo": "api",
             "session": "",
@@ -59,6 +51,20 @@
             "stacked": [],
             "stepName": "two",
             "upstream": "origin/feat/old"
+          },
+          {
+            "base": "",
+            "branch": "feat/w-new",
+            "codeRepoId": "<masked>",
+            "from": "feat/w-old",
+            "id": "c2i0",
+            "kind": "rename",
+            "repo": "web",
+            "session": "",
+            "source": "run",
+            "stacked": [],
+            "stepName": "two",
+            "upstream": ""
           }
         ],
         "taskId": "<masked>",
@@ -83,10 +89,10 @@
       "branch.request:<id:1>": {
         "itemIds": [
           "c0i0",
-          "c2i0"
+          "c1i0"
         ],
         "remoteItemIds": [
-          "c2i0"
+          "c1i0"
         ],
         "shownItemIds": [
           "c0i0",

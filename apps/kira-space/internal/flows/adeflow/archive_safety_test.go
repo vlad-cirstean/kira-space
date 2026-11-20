@@ -113,11 +113,12 @@ func TestArchiveSafetyDirtyUnmergedLocked(t *testing.T) {
 	}
 }
 
-// J-ADE-042. Archive with a live headless run waiting on a branch request: the run ends cancelled,
+// J-ADE-042. Archive with a live headless run waiting on an adopt request: the run ends cancelled,
 // the request is abandoned and no session stays running.
 func TestArchiveWhileRunAndRequestLive(t *testing.T) {
-	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/a"})}, WaitFile: filepath.Join(t.TempDir(), "never")}},
+	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{adoptCall("feat/a")}, WaitFile: filepath.Join(t.TempDir(), "never")}},
 		onceStepYML, false)
+	f.donorHolds(t, "feat/a")
 	f.startRun(t)
 	req := f.waitRequest(t)
 	if len(req.Items) != 1 {
@@ -134,9 +135,6 @@ func TestArchiveWhileRunAndRequestLive(t *testing.T) {
 	}
 	if ps := f.requestPrompts(t); len(ps) != 0 {
 		t.Fatalf("approval prompts after archive = %+v, want none", ps)
-	}
-	if got := gitOut(t, f.repo.Dir, "branch", "--list", "feat/a"); got != "" {
-		t.Fatalf("branch %q created for an abandoned request", got)
 	}
 	res, err := f.app.W.AdeTask.Sessions(ctx)
 	if err != nil {

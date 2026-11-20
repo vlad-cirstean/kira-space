@@ -1,6 +1,7 @@
 package adeflow_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -160,17 +161,14 @@ func (f *adoptFixture) listContract(t *testing.T, key string, req adewire.Branch
 }
 
 func TestBranchAdopt(t *testing.T) {
-	t.Run("a free branch: checkout item, approve, worktree in the task folder", func(t *testing.T) {
+	t.Run("a free branch is checked out at once: no item, worktree in the task folder", func(t *testing.T) {
 		f := newAdoptFixture(t, "")
 		gitOut(t, f.repo.Dir, "branch", "feat/free")
 		a := f.ask(f.adopter, existing("feat/free"))
-		req := a.request(t)
-		if len(req.Items) != 1 || req.Items[0].Kind != "checkout" || req.Items[0].Holder != nil || req.Items[0].Dirty != 0 {
-			t.Fatalf("request = %+v, want one checkout item with no holder", req)
-		}
-		f.listContract(t, "checkout", req)
-		a.approve(t, req)
 		got := a.result(t)
+		if id := taskOf(t, board(t, f.app), f.adopter.ID).BranchRequestID; id != "" {
+			t.Fatalf("task has open request %s, want none: a free branch needs no approval", id)
+		}
 		if got.Outcome != agentmcp.BranchCheckedOut || !nanoFolder.MatchString(filepath.Base(got.Worktree)) || filepath.Base(filepath.Dir(got.Worktree)) != "api" {
 			t.Fatalf("result = %+v, want checkedOut in wt/api/<nanoid>", got)
 		}
@@ -441,4 +439,132 @@ func TestBranchAdopt(t *testing.T) {
 		}
 		gone(t, got.Worktree)
 	})
+
+	t.Run("two tasks ask at once: one request each, answered apart", func(t *testing.T) {
+		f := newAdoptFixture(t, "")
+		f.donorHolds(t, "feat/p")
+		f.donorHolds(t, "feat/q")
+		other := createTask(t, f.app, "Adopter two", "flow", f.apiID)
+		one := f.ask(f.adopter, existing("feat/p"))
+		two := f.ask(other, existing("feat/q"))
+		reqOne, reqTwo := one.request(t), two.request(t)
+		if reqOne.ID == reqTwo.ID || reqOne.TaskID == reqTwo.TaskID {
+			t.Fatalf("requests = %+v and %+v, want one per task", reqOne, reqTwo)
+		}
+		mustDeny(t, f.app, reqOne.ID)
+		if got := one.result(t); got.Outcome != agentmcp.BranchDenied {
+			t.Fatalf("first result = %+v, want denied", got)
+		}
+		if _, err := branchRequest(f.app, reqTwo.ID); err != nil {
+			t.Fatalf("other request: %v", err)
+		}
+		mustDeny(t, f.app, reqTwo.ID)
+		if got := two.result(t); got.Outcome != agentmcp.BranchDenied {
+			t.Fatalf("second result = %+v, want denied", got)
+		}
+	})
+
+	t.Run("a second call joins the open request and leaves alone", func(t *testing.T) {
+		f := newAdoptFixture(t, "")
+		f.donorHolds(t, "feat/p")
+		f.donorHolds(t, "feat/q")
+		first := f.ask(f.adopter, existing("feat/p"))
+		req := first.request(t)
+		joined, cancel := context.WithCancel(ctx)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() {
+			_, err := f.app.W.AdeBoard.RequestBranches(joined, agentmcp.SpaceCall{TaskID: f.adopter.ID}, []agentmcp.BranchSpec{existing("feat/q")})
+			done <- err
+		}()
+		merged := f.waitItems(t, f.adopter, 2)
+		if merged.ID != req.ID || merged.Items[0].ID != "c0i0" || merged.Items[1].ID != "c1i0" {
+			t.Fatalf("merged = %+v, want the same request with items c0i0 and c1i0", merged)
+		}
+		// The joined caller leaving takes only its own item.
+		cancel()
+		if err := <-done; err == nil {
+			t.Fatal("cancelled call returned no error")
+		}
+		if left := f.waitItems(t, f.adopter, 1); left.Items[0].ID != "c0i0" {
+			t.Fatalf("after leaving: %+v, want the first call's item", left.Items)
+		}
+		mustDeny(t, f.app, req.ID)
+		first.result(t)
+	})
+
+	t.Run("approval leaves a call that joined after the view rendered pending", func(t *testing.T) {
+		f := newAdoptFixture(t, "")
+		f.donorHolds(t, "feat/p")
+		f.donorHolds(t, "feat/q")
+		first := f.ask(f.adopter, existing("feat/p"))
+		req := first.request(t)
+		late := f.ask(f.adopter, existing("feat/q"))
+		f.waitItems(t, f.adopter, 2)
+		// The user's view held only the first call's item.
+		if ans, err := answerBR(f.app, req.ID, true, brOptions{ItemIDs: []string{"c0i0"}, ShownItemIDs: []string{"c0i0"}}); err != nil || !ans.Resolved {
+			t.Fatalf("Approve = %+v, %v", ans, err)
+		}
+		if got := first.result(t); got.Outcome != agentmcp.BranchCheckedOut {
+			t.Fatalf("first result = %+v, want checkedOut", got)
+		}
+		left, err := branchRequest(f.app, req.ID)
+		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
+			t.Fatalf("after approval: %+v, %v, want the late call's item still open", left, err)
+		}
+		select {
+		case r := <-late.done:
+			t.Fatalf("late call answered early: %+v", r)
+		default:
+		}
+		mustDeny(t, f.app, req.ID)
+		if got := late.result(t); got.Outcome != agentmcp.BranchDenied {
+			t.Fatalf("late result = %+v, want denied", got)
+		}
+	})
+
+	t.Run("denial leaves a call that joined after the view rendered pending", func(t *testing.T) {
+		f := newAdoptFixture(t, "")
+		f.donorHolds(t, "feat/p")
+		f.donorHolds(t, "feat/q")
+		first := f.ask(f.adopter, existing("feat/p"))
+		req := first.request(t)
+		late := f.ask(f.adopter, existing("feat/q"))
+		f.waitItems(t, f.adopter, 2)
+		if ans, err := answerBR(f.app, req.ID, false, brOptions{ShownItemIDs: []string{"c0i0"}}); err != nil || !ans.Resolved {
+			t.Fatalf("Deny = %+v, %v", ans, err)
+		}
+		if got := first.result(t); got.Outcome != agentmcp.BranchDenied {
+			t.Fatalf("first result = %+v, want denied", got)
+		}
+		left, err := branchRequest(f.app, req.ID)
+		if err != nil || len(left.Items) != 1 || left.Items[0].ID != "c1i0" {
+			t.Fatalf("after denial: %+v, %v, want the late call's item still open", left, err)
+		}
+		select {
+		case r := <-late.done:
+			t.Fatalf("late call answered early: %+v", r)
+		default:
+		}
+		mustDeny(t, f.app, req.ID)
+		if got := late.result(t); got.Outcome != agentmcp.BranchDenied {
+			t.Fatalf("late result = %+v, want denied", got)
+		}
+	})
+}
+
+// waitItems waits until the task's open request holds n items.
+func (f *adoptFixture) waitItems(t *testing.T, task adewire.Task, n int) adewire.BranchRequest {
+	t.Helper()
+	var req adewire.BranchRequest
+	testx.WaitUntil(t, waitFor, func() bool {
+		id := taskOf(t, board(t, f.app), task.ID).BranchRequestID
+		if id == "" {
+			return false
+		}
+		var err error
+		req, err = branchRequest(f.app, id)
+		return err == nil && len(req.Items) == n
+	})
+	return req
 }

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -25,24 +24,22 @@ func answersOf(doc map[string]any) []map[string]any {
 }
 
 // P643 Part 5: a state call that waits for the user ends at the call wait, nothing is cancelled.
-// The reply is pending and names the state.yaml fields; the item stays open; a late approval applies
+// The reply is pending and names the state.yaml field; the item stays open; a late approval applies
 // with no caller and lands in answers[] and repos[]. The run stays alive on a gate meanwhile.
-func TestCallWaitBranchRequest(t *testing.T) {
+func TestCallWaitBranchRename(t *testing.T) {
 	gate := filepath.Join(t.TempDir(), "gate")
 	t.Cleanup(func() { _ = os.WriteFile(gate, nil, 0o644) })
-	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/late"})}, WaitFile: gate, Name: "done"}}, onceStepYML, false,
-		flowharness.WithCallWait(time.Second))
-	f.startRun(t)
-	req := f.waitRequest(t)
+	f, _, _ := newHeldRenameFixture(t, renameCall("feat/old", "feat/late", false), noSandbox, gate, flowharness.WithCallWait(time.Second))
+	req := f.answerCreate(t, nil)
 
-	reply, errText := stateReply(t, f.app, "mcp-branch.request-1.json")
+	reply, errText := stateReply(t, f.app, "mcp-branch.rename-1.json")
 	if errText != "" {
-		t.Fatalf("branch.request after the wait: error %q, want a pending item", errText)
+		t.Fatalf("branch.rename after the wait: error %q, want a pending item", errText)
 	}
 	it := replyItem(t, reply)
 	msg, _ := it["message"].(string)
-	if it["status"] != "pending" || !strings.Contains(msg, "pending[]") || !strings.Contains(msg, "answers[]") || strings.Contains(strings.ToLower(msg), "call again") {
-		t.Fatalf("item = %v, want pending naming pending[] and answers[], no call-again text", it)
+	if it["status"] != "pending" || !strings.Contains(msg, "answers[]") || strings.Contains(strings.ToLower(msg), "call again") {
+		t.Fatalf("item = %v, want pending naming answers[], no call-again text", it)
 	}
 	if got := f.waitRequest(t); got.ID != req.ID {
 		t.Fatalf("request after the wait = %q, want the same open request %q", got.ID, req.ID)
@@ -57,7 +54,7 @@ func TestCallWaitBranchRequest(t *testing.T) {
 	}
 	doc := stateYAML(t, f.app, f.task.ID, func(d map[string]any) bool {
 		for _, a := range answersOf(d) {
-			if a["kind"] == "branch.request" && a["status"] == "done" {
+			if a["kind"] == "branch.rename" && a["status"] == "done" {
 				return true
 			}
 		}
@@ -71,18 +68,16 @@ func TestCallWaitBranchRequest(t *testing.T) {
 		t.Fatalf("pending after the answer = %v, want none", pend)
 	}
 	if name := f.branchName(t, f.api); name != "feat/late" {
-		t.Fatalf("branch = %q, want feat/late created by the late approval", name)
+		t.Fatalf("branch = %q, want feat/late renamed by the late approval", name)
 	}
 	_ = os.WriteFile(gate, nil, 0o644)
-	waitRun(t, f.app, f.task.ID, "one", "done")
+	waitRun(t, f.app, f.task.ID, "two", "done")
 }
 
 // The owner's end withdraws an open call: the run finishing while a request waits leaves no item.
 func TestCallWaitOwnerEndWithdraws(t *testing.T) {
-	f := newBRFixture(t, []fakeagent.Action{{MCP: []fakeagent.MCPCall{requestCall([2]string{"api", "feat/gone"})}, Name: "done"}}, onceStepYML, false,
-		flowharness.WithCallWait(time.Second))
-	f.startRun(t)
-	f.waitRequest(t)
-	waitRun(t, f.app, f.task.ID, "one", "done")
+	f, _, _ := newRenameFixture(t, renameCall("feat/old", "feat/gone", false), noSandbox, flowharness.WithCallWait(time.Second))
+	f.answerCreate(t, nil)
+	waitRun(t, f.app, f.task.ID, "two", "done")
 	testx.WaitUntil(t, waitFor, func() bool { return taskOf(t, board(t, f.app), f.task.ID).BranchRequestID == "" })
 }

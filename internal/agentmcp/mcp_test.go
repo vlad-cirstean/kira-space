@@ -334,13 +334,16 @@ func TestGrantScopes(t *testing.T) {
 	if res, reply := stateCall(t, sp, "lease.acquire", map[string]any{"queue": "q"}); res.IsError || firstItem(t, reply)["status"] != "done" {
 		t.Fatalf("lease.acquire: %v", reply)
 	}
+	if res, reply := stateCall(t, sp, "worktree.remove", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("worktree.remove: %v", reply)
+	}
 	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "gone", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "invalid" {
 		t.Fatalf("an agent-fixable refusal must be an invalid item, not an error: %v", reply)
 	}
 	space.mu.Lock()
 	got := space.calls
 	space.mu.Unlock()
-	want := []string{"branch|task-2|api", "acquire|task-1||q", "branch|task-2|gone"}
+	want := []string{"branch|task-2|api", "acquire|task-1||q", "remove|task-1|api/feat/x", "branch|task-2|gone"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("calls = %v, want %v", got, want)
 	}
@@ -378,6 +381,7 @@ func TestStateInvalidCalls(t *testing.T) {
 		"missing field": {"action": "branch.request", "args": map[string]any{"repo": "app"}},
 		"args string":   {"action": "branch.request", "args": `{"repo": "app", "branch": "x"}`},
 		"wrong type":    {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": 7}},
+		"remove blank":  {"action": "worktree.remove", "args": map[string]any{"repo": "", "branch": "x"}},
 	} {
 		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: raw})
 		if err != nil || res.IsError {
