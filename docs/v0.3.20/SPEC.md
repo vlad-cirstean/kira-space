@@ -8,7 +8,7 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 | P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
 | P696 | Dialogs: remove redundant buttons (audit every dialog) | Done |
 | P697 | Required services: repo scripts that must be running for a task | Done |
-| P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Planned |
+| P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Done |
 
 ## P694
 
@@ -101,6 +101,14 @@ operations with no ops-panel or task entry.
 Check that failures still surface somewhere visible (ops panel entry, task state or a kept error toast)
 and that no operation loses its only failure signal. Candidate guard in `scripts/check-ui-primitives.sh`
 if a rule is mechanical. Remove copy catalog keys that become unused (dead-key guards).
+
+Result: Done. Audited every toast (table in `plans/P698.md`): six toast call files plus three corner chips.
+Dropped every ADE op loading and success toast (the persistent remove/archive toast that flipped to
+success, the slow-op loading/success pair, the backend agent-op success): progress is the op chip or
+pending button, the result the board and the Operations panel row. Kept every error toast (task action
+errors show only in the open task's panel, lease and attach ops have no other surface) and the corner
+chips. slowNotice, TOAST_POLICY, opDoneText, AdeOp.name and 25 space.ade.ops.*.status keys removed. Guard
+U213 (only toast.error). Specs updated to assert no toast past 2 s. Frontend only.
 
 ## Streams
 
