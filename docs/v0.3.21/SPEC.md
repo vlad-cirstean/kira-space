@@ -7,7 +7,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P699 | File watching: one shared seam, FSEvents on macOS | Done |
 | P700 | File interactions: one shared file service | Done |
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Done |
-| P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
+| P702 | Agents remove worktrees; no prompt for worktree create or delete | Done |
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Done |
 | P705 | Mobile app: show the status info it is missing | Done |
@@ -104,6 +104,23 @@ the prompts and their copy and specs. Keep what the prompt protected: the plan l
 errors or inline refusals, without a dialog. MCP surface, approval rules (`internal/agentmcp`), the
 ops panel entry, docs and tests (flow plus UI) are in scope. Never delete a worktree that holds
 uncommitted work without an explicit user path; the plan names that path.
+
+Result: agent `branch.request` creates new branches, named-row worktrees and free existing branches with no
+approval (`createAutoSlots`; only adopt still asks, as do rename and change). New `state` action
+`worktree.remove {repo, branch}` runs the UI's `removeRowBranch` path; refuses dirty, busy, locked,
+open-elsewhere, main-checkout and the caller's own cwd; the git branch stays. A headless run holds its own
+branch, so it cannot remove that worktree (real `claude` confirms the refusal). User removal has no dialog:
+clean rows remove at once (unmerged commits no longer confirm); a dirty row offers "Discard N changes and
+remove", the Change branch form an inline discard button, the Git module worktree row an inline "Discard
+changes and remove". Archive keeps its confirm. `useDiscardGuard`, `TaskBranchRisk`, the git-ui remove
+dialog and their keys deleted. Op `agentWorktreeRemove`. Flows `TestAgentBranchCreateNoPrompt`,
+`TestAgentWorktreeRemove`, `TestUserWorktreeRemoveNoConfirm` (contract `ade-worktree-remove`) with
+`ade-v2-worktree-remove.spec.ts`; `TestWorktreeRemoveInline` (contract `git-worktree-remove`) with
+`git-worktree-remove.spec.ts`; `TestBranchRequest` and neighbours migrated; real `claude`
+`TestAdeBranchRequest` reworked (create, held rename, refused own-worktree remove). No flow covers a session
+of another task holding the worktree: a same-task open-session refusal stands in. Baselines to re-record at
+chapter end: contracts `ade-worktree-remove`, `git-worktree-remove`, `approvals-space`, `ade-branch-request`
+and `ade-branch-adopt` (stale keys pruned), llmprompts goldens and `budget.tsv`, UI visual baselines.
 
 ## P703
 
