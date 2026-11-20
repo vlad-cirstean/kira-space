@@ -41,8 +41,10 @@ test('the reply sheet buttons are at least 44px tall', async ({ page, server, ap
   const item = page.locator(t('needs-item')).filter({ hasText: 'waiting for your answer' });
   await waitForQuestion(server, item);
   await item.locator(t('needs-reply')).click();
-  const box = await page.locator(t('reply-cancel')).boundingBox();
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  for (const id of ['reply-close', 'reply-send']) {
+    const box = await page.locator(t(id)).boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('empty Needs and Plan screens render the shared empty state', async ({

@@ -47,7 +47,7 @@ async function send(): Promise<void> {
 <template>
   <Dialog :open="open" @update:open="(v) => !v && emit('close')">
     <DialogContent size="sm" :dirty="message !== ''" data-testid="reply-sheet">
-      <DialogHeader>
+      <DialogHeader close-testid="reply-close">
         <DialogTitle>{{ t('mobile.reply.dialog.title') }}</DialogTitle>
         <DialogDescription>{{ context }}</DialogDescription>
       </DialogHeader>
@@ -65,16 +65,6 @@ async function send(): Promise<void> {
         </Alert>
       </DialogBody>
       <DialogFooter>
-        <Button
-          size="touch"
-          variant="dialog"
-          class="flex-1"
-          data-testid="reply-cancel"
-          @click="emit('close')"
-          >{{
-            t('common.action.cancel.label')
-          }}</Button
-        >
         <Button
           size="touch"
           variant="dialog-approve"
