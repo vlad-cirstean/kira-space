@@ -646,16 +646,6 @@ func (s *Service) proofAccepted(taskID string, class Class, tx Tx) bool {
 	return err == nil && r != nil && r.AcceptedSHA256 != ""
 }
 
-func dedupe(in []string) []string {
-	var out []string
-	for _, s := range in {
-		if !slices.Contains(out, s) {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
 // Changed lists the paths whose size or version differ from the index, new and missing files
 // included, without reading a file. It is the stat pass of task open, Details focus and Refresh.
 // Kira-written files and pending or invalid rows count: they are changes nobody settled.

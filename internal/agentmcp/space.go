@@ -232,19 +232,6 @@ type BranchSpec struct {
 	Existing bool   `json:"existing,omitempty"`
 }
 
-// spaceTask resolves the Space grant behind a call; every Space tool acts on that task alone.
-func (s *Server) spaceTask(req *mcp.CallToolRequest) (SpaceCall, *mcp.CallToolResult) {
-	var g Grant
-	var ok bool
-	if req.Extra != nil {
-		g, ok = s.grant(req.Extra.TokenInfo)
-	}
-	if !ok || !g.Space || g.TaskID == "" {
-		return SpaceCall{}, toolError("Kira Space tools are not available for this session.")
-	}
-	return SpaceCall{TaskID: g.TaskID, RunID: g.RunID, StepID: g.StepID, SessionID: g.SessionID, Orchestrator: g.Orchestrator}, nil
-}
-
 // cleanBranches trims and dedups specs by (repo, branch, base); it returns the refusal text when the list is
 // empty, too long or holds a blank field.
 func cleanBranches(specs []BranchSpec) ([]BranchSpec, string) {

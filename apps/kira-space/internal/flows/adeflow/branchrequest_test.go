@@ -96,18 +96,6 @@ func (f *brFixture) waitRequest(t *testing.T, items ...int) adewire.BranchReques
 	return req
 }
 
-// itemOf is the request item of a repo nick.
-func itemOf(t *testing.T, req adewire.BranchRequest, repo string) adewire.BranchRequestItem {
-	t.Helper()
-	for _, it := range req.Items {
-		if it.Repo == repo {
-			return it
-		}
-	}
-	t.Fatalf("request %+v has no item for %s", req, repo)
-	return adewire.BranchRequestItem{}
-}
-
 func (f *brFixture) requestPrompts(t *testing.T) []prompts.Routed {
 	t.Helper()
 	all, err := f.app.W.PromptsSvc.List()

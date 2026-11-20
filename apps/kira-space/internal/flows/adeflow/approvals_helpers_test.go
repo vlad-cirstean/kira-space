@@ -2,8 +2,6 @@ package adeflow_test
 
 import (
 	"encoding/json"
-	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
@@ -29,39 +27,6 @@ func branchItem(app *flowharness.App, id string) *approvals.Item {
 		}
 	}
 	return nil
-}
-
-// orderedBranchItem is branchItem for a request built by parallel calls: they join in any order and
-// number their items by call, so the payload's items are sorted by repo and branch and renumbered.
-func orderedBranchItem(t *testing.T, app *flowharness.App, id string) approvals.Item {
-	t.Helper()
-	it := branchItem(app, id)
-	if it == nil {
-		t.Fatalf("no approval item for request %s", id)
-	}
-	var pl map[string]json.RawMessage
-	var items []map[string]any
-	if err := json.Unmarshal(it.Payload, &pl); err != nil {
-		t.Fatal(err)
-	}
-	if err := json.Unmarshal(pl["items"], &items); err != nil {
-		t.Fatal(err)
-	}
-	sort.Slice(items, func(i, j int) bool {
-		a, b := fmt.Sprint(items[i]["repo"], "/", items[i]["branch"]), fmt.Sprint(items[j]["repo"], "/", items[j]["branch"])
-		return a < b
-	})
-	for i := range items {
-		items[i]["id"] = fmt.Sprintf("item%d", i)
-	}
-	var err error
-	if pl["items"], err = json.Marshal(items); err != nil {
-		t.Fatal(err)
-	}
-	if it.Payload, err = json.Marshal(pl); err != nil {
-		t.Fatal(err)
-	}
-	return *it
 }
 
 // branchRequest reads an open request from its item's payload; E_NOT_FOUND once it is answered.

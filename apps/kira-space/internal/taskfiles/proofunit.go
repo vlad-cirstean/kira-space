@@ -433,8 +433,7 @@ func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) er
 	}
 	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: latest == a.slug, Author: proofAuthor(u, a.req.Session.Key)})
 	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes)}
-	switch d.Outcome {
-	case Pending:
+	if d.Outcome == Pending {
 		if err := a.propose(u, before); err != nil {
 			return err
 		}
@@ -572,8 +571,7 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 		}
 		d := Decide(md, Input{Role: req.Session.Role, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Author: proofAuthor(u, req.Session.Key)})
 		pr := &ProofResult{Slug: slug, Name: u.Session.Name}
-		switch d.Outcome {
-		case Pending:
+		if d.Outcome == Pending {
 			for _, r := range rows {
 				r.Review, r.Problem = model.TaskFilePending, ""
 				if err := tx.PutFile(r); err != nil {
