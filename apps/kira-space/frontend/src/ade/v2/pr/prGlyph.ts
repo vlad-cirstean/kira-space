@@ -175,7 +175,7 @@ export interface PrGlyphModel {
   mergeable: MergeableKey | null;
   autoMerge: boolean;
   /** Every reported part after the state, in tooltip order: checks, review, conflicts, auto-merge. */
-  lines: { part: PrPart; label: MessageKey; tone: StatusTone }[];
+  lines: { part: PrPart; value: string; label: MessageKey; tone: StatusTone }[];
 }
 
 /**
@@ -203,21 +203,21 @@ export function prGlyph(s: PrStatus): PrGlyphModel {
   const g = ck ? CHECK_GLYPH[ck] : null;
   if (ck && g?.dot && g.rollup) {
     out.checks = { key: ck, dot: g.dot, pending: ck === 'pending' || ck === 'expected' };
-    out.lines.push({ part: 'checks', label: g.rollup, tone: g.tone });
+    out.lines.push({ part: 'checks', value: ck, label: g.rollup, tone: g.tone });
   }
   out.review = reviewKey(s.reviewDecision);
   if (out.review) {
     const r = REVIEW_GLYPH[out.review];
-    out.lines.push({ part: 'review', label: r.label, tone: r.tone });
+    out.lines.push({ part: 'review', value: out.review, label: r.label, tone: r.tone });
   }
   if (isMergeable(s.mergeable)) {
     out.mergeable = s.mergeable;
     const m = MERGEABLE_GLYPH[s.mergeable];
-    out.lines.push({ part: 'mergeable', label: m.label, tone: m.tone });
+    out.lines.push({ part: 'mergeable', value: s.mergeable, label: m.label, tone: m.tone });
   }
   if (s.autoMerge) {
     out.autoMerge = true;
-    out.lines.push({ part: 'autoMerge', label: AUTO_MERGE_LABEL, tone: 'info' });
+    out.lines.push({ part: 'autoMerge', value: 'on', label: AUTO_MERGE_LABEL, tone: 'info' });
   }
 
   if (out.mergeable === 'conflicting') out.tone = 'red';

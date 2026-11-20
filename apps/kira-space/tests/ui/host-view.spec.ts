@@ -113,7 +113,7 @@ test('Azure detail has no stats and lists build check and rejected reviewer', as
 }) => {
   const { window: page } = await relaunch({ control: hostViewControl(azureTarget, azureDetail) });
   await expect(page.locator(t('host-view-title'))).toHaveText('PROJ-7 Add login');
-  await expect(page.locator(t('host-view-stats'))).not.toContainText('commits');
+  await expect(page.locator(t('host-view-stats'))).toHaveCount(0);
   const check = page.locator(t('host-view-check'));
   await expect(check).toHaveCount(1);
   await expect(check.locator('button')).toHaveText('CI build');

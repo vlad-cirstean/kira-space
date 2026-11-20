@@ -22,6 +22,7 @@ defineProps<{
     :key="l.part"
     :class="tinted ? TONE_TEXT[l.tone] : undefined"
     :data-part="l.part"
+    :data-mergeable="l.part === 'mergeable' ? l.value : undefined"
     :data-testid="linePrefix ? `${linePrefix}-${l.part}` : undefined"
     >{{
       t(l.label)
