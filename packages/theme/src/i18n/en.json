@@ -7566,6 +7566,38 @@
     }
   },
   "mobile": {
+    "activity": {
+      "agents": {
+        "empty": "No agents running"
+      },
+      "computer": {
+        "connection": {
+          "offline": {
+            "status": "Offline"
+          }
+        },
+        "docker": {
+          "counts": {
+            "label": "{running} running, {stopped} stopped"
+          }
+        },
+        "title": "Computer"
+      },
+      "repos": {
+        "fetched": {
+          "label": "Last fetch {ago}"
+        },
+        "updating": {
+          "status": "Updating"
+        }
+      },
+      "runs": {
+        "empty": "No script runs yet",
+        "loadError": {
+          "error": "Couldn’t load the script runs."
+        }
+      }
+    },
     "approvals": {
       "answerOff": {
         "hint": "Answering agent requests is off for this phone."
@@ -7658,6 +7690,9 @@
       }
     },
     "plan": {
+      "branchFacts": {
+        "label": "↑{ahead} ↓{behind}"
+      },
       "list": {
         "empty": "No tasks planned",
         "emptyHint": "Tasks added in Kira Space appear here."
@@ -7723,9 +7758,15 @@
       },
       "offline": {
         "description": "You are offline. Showing what was last loaded."
+      },
+      "updatedAgo": {
+        "label": "Updated {ago}"
       }
     },
     "tabs": {
+      "activity": {
+        "label": "Activity"
+      },
       "nav": {
         "aria": "Sections"
       }

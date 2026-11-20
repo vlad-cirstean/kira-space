@@ -7,7 +7,7 @@ import type {
   TaskTagKind,
 } from '../board/actions';
 
-// Codicon per tag state and action. Desktop-only: actions.ts is shared with mobile.
+// Codicon per tag state and action. Shared with the mobile app (PhoneBranchRow).
 export interface Glyph {
   icon: string;
   /** Louder look: a solid disc. */

@@ -16,8 +16,11 @@ export function stateLabel(state: ScriptRun['state']): string {
   return t(STATE_LABEL[state]);
 }
 
+/** What a run's elapsed time reads: the phone's projection carries only these. */
+export type RunTimes = Pick<ScriptRun, 'state' | 'createdAt' | 'startedAt' | 'finishedAt'>;
+
 /** Elapsed for a run at `now`: live while running, fixed once finished. */
-export function runElapsedMs(run: ScriptRun, now: number): number | null {
+export function runElapsedMs(run: RunTimes, now: number): number | null {
   const start = run.startedAt ?? run.createdAt;
   const end = run.finishedAt ?? (run.state === 'running' ? now : null);
   return end === null ? null : end - start;

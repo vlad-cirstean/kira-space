@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AppShell from './AppShell.vue';
+import ActivityScreen from './screens/ActivityScreen.vue';
 import LaterScreen from './screens/LaterScreen.vue';
 import NeedsScreen from './screens/NeedsScreen.vue';
 import PairScreen from './screens/PairScreen.vue';
@@ -21,6 +22,7 @@ export const router = createRouter({
         { path: 'needs', component: NeedsScreen },
         { path: 'plan', component: PlanScreen },
         { path: 'later', component: LaterScreen },
+        { path: 'activity', component: ActivityScreen },
       ],
     },
   ],

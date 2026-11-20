@@ -43,3 +43,11 @@ export function useComputer() {
     refetchInterval: () => (visibility.value === 'visible' ? TIMING.pollMedium : false),
   });
 }
+
+const DAY_MS = 86_400_000;
+
+/** A run that wants the user: waiting or blocked on them, or failed within the last day. */
+export function runNeedsYou(run: PhoneRun, nowMs: number): boolean {
+  if (run.state === 'blocked' || run.state === 'waiting') return true;
+  return run.state === 'failed' && nowMs - (run.finishedAt ?? run.createdAt) < DAY_MS;
+}

@@ -62,6 +62,9 @@ export const sseSignalSource: AdeSignalSource = {
 
 export type ConnectionStatus = 'live' | 'reconnecting' | 'offline';
 
+/** The stream's state for screens other than the shell, which owns the stream. */
+export const connectionStatus = ref<ConnectionStatus>('reconnecting');
+
 /** Opens the stream for the calling scope and closes it with the scope. `onResync` fires after
  *  every reconnect: pushes sent while disconnected are gone, so callers refetch. */
 export function useServerEvents(onResync: () => void) {
@@ -109,5 +112,12 @@ export function useServerEvents(onResync: () => void) {
     if (status.value === 'OPEN') return 'live';
     return status.value === 'CONNECTING' ? 'reconnecting' : 'offline';
   });
+  watch(
+    connection,
+    (c) => {
+      connectionStatus.value = c;
+    },
+    { immediate: true },
+  );
   return { connection };
 }
