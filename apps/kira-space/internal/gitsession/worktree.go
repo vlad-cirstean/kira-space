@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // ---------------------------------------------------------------------------------------
@@ -143,12 +143,12 @@ func (e *RepoEntry) WorktreeAddPreflight(ctx context.Context, p WorktreeAddParam
 	}
 
 	pathExists := false
-	if _, statErr := os.Stat(p.Path); statErr == nil {
+	if _, statErr := fileservice.Host().Stat(p.Path); statErr == nil {
 		pathExists = true
 	}
 	parentDirMissing := false
 	if !pathExists {
-		if _, statErr := os.Stat(filepath.Dir(p.Path)); statErr != nil {
+		if _, statErr := fileservice.Host().Stat(filepath.Dir(p.Path)); statErr != nil {
 			parentDirMissing = true
 		}
 	}

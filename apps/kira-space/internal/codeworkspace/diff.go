@@ -67,12 +67,15 @@ func ReadDiffAt(ctx context.Context, cf *catfile.Session, root, headRev, relPath
 }
 
 func readDiffAt(ctx context.Context, cf *catfile.Session, root, headRev, relPath string, gate DiffGate) (DiffContent, error) {
-	absPath, err := ValidateRelPath(root, relPath)
+	files, err := Files(root)
 	if err != nil {
 		return DiffContent{}, fmt.Errorf("codeworkspace: read diff: %w", err)
 	}
+	if _, err := files.Path(relPath); err != nil {
+		return DiffContent{}, fmt.Errorf("codeworkspace: read diff: %w", err)
+	}
 
-	worktree, err := ReadFileIf(absPath, relPath, gate.WorktreeStat)
+	worktree, err := ReadFileIf(files, relPath, gate.WorktreeStat)
 	if err != nil {
 		return DiffContent{}, fmt.Errorf("codeworkspace: read diff worktree side: %w", err)
 	}

@@ -421,11 +421,14 @@ func (s *CodeWorkspaceService) ReadFile(ctx context.Context, args CodeWorkspaceR
 	if err != nil {
 		return codeworkspace.FileContent{}, err
 	}
-	absPath, err := codeworkspace.ValidateRelPath(sess.Root, args.Path)
+	files, err := sess.Files()
 	if err != nil {
+		return codeworkspace.FileContent{}, ipcerr.Internal(err.Error())
+	}
+	if _, err := files.Path(args.Path); err != nil {
 		return codeworkspace.FileContent{}, ipcerr.Contract("%s", err.Error())
 	}
-	return ipcerr.InternalResult(codeworkspace.ReadFileIf(absPath, args.Path, args.IfStat))
+	return ipcerr.InternalResult(codeworkspace.ReadFileIf(files, args.Path, args.IfStat))
 }
 
 // CodeWorkspaceWriteFileArgs saves Text over Path when the file's current hash equals BaseHash
@@ -455,11 +458,14 @@ func (s *CodeWorkspaceService) ReadFileForEdit(ctx context.Context, args CodeWor
 	if err != nil {
 		return codeworkspace.EditContent{}, err
 	}
-	absPath, err := codeworkspace.ValidateRelPath(sess.Root, args.Path)
+	files, err := sess.Files()
 	if err != nil {
+		return codeworkspace.EditContent{}, ipcerr.Internal(err.Error())
+	}
+	if _, err := files.Path(args.Path); err != nil {
 		return codeworkspace.EditContent{}, ipcerr.Contract("%s", err.Error())
 	}
-	return ipcerr.InternalResult(codeworkspace.ReadFileForEdit(absPath, args.Path))
+	return ipcerr.InternalResult(codeworkspace.ReadFileForEdit(files, args.Path))
 }
 
 // WriteFile saves an edited worktree file: same path check as ReadFile, then an atomic replace
@@ -476,12 +482,15 @@ func (s *CodeWorkspaceService) WriteFile(ctx context.Context, args CodeWorkspace
 	if err != nil {
 		return CodeWorkspaceWriteResult{}, err
 	}
-	absPath, err := codeworkspace.ValidateRelPath(sess.Root, args.Path)
+	files, err := sess.Files()
 	if err != nil {
+		return CodeWorkspaceWriteResult{}, ipcerr.Internal(err.Error())
+	}
+	if _, err := files.Path(args.Path); err != nil {
 		return CodeWorkspaceWriteResult{}, ipcerr.Contract("%s", err.Error())
 	}
 	s.writeMu.Lock()
-	hash, err := codeworkspace.WriteFile(absPath, args.Text, args.BaseHash)
+	hash, err := codeworkspace.WriteFile(files, args.Path, args.Text, args.BaseHash)
 	s.writeMu.Unlock()
 	switch {
 	case errors.Is(err, codeworkspace.ErrConflict):

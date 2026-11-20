@@ -26,7 +26,11 @@ func scanContent(t *testing.T, content []byte, req SearchRequest) (matches []Sea
 		t.Fatalf("newMatcher(%+v): %v", req, err)
 	}
 	buf := make([]byte, 0, 64*1024)
-	return scanFile(dir, "f.txt", m, buf)
+	svc, err := Files(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return scanFile(svc, "f.txt", m, buf)
 }
 
 func TestScanFile_LiteralMatchesOnOneLine(t *testing.T) {
@@ -287,6 +291,10 @@ func TestScanFile_FIFO_SkippedWithoutHanging(t *testing.T) {
 		t.Fatalf("newMatcher: %v", err)
 	}
 
+	svc, err := Files(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	type result struct {
 		matches   []SearchMatch
 		truncated bool
@@ -294,7 +302,7 @@ func TestScanFile_FIFO_SkippedWithoutHanging(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		matches, truncated, skipped := scanFile(dir, "pipe", m, make([]byte, 0, 64*1024))
+		matches, truncated, skipped := scanFile(svc, "pipe", m, make([]byte, 0, 64*1024))
 		done <- result{matches, truncated, skipped}
 	}()
 

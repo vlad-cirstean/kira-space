@@ -102,6 +102,7 @@ type Policy struct {
 	PlainOnly bool        // refuse hard-linked and special files
 	Private   bool        // new files 0600, dirs 0700; default 0644 / 0755
 	MaxRead   int64       // Read cap when the call passes 0; 0 = DefaultMaxRead
+	Existing  bool        // rooted: Root must already exist; New fails instead of creating it
 }
 
 // Service is one file policy. Safe for concurrent use.
@@ -122,8 +123,10 @@ func New(p Policy) (*Service, error) {
 		return &Service{p: p}, nil
 	}
 	s := &Service{p: p}
-	if err := os.MkdirAll(p.Root, s.dirPerm()); err != nil {
-		return nil, fmt.Errorf("fileservice: create root: %w", err)
+	if !p.Existing {
+		if err := os.MkdirAll(p.Root, s.dirPerm()); err != nil {
+			return nil, fmt.Errorf("fileservice: create root: %w", err)
+		}
 	}
 	real, err := filepath.EvalSymlinks(p.Root)
 	if err != nil {

@@ -272,3 +272,17 @@ func ValidName(name string) error {
 	}
 	return nil
 }
+
+// Resolve is Path with every symlink resolved (EvalSymlinks): the real absolute location of name. The
+// name must exist. Use it to compare locations; use the Service for the I/O itself.
+func (s *Service) Resolve(name string) (string, error) {
+	p, err := s.Path(name)
+	if err != nil {
+		return "", err
+	}
+	real, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return "", wrapErr("resolve", name, err)
+	}
+	return real, nil
+}

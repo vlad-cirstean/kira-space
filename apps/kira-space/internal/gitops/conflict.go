@@ -1,15 +1,15 @@
 package gitops
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpreflight"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 func readTrimmed(path string) *string {
-	b, err := os.ReadFile(path)
+	b, _, err := fileservice.Host().Read(path, 0)
 	if err != nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ func readTrimmed(path string) *string {
 }
 
 func pathExists(path string) bool {
-	_, err := os.Stat(path)
+	_, err := fileservice.Host().Stat(path)
 	return err == nil
 }
 
@@ -74,7 +74,7 @@ func ReadInProgressStateFiles(gitDir string) gitpreflight.InProgressStateFiles {
 // sequencer op — an interactive rebase's own todo lives in rebase-merge/, checked well before this
 // is ever reached).
 func readSequencerTodoKind(gitDir string) gitpreflight.InProgressKind {
-	b, err := os.ReadFile(filepath.Join(gitDir, "sequencer", "todo"))
+	b, _, err := fileservice.Host().Read(filepath.Join(gitDir, "sequencer", "todo"), 0)
 	if err != nil {
 		return ""
 	}

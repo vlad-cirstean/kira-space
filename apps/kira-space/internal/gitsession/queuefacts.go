@@ -3,7 +3,6 @@ package gitsession
 import (
 	"context"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitops"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitreview"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // queuefacts.go is the thin-wrapper seam: every git read internal/ade's facts engine needs, so
@@ -65,7 +65,7 @@ func rebaseHeadName(gitDir string) string {
 		return ""
 	}
 	for _, dir := range []string{"rebase-merge", "rebase-apply"} {
-		if raw, err := os.ReadFile(filepath.Join(gitDir, dir, "head-name")); err == nil {
+		if raw, _, err := fileservice.Host().Read(filepath.Join(gitDir, dir, "head-name"), 0); err == nil {
 			return strings.TrimSpace(string(raw))
 		}
 	}

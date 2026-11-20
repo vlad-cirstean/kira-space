@@ -7,13 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"runtime"
 	"sync"
 	"unicode/utf8"
 
-	"github.com/kirathecat/kira-studio/internal/pathsafe"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Go-native repository-wide text search — stdlib regexp (RE2) for matching, git ls-files
@@ -226,6 +225,10 @@ func Search(ctx context.Context, s *Session, req SearchRequest, onFile func(File
 	if err != nil {
 		return stats, fmt.Errorf("codeworkspace: search: %w", err)
 	}
+	files, err := s.Files()
+	if err != nil {
+		return stats, fmt.Errorf("codeworkspace: search: %w", err)
+	}
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -250,7 +253,7 @@ func Search(ctx context.Context, s *Session, req SearchRequest, onFile func(File
 			// every file this worker scans, not reallocated per file.
 			buf := make([]byte, 0, 64*1024)
 			for path := range jobs {
-				matches, truncated, skipped := scanFile(s.Root, path, m, buf)
+				matches, truncated, skipped := scanFile(files, path, m, buf)
 				select {
 				case outcomes <- outcome{path: path, matches: matches, truncated: truncated, skipped: skipped}:
 				case <-runCtx.Done():
@@ -306,29 +309,20 @@ func Search(ctx context.Context, s *Session, req SearchRequest, onFile func(File
 // to one file. skipped reports whether this file counts toward FilesSkipped (any gate tripped,
 // including gate 4's mid-scan NUL-on-a-match-line rule, which discards whatever matches were
 // already collected for this file). buf is this worker's own reusable scan buffer.
-func scanFile(root, relPath string, m matcher, buf []byte) (matches []SearchMatch, truncated bool, skipped bool) {
-	// Gate 1 (D3): a path resolving outside root — including through a committed symlink — is
-	// skipped, never read.
-	abs, err := pathsafe.ValidateRelPath(root, relPath)
-	if err != nil {
-		return nil, false, true
-	}
-
-	// Gate 2: a directory, a vanished file, a non-regular file, or one over MaxSearchFileBytes.
+func scanFile(files *fileservice.Service, relPath string, m matcher, buf []byte) (matches []SearchMatch, truncated bool, skipped bool) {
+	// Gate 1 (D3) and gate 2: a path resolving outside root — including through a committed symlink —
+	// a directory, a vanished file, a non-regular file, or one over MaxSearchFileBytes is skipped,
+	// never read.
 	//
-	// F12: the Mode().IsRegular() check runs on this plain os.Stat, before os.Open is ever called —
-	// os.Stat cannot block regardless of what abs names, but os.Open can: opening a FIFO for reading
-	// blocks until some other process opens its write end (verified directly against Go's own
-	// runtime, not merely inferred). A symlink git tracked resolving to a FIFO (never an escape:
-	// gate 1's ValidateRelPath already rejects anything outside root) would otherwise pass the old
-	// code's stat (size 0, not a dir) straight into a blocking os.Open, pinning a search worker
-	// forever — files.go's ReadFile carries the identical fix and reasoning.
-	info, err := os.Stat(abs)
-	if err != nil || info.IsDir() || !info.Mode().IsRegular() || info.Size() > MaxSearchFileBytes {
+	// F12: the regular-file check runs on this stat, before any open: stat cannot block whatever the
+	// path resolves to, but opening a FIFO for reading blocks until another process opens its write
+	// end, which would pin a search worker forever — files.go's ReadFile carries the identical fix.
+	info, err := files.Stat(relPath)
+	if err != nil || info.Dir || !info.Mode.IsRegular() || info.Size > MaxSearchFileBytes {
 		return nil, false, true
 	}
 
-	f, err := os.Open(abs) //nolint:gosec // abs already validated (ValidateRelPath, gate 1); type checked above.
+	f, _, err := files.Open(relPath)
 	if err != nil {
 		return nil, false, true
 	}

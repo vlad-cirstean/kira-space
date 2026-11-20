@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitpath"
-	"github.com/kirathecat/kira-studio/internal/fswatch"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // Signal is one coalesced, debounced repository-change notification (SPEC §6's repo.changed
@@ -96,9 +96,9 @@ func classify(summary RepoSummary, path string) (Signal, bool) {
 	return "", false
 }
 
-// source is the event feed: *fswatch.Watcher, or a fake in tests.
+// source is the event feed: *fileservice.Watcher, or a fake in tests.
 type source interface {
-	Events() <-chan fswatch.Event
+	Events() <-chan fileservice.Event
 	Close() error
 }
 
@@ -125,9 +125,9 @@ func NewRepoWatcher(summary RepoSummary) (*RepoWatcher, error) {
 	if gitDir != commonDir {
 		roots = append(roots, summary.GitDir)
 	}
-	src, err := fswatch.Watch(fswatch.Options{
-		Roots:    roots,
-		MaxDepth: fswatch.Unlimited,
+	src, err := fileservice.Host().Watch(fileservice.WatchOptions{
+		Names:    roots,
+		MaxDepth: fileservice.Unlimited,
 		SkipDir: func(p string) bool {
 			if gitDir != commonDir && (p == gitDir || strings.HasPrefix(p, gitDir+string(filepath.Separator))) {
 				return true
@@ -162,7 +162,7 @@ func newRepoWatcherWith(summary RepoSummary, src source) *RepoWatcher {
 		watchedPaths = append(watchedPaths, summary.GitDir)
 	}
 	slog.Info("gitclient: repo watcher started", "scope", "watcher",
-		"backend", fswatch.Backend(), "paths", watchedPaths)
+		"backend", fileservice.WatchBackend(), "paths", watchedPaths)
 
 	go w.run()
 	return w

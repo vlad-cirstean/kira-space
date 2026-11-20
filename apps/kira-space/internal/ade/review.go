@@ -319,7 +319,11 @@ func (b *TaskBoard) ReviewWorkingDiff(ctx context.Context, branchID, path string
 	if worktree == "" {
 		return codeworkspace.DiffContent{}, invalid("the branch has no worktree")
 	}
-	if _, err := codeworkspace.ValidateRelPath(worktree, path); err != nil {
+	files, err := codeworkspace.Files(worktree)
+	if err != nil {
+		return codeworkspace.DiffContent{}, err
+	}
+	if _, err := files.Path(path); err != nil {
 		return codeworkspace.DiffContent{}, invalid("bad path: %v", err)
 	}
 	_, head, err := entry.WorktreeHead(ctx, worktree)

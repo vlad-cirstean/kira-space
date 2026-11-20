@@ -2,14 +2,15 @@ package codeworkspace
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient/porcelain"
+	"github.com/kirathecat/kira-studio/internal/fileservice"
 )
 
 // MaxListedFiles is §7.1's own honest cap on a single IPC payload.
@@ -128,74 +129,58 @@ type FileStat struct {
 	Hash string `json:"hash"`
 }
 
-// ReadFile reads relPath (already validated by ValidateRelPath) and classifies it per §8.1: a NUL
-// byte in the first 8 KiB is binary (C1 §5.4's own rule), a file above MaxReadBytes is tooLarge, a
-// missing file (deleted since ListFiles ran) reports `missing` rather than erroring the whole
-// call.
+// ReadFile reads name through svc and classifies it per §8.1: a NUL byte in the first 8 KiB is binary
+// (C1 §5.4's own rule), a file above MaxReadBytes is tooLarge, a missing file (deleted since
+// ListFiles ran) reports `missing` rather than erroring the whole call. name is a worktree-relative
+// path for a Files(root) Service, an absolute path for fileservice.Host().
 //
-// F12: the type check (Mode().IsRegular()) runs on a plain os.Stat(absPath), before this ever calls
-// os.Open — not after. os.Stat never blocks regardless of what absPath names; os.Open does: opening
-// a FIFO for reading blocks until some other process opens its write end, verified directly against
-// Go's own runtime (a FIFO with no writer makes os.Open hang indefinitely, confirmed with `go run`
-// against a real mkfifo — not merely inferred from POSIX semantics). A symlink git tracked resolving
-// to a FIFO (never an escape: pathsafe.ValidateRelPath's requireUnder already rejects anything
-// outside root) would otherwise pass the old code's stat (size 0, not a dir) straight into a
-// blocking os.ReadFile, pinning the bound call or a search worker forever — checking type on the
-// stat, before any Open is even attempted, is what actually keeps this call from ever making that
-// blocking syscall, which stat-ing an already-opened descriptor cannot do (the hang happens inside
-// Open itself). The subsequent read still goes through io.LimitReader(f, MaxReadBytes+1) — a
-// regular file's size can still grow between this stat and the read finishing, and that bound is
-// what classifies tooLarge on overflow instead of loading an unbounded amount.
-func ReadFile(absPath, relPath string) (FileContent, error) {
-	return ReadFileIf(absPath, relPath, nil)
+// F12: the type check runs on svc.Stat, before any open: stat never blocks whatever name resolves to,
+// open does (a FIFO with no writer hangs it). A symlink git tracked resolving to a FIFO (never an
+// escape: Contain already rejects anything outside root) would otherwise pin the bound call or a
+// search worker forever. The read itself is capped at MaxReadBytes: a regular file can still grow
+// between the stat and the read, and the cap classifies tooLarge instead of loading it unbounded.
+func ReadFile(svc *fileservice.Service, name string) (FileContent, error) {
+	return ReadFileIf(svc, name, nil)
 }
 
 // ReadFileIf is ReadFile that answers kind "unchanged", with no content, when ifStat still matches
 // the file on disk. It still reads and hashes the file: the gate saves the payload, not the read.
-func ReadFileIf(absPath, relPath string, ifStat *FileStat) (FileContent, error) {
-	limit := FileContent{LimitBytes: MaxReadBytes, Language: languageFor(relPath)}
+func ReadFileIf(svc *fileservice.Service, name string, ifStat *FileStat) (FileContent, error) {
+	limit := FileContent{LimitBytes: MaxReadBytes, Language: languageFor(name)}
 
-	info, err := os.Stat(absPath)
-	if os.IsNotExist(err) {
+	info, err := svc.Stat(name)
+	if errors.Is(err, fs.ErrNotExist) {
 		limit.Kind = "missing"
 		return limit, nil
 	}
 	if err != nil {
-		return FileContent{}, fmt.Errorf("codeworkspace: stat %s: %w", relPath, err)
+		return FileContent{}, fmt.Errorf("codeworkspace: stat %s: %w", name, err)
 	}
-	if info.IsDir() || !info.Mode().IsRegular() {
+	if info.Dir || !info.Mode.IsRegular() {
 		// A FIFO, device, socket, or anything else ListFiles' own git enumeration would never have
 		// reported as a worktree file — treated the same as "gone", never opened.
 		limit.Kind = "missing"
 		return limit, nil
 	}
-	if info.Size() > MaxReadBytes {
+	if info.Size > MaxReadBytes {
 		limit.Kind = "tooLarge"
-		limit.Bytes = int(info.Size())
+		limit.Bytes = int(info.Size)
 		return limit, nil
 	}
 
-	f, err := os.Open(absPath) //nolint:gosec // absPath already validated (ValidateRelPath); type checked above.
-	if err != nil {
-		if os.IsNotExist(err) {
-			limit.Kind = "missing"
-			return limit, nil
-		}
-		return FileContent{}, fmt.Errorf("codeworkspace: open %s: %w", relPath, err)
-	}
-	defer f.Close()
-
-	data, err := io.ReadAll(io.LimitReader(f, MaxReadBytes+1))
-	if err != nil {
-		return FileContent{}, fmt.Errorf("codeworkspace: read %s: %w", relPath, err)
-	}
-	if len(data) > MaxReadBytes {
-		// Grew past the gate above between that stat and this read finishing — info.Size() is the
-		// best honest answer left for Bytes (the exact final size is no longer meaningful: this
-		// read never consumed the rest of it).
-		limit.Kind = "tooLarge"
-		limit.Bytes = int(info.Size())
+	data, _, err := svc.Read(name, MaxReadBytes)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		limit.Kind = "missing"
 		return limit, nil
+	case errors.Is(err, fileservice.ErrTooLarge):
+		// Grew past the gate above between the stat and the read — info.Size is the best honest
+		// answer left for Bytes (the exact final size is no longer meaningful).
+		limit.Kind = "tooLarge"
+		limit.Bytes = int(info.Size)
+		return limit, nil
+	case err != nil:
+		return FileContent{}, fmt.Errorf("codeworkspace: read %s: %w", name, err)
 	}
 
 	sniffLen := len(data)
