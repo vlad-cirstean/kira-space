@@ -10,6 +10,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
 | P703 | Edit prompts only when an edit touches another agent's notes | Planned |
 | P704 | Task Files: open in its own window, off the main chrome | Planned |
+| P705 | Mobile app: show the status info it is missing | Planned |
 
 ## P699
 
@@ -85,9 +86,23 @@ entry point (for example a small icon in the task header or a command palette en
 reuses the review window's wiring. Remove the old tab, its layout space, specs and baselines; add the
 window spec. Keep the existing file views and diff behaviour inside the new window.
 
+## P705
+
+The mobile app is nearly useless today because much of the status info the desktop shows is missing.
+Deliverable: an audit in the plan comparing what the desktop board, task panel, sessions and runs show
+with what mobile shows (`apps/kira-space/frontend/mobile/`, `internal/mobileweb`, `internal/bridge/mobile.go`,
+`MobileStatus`, mobile wire schemas), a ranked list of the missing status (task and step state, running
+agents and their last activity, what needs the user, run and script state, branch and git state, Docker,
+connectivity and last-update age), and the additions that make it useful at a glance on a phone: data the
+mobile bridge must carry, the screens that show it, push updates instead of manual refresh, and empty,
+loading and offline states. Follow the frontend rules (shadcn-vue, Tailwind, Pinia, TanStack Query) and
+keep the mobile bundle small. Tests split at the IPC boundary (flow test plus `mobile-ios` UI spec, same
+scenario). Independent of P699 to P704 except P701 (restore state may also belong on mobile): the
+planner states shared files.
+
 ## Streams
 
-P699 then P700 run in order (the file service owns the watcher API). P701, P702, P703 and P704 are
+P705 is independent of the file work and can run in any free slot. P699 then P700 run in order (the file service owns the watcher API). P701, P702, P703 and P704 are
 independent of each other and of the file work, except P703 and P702 both touch approval wiring
 (`internal/agentmcp`, approvals copy): the planner of the second lists shared hunks, otherwise run them
 together. Batch up to three streams as in the working agreement, plans and ownership tables decide.
