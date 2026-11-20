@@ -23,6 +23,21 @@ func (c DetailsCache) HandoverByRel(q sqlb.Querier, taskID, rel string) (*model.
 	return oneHandover(q, sb)
 }
 
+// LatestRel is the file of the newest row in state (note or handed) that has one, "" when none. A
+// handed row mirrored from a child has no file of its own, so it never counts.
+func (c DetailsCache) LatestRel(q sqlb.Querier, taskID, state string) (string, error) {
+	k := kiraschema.AdeTaskHandovers
+	sb := c.Dialect.Select(k.RelPath).From(k.Table)
+	sb.Where(sb.Equal(k.TaskID, taskID), sb.Equal(k.State, state), sb.NotEqual(k.RelPath, ""), sb.NotEqual(k.Source, model.AdeHandoverSourceChild)).
+		OrderBy(k.CreatedAt+" DESC", sqlb.RowID+" DESC").Limit(1)
+	var rel string
+	err := sqlb.QueryRow(q, sb).Scan(&rel)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return rel, err
+}
+
 // DraftOf returns the open draft of a stage, (nil, nil) when none.
 func (c DetailsCache) DraftOf(q sqlb.Querier, taskID, stepID string) (*model.AdeHandover, error) {
 	k := kiraschema.AdeTaskHandovers

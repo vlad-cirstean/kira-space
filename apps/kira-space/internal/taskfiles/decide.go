@@ -98,8 +98,11 @@ type Input struct {
 	Step, CurrentStep string
 	// ProofAccepted is true when the proof folder already has an accepted proof.md.
 	ProofAccepted bool
-	Collision     *Collision
-	Reason        string
+	// Latest is true for the newest note, handed handover or proof of the task: an agent edit of it
+	// needs no approval.
+	Latest    bool
+	Collision *Collision
+	Reason    string
 }
 
 // Decision is the outcome of Input, with what the user or agent is told.
@@ -142,8 +145,14 @@ func Decide(rel string, in Input) Decision {
 func approvalCause(in Input) (Cause, Notify) {
 	switch in.Kind {
 	case KindNote:
+		if in.Latest && in.Op == OpEdit {
+			return CauseNone, NotifyNone
+		}
 		return CauseNote, NotifyNone
 	case KindHandover:
+		if in.Latest && in.Op == OpEdit {
+			return CauseNone, NotifyNone
+		}
 		return CauseHandover, NotifyNone
 	case KindLinks:
 		switch {
@@ -159,6 +168,8 @@ func approvalCause(in Input) (Cause, Notify) {
 			if in.Kind == KindProof && in.Op == OpCreate {
 				return CauseNone, NotifyProofReady
 			}
+			return CauseNone, NotifyNone
+		case in.Latest && in.Op != OpDelete:
 			return CauseNone, NotifyNone
 		case in.Op == OpDelete && in.Kind == KindProof:
 			return CauseProofDelete, NotifyNone
@@ -185,7 +196,7 @@ func ReasonError(rel string, cause Cause) string {
 	if t[0] == "" {
 		t = [2]string{"the user approves this change", "what changed and why"}
 	}
-	return fmt.Sprintf("%s: needs reason (%s). Call submit again with {\"reason\": %q}.", rel, t[0], t[1])
+	return fmt.Sprintf("%s: needs reason (%s). Call submit with {\"paths\": [%q], \"reason\": %q}.", rel, t[0], rel, t[1])
 }
 
 // Reason limits, in runes.

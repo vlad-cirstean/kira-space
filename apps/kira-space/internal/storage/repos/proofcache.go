@@ -49,6 +49,20 @@ func (c ProofCache) SlugsOfTask(q sqlb.Querier, taskID string) ([]string, error)
 	})
 }
 
+// LatestSlug is the folder slug of the task's newest proof, "" when it has none.
+func (c ProofCache) LatestSlug(q sqlb.Querier, taskID string) (string, error) {
+	ps, tl := kiraschema.ProofSessions, kiraschema.ProofTaskLinks
+	sb := c.Dialect.Select("l." + tl.Slug).From(tl.Table + " l")
+	sb.Join(ps.Table+" s", "s."+ps.ID+" = l."+tl.SessionID)
+	sb.Where(sb.Equal("l."+tl.TaskID, taskID), sb.NotEqual("l."+tl.Slug, "")).OrderBy("s."+ps.CreatedAt+" DESC", "s."+ps.ID+" DESC").Limit(1)
+	var slug string
+	err := sqlb.QueryRow(q, sb).Scan(&slug)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return slug, err
+}
+
 // Steps lists a revision's steps with payload, in ordinal order.
 func (c ProofCache) Steps(q sqlb.Querier, sessionID string, rev int) ([]ProofStepRow, error) {
 	st := kiraschema.ProofSteps

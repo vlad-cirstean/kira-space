@@ -418,7 +418,11 @@ func (a *unitTx) propose(u *repos.ProofUnit, before ProofHead) error {
 }
 
 func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) error {
-	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Reason: a.req.Reason})
+	latest, err := a.s.cfg.Proof.Cache.LatestSlug(a.tx.Querier(), a.req.TaskID)
+	if err != nil {
+		return err
+	}
+	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: latest == a.slug, Reason: a.req.Reason})
 	pr := &ProofResult{Slug: a.slug, Name: a.doc.Name, Steps: a.steps, Counts: a.counts, Changed: changedOf(changes), Reason: a.req.Reason}
 	switch d.Outcome {
 	case Invalid:

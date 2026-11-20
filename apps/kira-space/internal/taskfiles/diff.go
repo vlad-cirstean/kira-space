@@ -36,6 +36,8 @@ type Change struct {
 	Slot bool
 	// Own is true when the writer's session authored the target.
 	Own bool
+	// Latest is true when the target is the newest note or handed handover of the task.
+	Latest bool
 	// Field names a changed top-level field of a keyed target ("name", "summary"); "" for the target itself.
 	Field string
 	// Text is the unified diff of a text change, or a one-line label for a keyed one.
