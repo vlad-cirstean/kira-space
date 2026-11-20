@@ -106,7 +106,7 @@ type options struct {
 	approvalTimeout time.Duration
 }
 
-// WithoutSecretStore boots without KIRA_INSECURE_SECRETS, so the cipher is unavailable on Linux.
+// WithoutSecretStore boots with an unavailable cipher on every OS.
 func WithoutSecretStore() Opt { return func(o *options) { o.noSecretStore = true } }
 
 // Opt tweaks New.
@@ -464,7 +464,8 @@ func (a *App) build() {
 	if err != nil {
 		a.t.Fatalf("storage.Open: %v", err)
 	}
-	cipher := secrets.New()
+	// Never the OS keychain: on a macOS runner its first write blocks on a prompt.
+	cipher := secrets.NewInsecure(!a.opts.noSecretStore)
 	if !a.opts.noSecretStore && !cipher.Status().Available {
 		a.t.Fatalf("cipher unavailable: %+v", cipher.Status())
 	}
