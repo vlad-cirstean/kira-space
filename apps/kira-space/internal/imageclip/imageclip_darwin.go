@@ -43,7 +43,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"unsafe"
 
