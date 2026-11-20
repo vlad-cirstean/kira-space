@@ -160,7 +160,7 @@ cards (sessions, run line, Jira, branch rows with tag, ahead/behind, PR state an
 `/api/runs` and `/api/computer`, script runs push with keep-list projection. Refresh button removed;
 header shows update age, stream reopens on visible/online. Flow `TestPhoneStatus` plus
 `tests/mobile/status.spec.ts` share contract `mobile-status.json`. Bundle `dist-mobile/assets` 1,585,470
-B to 1,629,350 B; index js gzip 298.54 KB to 310.88 KB (+12.3 KB).
+B to 1,637,788 B; index js gzip 298.54 KB to 312.96 KB (includes chapter siblings).
 
 ## P706
 

@@ -58,7 +58,7 @@ const props = defineProps<{ branch: PhoneBranch }>();
         :status="branch.pr"
         :base-ref="branch.pr.baseRef"
         line-prefix="phone-branch-pr"
-        data-testid="phone-branch-pr"
+        testid="phone-branch-pr"
       />
     </span>
   </li>

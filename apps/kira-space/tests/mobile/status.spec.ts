@@ -101,6 +101,7 @@ test('Plan cards show sessions and branch rows with their tag', async ({ app, pa
   await card.locator('button').first().click();
   await expect(card.locator(t('plan-branches'))).toBeVisible();
   await expect(card.locator(t('phone-branch-tag')).first()).toBeVisible();
+  await expect(card.locator(t('phone-branch-pr')).first()).toHaveAttribute('data-pr-state', /.+/);
 });
 
 test('a dropped stream shows the update age instead of a Refresh button', async ({
