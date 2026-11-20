@@ -3109,7 +3109,7 @@ An artifact is a change request, issue, branch, commit, deployment, doc or link 
 - ade/v2/reader.ts (AdeReader) is the transport seam: desktop binds it to control, mobile to HTTP. The mobile app in frontend/mobile/ is a second Vite build (vite.mobile.config.ts, tsconfig.mobile.json, dist-mobile, embedded by main.go) with no @bindings alias, so an accidental desktop control import fails the build.
 - The phone app has no service worker, manifest or install metas (the shell is one index.html) and avoids secure-context-only APIs: idempotency keys come from `newUuid` in `packages/shared/ids.ts` (the `uuid` package uses crypto.getRandomValues) because crypto.randomUUID is undefined on an insecure origin.
 
-Memory module removed in P690 (v0.3.19); full source, eval corpus and site pages on tag `archive/memory-v0.3.18` (`git checkout archive/memory-v0.3.18 -- <paths>`).
+Memory module removed in P690 (v0.3.19); full source, eval corpus and site pages in git history at tag `v0.3.18` (`git checkout v0.3.18 -- <paths>`).
 
 ## Docker module (P200, Kira Studio)
 
