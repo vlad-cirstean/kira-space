@@ -41,6 +41,7 @@
 # Guard U212: docs/HISTORY.md (v0.3.20).
 # Guard U213: docs/HISTORY.md (v0.3.20).
 # Guard U214: docs/HISTORY.md (v0.3.21).
+# Guard U215: docs/HISTORY.md (v0.3.21).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -394,6 +395,7 @@ U211@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off 
 U212@@v@@GitCredentialDialog.vue|UpdateDialog.vue@@dismiss-only button in a dialog footer (the header X closes; keep buttons with their own outcome, P696)@@<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?(?:<DialogClose\b|t\('common\.action\.(?:cancel|close)\.label'\))
 U213@@vt@@@@progress or success toast (the op chip and the Operations panel show progress and result; toast only errors, P698)@@\btoast(?:\.(?:loading|success|promise|info|warning|message|custom))?\(
 U214@@vt@@AdeTaskPanel.vue|queries.ts|/bridge/@@task Files window opened outside the task panel header icon (no menu entry, P704)@@\buseOpenFilesWindow\(|\badeTaskOpenFilesWindow\b
+U215@@vt@@ade/v2/pr/prGlyph.ts@@PR status icon outside prGlyph (use PR_STATE_GLYPH, CHECK_GLYPH, REVIEW_GLYPH, P706)@@['\"](?:git-pull-request-(?:draft|closed)|request-changes)['\"]
 GUARDS
 
 # hits: "U<n> path"
