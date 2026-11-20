@@ -908,10 +908,18 @@ func resolveRepoHost(ctx context.Context, entry *gitsession.RepoEntry, branches 
 			kind = res.Kind
 		} else if len(res.ChangeRequests) > 0 {
 			cr := res.ChangeRequests[0]
-			found[br.ID] = adewire.ChangeRequest{Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL, BaseRef: cr.BaseRef, ChecksState: cr.ChecksState}
+			found[br.ID] = wireChangeRequest(cr)
 		}
 	}
 	return kind, host, found, urls
+}
+
+// wireChangeRequest is a live change request with the status the PR glyph shows.
+func wireChangeRequest(cr githost.ChangeRequest) adewire.ChangeRequest {
+	return adewire.ChangeRequest{
+		Number: cr.Number, Title: cr.Title, State: cr.State, URL: cr.URL, BaseRef: cr.BaseRef, ChecksState: cr.ChecksState,
+		ReviewDecision: cr.ReviewDecision, Mergeable: cr.Mergeable, AutoMerge: cr.AutoMerge,
+	}
 }
 
 // Refresh fetches the given repos (none = every repo a live task uses; the UI sends the ids it shows)

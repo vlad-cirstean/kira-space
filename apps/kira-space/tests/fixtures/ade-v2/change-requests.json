@@ -34,7 +34,7 @@
     "b_cart": {
       "number": 1431,
       "title": "Stabilise cart total test",
-      "state": "Merged",
+      "state": "merged",
       "url": "https://github.com/acme/web-app/pull/1431",
       "baseRef": "main",
       "checksState": "SUCCESS"
@@ -42,23 +42,26 @@
     "b_bill": {
       "number": 1427,
       "title": "Usage-based billing",
-      "state": "Open",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1427",
       "baseRef": "main",
-      "checksState": "FAILURE"
+      "checksState": "FAILURE",
+      "mergeable": "mergeable"
     },
     "b_meter": {
       "number": 218,
       "title": "Usage metering endpoints",
-      "state": "Approved",
+      "state": "open",
       "url": "https://github.com/acme/api/pull/218",
       "baseRef": "main",
-      "checksState": "PENDING"
+      "checksState": "PENDING",
+      "reviewDecision": "APPROVED",
+      "mergeable": "mergeable"
     },
     "b_auth": {
       "number": 1423,
       "title": "OAuth login: providers, callback, sessions",
-      "state": "Open",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1423",
       "baseRef": "main",
       "checksState": ""
@@ -66,7 +69,7 @@
     "b_authui": {
       "number": 1425,
       "title": "Login screen UI",
-      "state": "Draft",
+      "state": "draft",
       "url": "https://github.com/acme/web-app/pull/1425",
       "baseRef": "main",
       "checksState": "ERROR"
@@ -74,39 +77,47 @@
     "b_authcb": {
       "number": 211,
       "title": "OAuth callback + token exchange",
-      "state": "Approved",
+      "state": "open",
       "url": "https://github.com/acme/api/pull/211",
       "baseRef": "main",
-      "checksState": "EXPECTED"
+      "checksState": "EXPECTED",
+      "reviewDecision": "APPROVED"
     },
     "b_hooks": {
       "number": 212,
       "title": "Outgoing webhooks",
-      "state": "Approved",
+      "state": "open",
       "url": "https://github.com/acme/api/pull/212",
       "baseRef": "main",
-      "checksState": "SUCCESS"
+      "checksState": "SUCCESS",
+      "reviewDecision": "APPROVED",
+      "mergeable": "mergeable",
+      "autoMerge": true
     },
     "b_sara": {
       "number": 1402,
       "title": "Payments: adapter refactor",
-      "state": "Changes requested",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1402",
       "baseRef": "main",
-      "checksState": "FAILURE"
+      "checksState": "FAILURE",
+      "reviewDecision": "CHANGES_REQUESTED",
+      "mergeable": "conflicting"
     },
     "b_li": {
       "number": 1411,
       "title": "Search schema v2",
-      "state": "Approved",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1411",
       "baseRef": "main",
-      "checksState": "PENDING"
+      "checksState": "PENDING",
+      "reviewDecision": "APPROVED",
+      "mergeable": "mergeable"
     },
     "b_search": {
       "number": 1426,
       "title": "Index on write",
-      "state": "Open",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1426",
       "baseRef": "main",
       "checksState": ""
@@ -114,7 +125,7 @@
     "b_notif": {
       "number": 1428,
       "title": "In-app notifications",
-      "state": "Open",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1428",
       "baseRef": "main",
       "checksState": "ERROR"
@@ -122,7 +133,7 @@
     "b_deps": {
       "number": 1433,
       "title": "Bump dependencies",
-      "state": "Open",
+      "state": "open",
       "url": "https://github.com/acme/web-app/pull/1433",
       "baseRef": "main",
       "checksState": "EXPECTED"
@@ -130,10 +141,11 @@
     "b_pushapi": {
       "number": 216,
       "title": "Store device push tokens",
-      "state": "Approved",
+      "state": "open",
       "url": "https://github.com/acme/api/pull/216",
       "baseRef": "main",
-      "checksState": "SUCCESS"
+      "checksState": "SUCCESS",
+      "reviewDecision": "APPROVED"
     }
   },
   "branchUrls": {

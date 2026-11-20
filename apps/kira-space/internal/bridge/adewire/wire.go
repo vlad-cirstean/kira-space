@@ -302,6 +302,12 @@ type ChangeRequest struct {
 	BaseRef string `json:"baseRef"`
 	// ChecksState is '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED.
 	ChecksState string `json:"checksState"`
+	// ReviewDecision is '' | APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED.
+	ReviewDecision string `json:"reviewDecision,omitempty"`
+	// Mergeable is '' | mergeable | conflicting.
+	Mergeable string `json:"mergeable,omitempty"`
+	// AutoMerge marks auto-merge on.
+	AutoMerge bool `json:"autoMerge,omitempty"`
 }
 
 type Branch struct {

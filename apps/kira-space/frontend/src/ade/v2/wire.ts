@@ -237,6 +237,11 @@ export interface ChangeRequest {
   baseRef: string;
   /** '' | SUCCESS | FAILURE | PENDING | ERROR | EXPECTED. */
   checksState: string;
+  /** '' | APPROVED | CHANGES_REQUESTED | REVIEW_REQUIRED. */
+  reviewDecision?: string;
+  /** '' | mergeable | conflicting. */
+  mergeable?: string;
+  autoMerge?: boolean;
 }
 /** Where a branch is checked out: another task's worktree, the main checkout, any other worktree, or nowhere. */
 interface BranchHolder {

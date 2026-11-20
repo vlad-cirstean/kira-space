@@ -133,6 +133,7 @@ export interface ChangeRequestDetail {
   threadsTruncated?: boolean;
   stats?: DiffStats;
   mergeable?: 'mergeable' | 'conflicting';
+  autoMerge?: boolean;
 }
 
 type HostViewResultKind = 'ok' | 'unavailable' | 'gone';
