@@ -7,6 +7,7 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 | P694 | Agent prompts: when to write proofs, where the task Details live | Planned |
 | P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
 | P696 | Dialogs: remove redundant buttons (audit every dialog) | Planned |
+| P697 | Required services: repo scripts that must be running for a task | Planned |
 
 P694 note: partly implemented. Resume from commit `b4a4f7808` and stash `P694-wip`; the plan's file and
 test list is the source of truth. Chapter rebases onto `main` after PR #52 (`chapter/v0.3.19`) merges,
@@ -33,7 +34,31 @@ that carry a distinct outcome. Deliverable: audit list (dialog, buttons before a
 guard in `scripts/check-ui-primitives.sh` if a rule is mechanically checkable, updated UI specs and visual
 baselines. Independent of P694 and P695 (frontend dialogs only); plan lists any overlapping files.
 
+## P697
+
+Repos can have dependent scripts, usually long-running processes (dev servers, local databases,
+watchers). Before work on a task starts, Kira checks whether each of the repo's required scripts is
+already running. If one is not, Kira asks the user to run it when starting work on that task.
+
+Name: working title was "dependent scripts". "Required services" chosen; alternatives considered:
+Companion services, Task prerequisites.
+
+Open points for the planner (not decided here):
+
+- Declaration: how a repo declares which scripts are required, and where (repo config, the existing repo
+  scripts under `internal/scripts` and the Scripts module, Repos config in ade).
+- Detection: how "already running" is found (Kira-started script runs, process or port check, health
+  probe) without touching any credential a driven CLI owns.
+- Trigger: when the check fires (task start, first session launch, resume) and what the ask looks like
+  (a dialog; follow P696's dialog button rules: no redundant Cancel beside No when X exists).
+- Modes: behaviour on Start, manual and headless runs, and on server builds.
+- Memory: whether the choice is remembered per task or per repo.
+- Ownership: whether Kira stops services it started when the task finishes (default no, ask).
+
 ## Streams
 
 P696 is independent and can run as its own stream in parallel. P694 then P695 are sequential unless the
 P695 plan proves no shared file. Cap 3 concurrent streams (`docs/WORKING_AGREEMENT.md`).
+
+P697 is independent of P694 and P695 (prompts and task files) and overlaps P696 only on dialog
+conventions. Plan it once a stream slot frees (cap 3 concurrent).
