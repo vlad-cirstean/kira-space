@@ -31,9 +31,9 @@ Result: `internal/fswatch` (module root, leaf) is the seam: `Watch(Options{Roots
 caller-spelled events, scope verdicts, bounded output that overflows to one `Rescan`, and a shared `Debouncer`.
 FSEvents backend on darwin with cgo, fsnotify elsewhere. gitclient, ade folder watch, ade task watch and
 configfs migrated; direct library imports and `maxTaskWatches` deleted; guard G7 keeps it so. Decision: one
-stream per watcher, no sharing (about 50 streams expected, far below reported limits). Darwin delta: events
-under another worktree's own `worktrees/<name>/` dir no longer raise `refsChanged` (fsnotify never saw
-them); worktree add and remove still do. Task watch Rescan pushes the board with no pass. macOS CI job now
+stream per watcher, no sharing (about 50 streams expected, far below reported limits). Review fix: the git
+watch admits one level below `worktrees/`, so HEAD and index writes in a linked worktree's git dir still
+raise `refsChanged` on every backend. Task watch Rescan pushes the board with no pass. macOS CI job now
 runs the fswatch contract suite on both backends, configfs, `TestFolderWatch`, `TestDetailsWatch` (incl.
 `TestDetailsWatchBeyondEight`) and a no-cgo vet of fswatch; timeout 25 min. The FSEvents backend could not
 be built or run off a Mac: only PR CI proves it.
@@ -58,7 +58,9 @@ import/export, proofs, transfers); 246 sites in 70 files stay allowlisted (the s
 bootstrap, build tooling, test tooling, host probes) by guard G8, which also folds G4. Fixed: blob and usage
 writes had no fsync; no write fsynced its dir. Deviations: `configsync` uses `Host()` (its names are
 regex-validated); proof shot files use `Host()` with sanitized names, not a rooted Service; the service
-gained `Lstat`, `Resolve`, `ReadFile`, `WriteFile`, `HostPrivate`, `ValidName`, `Policy.Existing`. Behaviour:
+gained `Lstat`, `Resolve`, `ReadFile`, `WriteFile`, `HostPrivate`, `ValidName`, `Policy.Existing`,
+`WriteOptions.Exclusive` (review fix: hard-link write, `ErrExist` when taken; port backups use it so two
+ports never share a backup name). Behaviour:
 host-wide Services refuse relative names; modes and dir perms match the old code (audited site by site
 against the pre-P700 calls). 0700 dirs map to `HostPrivate` (ade task dir and task folder, mcpauth, agentmcp,
 agentcfg, agentport backup writes, llmprompts, scripts workdir, adeflow backup copies, task blobs); 0600 temp files
@@ -112,7 +114,12 @@ open-elsewhere, main-checkout and the caller's own cwd; the git branch stays. A 
 branch, so it cannot remove that worktree (real `claude` confirms the refusal). User removal has no dialog:
 clean rows remove at once (unmerged commits no longer confirm); a dirty row offers "Discard N changes and
 remove", the Change branch form an inline discard button, the Git module worktree row an inline "Discard
-changes and remove". Archive keeps its confirm. `useDiscardGuard`, `TaskBranchRisk`, the git-ui remove
+changes and remove". The discard token is a fingerprint of the shown uncommitted set (kind, status, path;
+no size or mtime, so saving a listed file keeps it) taken from the board row, archive risk or worktree
+preflight; the server recomputes it on apply and refuses a mismatch with a board push, and every discard
+path sends the token on screen. Row detach checks, detaches and removes under one repo lock. Archive keeps
+its confirm; it stops work and closes terminals first, then compares every token once before removing any
+worktree. `useDiscardGuard`, `TaskBranchRisk`, the git-ui remove
 dialog and their keys deleted. Op `agentWorktreeRemove`. Flows `TestAgentBranchCreateNoPrompt`,
 `TestAgentWorktreeRemove`, `TestUserWorktreeRemoveNoConfirm` (contract `ade-worktree-remove`) with
 `ade-v2-worktree-remove.spec.ts`; `TestWorktreeRemoveInline` (contract `git-worktree-remove`) with
