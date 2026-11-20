@@ -297,7 +297,7 @@ func (t *taskWatch) run(rels []string, call agentmcp.SpaceCall, one bool) {
 		t.b.notifyBoardNow(taskChanged(t.taskID))
 		return
 	}
-	if err := t.b.SyncTaskFiles(t.b.ctx, call, rels); err != nil && !errors.Is(err, context.Canceled) {
+	if _, err := t.b.SyncTaskFiles(t.b.ctx, call, rels); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Warn(taskWatchEvents, "scope", "ade", "task", t.taskID, "err", err)
 	}
 }

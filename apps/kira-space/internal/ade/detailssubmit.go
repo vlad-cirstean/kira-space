@@ -315,15 +315,16 @@ func (b *TaskBoard) clearFileErrors(taskID string) {
 }
 
 // SyncTaskFiles applies the agent edits the watcher saw; the reason is empty, so ask-first files
-// report a fileErrors entry. Paths with no file and no index row are dropped.
-func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, rels []string) error {
+// report a fileErrors entry. Paths with no file and no index row are dropped. The reply is what an
+// explicit submit of the same paths would say; the watcher drops it.
+func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, rels []string) (string, error) {
 	df := b.files
 	if df == nil {
-		return nil
+		return "", nil
 	}
 	rows, err := df.idx.Files(call.TaskID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	indexed := make(map[string]bool, len(rows))
 	for _, r := range rows {
@@ -331,7 +332,7 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 	}
 	root, err := b.TaskFolder(call.TaskID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var kept []string
 	for _, rel := range rels {
@@ -343,11 +344,14 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 		}
 	}
 	if len(kept) == 0 {
-		return nil
+		return "", nil
 	}
 	sort.Strings(kept)
-	_, err = b.SubmitFiles(ctx, call.TaskID, submitSession(call), kept, "", watchPass)
-	return err
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), kept, "", watchPass)
+	if err != nil {
+		return "", err
+	}
+	return submitReply(res), nil
 }
 
 // MarkSynced records a session's launch: later submits compare collisions against it.

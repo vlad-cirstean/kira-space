@@ -461,6 +461,10 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		}
 		return FileResult{Path: rel, Status: StatusUnchanged}, nil
 	}
+	if hasRow && row.Review == model.TaskFilePending && hash == row.SHA256 {
+		// Still the content that waits on the user: a pass with no reason must not turn it invalid.
+		return FileResult{Path: rel, Status: StatusPending, Message: row.Problem}, nil
+	}
 	if class.Kind.KiraOwned() {
 		return s.restoreResult(ctx, req.TaskID, rel)
 	}
