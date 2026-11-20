@@ -1109,9 +1109,19 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
         after: pss('files1'),
       },
       {
-        // P693 E3: the four running sessions stop; adeTerminals must reap their xterms (S4).
+        // P693 E3: the four running sessions stop; adeTerminals must reap their xterms (S4). The exit
+        // events matter: reap waits for local `exited`, and a probe without them kept all four.
         name: 'stopped4',
         run: async () => {
+          // Real order: a stop ends the pty first, so each terminal's exit event precedes the push.
+          for (let i = 0; i < AGENTS_WORLD.running; i++) {
+            await emitWailsEvent(page, IPC.terminal, {
+              terminalId: `term-ag${i}`,
+              data: '',
+              exited: true,
+              exitCode: 0,
+            });
+          }
           mock.respond(IPC.adeTaskSessions, agentsSessionsStopped(ids));
           await emitSessions(page);
           await page.waitForTimeout(2000);

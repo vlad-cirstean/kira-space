@@ -38,3 +38,26 @@ Spec `ade-v2-retention.spec.ts` (`ui-heap`, Chromium), ade20 fixture, DOM nodes:
   Tolerance 810 (10%).
 - Post-fix, 3 runs: task 8666, back 8861, delta 195 (all identical).
 - Revert run: assertion 1 fails; assertion 2 would fail (16764 vs 8666+810).
+
+## F2: headless terminals of stopped sessions
+
+Verdict: branch A. Every path that sets a session `stopped` ends the pty or has none:
+
+| path | pty |
+|---|---|
+| `Tracker.Reconcile` (`tracker.go` ~906) | runs only for a terminal no longer in `LiveAgents`: pty gone, exit event already sent |
+| `Tracker.Stop` (~850), only caller `closeTUILocked` (`launches.go:219`) | marks stopped, then `CloseTerminal` blocks until the process exits; exit event follows |
+| `Tracker.Abort` (~762) | terminal lost (compose failed) |
+| `stopHeadlessSession` (`runs.go:1369`) | headless: `claude -p`, no pty and no frontend terminal |
+| `StopAllTaskRunning` (`recover.go`) | boot recovery, no pty of the previous life |
+
+Stopped rows carry `terminalId: ''`, so no pane addresses the old buffer. Reap guard
+(`local && local !== 'exited' && local !== 'failed'`) waits for the exit event; in the real order the
+push may precede the exit (Stop marks first), and the exit re-runs the watch (it reads local status).
+The audit's 8.4 MB at `stopped4` came from a probe that skipped the exit event.
+
+Probe fix: `stopped4` emits `IPC.terminal` exit (`exited: true`, `exitCode: 0`) for `term-ag0..3`
+before the sessions push. Smoke (Chromium, `KIRA_RAM_WORLD=ade-agents`, 1 repeat, RAMLOAD load1 4.46
+at start; smoke only, never audit data): `__kiraTerminalStats.terminals` = 4 entries at `files1`, empty
+at `stopped4`, `left`, `back`. Pass B ArrayBuffer check follows in the re-measure.
+No existing spec covers reap on exit for ADE; none added (plan: A adds no spec).
