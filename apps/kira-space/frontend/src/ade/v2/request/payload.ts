@@ -52,13 +52,11 @@ const detailsEditFileSchema = /*#__PURE__*/ z.object({
   kind: z.string(),
   cause: z.string(),
   text: z.string(),
-  reason: z.string(),
   collision: z.string().optional(),
 });
 
 export const detailsEditPayloadSchema = /*#__PURE__*/ z.object({
   taskId: z.string(),
   taskTitle: z.string(),
-  reason: z.string(),
   items: z.array(detailsEditFileSchema),
 });

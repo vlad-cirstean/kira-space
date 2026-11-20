@@ -8976,25 +8976,22 @@
             "label": "Conflicting change"
           },
           "handover": {
-            "label": "Handover"
+            "label": "Another agent’s handover"
           },
           "link": {
-            "label": "Another author’s link"
+            "label": "Another agent’s link"
           },
           "note": {
-            "label": "Note edit"
+            "label": "Another agent’s note"
           },
           "proof": {
-            "label": "Proof file"
+            "label": "Another agent’s proof"
           },
           "proofdelete": {
-            "label": "Proof deletion"
+            "label": "Deletes another agent’s proof"
           },
           "readonly": {
             "label": "Read-only file"
-          },
-          "slot": {
-            "label": "Jira or PR slot"
           },
           "stage": {
             "label": "Other stage"
