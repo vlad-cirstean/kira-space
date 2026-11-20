@@ -1006,7 +1006,7 @@ func (b *TaskBoard) superviseAgent(ctx context.Context, run model.AdeRun, l agen
 		fail(err)
 		return
 	}
-	cfg, release, err := b.agent.Register(grant)
+	cfg, release, err := b.registerSpaceGrant(grant)
 	if err != nil {
 		releaseDb()
 		fail(err)

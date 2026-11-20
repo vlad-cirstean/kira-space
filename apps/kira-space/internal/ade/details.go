@@ -48,6 +48,14 @@ type detailsFiles struct {
 	mu       sync.Mutex
 	pending  map[string]map[string]detailsPending // task id -> path -> open item
 	lastSync map[string]time.Time                 // session key -> launch or last accepted submit
+	// fileErrs holds the open problems of agent writes, by task and path: state.yaml fileErrors.
+	fileErrs map[string]map[string]fileError
+}
+
+// fileError is the last invalid or rejected result of an agent write of one path.
+type fileError struct {
+	line int
+	msg  string
 }
 
 // detailsPending is one file of an open details.edit approval.
@@ -65,7 +73,7 @@ func (b *TaskBoard) initDetails() {
 	}
 	df := &detailsFiles{
 		b: b, idx: taskfiles.RepoIndex(d.TaskFiles), cache: repos.DetailsCache{Dialect: d.Tasks.Dialect}, root: d.FilesDir,
-		pending: map[string]map[string]detailsPending{}, lastSync: map[string]time.Time{},
+		pending: map[string]map[string]detailsPending{}, lastSync: map[string]time.Time{}, fileErrs: map[string]map[string]fileError{},
 	}
 	h := &detailsHandlers{b: b, df: df}
 	cfg := taskfiles.Config{

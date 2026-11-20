@@ -69,6 +69,16 @@ func (r Result) Counts() Counts {
 	return c
 }
 
+// Touched reports whether any file changed state: anything but unchanged and ignored.
+func (r Result) Touched() bool {
+	for _, f := range r.Files {
+		if f.Status != StatusUnchanged && f.Status != StatusIgnored {
+			return true
+		}
+	}
+	return false
+}
+
 // Session is the writer of one call.
 type Session struct {
 	// Key identifies the session; it is recorded as the accepting writer of each file.
@@ -148,8 +158,17 @@ func (s *Service) Submit(ctx context.Context, req Request) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)),
+	intents, err := s.cfg.Index.Intents()
+	if err != nil {
+		return Result{}, err
+	}
+	run := &submitRun{s: s, ctx: ctx, st: st, req: req, byPath: make(map[string]model.TaskFile, len(rows)), intents: map[string]string{},
 		pend: PendingSubmit{TaskID: req.TaskID, Session: req.Session, Reason: req.Reason}}
+	for _, in := range intents {
+		if in.TaskID == req.TaskID {
+			run.intents[in.RelPath] = in.SHA256
+		}
+	}
 	for _, r := range rows {
 		run.byPath[r.RelPath] = r
 	}
@@ -177,6 +196,8 @@ type submitRun struct {
 	byPath  map[string]model.TaskFile
 	present map[string]store.Entry
 	over    map[string]string
+	// intents maps the path of an open Kira write to the hash it is writing, "" for a delete.
+	intents map[string]string
 	// truncated: the listing stopped at the file cap, so a path missing from present is unknown, not gone.
 	truncated bool
 	out       []FileResult
@@ -249,7 +270,7 @@ func (r *submitRun) files(paths []string, units map[string]bool) {
 			continue
 		}
 		e, ok := r.present[rel]
-		fr, item := r.s.one(r.ctx, r.st, r.req, rel, e, ok, r.byPath[rel], r.over)
+		fr, item := r.s.one(r.ctx, r.st, r.req, rel, e, ok, r.byPath[rel], r.over, r.intents)
 		if fr.Status == StatusInvalid && hinted[fr.Path] {
 			continue
 		}
@@ -384,7 +405,7 @@ func (s *Service) sizeProblems(entries []store.Entry) map[string]string {
 }
 
 // one processes a single path; the pending item it returns is nil unless the file waits on the user.
-func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string) (FileResult, *PendingItem) {
+func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string, intents map[string]string) (FileResult, *PendingItem) {
 	hasRow := row.TaskID != ""
 	if hint := ProofFolderHint(rel); hint != "" {
 		if !exists && !strings.HasSuffix(rel, "/") {
@@ -416,6 +437,9 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return fail(rel+": "+msg, 0)
 	}
 	if !exists {
+		if hash, open := intents[rel]; open && hash == "" {
+			return FileResult{}, nil // Kira is deleting it
+		}
 		return s.gone(ctx, st, req, rel, class, h, row, hasRow)
 	}
 	raw, info, err := st.Read(ctx, rel, MaxBytes(class.Kind, rel))
@@ -426,6 +450,9 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return fail(fmt.Sprintf("%s: cannot read it: %v", rel, err), 0)
 	}
 	hash := sum(raw)
+	if want, open := intents[rel]; open && want == hash {
+		return FileResult{}, nil // Kira is mid-write: its own transaction records the file
+	}
 	if hasRow && hash == row.AcceptedSHA256 {
 		row.Size, row.Version, row.SHA256 = info.Size, string(info.Version), hash
 		row.Review, row.Problem = model.TaskFileAccepted, ""
@@ -552,7 +579,7 @@ func pendingMessage(rel, reason string, coll *Collision) string {
 
 // collisionOf is set when another writer accepted the file after the session's last sync.
 func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Collision {
-	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
+	if hasRow && !req.Session.LastSync.IsZero() && row.AcceptedBy != "" && row.AcceptedBy != string(RoleKira) && row.AcceptedBy != writerName(req.Session.Role, req.Session.Key) &&
 		row.AcceptedAt > req.Session.LastSync.UnixMilli() {
 		return &Collision{By: row.AcceptedBy, At: time.UnixMilli(row.AcceptedAt)}
 	}
@@ -572,7 +599,7 @@ func (s *Service) judge(req Request, rel string, class Class, changes []Change, 
 	for _, c := range changes {
 		d := Decide(rel, Input{
 			Role: req.Session.Role, Kind: class.Kind, Op: c.Op, Own: c.Own, Slot: c.Slot,
-			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted,
+			Step: class.Step, CurrentStep: req.Session.Step, ProofAccepted: proofAccepted, Latest: c.Latest,
 			Collision: coll, Reason: req.Reason,
 		})
 		switch d.Outcome {

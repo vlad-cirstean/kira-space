@@ -209,10 +209,13 @@ type TaskBoard struct {
 	afterImport func(codeRepoID string)
 	folderWMu   sync.Mutex
 	folderW     map[string]*folderWatcher
-	stopFlowW   func()
-	stopStepsW  func()
-	wfTimer     *time.Timer
-	startOnce   sync.Once
+	// watches holds the task folder watchers of tasks with a live agent grant (taskwatch.go).
+	watchMu    sync.Mutex
+	watches    map[string]*taskWatch
+	stopFlowW  func()
+	stopStepsW func()
+	wfTimer    *time.Timer
+	startOnce  sync.Once
 
 	mu      sync.Mutex
 	repoMus map[string]*sync.Mutex
@@ -358,6 +361,7 @@ func (b *TaskBoard) Close() {
 	b.mu.Unlock()
 	b.stopBoardPush()
 	b.stopWatchers()
+	b.stopTaskWatches()
 	b.updates.close()
 	b.checker.close()
 	b.wg.Wait()

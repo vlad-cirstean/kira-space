@@ -22,9 +22,12 @@ func submitSession(call agentmcp.SpaceCall) detailsSession {
 	return s
 }
 
-// Submit is the submit tool: it reads the named task files as the calling session.
+// Submit is the submit tool: it sends the named ask-first task files to the user as the calling session.
 func (b *TaskBoard) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), b.relToFolder(call.TaskID, in.Paths), in.Reason)
+	if len(in.Paths) == 0 || strings.TrimSpace(in.Reason) == "" {
+		return "", invalid(agentmcp.SubmitNeedsArgs)
+	}
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), b.relToFolder(call.TaskID, in.Paths), in.Reason, explicitPass)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +57,7 @@ func (b *TaskBoard) relToFolder(taskID string, paths []string) []string {
 // FinishSession is a session's step.finish: it submits the task files, then marks the stage's draft
 // finished.
 func (b *TaskBoard) FinishSession(ctx context.Context, call agentmcp.SpaceCall) (string, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "", explicitPass)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +109,7 @@ func (b *TaskBoard) finishDraft(taskID string) (string, error) {
 // SubmitForFinish is a run's step.finish implicit submit. An ok finish needs the current step's draft:
 // without one the finish is refused, unless its route ends the task or the step is a smart step.
 func (b *TaskBoard) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
-	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "")
+	res, err := b.SubmitFiles(ctx, call.TaskID, submitSession(call), nil, "", explicitPass)
 	if err != nil {
 		return agentmcp.SubmitFinish{}, err
 	}

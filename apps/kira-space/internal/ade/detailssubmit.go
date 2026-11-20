@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 
+	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -181,9 +184,18 @@ func (o detailsOwner) Answer(taskID string, a approvals.Answer) error {
 	return errors.Join(errs...)
 }
 
-// SubmitFiles is the submit tool: it walks the named paths (all when empty) of the task folder as the
-// calling session and returns every file's outcome.
-func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSession, paths []string, reason string) (taskfiles.Result, error) {
+// submitMode tells SubmitFiles who asked: the agent's own call (or finish), or the file watcher.
+type submitMode int
+
+const (
+	explicitPass submitMode = iota
+	watchPass
+)
+
+// SubmitFiles walks the named paths (all when empty) of the task folder as the calling session and
+// returns every file's outcome. A watch pass leaves the session's last sync alone: the agent has not
+// read the mirror it triggers.
+func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSession, paths []string, reason string, mode submitMode) (taskfiles.Result, error) {
 	if b.files == nil {
 		return taskfiles.Result{}, invalid("task files are off")
 	}
@@ -207,13 +219,135 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 	if err != nil {
 		return res, err
 	}
+	errsMoved := s.role.Agent() && df.recordFileErrors(taskID, paths, res)
+	if mode == watchPass && !errsMoved && !res.Touched() {
+		return res, nil
+	}
 	b.mirrorTask(taskID, mirrorOpts{})
-	// After the mirror: Kira's own re-render of what the agent just submitted is not a collision for it.
-	df.mu.Lock()
-	df.lastSync[s.key] = b.deps.Now()
-	df.mu.Unlock()
+	if errsMoved {
+		b.markStateDirty(taskID, true)
+	}
+	if mode == explicitPass {
+		// After the mirror: Kira's own re-render of what the agent just submitted is not a collision for it.
+		df.mu.Lock()
+		df.lastSync[s.key] = b.deps.Now()
+		df.mu.Unlock()
+	}
 	b.notifyBoardNow(taskChanged(taskID))
 	return res, nil
+}
+
+// recordFileErrors keeps the invalid and rejected results of an agent write for state.yaml and drops
+// the entry of every path a later result settled. It reports whether the set changed. A named path
+// with no result at all (a file removed again, or never a task file) loses its entry too.
+func (df *detailsFiles) recordFileErrors(taskID string, named []string, res taskfiles.Result) bool {
+	df.mu.Lock()
+	defer df.mu.Unlock()
+	m := df.fileErrs[taskID]
+	moved := false
+	seen := map[string]bool{}
+	for _, f := range res.Files {
+		if f.Path == "" {
+			continue
+		}
+		seen[f.Path] = true
+		switch f.Status {
+		case taskfiles.StatusInvalid, taskfiles.StatusRejected:
+			if m == nil {
+				m = map[string]fileError{}
+				df.fileErrs[taskID] = m
+			}
+			next := fileError{line: f.Line, msg: strings.TrimPrefix(f.Message, f.Path+": ")}
+			if m[f.Path] != next {
+				m[f.Path], moved = next, true
+			}
+		case taskfiles.StatusRestored:
+		default:
+			if _, ok := m[f.Path]; ok {
+				delete(m, f.Path)
+				moved = true
+			}
+		}
+	}
+	for _, p := range named {
+		if _, ok := m[p]; ok && !seen[p] {
+			delete(m, p)
+			moved = true
+		}
+	}
+	return moved
+}
+
+// fileErrorsOf lists the task's open file errors, sorted by path; never nil.
+func (df *detailsFiles) fileErrorsOf(taskID string) []stateFileError {
+	df.mu.Lock()
+	defer df.mu.Unlock()
+	out := make([]stateFileError, 0, len(df.fileErrs[taskID]))
+	for p, e := range df.fileErrs[taskID] {
+		out = append(out, stateFileError{Path: p, Line: e.line, Error: e.msg})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
+	return out
+}
+
+// hasFileError reports whether path has an open agent error: the agent is fixing it, so the disk banner skips it.
+func (df *detailsFiles) hasFileError(taskID, path string) bool {
+	df.mu.Lock()
+	defer df.mu.Unlock()
+	_, ok := df.fileErrs[taskID][path]
+	return ok
+}
+
+// clearFileErrors drops the task's errors (its last agent is gone); the writer rewrites state.yaml.
+func (b *TaskBoard) clearFileErrors(taskID string) {
+	df := b.files
+	if df == nil {
+		return
+	}
+	df.mu.Lock()
+	_, had := df.fileErrs[taskID]
+	delete(df.fileErrs, taskID)
+	df.mu.Unlock()
+	if had {
+		b.markStateDirty(taskID, true)
+		b.notifyBoardNow(taskChanged(taskID))
+	}
+}
+
+// SyncTaskFiles applies the agent edits the watcher saw; the reason is empty, so ask-first files
+// report a fileErrors entry. Paths with no file and no index row are dropped.
+func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, rels []string) error {
+	df := b.files
+	if df == nil {
+		return nil
+	}
+	rows, err := df.idx.Files(call.TaskID)
+	if err != nil {
+		return err
+	}
+	indexed := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		indexed[r.RelPath] = true
+	}
+	root, err := b.TaskFolder(call.TaskID)
+	if err != nil {
+		return err
+	}
+	var kept []string
+	for _, rel := range rels {
+		if slices.Contains(kept, rel) {
+			continue
+		}
+		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel))); err == nil || indexed[rel] {
+			kept = append(kept, rel)
+		}
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	sort.Strings(kept)
+	_, err = b.SubmitFiles(ctx, call.TaskID, submitSession(call), kept, "", watchPass)
+	return err
 }
 
 // MarkSynced records a session's launch: later submits compare collisions against it.
@@ -258,7 +392,7 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 	out := make([]adewire.DiskChange, 0, len(paths))
 	for _, p := range paths {
 		c := taskfiles.Classify(p)
-		if c.Kind == taskfiles.KindIgnored {
+		if c.Kind == taskfiles.KindIgnored || df.hasFileError(taskID, p) {
 			continue
 		}
 		dc := adewire.DiskChange{Path: p, Kind: string(c.Kind), Pending: pend[p], Problem: byRel[p]}
