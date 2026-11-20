@@ -28,7 +28,7 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './tests/ui',
-      testIgnore: ['studio/budgets.spec.ts', 'studio/perf.spec.ts'],
+      testIgnore: ['studio/budgets.spec.ts', 'studio/perf.spec.ts', 'ade-v2-retention.spec.ts'],
       grepInvert: wallClockBudgetTitles,
       use: { browserName: 'webkit' },
       fullyParallel: true,
@@ -46,6 +46,16 @@ export default defineConfig({
         'studio/grid-copy-insert.spec.ts',
         'studio/native-copy.spec.ts',
       ],
+      use: { browserName: 'chromium' },
+      fullyParallel: true,
+      workers: '100%',
+    },
+    // ade-v2-retention.spec.ts reads Chromium's DOM counters over CDP and forces GC, neither of
+    // which WebKit offers.
+    {
+      name: 'ui-heap',
+      testDir: './tests/ui',
+      testMatch: ['ade-v2-retention.spec.ts'],
       use: { browserName: 'chromium' },
       fullyParallel: true,
       workers: '100%',

@@ -53,7 +53,7 @@
     "perf:parse": "bun run build && playwright test --config=apps/kira-space/playwright.perf.config.ts --project=perf parse-callers",
     "perf:probe": "bun run build:test && playwright test --config=apps/kira-space/playwright.perf.config.ts",
     "perf:ram": "bun run build:test && playwright test --config=apps/kira-space/playwright.perf.config.ts --project=heap heap-ram",
-    "test:ui": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=ui --project=ui-clipboard",
+    "test:ui": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=ui --project=ui-clipboard --project=ui-heap",
     "test:ui:timing": "bun run build:test && playwright test --config=apps/kira-space/playwright.config.ts --project=ui-timing --no-deps",
     "test:ui:changed": "sh scripts/test-ui-changed.sh",
     "test:ui:mobile": "bun run build:mobile && playwright test --config=apps/kira-space/playwright.config.ts --project=mobile-ios --project=mobile-insecure",

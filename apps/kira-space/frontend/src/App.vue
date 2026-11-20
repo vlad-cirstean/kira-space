@@ -4,7 +4,7 @@ import type { AppMode } from '@shared/domain/mode';
 // this one provider.
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import { useAgentMessageDefaults } from '@workbench/agent/agentInfo';
 import ApprovalsSurface from '@workbench/approvals/ApprovalsSurface.vue';
 import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
 import { provideApprovalKinds } from '@workbench/approvals/registry';
@@ -29,7 +29,7 @@ import CommandPalette from '@workbench/shortcuts/CommandPalette.vue';
 import { runCommand } from '@workbench/shortcuts/commands';
 import { providePaletteCommands, usePaletteStore } from '@workbench/shortcuts/palette';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
-import { computed, getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vue';
+import { computed, markRaw, onMounted, onUnmounted, provide } from 'vue';
 import { spaceApprovalKinds } from './ade/v2/request/kinds';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
@@ -88,8 +88,6 @@ provide(promptsControlKey, control);
 provide(approvalsControlKey, control);
 provideApprovalKinds({ ...spaceApprovalKinds(), ...studioApprovalKinds() });
 provide(llmPromptsControlKey, control);
-// App level, not component level: Pinia stores and composables outside the tree inject it too.
-getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
 
 // Always-mounted root dialogs (ConfirmDialog, GitCredentialDialog: a credential prompt must be able
 // to appear with nothing else open) and the Go menu's channel subscriptions.
