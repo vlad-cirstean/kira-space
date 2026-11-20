@@ -18,7 +18,7 @@ import {
 
 // Picks the Run script a repo file runs. Normal scripts only: a repo file refuses a smart script.
 // The status lines mirror the run-time refusals and never block Save.
-const props = defineProps<{ id: string; testid: string; place: 'worktree' | 'repo' }>();
+const props = defineProps<{ id: string; testid: string; place: 'worktree' | 'repo' | 'service' }>();
 const value = defineModel<RepoScriptRefValue | undefined>({ required: true });
 
 const scripts = useCustomScriptsStore();
@@ -56,6 +56,13 @@ function removeBad(): void {
 }
 const dirHint = computed(() => {
   if (!script.value) return '';
+  if (props.place === 'service') {
+    return t(
+      script.value.useAdeDir
+        ? 'space.repo.config.scriptRef.dirService.hint'
+        : 'space.repo.config.scriptRef.dirServiceOwn.hint',
+    );
+  }
   if (!script.value.useAdeDir)
     return t('space.repo.config.scriptRef.dirOwn.hint', { variable: 'KIRA_WORKTREE_PATH' });
   return t(

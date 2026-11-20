@@ -11902,6 +11902,12 @@
           "dirRepo": {
             "hint": "Runs in the repository folder."
           },
+          "dirService": {
+            "hint": "Runs in the task’s worktree of this repository, one run per task."
+          },
+          "dirServiceOwn": {
+            "hint": "Runs in the script’s own folder. One run serves every task."
+          },
           "dirWorktree": {
             "hint": "Runs in the worktree."
           },
@@ -11933,6 +11939,19 @@
           "unknownParams": {
             "error": "Not params of “{script}”: {names}."
           }
+        },
+        "services": {
+          "add": {
+            "label": "Add service"
+          },
+          "empty": "No required services",
+          "intro": {
+            "hint": "Run scripts that must be running before work starts on a task in this repository. Kira Space asks to run any that isn’t, and counts only runs it started."
+          },
+          "remove": {
+            "tooltip": "Remove service"
+          },
+          "title": "Required services"
         },
         "source": {
           "added": {

@@ -16,6 +16,7 @@ import { ref, watch } from 'vue';
 import { control } from '../bridge/control';
 import RepoEnvRow from './RepoEnvRow.vue';
 import RepoScriptField from './RepoScriptField.vue';
+import RepoServiceRow from './RepoServiceRow.vue';
 import type { RepoFileModel, RepoFileWorktree, RepoScriptRefValue } from './state/repoFormTypes';
 
 // The repo settings file as a form. Edits the file's own keys; the field table (REPO_FIELDS) names
@@ -84,6 +85,27 @@ function removeEnv(i: number): void {
 }
 function addEnv(): void {
   file.value.environments = [...(file.value.environments ?? []), { name: '' }];
+}
+
+// A service row with no script yet is local: the file never holds `script: ""`. Choosing a script
+// moves it into the model; choosing None moves it back out.
+const blankService = ref(false);
+function setService(i: number, ref: RepoScriptRefValue | undefined): void {
+  const list = file.value.services ?? [];
+  if (ref) {
+    file.value.services = list.map((s, k) => (k === i ? ref : s));
+    return;
+  }
+  file.value.services = list.filter((_, k) => k !== i);
+  blankService.value = true;
+}
+function fillBlankService(ref: RepoScriptRefValue | undefined): void {
+  if (!ref) return;
+  file.value.services = [...(file.value.services ?? []), ref];
+  blankService.value = false;
+}
+function removeService(i: number): void {
+  file.value.services = (file.value.services ?? []).filter((_, k) => k !== i);
 }
 </script>
 
@@ -236,6 +258,48 @@ function addEnv(): void {
         @click="addEnv"
       >
         {{ t('space.repo.env.add.label') }}
+      </Button>
+    </FieldSet>
+
+    <FieldSet>
+      <FieldLegend>{{ t('space.repo.config.services.title') }}</FieldLegend>
+      <FieldDescription>{{ t('space.repo.config.services.intro.hint') }}</FieldDescription>
+      <InlineState
+        v-if="!file.services?.length && !blankService"
+        kind="empty"
+        data-testid="repo-services-empty"
+      >
+        {{ t('space.repo.config.services.empty') }}
+      </InlineState>
+      <div v-else class="flex flex-col gap-3">
+        <RepoServiceRow
+          v-for="(service, i) in file.services ?? []"
+          :key="i"
+          :model-value="service"
+          :index="i"
+          @update:model-value="(v) => setService(i, v)"
+          @remove="removeService(i)"
+        />
+        <RepoServiceRow
+          v-if="blankService"
+          :model-value="undefined"
+          :index="file.services?.length ?? 0"
+          @update:model-value="fillBlankService"
+          @remove="blankService = false"
+        />
+      </div>
+      <FieldError v-if="props.errorFor('/services')" data-testid="repo-services-error">{{
+        props.errorFor('/services')
+      }}</FieldError>
+      <Button
+        variant="dialog"
+        size="kira-lg"
+        class="self-start"
+        :disabled="blankService"
+        data-testid="repo-add-service"
+        @click="blankService = true"
+      >
+        {{ t('space.repo.config.services.add.label') }}
       </Button>
     </FieldSet>
   </div>
