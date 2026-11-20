@@ -6,11 +6,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/sessionrestore"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/scripts"
+	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -233,4 +237,116 @@ func TestSmartScriptResume(t *testing.T) {
 		t.Fatalf("resumed run = %+v (outcome %+v), want done from %s on session %s", resumed, o, started.RunID, stuck.SessionID)
 	}
 	app.requireCostUnder(t)
+}
+
+// restoreAgent returns the restore offer's agent row with id.
+func (f *adeFixture) restoreAgent(t *testing.T, id string) ade.AgentItem {
+	t.Helper()
+	var got ade.AgentItem
+	testx.WaitUntil(t, testTimeout, func() bool {
+		st, err := f.W.SessionRestore.State(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, a := range st.Agents {
+			if a.ID == id {
+				got = a
+			}
+		}
+		return got.ID != ""
+	})
+	return got
+}
+
+// TestAdeRestoreRunResumeOnly cuts a headless run off with a restart and restores it with Resume
+// only: the run's conversation reopens in a terminal and nothing is sent to it.
+func TestAdeRestoreRunResumeOnly(t *testing.T) {
+	f := newAdeFixture(t, nil)
+	flag := filepath.Join(t.TempDir(), "flag")
+	task, run := f.startHeld(t, holdScript(t, flag))
+	claudeID := f.claudeSession(t, run.SessionID)
+
+	f.Restart()
+	testx.WaitUntil(t, testTimeout, func() bool {
+		stuck := f.stepRun(t, task.ID)
+		return stuck.ID == run.ID && stuck.State == "stuck" && stuck.Resumable
+	})
+	item := f.restoreAgent(t, "run:"+run.ID)
+	if item.State != ade.AgentReady || item.Mode != ade.AgentModeHeadless || item.Continue != ade.AgentContinueOptional {
+		t.Fatalf("offer = %+v, want a ready headless run with optional Continue", item)
+	}
+	res, err := f.W.SessionRestore.Restore(ctx, sessionrestore.Args{Agents: []ade.AgentChoice{{ID: item.ID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Agents) != 1 || res.Agents[0].Error != "" || res.Agents[0].Launch == nil {
+		t.Fatalf("restore = %+v, want one terminal launch", res.Agents)
+	}
+	launch := res.Agents[0].Launch
+	if !strings.Contains(launch.Command, claudeID) || !strings.Contains(launch.Command, "--resume") {
+		t.Fatalf("command %q does not resume claude session %s", launch.Command, claudeID)
+	}
+	if strings.Contains(launch.Command, "Kira restarted") {
+		t.Fatalf("command %q carries the continue line", launch.Command)
+	}
+	f.seedClaudeJSON(t, f.repo.Dir, launch.Cwd)
+	mark := f.Events.Mark()
+	f.openAgent(t, launch.TerminalID, launch.Cwd, launch.Command)
+	t.Cleanup(func() { _ = f.W.Terminal.Close(terminal.CloseArgs{TerminalID: launch.TerminalID}) })
+	time.Sleep(10 * time.Second)
+	for _, e := range f.agentEvents(t, mark, launch.TerminalID) {
+		if e.Event == "UserPromptSubmit" {
+			t.Fatalf("a turn started with Resume only: %+v", f.agentEvents(t, mark, launch.TerminalID))
+		}
+	}
+}
+
+// TestAdeRestoreSessionContinue restores an idle TUI session after a restart with Continue: the
+// terminal resumes the same Claude conversation and submits the continue line as a new turn.
+func TestAdeRestoreSessionContinue(t *testing.T) {
+	f := newAdeFixture(t, nil)
+	f.saveWorkflow(t, "flow", manualStepYAML)
+	task := f.createTask(t, "flow")
+	launch, err := f.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.seedClaudeJSON(t, f.repo.Dir, launch.Cwd)
+	mark := f.Events.Mark()
+	f.openAgent(t, launch.TerminalID, launch.Cwd, launch.Command)
+	f.waitAgentEvent(t, mark, launch.TerminalID, "SessionStart", 60*time.Second)
+	// SessionStart fires before the input box accepts keys.
+	time.Sleep(2 * time.Second)
+	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{SessionID: launch.SessionID, Message: "Reply with the single word one."}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	f.waitAgentEvent(t, mark, launch.TerminalID, "Stop", 90*time.Second)
+	claudeID := f.claudeSession(t, launch.SessionID)
+
+	f.Restart()
+	item := f.restoreAgent(t, "session:"+launch.SessionID)
+	if item.State != ade.AgentReady || item.Mode != ade.AgentModeTUI {
+		t.Fatalf("offer = %+v, want a ready TUI session", item)
+	}
+	res, err := f.W.SessionRestore.Restore(ctx, sessionrestore.Args{Agents: []ade.AgentChoice{{ID: item.ID, Continue: true}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Agents) != 1 || res.Agents[0].Error != "" || res.Agents[0].Launch == nil {
+		t.Fatalf("restore = %+v, want one terminal launch", res.Agents)
+	}
+	next := res.Agents[0].Launch
+	if !strings.Contains(next.Command, claudeID) {
+		t.Fatalf("command %q does not resume claude session %s", next.Command, claudeID)
+	}
+	f.seedClaudeJSON(t, f.repo.Dir, next.Cwd)
+	mark = f.Events.Mark()
+	f.openAgent(t, next.TerminalID, next.Cwd, next.Command)
+	t.Cleanup(func() { _ = f.W.Terminal.Close(terminal.CloseArgs{TerminalID: next.TerminalID}) })
+	f.waitAgentEvent(t, mark, next.TerminalID, "UserPromptSubmit", 90*time.Second)
+	f.waitAgentEvent(t, mark, next.TerminalID, "Stop", 90*time.Second)
+	if got := f.claudeSession(t, next.SessionID); got != claudeID {
+		t.Fatalf("restored session on claude session %q, want %q", got, claudeID)
+	}
+	f.requireCostUnder(t)
 }
