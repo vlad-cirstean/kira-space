@@ -24,6 +24,7 @@ import AdeRepoTag from '../AdeRepoTag.vue';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
 import { useHostLabels } from '../hostLabels';
 import { type ParentModel, usePlanModel } from '../plan/usePlanModel';
+import { prStateLabel } from '../pr/prGlyph';
 import { useRestoreTask } from '../queries';
 import { useArchivedTask } from '../readQueries';
 import AdeSessionsTab from '../sessions/AdeSessionsTab.vue';
@@ -31,7 +32,6 @@ import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { type TaskPanelTab, useAdePanelTabsStore } from '../state/adePanelTabs';
 import type { ArchivedBranch, ArchivedComment, ArchivedTask } from '../wire';
 import AdePanelFrame from './AdePanelFrame.vue';
-import { prStateLabel } from './prState';
 
 // An archived task, read-only, with everything it kept. Restore brings it back to the Plan; edits
 // need that first.

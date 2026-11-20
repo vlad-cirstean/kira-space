@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
-import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { rowMeta } from '@theme/lib/rowVariants';
-import { changeRequestTone, TONE_TEXT } from '@theme/lib/statusTone';
 import { errorText } from '@workbench/bridge/codedError';
 import ProjectPicker from '@workbench/components/pickers/ProjectPicker.vue';
 import { computed, ref } from 'vue';
@@ -13,15 +11,14 @@ import { useProjectOptions } from '../../../repo/state/projectOptions';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import type { ForcePushTarget } from '../board/panelFacts';
 import AdeBranchRow from '../plan/AdeBranchRow.vue';
-import { CHECKS_GLYPH, PR_GLYPH } from '../plan/glyphs';
 import type { CardModel } from '../plan/usePlanModel';
+import PrGlyph from '../pr/PrGlyph.vue';
 import { useAddTaskRepo, useChangeRequests } from '../queries';
 import { useAdeAddUiStore } from '../state/adeAddUi';
 import AdeUpdatesDot from '../updates/AdeUpdatesDot.vue';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
 import AdeRow from './AdeRow.vue';
 import AdeTaskBranchMenu from './AdeTaskBranchMenu.vue';
-import { prStateLabel } from './prState';
 import { useOpenBranchPr } from './useOpenBranchPr';
 
 // Main tab branches: the repo and branch adders, then one row per branch.
@@ -128,15 +125,7 @@ async function onAddRepo(id: string): Promise<void> {
         :data-branch-id="row.id"
       >
         <template #lead>
-          <TextTooltip :text="prStateLabel(pr.state)">
-            <span
-              class="shrink-0"
-              :class="TONE_TEXT[changeRequestTone(pr.state)]"
-              :data-state="pr.state"
-              data-testid="ade-task-branch-pr-state"
-              ><CodiconIcon :name="PR_GLYPH[pr.state] ?? 'git-pull-request'" :size="13" /></span
-            >
-          </TextTooltip>
+          <PrGlyph variant="tooltip" :status="pr" testid="ade-task-branch-pr-state" />
         </template>
         <a
           :href="pr.url"
@@ -155,18 +144,6 @@ async function onAddRepo(id: string): Promise<void> {
             t('space.ade.mainTab.prBase.label', { base: pr.baseRef })
           }}</span
         >
-        <TextTooltip
-          v-if="CHECKS_GLYPH[pr.checksState]"
-          :text="t(CHECKS_GLYPH[pr.checksState]!.tip)"
-        >
-          <span
-            class="shrink-0"
-            :class="CHECKS_GLYPH[pr.checksState]!.class"
-            :data-state="pr.checksState"
-            data-testid="ade-task-branch-pr-checks"
-            ><CodiconIcon :name="CHECKS_GLYPH[pr.checksState]!.icon" :size="13" /></span
-          >
-        </TextTooltip>
       </AdeRow>
     </div>
     <AdeForcePushDialog :target="forcePushTarget" @close="forcePushTarget = null" />

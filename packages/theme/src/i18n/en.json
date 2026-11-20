@@ -9215,15 +9215,6 @@
         }
       },
       "mainTab": {
-        "checksFailure": {
-          "tooltip": "Checks failed"
-        },
-        "checksPending": {
-          "tooltip": "Checks running"
-        },
-        "checksSuccess": {
-          "tooltip": "Checks passed"
-        },
         "prBase": {
           "label": "→ {base}"
         }
@@ -9715,6 +9706,9 @@
           },
           "open": {
             "aria": "Open {title}"
+          },
+          "openPr": {
+            "aria": "Open {title} — {status}"
           },
           "sessionsFinished": {
             "tooltip": "Agent finished, no session working"
@@ -11432,6 +11426,66 @@
       "base": {
         "label": "Base"
       },
+      "changeRequest": {
+        "autoMerge": {
+          "on": {
+            "status": "Auto-merge on"
+          }
+        },
+        "check": {
+          "errored": {
+            "status": "Errored"
+          },
+          "neutral": {
+            "status": "Neutral"
+          },
+          "passed": {
+            "status": "Passed"
+          }
+        },
+        "checks": {
+          "expected": {
+            "status": "Checks not reported yet"
+          },
+          "failed": {
+            "status": "Checks failed"
+          },
+          "passed": {
+            "status": "Checks passed"
+          },
+          "running": {
+            "status": "Checks running"
+          }
+        },
+        "mergeable": {
+          "clean": {
+            "status": "No conflicts"
+          },
+          "conflicting": {
+            "status": "Has conflicts"
+          }
+        },
+        "review": {
+          "approved": {
+            "status": "Approved"
+          },
+          "changesRequested": {
+            "status": "Changes requested"
+          },
+          "commented": {
+            "status": "Commented"
+          },
+          "pending": {
+            "status": "Awaiting review"
+          },
+          "rejected": {
+            "status": "Rejected"
+          },
+          "required": {
+            "status": "Review required"
+          }
+        }
+      },
       "day": {
         "earlier": {
           "label": "Earlier"
@@ -11569,17 +11623,6 @@
         },
         "heading": {
           "title": "Assignees"
-        }
-      },
-      "check": {
-        "error": {
-          "status": "Errored"
-        },
-        "neutral": {
-          "status": "Neutral"
-        },
-        "success": {
-          "status": "Passed"
         }
       },
       "checks": {
@@ -11765,31 +11808,6 @@
           "warning": {
             "title": "Warning"
           }
-        }
-      },
-      "mergeable": {
-        "clean": {
-          "status": "No conflicts"
-        },
-        "conflicting": {
-          "status": "Has conflicts"
-        }
-      },
-      "review": {
-        "approved": {
-          "status": "Approved"
-        },
-        "changesRequested": {
-          "status": "Changes requested"
-        },
-        "commented": {
-          "status": "Commented"
-        },
-        "pending": {
-          "status": "Awaiting review"
-        },
-        "rejected": {
-          "status": "Rejected"
         }
       },
       "reviewers": {

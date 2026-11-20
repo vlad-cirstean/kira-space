@@ -112,7 +112,7 @@ test('Main shows branches with their PR line and never handover text', async ({ 
   await openTask(page, 'T_bill');
   await expect(page.locator(t('ade-task-branch-pr'))).toHaveCount(2);
   await expect(page.locator(t('ade-task-branch-pr-base')).first()).toHaveText('→ main');
-  const failed = page.locator(`${t('ade-task-branch-pr-checks')}[data-state="FAILURE"]`);
+  const failed = page.locator(`${t('ade-task-branch-pr-state')}[data-checks="failure"]`);
   await expect(failed).toHaveCount(1);
   await expect(page.locator(`${t('ade-task-branch')}[data-branch-id="b_billdash"]`)).toBeVisible();
   await expect(page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_billdash"]`)).toHaveCount(
