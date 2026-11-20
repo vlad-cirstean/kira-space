@@ -15,6 +15,7 @@ import { leasesKey } from './v2/leases/queries';
 import {
   artifactsPrefix,
   dbAuditPrefix,
+  diskPrefix,
   handoversPrefix,
   issuePrefix,
   proofsPrefix,
@@ -83,6 +84,7 @@ export function installAdeSignals(
   control.onAdeTaskBoard((change) => {
     invalidateTaskFamily(queryClient, handoversPrefix, change);
     invalidateTaskFamily(queryClient, artifactsPrefix, change);
+    invalidateTaskFamily(queryClient, diskPrefix, change);
     invalidateTaskFamily(queryClient, issuePrefix, change);
   });
   // A proof session closing, attaching or deleting changes a task's chain.

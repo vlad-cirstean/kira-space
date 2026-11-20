@@ -3,12 +3,11 @@ import { queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
 import { toValue } from 'vue';
 import { control } from '../../../bridge/control';
-import { artifactsPrefix, handoversPrefix } from '../queries';
+import { artifactsPrefix, diskPrefix, handoversPrefix } from '../queries';
 import type { DiskResolveArgs } from '../wire';
 
-// The task folder against what the app holds. One stat pass per open, window focus and Refresh; there is no
-// watcher, so a submit or a user action refetches through `refreshDisk`.
-const diskPrefix = ['adetask', 'details-disk'] as const;
+// The task folder against what the app holds. One stat pass per open, window focus, Refresh and board push.
+// Kira applies a live agent's edits on save, so a push follows them; a user's edits show on the next trigger.
 
 export function useDiskChanges(
   taskId: MaybeRefOrGetter<string>,
