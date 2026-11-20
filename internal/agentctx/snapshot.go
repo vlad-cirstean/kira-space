@@ -32,7 +32,7 @@ func (s *Store) ContextFile() (string, error) {
 	now := time.Now()
 	fresh := false
 	if _, err := fileservice.Host().Stat(path); err != nil {
-		if err := fileservice.HostPrivate().WriteFile(path, text, 0o600); err != nil {
+		if err := fileservice.Host().WriteFile(path, text, 0o600); err != nil {
 			return "", fmt.Errorf("agentctx: write snapshot: %w", err)
 		}
 		fresh = true

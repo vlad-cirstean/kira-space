@@ -4137,7 +4137,7 @@ Details content (notes, handovers, links, proofs) moves to files in `<home>/task
 - Cost: one extra dir fsync per write, one `openat` per rooted call. Roots are not cached.
 - `internal/pathsafe`, `internal/fsmove`, `configfs.WriteAtomic` and `ReadCapped`, `codeworkspace/paths.go` are folded into the service and deleted.
 - Guard G8 (`internal/conventiontest`, folds G4): non-test files under `apps/` and `internal/` may not call the `os` file functions, `filepath.Walk`, `WalkDir`, `EvalSymlinks` or `Glob`, nor import `io/ioutil`, `renameio` or `internal/fswatch`. Allowlist, each entry with a reason, stale entries fail: the service and fswatch, agent harnesses and sandboxes, app-home bootstrap (`kirapaths`, `logging`, `startupfail`, `filelock`, `localsock`), the updater, build-time tools, test tooling, and host probes (kubeconfig, editors, shells, docker endpoint, `/proc`).
-- Behaviour notes: host-wide Services refuse relative names; a write keeps an existing file's mode only with `KeepPerm`.
+- Behaviour notes: host-wide Services refuse relative names. Modes match the pre-service code: a write replaces the mode with `Perm` (as `renameio.WriteFile` did); `KeepPerm` only where the old code kept it (codeworkspace edit, collection export). Dirs that were 0700 use `HostPrivate`; the rest keep 0755.
 
 ## File watching (P699)
 

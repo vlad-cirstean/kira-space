@@ -224,7 +224,7 @@ func (r *Reader) writeJournal(j renameJournal) error {
 	if err != nil {
 		return err
 	}
-	return fileservice.HostPrivate().WriteFile(r.Journal, b, 0o600)
+	return fileservice.Host().WriteFile(r.Journal, b, 0o600)
 }
 
 func (r *Reader) dropJournal() {

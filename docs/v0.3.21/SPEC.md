@@ -59,7 +59,11 @@ bootstrap, build tooling, test tooling, host probes) by guard G8, which also fol
 writes had no fsync; no write fsynced its dir. Deviations: `configsync` uses `Host()` (its names are
 regex-validated); proof shot files use `Host()` with sanitized names, not a rooted Service; the service
 gained `Lstat`, `Resolve`, `ReadFile`, `WriteFile`, `HostPrivate`, `ValidName`, `Policy.Existing`. Behaviour:
-host-wide Services refuse relative names; a write keeps an existing file's mode only with `KeepPerm`.
+host-wide Services refuse relative names; modes and dir perms match the old code (audited site by site
+against the pre-P700 calls). 0700 dirs map to `HostPrivate` (ade task dir and task folder, mcpauth, agentmcp,
+agentcfg, agentport backup writes, llmprompts, scripts workdir, adeflow backup copies, task blobs); 0600 temp files
+to `TempFile`/`TempDir`; former `configfs.WriteAtomic` sites (adeflow journal, agentctx snapshot, agentusage)
+use `Host()` so created parents stay 0755; `KeepPerm` only for codeworkspace edit and collection export.
 
 ## P701
 

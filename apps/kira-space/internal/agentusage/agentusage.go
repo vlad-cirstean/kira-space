@@ -174,7 +174,7 @@ func (s *Service) persistLocked() {
 	if err != nil {
 		return
 	}
-	if err := fileservice.HostPrivate().WriteFile(s.deps.Path, raw, 0); err != nil {
+	if err := fileservice.Host().WriteFile(s.deps.Path, raw, 0o600); err != nil {
 		slog.Warn("agent usage: persist", "scope", "usage", "err", err)
 	}
 }
