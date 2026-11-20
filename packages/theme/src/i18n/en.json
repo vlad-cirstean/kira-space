@@ -9367,103 +9367,76 @@
           "loading": "Waiting for your approval…"
         },
         "agentBranches": {
-          "loading": "Creating branches…",
-          "status": "Created branches for {name}"
+          "loading": "Creating branches…"
         },
         "agentChange": {
-          "loading": "Applying branch change…",
-          "status": "Changed branch for {name}"
+          "loading": "Applying branch change…"
         },
         "agentFetch": {
-          "loading": "Fetching remote…",
-          "status": "Fetched remote for {name}"
+          "loading": "Fetching remote…"
         },
         "agentPush": {
-          "loading": "Pushing branch…",
-          "status": "Pushed branch for {name}"
+          "loading": "Pushing branch…"
         },
         "agentRename": {
-          "loading": "Renaming branch…",
-          "status": "Renamed branch for {name}"
+          "loading": "Renaming branch…"
         },
         "approve": {
-          "loading": "Approving…",
-          "status": "Approved {name}"
+          "loading": "Approving…"
         },
         "archive": {
-          "loading": "Closing task…",
-          "status": "Closed {name}"
+          "loading": "Closing task…"
         },
         "attachBranch": {
-          "loading": "Adding branch…",
-          "status": "Branch {name} attached"
+          "loading": "Adding branch…"
         },
         "closeSession": {
-          "loading": "Closing session…",
-          "status": "Closed session {name}"
+          "loading": "Closing session…"
         },
         "finishReview": {
-          "loading": "Finishing review…",
-          "status": "Finished review of {name}"
-        },
-        "forcePush": {
-          "status": "Force pushed {name}"
+          "loading": "Finishing review…"
         },
         "launch": {
-          "loading": "Starting agent…",
-          "status": "Started agent for {name}"
+          "loading": "Starting agent…"
         },
         "leaseRelease": {
-          "loading": "Releasing lease…",
-          "status": "Released {name}"
+          "loading": "Releasing lease…"
         },
         "leaseRequest": {
-          "loading": "Requesting release…",
-          "status": "Requested release of {name}"
+          "loading": "Requesting release…"
         },
         "nextPass": {
-          "loading": "Starting next pass…",
-          "status": "Started next pass for {name}"
+          "loading": "Starting next pass…"
         },
         "removeBranch": {
-          "loading": "Removing branch…",
-          "status": "Removed branch {name}"
+          "loading": "Removing branch…"
         },
         "removeRepo": {
-          "loading": "Removing repository…",
-          "status": "Removed repository {name}"
+          "loading": "Removing repository…"
         },
         "restartSession": {
-          "loading": "Restarting session…",
-          "status": "Restarted session {name}"
+          "loading": "Restarting session…"
         },
         "resume": {
-          "loading": "Resuming…",
-          "status": "Resumed {name}"
+          "loading": "Resuming…"
         },
         "retry": {
-          "loading": "Retrying…",
-          "status": "Retried {name}"
+          "loading": "Retrying…"
         },
         "sendReview": {
-          "loading": "Sending review…",
-          "status": "Sent review for {name}"
+          "loading": "Sending review…"
         },
         "setBranch": {
-          "loading": "Changing branch…",
-          "status": "Changed branch to {name}"
+          "loading": "Changing branch…"
         },
         "setStep": {
-          "loading": "Changing step…",
-          "status": "Changed step of {name}"
+          "loading": "Changing step…"
         },
         "startRun": {
-          "loading": "Starting run…",
-          "status": "Started run for {name}"
+          "loading": "Starting run…"
         },
         "stopRuns": {
-          "loading": "Stopping runs…",
-          "status": "Stopped runs of {name}"
+          "loading": "Stopping runs…"
         }
       },
       "orchestrator": {

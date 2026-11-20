@@ -5,7 +5,7 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // Agent ops the backend records (branch requests, approval wait, remote tools) show on the task card
-// as a chip while running, and toast when they finish past 2 s. Backend half: adeflow
+// as a chip while running; only a failure past 2 s toasts. Backend half: adeflow
 // TestAgentBranchRequest and the agentmcp op records.
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -83,11 +83,12 @@ test('a remote tool call mirrors as a push chip', async ({ relaunch }) => {
   await expect(chip(page)).toHaveAttribute('data-op', 'agentPush');
 });
 
-test('a finish past 2 s toasts success; a slow failure toasts the error', async ({ relaunch }) => {
+test('a finish past 2 s does not toast; a slow failure toasts the error', async ({ relaunch }) => {
   const page = await open(relaunch);
   await push(page, opRecord({}));
   await push(page, opRecord({ status: 'ok', durationMs: 3000 }));
-  await expect(toast(page)).toContainText('Created branches for Cart checkout');
+  await expect(chip(page)).toHaveCount(0);
+  await expect(toast(page)).toHaveCount(0);
   await push(page, opRecord({ id: 'op-2', kind: 'agentRename' }));
   await push(
     page,

@@ -6,7 +6,7 @@ import { useForcePush } from './queries';
 import { useAdeOpsStore } from './state/adeOps';
 
 // Force push with lease for one branch. Confirm closes the dialog; the push runs as the branch's op
-// (chip, toast past 2 s, error toast with the backend's refusal such as a stale lease).
+// (chip, error toast with the backend's refusal such as a stale lease).
 const props = defineProps<{ target: ForcePushTarget | null }>();
 const emit = defineEmits<{ close: [] }>();
 

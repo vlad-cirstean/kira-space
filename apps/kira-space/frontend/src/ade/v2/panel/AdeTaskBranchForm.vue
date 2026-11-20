@@ -66,7 +66,7 @@ async function submitBranch(name: string, existing: boolean): Promise<void> {
           });
     if (!proceed) return;
     open.value = false;
-    // The change runs as the branch's op (chip on the row, toast past 2 s or on failure).
+    // The change runs as the branch's op (chip on the row, error toast on failure).
     const ok = await ops.run(
       { id: `setBranch:${branchId}`, kind: 'setBranch', taskId, branchId, name },
       () => setBranch.mutateAsync({ branchId, name, existing, discardChanges: discard }),

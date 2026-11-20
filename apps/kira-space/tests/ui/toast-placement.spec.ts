@@ -64,17 +64,22 @@ const titlebarBottom = async (page: Page) => {
   return b.y + b.height;
 };
 
-// Removing a branch holds, so the loading toast stays on screen.
+// A refused removal toasts its error; hovering the toaster pauses Sonner's timer, so it stays.
 async function holdToast(page: Page) {
   await openTask(page, 'T_cart');
   await pick(page, 'b_cart', 'ade-task-branch-remove');
   await page.locator(t('confirm-dialog-confirm')).click();
-  await expect(page.locator('[data-sonner-toast]')).toContainText('Removing');
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toContainText('worktree is locked');
+  await toast.hover();
 }
 
 const holdControl: ControlSnapshot[] = [
   dirty,
-  { channel: IPC.adeTaskRemoveTaskBranch, hold: true },
+  {
+    channel: IPC.adeTaskRemoveTaskBranch,
+    error: { code: 'E_BAD_REQUEST', message: 'worktree is locked' },
+  },
 ];
 
 const overlap = (a: Box, b: Box) =>

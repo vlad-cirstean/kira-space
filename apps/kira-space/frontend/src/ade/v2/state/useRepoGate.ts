@@ -26,8 +26,8 @@ export function useRepoGate() {
 
   /**
    * Runs `call` as an op (`startOp` is `ops.run` with its id). A stale board that lets the bridge refuse
-   * with E_TASK_NO_REPO ends that op silently, then asks for a repo outside any op (no chip or loading
-   * toast while the user picks) and starts a fresh op. False on failure, or when the user cancels the pick.
+   * with E_TASK_NO_REPO ends that op silently, then asks for a repo outside any op (no chip while the
+   * user picks) and starts a fresh op. False on failure, or when the user cancels the pick.
    */
   async function opAfterRepo(
     taskId: string,

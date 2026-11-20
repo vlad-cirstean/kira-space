@@ -150,7 +150,7 @@ export const useAdeStageDialogStore = defineStore('adeStageDialog', () => {
   }
 
   /**
-   * Closes at once and runs the move detached as the task's op (chip, toast past 2 s or on failure), so the
+   * Closes at once and runs the move detached as the task's op (chip, error toast on failure), so the
    * routed prompt host is free right away. A move refused promptly reopens the dialog on the board mount
    * with the typed notes and choices, unless another dialog took the slot or the board is not mounted; a
    * late refusal keeps them for the task's next open. False when nothing started.

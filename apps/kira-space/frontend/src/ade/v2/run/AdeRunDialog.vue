@@ -144,7 +144,7 @@ watch(initial, (next) => {
   message.value = next;
 });
 
-// Closes at once; the start runs as the task's op (chip on the card, toast past 2 s or on failure).
+// Closes at once; the start runs as the task's op (chip on the card, error toast on failure).
 // A start refused promptly reopens the dialog with the typed names and message, unless another dialog or
 // mode took over; a late refusal keeps them for the task's next open (the error toast reports it).
 async function send(): Promise<void> {

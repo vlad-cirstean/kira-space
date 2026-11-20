@@ -88,7 +88,7 @@ const sendTip = computed(() => {
 
 type ReviewOp = 'sendReview' | 'finishReview' | 'stopRuns' | 'resume';
 
-/** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, toast. */
+/** Runs `fn`, showing a failure inline. With `kind` it is also the branch's op: chip, error toast. */
 async function act(fn: () => Promise<unknown>, kind?: ReviewOp): Promise<boolean> {
   if (!kind) return surface.run(fn);
   // The op needs the original failure (an `OpAborted` ends it silently); the surface shows it.

@@ -102,7 +102,7 @@ export const useAdeDialogsStore = defineStore('adeDialogs', () => {
       rebase: (a) => rebaseM.mutateAsync(a),
       setBranchBase: (a) => baseM.mutateAsync(a),
       recordMerge: (a) => mergeM.mutateAsync(a),
-      // Runs in the background: the dialog is gone at once, the op's chip and toast report it.
+      // Runs in the background: the dialog is gone at once, the op's chip shows it and a failure toasts.
       archiveTask: (a) => {
         ops.run(
           {
