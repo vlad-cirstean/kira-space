@@ -3,6 +3,7 @@ package appwire
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -56,8 +57,21 @@ func RunArgvShim(args []string) (code int, ok bool) {
 		return gitaskpass.RunHelper(args[2:], os.Environ(), os.Stdout), true
 	case "js-worker":
 		return jsengine.RunWorker(args[2:]), true
+	case "memory-mcp", "memory-ingest", "memory-embed", "memory-check":
+		return retiredMemoryCommand(args[1], os.Stderr), true
 	}
 	return 0, false
+}
+
+// retiredMemoryCommand answers the subcommands v0.3.18 wrote into user config (MCP stdio entry,
+// pre-commit hook) so they never fall through to a GUI launch. memory-check exits 0 so a stale
+// hook never blocks a commit. v0.3.x only: drop at the v0.4.0 minor bump (legacy-code rule).
+func retiredMemoryCommand(word string, stderr io.Writer) int {
+	fmt.Fprintf(stderr, "kira-space: `%s` was removed in v0.3.19. Remove the kira-space memory-mcp entry from the agent CLI MCP config and the memory-check line from the repo pre-commit hook.\n", word)
+	if word == "memory-check" {
+		return 0
+	}
+	return 1
 }
 
 // gitWired is wireGit's own result.
