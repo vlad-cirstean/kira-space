@@ -253,6 +253,7 @@ const runLine = computed(() => {
               data-testid="plan-terminal"
               :data-activity="activityKind(view.session)"
             >
+              <AdeActivityIcon :kind="activityKind(view.session)" bare />
               {{ t('common.module.terminal.label') }}</RouterLink
             >
           </Button>
