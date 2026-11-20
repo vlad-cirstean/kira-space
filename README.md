@@ -13,11 +13,11 @@
 The agents board: tasks across stages, with runs live.
 
 Kira Space is a native macOS workbench for developers, built on Wails (Go) and Vue 3. One app holds
-a git client and code workspace, coding agents (Claude Code or OpenCode), a memory store, a terminal
+a git client and code workspace, coding agents (Claude Code or OpenCode), a terminal
 and a phone view on your home network. The same window also holds a visual database client for ten
 engines (DataGrip/DBeaver class), an HTTP/gRPC API client (Postman/Insomnia class), a Kubernetes
 view and a Docker manager. You switch between modules with the mode switcher: **Agents**,
-**Automations**, **Studio** (databases), **Api**, **Docker**, **Kubernetes**, **Git** and **Memory**.
+**Automations**, **Studio** (databases), **Api**, **Docker**, **Kubernetes** and **Git**.
 
 See the presentation page: [Kira Space](https://vlad-cirstean.github.io/kira-space/).
 
@@ -118,7 +118,7 @@ checklist.
 Git 2.38 or newer is required (`git merge-tree --write-tree`). Below that the Git module shows a
 blocked state.
 
-### Agents, automations, memory, terminal and phone
+### Agents, automations, terminal and phone
 
 - **Agents** — a task planner with workflows, runs and interactive agent sessions. Claude Code or
   OpenCode, picked per launch, per step or in Settings. One shared context and settings file for
@@ -126,8 +126,6 @@ blocked state.
   hermetic by default: agents skip your user config. A task picks its base branch, and a workflow
   step routes its results to the next step, an earlier step, the stage end or a stop. Desktop
   notifications fire when a session finishes or needs input.
-- **Memory** — an MCP server for Claude Code with keyword and semantic search. Semantic search
-  needs an optional local model of about 35 MB, downloaded from Settings > Memory.
 - **Runs** — scripts grouped in collections, each run in its own folder with a status, exit code
   and result. A **smart script** is a prompt run by headless Claude Code with typed parameters
   (text, select, multi-select, secret), a model, a budget, a timeout and a tool allowlist. A script
@@ -239,7 +237,7 @@ databases under rules you set. It is off by default and enabled from Settings �
 - [Bun](https://bun.sh) — package manager, script runner and test runner. Build tooling only;
   nothing ships a Node runtime.
 - [Git](https://git-scm.com) 2.38 or newer on `PATH`.
-- Optional: an authenticated `claude` CLI for Agents, Memory and smart scripts, or `opencode` for
+- Optional: an authenticated `claude` CLI for Agents and smart scripts, or `opencode` for
   Agents; the [GitHub CLI](https://cli.github.com) (`gh`) for GitHub PR links; and
   [Colima](https://github.com/abiosoft/colima) or another Docker-compatible daemon for database
   tests and local fixture databases.
@@ -278,7 +276,7 @@ Other scripts you'll use most:
 typecheck, `pre-push` runs the Go build and linters.
 
 **App data:** Kira Space keeps `kira.db`, `config/`, `logs/` and `review.db`
-under `~/.kira-space/` (override with `KIRA_SPACE_HOME`). Memories live in `~/.kira-space/memory/`.
+under `~/.kira-space/` (override with `KIRA_SPACE_HOME`).
 
 For local test databases, see [`scripts/demo-dbs/README.md`](scripts/demo-dbs/README.md). Test tiers
 are described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)'s Testing section, and

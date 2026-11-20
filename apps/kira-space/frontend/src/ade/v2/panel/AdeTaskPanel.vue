@@ -17,6 +17,7 @@ import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
+import AdeFilesTab from '../files/AdeFilesTab.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useUpdateTask } from '../queries';
@@ -84,6 +85,7 @@ const label = computed(() =>
       { value: 'main', label: t('common.main.label') },
       { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
+      { value: 'files', label: t('common.module.files.label') },
     ]"
   >
     <template #actions>
@@ -161,6 +163,7 @@ const label = computed(() =>
     </template>
     <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
+    <AdeFilesTab v-else-if="tab === 'files'" :card="card" />
     <AdeDetailsTab v-else :task="card.task" :branches="card.rows.map((r) => r.branch)" />
   </AdePanelFrame>
 </template>

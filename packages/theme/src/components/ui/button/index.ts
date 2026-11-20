@@ -51,7 +51,37 @@ export const buttonVariants = cva(
         title: 'size-5.5',
         'title-labelled': 'h-5.5 px-1 gap-1',
       },
+      // Outline tone of a `dialog` button: border, text or glyph and focus outline, no fill. Only
+      // the ADE task step action takes it, from `TaskAction.tone` (U210, U211).
+      outline: { agent: '', green: '', amber: '', red: '', purple: '' },
     },
+    compoundVariants: [
+      {
+        variant: 'dialog',
+        outline: 'agent',
+        class: 'border-agent text-agent focus-visible:outline-agent',
+      },
+      {
+        variant: 'dialog',
+        outline: 'green',
+        class: 'border-status-green text-status-green focus-visible:outline-status-green',
+      },
+      {
+        variant: 'dialog',
+        outline: 'amber',
+        class: 'border-status-amber text-status-amber focus-visible:outline-status-amber',
+      },
+      {
+        variant: 'dialog',
+        outline: 'red',
+        class: 'border-error text-error focus-visible:outline-error',
+      },
+      {
+        variant: 'dialog',
+        outline: 'purple',
+        class: 'border-status-violet text-status-violet focus-visible:outline-status-violet',
+      },
+    ],
     defaultVariants: {
       variant: 'toolbar',
       size: 'kira',

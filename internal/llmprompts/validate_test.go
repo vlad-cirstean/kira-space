@@ -26,7 +26,6 @@ func TestValidateText(t *testing.T) {
 		{name: "parse error with line", id: "ade.sendBack.line", text: "ok\n{{if .From}}", line: 2},
 		{name: "undeclared field", id: "ade.sendBack.line", text: "{{.From}}{{.Branch}}{{.Reason}}\n{{.Nope}}", line: 2},
 		{name: "missing required var", id: "ade.rebase.prompt", text: "{{if .Stack}}rebase {{range .Stack}}{{.Name}}{{end}}{{end}}"},
-		{name: "missing required fragment", id: "memory.gate.system", text: "gate"},
 		{name: "literal accepts braces", id: "dbmcp.instructions", text: "use {{ braces }}", ok: true},
 	}
 	for _, c := range cases {

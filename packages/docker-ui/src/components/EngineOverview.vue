@@ -127,7 +127,7 @@ const facts = computed<Array<[string, string]>>(() => {
     [t('docker.engine.osArch.label'), `${e.operatingSystem || e.os} / ${e.arch}`],
     [t('docker.engine.kernel.label'), e.kernelVersion],
     [t('docker.edit.cpus.label'), String(e.cpus)],
-    [t('common.module.memory.label'), formatBytes(e.memTotal)],
+    [t('common.metric.memory.label'), formatBytes(e.memTotal)],
     [t('docker.engine.endpoint.label'), status.data.value?.endpoint.host ?? ''],
   ];
 });
@@ -247,7 +247,7 @@ function refresh(): Promise<void> {
                 <UsageBar :percent="cpuPercentOfCapacity" />
                 <StatsSparkline :values="cpuSeries" :max="cpuCapacity" height-class="h-[2rem]" />
               </DetailSection>
-              <DetailSection :title="t('common.module.memory.label')">
+              <DetailSection :title="t('common.metric.memory.label')">
                 <div class="flex items-baseline gap-1.5">
                   <span class="text-kira-lg font-medium" data-testid="docker-engine-mem">{{
                     formatBytes(totals.mem)

@@ -139,7 +139,6 @@ import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
-import { memoryControl } from './memoryControl';
 
 // bridge/index.ts is this app's own composition root — Kira Studio's own bridge/index.ts, trimmed
 // to the 15 services apps/kira-space/main.go binds (LinkService added alongside this file —
@@ -392,10 +391,6 @@ const spaceControl = {
     unwrap(CodeWorkspaceService.ReorderRepos({ ids })).then((r) => trust<RepoSummary[]>(r ?? [])),
   codeWorkspaceRemoveRepo: (id: string): Promise<void> =>
     unwrap(CodeWorkspaceService.RemoveRepo({ id })),
-  codeWorkspaceListFiles: (id: string): Promise<FileListing> =>
-    unwrap<Awaited<ReturnType<typeof CodeWorkspaceService.ListFiles>>>(
-      CodeWorkspaceService.ListFiles({ id }),
-    ).then((r) => trust<FileListing>({ ...r, paths: r.paths ?? [], status: r.status ?? {} })),
   codeWorkspaceReadFile: (id: string, path: string, ifStat?: FileStat): Promise<FileRead> =>
     unwrap(CodeWorkspaceService.ReadFile({ id, path, ifStat })).then((r) => trust<FileRead>(r)),
   codeWorkspaceReadFileForEdit: (id: string, path: string): Promise<EditContent> =>
@@ -496,14 +491,6 @@ const spaceControl = {
   ): Promise<DiffRead> =>
     unwrap(CodeWorkspaceService.ReadDiff({ id, path, ...gate })).then((r) => trust<DiffRead>(r)),
 
-  // C7 §5/D7: StartSearch returns as soon as the background scan starts — its own searchId is how
-  // the renderer matches a later onCodeSearch event to the run that's waiting on it.
-  codeWorkspaceStartSearch: (id: string, req: SearchRequest): Promise<{ searchId: string }> =>
-    unwrap(CodeWorkspaceService.StartSearch({ id, windowKey, ...req })).then((r) =>
-      trust<{ searchId: string }>(r),
-    ),
-  codeWorkspaceCancelSearch: (id: string): Promise<void> =>
-    unwrap(CodeWorkspaceService.CancelSearch({ id })),
   onCodeSearch: (cb: (event: CodeSearchEvent) => void): (() => void) => on(CHANNEL.codeSearch, cb),
 
   // Agent-monitor surface: `terminalAgentSessions`/
@@ -765,6 +752,30 @@ const spaceControl = {
     unwrap(AdeTaskService.ReviewWindowTarget(args)).then((r) =>
       trust<V2.ReviewWindowTarget | null>(r),
     ),
+  // Task Files tab: the read-only file view of a task branch's worktree. The worktree root comes
+  // from the branch row; only a branch id and a relative path cross the boundary.
+  adeTaskFiles: (args: V2.BranchArgs): Promise<FileListing> =>
+    unwrap<Awaited<ReturnType<typeof AdeTaskService.TaskFiles>>>(
+      AdeTaskService.TaskFiles(args),
+    ).then((r) => trust<FileListing>({ ...r, paths: r.paths ?? [], status: r.status ?? {} })),
+  adeTaskFileRead: (branchId: string, path: string, ifStat?: FileStat): Promise<FileRead> =>
+    unwrap(AdeTaskService.TaskFileRead({ branchId, path, ifStat })).then((r) => trust<FileRead>(r)),
+  // Returns as soon as the scan starts; results stream on onCodeSearch, matched by searchId.
+  adeTaskFilesSearch: (branchId: string, req: SearchRequest): Promise<{ searchId: string }> =>
+    unwrap(AdeTaskService.TaskFilesSearch({ branchId, windowKey, ...req })).then((r) =>
+      trust<{ searchId: string }>(r),
+    ),
+  adeTaskFilesCancelSearch: (branchId: string): Promise<void> =>
+    unwrap(AdeTaskService.TaskFilesCancelSearch({ branchId })),
+  adeTaskFilesClose: (branchId: string): Promise<void> =>
+    unwrap(AdeTaskService.TaskFilesClose({ branchId })),
+  adeTaskFileReveal: (branchId: string, path: string): Promise<void> =>
+    unwrap(AdeTaskService.TaskFileReveal({ branchId, path })),
+  adeTaskFileOpenInEditor: (branchId: string, path: string): Promise<void> =>
+    unwrap(AdeTaskService.TaskFileOpenInEditor({ branchId, path })),
+  adeTaskFilesLaunchers: (): Promise<V2.TaskFilesLaunchers> =>
+    unwrap(AdeTaskService.TaskFilesLaunchers()).then((r) => trust<V2.TaskFilesLaunchers>(r)),
+
   adeTaskReviewWorking: (args: V2.BranchArgs): Promise<V2.ReviewWorking> =>
     unwrap(AdeTaskService.ReviewWorking(args)).then((r) => trust<V2.ReviewWorking>(r)),
   adeTaskReviewWorkingDiff: (args: V2.ReviewWorkingDiffArgs): Promise<DiffContent> =>
@@ -896,6 +907,5 @@ const coreBindings = {
 // studio/bridge/index.ts, which layers them over this object.
 export const control = {
   ...createCoreControl<Settings, Layout, TabRecord, SettingsPatch, AppMode>(coreBindings),
-  ...memoryControl,
   ...spaceControl,
 };

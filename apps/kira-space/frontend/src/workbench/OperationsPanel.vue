@@ -75,7 +75,6 @@ const MODULE_NAME: Record<string, MessageKey> = {
   ade: 'space.operations.moduleName.ade.label',
   files: 'common.module.files.label',
   vscode: 'space.operations.moduleName.vscode.label',
-  memory: 'common.module.memory.label',
   app: 'space.operations.moduleName.app.label',
   database: 'common.module.connections.label',
 };

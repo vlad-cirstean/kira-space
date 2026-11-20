@@ -11,8 +11,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
-	"github.com/kirathecat/kira-studio/internal/harness"
-	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
 	"github.com/kirathecat/kira-studio/internal/sqlb"
 )
@@ -35,17 +33,6 @@ type SettingsRepo struct {
 	// selectAll is prepared once by repos.New. nil when a SettingsRepo is constructed directly
 	// (e.g. in tests), which falls back to an ad-hoc query with identical SQL.
 	selectAll *sql.Stmt
-
-	// Agents holds the providers whose model catalogs memory.models is checked against; nil means
-	// the built-in providers.
-	Agents *harness.Registry
-}
-
-func (r *SettingsRepo) agents() *harness.Registry {
-	if r.Agents == nil {
-		return providers.New()
-	}
-	return r.Agents
 }
 
 func (r *SettingsRepo) GetAll() (model.Settings, error) {
@@ -62,9 +49,6 @@ func (r *SettingsRepo) GetAll() (model.Settings, error) {
 	result.Capture = readCapture(stored)
 	readAgent(stored, &result.Agent)
 	readTracking(stored, &result.Tracking)
-	appsettings.Leaf(stored, "memory.models", &result.Memory.Models)
-	result.Memory.Models = model.CleanMemoryModels(r.agents(), result.Memory.Models)
-	appsettings.Leaf(stored, "experimental.memory", &result.Experimental.Memory)
 	appsettings.LeafValid(stored, "advanced.gitLogLevel", &result.Advanced.GitLogLevel, appsettings.ValidLogLevel)
 	appsettings.Leaf(stored, "advanced.notifyPrompts", &result.Advanced.NotifyPrompts)
 	appsettings.LeafValid(stored, "advanced.opLogRetentionDays", &result.Advanced.OpLogRetentionDays, appsettings.InRange(1, 365))
@@ -204,20 +188,6 @@ func upsertTracking(tx *sql.Tx, t *model.TrackingPatch) error {
 		return err
 	}
 	return appsettings.UpsertOptional(tx, "tracking.branch", t.Branch)
-}
-
-func upsertMemory(tx *sql.Tx, m *model.MemoryPatch) error {
-	if m == nil {
-		return nil
-	}
-	return appsettings.UpsertOptional(tx, "memory.models", m.Models)
-}
-
-func upsertExperimental(tx *sql.Tx, e *model.ExperimentalPatch) error {
-	if e == nil {
-		return nil
-	}
-	return appsettings.UpsertOptional(tx, "experimental.memory", e.Memory)
 }
 
 // readCapture reads the capture.* leaves on top of model.DefaultCaptureSettings().
@@ -402,9 +372,6 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 	if err := patch.Validate(); err != nil {
 		return model.Settings{}, fmt.Errorf("repos: %w", err)
 	}
-	if err := patch.Memory.CheckModels(r.agents()); err != nil {
-		return model.Settings{}, fmt.Errorf("repos: %w", err)
-	}
 
 	err := sqlb.UpdateLeaves(r.DB, r.Dialect, r.selectAll, settingsLeaves, func(tx *sql.Tx, _ map[string]json.RawMessage) error {
 		if err := upsertAppearance(tx, patch.Appearance); err != nil {
@@ -423,12 +390,6 @@ func (r *SettingsRepo) Set(patch model.SettingsPatch) (model.Settings, error) {
 			return err
 		}
 		if err := upsertCapture(tx, patch.Capture); err != nil {
-			return err
-		}
-		if err := upsertMemory(tx, patch.Memory); err != nil {
-			return err
-		}
-		if err := upsertExperimental(tx, patch.Experimental); err != nil {
 			return err
 		}
 		if err := upsertTracking(tx, patch.Tracking); err != nil {

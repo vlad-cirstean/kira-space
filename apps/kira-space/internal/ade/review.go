@@ -246,23 +246,7 @@ func (b *TaskBoard) ReviewWindowTarget(ctx context.Context, key string) (*adewir
 
 // reviewWorktree loads a reviewable branch and its worktree; worktree is "" when it has none.
 func (b *TaskBoard) reviewWorktree(ctx context.Context, branchID string) (*gitsession.RepoEntry, model.AdeTaskBranch, string, error) {
-	sb, err := b.deps.Tasks.GetBranch(branchID)
-	if err != nil {
-		return nil, sb, "", err
-	}
-	tc, err := b.loadTaskCtx(sb.TaskID)
-	if err != nil {
-		return nil, sb, "", err
-	}
-	if err := b.reviewableBranch(tc, sb); err != nil {
-		return nil, sb, "", err
-	}
-	entry, err := b.openRepo(ctx, sb.CodeRepoID)
-	if err != nil {
-		return nil, sb, "", err
-	}
-	worktree, err := b.worktreeOf(ctx, sb)
-	return entry, sb, worktree, err
+	return b.taskWorktree(ctx, branchID, b.reviewableBranch)
 }
 
 // ReviewWorking lists the staged, unstaged and untracked changes of the branch's worktree with

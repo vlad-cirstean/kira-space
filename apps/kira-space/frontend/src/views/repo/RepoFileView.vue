@@ -12,7 +12,6 @@ import { useFileEditStore } from '../../state/fileEdit';
 import type { RepoFileTabRecord } from '../../state/tabDomain';
 import { useTabsStore } from '../../state/tabs';
 import { noRepositoryMessage, repoIdOfTab } from '../../state/workspace';
-import { attachDistillSelection } from './distillSelection';
 import { knownRead, registerEditor, rememberRead, unmountEditor } from './editors';
 import { FULL_COMMIT_ID, loadFileContent } from './fileContent';
 import { loadMonaco, peekModel, repoFileUri, repoRevisionFileUri } from './monaco';
@@ -52,8 +51,6 @@ let blameParams: InlineBlameAttachParams | null = null;
 function teardownEditor(): void {
   disposeCursorSub?.();
   disposeCursorSub = null;
-  disposeDistill?.();
-  disposeDistill = null;
   edit.detach();
   viewer.dispose();
   inlineBlame.dispose();
@@ -80,7 +77,6 @@ const edit = useFileEdit({
 });
 
 let disposeCursorSub: (() => void) | null = null;
-let disposeDistill: (() => void) | null = null;
 const inlineBlame = useInlineBlame();
 
 type ResolvedText = { text: string; stat?: FileStat } | { state: ViewState; message?: string };
@@ -148,7 +144,6 @@ async function mount(): Promise<void> {
   const model = peekModel(uri);
   if (model && stat) rememberRead(props.tab.id, { stat, versionIds: [model.getVersionId()] });
   edit.attach(editor, mod);
-  disposeDistill = attachDistillSelection(editor, props.tab.path);
 
   // Attached after the editor exists, guarded on the setting and on whether this window has a git
   // record for the repository at all (`gitRepoIdFor`'s own "never guessed" contract): a silent

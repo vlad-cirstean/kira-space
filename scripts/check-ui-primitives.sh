@@ -37,6 +37,7 @@
 # Guards U191-U203: docs/HISTORY.md (v0.3.18).
 # Guard U204: docs/HISTORY.md (v0.3.18).
 # Guards U205-U207: docs/HISTORY.md (v0.3.18).
+# Guards U210-U211: docs/HISTORY.md (v0.3.19).
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -70,7 +71,6 @@ apps/kira-space/frontend/src/studio/workbench/panels/ProjectPanel.vue
 apps/kira-space/frontend/src/studio/api/CollectionsPanel.vue
 packages/docker-ui/src/components/DockerPanel.vue
 packages/workbench/src/automations/AutomationsPanel.vue
-packages/workbench/src/memory/MemoryPanel.vue
 apps/kira-space/frontend/src/repo/GitPanel.vue
 apps/kira-space/frontend/src/studio/project/ProjectTree.vue
 apps/kira-space/frontend/src/studio/project/TreeRow.vue
@@ -81,10 +81,10 @@ packages/docker-ui/src/components/ImageList.vue
 packages/docker-ui/src/components/VolumeList.vue
 packages/docker-ui/src/components/NetworkList.vue
 packages/workbench/src/components/VirtualList.vue
-apps/kira-space/frontend/src/repo/RepoFileTree.vue
-apps/kira-space/frontend/src/repo/RepoTreeRow.vue
-apps/kira-space/frontend/src/repo/RepoSearchView.vue
-apps/kira-space/frontend/src/repo/RepoSearchRow.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileTree.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileTreeRow.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileSearch.vue
+apps/kira-space/frontend/src/ade/v2/files/AdeFileSearchRow.vue
 apps/kira-space/frontend/src/repo/RepoReviewView.vue
 packages/git-ui/src/components/review/ReviewView.vue
 packages/git-ui/src/components/review/ReviewCommitRow.vue
@@ -133,7 +133,7 @@ U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # s
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
-# B (apps/kira-space, W/memory)
+# B (apps/kira-space)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
 U101 apps/kira-space/frontend/src/ade/v2/sessions/AdeSessionsMenu.vue # ADE tab count badge (P466)
@@ -160,7 +160,7 @@ U62 packages/git-ui/src/components/CommitGrid.vue # SlickGrid engine host owns r
 U47 packages/git-ui/src/components/SearchResults.vue # listbox of the SearchBox combobox; keys live in SearchBox
 U46 packages/git-ui/src/graph/layoutClient.ts # main-thread worker fallback defers each request with its own zero-delay timer; debounce drops concurrent ones
 U47 packages/git-ui/src/lib/gridKeyboard.ts # PageUp/PageDown over a streamed 100k-row store, not list semantics
-U109 apps/kira-space/frontend/src/repo/RepoFileTree.vue # debounced copy of the kept fileSearch prop, derived not owned
+U109 apps/kira-space/frontend/src/ade/v2/files/AdeFileTree.vue # debounced copy of the name filter, derived not owned
 U109 packages/git-ui/src/components/FileTree.vue # filterInput echoes the filter prop; its owner keeps it
 # P674 iteration 1: virtual lists VirtualList cannot host
 U164 apps/kira-space/frontend/src/ade/v2/repos/AdeReposPage.vue # grouped windowRows with group heads, not a flat row list
@@ -211,7 +211,7 @@ U26@@vt@@@@retired tone variant err/destructive/note, or a tone alpha (use Badge
 U27@@v@@StatusDot.vue@@hand-rolled status dot or pill (use StatusDot, Badge)@@\bclass="(?=[^"]*${TOK}rounded-full(?![\w-]))(?:(?=[^"]*${TOK}size-(?:1\.5|2|2\.5)(?![\w.-]))|(?=[^"]*${TOK}w-2(?![\w.-]))(?=[^"]*${TOK}h-2(?![\w.-]))|(?=[^"]*${TOK}w-2\.5(?![\w.-]))(?=[^"]*${TOK}h-2\.5(?![\w.-])))|<span\b(?&t)\s:?class="(?=[^"]*${TOK}rounded-full(?![\w-]))(?=[^"]*${TOK}px-)
 U28@@v@@@@raw checkbox/radio input (use Checkbox, RadioGroup)@@type="(?:checkbox|radio)"
 U28@@vS@@@@Checkbox in a settings pane (a live boolean is a Switch)@@<Checkbox\b
-U28@@v@@/settings/|MemoryPanel.vue|AdeMainTab.vue|AdeReposPage.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
+U28@@v@@/settings/|AdeMainTab.vue|AdeReposPage.vue@@Switch outside settings panes (a form option is a Checkbox)@@<Switch\b
 U29@@v@@@@TooltipProvider with props (the theme owns the delays), or TooltipContent class other than whitespace-pre-wrap@@<TooltipProvider\b(?!\s*>)|<TooltipContent\b(?&t)\s:?class="(?!whitespace-pre-wrap")
 U30@@v@@@@DropdownMenuContent width, or DropdownMenuItem height/padding/gap class@@<DropdownMenuContent\b(?&t)\s:?class="[^"]*${TOK}(?:w|min-w|max-w)-|<DropdownMenuItem\b(?&t)\s:?class="[^"]*${TOK}(?:h|py|px|gap)-
 U31@@v@@@@hand-written resize cursor or handle look, or a separator without resizeHandleVariants@@${TOK}cursor-(?:col|row|ew|ns)-resize|<ResizeHandle\b(?&t)\s:?class="[^"]*${TOK}(?:w-|h-|bg-|shadow|cursor|outline)|(?s)\A(?!.*resizeHandleVariants).*role="separator"
@@ -304,7 +304,7 @@ U121@@v@@@@DialogDescription inside DialogBody (intro text is the header descrip
 U122@@v@@MenuItems.vue@@hand DropdownMenuItem (menus render MenuItems from a MenuItem[]; radio, checkbox and label blocks are other tags, RM.1)@@<DropdownMenuItem\b
 U124@@v@@CodeBlock.vue|AdeTaskCard.vue@@Card class sets padding, gap, type, fill, border, opacity or row layout, or binds :class (variant inset, section or list; state shows through a Badge; code is CodeBlock; a row is never a Card, RC.1-RC.3)@@<Card\b(?&t)\s:?class="[^"]*${TOK}(?:font-data|whitespace-pre|flex-row|justify-between|p-|px-|py-|pt-|pb-|gap-|text-kira|text-muted|text-subtle|border|opacity-|bg-|rounded|shadow)|<Card\b(?&t)\s:class=
 U123@@v@@@@plain-text Tooltip triple (use TextTooltip; text and kbd: TextTooltip :kbd, RT.1)@@(?s)<Tooltip(?:\s+(?:v-if|v-else-if|v-for|:key)="[^"]*"|\s+v-else(?![-\w]))*\s*>\s*<TooltipTrigger as-child>(?:(?!</TooltipTrigger>|<Tooltip\b).)*</TooltipTrigger>\s*<TooltipContent(?:\s+(?:v-if|data-testid|side)="[^"]*")*\s*>\s*(?:\{\{(?:(?!\}\}).)*\}\}|[^<{]+)\s*(?:<Kbd>\{\{(?:(?!\}\}).)*\}\}</Kbd>\s*)?</TooltipContent>\s*</Tooltip>
-U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS|ACTION_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
+U125@@vt@@/ade/v2/plan/|/ade/v2/tones.ts|AdeChip.vue|PlanTaskCard.vue|AdeAutomationChip.vue@@ADE pastel map, tone token or toned AdeChip off the plan board (theme tones, Badge, statusTone.ts; P672 D1)@@\b(?:TONE_TEXT_CLASS|TONE_TAG_CLASS|SOLID_CLASS)\b|${TOK}(?:ring|outline|fill|stroke)-tone-[a-z]|--color-tone-|<AdeChip\b(?![^>]*\s:color=)
 U126@@v@@@@SecondaryTabs tabs, segmented or text with a size (only choice sizes to its host; tabs and segmented keep the default, RTa.1)@@<SecondaryTabs\b(?!(?&t)\svariant="choice")(?&t)\s:?size=
 U127@@v@@@@EmptyState media holding a CodiconIcon or Spinner (icon prop is muted; loading prop for a spinner, RE.2)@@(?s)<EmptyState\b(?&t)(?<!/)>(?:(?!</EmptyState>).)*?<template\s+#media>\s*<(?:CodiconIcon|Spinner)\b
 U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl off the landing hero (detail values are text-kira-lg, RTy.1)@@${TOK}text-kira-xl(?![\w-])
@@ -386,6 +386,8 @@ U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand
 U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
 U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
 U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
+U210@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
+U211@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
 GUARDS
 
 # hits: "U<n> path"

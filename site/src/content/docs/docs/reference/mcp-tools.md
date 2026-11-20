@@ -3,7 +3,6 @@ title: MCP tools
 description: Every tool each Kira MCP server offers, with its arguments.
 sources:
   - internal/llmprompts/registry.go
-  - internal/memory/mcpserver
   - apps/kira-space/internal/dbmcp/server.go
   - internal/agentmcp
   - internal/harness/claude/mcpinstall
@@ -12,71 +11,6 @@ sidebar:
 ---
 
 Tool descriptions are editable defaults. See [Prompts](../prompts/).
-
-## kira-memory (Kira Space)
-
-Registered in your Claude Code user scope from `Settings > Memory`. Claude Code starts it per session over stdio. See [Memory](../../space/memory/).
-
-### store_memory
-
-Store facts and standing rules. A rule is an imperative that holds beyond one task, with its reason. The store splits independent claims into separate facts. A list about one subject stays one fact. It rewords each fact and updates a matching fact in the same scope, unless the stored one has a higher origin. An unclear item, a weak reason, a question or a one-off task is challenged: nothing is stored and questions come back. A rule and a fact stay separate memories. The result and every search result show the kind, `fact` or `rule`, after the version.
-
-- `items`: 1 to 20 items. Each has `fact`, `reason`, `origin` (user, agent or external), `scope` (company, project or personal), plus `sourceTag` for external and `project` for project scope.
-- `clarifications`: question and answer pairs for an earlier challenge.
-- `session`: a Claude Code session id. Defaults to the current session.
-- `groups`: up to 5 groups of kind task, document or thread, each with `key` and optional `title`.
-
-To cite a memory in a code comment, write its fact id.
-
-### search_memories
-
-Search by words and meaning, best first. The meta line of a result shows its kind, `fact` or `rule`.
-
-- `query`: free text.
-- `includeHistory`: also return older versions.
-- `limit`: default 40, maximum 200.
-- `scopes`, `origins`: filters.
-- `project`: a project key whose facts rank first.
-
-### memory_history
-
-Every version of one memory, oldest first. Argument: `id`.
-
-### memory_context
-
-The facts stored with one fact, per group, newest first. Arguments: `id`, `limit` (default 20, maximum 100).
-
-### ingest_files
-
-Store the facts and rules of files and folders by path, in the background. Send absolute paths, never content.
-
-- `paths`: 1 to 100 paths.
-- `origin`, `sourceTag`, `scope`, `project`: as in `store_memory`. Storing needs `paths`, `origin` and `scope`.
-- `groups`: up to 4 groups of kind task or thread.
-- `writeDoc`: also write `<name>.memory.md` beside each file. Default false.
-- `session`: a Claude Code session id.
-- `text`: text to distill, up to 120,000 characters. Only with `distill`.
-- `distill`: `true` stores nothing and returns the merged lines instead. Default false.
-- `mode`: with `distill`, `facts` (default) returns merged lines; `rewrite` returns one short text rewritten in its own form, or unchanged when already clean. Text only, up to 2,000 characters.
-- `context`: code around the text, read only, up to 6,000 characters. Only with `mode` rewrite.
-
-A large job waits for you to start it in Kira Space. So does a job holding a kira-memory doc whose header claims a higher origin, or another scope or project, than the job. A doc's header provenance wins on import, so you confirm it first.
-
-#### Distill
-
-With `distill` true, the call condenses text or one file into short lines and stores nothing. No gate runs and no import job is created. Give `text` or one absolute file path in `paths`, never both. Any other argument is refused: `origin`, `sourceTag`, `scope`, `project`, `groups`, `writeDoc` and `session`. A folder is refused. Do not read the file first.
-
-It runs the import pipeline up to the point where import would store. The input is split into parts, and Claude extracts the facts and rules of each part. Doubtful facts are checked against the source. One merge call then joins duplicates across the parts, resolves unclear references, drops what is not a memory and returns the lines in source order. The merge covers only the input and never reads your memories. Examples are never lines by themselves, and a table is kept only as the headline figure of a stated conclusion.
-
-The call waits for the result. The text holds the lines, one per line with no prefix. A blank line and one `unresolved: <fact> | <questions>` line per fact the input leaves open follow. The structured result has `lines` (each with `text` and `kind`), `unresolved` and `costUsd`. A call costs Claude tokens: large input is split into at most 16 parts, and the call stops at 2 USD. It is not available to the agent an import runs.
-
-### ingest_status
-
-State of an ingest job. Argument: `id`, the job id from `ingest_files`.
-
-### remember (prompt)
-
-Run `/mcp__kira-memory__remember` to store durable facts from given text or the recent conversation. Argument: `text`.
 
 ## Studio MCP server (Studio modules)
 

@@ -161,13 +161,12 @@ func (r *OpLogRepo) pruneCountQuery(scope func(*sqlbuilder.Cond) string, maxRows
 	return del
 }
 
-// ReconcileInterrupted turns rows left running by a quit into errors carrying msg. Foreign rows
-// (id holds a '.') belong to a process that may outlive the app; the owner sweep handles them.
+// ReconcileInterrupted turns rows left running by a quit into errors carrying msg.
 func (r *OpLogRepo) ReconcileInterrupted(msg string) error {
 	c := kiraschema.OpLog
 	ub := r.Dialect.Update(c.Table)
 	ub.Set(ub.Assign(c.Status, oplog.StatusError), ub.Assign(c.Error, msg)).
-		Where(ub.Equal(c.Status, oplog.StatusRunning), ub.NotLike(c.ID, foreignIDLike))
+		Where(ub.Equal(c.Status, oplog.StatusRunning))
 	if _, err := sqlb.Exec(r.DB, ub); err != nil {
 		return fmt.Errorf("repos: reconcile ops: %w", err)
 	}

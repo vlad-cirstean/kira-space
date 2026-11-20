@@ -44,7 +44,7 @@ describe('masking', () => {
   });
 
   test('menu path greater-than is legal', () => {
-    expect(rules('Open Settings > Memory.')).toEqual([]);
+    expect(rules('Open Settings > Prompts.')).toEqual([]);
   });
 });
 

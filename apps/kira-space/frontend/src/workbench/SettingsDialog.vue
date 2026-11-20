@@ -19,7 +19,6 @@ import StudioMcpApiPane from '../studio/workbench/settings/StudioMcpApiPane.vue'
 import StudioMcpConnectionsPane from '../studio/workbench/settings/StudioMcpConnectionsPane.vue';
 import StudioMcpKeptPane from '../studio/workbench/settings/StudioMcpKeptPane.vue';
 import StudioMcpServerPane from '../studio/workbench/settings/StudioMcpServerPane.vue';
-import { useMemoryEnabled } from './experimental';
 import AboutPane from './settings/AboutPane.vue';
 import AdvancedPane from './settings/AdvancedPane.vue';
 import AgentPane from './settings/AgentPane.vue';
@@ -27,10 +26,8 @@ import AppearancePane from './settings/AppearancePane.vue';
 import CapturePane from './settings/CapturePane.vue';
 import CliToolsPane from './settings/CliToolsPane.vue';
 import ConfigSyncPane from './settings/ConfigSyncPane.vue';
-import ExperimentalPane from './settings/ExperimentalPane.vue';
 import FileTypesPane from './settings/FileTypesPane.vue';
 import GitPane from './settings/GitPane.vue';
-import MemoryPane from './settings/MemoryPane.vue';
 import MobileAccessPane from './settings/MobileAccessPane.vue';
 import UpdatesPane from './settings/UpdatesPane.vue';
 
@@ -59,7 +56,6 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   Updates: t('space.settings.nav.updates.label'),
   'Mobile access': t('space.settings.nav.mobileAccess.label'),
   Agent: agentInfo.value.productLabel,
-  Memory: t('common.module.memory.label'),
   Data: t('studio.settings.nav.data.label'),
   Cache: t('studio.settings.nav.cache.label'),
   Api: t('studio.mode.api.label'),
@@ -71,17 +67,12 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Studio MCP variables': t('common.module.variables.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
-  Experimental: t('space.settings.nav.experimental.label'),
   About: t('space.settings.nav.about.label'),
 }));
 
-// Memory leaves the nav and unmounts while its flag is off: a mounted MemoryPane queries
-// MemoryService, which opens memory.db.
-const memoryEnabled = useMemoryEnabled();
-const shownSections = computed(() => sections.filter((s) => s !== 'Memory' || memoryEnabled.value));
 const initialSection = computed(() => {
   const s = settingsStore.settingsSection;
-  return s && shownSections.value.includes(s) ? s : undefined;
+  return s && sections.includes(s) ? s : undefined;
 });
 
 // §10.1: a later plain open (the title bar's gear icon) must not inherit a deep link this instance
@@ -95,15 +86,13 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
   <SettingsShell
     :section-labels="sectionLabels"
     :indented-sections="indentedSections"
-    :sections="shownSections"
+    :sections="sections"
     :initial-section="initialSection"
     :defaults="{
       appearance: defaultSettings.appearance,
       advanced: defaultSettings.advanced,
       git: defaultSettings.git,
       agent: defaultSettings.agent,
-      memory: defaultSettings.memory,
-      experimental: defaultSettings.experimental,
       capture: defaultSettings.capture,
       tracking: defaultSettings.tracking,
       data: defaultSettings.data,
@@ -118,8 +107,6 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       advanced: settingsStore.advanced,
       git: settingsStore.git,
       agent: settingsStore.agent,
-      memory: settingsStore.memory,
-      experimental: settingsStore.experimental,
       capture: settingsStore.capture,
       tracking: settingsStore.tracking,
       data: settingsStore.data,
@@ -197,14 +184,6 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
         :reset-leaf="s.resetLeaf"
         :register-field-error="s.registerFieldError"
       />
-      <MemoryPane
-        v-if="memoryEnabled"
-        :active="s.activeSection === 'Memory'"
-        :draft="s.draft"
-        :is-at-default="s.isAtDefault"
-        :reset-leaf="s.resetLeaf"
-        :register-field-error="s.registerFieldError"
-      />
       <DataPane
         :active="s.activeSection === 'Data'"
         :draft="s.draft"
@@ -257,13 +236,6 @@ const save = (patch: SettingsPatch): Promise<void> => settingsStore.patchSetting
       <PromptsPane :active="s.activeSection === 'Prompts'" />
       <AdvancedPane
         :active="s.activeSection === 'Advanced'"
-        :draft="s.draft"
-        :is-at-default="s.isAtDefault"
-        :reset-leaf="s.resetLeaf"
-        :register-field-error="s.registerFieldError"
-      />
-      <ExperimentalPane
-        :active="s.activeSection === 'Experimental'"
         :draft="s.draft"
         :is-at-default="s.isAtDefault"
         :reset-leaf="s.resetLeaf"

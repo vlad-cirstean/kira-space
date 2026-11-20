@@ -2,7 +2,8 @@ import type { Page } from '@playwright/test';
 import { expect, filesTest, type KiraApp, type RelaunchOptions, test } from './fixtures';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { repoRowById, repoTab, treeRow } from './support/repoRows';
+import { filesWindowControl, openMoreFiles } from './support/repoFiles';
+import { repoTab } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
 
 // Same scenario as flows/repoflow TestEditFile: fixtures from contract repo-file-edit.
@@ -55,24 +56,27 @@ const writeSnap = (text: string, baseHash: string, result: { hash: string }): Co
   response: result,
 });
 
+const OTHER = 'other.ts';
 const SETUP: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: [FILE], status: {}, truncated: false },
-  },
   readSnap(base.text),
+  {
+    channel: IPC.codeWorkspaceReadFile,
+    args: { id: REPO.id, path: OTHER },
+    response: {
+      kind: 'found',
+      text: 'export const other = 1;\n',
+      bytes: 24,
+      limitBytes: 8 * 1024 * 1024,
+      language: 'typescript',
+    },
+  },
 ];
 
 async function openFile(
   relaunch: (o?: RelaunchOptions) => Promise<KiraApp>,
   control: ControlSnapshot[],
 ) {
-  const app = await relaunch({ control: [...SETUP, ...control] });
-  await repoRowById(app.window, REPO.id).click();
-  await app.window.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(app.window, FILE).click();
+  const app = await relaunch({ control: filesWindowControl(REPO, [FILE], [...SETUP, ...control]) });
   await expect(lines(app.window)).toContainText('package main');
   return app;
 }
@@ -89,7 +93,7 @@ async function startEditing(page: Page): Promise<void> {
   await page.keyboard.press('ControlOrMeta+End');
 }
 
-test('contract: edit and save with the shortcut and the button', async ({ relaunch }) => {
+filesTest('contract: edit and save with the shortcut and the button', async ({ relaunch }) => {
   const { window: page, control } = await openFile(relaunch, [
     ...editSnap(base),
     writeSnap(`${base.text}x`, base.hash, saved),
@@ -125,7 +129,7 @@ test('contract: edit and save with the shortcut and the button', async ({ relaun
   await expect(page.locator('[data-testid="repo-file-edit"]')).toBeVisible();
 });
 
-test('contract: a file changed on disk offers Refresh and Overwrite', async ({ relaunch }) => {
+filesTest('contract: a file changed on disk offers Refresh and Overwrite', async ({ relaunch }) => {
   const { window: page, control } = await openFile(relaunch, [
     ...editSnap(base, CHANGED),
     {
@@ -146,7 +150,7 @@ test('contract: a file changed on disk offers Refresh and Overwrite', async ({ r
   expect(writes(control).at(-1)?.args).toMatchObject({ baseHash: CHANGED.hash });
 });
 
-test('closing a tab with unsaved edits asks to discard', async ({ relaunch }) => {
+filesTest('closing a tab with unsaved edits asks to discard', async ({ relaunch }) => {
   const { window: page } = await openFile(relaunch, editSnap(base));
   await startEditing(page);
   await page.keyboard.type('x');
@@ -162,31 +166,33 @@ test('closing a tab with unsaved edits asks to discard', async ({ relaunch }) =>
   await expect(repoTab(page, 'repo-file')).toHaveCount(0);
 });
 
-test('Done with unsaved edits asks to discard and returns to the disk text', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openFile(relaunch, editSnap(base));
-  await startEditing(page);
-  await page.keyboard.type('x');
-  await page.locator('[data-testid="repo-file-done"]').click();
-  await page.locator('[data-testid="confirm-dialog-confirm"]').click();
-  await expect(page.locator('[data-testid="repo-file-edit"]')).toBeVisible();
-  await expect(lines(page)).not.toContainText('x');
-  await expect(lines(page)).toContainText('package main');
-});
+filesTest(
+  'Done with unsaved edits asks to discard and returns to the disk text',
+  async ({ relaunch }) => {
+    const { window: page } = await openFile(relaunch, editSnap(base));
+    await startEditing(page);
+    await page.keyboard.type('x');
+    await page.locator('[data-testid="repo-file-done"]').click();
+    await page.locator('[data-testid="confirm-dialog-confirm"]').click();
+    await expect(page.locator('[data-testid="repo-file-edit"]')).toBeVisible();
+    await expect(lines(page)).not.toContainText('x');
+    await expect(lines(page)).toContainText('package main');
+  },
+);
 
-test('a tab switch keeps the draft and the dirty state', async ({ relaunch }) => {
-  const { window: page } = await openFile(relaunch, editSnap(base));
+filesTest('a tab switch keeps the draft and the dirty state', async ({ relaunch }) => {
+  const { window: page, control } = await openFile(relaunch, editSnap(base));
   await startEditing(page);
   await page.keyboard.type('x');
-  await repoTab(page, 'repo-graph').click();
-  await repoTab(page, 'repo-file').click();
+  await openMoreFiles(page, control, REPO, [OTHER]);
+  await expect(lines(page)).toContainText('export const other');
+  await repoTab(page, 'repo-file').first().click();
   await expect(lines(page)).toContainText('x');
   await expect(page.locator('[data-testid="repo-file-modified"]')).toBeVisible();
   await expect(page.locator('[data-testid="repo-file-save"]')).toBeEnabled();
 });
 
-test('no suggestions appear while editing', async ({ relaunch }) => {
+filesTest('no suggestions appear while editing', async ({ relaunch }) => {
   const { window: page } = await openFile(relaunch, editSnap(base));
   await startEditing(page);
   await page.keyboard.type('pack');
@@ -196,7 +202,7 @@ test('no suggestions appear while editing', async ({ relaunch }) => {
   await expect(page.locator('.suggest-widget.visible')).toHaveCount(0);
 });
 
-test('a file that is not UTF-8 text stays read only', async ({ relaunch }) => {
+filesTest('a file that is not UTF-8 text stays read only', async ({ relaunch }) => {
   const { window: page } = await openFile(
     relaunch,
     editSnap({ kind: 'notUtf8', text: '', hash: '', language: 'plaintext' }),
@@ -214,11 +220,6 @@ test('a revision-pinned tab has no Edit button', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: [FILE], status: {}, truncated: false },
-      },
       {
         channel: IPC.tabsList,
         response: [

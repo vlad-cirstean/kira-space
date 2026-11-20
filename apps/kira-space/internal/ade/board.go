@@ -19,6 +19,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adeflow"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitaskpass"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitcred"
@@ -195,6 +196,9 @@ type TaskBoard struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 
+	// taskFiles holds the file session of each task branch's worktree, keyed by branch row id.
+	taskFiles *codeworkspace.Registry
+
 	importMu sync.Mutex // serializes repo imports (folder add, folder watch rescans)
 	// afterImport runs after each repo a folder scan imports; tests flip state mid-scan with it.
 	afterImport func(codeRepoID string)
@@ -270,7 +274,7 @@ func NewTaskBoard(deps TaskBoardDeps) *TaskBoard {
 	}
 	ctx, cancel := context.WithCancel(oplog.WithOrigin(context.Background(), oplog.Origin{Module: oplog.ModuleADE, Trigger: oplog.TriggerAuto}))
 	b := &TaskBoard{
-		deps: deps, ctx: ctx, cancel: cancel, wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
+		deps: deps, ctx: ctx, cancel: cancel, taskFiles: codeworkspace.NewRegistry(), wfMemo: newWorkflowMemo(), folderW: map[string]*folderWatcher{},
 		repoMus: map[string]*sync.Mutex{}, remoteSlots: map[string]chan struct{}{}, tailRunning: map[string]int{}, facts: boardFacts{last: map[string]*repoLast{}, flight: map[string]*repoFlight{}}, byGitRepoID: map[string]string{}, gitRepoIDOf: map[string]string{},
 		caches: map[string]*repoCaches{}, rebase: map[string]*rebaseCache{}, live: map[string]*liveRun{}, tuiGrants: map[string]tuiBinding{}, tuiSandbox: map[string]*liveTUISandbox{}, setupLive: map[string]*liveRun{},
 		taskMus: map[string]*sync.Mutex{}, archiving: map[string]int{}, finishes: map[string]agentmcp.Finish{}, claims: map[string]string{}, stepMsgs: map[string]string{},
@@ -352,6 +356,7 @@ func (b *TaskBoard) Close() {
 	b.updates.close()
 	b.checker.close()
 	b.wg.Wait()
+	b.taskFiles.CloseAll()
 	b.conn.Close()
 }
 

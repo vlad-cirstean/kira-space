@@ -42,17 +42,15 @@ const sendBack = { ...listed, defaultText: DEFAULT_TEXT, text: DEFAULT_TEXT };
 const sendBackEdited = { ...saved, defaultText: DEFAULT_TEXT };
 const gate = {
   ...listed,
-  id: 'memory.gate.system',
-  kind: 'system',
-  titleKey: 'llmPrompts.entry.memoryGateSystem.title',
-  purposeKey: 'llmPrompts.entry.memoryGateSystem.description',
-  usedByKey: 'llmPrompts.entry.memoryGateSystem.usedBy.body',
+  id: 'dbmcp.instructions',
+  kind: 'instructions',
+  titleKey: 'llmPrompts.entry.dbmcpInstructions.title',
+  purposeKey: 'llmPrompts.entry.dbmcpInstructions.description',
+  usedByKey: 'llmPrompts.entry.dbmcpInstructions.usedBy.body',
   hash: 'gate-hash',
   vars: [],
-  fragments: ['memory.dataHygiene'],
-  schema: '{"type":"object"}',
-  defaultText: 'Judge each fact.',
-  text: 'Judge each fact.',
+  defaultText: 'Explore connections first.',
+  text: 'Explore connections first.',
 };
 const finishStep = {
   ...listed,
@@ -105,7 +103,7 @@ test('lists this app’s prompts; an unedited prompt has no badge', async ({ rel
   await openPrompts(window);
 
   await expect(window.locator('[data-testid="llm-prompt-row"]')).toHaveCount(3);
-  await expect(promptRow(window, gate.id)).toContainText('Memory gate');
+  await expect(promptRow(window, gate.id)).toContainText('Studio MCP instructions');
   await expect(promptRow(window, editID)).toContainText('Send back message');
   await expect(promptRow(window, finishStep.id)).toContainText('finish_step');
   await expect(promptBadges(window, gate.id)).toHaveCount(0);

@@ -4,7 +4,7 @@
 // that out of anything eager). setiFileIcon.ts imports `seti-icons` and nothing else, so this stays
 // a two-line copy of FileTree.vue's own `fileIconStyle`, not a reimplementation of its rule.
 //
-// Shared by RepoTreeRow.vue and RepoSearchRow.vue so a file explorer and a search result list agree
+// Shared by AdeFileTreeRow.vue and AdeFileSearchRow.vue so a file explorer and a search result list agree
 // on one icon per language, rather than the tree gaining per-language icons while search keeps its
 // one generic glyph.
 import { setiIconFor } from '@kira/git-ui/icons';

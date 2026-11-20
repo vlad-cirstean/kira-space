@@ -4,7 +4,7 @@ import type { AppMode } from '@shared/domain/mode';
 // this one provider.
 import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { agentControlKey, useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import { useAgentMessageDefaults } from '@workbench/agent/agentInfo';
 import ApprovalsSurface from '@workbench/approvals/ApprovalsSurface.vue';
 import { approvalsControlKey } from '@workbench/approvals/approvalsQueries';
 import { provideApprovalKinds } from '@workbench/approvals/registry';
@@ -20,7 +20,6 @@ import UpdateDialog from '@workbench/components/UpdateDialog.vue';
 import WorkbenchTitleBar from '@workbench/components/WorkbenchTitleBar.vue';
 import { workbenchHostKey } from '@workbench/host';
 import { llmPromptsControlKey } from '@workbench/llmPrompts/queries';
-import { memoryModuleKey } from '@workbench/memory/module';
 import PromptHost from '@workbench/prompts/PromptHost.vue';
 import PromptsToast from '@workbench/prompts/PromptsToast.vue';
 import { promptsControlKey } from '@workbench/prompts/promptsQueries';
@@ -30,7 +29,7 @@ import CommandPalette from '@workbench/shortcuts/CommandPalette.vue';
 import { runCommand } from '@workbench/shortcuts/commands';
 import { providePaletteCommands, usePaletteStore } from '@workbench/shortcuts/palette';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
-import { computed, getCurrentInstance, markRaw, onMounted, onUnmounted, provide } from 'vue';
+import { computed, markRaw, onMounted, onUnmounted, provide } from 'vue';
 import { spaceApprovalKinds } from './ade/v2/request/kinds';
 import AdeReviewWindow from './ade/v2/review/AdeReviewWindow.vue';
 import AdeHandoverPrompt from './ade/v2/stage/AdeHandoverPrompt.vue';
@@ -72,12 +71,10 @@ import { useObjectStoreStore } from './studio/state/objectStore';
 import GenerateDataDialog from './studio/workbench/GenerateDataDialog.vue';
 import UploadObjectDialog from './studio/workbench/UploadObjectDialog.vue';
 import { createAutomationsModule } from './workbench/automationsModule';
-import { installMemoryGate, useVisibleModes } from './workbench/experimental';
 import GitCredentialDialog from './workbench/GitCredentialDialog.vue';
 import { createWorkbenchHost } from './workbench/host';
 import MobilePairingDialog from './workbench/MobilePairingDialog.vue';
-import { createMemoryModule } from './workbench/memoryModule';
-import { CONNECTION_PANEL_MODES, MODES } from './workbench/modes';
+import { CONNECTION_PANEL_MODES, MODE_ORDER, MODES } from './workbench/modes';
 import SettingsDialog from './workbench/SettingsDialog.vue';
 import WorkbenchShell from './workbench/WorkbenchShell.vue';
 
@@ -87,13 +84,10 @@ provide(workbenchHostKey, createWorkbenchHost());
 // P128 §2.4/§2.7: the automations module's own context, for AutomationsPanel.vue/AutomationsStart.vue/
 // AutomationsNewTab.vue/TerminalTabView.vue (all shared with Kira Studio) to inject.
 provide(automationsModuleKey, createAutomationsModule());
-provide(memoryModuleKey, createMemoryModule());
 provide(promptsControlKey, control);
 provide(approvalsControlKey, control);
 provideApprovalKinds({ ...spaceApprovalKinds(), ...studioApprovalKinds() });
 provide(llmPromptsControlKey, control);
-// App level, not component level: Pinia stores and composables outside the tree inject it too.
-getCurrentInstance()?.appContext.app.provide(agentControlKey, control);
 
 // Always-mounted root dialogs (ConfirmDialog, GitCredentialDialog: a credential prompt must be able
 // to appear with nothing else open) and the Go menu's channel subscriptions.
@@ -101,8 +95,6 @@ const layoutStore = useLayoutStore();
 const settingsStore = useSettingsStore();
 useAgentMessageDefaults(() => settingsStore.agent.provider, control);
 const modeStore = useModeStore();
-const visibleModes = useVisibleModes();
-installMemoryGate();
 const keepAwakeStore = useKeepAwakeStore();
 const paletteStore = usePaletteStore();
 providePaletteCommands(appPaletteCommands());
@@ -223,7 +215,7 @@ function onToggleKeepAwake(): void {
     <ProofWindow v-else-if="proofWindow.active" />
     <div v-else class="h-full flex flex-col">
       <WorkbenchTitleBar
-        :order="visibleModes"
+        :order="MODE_ORDER"
         :modes="MODES"
         :active="modeStore.active"
         :app-title="t('common.product.kiraSpace.label')"

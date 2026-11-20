@@ -1,5 +1,5 @@
 // Package textloss lists the protected tokens a rewrite dropped: numbers, quoted and backtick spans,
-// identifiers, negation counts, and for stored memory text paths and names. Pure; no I/O.
+// identifiers, negation counts, and for prose text paths and names. Pure; no I/O.
 package textloss
 
 import (
@@ -25,11 +25,11 @@ var (
 // numbers, backtick and double-quoted spans, identifiers, schema fields and negation counts.
 func Lost(old, cur string, fields []string) []string { return lost(old, cur, fields, false) }
 
-// LostText is Lost for stored memory text: also file paths (tokens holding "/") and names
+// LostText is Lost for prose text: also file paths (tokens holding "/") and names
 // (capitalized words other than the first word of old, and all-caps words of 2+ letters).
 func LostText(old, cur string) []string { return lost(old, cur, nil, true) }
 
-func lost(old, cur string, fields []string, memory bool) []string {
+func lost(old, cur string, fields []string, prose bool) []string {
 	var out []string
 	oa, na := actionRe.FindAllString(old, -1), actionRe.FindAllString(cur, -1)
 	if strings.Join(oa, "\x00") != strings.Join(na, "\x00") {
@@ -45,7 +45,7 @@ func lost(old, cur string, fields []string, memory bool) []string {
 			}
 		}
 	}
-	if memory {
+	if prose {
 		out = append(out, lostSet(paths(ob), paths(nb))...)
 		out = append(out, lostSet(names(ob), names(nb))...)
 	}
@@ -71,47 +71,6 @@ func lostSet(old, cur []string) []string {
 	for _, t := range old {
 		if !slices.Contains(cur, t) {
 			out = append(out, t)
-		}
-	}
-	return out
-}
-
-// Names lists the memory-text names of s: capitalized words after the first word and all-caps words.
-func Names(s string) []string { return names(s) }
-
-// Recall counts the protected tokens of old (numbers, backtick and quoted spans, identifiers, paths,
-// names, negations) and how many of them cur keeps. A negation counts once per occurrence in old.
-func Recall(old, cur string) (total, kept int) {
-	ob, nb := actionRe.ReplaceAllString(old, ""), actionRe.ReplaceAllString(cur, "")
-	sets := func(s string) [][]string {
-		var out [][]string
-		for _, re := range []*regexp.Regexp{numberRe, backtickRe, quotedRe, identRe} {
-			out = append(out, uniq(re.FindAllString(s, -1)))
-		}
-		return append(out, paths(s), names(s))
-	}
-	os, ns := sets(ob), sets(nb)
-	for i := range os {
-		for _, tok := range os[i] {
-			total++
-			if slices.Contains(ns[i], tok) {
-				kept++
-			}
-		}
-	}
-	nn := counts(lowerAll(negationRe.FindAllString(nb, -1)))
-	for w, c := range counts(lowerAll(negationRe.FindAllString(ob, -1))) {
-		total += c
-		kept += min(c, nn[w])
-	}
-	return total, kept
-}
-
-func uniq(in []string) []string {
-	var out []string
-	for _, x := range in {
-		if !slices.Contains(out, x) {
-			out = append(out, x)
 		}
 	}
 	return out

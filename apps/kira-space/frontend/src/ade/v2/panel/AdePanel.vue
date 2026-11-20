@@ -2,6 +2,7 @@
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
 import { computed, watch } from 'vue';
+import { useAdeFilesUiStore } from '../files/state/filesUi';
 import { usePlanModel } from '../plan/usePlanModel';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeNoteComposerStore } from '../state/adeNoteComposer';
@@ -15,6 +16,7 @@ import AdeTaskPanel from './AdeTaskPanel.vue';
 const ui = useAdeBoardUiStore();
 const tabs = useAdePanelTabsStore();
 const composer = useAdeNoteComposerStore();
+const filesUi = useAdeFilesUiStore();
 const { model, history } = usePlanModel();
 
 watch(
@@ -22,7 +24,9 @@ watch(
   (b) => {
     if (!b) return;
     const taskIds = new Set(b.tasks.map((x) => x.id));
-    tabs.prune(taskIds, new Set(b.branches.map((x) => x.id)));
+    const branchIds = new Set(b.branches.map((x) => x.id));
+    tabs.prune(taskIds, branchIds);
+    filesUi.prune(taskIds, branchIds);
     composer.prune(taskIds);
   },
 );

@@ -23,7 +23,7 @@ var gauges = []string{
 }
 
 // Start serves the endpoint when envVar is set and returns the address it bound, "" when off or
-// refused. A port of 0 picks a free one, for processes (memory-mcp per session) that share the
+// refused. A port of 0 picks a free one, for processes (js-worker per run) that share the
 // variable.
 func Start() string {
 	spec := os.Getenv(envVar)

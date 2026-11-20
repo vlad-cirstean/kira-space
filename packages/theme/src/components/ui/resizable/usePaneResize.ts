@@ -73,6 +73,9 @@ export function usePaneResize(options: PaneResizeOptions) {
 
   let origin = 0;
   let startSize = 0;
+  // Plain flag, not `isDragging.value`: abort runs on unmount inside the parent's render, where a
+  // reactive read would subscribe that parent to this handle's computed and pin the unmounted tree.
+  let active = false;
   let last: number | undefined;
   const pointerOf = (e: PointerEvent): number => (axis === 'x' ? e.clientX : e.clientY);
 
@@ -80,6 +83,7 @@ export function usePaneResize(options: PaneResizeOptions) {
     axis,
     preventDefault: true,
     onStart: (_pos, e) => {
+      active = true;
       setCursor(true);
       origin = pointerOf(e);
       startSize = toValue(options.size);
@@ -90,6 +94,7 @@ export function usePaneResize(options: PaneResizeOptions) {
       options.onLive?.(last);
     },
     onEnd: (_pos, e) => {
+      active = false;
       const done = last;
       last = undefined;
       setCursor(false);
@@ -99,7 +104,8 @@ export function usePaneResize(options: PaneResizeOptions) {
   });
 
   function abort(): void {
-    if (!isDragging.value) return;
+    if (!active) return;
+    active = false;
     last = undefined;
     setCursor(false);
     options.onCancel?.();

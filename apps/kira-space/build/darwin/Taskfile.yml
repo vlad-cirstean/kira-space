@@ -89,7 +89,6 @@ tasks:
     summary: Packages the application into a `.app` bundle
     deps:
       - task: build
-      - task: fetch:onnxruntime
     cmds:
       - task: create:app:bundle
 
@@ -97,14 +96,8 @@ tasks:
     summary: Packages darwin universal binary (arm64 + amd64)
     deps:
       - task: build:universal
-      - task: fetch:onnxruntime
     cmds:
       - task: create:app:bundle
-
-  fetch:onnxruntime:
-    summary: Downloads the pinned ONNX Runtime dylib for local memory embeddings (checksum-verified)
-    cmds:
-      - sh ../../scripts/fetch-onnxruntime.sh osx-arm64
 
   package:dmg:
     summary: Packages the application into a styled `.dmg`
@@ -157,19 +150,6 @@ tasks:
           echo "create:app:bundle: no PlistBuddy — this is a broken macOS environment (build/package already precondition on Darwin), not a supported one" >&2
           exit 1
         fi
-      # P210: the ONNX Runtime dylib memory embeddings load from Contents/Frameworks (embed.RuntimeLib),
-      # copied BEFORE codesign:adhoc so the ad-hoc signature covers it (N2's --deep --strict verify). It ships arm64 only (ORT 1.31.1
-      # has no x86_64 macOS build), so a universal bundle's x86_64 slice reports embeddings unavailable.
-      - |
-        ORT="build/onnxruntime/osx-arm64"
-        if [ ! -f "$ORT/libonnxruntime.1.31.1.dylib" ]; then
-          echo "create:app:bundle: $ORT/libonnxruntime.1.31.1.dylib not found — package/package:universal must depend on fetch:onnxruntime" >&2
-          exit 1
-        fi
-        mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Frameworks"
-        cp "$ORT/libonnxruntime.1.31.1.dylib" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Frameworks/"
-        cp "$ORT/LICENSE" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources/onnxruntime-LICENSE.txt"
-        cp "$ORT/ThirdPartyNotices.txt" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources/onnxruntime-ThirdPartyNotices.txt"
       - task: codesign:adhoc
 
   codesign:adhoc:
@@ -190,14 +170,6 @@ tasks:
         fi
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
       - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
-      # P210: conditional, not a dependency — run `sh ../../scripts/fetch-onnxruntime.sh` once to try
-      # local embeddings from a dev build.
-      - |
-        ORT="build/onnxruntime/osx-arm64/libonnxruntime.1.31.1.dylib"
-        if [ -f "$ORT" ]; then
-          mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Frameworks"
-          cp "$ORT" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Frameworks/"
-        fi
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 

@@ -37,8 +37,13 @@ export interface QueryStats {
   noObserversDefault: number;
 }
 
+/** Per query-key family (first three key parts): count and summed `JSON.stringify` length; -1 on failure. */
+export type QueryBytes = Record<string, { count: number; bytes: number }>;
+
 export interface Introspection {
   piniaStores: string[];
+  queryBytes?: QueryBytes;
+  storeBytes?: Record<string, number>;
   queries: QueryStats | null;
   i18nLocales: string[];
   hooks: Record<string, unknown>;
@@ -202,7 +207,12 @@ const INTROSPECT_FN = () => {
   const msgs = i18n?.messages?.value ?? i18n?.messages;
   if (msgs) out.i18nLocales = Object.keys(msgs);
   else missing.push('__VUE_I18N__.global.messages');
-  for (const k of ['__kiraRetention', '__kiraRetainedBytes', '__kiraGridRetainedBytes']) {
+  for (const k of [
+    '__kiraRetention',
+    '__kiraRetainedBytes',
+    '__kiraGridRetainedBytes',
+    '__kiraTerminalStats',
+  ]) {
     if (typeof w[k] === 'function') {
       try {
         out.hooks[k] = w[k]();
@@ -212,6 +222,40 @@ const INTROSPECT_FN = () => {
     }
   }
   return out;
+};
+
+/** Byte estimates of retained data (JSON length, not heap truth; -1 on a cycle or failure). */
+const BYTES_FN = () => {
+  // biome-ignore lint/suspicious/noExplicitAny: probing untyped app internals
+  const app = (document.querySelector('#app') as any)?.__vue_app__;
+  const queryBytes: Record<string, { count: number; bytes: number }> = {};
+  const storeBytes: Record<string, number> = {};
+  if (!app) return { queryBytes, storeBytes };
+  const size = (data: unknown): number => {
+    try {
+      return JSON.stringify(data)?.length ?? 0;
+    } catch {
+      return -1;
+    }
+  };
+  const bump = (family: string, bytes: number) => {
+    const f = queryBytes[family] ?? { count: 0, bytes: 0 };
+    f.count++;
+    f.bytes = f.bytes < 0 || bytes < 0 ? -1 : f.bytes + bytes;
+    queryBytes[family] = f;
+  };
+  const state = app.config.globalProperties.$pinia?.state?.value ?? {};
+  for (const id of Object.keys(state)) storeBytes[id] = size(state[id]);
+  const provides = app._context.provides ?? {};
+  const key = Reflect.ownKeys(provides).find((k) => String(k).includes('VUE_QUERY_CLIENT'));
+  for (const q of key === undefined ? [] : provides[key].getQueryCache().getAll()) {
+    const parts = (q.queryKey as unknown[]).slice(0, 3).map(String);
+    const family = parts[0] === 'adetask' ? parts.join('/') : 'other';
+    bump(family, size(q.state.data));
+    // Board: the archived history ships inside every board read (counted again as `#history`).
+    if (family === 'adetask/board') bump('adetask/board#history', size(q.state.data?.history));
+  }
+  return { queryBytes, storeBytes };
 };
 
 /** Expressions evaluated in the page to get a named root's remote object. */
@@ -304,6 +348,8 @@ export class MemSampler {
       : undefined;
     const suspects = await this.page.evaluate(SUSPECTS_FN);
     const intro = this.engine === 'chromium' ? await this.page.evaluate(INTROSPECT_FN) : undefined;
+    const bytes = this.engine === 'chromium' ? await this.page.evaluate(BYTES_FN) : undefined;
+    if (intro && bytes) Object.assign(intro, bytes);
     const rss = await this.rss();
     const point: MemPoint = {
       app: this.app,

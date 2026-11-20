@@ -8,7 +8,7 @@ sidebar:
   order: 0
 ---
 
-Kira Space is one native macOS app. It is a git client and code workspace with coding agents, a memory store, a terminal and a phone view on your home network.
+Kira Space is one native macOS app. It is a git client and code workspace with coding agents, a terminal and a phone view on your home network.
 
 The same window holds the **Studio** modules: a database client for ten engines, an HTTP and gRPC API client, Runs and Docker. They were the separate app Kira Studio, now merged into Kira Space.
 
@@ -21,8 +21,8 @@ The same window holds the **Studio** modules: a database client for ten engines,
 ## Where to look
 
 - Start: [install and update](start/install/), [how it works](start/how-it-works/).
-- Git, agents and memory: [Git](space/git/), [code workspace](space/workspace/), [workflows](space/workflows/), [agents](space/agents/), [proof](space/proof/), [MCP and agents](space/mcp/), [phone view](space/phone/), [memory](space/memory/).
+- Git and agents: [Git](space/git/), [code workspace](space/workspace/), [workflows](space/workflows/), [agents](space/agents/), [proof](space/proof/), [MCP and agents](space/mcp/), [phone view](space/phone/).
 - Studio modules: [databases](studio/databases/), [data grid](studio/data-grid/), [SQL console](studio/sql-console/), [API client](studio/api-client/), [Docker](studio/docker/), [Kubernetes](studio/kubernetes/), [Studio MCP server](studio/database-mcp/).
 - Runs: [runs and smart scripts](shared/runs/).
-- Reference: [settings](reference/settings/), [prompts](reference/prompts/), [MCP tools](reference/mcp-tools/), [memory formats](reference/memory-formats/), [security and privacy](reference/security/), [feature index](reference/features/).
+- Reference: [settings](reference/settings/), [prompts](reference/prompts/), [MCP tools](reference/mcp-tools/), [security and privacy](reference/security/), [feature index](reference/features/).
 - Search: use the search box in the header of any docs page.

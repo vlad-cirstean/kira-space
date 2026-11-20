@@ -44,11 +44,6 @@ export const EXEMPTIONS: readonly Exemption[] = [
     path: 'apps/kira-space/frontend/src/ade/v2/dialog/compose.ts',
     reason: 'agent prompt text sent to the agent, English by design',
   },
-  {
-    rule: 'U208',
-    path: 'packages/workbench/src/memory/AddMemoryDialog.vue',
-    reason: 'stored memory provenance (record content agents read), not UI chrome',
-  },
 ];
 
 /** U182 pairs: a module that hosts another module's UI reads that module's keys. */
@@ -67,11 +62,6 @@ export const OWNERSHIP_PAIRS: readonly OwnershipPair[] = [
     module: 'space',
     prefix: 'studio.proof.',
     reason: 'ADE renders Studio proofs',
-  },
-  {
-    module: 'space',
-    prefix: 'memory.distill.',
-    reason: 'repo hosts memory distill of a selection',
   },
   {
     module: 'shell',

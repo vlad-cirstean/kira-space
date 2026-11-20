@@ -11,7 +11,6 @@ import {
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 
 // A second agent provider: the names, models and optional roles come from AgentService.Info.
@@ -27,17 +26,6 @@ async function openSettings(page: Page, section: string): Promise<void> {
   await emitWailsEvent(page, IPC.openSettings, undefined);
   await page.locator(`[data-testid="settings-section-${section}"]`).click();
 }
-
-test('the Memory pane lists the provider models and its default', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: withMemory(info) });
-  await openSettings(page, 'Memory');
-  const select = page.locator('[data-testid="settings-memory-agent-model"]');
-  await expect(select).toHaveValue(fake.defaultModel);
-  const options = await select
-    .locator('option')
-    .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
-  expect(options).toEqual(fake.models.map((m) => m.id));
-});
 
 test('a provider without hooks or usage hides those settings', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: info });

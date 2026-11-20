@@ -120,7 +120,7 @@ const nav = useListNavigation<DockerContainer>({
         <span class="hidden @4xl:block">{{ t('docker.field.image.label') }}</span>
         <span class="hidden @4xl:block">{{ t('docker.field.ports.label') }}</span>
         <span class="text-right">{{ t('common.metric.cpu.label') }}</span>
-        <span class="text-right">{{ t('common.module.memory.label') }}</span>
+        <span class="text-right">{{ t('common.metric.memory.label') }}</span>
         <span />
       </div>
       <div ref="bodyEl" class="relative" :style="{ height: `${totalSize}px` }">

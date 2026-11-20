@@ -72,7 +72,7 @@ export interface ReadonlyViewerOptions {
 
 /** The read-only Monaco viewer both file views share: the editor option block, the model hook, the
  *  find command and the markdown Source/Reading toggle with its render cache. The views keep their
- *  own file reads and extras (blame, reveal, distill). */
+ *  own file reads and extras (blame, reveal). */
 export function useReadonlyFileViewer(o: ReadonlyViewerOptions) {
   const settingsStore = useSettingsStore();
   const container = ref<HTMLElement | null>(null);

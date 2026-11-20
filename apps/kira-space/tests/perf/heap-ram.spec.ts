@@ -36,9 +36,12 @@ import { expandRow, findRow, openBrowseLeaf } from '../ui/studio/support/tree';
 import {
   adeBoard,
   adeV2Control,
+  emitLog,
   emitOpenSession,
   emitSessions,
   openTask,
+  openTaskFile,
+  taskFilesControl,
 } from '../ui/support/adeV2';
 import { contract } from '../ui/support/contract';
 import { installGitStreamMock } from '../ui/support/gitStreamMock';
@@ -53,8 +56,8 @@ import {
   singleRowChunks,
 } from '../ui/support/gitUiPortFixtures';
 import { IPC } from '../ui/support/ipcChannels';
-import { openMemory } from '../ui/support/memoryNav';
-import { treeRow } from '../ui/support/repoRows';
+import { restoredRepoTabs } from '../ui/support/repoFiles';
+import { repoTab } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { CONTROL, FIXTURE, makeDocs, openWidgets, readSnapshot } from './studio/documentsFixture';
 import {
@@ -63,7 +66,7 @@ import {
   agentFrames,
   agentsBoard,
   agentsSessions,
-  browserPss,
+  agentsSessionsStopped,
   connect,
   duplicateOpen,
   feedFrames,
@@ -76,6 +79,7 @@ import {
   newTerminal,
   openTerminalTab,
   pinClock,
+  pssAfter,
   type TabWorldOptions,
   tabWorld,
   worldEnabled,
@@ -117,7 +121,6 @@ test('ram: idle and modes', async ({ relaunch }, info) => {
       { name: 'boot60', run: () => page.waitForTimeout(60_000) },
       ...hop('ade', 'git'),
       ...hop('automations', 'git'),
-      ...hop('memory', 'git'),
       { name: 'mode:studio', run: () => modeTab(page, 'studio').click() },
       ...hop('api', 'studio'),
       ...hop('docker', 'studio'),
@@ -185,14 +188,7 @@ test('ram: kept-graphs', async ({ relaunch }, info) => {
     root: `/tmp/kept-repo-${i}`,
     sortOrder: i + 1,
   }));
-  const control: ControlSnapshot[] = [
-    { channel: IPC.codeWorkspaceListRepos, response: repos },
-    ...repos.map((r) => ({
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: r.id },
-      response: { paths: ['a.ts'], status: {}, truncated: false },
-    })),
-  ];
+  const control: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: repos }];
   const { window: page } = await relaunch({ control });
   await installGitStreamMock(
     page,
@@ -230,18 +226,15 @@ const LIMIT = 8 * 1024 * 1024;
 const FILES = Array.from({ length: 10 }, (_, i) => `f${i}.ts`);
 const DIFFS = Array.from({ length: 10 }, (_, i) => `d${i}.ts`);
 
-function fileControl(): ControlSnapshot[] {
+// No project tree opens a file or diff tab any more: the world's tabs restore, `open(i)` activates
+// the i-th, so the heap cost measured is the mount, not the open.
+function fileControl(kind: 'repo-file' | 'repo-diff'): ControlSnapshot[] {
   const out: ControlSnapshot[] = [
     { channel: IPC.codeWorkspaceListRepos, response: [PORT_REPO] },
-    {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: PORT_REPO.id },
-      response: {
-        paths: [...FILES, ...DIFFS],
-        status: Object.fromEntries(DIFFS.map((d) => [d, 'M'])),
-        truncated: false,
-      },
-    },
+    restoredRepoTabs(
+      PORT_REPO.id,
+      (kind === 'repo-file' ? FILES : DIFFS).map((path) => ({ kind, path })),
+    ),
   ];
   for (const path of FILES) {
     const stat = { size: LARGE_TEXT.length, hash: `hash-${path}` };
@@ -302,39 +295,40 @@ function fileControl(): ControlSnapshot[] {
   return out;
 }
 
-async function openGraphWithFiles(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch']) {
+async function openGraphWithFiles(
+  relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
+  kind: 'repo-file' | 'repo-diff',
+) {
   return openPortGraph(async (o) => relaunch(o), {
     chunks: singleRowChunks(manyRows(300)),
     results: { 'refs.list': refsAtTip(manyRowShas(0)) },
-    control: fileControl(),
+    control: fileControl(kind),
   });
 }
 
 test('ram: repo-file', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('repo-file'));
-  const page = await openGraphWithFiles(relaunch);
+  const page = await openGraphWithFiles(relaunch, 'repo-file');
   await page.clock.install();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
   await tabWorld({
     world: 'repo-file',
     page,
     info,
     keep: 1,
     open: async (i) => {
-      await treeRow(page, FILES[i]).dblclick();
+      await repoTab(page, 'repo-file').nth(i).click();
       await expect(page.locator('[data-testid="repo-file-editor"] .view-lines')).toContainText(
         'value0',
       );
-      await expect(page.locator('[data-testid="tab"]')).toHaveCount(i + 2);
+      await expect(page.locator('[data-testid="tab"]')).toHaveCount(FILES.length + 1);
     },
   });
 });
 
 test('ram: diff', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('diff'));
-  const page = await openGraphWithFiles(relaunch);
+  const page = await openGraphWithFiles(relaunch, 'repo-diff');
   await page.clock.install();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
   const s = await tabWorld({
     world: 'diff',
     page,
@@ -342,10 +336,9 @@ test('ram: diff', async ({ relaunch }, info) => {
     keep: 1,
     snapshotAt: ['mode', 'closed', 'closed2', 'closed3'],
     open: async (i) => {
-      await treeRow(page, DIFFS[i]).click({ button: 'right' });
-      await page.locator('[data-testid="menu-item-open-changes"]').click();
+      await repoTab(page, 'repo-diff').nth(i).click();
       await expect(page.locator('[data-testid="repo-diff-editor"]')).toBeVisible();
-      await expect(page.locator('[data-testid="tab"]')).toHaveCount(i + 2);
+      await expect(page.locator('[data-testid="tab"]')).toHaveCount(DIFFS.length + 1);
     },
   });
   if (SNAPSHOTS) {
@@ -435,6 +428,43 @@ async function logAdeDom(page: Page, label: string): Promise<void> {
   console.log(`ADEDOM ${label} ${JSON.stringify(c)}`);
 }
 
+/** F4: where ADE DOM, xterm, style and font cost sits. Report-only; one JSON line per checkpoint. */
+async function logAdeBreakdown(page: Page, label: string): Promise<void> {
+  const c = await page.evaluate(() => {
+    const count = (sel: string) =>
+      Array.from(document.querySelectorAll(sel)).reduce(
+        (n, e) => n + e.querySelectorAll('*').length + 1,
+        0,
+      );
+    const regions: Record<string, number> = {};
+    for (const id of ['ade-shell-bar', 'ade-plan', 'ade-panel', 'ade-tui-pane']) {
+      regions[id] = count(`[data-testid="${id}"]`);
+    }
+    const shell = count('[data-testid="ade-shell"]');
+    const styles = Array.from(document.querySelectorAll('style'));
+    return {
+      total: document.querySelectorAll('*').length,
+      shell,
+      regions,
+      xtermHosts: document.querySelectorAll('.xterm').length,
+      xtermRows: document.querySelectorAll('.xterm-rows > div').length,
+      canvases: document.querySelectorAll('canvas').length,
+      styleTags: styles.length,
+      styleChars: styles.reduce((n, e) => n + (e.textContent?.length ?? 0), 0),
+      fontFaces: document.fonts.size,
+    };
+  });
+  let counters: unknown = null;
+  try {
+    const cdp = await page.context().newCDPSession(page);
+    counters = await cdp.send('Memory.getDOMCounters' as never);
+    await cdp.detach();
+  } catch {
+    // WebKit has no CDP.
+  }
+  console.log(`ADEDOM ${label} ${JSON.stringify({ ...c, counters })}`);
+}
+
 for (const tasks of [20, 200]) {
   test(`ram: ade ${tasks} tasks`, async ({ relaunch }, info) => {
     test.skip(!worldEnabled('ade'));
@@ -457,47 +487,30 @@ for (const tasks of [20, 200]) {
     });
     await page.clock.install();
     await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
+    const pss = pssAfter(page, `ade${tasks}`);
+    const hopTo = (name: string, mode: string, label: string, snapshot?: 'keep'): MemStep => ({
+      name,
+      run: async () => {
+        await modeTab(page, mode).click();
+        await page.waitForTimeout(1500);
+        if (label) await logAdeDom(page, `ade${tasks} ${label}`);
+      },
+      snapshot,
+      after: pss(name),
+    });
     const s = await runMemSteps({
       app: APP,
       world: `ade${tasks}`,
       page,
       info,
       steps: [
-        { name: 'board', run: async () => {}, snapshot: true },
-        { name: 'task', run: () => openTask(page, first), snapshot: true },
-        {
-          name: 'left',
-          run: async () => {
-            await modeTab(page, 'git').click();
-            await page.waitForTimeout(1500);
-            await logAdeDom(page, `ade${tasks} left`);
-          },
-          snapshot: 'keep',
-        },
-        {
-          name: 'back',
-          run: async () => {
-            await modeTab(page, 'ade').click();
-            await page.waitForTimeout(1500);
-            await logAdeDom(page, `ade${tasks} back`);
-          },
-          snapshot: 'keep',
-        },
+        { name: 'board', run: async () => {}, snapshot: true, after: pss('board') },
+        { name: 'task', run: () => openTask(page, first), snapshot: true, after: pss('task') },
+        hopTo('left', 'git', 'left', 'keep'),
+        hopTo('back', 'ade', 'back', 'keep'),
         ...[2, 3].flatMap((n): MemStep[] => [
-          {
-            name: `left${n}`,
-            run: async () => {
-              await modeTab(page, 'git').click();
-              await page.waitForTimeout(1500);
-            },
-          },
-          {
-            name: `back${n}`,
-            run: async () => {
-              await modeTab(page, 'ade').click();
-              await page.waitForTimeout(1500);
-            },
-          },
+          hopTo(`left${n}`, 'git', ''),
+          hopTo(`back${n}`, 'ade', ''),
         ]),
       ],
     });
@@ -505,70 +518,6 @@ for (const tasks of [20, 200]) {
       const d = await diffSnapshotFiles(s.snapshotFile('left'), s.snapshotFile('back'));
       console.log(`HEAPDIFF ${APP} ade${tasks} left-back ${JSON.stringify(d)}`);
     }
-  });
-}
-
-function memoryRow(i: number): Record<string, unknown> {
-  return {
-    id: `m${i}`,
-    lineageId: `m${i}`,
-    version: 1,
-    fact: `Fact ${i}: the billing service number ${i} listens on port ${9000 + (i % 100)}.`,
-    kind: 'fact',
-    reason: `Reason ${i}`,
-    keywords: ['billing', `k${i % 20}`],
-    origin: i % 2 ? 'agent' : 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: '2026-03-01T10:00:00.000Z',
-    supersededAt: null,
-    versions: 1,
-  };
-}
-
-for (const count of [50, 500]) {
-  test(`ram: memory ${count}`, async ({ relaunch }, info) => {
-    test.skip(!worldEnabled('memory'));
-    const all = Array.from({ length: count }, (_, i) => memoryRow(i));
-    const { window: page } = await relaunch({
-      control: [
-        { channel: IPC.memoryRecent, response: all },
-        { channel: IPC.memoryHistory, response: { memories: [all[0]], events: [] } },
-        { channel: IPC.memoryContext, response: { memory: all[0], groups: [] } },
-      ],
-    });
-    await page.clock.install();
-    await runMemSteps({
-      app: APP,
-      world: `memory${count}`,
-      page,
-      info,
-      steps: [
-        { name: 'list', run: () => openMemory(page), snapshot: true },
-        {
-          name: 'detail',
-          run: async () => {
-            await page.locator('[data-testid="memory-row-m0"]').click();
-            await page.waitForTimeout(1000);
-          },
-          snapshot: true,
-        },
-        {
-          name: 'left',
-          run: async () => {
-            await modeTab(page, 'git').click();
-            await page.waitForTimeout(1500);
-          },
-          snapshot: true,
-        },
-      ],
-    });
   });
 }
 
@@ -1024,6 +973,18 @@ studioTest.describe('Studio worlds', () => {
   });
 });
 
+/** Selects task `id`'s card, then its panel tab. A selected card toggles closed on a second click, and
+ *  a running session sends the panel to Sessions: both seen after `switch10`. */
+async function openPanel(page: Page, id: string, tab: string): Promise<void> {
+  const panel = page.locator('[data-testid="ade-panel"]');
+  const head = page.locator(
+    `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`,
+  );
+  await head.click();
+  await panel.waitFor({ timeout: 3000 }).catch(() => head.click());
+  await page.locator(`[data-testid="ade-panel-tab-${tab}"]`).click();
+}
+
 // P661: agents module only. 10 active tasks, 200 archived, 300 stopped session rows, 4 running TUI
 // sessions fed Claude-like ED2 redraws; 2 panes opened, 10 task switches, 50 board and sessions
 // pushes. Report-only: RAM, PSS and HEAPSNAP lines. `KIRA_RAM_WORLD=ade-agents`,
@@ -1032,20 +993,17 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('ade-agents'));
   const board = agentsBoard();
   const ids = board.tasks.map((t) => t.id);
-  const { window: page } = await relaunch({
+  const { window: page, control: mock } = await relaunch({
     control: adeV2Control([
       { channel: IPC.adeTaskBoard, response: board },
       { channel: IPC.adeTaskSessions, response: agentsSessions(ids) },
       { channel: IPC.mobileLaunchOpened, response: null },
+      ...taskFilesControl(),
     ]),
   });
   await page.clock.install();
   await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
-  const engine =
-    page.context().browser()?.browserType().name() === 'webkit' ? 'webkit' : 'chromium';
-  const pss = (label: string) => async () => {
-    console.log(`PSS ${APP} ade-agents ${engine} ${label} ${JSON.stringify(browserPss(engine))}`);
-  };
+  const pss = pssAfter(page, 'ade-agents');
   const pushes = (n: number): MemStep => ({
     name: `push${n}`,
     run: async () => {
@@ -1063,7 +1021,12 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
     page,
     info,
     steps: [
-      { name: 'board', run: async () => {}, after: pss('board') },
+      {
+        name: 'board',
+        run: () => logAdeBreakdown(page, 'agents board'),
+        snapshot: true,
+        after: pss('board'),
+      },
       {
         name: 'launch4',
         run: async () => {
@@ -1087,7 +1050,9 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             );
           }
           await page.waitForTimeout(1500);
+          await logAdeBreakdown(page, 'agents launch4');
         },
+        snapshot: true,
         after: pss('launch4'),
       },
       {
@@ -1098,6 +1063,7 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             await expect(page.locator('[data-testid="ade-tui-pane"]')).toBeVisible();
             await page.waitForTimeout(500);
           }
+          await logAdeBreakdown(page, 'agents panes2');
         },
         after: pss('panes2'),
       },
@@ -1116,13 +1082,18 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
             await expect(page.locator('[data-testid="ade-panel"]')).toBeVisible();
             await page.waitForTimeout(200);
           }
+          await logAdeBreakdown(page, 'agents switch10');
         },
+        snapshot: true,
         after: pss('switch10'),
       },
       ...[10, 20, 30, 40, 50].map(pushes),
       {
         name: 'final',
-        run: () => page.waitForTimeout(5000),
+        run: async () => {
+          await page.waitForTimeout(5000);
+          await logAdeBreakdown(page, 'agents final');
+        },
         snapshot: true,
         after: pss('final'),
       },
@@ -1141,6 +1112,135 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
         snapshot: true,
         after: pss('approval'),
       },
+      {
+        // P693 E3: 3 MB of run log on the push channel, the log visible (S3).
+        name: 'log3m',
+        run: async () => {
+          await pushApprovals(page, []);
+          await expect(page.locator('[data-testid="approvals-dialog"]')).toBeHidden();
+          await openPanel(page, 'T_bill', 'main');
+          await page
+            .locator('[data-testid="ade-step-block"][data-step-id="impl"]')
+            .locator('[data-testid="ade-run-line"][data-branch-id="b_bill"]')
+            .locator('[data-testid="ade-run-log-toggle"]')
+            .click();
+          await expect(page.locator('[data-testid="ade-run-log"]')).toBeVisible();
+          const PUSHES = 30;
+          const PER_PUSH = 100;
+          const text = (i: number) => `log line ${i} `.padEnd(1000, 'x');
+          for (let p = 0; p < PUSHES; p++) {
+            await emitLog(
+              page,
+              'run',
+              'r_T_bill_impl_b_bill',
+              Array.from({ length: PER_PUSH }, (_, k) => ({
+                seq: 10_000 + p * PER_PUSH + k,
+                at: 1_790_067_600_000 + p * PER_PUSH + k,
+                stream: 'event',
+                text: text(p * PER_PUSH + k),
+              })),
+            );
+            await page.waitForTimeout(50);
+          }
+          await page.waitForTimeout(1500);
+        },
+        snapshot: true,
+        after: pss('log3m'),
+      },
+      {
+        // P693 E3 (P691): task Files tab and one file; Monaco shows here (S7).
+        name: 'files1',
+        run: async () => {
+          await openPanel(page, 'T_cart', 'files');
+          await openTaskFile(page, 'README.md');
+          await page.waitForTimeout(1500);
+        },
+        snapshot: true,
+        after: pss('files1'),
+      },
+      {
+        // P693 E3: the four running sessions stop; adeTerminals must reap their xterms (S4). The exit
+        // events matter: reap waits for local `exited`, and a probe without them kept all four.
+        name: 'stopped4',
+        run: async () => {
+          // Real order: a stop ends the pty first, so each terminal's exit event precedes the push.
+          for (let i = 0; i < AGENTS_WORLD.running; i++) {
+            await emitWailsEvent(page, IPC.terminal, {
+              terminalId: `term-ag${i}`,
+              data: '',
+              exited: true,
+              exitCode: 0,
+            });
+          }
+          mock.respond(IPC.adeTaskSessions, agentsSessionsStopped(ids));
+          await emitSessions(page);
+          await page.waitForTimeout(2000);
+        },
+        snapshot: true,
+        after: pss('stopped4'),
+      },
+      {
+        name: 'left',
+        run: async () => {
+          await modeTab(page, 'git').click();
+          await page.waitForTimeout(1500);
+        },
+        snapshot: 'keep',
+        after: pss('left'),
+      },
+      {
+        name: 'back',
+        run: async () => {
+          await modeTab(page, 'ade').click();
+          await page.waitForTimeout(1500);
+        },
+        snapshot: 'keep',
+        after: pss('back'),
+      },
+    ],
+  });
+});
+
+// P693 E1: same board and sessions list as ade-agents (10 live, 200 archived, 300 stopped rows) but
+// no launched session: the idle floor of the module. `idle60` is a 60 s wait; `left`/`back` leave
+// and re-enter the ade mode.
+test('ram: ade-idle', async ({ relaunch }, info) => {
+  test.skip(!worldEnabled('ade-idle'));
+  const board = agentsBoard();
+  const { window: page } = await relaunch({
+    control: adeV2Control([
+      { channel: IPC.adeTaskBoard, response: board },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
+      { channel: IPC.mobileLaunchOpened, response: null },
+    ]),
+  });
+  await page.clock.install();
+  await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
+  const pss = pssAfter(page, 'ade-idle');
+  const hop = (name: string, mode: string): MemStep => ({
+    name,
+    run: async () => {
+      await modeTab(page, mode).click();
+      await page.waitForTimeout(1500);
+    },
+    snapshot: 'keep',
+    after: pss(name),
+  });
+  await runMemSteps({
+    app: APP,
+    world: 'ade-idle',
+    page,
+    info,
+    steps: [
+      { name: 'board', run: async () => {}, snapshot: true, after: pss('board') },
+      {
+        name: 'idle60',
+        run: () => page.waitForTimeout(60_000),
+        snapshot: true,
+        after: pss('idle60'),
+      },
+      hop('left', 'git'),
+      hop('back', 'ade'),
     ],
   });
 });

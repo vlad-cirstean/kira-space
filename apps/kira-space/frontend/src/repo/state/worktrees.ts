@@ -13,7 +13,7 @@ import { useRepoLinksStore } from './repoLinks';
 import { type ExpandedWorktreeRow, worktreesQueryKey } from './worktreeQueries';
 
 // P82 §6: per-repo worktree disclosure state, session-scoped and module-level — same shape and
-// reasoning as fileTree.ts's byRepo/search.ts's repoSearchView. Not persisted (§0/§10): a future
+// reasoning as the task Files tab's per-branch state. Not persisted (§0/§10): a future
 // phase that wants that needs a new settings key or DB column. The worktree lists themselves are
 // TanStack Query state (`worktreeQueries.ts`).
 interface RepoWorktreeState {
@@ -119,7 +119,7 @@ export const useWorktreesStore = defineStore('worktrees', () => {
   }
 
   // Eviction, without inverting an import — state/workspace.ts must not import this module
-  // (it already imports fileTree.ts/search.ts, and this module imports it), so both closures are
+  // (it already imports the per-repo state modules, and this module imports it), so both closures are
   // watched here instead, the pattern quickOpen.ts's own equivalent watches established for
   // exactly this.
 

@@ -315,3 +315,26 @@ export function browserPss(engine: 'chromium' | 'webkit'): Record<string, number
   }
   return out;
 }
+
+/** Engine of the page's browser, for `PSS` lines. */
+export function engineOf(page: Page): 'chromium' | 'webkit' {
+  return page.context().browser()?.browserType().name() === 'webkit' ? 'webkit' : 'chromium';
+}
+
+/** A `MemStep.after` that prints `PSS <app> <world> <engine> <label> {kind: MB}` for the browser. */
+export const pssAfter = (page: Page, world: string) => {
+  const engine = engineOf(page);
+  return (label: string) => async (): Promise<void> => {
+    console.log(`PSS ${APP} ${world} ${engine} ${label} ${JSON.stringify(browserPss(engine))}`);
+  };
+};
+
+/** `agentsSessions` with the first `AGENTS_WORLD.running` rows stopped and their terminal gone. */
+export function agentsSessionsStopped(taskIds: readonly string[]) {
+  const { sessions } = agentsSessions(taskIds);
+  return {
+    sessions: sessions.map((s) =>
+      String(s.id).startsWith('ag') ? { ...s, state: 'stopped', terminalId: '' } : s,
+    ),
+  };
+}

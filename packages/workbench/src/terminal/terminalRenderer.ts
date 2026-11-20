@@ -114,6 +114,22 @@ function createLinkHint(term: Terminal): LinkHint | null {
 // and remounting re-inserts the same DOM node rather than recreating it.
 const byTabId = new Map<string, Attached>();
 
+// RAM probe (P693): per-terminal buffer stats; the drain total comes from the terminals store's hook.
+if (__KIRA_DEBUG_HOOKS__) {
+  const w = window as unknown as Record<string, unknown>;
+  w.__kiraTerminalStats = () => ({
+    terminals: Array.from(byTabId, ([id, a]) => ({
+      id,
+      opened: a.term.element !== undefined,
+      cols: a.term.cols,
+      rows: a.term.rows,
+      bufferLines: a.term.buffer.normal.length,
+      scrollback: a.term.options.scrollback,
+    })),
+    drainBytes: (w.__kiraTerminalDrainBytes as (() => number) | undefined)?.() ?? 0,
+  });
+}
+
 // The close path never reaches this module (state/tabKinds.ts's dropResources only
 // calls closeTerminalSession, which never imports this file — importing it there would pull
 // @xterm/xterm into the boot bundle, the exact cost this file's own lazy boundary exists to

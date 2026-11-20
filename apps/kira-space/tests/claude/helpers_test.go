@@ -18,9 +18,6 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/harness"
-	"github.com/kirathecat/kira-studio/internal/harness/providers"
-	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
@@ -468,7 +465,3 @@ func flowRepo(t *testing.T) string {
 	}
 	return repo
 }
-
-func agentSelector() harness.Selector { return harness.Selector{Registry: providers.New()} }
-
-func newAgentRunner() *memory.AgentRunner { return memory.NewAgentRunner(agentSelector(), nil) }

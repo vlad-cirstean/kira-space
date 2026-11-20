@@ -1365,20 +1365,6 @@
         }
       }
     },
-    "dialog": {
-      "distillFile": {
-        "title": "Choose file to distill"
-      },
-      "documentsFilter": {
-        "label": "Documents"
-      },
-      "importDocuments": {
-        "title": "Import documents"
-      },
-      "importFolder": {
-        "title": "Import folder"
-      }
-    },
     "error": {
       "disconnected": {
         "body": "{name} is not connected."
@@ -1728,6 +1714,23 @@
         },
         "estimateTooLong": {
           "body": "An estimate can be at most 480h or 60d."
+        },
+        "files": {
+          "badPath": {
+            "body": "This path is outside the task worktree."
+          },
+          "editorMissing": {
+            "body": "VS Code was not found. Install it, or add its “code” command to your PATH."
+          },
+          "launchUnsupported": {
+            "body": "Not available in the browser build."
+          },
+          "noWorktree": {
+            "body": "This branch has no worktree."
+          },
+          "targetMissing": {
+            "body": "This file no longer exists in the worktree."
+          }
         },
         "handoverReadOnly": {
           "body": "This note is a copy of a child task’s handover. Edit the child’s handover instead."
@@ -2161,43 +2164,6 @@
           "window": {
             "title": "{key} · {label}"
           }
-        }
-      },
-      "memory": {
-        "alreadyDownloading": {
-          "body": "The semantic model is already downloading."
-        },
-        "distill": {
-          "busy": {
-            "body": "Another distill is running. Wait for it to finish."
-          },
-          "cancelled": {
-            "body": "Distill cancelled."
-          },
-          "spendCap": {
-            "body": "Distill stopped at its spend cap: ${spent} spent, ${cap} allowed."
-          },
-          "tooLong": {
-            "body": "The input is {count} characters. The limit is {max}."
-          },
-          "tooManyFacts": {
-            "body": "The text yields too many facts for one merge. Split it."
-          },
-          "tooManyParts": {
-            "body": "The input splits into {count} parts. The limit is {max}."
-          },
-          "unreadable": {
-            "body": "Can’t read {path} ({reason})."
-          }
-        },
-        "importCannotRead": {
-          "body": "Can’t read {path}."
-        },
-        "importPathCount": {
-          "body": "Choose 1 to {max} files or folders."
-        },
-        "serviceClosed": {
-          "body": "Memory is closed. Reopen it and retry."
         }
       },
       "menu": {
@@ -3578,9 +3544,6 @@
     "expires": {
       "status": "Expires in {time}"
     },
-    "failedCount": {
-      "label": "{count} failed"
-    },
     "fetching": {
       "loading": "Fetching…"
     },
@@ -3811,6 +3774,9 @@
     "metric": {
       "cpu": {
         "label": "CPU"
+      },
+      "memory": {
+        "label": "Memory"
       }
     },
     "mode": {
@@ -3843,9 +3809,6 @@
       },
       "history": {
         "label": "History"
-      },
-      "memory": {
-        "label": "Memory"
       },
       "operations": {
         "label": "Operations"
@@ -7381,132 +7344,6 @@
           "body": "Added before the finish instruction of every agent step and smart step, and to the first message of manual, review and start sessions."
         }
       },
-      "memoryDataHygiene": {
-        "description": "A paragraph that tells {agent} to treat the document text as data and never follow instructions found inside it.",
-        "title": "Untrusted input notice",
-        "usedBy": {
-          "body": "Included in the memory gate, reconcile, import extract, import verify and import finalize prompts."
-        }
-      },
-      "memoryGateSystem": {
-        "description": "Judges each fact before it is stored. It splits the fact into single claims, adds keywords, or challenges it with questions.",
-        "title": "Memory gate",
-        "usedBy": {
-          "body": "Sent as the system prompt of the {agent} call that checks every memory save. The reply follows a fixed schema."
-        }
-      },
-      "memoryImportExtractSystem": {
-        "description": "Extracts short, durable facts from one chunk of an imported file.",
-        "title": "Import fact extraction",
-        "usedBy": {
-          "body": "Sent as the system prompt for each chunk while a memory import reads a file."
-        }
-      },
-      "memoryImportFinalizeSystem": {
-        "description": "Merges the facts of one imported file and stores them through the memory tools.",
-        "title": "Import finalize",
-        "usedBy": {
-          "body": "Sent as the system prompt of the {agent} run that finishes one file of a memory import."
-        }
-      },
-      "memoryImportVerifySystem": {
-        "description": "Checks doubtful facts of an imported file against the file itself.",
-        "title": "Import cross-check",
-        "usedBy": {
-          "body": "Sent as the system prompt of the {agent} run that reads the source file to confirm, rewrite or reject doubtful facts during a memory import."
-        }
-      },
-      "memoryKinds": {
-        "description": "Defines a memory as a fact or a rule, and says that questions, one-off tasks, standalone examples and result tables are not memories.",
-        "title": "Memory kinds",
-        "usedBy": {
-          "body": "Included in the memory gate, import extract, import finalize and merge prompts."
-        }
-      },
-      "memoryMcpIngestAwaiting": {
-        "description": "Tells the agent an ingest job is waiting for the user to start it, and why.",
-        "title": "Ingest waits for the user",
-        "usedBy": {
-          "body": "Returned by the ingest_files tool when the job needs confirmation before it spends anything."
-        }
-      },
-      "memoryMcpIngestStarted": {
-        "description": "Tells the agent an ingest job runs in the background and how to follow it.",
-        "title": "Ingest started",
-        "usedBy": {
-          "body": "Returned by the ingest_files tool after it creates a job."
-        }
-      },
-      "memoryMcpInstructions": {
-        "description": "Tells an agent what each stored fact needs, how to send files by path and how to search.",
-        "title": "Memory server instructions",
-        "usedBy": {
-          "body": "Sent to {agent} when a session connects to the memory MCP server. A change applies to new sessions."
-        }
-      },
-      "memoryMcpRememberMessage": {
-        "description": "The message the remember command sends to the agent, with the text to remember appended.",
-        "title": "Remember message",
-        "usedBy": {
-          "body": "Sent when someone runs the remember command from the memory MCP server."
-        }
-      },
-      "memoryMcpSemanticNotInstalled": {
-        "description": "Warns the agent that results are keyword matches only because the semantic model is missing.",
-        "title": "Semantic search missing notice",
-        "usedBy": {
-          "body": "Appended to search_memories results while semantic search is not installed."
-        }
-      },
-      "memoryMcpSemanticUnavailable": {
-        "description": "Warns the agent that results are keyword matches only and gives the reason.",
-        "title": "Semantic search failing notice",
-        "usedBy": {
-          "body": "Appended to search_memories results when semantic search fails."
-        }
-      },
-      "memoryMcpStoreChallenged": {
-        "description": "Tells the agent that nothing was stored and what to do next. The questions follow it.",
-        "title": "Store challenge notice",
-        "usedBy": {
-          "body": "Returned from store_memory when the gate challenges an item."
-        }
-      },
-      "memoryMergeRules": {
-        "description": "The steps that merge duplicate facts, resolve unclear ones and drop what is not a memory.",
-        "title": "Merge steps",
-        "usedBy": {
-          "body": "Included in the import finalize and merge prompts."
-        }
-      },
-      "memoryMergeSystem": {
-        "description": "Merges the facts extracted from one input into short lines, one per fact or rule, without storing anything.",
-        "title": "Merge lines",
-        "usedBy": {
-          "body": "Sent as the system prompt of the last {agent} call when the ingest_files tool runs with distill true and when the distill view runs."
-        }
-      },
-      "memoryReconcileSystem": {
-        "description": "Compares new facts with similar stored memories and picks add, update or no change for each.",
-        "title": "Memory reconcile",
-        "usedBy": {
-          "body": "Sent as the system prompt of the {agent} call that runs after the gate accepts a fact."
-        }
-      },
-      "memoryRewriteSystem": {
-        "description": "Rewrites one short text, such as a code comment, in its own form. Drops trivia and keeps every fact.",
-        "title": "Rewrite text",
-        "usedBy": {
-          "body": "Sent as the system prompt of the {agent} call when the distill view runs in rewrite mode and when the ingest_files tool runs with distill true and mode rewrite."
-        }
-      },
-      "memoryRunTrivia": {
-        "description": "Defines run trivia, notes on how one run went, as never a memory, and what to keep instead.",
-        "title": "Run trivia",
-        "usedBy": {
-          "body": "Included in the import extract, import finalize and merge prompts."
-        }
-      },
       "runResumeLine": {
         "description": "First message of a run resumed after Kira quit or crashed.",
         "title": "Resume after restart",
@@ -7690,556 +7527,6 @@
     },
     "vars": {
       "hint": "Variables. Click one to insert it at the caret."
-    }
-  },
-  "memory": {
-    "add": {
-      "answer": {
-        "placeholder": "Your answer"
-      },
-      "checking": {
-        "loading": "Checking with {agent}…"
-      },
-      "label": "Add memory",
-      "outcome": {
-        "failed": {
-          "error": "Couldn’t add: {error}"
-        },
-        "known": {
-          "status": "Already known"
-        },
-        "updated": {
-          "status": "Updated v{from} to v{to}"
-        }
-      },
-      "project": {
-        "placeholder": "Choose or type a project key"
-      },
-      "resubmit": {
-        "label": "Resubmit"
-      },
-      "text": {
-        "label": "What to remember",
-        "placeholder": "Facts in your own words; {agent} splits and checks them"
-      }
-    },
-    "checkHook": {
-      "description": "Checks kira-memory doc files in any git repository and flags retired kira-memory comment blocks. The hook reads staged files only and skips itself when this app is missing.",
-      "hook": {
-        "hint": "Or add this line to a hook manager such as husky or lefthook."
-      },
-      "install": {
-        "hint": "Install the pre-commit hook by running this once in the repository root."
-      },
-      "title": "Memory commit check"
-    },
-    "common": {
-      "grade": {
-        "agent": {
-          "description": "Reference only."
-        },
-        "external": {
-          "description": "Correct, probably incomplete."
-        },
-        "user": {
-          "description": "Challenged by a human and correct."
-        }
-      },
-      "groupKind": {
-        "document": {
-          "label": "Documentation"
-        },
-        "thread": {
-          "label": "Thread"
-        }
-      },
-      "historical": {
-        "status": "Historical"
-      },
-      "kind": {
-        "rule": {
-          "label": "Rule"
-        }
-      },
-      "origin": {
-        "external": {
-          "label": "External"
-        },
-        "externalTagged": {
-          "label": "External · {tag}"
-        }
-      },
-      "pause": {
-        "label": "Pause"
-      },
-      "project": {
-        "label": "Project key"
-      },
-      "scope": {
-        "company": {
-          "label": "Company"
-        },
-        "personal": {
-          "label": "Personal"
-        },
-        "project": {
-          "label": "Project"
-        }
-      },
-      "version": {
-        "label": "Version {version}"
-      }
-    },
-    "distill": {
-      "cancelled": {
-        "status": "Cancelled. {cost} spent on finished parts"
-      },
-      "copy": {
-        "announce": "Copied {count} line | Copied {count} lines"
-      },
-      "empty": {
-        "description": "The input had nothing to condense.",
-        "title": "No lines came back"
-      },
-      "file": {
-        "choose": {
-          "label": "Choose a file…"
-        },
-        "none": {
-          "hint": "No file chosen."
-        }
-      },
-      "hint": "Facts come back as short claims and rules as short imperatives. Negations and numbers stay.",
-      "import": {
-        "label": "Import as document…"
-      },
-      "input": {
-        "placeholder": "Paste text to condense"
-      },
-      "mode": {
-        "facts": {
-          "label": "Facts"
-        },
-        "rewrite": {
-          "label": "Rewrite"
-        }
-      },
-      "open": {
-        "label": "Distill text"
-      },
-      "origin": {
-        "label": "{path} lines {start} to {end}"
-      },
-      "overLimit": {
-        "error": "Over the limit of {max} characters."
-      },
-      "progress": {
-        "extract": {
-          "status": "Reading parts: {done} of {total} · {cost}"
-        },
-        "merge": {
-          "status": "Merging lines: {done} of {total} · {cost}"
-        },
-        "rewrite": {
-          "status": "Rewriting · {cost}"
-        },
-        "verify": {
-          "status": "Checking against the source: {done} of {total} · {cost}"
-        }
-      },
-      "result": {
-        "line": {
-          "aria": "Include line {number}"
-        },
-        "parts": {
-          "label": "{count} part | {count} parts"
-        },
-        "summary": {
-          "status": "{inChars} to {outChars} characters ({percent}) · {inTokens} to {outTokens} tokens · {cost}"
-        }
-      },
-      "rewrite": {
-        "copy": {
-          "announce": "Copied the rewrite"
-        },
-        "dropped": {
-          "title": "Left out"
-        },
-        "hint": "The text comes back in its own form with trivia dropped. Facts, negations and numbers stay.",
-        "kept": {
-          "directive": {
-            "body": "Kept the original. The rewrite changed a directive."
-          },
-          "form": {
-            "body": "Kept the original. The rewrite changed the comment markers."
-          },
-          "grew": {
-            "body": "Kept the original. The rewrite was longer."
-          },
-          "hedge": {
-            "body": "Kept the original. The rewrite still held a hedge word."
-          },
-          "indent": {
-            "body": "Kept the original. The rewrite changed the indentation."
-          },
-          "output": {
-            "body": "Kept the original. {agent} returned no usable rewrite."
-          },
-          "tokens": {
-            "body": "Kept the original. The rewrite lost a name, number or quoted text."
-          },
-          "width": {
-            "body": "Kept the original. The rewrite had a line wider than 100 columns."
-          }
-        },
-        "unchanged": {
-          "body": "Already concise. Nothing to drop."
-        },
-        "why": {
-          "restatesCode": {
-            "label": "Restates the code"
-          },
-          "tag": {
-            "label": "Phase or plan tag"
-          },
-          "trivia": {
-            "label": "Trivia"
-          }
-        }
-      },
-      "run": {
-        "label": "Run distill"
-      },
-      "selection": {
-        "label": "Distill selection"
-      },
-      "size": {
-        "status": "{chars} characters, about {tokens} tokens"
-      },
-      "store": {
-        "items": {
-          "label": "{count} fact to store | {count} facts to store"
-        },
-        "label": "Store…",
-        "limit": {
-          "hint": "Select at most {max} lines to store."
-        }
-      },
-      "unresolved": {
-        "title": "Unclear, left out"
-      }
-    },
-    "import": {
-      "back": {
-        "label": "Back to memories"
-      },
-      "channel": {
-        "agent": {
-          "description": "Started by {agent} session {session}."
-        },
-        "ui": {
-          "label": "Manual"
-        }
-      },
-      "confirm": {
-        "calls": {
-          "label": "{count} {agent} call | {count} {agent} calls"
-        },
-        "chunks": {
-          "label": "{count} chunk | {count} chunks"
-        },
-        "cost": {
-          "description": "Runs on your {agent} subscription. {skipped}, {ignored}."
-        },
-        "estimate": {
-          "description": "{files}, {chunks}, {calls}, {duration}."
-        },
-        "ignored": {
-          "label": "{count} file or folder ignored | {count} files and folders ignored"
-        },
-        "nothing": {
-          "description": "No importable files found."
-        },
-        "nothingSkipped": {
-          "description": "No importable files found. {count} skipped."
-        },
-        "origin": {
-          "label": "Origin"
-        },
-        "scanning": {
-          "loading": "Scanning files…"
-        },
-        "sourceTag": {
-          "error": "Use 1 to 32 lowercase letters, digits or dashes.",
-          "label": "Source tag"
-        },
-        "truncated": {
-          "description": "Too many files. Only the first file is included. | Too many files. Only the first {count} files are included."
-        },
-        "writeDoc": {
-          "label": "Write a kira-memory doc beside each file"
-        }
-      },
-      "discardConfirm": {
-        "body": "Remove this import and its progress. Memories already stored stay.",
-        "title": "Discard import?"
-      },
-      "documents": {
-        "label": "Import documents"
-      },
-      "file": {
-        "docError": {
-          "label": "Doc not written: {error}"
-        },
-        "docPath": {
-          "label": "Doc"
-        },
-        "dropped": {
-          "label": "Dropped: {why}"
-        },
-        "group": {
-          "label": "Group"
-        },
-        "kind": {
-          "jsonl": {
-            "label": "JSON lines"
-          },
-          "markdown": {
-            "label": "Markdown"
-          },
-          "memdoc": {
-            "label": "Memory doc"
-          }
-        },
-        "orphaned": {
-          "label": "{count} no longer in the doc"
-        },
-        "verified": {
-          "label": "{count} cross-checked"
-        }
-      },
-      "fileState": {
-        "extracted": {
-          "status": "Extracted"
-        },
-        "extracting": {
-          "status": "Extracting"
-        },
-        "finalizing": {
-          "status": "Finalising"
-        },
-        "verifying": {
-          "status": "Cross-checking"
-        }
-      },
-      "files": {
-        "label": "Import files…"
-      },
-      "folder": {
-        "label": "Import folder…"
-      },
-      "list": {
-        "empty": "No imports",
-        "emptyHint": "Import files or a folder from the panel header."
-      },
-      "retryFailed": {
-        "label": "Retry failed"
-      },
-      "start": {
-        "label": "Start import"
-      },
-      "state": {
-        "awaiting": {
-          "status": "Awaiting"
-        },
-        "paused": {
-          "status": "Paused"
-        },
-        "scanning": {
-          "status": "Scanning"
-        }
-      },
-      "status": {
-        "paused": {
-          "label": "Import paused: {title} · {done} / {count} file | Import paused: {title} · {done} / {count} files"
-        },
-        "ready": {
-          "label": "Import ready: {title} · {done} / {count} file | Import ready: {title} · {done} / {count} files"
-        },
-        "running": {
-          "label": "Importing: {title} · {done} / {count} file | Importing: {title} · {done} / {count} files"
-        }
-      },
-      "totals": {
-        "added": {
-          "label": "{count} added"
-        },
-        "dropped": {
-          "label": "{count} not stored"
-        },
-        "files": {
-          "label": "{done} / {count} file | {done} / {count} files"
-        },
-        "known": {
-          "label": "{count} known"
-        },
-        "skipped": {
-          "label": "{count} skipped"
-        },
-        "updated": {
-          "label": "{count} updated"
-        }
-      }
-    },
-    "mcp": {
-      "command": {
-        "hint": "The server runs this app’s executable with {command}. Install again if the app moves."
-      },
-      "connect": {
-        "description": "Registers the kira-memory MCP server. {product} then gets the store_memory, search_memories and memory_history tools and the /mcp__kira-memory__remember command. The {product} CLI must be installed for the store check to run.",
-        "title": "Connect {product}"
-      }
-    },
-    "panel": {
-      "boostProject": {
-        "clear": {
-          "label": "Clear project"
-        },
-        "label": "Boost project"
-      },
-      "both": {
-        "status": "Both sources"
-      },
-      "connectAgent": {
-        "hint": "Connect {product} in the settings to let it store memories."
-      },
-      "filter": {
-        "label": "Filters"
-      },
-      "includeHistory": {
-        "label": "Include history"
-      },
-      "keyword": {
-        "status": "Keyword"
-      },
-      "list": {
-        "empty": "No memories yet",
-        "emptyHint": "Add one, or let {product} store them.",
-        "loading": "Loading memories…"
-      },
-      "search": {
-        "placeholder": "Search memories"
-      },
-      "semantic": {
-        "status": "Semantic"
-      },
-      "semanticOff": {
-        "hint": "Semantic search is off."
-      },
-      "semanticUnavailable": {
-        "hint": "Semantic search unavailable."
-      }
-    },
-    "score": {
-      "badge": {
-        "aria": "Rank score {value}"
-      },
-      "grade": {
-        "label": "Origin grade {value}"
-      },
-      "group": {
-        "label": "Shared context {value}"
-      },
-      "history": {
-        "label": "Superseded {value}"
-      },
-      "keyword": {
-        "label": "Keyword {value}"
-      },
-      "recency": {
-        "label": "Recent {value}"
-      },
-      "scopeCompany": {
-        "label": "Company {value}"
-      },
-      "scopeOtherProject": {
-        "label": "Other project {value}"
-      },
-      "scopeProject": {
-        "label": "Current project {value}"
-      },
-      "semantic": {
-        "label": "Meaning {value}"
-      }
-    },
-    "semantic": {
-      "description": "Finds memories by meaning. Runs a local embedding model.",
-      "download": {
-        "label": "Download model ({size})"
-      },
-      "downloading": {
-        "status": "Downloading {done} / {total}"
-      },
-      "indexing": {
-        "status": "Indexing {done} / {total}"
-      },
-      "on": {
-        "status": "On"
-      },
-      "onWithModel": {
-        "status": "On ({model})"
-      },
-      "title": "Semantic search",
-      "unavailable": {
-        "error": "Semantic search unavailable: {message}"
-      }
-    },
-    "start": {
-      "context": {
-        "label": "Stored together",
-        "more": {
-          "label": "{count} more not shown"
-        }
-      },
-      "empty": "Search or add a memory",
-      "emptyHint": "Select a result to see its reason and history.",
-      "event": {
-        "action": {
-          "reconfirmed": {
-            "status": "Reconfirmed"
-          },
-          "updated": {
-            "status": "Updated"
-          }
-        },
-        "plain": {
-          "label": "{action} · {origin} · {source}"
-        },
-        "session": {
-          "label": "Session {session}"
-        },
-        "withBoth": {
-          "label": "{action} · {origin} · {source} ({label}) — {rationale}"
-        },
-        "withLabel": {
-          "label": "{action} · {origin} · {source} ({label})"
-        },
-        "withRationale": {
-          "label": "{action} · {origin} · {source} — {rationale}"
-        }
-      },
-      "id": {
-        "label": "Fact ID"
-      },
-      "noSession": {
-        "description": "Not stored from a {product} session."
-      },
-      "session": {
-        "label": "Session ID"
-      },
-      "versions": {
-        "label": "Versions"
-      }
     }
   },
   "mobile": {
@@ -9668,6 +8955,59 @@
         },
         "unit": {
           "aria": "Estimate unit"
+        }
+      },
+      "files": {
+        "copyRelPath": {
+          "label": "Copy relative path"
+        },
+        "noWorktree": {
+          "empty": "This task has no worktree yet"
+        },
+        "openInEditor": {
+          "label": "Open in VS Code"
+        },
+        "refresh": {
+          "tooltip": "Refresh files"
+        },
+        "resize": {
+          "label": "Resize file list"
+        },
+        "reveal": {
+          "explorer": {
+            "label": "Reveal in File Explorer"
+          },
+          "fileManager": {
+            "label": "Reveal in file manager"
+          },
+          "finder": {
+            "label": "Reveal in Finder"
+          }
+        },
+        "search": {
+          "stopped": {
+            "status": "{summary} (stopped at 10,000)"
+          },
+          "summary": {
+            "status": "{count} result in {files} | {count} results in {files}"
+          },
+          "truncated": {
+            "tooltip": "This file hit the per-file match cap, so not every match is shown"
+          }
+        },
+        "target": {
+          "file": {
+            "label": "Selected file"
+          }
+        },
+        "tree": {
+          "aria": "Repository files"
+        },
+        "truncated": {
+          "hint": "The worktree has more files than the list shows."
+        },
+        "viewer": {
+          "empty": "Select a file to view it"
         }
       },
       "flow": {
@@ -12645,11 +11985,6 @@
       "manage": {
         "label": "Manage repositories…"
       },
-      "menu": {
-        "openChanges": {
-          "label": "Open changes"
-        }
-      },
       "newTerminal": {
         "tooltip": "New terminal at repository root"
       },
@@ -12673,9 +12008,6 @@
         "noWorktrees": {
           "empty": "No worktrees"
         },
-        "refreshTree": {
-          "tooltip": "Refresh file tree"
-        },
         "rename": {
           "title": "Rename repository"
         },
@@ -12684,9 +12016,6 @@
         },
         "terminalOpen": {
           "tooltip": "A terminal is open here | {count} terminals are open here"
-        },
-        "treeTruncated": {
-          "hint": "Showing the first 200,000 files."
         }
       },
       "removeConfirm": {
@@ -12719,17 +12048,6 @@
           "error": "No base branch configured for this repository."
         }
       },
-      "search": {
-        "stopped": {
-          "status": "{summary} (stopped at 10,000)"
-        },
-        "summary": {
-          "status": "{count} result in {files} | {count} results in {files}"
-        },
-        "truncated": {
-          "tooltip": "This file hit the per-file match cap, so not every match is shown"
-        }
-      },
       "settingsFile": {
         "copyShared": {
           "label": "Copy for shared config"
@@ -12756,11 +12074,6 @@
         },
         "tabs": {
           "aria": "Settings view"
-        }
-      },
-      "tree": {
-        "files": {
-          "aria": "Repository files"
         }
       },
       "view": {
@@ -13077,15 +12390,6 @@
           "label": "Repository URL"
         }
       },
-      "experimental": {
-        "intro": {
-          "description": "Features still being worked on. They may change or go away."
-        },
-        "memory": {
-          "description": "Shows the memory module and its settings. Stored memories and agent connections stay as they are when off.",
-          "label": "Memory module"
-        }
-      },
       "fileTypes": {
         "description": "Make Kira Space the app that opens code and data files from Finder. It opens them read-only. Turning a switch off gives each type back to the app that had it.",
         "ext": {
@@ -13149,12 +12453,6 @@
         "remote": {
           "description": "Server-owned. These apply to every connected editor immediately, since two windows disagreeing about either is a safety issue, not a preference.",
           "title": "Git remote operations"
-        }
-      },
-      "memory": {
-        "agentModel": {
-          "description": "Model for memory store checks, import and distill. Sonnet is the default.",
-          "label": "{agent} model"
         }
       },
       "mobileAccess": {
@@ -13256,9 +12554,6 @@
         },
         "cliTools": {
           "label": "CLI tools"
-        },
-        "experimental": {
-          "label": "Experimental"
         },
         "fileTypes": {
           "label": "File types"

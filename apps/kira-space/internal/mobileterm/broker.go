@@ -2,6 +2,7 @@ package mobileterm
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -67,6 +68,7 @@ type entry struct {
 	writeMu     sync.Mutex
 	id          string
 	ring        *Ring
+	ringBase    int64 // End of the last dropped ring
 	state       state
 	sessionID   string
 	deviceID    string
@@ -119,6 +121,9 @@ type Broker struct {
 
 	mu      sync.Mutex
 	entries map[string]*entry
+	// recording gates the replay ring: a phone attaches only while phone access is on, so with it off
+	// no output is kept.
+	recording atomic.Bool
 }
 
 func New(d Deps) *Broker {
@@ -134,6 +139,35 @@ func New(d Deps) *Broker {
 	return &Broker{deps: d, entries: map[string]*entry{}}
 }
 
+// SetRecording turns replay capture on or off. Off drops the ring of every terminal no phone holds.
+func (b *Broker) SetRecording(on bool) {
+	b.recording.Store(on)
+	if on {
+		return
+	}
+	b.mu.Lock()
+	all := make([]*entry, 0, len(b.entries))
+	for _, e := range b.entries {
+		all = append(all, e)
+	}
+	b.mu.Unlock()
+	for _, e := range all {
+		e.mu.Lock()
+		if e.conn == nil {
+			e.dropRing()
+		}
+		e.mu.Unlock()
+	}
+}
+
+// dropRing needs e.mu. Offsets stay monotonic across drops so a stale phone offset reads as overrun.
+func (e *entry) dropRing() {
+	if e.ring != nil {
+		e.ringBase = e.ring.End()
+		e.ring = nil
+	}
+}
+
 func (b *Broker) get(id string) *entry {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -146,7 +180,7 @@ func (b *Broker) getOrCreate(id string) *entry {
 	defer b.mu.Unlock()
 	e := b.entries[id]
 	if e == nil {
-		e = &entry{id: id, ring: newRing(ringCap)}
+		e = &entry{id: id}
 		b.entries[id] = e
 	}
 	return e
@@ -160,8 +194,19 @@ func (b *Broker) Opened(id string, cols, rows int) {
 }
 
 func (b *Broker) Output(id string, data []byte) {
+	if !b.recording.Load() {
+		return
+	}
 	e := b.getOrCreate(id)
 	e.mu.Lock()
+	if e.ring == nil {
+		// Re-check under e.mu: SetRecording(false) sweeps under it, so no ring outlives the sweep.
+		if !b.recording.Load() {
+			e.mu.Unlock()
+			return
+		}
+		e.ring = newRing(ringCap, e.ringBase)
+	}
 	e.ring.Append(data)
 	c := e.conn
 	e.mu.Unlock()
@@ -231,6 +276,9 @@ func (b *Broker) Attach(sessionID string, dev repos.MobileDeviceRow, cols, rows 
 		e.mu.Unlock()
 		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.space.mobileterm.controlledElsewhere.body", nil)
 	}
+	if e.ring == nil {
+		e.ring = newRing(ringCap, e.ringBase)
+	}
 	c := &phoneConn{e: e, device: dev.ID, notify: make(chan struct{}, 1), done: make(chan struct{})}
 	if old := e.conn; old != nil {
 		old.finish(CloseReplaced, "replaced")
@@ -252,22 +300,32 @@ func (b *Broker) Attach(sessionID string, dev repos.MobileDeviceRow, cols, rows 
 	return c, nil
 }
 
-// Snapshot and Read give Serve its view of the ring.
+// Snapshot and Read give Serve its view of the ring. The ring is nil once SetRecording(false) ran
+// after the terminal went back to the desktop while pump still holds c: read as empty.
 func (c *phoneConn) Snapshot() (data []byte, end int64) {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return nil, 0
+	}
 	return c.e.ring.Snapshot()
 }
 
 func (c *phoneConn) ReadFrom(off int64, limit int) (data []byte, next int64, overrun bool) {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return nil, 0, false
+	}
 	return c.e.ring.ReadFrom(off, limit)
 }
 
 func (c *phoneConn) End() int64 {
 	c.e.mu.Lock()
 	defer c.e.mu.Unlock()
+	if c.e.ring == nil {
+		return 0
+	}
 	return c.e.ring.End()
 }
 
@@ -427,6 +485,9 @@ func (b *Broker) toDesktop(e *entry, code int, reason string) bool {
 	stopTimers(e)
 	e.gen++
 	e.state = stateDesktop
+	if !b.recording.Load() {
+		e.dropRing()
+	}
 	e.deviceID, e.label, e.returnsAt = "", "", time.Time{}
 	if e.desktopCols > 0 && e.desktopRows > 0 && (e.desktopCols != e.phoneCols || e.desktopRows != e.phoneRows) {
 		b.resize(e, e.desktopCols, e.desktopRows)

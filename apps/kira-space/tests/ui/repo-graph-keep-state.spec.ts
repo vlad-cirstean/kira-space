@@ -6,7 +6,7 @@ import { gitStreamEmit, gitStreamRequests } from './support/gitStreamMock';
 import {
   manyRowShas,
   manyRows,
-  openPortGraph,
+  openPortGraphWithFile,
   PORT_REPO,
   type Relaunch,
   refsAtTip,
@@ -14,10 +14,10 @@ import {
 } from './support/gitUiPortFixtures';
 import { IPC } from './support/ipcChannels';
 import { trackErrors } from './support/pageErrors';
-import { repoTab, treeRow } from './support/repoRows';
+import { repoTab } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
 
-// The pinned graph tab stays mounted (hidden) while another tab is active: opening a diff and
+// The pinned graph tab stays mounted (hidden) while another tab is active: opening a file and
 // returning must not re-walk the graph or lose scroll/selection.
 
 const grid = '[data-testid="commit-grid"]';
@@ -29,11 +29,6 @@ const count = async (p: Page, method: string) =>
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [PORT_REPO] },
   {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: PORT_REPO.id },
-    response: { paths: ['a.ts', 'c.ts'], status: { 'c.ts': 'M' }, truncated: false },
-  },
-  {
     channel: IPC.codeWorkspaceReadFile,
     args: { id: PORT_REPO.id, path: 'a.ts' },
     response: {
@@ -44,26 +39,6 @@ const CONTROL: ControlSnapshot[] = [
       language: 'typescript',
     },
   },
-  {
-    channel: IPC.codeWorkspaceReadDiff,
-    args: { id: PORT_REPO.id, path: 'c.ts' },
-    response: {
-      path: 'c.ts',
-      language: 'typescript',
-      head: {
-        kind: 'found',
-        text: 'export const c = 1;\n',
-        bytes: 20,
-        limitBytes: 8 * 1024 * 1024,
-      },
-      worktree: {
-        kind: 'found',
-        text: 'export const c = 2;\n',
-        bytes: 20,
-        limitBytes: 8 * 1024 * 1024,
-      },
-    },
-  },
 ];
 
 async function boot(
@@ -71,10 +46,12 @@ async function boot(
   extra: Record<string, unknown> = {},
   control: ControlSnapshot[] = CONTROL,
 ): Promise<Page> {
-  const page = await openPortGraph(relaunch, {
+  const page = await openPortGraphWithFile(relaunch, {
     chunks: singleRowChunks(manyRows(300)),
     results: { 'refs.list': refsAtTip(manyRowShas(0)), ...extra },
     control,
+    file: 'a.ts',
+    fileActive: false,
   });
   await expect(row(page, 0)).toBeVisible({ timeout: 15_000 });
   await expect
@@ -85,11 +62,9 @@ async function boot(
   return page;
 }
 
-async function openDiff(page: Page): Promise<void> {
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'c.ts').click({ button: 'right' });
-  await page.locator('[data-testid="menu-item-open-changes"]').click();
-  await expect(page.locator('[data-testid="repo-diff-editor"]')).toBeVisible();
+async function openFileTab(page: Page): Promise<void> {
+  await repoTab(page, 'repo-file').click();
+  await expect(page.locator('[data-testid="repo-file-editor"]')).toBeVisible();
   await expect(page.locator('[data-testid="repo-graph-host"]')).toBeHidden();
 }
 
@@ -98,7 +73,7 @@ const tag = (p: Page) =>
     (el as HTMLElement).dataset.p342 = 'kept';
   });
 
-test('opening a diff and returning keeps the graph mounted with scroll and selection', async ({
+test('opening a file and returning keeps the graph mounted with scroll and selection', async ({
   relaunch,
 }) => {
   const page = await boot(relaunch);
@@ -119,7 +94,7 @@ test('opening a diff and returning keeps the graph mounted with scroll and selec
     refresh: await count(page, 'graph.refresh'),
   };
 
-  await openDiff(page);
+  await openFileTab(page);
   await repoTab(page, 'repo-graph').click();
 
   await expect(page.locator(grid)).toHaveAttribute('data-p342', 'kept');
@@ -147,8 +122,7 @@ test('"Open in graph" from a file scrolls the hidden graph to the commit once sh
       authorTimeSeconds: 1_700_000_000,
     },
   });
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'a.ts').click();
+  await repoTab(page, 'repo-file').click();
   const editor = page.locator('[data-testid="repo-file-editor"]');
   await expect(editor).toBeVisible();
   await editor.locator('.view-lines').click();
@@ -208,7 +182,7 @@ test('a refresh while the graph is hidden defers to one in-place refresh on show
 }) => {
   const page = await boot(relaunch);
   await tag(page);
-  await openDiff(page);
+  await openFileTab(page);
   const init = await count(page, 'app.init');
   const stream = await count(page, 'graph.stream');
   const refresh = await count(page, 'graph.refresh');
@@ -234,7 +208,7 @@ test('closing the workspace unmounts the kept graph; reopening mounts cold', asy
   const page = await boot(relaunch);
   const errors = trackErrors(page);
   await tag(page);
-  await openDiff(page);
+  await openFileTab(page);
 
   await page.locator('[data-testid="git-panel-tab-repos"]').click();
   await page
@@ -252,7 +226,7 @@ test('closing the workspace unmounts the kept graph; reopening mounts cold', asy
   expect(errors).toEqual([]);
 });
 
-test('opening a diff and returning keeps the commit detail pane open', async ({ relaunch }) => {
+test('opening a file and returning keeps the commit detail pane open', async ({ relaunch }) => {
   const page = await boot(relaunch);
   const errors = trackErrors(page);
   const detail = page.locator('[data-testid="detail-region"]');
@@ -262,8 +236,8 @@ test('opening a diff and returning keeps the commit detail pane open', async ({ 
     (el as HTMLElement).dataset.p343 = 'kept';
   });
 
-  await openDiff(page);
-  await page.locator('[data-testid="repo-diff-editor"]').click();
+  await openFileTab(page);
+  await page.locator('[data-testid="repo-file-editor"]').click();
   await repoTab(page, 'repo-graph').click();
 
   await expect(detail).toBeVisible();

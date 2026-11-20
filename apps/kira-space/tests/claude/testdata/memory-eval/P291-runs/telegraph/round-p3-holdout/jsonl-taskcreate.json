@@ -1,7 +1,0 @@
-{
- "source": "jsonl-taskcreate",
- "round": "P285-runs/round-p3-holdout",
- "costUsd": 0.009891399999999995,
- "facts": null,
- "residual": null
-}

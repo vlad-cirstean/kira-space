@@ -45,7 +45,7 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
-// Startup order: the argv shims (askpass, memory-mcp, memory-embed) -> config.EnsureLayout ->
+// Startup order: the argv shims (askpass, js-worker) -> config.EnsureLayout ->
 // logging.Init/Sweep -> instance lock -> storage.Open -> configsync.Recover -> appwire.Build (every
 // service) -> application.New (bound services, git and engine streams) -> the menu -> the startup
 // window list, opened -> app.Run().
@@ -113,6 +113,7 @@ func main() {
 	wired, err := appwire.Build(appwire.Options{
 		Repos: repositories, DB: db,
 		Cipher: cipher, Authorizer: localauth.New(time.Now, localauth.Evaluate, localauth.Available), Emitter: rawEmitter, Browser: browserOpener, FileOpener: fileOpener,
+		TaskRevealer: newTaskRevealer(fileOpener), Editor: newEditorLauncher(),
 		ImageClipboard: imageclip.New(application.InvokeSync),
 		Dialogs:        appshell.NewDialogs(rawDialogs), Locator: platformLocator(),
 		KeepAwakeDriver: keepawake.NewPlatformDriver(), MobileAssets: mobileAssetsFS,

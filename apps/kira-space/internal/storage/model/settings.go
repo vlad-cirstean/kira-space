@@ -2,13 +2,11 @@ package model
 
 import (
 	"fmt"
-	"log/slog"
 	"regexp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 	"github.com/kirathecat/kira-studio/internal/appsettings"
-	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/shell"
 )
 
@@ -134,18 +132,6 @@ func ValidCaptureHotkey(s string) bool {
 	return err == nil && c.Accelerator() == s && !c.ConflictsWithMenu()
 }
 
-// MemorySettings is P314's memory-feature leaf: Models maps a provider id to the model alias its
-// memory calls use (gate, reconcile, import, distill). A provider with no entry uses its catalog
-// default.
-type MemorySettings struct {
-	Models map[string]string `json:"models"`
-}
-
-// ExperimentalSettings is P556's flag list: one bool leaf per feature still behind a toggle.
-type ExperimentalSettings struct {
-	Memory bool `json:"memory"`
-}
-
 // TrackingSettings is P512's tracked-update leaf: per item kind, whether each concept counts as a
 // meaningful change. A concept missing from a map reads its catalog default.
 type TrackingSettings struct {
@@ -185,20 +171,18 @@ func OverlayTracking(kind string, stored map[string]bool) map[string]bool {
 }
 
 type Settings struct {
-	Appearance   Appearance           `json:"appearance"`
-	Advanced     AdvancedSettings     `json:"advanced"`
-	Git          GitSettings          `json:"git"`
-	Ade          AdeSettings          `json:"ade"`
-	Mobile       MobileSettings       `json:"mobile"`
-	Capture      CaptureSettings      `json:"capture"`
-	Memory       MemorySettings       `json:"memory"`
-	Experimental ExperimentalSettings `json:"experimental"`
-	Agent        AgentSettings        `json:"agent"`
-	Tracking     TrackingSettings     `json:"tracking"`
-	Data         DataSettings         `json:"data"`
-	Cache        CacheSettings        `json:"cache"`
-	Api          ApiSettings          `json:"api"`
-	DbMcp        DbMcpSettings        `json:"dbMcp"`
+	Appearance Appearance       `json:"appearance"`
+	Advanced   AdvancedSettings `json:"advanced"`
+	Git        GitSettings      `json:"git"`
+	Ade        AdeSettings      `json:"ade"`
+	Mobile     MobileSettings   `json:"mobile"`
+	Capture    CaptureSettings  `json:"capture"`
+	Agent      AgentSettings    `json:"agent"`
+	Tracking   TrackingSettings `json:"tracking"`
+	Data       DataSettings     `json:"data"`
+	Cache      CacheSettings    `json:"cache"`
+	Api        ApiSettings      `json:"api"`
+	DbMcp      DbMcpSettings    `json:"dbMcp"`
 }
 
 // DefaultMobileSettings mirrors settingsDomain.ts's mobileSettingsSchema defaults.
@@ -239,17 +223,15 @@ func DefaultSettings() Settings {
 			InlineBlame: true,
 			DateFormat:  "relative",
 		},
-		Advanced:     AdvancedSettings{GitLogLevel: "info", NotifyPrompts: true, OpLogRetentionDays: 30, ExpensiveQueryRows: 100_000},
-		Git:          DefaultGitSettings(),
-		Ade:          DefaultAdeSettings(),
-		Mobile:       DefaultMobileSettings(),
-		Capture:      DefaultCaptureSettings(),
-		Memory:       MemorySettings{Models: map[string]string{}},
-		Experimental: ExperimentalSettings{Memory: false},
-		Agent:        DefaultAgentSettings(),
-		Tracking:     DefaultTrackingSettings(),
-		Data:         DataSettings{DefaultPageSize: 100},
-		Cache:        CacheSettings{L2BudgetMb: 64},
+		Advanced: AdvancedSettings{GitLogLevel: "info", NotifyPrompts: true, OpLogRetentionDays: 30, ExpensiveQueryRows: 100_000},
+		Git:      DefaultGitSettings(),
+		Ade:      DefaultAdeSettings(),
+		Mobile:   DefaultMobileSettings(),
+		Capture:  DefaultCaptureSettings(),
+		Agent:    DefaultAgentSettings(),
+		Tracking: DefaultTrackingSettings(),
+		Data:     DataSettings{DefaultPageSize: 100},
+		Cache:    CacheSettings{L2BudgetMb: 64},
 		// P90 §2.1: three deliberate default changes from pre-P90 httpclient behaviour — timeout
 		// 30s -> none, max response 10 MiB -> 5 MB (large bodies freeze the viewer), max redirects
 		// unchanged at 10. internal/httpclient/options.go's normalize() defaults must equal these.
@@ -332,17 +314,6 @@ type CapturePatch struct {
 	Hotkey  *string `json:"hotkey,omitempty"`
 }
 
-// MemoryPatch mirrors MemorySettings' own `.partial()` shape.
-type MemoryPatch struct {
-	// Models replaces the whole map.
-	Models *map[string]string `json:"models,omitempty"`
-}
-
-// ExperimentalPatch mirrors ExperimentalSettings' own `.partial()` shape.
-type ExperimentalPatch struct {
-	Memory *bool `json:"memory,omitempty"`
-}
-
 // TrackingPatch mirrors TrackingSettings' own `.partial()` shape; each map replaces its whole leaf.
 type TrackingPatch struct {
 	ChangeRequest *map[string]bool `json:"changeRequest,omitempty"`
@@ -351,20 +322,18 @@ type TrackingPatch struct {
 }
 
 type SettingsPatch struct {
-	Appearance   *AppearancePatch   `json:"appearance,omitempty"`
-	Advanced     *AdvancedPatch     `json:"advanced,omitempty"`
-	Git          *GitPatch          `json:"git,omitempty"`
-	Ade          *AdePatch          `json:"ade,omitempty"`
-	Mobile       *MobilePatch       `json:"mobile,omitempty"`
-	Capture      *CapturePatch      `json:"capture,omitempty"`
-	Memory       *MemoryPatch       `json:"memory,omitempty"`
-	Experimental *ExperimentalPatch `json:"experimental,omitempty"`
-	Agent        *AgentPatch        `json:"agent,omitempty"`
-	Tracking     *TrackingPatch     `json:"tracking,omitempty"`
-	Data         *DataPatch         `json:"data,omitempty"`
-	Cache        *CachePatch        `json:"cache,omitempty"`
-	Api          *ApiPatch          `json:"api,omitempty"`
-	DbMcp        *DbMcpPatch        `json:"dbMcp,omitempty"`
+	Appearance *AppearancePatch `json:"appearance,omitempty"`
+	Advanced   *AdvancedPatch   `json:"advanced,omitempty"`
+	Git        *GitPatch        `json:"git,omitempty"`
+	Ade        *AdePatch        `json:"ade,omitempty"`
+	Mobile     *MobilePatch     `json:"mobile,omitempty"`
+	Capture    *CapturePatch    `json:"capture,omitempty"`
+	Agent      *AgentPatch      `json:"agent,omitempty"`
+	Tracking   *TrackingPatch   `json:"tracking,omitempty"`
+	Data       *DataPatch       `json:"data,omitempty"`
+	Cache      *CachePatch      `json:"cache,omitempty"`
+	Api        *ApiPatch        `json:"api,omitempty"`
+	DbMcp      *DbMcpPatch      `json:"dbMcp,omitempty"`
 }
 
 // validateAppearanceSection mirrors upsertAppearance's own leaf list (repos/settings.go).
@@ -501,39 +470,6 @@ func validateCaptureSection(c *CapturePatch) error {
 	return nil
 }
 
-// validMemoryModel reports whether alias is in provider's catalog. A provider that is not
-// registered passes: its entry is kept and ignored until the provider returns.
-func validMemoryModel(reg *harness.Registry, provider, alias string) bool {
-	p, ok := reg.Get(provider)
-	return !ok || p.Models().Valid(alias)
-}
-
-// CleanMemoryModels drops the entries whose provider id is malformed or whose alias is not in the
-// catalog of the provider registered in reg.
-func CleanMemoryModels(reg *harness.Registry, models map[string]string) map[string]string {
-	out := make(map[string]string, len(models))
-	for id, alias := range models {
-		if !appsettings.ValidProviderID(id) || !validMemoryModel(reg, id, alias) {
-			slog.Warn("settings: ignoring memory model", "scope", "settings", "provider", id, "model", alias)
-			continue
-		}
-		out[id] = alias
-	}
-	return out
-}
-
-func validateMemorySection(m *MemoryPatch) error {
-	if m == nil || m.Models == nil {
-		return nil
-	}
-	for id := range *m.Models {
-		if !appsettings.ValidProviderID(id) {
-			return fmt.Errorf("model: memory.models: invalid provider id %q", id)
-		}
-	}
-	return nil
-}
-
 func validateTrackingSection(t *TrackingPatch) error {
 	if t == nil {
 		return nil
@@ -549,19 +485,6 @@ func validateTrackingSection(t *TrackingPatch) error {
 			if !updates.Known(leaf.kind, id) {
 				return fmt.Errorf("model: tracking.%s: unknown concept %q", leaf.kind, id)
 			}
-		}
-	}
-	return nil
-}
-
-// CheckModels checks every patched alias against the catalog of its provider registered in reg.
-func (m *MemoryPatch) CheckModels(reg *harness.Registry) error {
-	if m == nil || m.Models == nil {
-		return nil
-	}
-	for id, alias := range *m.Models {
-		if !validMemoryModel(reg, id, alias) {
-			return fmt.Errorf("model: memory.models.%s: invalid value %q", id, alias)
 		}
 	}
 	return nil
@@ -587,9 +510,6 @@ func (p SettingsPatch) Validate() error {
 		return err
 	}
 	if err := validateCaptureSection(p.Capture); err != nil {
-		return err
-	}
-	if err := validateMemorySection(p.Memory); err != nil {
 		return err
 	}
 	if err := validateTrackingSection(p.Tracking); err != nil {

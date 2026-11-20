@@ -145,7 +145,7 @@ func columnsHolding(t *testing.T, db *sql.DB, needle string) []string {
 func TestAgentSettingsReachEveryLaunch(t *testing.T) {
 	secret := "p453-" + strings.ReplaceAll(uuid.NewString(), "-", "")
 	t.Setenv(fakeagent.EnvRecordEnv, "P453_MARK")
-	fake := fakeprovider.New(map[string]json.RawMessage{})
+	fake := fakeprovider.New()
 	sbx := &sandboxtest.Fake{Dir: t.TempDir()}
 	hold := filepath.Join(t.TempDir(), "hold")
 	app := flowharness.New(t, flowharness.WithProvider(fake), flowharness.WithTrackerGrace(time.Second), flowharness.WithSandbox(sbx))

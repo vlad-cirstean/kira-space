@@ -325,11 +325,6 @@ test('selecting a command yields no prompt', async ({ page }) => {
   expect(prompts.every(Boolean)).toBe(true);
 });
 
-test('the landing page never mentions memory', async ({ page }) => {
-  await page.goto(BASE);
-  expect(await page.locator('main').innerText()).not.toMatch(/memor/i);
-});
-
 test('the landing page has no app tab bar', async ({ page }) => {
   await page.goto(BASE);
   await expect(page.locator('nav[aria-label="Apps"]')).toHaveCount(0);
@@ -380,9 +375,8 @@ test('the README opens with the beta notice and the install link', () => {
   expect(first).toContain('https://vlad-cirstean.github.io/kira-space/#install');
 });
 
-test('every README image is a published shot or a tracked file, never the memory shot', () => {
+test('every README image is a published shot or a tracked file', () => {
   const readme = readFileSync(join(import.meta.dirname, '..', '..', 'README.md'), 'utf8');
-  expect(readme).not.toContain('space-memory');
   const urls = [
     ...[...readme.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)].map((m) => m[1] ?? ''),
     ...[...readme.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1] ?? ''),

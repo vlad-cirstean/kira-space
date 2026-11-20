@@ -116,6 +116,9 @@ export function useCandidates(codeRepoId: () => string, enabled: () => boolean) 
     queryKey: candidatesKey(codeRepoId()),
     queryFn: () => control.adeTaskCandidateBranches({ codeRepoId: codeRepoId() }),
     staleTime: 0,
+    // Dropped with its last observer: the query function closes over the caller's getters, and a
+    // cached query would keep that component's scope alive for the 5 min default.
+    gcTime: 0,
     enabled: enabled(),
   }));
 }

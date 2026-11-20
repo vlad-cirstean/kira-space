@@ -32,6 +32,8 @@ withDefaults(
     disabledTrigger?: boolean;
     variant?: ButtonVariants['variant'];
     size?: ButtonVariants['size'];
+    /** Tone of a `dialog` outline; see Button. */
+    outline?: ButtonVariants['outline'];
     /** `aria-pressed`; the toolbar variant draws the pressed look from it. */
     pressed?: boolean;
     /** Colours the icon for a state: `ok` (done, on), `warn` or `error`. */
@@ -47,6 +49,7 @@ withDefaults(
     disabledTrigger: false,
     variant: 'toolbar',
     size: 'kira-icon',
+    outline: undefined,
     pressed: undefined,
     tone: undefined,
     kbd: undefined,
@@ -75,6 +78,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         <Button
           ref="buttonRef"
           :variant="variant"
+          :outline="outline"
           :size="size"
           :aria-label="ariaLabel ?? label"
           :aria-pressed="pressed"
@@ -89,6 +93,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         v-else
         ref="buttonRef"
         :variant="variant"
+        :outline="outline"
         :size="size"
         :aria-label="ariaLabel ?? label"
         :aria-pressed="pressed"

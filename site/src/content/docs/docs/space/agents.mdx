@@ -43,7 +43,6 @@ A conversation keeps its agent. Resume, Take over, Restart and Continue in termi
 | Interactive sessions, Take over, review rounds | Yes | Yes |
 | Headless workflow steps | Yes | Yes |
 | Smart scripts and smart steps | Yes | No: OpenCode can't cap cost |
-| Memory calls | Yes | Run on Claude Code |
 | Usage limits in the status bar | Yes | No |
 | Activity and notifications | Hooks | A Kira plugin, no waiting-on-monitor state |
 
@@ -111,7 +110,7 @@ Finished and stopped sessions sit behind the **Finished or stopped** dropdown at
 
 The **Context** sub-tab of **Agent config** edits one Markdown file that every agent gets as extra system prompt: `~/.kira-space/config/agent/context.md`.
 
-- Every module uses it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal. Memory calls do not.
+- Every module uses it: sessions, Take over, resume, headless steps, smart scripts and Continue in terminal.
 - Up to 32 KiB. Empty or missing means no context. A broken file gives agents the last good text.
 - A save applies to agents started after it. A running session keeps its text.
 - A resumed Claude Code conversation keeps the context it started with until it compacts. OpenCode reads the new text on resume.

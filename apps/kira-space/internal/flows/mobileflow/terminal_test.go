@@ -3,6 +3,7 @@ package mobileflow_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
+	"github.com/kirathecat/kira-studio/internal/appevent"
+	"github.com/kirathecat/kira-studio/internal/terminal"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
@@ -155,6 +158,61 @@ func TestPhoneTerminalAttach(t *testing.T) {
 	case <-again.end:
 	case <-time.After(waitFor):
 		t.Fatal("socket still open after agent input was turned off")
+	}
+	f.release(t)
+}
+
+// desktopSaw reports whether the desktop window's terminal stream has carried want.
+func desktopSaw(app *flowharness.App, terminalID, want string) bool {
+	var sb strings.Builder
+	for _, ev := range app.Events.Since(0, appevent.ChannelTerminal) {
+		te, ok := ev.Data.(terminal.Event)
+		if !ok || te.TerminalID != terminalID {
+			continue
+		}
+		raw, _ := base64.StdEncoding.DecodeString(te.Data)
+		sb.Write(raw)
+	}
+	return strings.Contains(sb.String(), want)
+}
+
+// Replay exists only for output since phone access was turned on: a banner written while access was
+// off is not kept, output after enabling is.
+func TestPhoneTerminalReplayStartsAtAccess(t *testing.T) {
+	f := newFixture(t)
+	app := f.app
+	launch := f.startSession(t)
+	banner := strings.TrimSpace(f.banner)
+	testx.WaitUntil(t, waitFor, func() bool { return desktopSaw(app, launch.TerminalID, banner) })
+
+	p, deviceID := pairedPhone(t, f)
+	if _, err := app.W.Mobile.SetAgentInputEnabled(bridge.MobileSetAgentInputArgs{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.W.Mobile.SetDevicePermissions(bridge.MobileDevicePermissionsArgs{ID: deviceID, Write: true, AgentInput: true}); err != nil {
+		t.Fatal(err)
+	}
+	const marker = "after-access-marker"
+	if err := app.W.Terminal.Write(terminal.WriteArgs{
+		TerminalID: launch.TerminalID, Data: base64.StdEncoding.EncodeToString([]byte(marker + "\n")),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return desktopSaw(app, launch.TerminalID, marker) })
+
+	term := p.attach(t, launch.SessionID)
+	var seen bytes.Buffer
+	deadline := time.After(waitFor)
+	for !strings.Contains(seen.String(), marker) {
+		select {
+		case b := <-term.out:
+			seen.Write(b)
+		case <-deadline:
+			t.Fatalf("replay %q never contained %q", seen.String(), marker)
+		}
+	}
+	if strings.Contains(seen.String(), banner) {
+		t.Fatalf("replay %q holds the banner written before access was on", seen.String())
 	}
 	f.release(t)
 }

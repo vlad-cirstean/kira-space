@@ -58,8 +58,7 @@ type Log struct {
 	store Store
 	w     *writer
 
-	idPrefix string
-	closers  []func()
+	closers []func()
 }
 
 type dedupeEntry struct {
@@ -167,7 +166,7 @@ func (l *Log) Start(ctx context.Context, m Meta) *Op {
 		source = o.Label
 	}
 	rec := &Record{
-		ID:         l.idPrefix + ids.NewID(),
+		ID:         ids.NewID(),
 		StartedAt:  kiratime.NowISO(),
 		Category:   cat,
 		Kind:       m.Kind,

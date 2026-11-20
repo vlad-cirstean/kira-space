@@ -28,14 +28,7 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 const DICTIONARY_BASE = 2;
 

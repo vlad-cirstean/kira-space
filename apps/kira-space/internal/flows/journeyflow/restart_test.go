@@ -11,7 +11,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
-	"github.com/kirathecat/kira-studio/internal/memory"
 	"github.com/kirathecat/kira-studio/internal/scripts"
 	"github.com/kirathecat/kira-studio/internal/scripts/scriptstest"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -75,15 +74,10 @@ func TestRestartMidRun(t *testing.T) {
 	}
 }
 
-// Everything a user keeps outside a task survives a relaunch: command collections, memories and
-// the workflow file (saved as structure, read back as text).
+// Everything a user keeps outside a task survives a relaunch: command collections and the
+// workflow file (saved as structure, read back as text).
 func TestRestartKeepsUserData(t *testing.T) {
 	app := flowharness.New(t)
-	gate, err := filepath.Abs(filepath.Join("testdata", "gate-accept.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	claude(app, fakeagent.Action{Emit: gate})
 
 	cs := app.W.CustomScripts
 	script, err := cs.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{Name: "build", Command: "make", Color: "blue", Collection: "Build"}})
@@ -99,14 +93,6 @@ func TestRestartKeepsUserData(t *testing.T) {
 	}
 	if err := cs.Delete(bridge.CustomScriptsDeleteArgs{ID: extra.ID}); err != nil {
 		t.Fatal(err)
-	}
-
-	items := []bridge.MemoryStoreItem{
-		{Fact: "billing runs postgres", Reason: "migration notes"},
-		{Fact: "staging deploys at 09:00", Reason: "release calendar"},
-	}
-	if res, err := app.W.Memory.Store(ctx, bridge.MemoryStoreArgs{Items: items, Scope: memory.ScopePersonal}); err != nil || res.Status != "stored" {
-		t.Fatalf("Store = %+v, %v", res, err)
 	}
 
 	saveWorkflow(t, app, workflowYAML)
@@ -136,7 +122,6 @@ func TestRestartKeepsUserData(t *testing.T) {
 	}
 
 	scripts1, _ := cs.List()
-	recent1, _ := app.W.Memory.Recent(ctx)
 	app.Restart()
 	scripts2, err := app.W.CustomScripts.List()
 	if err != nil || !reflect.DeepEqual(scripts1, scripts2) {
@@ -145,11 +130,6 @@ func TestRestartKeepsUserData(t *testing.T) {
 	if len(scripts2.Scripts) != 1 || scripts2.Scripts[0].Name != "build all" || scripts2.Scripts[0].Collection != "Deploy" {
 		t.Fatalf("script after restart = %+v", scripts2.Scripts)
 	}
-	recent2, err := app.W.Memory.Recent(ctx)
-	if err != nil || len(recent2) != 2 || !reflect.DeepEqual(recent1, recent2) {
-		t.Fatalf("memories after restart = %d (%v), want %d equal", len(recent2), err, len(recent1))
-	}
-	app.Contract(t, "restart", "MemoryService.Recent#after-restart", recent2, flowharness.Mask("createdAt"))
 	yaml2, err := app.W.AdeTask.WorkflowYaml(ctx, adewire.FileNameArgs{FileName: entry.FileName})
 	if err != nil || yaml2.Yaml != yaml.Yaml {
 		t.Fatalf("workflow text changed across restart: %v", err)

@@ -9,7 +9,7 @@ func TestLost(t *testing.T) {
 	cases := []struct {
 		name, old, cur string
 		fields         []string
-		memory         bool
+		prose          bool
 		want           []string
 	}{
 		{"nothing lost", "Set `max` to 30 s.", "Set `max` 30 s.", nil, false, nil},
@@ -18,13 +18,13 @@ func TestLost(t *testing.T) {
 		{"negation count kept", "No retry. Not twice.", "No retry; not twice.", nil, false, nil},
 		{"schema field", "Fill reason and fact.", "Fill fact.", []string{"reason", "fact"}, false, []string{"field reason"}},
 		{"template action", "Hello {{.Name}}.", "Hello.", nil, false, []string{"actions {{.Name}} changed to "}},
-		{"path and name only for memory text", "Reader checks internal/memory/store.go for Postgres.", "Reader checks store.", nil, true,
-			[]string{"Postgres", "internal/memory/store.go", "store.go"}},
+		{"path and name only for prose text", "Reader checks internal/docs/store.go for Postgres.", "Reader checks store.", nil, true,
+			[]string{"Postgres", "internal/docs/store.go", "store.go"}},
 		{"first word is not a name", "Retries use TLS.", "Retries use TLS.", nil, true, nil},
-		{"memory classes off for prompts", "Use Postgres at a/b.", "Use it.", nil, false, nil},
+		{"prose classes off for prompts", "Use Postgres at a/b.", "Use it.", nil, false, nil},
 	}
 	for _, c := range cases {
-		got := lost(c.old, c.cur, c.fields, c.memory)
+		got := lost(c.old, c.cur, c.fields, c.prose)
 		if len(got) == 0 {
 			got = nil
 		}

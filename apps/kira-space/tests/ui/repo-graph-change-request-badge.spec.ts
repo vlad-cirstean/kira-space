@@ -19,14 +19,7 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 // Collapsed default display order: F0 [placeholder] G0 G1 M0 M1 M2. feature-older: G0 tip
 // (row 2), G1 oldest (row 3).

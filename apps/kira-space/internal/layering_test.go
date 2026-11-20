@@ -27,7 +27,6 @@ var packagesExemptFromBridgeCheck = map[string]bool{
 	"internal/flows/gitflow":         true,
 	"internal/flows/repoflow":        true,
 	"internal/flows/adeflow":         true,
-	"internal/flows/memoryflow":      true,
 	"internal/flows/termflow":        true,
 	"internal/flows/appflow":         true,
 	"internal/flows/mobileflow":      true,

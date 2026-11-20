@@ -1261,6 +1261,12 @@ export interface RefreshArgs {
 export interface BranchArgs {
   branchId: string;
 }
+
+/** What Reveal and Open in VS Code do in this build. */
+export interface TaskFilesLaunchers {
+  reveal: 'finder' | 'explorer' | 'fileManager' | 'none';
+  editor: boolean;
+}
 export type Shelf = 'later' | 'backlog';
 export interface ShelveTaskArgs {
   taskId: string;

@@ -33,7 +33,8 @@ import {
   singleRowChunks,
 } from '../ui/support/gitUiPortFixtures';
 import { IPC } from '../ui/support/ipcChannels';
-import { treeRow } from '../ui/support/repoRows';
+import { restoredRepoTabs } from '../ui/support/repoFiles';
+import { repoTab } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { connect, menuOpen, modeTab, NOW, pinClock } from './support/ramWorlds';
 
@@ -54,11 +55,12 @@ const LIMIT = 8 * 1024 * 1024;
 
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [PORT_REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: PORT_REPO.id },
-    response: { paths: ['a.ts', 'c.ts'], status: { 'c.ts': 'M' }, truncated: false },
-  },
+  // Nothing opens a file or diff tab from a project tree any more; they restore and each round
+  // activates them.
+  restoredRepoTabs(PORT_REPO.id, [
+    { kind: 'repo-file', path: 'a.ts' },
+    { kind: 'repo-diff', path: 'c.ts' },
+  ]),
   {
     channel: IPC.codeWorkspaceReadFile,
     args: { id: PORT_REPO.id, path: 'a.ts' },
@@ -138,8 +140,7 @@ test('heap: repo graph, repo file, diff', async ({ relaunch }) => {
     {
       name: 'repo-file',
       open: async () => {
-        await page.locator('[data-testid="git-panel-tab-files"]').click();
-        await treeRow(page, 'a.ts').click();
+        await repoTab(page, 'repo-file').click();
         await expect(page.locator('[data-testid="repo-file-editor"] .view-lines')).toContainText(
           'value0',
         );
@@ -148,8 +149,7 @@ test('heap: repo graph, repo file, diff', async ({ relaunch }) => {
     {
       name: 'diff',
       open: async () => {
-        await treeRow(page, 'c.ts').click({ button: 'right' });
-        await page.locator('[data-testid="menu-item-open-changes"]').click();
+        await repoTab(page, 'repo-diff').click();
         await expect(page.locator('[data-testid="repo-diff-editor"]')).toBeVisible();
       },
     },

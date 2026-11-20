@@ -181,10 +181,10 @@ func TestRepointText(t *testing.T) {
 		t.Errorf("operative = %q", got)
 	}
 	for p, want := range map[string]bool{
-		"scripts/docshistory/parse_test.go":                                           true,
-		"apps/kira-space/tests/claude/testdata/memory-eval/P285-corpus/manifest.json": true,
-		"docs/history/06-v2.8.md":                                                     true,
-		"src/x.go":                                                                    false,
+		"scripts/docshistory/parse_test.go":                          true,
+		"apps/kira-space/tests/claude/testdata/corpus/manifest.json": true,
+		"docs/history/06-v2.8.md":                                    true,
+		"src/x.go":                                                   false,
 	} {
 		if skipRepoint(p) != want {
 			t.Errorf("skipRepoint(%q) != %v", p, want)

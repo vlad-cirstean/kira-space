@@ -52,7 +52,7 @@ func TestWindowScopedState(t *testing.T) {
 	if err := app.W.WindowsSvc.SetMode(windowsvc.SetModeArgs{WindowKey: "w-a", Mode: "ade"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.W.WindowsSvc.SetMode(windowsvc.SetModeArgs{WindowKey: "w-b", Mode: "memory"}); err != nil {
+	if err := app.W.WindowsSvc.SetMode(windowsvc.SetModeArgs{WindowKey: "w-b", Mode: "automations"}); err != nil {
 		t.Fatal(err)
 	}
 	save := func(key string, tabs ...model.TabRecord) {
@@ -78,8 +78,8 @@ func TestWindowScopedState(t *testing.T) {
 		if got := ensureWindow(t, app, "w-a").Mode; got != "ade" {
 			t.Fatalf("w-a mode = %q, want ade", got)
 		}
-		if got := ensureWindow(t, app, "w-b").Mode; got != "memory" {
-			t.Fatalf("w-b mode = %q, want memory", got)
+		if got := ensureWindow(t, app, "w-b").Mode; got != "automations" {
+			t.Fatalf("w-b mode = %q, want automations", got)
 		}
 	}
 	check()

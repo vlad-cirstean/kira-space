@@ -122,9 +122,9 @@ interface SharedConstant {
   ident: string;
 }
 
-/** Shared class constants: exported strings of theme `lib/*.ts` (frames, rowVariants), every
- *  `ACTION_CLASS`, and the `rowVariants` recipe outputs. */
-function sharedConstants(files: SourceFile[]): SharedConstant[] {
+/** Shared class constants: exported strings of theme `lib/*.ts` (frames, rowVariants) and the
+ *  `rowVariants` recipe outputs. */
+function sharedConstants(): SharedConstant[] {
   const out: SharedConstant[] = [];
   const libDir = join(REPO_ROOT, 'packages/theme/src/lib');
   for (const name of readdirSync(libDir).filter(
@@ -139,13 +139,6 @@ function sharedConstants(files: SourceFile[]): SharedConstant[] {
         definedIn: `packages/theme/src/lib/${name}`,
         ident: m[1],
       });
-    }
-  }
-  for (const f of files) {
-    if (f.ext !== 'ts') continue;
-    const re = /export const (ACTION_CLASS\w*)\s*(?::[^=]+)?=\s*(['"`])([^'"`]+)\2/g;
-    for (let m = re.exec(f.source); m; m = re.exec(f.source)) {
-      out.push({ name: m[1], tokens: normaliseClasses(m[3]), definedIn: f.path, ident: m[1] });
     }
   }
   for (const layout of ['menu', 'tree', 'double', 'nav'] as const) {
@@ -247,7 +240,7 @@ export function runClasses(): ChannelResult {
   const clusters = [
     ...exactClusters(occ),
     ...nearClusterList(occ),
-    ...sharedConstantClusters(occ, sharedConstants(files)),
+    ...sharedConstantClusters(occ, sharedConstants()),
   ];
   return { id: 'c2', title: 'Class strings', clusters: sortClusters(clusters) };
 }

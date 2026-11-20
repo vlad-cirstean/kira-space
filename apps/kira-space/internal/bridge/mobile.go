@@ -100,6 +100,8 @@ type MobileTerminalBroker interface {
 	mobileweb.TerminalBroker
 	Holds() []mobileterm.Hold
 	Reclaim(terminalID string, cols, rows int)
+	// SetRecording keeps terminal replay only while phone access is on.
+	SetRecording(on bool)
 }
 
 // MobileAccessService is the Mobile access pane's surface: enable/disable the phone web server,
@@ -190,6 +192,12 @@ func NewMobileAccessService(s *MobileAccessService) *MobileAccessService {
 	return s
 }
 
+func (s *MobileAccessService) setRecording(on bool) {
+	if s.Terminals != nil {
+		s.Terminals.SetRecording(on)
+	}
+}
+
 // agentInputEnabled reads the global switch on each request, so turning it off takes effect at once.
 func (s *MobileAccessService) agentInputEnabled() bool {
 	cfg, err := s.Deps.Repos.Settings.GetAll()
@@ -264,10 +272,12 @@ func (s *MobileAccessService) SetEnabled(args MobileSetEnabledArgs) (MobileStatu
 	s.Deps.Events.Emit(ChannelSettingsChanged, merged)
 	var st MobileStatus
 	if args.Enabled {
+		s.setRecording(true)
 		s.startSupervisor()
 		st = s.embedded.Status()
 	} else {
 		s.stopSupervisor()
+		s.setRecording(false)
 		st, _ = s.embedded.SetRunning(false)
 	}
 	st = s.withCurrent(st)
@@ -422,6 +432,7 @@ func StartMobileIfEnabled(s *MobileAccessService) {
 		slog.Warn("mobileweb: read settings at boot", "scope", "mobileweb", "err", err)
 		return
 	}
+	s.setRecording(cfg.Mobile.Enabled)
 	if cfg.Mobile.Enabled {
 		s.startSupervisor()
 	}

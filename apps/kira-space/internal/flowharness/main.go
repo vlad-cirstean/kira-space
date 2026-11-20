@@ -11,8 +11,8 @@ import (
 )
 
 // Main is every flow package's TestMain body: os.Exit(flowharness.Main(m)). The test binary is also
-// the fake claude, gh and kira-fake-agent (symlinked under those names), the askpass helper and memory-mcp /
-// memory-embed, so those are served before the test run starts. It also captures the real Docker
+// the fake claude, gh and kira-fake-agent (symlinked under those names), the askpass helper and js-worker,
+// so those are served before the test run starts. It also captures the real Docker
 // endpoint before any test swaps HOME.
 func Main(m *testing.M) int {
 	if code, ok := appwire.RunArgvShim(os.Args); ok {

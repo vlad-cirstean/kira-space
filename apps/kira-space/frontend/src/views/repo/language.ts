@@ -1,4 +1,4 @@
-// C5 §9.4: the extension-to-language map, shared by the tree row icon (RepoTreeRow.vue's own
+// C5 §9.4: the extension-to-language map, shared by the tree row icon (AdeFileTreeRow.vue's own
 // small five-bucket lookup is a different, coarser purpose — a glance icon, not a Monaco language
 // id) and RepoFileView.vue's model creation — one file, one vocabulary, so the two can never
 // disagree about what a given path colors as. Deliberately does NOT import codeindex's own Go-side

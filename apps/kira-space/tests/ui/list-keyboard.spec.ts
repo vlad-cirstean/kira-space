@@ -32,9 +32,8 @@ import {
   openBrowseLeaf,
   openRowMenu,
 } from './studio/support/tree';
-import { gotoAdeRepos } from './support/adeV2';
+import { gotoAdeRepos, openPlan, openTaskFiles, taskFilesControl } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -155,41 +154,39 @@ const REPO_2 = {
 };
 const FILES = { paths: ['a.ts', 'dir/b.ts', 'dir/c.ts'], status: {}, truncated: false };
 
-function readFile(path: string): ControlSnapshot {
-  const text = `export const x = '${path}';\n`;
-  return {
-    channel: IPC.codeWorkspaceReadFile,
-    args: { id: REPO.id, path },
-    response: {
-      kind: 'found',
-      text,
-      bytes: text.length,
-      limitBytes: 8 * 1024 * 1024,
-      language: 'typescript',
-    },
-  };
-}
-
 const REPO_CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [REPO, REPO_2] },
-  { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: FILES },
-  readFile('a.ts'),
-  readFile('dir/b.ts'),
-  readFile('dir/c.ts'),
 ];
 
-test('repo tree — arrows, Home/End, Left/Right parent and child, Shift+F10 menu and focus return', async ({
+const TASK_FILES = taskFilesControl([
+  { channel: IPC.adeTaskFiles, response: FILES },
+  {
+    channel: IPC.adeTaskFileRead,
+    response: {
+      kind: 'found',
+      text: 'x\n',
+      bytes: 2,
+      limitBytes: 8 * 1024 * 1024,
+      language: 'typescript',
+      stat: { hash: 'h', size: 2 },
+    },
+  },
+]);
+
+test('task file tree — arrows, Home/End, Left/Right parent and child, Shift+F10 menu and focus return', async ({
   relaunch,
 }) => {
-  const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await page.locator('[data-testid="repo-row"][data-repo-id="repo-1"]').click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  const row = (path: string) => page.locator(`[data-testid="repo-tree-row"][data-path="${path}"]`);
+  const { window: page } = await openPlan(relaunch, TASK_FILES);
+  await openTaskFiles(page);
+  const row = (path: string) => page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`);
   await expect(row('a.ts')).toBeVisible();
 
-  // Rows: dir, a.ts (folders first). Selecting by click makes the row the roving stop.
+  // Rows: dir (open on first load), a.ts (folders first). Selecting by click makes the row the
+  // roving stop.
   await row('dir').click();
   await expect(row('dir')).toBeFocused();
+  // A click toggles a folder: it was open, so it is closed now.
+  await expect(row('dir/b.ts')).toHaveCount(0);
   await page.keyboard.press('ArrowRight');
   await expect(row('dir/b.ts')).toBeVisible();
   await expect(row('dir')).toBeFocused();
@@ -208,6 +205,11 @@ test('repo tree — arrows, Home/End, Left/Right parent and child, Shift+F10 men
   // Left on an expanded folder collapses it.
   await page.keyboard.press('ArrowLeft');
   await expect(row('dir/b.ts')).toHaveCount(0);
+  // Right on a collapsed folder expands it.
+  await page.keyboard.press('ArrowRight');
+  await expect(row('dir/b.ts')).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(row('dir/b.ts')).toHaveCount(0);
 
   await page.keyboard.press('Shift+F10');
   await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
@@ -222,18 +224,13 @@ test('repo tree — arrows, Home/End, Left/Right parent and child, Shift+F10 men
   await expect(row('a.ts')).toBeFocused();
 });
 
-test('repo tree — Enter on a file opens a permanent tab', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: REPO_CONTROL });
-  await page.locator('[data-testid="repo-row"][data-repo-id="repo-1"]').click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  const a = page.locator('[data-testid="repo-tree-row"][data-path="a.ts"]');
+test('task file tree — Enter on a file opens it in the viewer', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, TASK_FILES);
+  await openTaskFiles(page);
+  const a = page.locator('[data-testid="ade-files-row"][data-path="a.ts"]');
   await a.click();
   await a.press('Enter');
-  const fileTab = page.locator(
-    '[data-testid="tab-strip-wrapper"] [data-testid="tab"][data-tab-kind="repo-file"]',
-  );
-  await expect(fileTab).toHaveCount(1);
-  await expect(fileTab).toHaveAttribute('data-preview', 'false');
+  await expect(page.locator('[data-testid="ade-files-viewer"][data-path="a.ts"]')).toBeVisible();
 });
 
 test('git panel repo list — arrows, Home/End, Enter, Shift+F10 and inline rename with Esc', async ({
@@ -280,17 +277,13 @@ test('repos page — arrows move the selected repository', async ({ relaunch }) 
   await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
 });
 
-test('repo search results — arrows, Enter on a file header and Home/End', async ({ relaunch }) => {
-  const { window: page } = await relaunch({
-    control: [
-      ...REPO_CONTROL,
-      { channel: IPC.codeWorkspaceStartSearch, response: { searchId: 'search-1' } },
-    ],
-  });
-  await page.locator('[data-testid="repo-row"][data-repo-id="repo-1"]').click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await page.locator('[data-testid="repo-view-search"]').click();
-  const query = page.locator('[data-testid="repo-search-query"]');
+test('task file search results — arrows, Enter on a file header and Home/End', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch, TASK_FILES);
+  await openTaskFiles(page);
+  await page.locator('[data-testid="ade-files-mode-search"]').click();
+  const query = page.locator('[data-testid="ade-files-search-input"]');
   await query.fill('const');
   await query.press('Enter');
   const match = (line: number) => ({
@@ -313,97 +306,20 @@ test('repo search results — arrows, Enter on a file header and Home/End', asyn
     done: true,
     stats: { filesScanned: 2, filesMatched: 2, filesSkipped: 0, matches: 2, truncated: false },
   });
-  const fileRows = page.locator('[data-testid="repo-search-file-row"]');
+  const fileRows = page.locator('[data-testid="ade-files-search-file-row"]');
   await expect(fileRows).toHaveCount(2);
-  await expect(page.locator('[data-testid="repo-search-match-row"]')).toHaveCount(2);
+  await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(2);
 
   await fileRows.first().focus();
   await page.keyboard.press('ArrowDown');
-  await expect(page.locator('[data-testid="repo-search-match-row"]').first()).toBeFocused();
+  await expect(page.locator('[data-testid="ade-files-search-row"]').first()).toBeFocused();
   await page.keyboard.press('End');
-  await expect(page.locator('[data-testid="repo-search-match-row"]').last()).toBeFocused();
+  await expect(page.locator('[data-testid="ade-files-search-row"]').last()).toBeFocused();
   await page.keyboard.press('Home');
   await expect(fileRows.first()).toBeFocused();
   // Enter on a file header collapses its matches.
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-testid="repo-search-match-row"]')).toHaveCount(1);
-});
-
-function memoryRecord(id: string, fact: string): Record<string, unknown> {
-  return {
-    id,
-    lineageId: id,
-    version: 1,
-    fact,
-    kind: 'fact',
-    reason: 'Because.',
-    keywords: [],
-    origin: 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: NOW,
-    supersededAt: null,
-    versions: 1,
-  };
-}
-
-test('memory list — focus on mount, arrows, Home/End, Enter selects and a typed key lands in search', async ({
-  relaunch,
-}) => {
-  const first = memoryRecord('ma', 'First fact.');
-  const second = memoryRecord('mb', 'Second fact.');
-  const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryRecent, response: [first, second] },
-      { channel: IPC.memoryHistory, response: { memories: [second], events: [] } },
-      { channel: IPC.memoryContext, response: { memory: second, groups: [] } },
-    ]),
-  });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-  const search = page.locator('[data-testid="memory-search"]');
-  await expect(search).toBeFocused();
-
-  const row = (id: string) => page.locator(`[data-testid="memory-row-${id}"]`);
-  await expect(page.locator('[data-testid^="memory-row-"][tabindex="0"]')).toHaveCount(1);
-  await row('ma').focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(row('ma')).toBeFocused();
-  await page.keyboard.press('End');
-  await expect(row('mb')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('[data-testid="memory-detail-fact"]')).toContainText('Second fact.');
-
-  await row('ma').focus();
-  await page.keyboard.press('z');
-  await expect(search).toBeFocused();
-  await expect(search).toHaveValue('z');
-});
-
-test('memory list — 200 memories virtualize, End and Home reach the ends', async ({ relaunch }) => {
-  const records = Array.from({ length: 200 }, (_, i) => memoryRecord(`m${i}`, `Fact ${i}.`));
-  const { window: page } = await relaunch({
-    control: withMemory([{ channel: IPC.memoryRecent, response: records }]),
-  });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-
-  const rows = page.locator('[data-testid^="memory-row-m"]');
-  await expect(rows.first()).toBeVisible();
-  expect(await rows.count()).toBeLessThan(60);
-  await rows.first().focus();
-  await page.keyboard.press('End');
-  await expect(page.locator('[data-testid="memory-row-m199"]')).toBeFocused();
-  await page.keyboard.press('Home');
-  await expect(page.locator('[data-testid="memory-row-m0"]')).toBeFocused();
+  await expect(page.locator('[data-testid="ade-files-search-row"]')).toHaveCount(1);
 });
 
 studioTest.describe('databases module', () => {

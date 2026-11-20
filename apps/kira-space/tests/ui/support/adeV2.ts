@@ -505,3 +505,75 @@ export async function saved<T>(
   await expect.poll(() => calls(control, IPC.adeTaskSaveWorkflow)).toHaveLength(n);
   return calls(control, IPC.adeTaskSaveWorkflow)[n - 1]?.args as T;
 }
+
+/** The task whose single branch has a worktree: the Files tab shows no branch picker. */
+export const FILES_TASK = 'T_cart';
+export const FILES_BRANCH = 'b_cart';
+
+interface FileSearchFx {
+  [path: string]: number[];
+}
+
+/** Mocks of the task Files tab built from the ade-task-files contract (flows/adeflow
+ *  TestTaskFiles): listing, the README read, search start, reveal, open and launchers. */
+export function taskFilesControl(extra: readonly ControlSnapshot[] = []): ControlSnapshot[] {
+  const defaults: ControlSnapshot[] = [
+    { channel: IPC.adeTaskFiles, response: contract('ade-task-files', 'list') },
+    {
+      channel: IPC.adeTaskFileRead,
+      args: { branchId: FILES_BRANCH, path: 'README.md' },
+      response: contract('ade-task-files', 'read'),
+    },
+    { channel: IPC.adeTaskFilesSearch, response: { searchId: 'search-1' } },
+    { channel: IPC.adeTaskFileReveal },
+    { channel: IPC.adeTaskFileOpenInEditor },
+    { channel: IPC.adeTaskFilesLaunchers, response: contract('ade-task-files', 'launchers') },
+  ];
+  const overridden = new Set(extra.map((s) => s.channel));
+  return [...defaults.filter((s) => !overridden.has(s.channel)), ...extra];
+}
+
+/** The contract's search hits as one finished `kira:code:search` event. */
+export function taskSearchEvent(searchId = 'search-1') {
+  const hits = contract<FileSearchFx>('ade-task-files', 'search');
+  const files = Object.entries(hits).map(([path, lines]) => ({
+    path,
+    truncated: false,
+    matches: lines.map((line) => ({
+      line,
+      column: 5,
+      endColumn: 11,
+      preview: 'the needle is here',
+      previewMatchStart: 4,
+      previewMatchEnd: 10,
+      truncatedStart: false,
+      truncatedEnd: false,
+    })),
+  }));
+  const matches = files.reduce((n, f) => n + f.matches.length, 0);
+  return {
+    searchId,
+    seq: 0,
+    files,
+    done: true,
+    stats: {
+      filesScanned: files.length,
+      filesMatched: files.length,
+      filesSkipped: 0,
+      matches,
+      truncated: false,
+    },
+  };
+}
+
+/** Selects task `id` and opens its Files tab. */
+export async function openTaskFiles(page: Page, id = FILES_TASK): Promise<void> {
+  await openTask(page, id);
+  await page.locator('[data-testid="ade-panel-tab-files"]').click();
+}
+
+/** Clicks the tree row of `path` in the open Files tab and waits for the viewer to show it. */
+export async function openTaskFile(page: Page, path: string): Promise<void> {
+  await page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`).click();
+  await expect(page.locator(`[data-testid="ade-files-viewer"][data-path="${path}"]`)).toBeVisible();
+}

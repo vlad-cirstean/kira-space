@@ -39,7 +39,7 @@ const mem = computed(() => history.value.map((s) => s.memUsage));
           </div>
           <StatsSparkline :values="cpu" height-class="h-24" />
         </DetailSection>
-        <DetailSection :title="t('common.module.memory.label')">
+        <DetailSection :title="t('common.metric.memory.label')">
           <div class="flex items-baseline justify-between">
             <span class="text-kira-lg font-medium" data-testid="docker-stats-mem">{{
               formatBytes(latest.memUsage)

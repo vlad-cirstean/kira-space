@@ -1,14 +1,16 @@
 import { i18n, installCopyTestHook } from '@theme/i18n';
+import { agentControlKey } from '@workbench/agent/agentInfo';
 import { bootstrapShell, provideShellServices } from '@workbench/bootstrapShell';
 import { logError } from '@workbench/bridge/log';
 import { windowKey } from '@workbench/lib/window';
 import { queryClient } from '@workbench/state/queryClient';
-import { createApp } from 'vue';
+import { createApp, type App as VueApp, watch } from 'vue';
 import App from './App.vue';
 import { installAdeSignals } from './ade/queries';
 import { useAgentSessionsStore } from './ade/state';
 import { reviewTargetKey } from './ade/v2/queries';
 import { adeReaderKey } from './ade/v2/reader';
+import { activateAdeStores } from './ade/v2/state/activate';
 import { installAdeOpMirror } from './ade/v2/state/adeOpMirror';
 import { useAdeReviewWindowStore } from './ade/v2/state/adeReviewWindow';
 import { controlAdeReader } from './bridge/adeReader';
@@ -53,12 +55,15 @@ import './styles.css';
 
 const PROOF_WINDOW_PREFIX = 'proof-';
 
-function mountApp(): void {
+function mountApp(beforeMount?: (app: VueApp) => void): void {
   const app = createApp(App);
   app.use(i18n);
   app.provide(adeReaderKey, controlAdeReader);
+  // App level: stores activated before mount (activateAdeStores) inject it outside any component.
+  app.provide(agentControlKey, control);
   app.use(pinia);
   provideShellServices(app, queryClient);
+  beforeMount?.(app);
   app.mount('#app');
 }
 
@@ -221,7 +226,18 @@ async function mountShell(): Promise<void> {
     await openPendingFiles();
   }
 
-  mountApp();
+  // Sync flush: ADE stores exist before AdeShell's setup on a mode switch; immediate covers a window
+  // restored into ade. Created in boot, outside any component instance (see activateAdeStores).
+  mountApp(
+    workbenchWindow
+      ? (app) =>
+          watch(
+            () => modeStore.active === 'ade',
+            (on) => on && activateAdeStores(app),
+            { immediate: true, flush: 'sync' },
+          )
+      : undefined,
+  );
   // Review windows show no agent sessions, so only a normal window reports focus.
   if (workbenchWindow) installAgentNotifyFocus();
   // Off the boot critical path — Kira Studio's own main.ts precedent (an update check gains

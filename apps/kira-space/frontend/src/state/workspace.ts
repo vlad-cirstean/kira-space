@@ -9,8 +9,6 @@ import { reactive, toRefs } from 'vue';
 import { control } from '../bridge/control';
 import { reviewKeepKey } from '../repo/git/reviewSession';
 import { disposeGitTransport } from '../repo/git/transport';
-import { useFileTreeStore } from '../repo/state/fileTree';
-import { useRepoSearchStore } from '../repo/state/search';
 import { useModeStore } from './mode';
 import { useOpenedFilesWindowStore } from './openedFilesWindow';
 import { ensureWorkspaceShell } from './repoTabs';
@@ -37,7 +35,6 @@ export const FILES_WORKSPACE = '__files__';
 const MODE_KEYS: Record<AppMode, true> = {
   ade: true,
   automations: true,
-  memory: true,
   git: true,
   studio: true,
   api: true,
@@ -141,8 +138,6 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     // own mount/unmount (a tab switch alone must not tear it down) — closing the workspace itself
     // is the one event that actually ends it. A no-op when the graph tab was never mounted.
     disposeGitTransport(repoId);
-    useFileTreeStore().dropRepoTree(repoId);
-    useRepoSearchStore().dropRepoSearch(repoId);
     useViewStateStore().drop(`${reviewKeepKey(repoId)}:`);
     if (lastRepoKey.value === repoId) lastRepoKey.value = null;
     if (state.active === repoId) activateWorkspace(GENERAL_WORKSPACE);

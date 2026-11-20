@@ -2,7 +2,6 @@ import { CAPTURE_NOW } from '@workbench/testing/screenshots/capture';
 import { pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, test } from '../../ui/fixtures';
 import { seedApprovals } from '../../ui/support/approvals';
-import { contract } from '../../ui/support/contract';
 import { IPC } from '../../ui/support/ipcChannels';
 import {
   STORY,
@@ -62,10 +61,6 @@ test('build db prompt: settings', async ({ relaunch, consoleErrors }) => {
       { channel: IPC.kubernetesClusters, response: { clusters: [] } },
       { channel: IPC.connectionsList, response: [] },
       { channel: IPC.apiConfigAgentAccess, response: [] },
-      {
-        channel: IPC.memoryMcpStatus,
-        response: contract('memory-settings', 'MemoryService.McpStatus'),
-      },
     ]),
   });
   await win.locator(t('ade-plan')).waitFor();

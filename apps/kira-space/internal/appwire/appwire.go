@@ -66,7 +66,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
-	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/metrics"
 	"github.com/kirathecat/kira-studio/internal/procroots"
 	"github.com/kirathecat/kira-studio/internal/prompts"
@@ -96,6 +95,10 @@ type Options struct {
 	Browser bridge.Browser
 	// FileOpener opens or reveals a proof folder; main passes the Wails adapter.
 	FileOpener bridge.ProofRevealer
+	// TaskRevealer and Editor serve the task file view's Reveal and Open in VS Code; nil disables
+	// them (the -tags server build, whose host is not the viewer's machine).
+	TaskRevealer bridge.TaskRevealer
+	Editor       bridge.EditorLauncher
 	// ImageClipboard writes several images to the system clipboard; main passes imageclip, nil means none.
 	ImageClipboard bridge.ProofClipboard
 	Dialogs        bridge.Dialogs
@@ -145,8 +148,6 @@ type Options struct {
 	// scheduler and the run times (flow-test seams); production leaves both zero.
 	ScheduleTimeout time.Duration
 	Clock           scriptruns.Clock
-	// EmbedSpec is the semantic-search model; nil means embed.Default (a flow-test seam).
-	EmbedSpec *embed.Spec
 	// Providers is the agent harness registry; nil means providers.New() (a flow-test seam).
 	Providers *harness.Registry
 	// ChangeRequestSync tunes the change request index sync; the zero value is production's (a
@@ -252,9 +253,6 @@ type Wired struct {
 	Lifecycle       *bridge.LifecycleService
 	KeepAwake       *bridge.KeepAwakeService
 	Mobile          *bridge.MobileAccessService
-	Memory          *bridge.MemoryService
-	MemoryImport    *bridge.MemoryImportService
-	MemoryDistill   *bridge.MemoryDistillService
 	WindowsSvc      *bridge.WindowsService
 	PromptsSvc      *bridge.PromptsService
 	ApprovalsSvc    *bridge.ApprovalsService
@@ -356,7 +354,6 @@ func Build(opts Options) (*Wired, error) {
 		opts.Cipher = secrets.New()
 	}
 	repositories.CustomScripts.Secrets = secrets.NewStore(repositories.CustomScripts.DB, opts.Cipher)
-	repositories.Settings.Agents = registry
 
 	credentialRelay := gitcred.New()
 	w.Windows = shell.NewWindowRegistry()
@@ -545,13 +542,6 @@ func Build(opts Options) (*Wired, error) {
 		bridge.KeepAwakeRecompute(w.KeepAwake)
 		bridge.CaptureApply(w.Capture, m.Capture)
 	}
-	// memory.db opens on the Memory module's first call.
-	embedSpec := embed.Default
-	if opts.EmbedSpec != nil {
-		embedSpec = *opts.EmbedSpec
-	}
-	w.Memory = bridge.NewMemoryService(emitter, harness.ActiveInstaller(w.Agents), promptStore, embedSpec, w.Agents, memoryModelFrom(repositories.Settings))
-
 	proofSvc, dbMcpSessions := w.wireDbServices(dbm, opts)
 	// Archive closes a task's review windows through the registry.
 	w.AdeBoard = wireAdeTask(repositories, events, git, adeTracker, adeCloseTerminal(terminalRegistry),
@@ -578,7 +568,7 @@ func Build(opts Options) (*Wired, error) {
 	w.sched.Start()
 	w.ConfigSync.Start()
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
-	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry}
+	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
@@ -638,8 +628,6 @@ func Build(opts Options) (*Wired, error) {
 	live := liveWork(repositories, terminalRegistry, runs.Live)
 	w.Quitter.SetGate(prompts.QuitGate{R: w.Prompts, LiveFn: func() int { return live().Total() }})
 	w.Lifecycle = &bridge.LifecycleService{Flusher: w.Quitter, WindowFlusher: w.CloseFlush, Quit: w.Quitter, Live: live}
-	w.MemoryImport = bridge.NewMemoryImportService(w.Memory, opts.Dialogs)
-	w.MemoryDistill = bridge.NewMemoryDistillService(w.Memory, opts.Dialogs, emitter)
 	w.Update = &bridge.UpdateService{Checker: updateChecker, Installer: updateInstaller, Quit: w.Quitter.RequestQuit}
 	return w, nil
 }
@@ -720,8 +708,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
 		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),
-		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.Memory),
-		application.NewService(w.MemoryImport), application.NewService(w.MemoryDistill), application.NewService(w.WindowsSvc), application.NewService(w.Update),
+		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),
 		application.NewService(w.PromptsSvc), application.NewService(w.ApprovalsSvc), application.NewService(w.LlmPromptsSvc), application.NewService(w.AgentSvc), application.NewService(w.OpenedFilesSvc), application.NewService(w.ConfigSyncSvc),
 		application.NewService(w.FileHandlersSvc), application.NewService(w.Capture), application.NewService(w.AgentContextSvc), application.NewService(w.AgentSettingsSvc), application.NewService(w.AgentPortSvc), application.NewService(w.RepoConfigSvc), application.NewService(w.GitSvc),
@@ -785,7 +772,6 @@ func (w *Wired) teardown(db io.Closer) {
 	// F5: stops every open codeworkspace.Session (cat-file pairs, in-flight searches) — before
 	// repositories.Close(), since a running search still reads settings through Deps.Repos.
 	w.CodeWorkspace.Shutdown()
-	bridge.CloseMemory(w.Memory)
 	if err := w.Repos.Close(); err != nil {
 		slog.Warn("close repos", "scope", "shutdown", "err", err)
 	}

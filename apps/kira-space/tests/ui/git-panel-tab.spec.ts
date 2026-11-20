@@ -3,7 +3,7 @@ import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
 
-// P220: the Git panel's Repos/Files/Review choice persists (localStorage `kira.git.panelTab`),
+// P220: the Git panel's Repos/Review choice persists (localStorage `kira.git.panelTab`),
 // defaults to Repos, and is never overwritten by opening a repo or re-mounting the panel.
 
 const REPO = {
@@ -16,14 +16,7 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: { paths: ['a.ts'], status: {}, truncated: false },
-  },
-];
+const CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
 const panelTab = (page: Page, name: 'repos' | 'files' | 'review') =>
   page.locator(`[data-testid="git-panel-tab-${name}"]`);
@@ -38,7 +31,18 @@ test('opening a repo from the Repos list leaves the Repos tab selected', async (
     1,
   );
   await expect(panelTab(page, 'repos')).toHaveAttribute('aria-pressed', 'true');
-  await expect(panelTab(page, 'files')).toHaveAttribute('aria-pressed', 'false');
+  await expect(panelTab(page, 'review')).toHaveAttribute('aria-pressed', 'false');
+});
+
+// The project file view moved into agent tasks, so a stored 'files' choice falls back to Repos.
+test('a stored Files choice falls back to Repos; the panel has no Files tab', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({ control: CONTROL });
+  await page.evaluate(() => localStorage.setItem('kira.git.panelTab', 'files'));
+  await page.reload();
+  await expect(panelTab(page, 'repos')).toHaveAttribute('aria-pressed', 'true');
+  await expect(panelTab(page, 'files')).toHaveCount(0);
 });
 
 test('the picked tab survives leaving the Git module and coming back', async ({ relaunch }) => {

@@ -23,7 +23,6 @@ export const SHOT_CAPTURE = {
   'space-agents-board': { kind: 'window' },
   'space-workspace': { kind: 'window' },
   'space-runs': { kind: 'window' },
-  'space-memory': { kind: 'window' },
   'studio-grid-row-menu': { kind: 'floating', selector: '[data-testid="context-menu"]' },
   'space-commit-detail': {
     kind: 'region',

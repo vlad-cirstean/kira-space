@@ -5,6 +5,7 @@ import { modeTab } from './studio/support/apiMode';
 import { gotoAdeRepos } from './support/adeV2';
 import { installGitStreamMock } from './support/gitStreamMock';
 import { IPC } from './support/ipcChannels';
+import { restoredRepoTabs } from './support/repoFiles';
 
 // P226: one colour mark across modules. Pins the same literal as the Studio modules' rails
 // (tests/ui/studio), so Studio and Space rails match by construction.
@@ -79,22 +80,7 @@ test('repo, worktree, quick-command and dialog rails share one class, geometry a
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: ['a.ts'], status: {}, truncated: false },
-      },
-      {
-        channel: IPC.codeWorkspaceReadFile,
-        args: { id: REPO.id, path: 'a.ts' },
-        response: {
-          kind: 'found',
-          text: 'export const a = 1;\n',
-          bytes: 20,
-          limitBytes: 8 * 1024 * 1024,
-          language: 'typescript',
-        },
-      },
+      restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'a.ts' }]),
       { channel: IPC.customScriptsList, response: { collections: [], scripts: [SCRIPT] } },
     ],
   });
@@ -130,8 +116,6 @@ test('repo, worktree, quick-command and dialog rails share one class, geometry a
 
   await page.locator('[data-testid="mode-tab"][data-mode="git"]').click();
   await repoRow.click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await page.locator('[data-testid="repo-tree-row"][data-path="a.ts"]').click();
   const tab = page.locator(
     '[data-testid="tab-strip-wrapper"] [data-testid="tab"][data-tab-kind="repo-file"]',
   );
@@ -160,22 +144,7 @@ test('a linked worktree tab takes its anchor repo colour', async ({ relaunch }) 
         ],
       },
       { channel: IPC.codeWorkspaceImportRepo, args: { path: worktree.repoId }, response: worktree },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: worktree.id },
-        response: { paths: ['a.ts'], status: {}, truncated: false },
-      },
-      {
-        channel: IPC.codeWorkspaceReadFile,
-        args: { id: worktree.id, path: 'a.ts' },
-        response: {
-          kind: 'found',
-          text: 'export const a = 1;\n',
-          bytes: 20,
-          limitBytes: 8 * 1024 * 1024,
-          language: 'typescript',
-        },
-      },
+      restoredRepoTabs(worktree.id, [{ kind: 'repo-file', path: 'a.ts' }]),
     ],
   });
   await installGitStreamMock(page, REPO.repoId, {
@@ -188,8 +157,6 @@ test('a linked worktree tab takes its anchor repo colour', async ({ relaunch }) 
   await page
     .locator(`[data-testid="repo-worktree-row"][data-worktree-path="${worktree.repoId}"]`)
     .click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await page.locator('[data-testid="repo-tree-row"][data-path="a.ts"]').click();
   const tab = page.locator(
     '[data-testid="tab-strip-wrapper"] [data-testid="tab"][data-tab-kind="repo-file"]',
   );

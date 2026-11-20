@@ -84,7 +84,6 @@ const EVENT_NAME = /^kira:[a-z][a-zA-Z]*:[a-z][a-zA-Z]*$/;
 const MIGRATION_SETS: ReadonlyArray<{ dir: string; baseline: number; strictFrom?: number }> = [
   { dir: 'apps/kira-space/internal/gitreview/migrations', baseline: 8 },
   { dir: 'apps/kira-space/internal/storage/migrations', baseline: 90, strictFrom: 83 },
-  { dir: 'internal/memory/migrations', baseline: 8 },
 ];
 const MIGRATION_NAME = /^(\d{4})_[a-z]\d+[a-z]?_[a-z0-9]+(?:_[a-z0-9]+)*\.sql$/;
 const BAD_FOLDERS = new Set(['util', 'utils', 'helpers']);
@@ -545,7 +544,6 @@ const SQL_FILES = [
   'apps/kira-space/internal/apifiles/agentenv.go',
   'apps/kira-space/internal/apifiles/order.go',
   'apps/kira-space/internal/bridge/collections.go',
-  'apps/kira-space/internal/appwire/memoryops.go',
 ];
 const BUTTON_VARIANT_SETS: ReadonlyArray<{ words: readonly string[]; variant: string }> = [
   { words: ['approve', 'accept', 'allow', 'send'], variant: 'dialog-approve' },

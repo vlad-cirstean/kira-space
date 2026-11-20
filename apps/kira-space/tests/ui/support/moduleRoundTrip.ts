@@ -1,22 +1,13 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
-export type ModuleMode =
-  | 'ade'
-  | 'automations'
-  | 'memory'
-  | 'git'
-  | 'studio'
-  | 'api'
-  | 'docker'
-  | 'kubernetes';
+export type ModuleMode = 'ade' | 'automations' | 'git' | 'studio' | 'api' | 'docker' | 'kubernetes';
 
 // One testid per module that is on screen only once the module's panel (or, for Agents, its full
 // view) has mounted.
 const READY: Record<ModuleMode, string> = {
   ade: 'ade-shell',
   automations: 'automations-panel',
-  memory: 'memory-panel',
   git: 'toggle-search',
   studio: 'toggle-search',
   api: 'toggle-search',

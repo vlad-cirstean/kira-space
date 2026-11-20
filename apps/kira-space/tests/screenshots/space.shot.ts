@@ -4,8 +4,8 @@ import { expect, test } from '../ui/fixtures';
 import { adeV2Control, FIXED_NOW } from '../ui/support/adeV2';
 import { buildGraphStreamChunk } from '../ui/support/graphStreamFixture';
 import { IPC } from '../ui/support/ipcChannels';
-import { openMemory, withMemory } from '../ui/support/memoryNav';
-import { repoRowById, treeRow } from '../ui/support/repoRows';
+import { restoredRepoTabs } from '../ui/support/repoFiles';
+import { repoRowById } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
 import { shoot } from './support/shoot';
 
@@ -178,11 +178,6 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
       response: [{ id: REPO.id, head: { kind: 'branch', name: 'main' } }],
     },
     {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: REPO.id },
-      response: { paths: ['src/App.vue'], status: {}, truncated: false },
-    },
-    {
       channel: IPC.tabsList,
       response: [
         {
@@ -228,20 +223,6 @@ test('space git graph', async ({ relaunch, consoleErrors }) => {
   await shoot(win, 'space-commit-detail', consoleErrors);
 });
 
-const WORKSPACE_FILES = [
-  'README.md',
-  'package.json',
-  'src/App.vue',
-  'src/components/OrderTable.vue',
-  'src/components/SearchBox.vue',
-  'src/lib/paging.ts',
-  'src/main.ts',
-  'src/stores/cart.ts',
-  'src/stores/orders.ts',
-  'tests/paging.spec.ts',
-  'tsconfig.json',
-];
-
 const PAGING_SOURCE = [
   'export interface Page<T> {',
   '  rows: T[];',
@@ -273,15 +254,7 @@ test('space workspace', async ({ relaunch, consoleErrors }) => {
       args: { ids: [REPO.id] },
       response: [{ id: REPO.id, head: { kind: 'branch', name: 'main' } }],
     },
-    {
-      channel: IPC.codeWorkspaceListFiles,
-      args: { id: REPO.id },
-      response: {
-        paths: WORKSPACE_FILES,
-        status: { 'src/App.vue': 'M', 'src/components/SearchBox.vue': 'A' },
-        truncated: false,
-      },
-    },
+    restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'src/lib/paging.ts', active: true }]),
     {
       channel: IPC.codeWorkspaceReadFile,
       args: { id: REPO.id, path: 'src/lib/paging.ts' },
@@ -313,14 +286,6 @@ test('space workspace', async ({ relaunch, consoleErrors }) => {
     },
   });
   await repoRowById(win, REPO.id).click();
-  await win.locator('[data-testid="git-panel-tab-files"]').click();
-  for (const dir of ['src', 'src/lib', 'src/stores']) {
-    await expect(treeRow(win, dir)).toBeVisible();
-    if ((await treeRow(win, dir).getAttribute('aria-expanded')) === 'false') {
-      await treeRow(win, dir).click();
-    }
-  }
-  await treeRow(win, 'src/lib/paging.ts').dblclick();
   const editor = win.locator('.monaco-editor').first();
   await expect(editor).toContainText('pageCount');
   await win.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -338,133 +303,6 @@ test('space agents board', async ({ relaunch, consoleErrors }) => {
   ).toHaveText('Make CI green 3/6');
 
   await shoot(win, 'space-agents-board', consoleErrors);
-});
-
-interface Fact {
-  fact: string;
-  origin: 'user' | 'agent' | 'external';
-  scope: 'project' | 'company';
-  reason: string;
-  keywords: string[];
-}
-
-const PROJECT = 'github.com/acme/web';
-const FACTS: Fact[] = [
-  {
-    fact: 'Deploys to staging run every weekday at 09:00 UTC.',
-    origin: 'user',
-    scope: 'company',
-    reason: 'The release calendar says so.',
-    keywords: ['deploy', 'staging', 'schedule'],
-  },
-  {
-    fact: 'The web app uses PostgreSQL 16 for orders and customers.',
-    origin: 'user',
-    scope: 'project',
-    reason: 'Stated in the migration notes.',
-    keywords: ['postgres', 'database', 'orders'],
-  },
-  {
-    fact: 'Run bun run test:unit before opening a pull request.',
-    origin: 'agent',
-    scope: 'project',
-    reason: 'Found in CONTRIBUTING.md.',
-    keywords: ['tests', 'pull request'],
-  },
-  {
-    fact: 'Order totals round half up to two decimals.',
-    origin: 'agent',
-    scope: 'project',
-    reason: 'Confirmed by the checkout tests.',
-    keywords: ['orders', 'rounding', 'checkout'],
-  },
-  {
-    fact: 'The search API rate limit is 60 requests per minute.',
-    origin: 'external',
-    scope: 'company',
-    reason: 'Imported from the platform handbook.',
-    keywords: ['search', 'api', 'rate limit'],
-  },
-  {
-    fact: 'Feature flags live in config/flags.yaml, never in code.',
-    origin: 'user',
-    scope: 'project',
-    reason: 'Stated in the engineering handbook.',
-    keywords: ['flags', 'config'],
-  },
-  {
-    fact: 'Integration tests use the seeded orders fixture.',
-    origin: 'agent',
-    scope: 'project',
-    reason: 'Found in tests/README.md.',
-    keywords: ['tests', 'fixtures'],
-  },
-  {
-    fact: 'Releases are cut from main on the first Monday of the month.',
-    origin: 'user',
-    scope: 'company',
-    reason: 'The release calendar says so.',
-    keywords: ['release', 'schedule'],
-  },
-  {
-    fact: 'Customer emails are masked in every log line.',
-    origin: 'external',
-    scope: 'company',
-    reason: 'Imported from the security policy.',
-    keywords: ['privacy', 'logging'],
-  },
-];
-
-const MEMORIES = FACTS.map((f, i) => ({
-  id: `m${i + 1}.1`,
-  lineageId: `m${i + 1}`,
-  createdAt: new Date(CAPTURE_NOW - (i + 1) * 3_600_000 * 7).toISOString(),
-  fact: f.fact,
-  historical: false,
-  keywords: f.keywords,
-  kind: 'fact',
-  origin: f.origin,
-  project: f.scope === 'project' ? PROJECT : null,
-  reason: f.reason,
-  scope: f.scope,
-  sessionId: f.origin === 'agent' ? `session-${i + 1}` : null,
-  sourceTag: null,
-  status: 'current',
-  supersededAt: null,
-  supersededById: null,
-  supersedesId: null,
-  version: 1,
-  versions: 1,
-}));
-
-test('space memory', async ({ relaunch, consoleErrors }) => {
-  const { window: win } = await relaunch({
-    ...CAPTURE_LAUNCH,
-    control: withMemory([
-      { channel: IPC.memoryRecent, response: MEMORIES },
-      { channel: IPC.repoConfigList, response: { dir: '~/.kira-space/config/repos', files: [] } },
-      { channel: IPC.memoryProjects, response: [PROJECT] },
-      { channel: IPC.adeTaskRepos, response: { repos: [], folders: [] } },
-      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
-      { channel: IPC.memoryImportJobs, response: [] },
-      { channel: IPC.memoryContext, response: { memory: MEMORIES[0], groups: [] } },
-      { channel: IPC.memoryHistory, response: { memories: [MEMORIES[0]], events: [] } },
-      {
-        channel: IPC.memorySemanticStatus,
-        response: { state: 'installed', message: '', model: '', done: 0, total: 0 },
-      },
-    ]),
-  });
-  await openMemory(win);
-  const first = win.locator('[data-testid="memory-row-m1.1"]');
-  await expect(first).toBeVisible();
-  await expect(first.locator('[data-testid="memory-row-origin"]')).toHaveText('User');
-  await expect(win.locator('[data-testid="memory-row-m2.1"]')).toContainText('PostgreSQL 16');
-
-  await first.click();
-  await expect(win.locator('[data-testid="memory-detail"]')).toBeVisible();
-
-  await shoot(win, 'space-memory', consoleErrors);
 });
 
 const RUN_STAMP = '2026-09-01T09:00:00.000Z';

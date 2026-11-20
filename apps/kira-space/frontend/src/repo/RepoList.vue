@@ -455,7 +455,7 @@ useTreeShortcuts(nav, {
           data-testid="repo-rail"
           aria-hidden="true"
         />
-        <!-- P110 I2-13: RepoTreeRow.vue's own twisty, shared via TreeTwisty. -->
+        <!-- P110 I2-13: AdeFileTreeRow.vue's own twisty, shared via TreeTwisty. -->
         <TreeTwisty
           :expanded="worktreesStore.isWorktreesExpanded(repo.id)"
           :has-children="true"

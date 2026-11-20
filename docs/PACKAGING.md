@@ -304,7 +304,7 @@ frameworks. On Linux that leaves two doors, and neither was opened here:
 Consequently `scripts/verify-packaging.sh` degrades honestly off macOS: with no bundle it prints one
 "skipped A1/A3/A5/N2" note and one "skipped A4/N3" note and passes on the static checks alone,
 and even with a bundle it would skip A1/A3/A5/N2 for want of `codesign`/`PlistBuddy`. **A green
-`verify:packaging` on Linux proves only the static checks (S1/S2/S5/S6/S7/S8/S10/S11/S12/S13), not that
+`verify:packaging` on Linux proves only the static checks (S1/S2/S5/S6/S7/S8/S10/S11/S13), not that
 any bundle is correct.** The static checks run over committed files, so they mean something even without a bundle. A1/A3/A5/N2
 need the real `.app`.
 
@@ -481,17 +481,12 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
 - **S10** — no reference under `apps/`, `packages/` or `internal/` to `browser_download_url` or
   `releases/download` — rescoped by P119 to include `internal/` (`appupdate` now lives there).
   `scripts/` is deliberately excluded: `scripts/install.sh` is the one sanctioned downloader, see
-  below. P210's embedding-model download is a user-clicked app-code download from a Hugging Face
-  `resolve/` URL with a pinned SHA-256, not a release asset, so S10 stays green. Native code is never
-  downloaded at runtime: the ONNX Runtime dylib is fetched at build time by `scripts/fetch-onnxruntime.sh`.
+  below.
 - **S11** (P119) — the curl installer and its Go counterpart agree on their one shared contract:
   `scripts/install.sh` exists and passes `sh -n`; its line-2 contract marker
   (`# kira-install-contract: 2`) matches `internal/appupdate/install.go`'s own constant;
   `raw.githubusercontent.com` appears exactly once across `apps/`, `packages/`, `internal/`
   (`InstallScriptURL`); `install.sh`'s `ASSET` equals `internal/appupdate`'s `macAsset` (P653); `shellcheck` runs against the script when it's on `PATH`.
-- **S12** (P210) — the bundled ONNX Runtime version agrees: `internal/memory/embed/paths.go`'s
-  `ORTVersion` equals `scripts/fetch-onnxruntime.sh`'s `ORT_VERSION`, and `create:app:bundle` in
-  `apps/kira-space/build/darwin/Taskfile.yml` references `libonnxruntime.<version>.dylib`.
 - **S13** (P332) — Kira Space's two Info plists match `go run ./apps/kira-space/tools/gendoctypes
   --check`: the generated document-type and imported-UTI block equals `internal/filetypes`.
 
@@ -605,19 +600,6 @@ apps/kira-space && wails3 task darwin:package:dmg`, then `sh scripts/sign-bundle
 "Kira Space"`) is the entry point. `sign-bundle.sh` takes app dir and app name as `$1`/`$2`.
 Artifacts: `apps/kira-space/bin/Kira Space.dmg`/`.app`/`Kira Space` (DMG, bundle, bare binary). The
 DMG ships as `kira-space-macos-arm64.dmg`; `release.yml` builds one app, one tag, one release (§7).
-
-**ONNX Runtime (P210).** `darwin:package` and `darwin:package:universal` depend on `fetch:onnxruntime`
-(`scripts/fetch-onnxruntime.sh osx-arm64`: the MIT `Microsoft.ML.OnnxRuntime` 1.31.1 NuGet package from
-`api.nuget.org`, package SHA-256 pinned, library extracted to the gitignored
-`apps/kira-space/build/onnxruntime/osx-arm64/`). Source is NuGet, not the GitHub release tgz, since that
-asset returned 404 for the v0.3.16 release (P673); nuget.org never replaces a published version. `create:app:bundle` copies `libonnxruntime.1.31.1.dylib`
-into `Contents/Frameworks/` and its LICENSE and ThirdPartyNotices into `Contents/Resources/`, before
-`codesign:adhoc`, and fails loudly if the dylib is missing. The dylib is arm64-only (ORT 1.31.1 has no
-x86_64 macOS build); the universal bundle's x86_64 slice reports embeddings unavailable. Adds about
-43 MB to the bundle. `memory-embed` is the same executable run as a subcommand, so no extra binary
-needs signing. Mac verification is a human item (see `docs/ARCHITECTURE.md` Known open items):
-`Contents/Frameworks/libonnxruntime.1.31.1.dylib` present, `codesign --verify --deep --strict` passes,
-worker footprint in Activity Monitor at most 150 MB.
 
 **Not yet run in this environment** for the same reason as §3/§4: this sandbox is
 Linux, with no macOS, no `codesign`, and no `code` CLI to probe for. What §5's off-macOS limits say applies here — `build:native` needs macOS, `codesign`

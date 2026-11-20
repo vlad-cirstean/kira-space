@@ -15,7 +15,6 @@ sidebar:
 
 ## Areas
 
-- Memory (Kira Space).
 - Agent runs.
 - Rebase and review (Kira Space).
 - Studio MCP (Studio modules).
@@ -26,12 +25,11 @@ Text you write yourself stays outside this list. That covers smart script bodies
 
 | Kind | What it is | Example use |
 |---|---|---|
-| System | A system prompt with a fixed reply schema | Memory checks |
 | Message | A message sent to an agent, with variables filled in | Rebase prompt |
 | Suffix | A closing instruction added to a prompt | `step.finish` report |
 | Instructions | Server instructions an MCP client reads on connect | Studio MCP |
 | Tool | The description an agent reads for an MCP tool | `run_query` |
-| Tool result | Text a tool returns to steer the next step | Challenged store |
+| Tool result | Text a tool returns to steer the next step | Artifacts header |
 
 An MCP tool argument has its own entry under its tool. A fragment is a shared paragraph that other prompts include.
 
@@ -54,6 +52,6 @@ Some prompts must include shared paragraphs. Click one in the editor to insert i
 ## When an edit applies
 
 - Most prompts apply on the next call.
-- Memory MCP instructions, tool descriptions and argument descriptions apply to new Claude sessions. Running sessions keep the old text.
+- MCP instructions, tool descriptions and argument descriptions apply to new Claude sessions. Running sessions keep the old text.
 
 Edits live in `~/.kira-space/config/prompts/llm-prompts.json`.

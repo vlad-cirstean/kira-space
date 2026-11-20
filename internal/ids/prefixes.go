@@ -9,10 +9,6 @@ type Prefix string
 const (
 	// Worktree is an ADE worktree folder name.
 	Worktree Prefix = "wt"
-	// Fact is a memory fact id.
-	Fact Prefix = "km"
-	// Group is a memory group id.
-	Group Prefix = "kg"
 	// Shot is a proof shot folder handle.
 	Shot Prefix = "shot"
 	// TUI is a TUI launch file stem.
@@ -23,19 +19,17 @@ const (
 	Temp Prefix = "tmp"
 	// DockerTemp is a Docker temp container name suffix.
 	DockerTemp Prefix = "dtc"
-	// Distill is a distilled memory file name suffix.
-	Distill Prefix = "dfl"
 	// FlowRun is a flow test run tag used in Docker names.
 	FlowRun Prefix = "frn"
 	// Exemption is a DB MCP limit exemption id, minted on a limit refusal.
 	Exemption Prefix = "exm"
 )
 
-var all = []Prefix{Worktree, Fact, Group, Shot, TUI, Sandbox, Temp, DockerTemp, Distill, FlowRun, Exemption}
+var all = []Prefix{Worktree, Shot, TUI, Sandbox, Temp, DockerTemp, FlowRun, Exemption}
 
 var sizes = map[Prefix]int{
-	Worktree: 10, Fact: 12, Group: 12, Shot: 12, TUI: 12, Sandbox: 12,
-	Temp: 12, DockerTemp: 12, Distill: 12, FlowRun: 12, Exemption: 12,
+	Worktree: 10, Shot: 12, TUI: 12, Sandbox: 12,
+	Temp: 12, DockerTemp: 12, FlowRun: 12, Exemption: 12,
 }
 
 func (p Prefix) size() int { return sizes[p] }

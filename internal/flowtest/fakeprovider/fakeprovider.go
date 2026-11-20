@@ -1,5 +1,5 @@
 // Package fakeprovider is a second agent provider for flow tests: it proves a provider registered
-// next to claude drives every consumer with no caller change. Its structured and headless roles run
+// next to claude drives every consumer with no caller change. Its headless role runs
 // in the test process; its interactive sessions run the fakeagent.Persona binary. The roles it does
 // not play (MCP host, sandbox rules, env scrub) are the Claude provider's, embedded. It is neither
 // a harness.HookHost nor a harness.UsageReporter.
@@ -25,9 +25,6 @@ import (
 // ID is the provider's registry id.
 const ID = "fake"
 
-// StructuredCall is one recorded structured request.
-type StructuredCall struct{ Model, System string }
-
 // HeadlessCall is one recorded headless run.
 type HeadlessCall struct {
 	Model, Prompt, SessionID, Resume string
@@ -47,32 +44,21 @@ type HeadlessCall struct {
 // usage roles, which the fake does not play.
 type base interface {
 	harness.Provider
-	Fail(kind error) error
 	ScrubEnv(environ []string) []string
 }
 
-// Provider is the fake. Answers maps a substring of a structured call's system prompt to the output
-// it returns; the first match answers.
+// Provider is the fake.
 type Provider struct {
 	base
-	Answers map[string]json.RawMessage
 
-	mu         sync.Mutex
-	structured []StructuredCall
-	headless   []HeadlessCall
-	renders    int
+	mu       sync.Mutex
+	headless []HeadlessCall
+	renders  int
 }
 
-// New returns a fake whose structured calls are answered from answers.
-func New(answers map[string]json.RawMessage) *Provider {
-	return &Provider{base: claude.New(), Answers: answers}
-}
-
-// Structured returns the structured requests so far, in order.
-func (p *Provider) Structured() []StructuredCall {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return append([]StructuredCall(nil), p.structured...)
+// New returns a fake.
+func New() *Provider {
+	return &Provider{base: claude.New()}
 }
 
 // Headless returns the headless runs so far, in order.
@@ -119,18 +105,6 @@ func (p *Provider) Locate(_ context.Context, _ string) (string, error) {
 func (p *Provider) Available() error {
 	_, err := p.Locate(context.Background(), "")
 	return err
-}
-
-func (p *Provider) RunStructured(_ context.Context, model string, c harness.StructuredCall) (harness.StructuredResult, error) {
-	p.mu.Lock()
-	p.structured = append(p.structured, StructuredCall{Model: model, System: c.System})
-	p.mu.Unlock()
-	for system, out := range p.Answers {
-		if strings.Contains(c.System, system) {
-			return harness.StructuredResult{Output: out}, nil
-		}
-	}
-	return harness.StructuredResult{}, &harness.Error{Kind: harness.ErrOutput, Msg: "fakeprovider: no answer for the system prompt"}
 }
 
 // RunHeadless records the spec, prints one line and ends the step through its MCP grant.

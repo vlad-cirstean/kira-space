@@ -25,7 +25,6 @@ import {
   revealRow,
 } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import type { ControlSnapshot } from './support/types';
 
@@ -116,58 +115,6 @@ test('the needs footer pluralises interactive sessions', async ({ relaunch }) =>
   const one = await openPlan(relaunch, [withCount(1)]);
   await one.window.locator(t('ade-tab-needs')).click();
   await expect(one.window.locator(t('ade-needs-footer'))).toHaveText(/ 1 interactive session$/);
-});
-
-test('discarding a memory import asks with Discard / Cancel', async ({ relaunch }) => {
-  const job = {
-    id: 'J2',
-    roots: ['/docs'],
-    base: '/docs',
-    state: 'paused',
-    reason: '',
-    truncated: false,
-    ignoredCount: 0,
-    estimate: { files: 1, chunks: 1, tokens: 100, calls: 1, seconds: 10 },
-    progress: { filesDone: 0, filesTotal: 1, chunksDone: 0, chunksTotal: 1 },
-    totals: {
-      added: 0,
-      updated: 0,
-      noop: 0,
-      dropped: 0,
-      unresolved: 0,
-      failedFiles: 0,
-      skippedFiles: 0,
-    },
-    channel: 'ui',
-    origin: 'external',
-    sourceTag: 'doc',
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    groups: [],
-    autoStart: false,
-    writeDoc: false,
-    calls: 0,
-    costUsd: 0,
-    createdAt: '2026-03-01T10:00:00.000Z',
-    startedAt: null,
-    finishedAt: null,
-  };
-  const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryImportJobs, response: [job] },
-      { channel: IPC.memoryImportJob, args: { id: 'J2' }, response: { job, files: [] } },
-      { channel: IPC.memoryImportDiscard },
-    ]),
-  });
-  await page.locator('[data-testid="mode-tab"][data-mode="memory"]').click();
-  await page.locator(t('memory-import-open')).click();
-  await page.locator(t('import-discard')).click();
-  const dialog = page.locator(t('confirm-dialog'));
-  await expect(dialog).toContainText('Discard import?');
-  await expect(dialog).toContainText('Memories already stored stay.');
-  await expect(page.locator(t('confirm-dialog-confirm'))).toHaveText('Discard');
-  await expect(page.locator(t('confirm-dialog-cancel'))).toHaveText('Cancel');
 });
 
 test('a settings field resets with Reset to default', async ({ relaunch }) => {

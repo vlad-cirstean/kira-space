@@ -49,6 +49,10 @@ type AdeTaskService struct {
 	OpenWindow     func(rec shell.WindowRecord)
 	CloseWindow    func(key string) bool
 	SetWindowTitle func(key, title string)
+	// Revealer and Editor serve the task file view's Reveal and Open in VS Code; nil in a build
+	// without them. Fields, not methods, so they add nothing to the bound surface.
+	Revealer TaskRevealer
+	Editor   EditorLauncher
 }
 
 // AdeTaskOpenSession is FocusSession's emit half: addressed to the one window just brought forward.
@@ -119,6 +123,9 @@ var adeTaskCatalog = []struct {
 	{ade.ErrBranchRequestGone, ipcerr.CodeNotFound, "backend.space.ade.branchRequestGone.body"},
 	{repos.ErrOrchestratorKind, ipcerr.CodeBadRequest, "backend.space.ade.orchestratorKind.body"},
 	{ade.ErrHandoverReadOnly, ipcerr.CodeBadRequest, "backend.space.ade.handoverReadOnly.body"},
+	{ade.ErrNoWorktree, ipcerr.CodeNotFound, "backend.space.ade.files.noWorktree.body"},
+	{ade.ErrBadPath, ipcerr.CodeBadRequest, "backend.space.ade.files.badPath.body"},
+	{ade.ErrTargetMissing, ipcerr.CodeNotFound, "backend.space.ade.files.targetMissing.body"},
 	{harness.ErrProviderGone, ipcerr.CodeConflict, "backend.core.agent.providerGone.body"},
 }
 

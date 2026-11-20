@@ -97,7 +97,7 @@ const RES_LABEL: Record<keyof DockerResources, MessageKey> = {
   cpuPeriod: 'docker.edit.cpuPeriod.label',
   cpusetCpus: 'docker.edit.cpuset.label',
   cpusetMems: 'docker.edit.cpusetMems.label',
-  memory: 'common.module.memory.label',
+  memory: 'common.metric.memory.label',
   memorySwap: 'docker.edit.swap.label',
   memoryReservation: 'docker.edit.memoryReservation.label',
   blkioWeight: 'docker.edit.blkio.label',

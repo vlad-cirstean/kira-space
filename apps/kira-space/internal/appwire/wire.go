@@ -3,6 +3,7 @@ package appwire
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -39,23 +40,14 @@ import (
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
-	memembed "github.com/kirathecat/kira-studio/internal/memory/embed"
-	"github.com/kirathecat/kira-studio/internal/memory/memcheck"
-	"github.com/kirathecat/kira-studio/internal/memory/memorycli"
 	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/terminal"
 )
 
-// RunArgvShim runs the askpass, memory-mcp, memory-ingest, memory-embed, memory-check and js-worker
-// subcommands, before anything Wails-related, so they never start a window. memory-mcp is Claude
-// Code's stdio MCP server; it runs before startupfail and the single-instance lock, so it works
-// while the window is open.
-// memory-embed is the ONNX embedding worker those processes and the app spawn; same ordering for
-// the same reason. memory-check is the kira-memory doc validator, run as a git hook.
-// memory-ingest is the detached bulk-import runner (one per memory.db) that the app and the MCP
-// server spawn. js-worker is the per-run JS engine child (jsengine); no state, no window.
+// RunArgvShim runs the askpass and js-worker subcommands, before anything Wails-related, so they
+// never start a window. js-worker is the per-run JS engine child (jsengine); no state, no window.
 func RunArgvShim(args []string) (code int, ok bool) {
 	if len(args) < 2 {
 		return 0, false
@@ -63,18 +55,23 @@ func RunArgvShim(args []string) (code int, ok bool) {
 	switch args[1] {
 	case "askpass":
 		return gitaskpass.RunHelper(args[2:], os.Environ(), os.Stdout), true
-	case "memory-mcp":
-		return memorycli.Run(args[2:], promptsPath(config.KiraSpaceHome()), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath()), memoryOps(config.DbPath(), opOwnersDir())), true
-	case "memory-ingest":
-		return memorycli.RunIngest(args[2:], promptsPath(config.KiraSpaceHome()), agentSelectorAt(config.DbPath()), memoryModelAt(config.DbPath())), true
-	case "memory-embed":
-		return memembed.RunWorker(args[2:]), true
-	case "memory-check":
-		return memcheck.Run(args[2:], os.Stdout, os.Stderr), true
 	case "js-worker":
 		return jsengine.RunWorker(args[2:]), true
+	case "memory-mcp", "memory-ingest", "memory-embed", "memory-check":
+		return retiredMemoryCommand(args[1], os.Stderr), true
 	}
 	return 0, false
+}
+
+// retiredMemoryCommand answers the subcommands v0.3.18 wrote into user config (MCP stdio entry,
+// pre-commit hook) so they never fall through to a GUI launch. memory-check exits 0 so a stale
+// hook never blocks a commit. v0.3.x only: drop at the v0.4.0 minor bump (legacy-code rule).
+func retiredMemoryCommand(word string, stderr io.Writer) int {
+	fmt.Fprintf(stderr, "kira-space: `%s` was removed in v0.3.19. Remove the kira-space memory-mcp entry from the agent CLI MCP config and the memory-check line from the repo pre-commit hook.\n", word)
+	if word == "memory-check" {
+		return 0
+	}
+	return 1
 }
 
 // gitWired is wireGit's own result.
@@ -346,7 +343,7 @@ func shutdownTracker(tracker *ade.Tracker, hooks *harness.Hooks) {
 }
 
 // newOpLog opens the persisted op log: interrupted rows become errors, old rows are pruned, the
-// foreground lane is seeded from disk and rows other processes write are ingested. A storage failure leaves a memory-only log.
+// foreground lane is seeded from disk. A storage failure leaves a memory-only log.
 func newOpLog(repositories *repos.Repos) *oplog.Log {
 	store := repositories.OpLog
 	if err := store.ReconcileInterrupted("Kira Space quit while this ran."); err != nil {
@@ -355,21 +352,12 @@ func newOpLog(repositories *repos.Repos) *oplog.Log {
 	if err := store.Prune(time.Now().Add(-oplog.Retention), oplog.MaxRows); err != nil {
 		slog.Warn("op log: prune", "scope", "startup", "err", err)
 	}
-	if err := oplog.SweepDeadOwners(store, opOwnersDir()); err != nil {
-		slog.Warn("op log: sweep foreign", "scope", "startup", "err", err)
-	}
-	cur, curErr := oplog.NewForeignCursor(store)
 	l := oplog.New(oplog.WithStore(store))
 	recent, err := store.Recent(oplog.FgCapacity)
 	if err != nil {
 		slog.Warn("op log: load", "scope", "startup", "err", err)
 	}
 	l.Seed(recent)
-	if curErr != nil {
-		slog.Warn("op log: foreign cursor", "scope", "startup", "err", curErr)
-		return l
-	}
-	oplog.WatchForeign(l, store, opOwnersDir(), oplog.FlushInterval, cur)
 	return l
 }
 

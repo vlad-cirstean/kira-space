@@ -47,7 +47,6 @@ const LINE = `${PATHS[0]}:${openArgs.line}:${openArgs.col} ${PATHS.slice(1).join
 
 const BASE: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: [] },
   { channel: IPC.terminalOpen, response: { shell: '/bin/zsh' } },
   { channel: IPC.linkOpenExternal, response: null },
   { channel: IPC.openedFilesTerminalResolve, response: resolved },
@@ -313,11 +312,6 @@ filesTest('contract: the opened window places the cursor', async ({ relaunch }) 
   const { window: page, control } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: ['src/a.go'], status: {}, truncated: false },
-      },
       {
         channel: IPC.codeWorkspaceReadFile,
         args: { id: REPO.id, path: target.relPath },

@@ -12,14 +12,14 @@ import {
 import {
   manyRowShas,
   manyRows,
-  openPortGraph,
+  openPortGraphWithFile,
   PORT_CONTROL,
   PORT_REPO,
   refsAtTip,
   singleRowChunks,
 } from './support/gitUiPortFixtures';
 import { IPC } from './support/ipcChannels';
-import { repoRowById, treeRow } from './support/repoRows';
+import { repoRowById, repoTab } from './support/repoRows';
 import { GIT, reviewControl, t } from './support/reviewHunkDiff';
 
 // Frontend half of flows/gitflow/bound_review_test.go: review, change-request and worktree calls
@@ -149,7 +149,8 @@ test('expanding worktrees holds the repo; refsChanged refetches; collapse releas
 test('the file blame goes out as a bound BlameLine with the page window key', async ({
   relaunch,
 }) => {
-  const page = await openPortGraph(relaunch, {
+  const page = await openPortGraphWithFile(relaunch, {
+    file: 'a.ts',
     chunks: singleRowChunks(manyRows(300)),
     results: {
       'refs.list': refsAtTip(manyRowShas(0)),
@@ -175,8 +176,7 @@ test('the file blame goes out as a bound BlameLine with the page window key', as
       },
     ],
   });
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'a.ts').click();
+  await expect(repoTab(page, 'repo-file')).toHaveAttribute('data-active', 'true');
   await page.locator('[data-testid="repo-file-editor"] .view-lines').click();
   await page.keyboard.press('ArrowDown');
   await expect.poll(() => count(page, 'blame.line')).toBeGreaterThan(0);

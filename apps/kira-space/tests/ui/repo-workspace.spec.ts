@@ -13,7 +13,8 @@ import {
 } from './support/graphStreamFixture';
 import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
-import { repoRowById, repoTab, treeRow } from './support/repoRows';
+import { restoredRepoTabs } from './support/repoFiles';
+import { repoRowById, repoTab } from './support/repoRows';
 import type { ControlSnapshot } from './support/types';
 
 // The cheapest proof of the one real claim a unit test can't reach — a repo
@@ -30,16 +31,6 @@ const REPO = {
   sortOrder: 1,
   color: 'none',
   createdAt: '2026-01-01T00:00:00.000Z',
-};
-
-const FILE_LISTING = { paths: ['a.ts', 'b.ts'], status: {}, truncated: false };
-
-// C6 §10/§16: 'c.ts' carries a status glyph, so its row gets an "Open changes" entry — the other
-// two rows above stay unchanged, gating the entry off for anything the tree doesn't color.
-const FILE_LISTING_WITH_STATUS = {
-  paths: ['a.ts', 'b.ts', 'c.ts'],
-  status: { 'c.ts': 'M' },
-  truncated: false,
 };
 
 const DIFF_SNAP: ControlSnapshot = {
@@ -74,7 +65,6 @@ function readFileSnap(path: string, text: string): ControlSnapshot {
 
 const CONTROL: ControlSnapshot[] = [
   { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: FILE_LISTING },
   readFileSnap('a.ts', 'export const a = 1;\n'),
   readFileSnap('b.ts', 'export const b = 2;\n'),
 ];
@@ -104,9 +94,7 @@ const WORKTREE_LIST_RESULT = {
 // P72 §7: the pinned graph tab now renders in `tab-strip-pinned`, a sibling of `tab-strip-row`
 // rather than a descendant of it — `tab-strip-wrapper` is the common ancestor of both.
 
-test('a repo workspace: pinned graph tab, preview-slot reuse, and promotion', async ({
-  relaunch,
-}) => {
+test('a repo workspace: the pinned graph tab is alone and unclosable', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: CONTROL });
 
   // Import a fixture repository (seeded above) — visible in the Git panel's repo list (the Git
@@ -131,164 +119,27 @@ test('a repo workspace: pinned graph tab, preview-slot reuse, and promotion', as
   const graphTab = repoTab(page, 'repo-graph');
   await expect(graphTab).toHaveCount(1);
   await expect(graphTab.locator('[data-testid="tab-close"]')).toHaveCount(0);
-
-  // Single click opens a preview tab (§5.2 rule 1/4) — the strip now shows two tabs: pinned +
-  // one preview, italic.
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await expect(treeRow(page, 'a.ts')).toBeVisible();
-  await treeRow(page, 'a.ts').click();
-  await expect(repoTab(page)).toHaveCount(2);
-  const previewTab = repoTab(page, 'repo-file');
-  await expect(previewTab).toHaveCount(1);
-  await expect(previewTab).toHaveAttribute('data-preview', 'true');
-
-  // A second single click on a *different* file replaces the preview slot's own tab — still two
-  // tabs, never three (§5.2 rule 3).
-  await treeRow(page, 'b.ts').click();
-  await expect(repoTab(page)).toHaveCount(2);
-  await expect(repoTab(page, 'repo-file')).toHaveCount(1);
-  await expect(repoTab(page, 'repo-file')).toHaveAttribute('data-preview', 'true');
-  await expect(repoTab(page, 'repo-file')).toContainText('b.ts');
-
-  // Double-click promotes the current preview tab to permanent (§5.2's own promotion trigger).
-  await treeRow(page, 'b.ts').dblclick();
-  await expect(repoTab(page, 'repo-file')).toHaveAttribute('data-preview', 'false');
-  await expect(repoTab(page)).toHaveCount(2); // still pinned + the one (now permanent) file tab.
 });
 
 // C6 §10/§16: the diff tab's own vocabulary and a real createDiffEditor mount under WebKit — the
 // one thing neither typecheck nor a Go test can reach. The diff algorithm itself is Monaco's, so
-// this asserts only that "Open changes" opens a second, permanent tab with the diff host rendered.
-test('a repo workspace: "Open changes" opens a diff tab', async ({ relaunch }) => {
+// this asserts only that a working-tree diff tab renders with the diff host. The tab is restored:
+// the Files tree that opened it is gone, the review sidebar opens the same tab.
+test('a repo workspace: a working-tree diff tab renders the diff host', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: FILE_LISTING_WITH_STATUS,
-      },
       DIFF_SNAP,
+      restoredRepoTabs(REPO.id, [{ kind: 'repo-diff', path: 'c.ts', active: true }]),
     ],
   });
 
-  await repoRowById(page, REPO.id).click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await expect(treeRow(page, 'c.ts')).toBeVisible();
-
-  await treeRow(page, 'c.ts').click({ button: 'right' });
-  const menu = page.locator('[data-testid="context-menu"]');
-  await expect(menu).toBeVisible();
-  await menu.locator('[data-testid="menu-item-open-changes"]').click();
-
-  // A permanent tab (never the preview slot) — the pinned graph tab plus this one, two total.
   await expect(repoTab(page)).toHaveCount(2);
   const diffTab = repoTab(page, 'repo-diff');
   await expect(diffTab).toHaveCount(1);
   await expect(diffTab).toHaveAttribute('data-preview', 'false');
   await expect(diffTab).toContainText('c.ts (Working Tree)');
   await expect(page.locator('[data-testid="repo-diff-editor"]')).toBeVisible();
-
-  // A row with no status glyph gets no "Open changes" entry at all (§8.4's own gate).
-  await page.keyboard.press('Escape');
-  await treeRow(page, 'a.ts').click({ button: 'right' });
-  await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
-  await expect(page.locator('[data-testid="menu-item-open-changes"]')).toHaveCount(0);
-});
-
-// The one UI case a Go test or typecheck can't reach — the CHANNEL.codeSearch
-// subscription, the out-of-order merge-by-path, and the result-click-to-preview-tab path.
-// Everything upstream of the event stream (the scanner itself, the coalescer) has its own
-// coverage (search_test.go, the Go package's own layering); this only exercises what those can't.
-test('a repo workspace: search streams results out of order and opens a match', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: FILE_LISTING },
-      readFileSnap('a.ts', 'export const a = 1;\n'),
-      { channel: IPC.codeWorkspaceStartSearch, response: { searchId: 'search-1' }, hold: true },
-    ],
-  });
-
-  await repoRowById(page, REPO.id).click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await page.locator('[data-testid="repo-view-search"]').click();
-
-  const queryInput = page.locator('[data-testid="repo-search-query"]');
-  await queryInput.fill('const');
-  await queryInput.press('Enter');
-
-  // 'b.ts' arrives first — enumeration order, not path order — but the store's own binary insert
-  // (D11) must still land it after 'a.ts' once both are in. The start's reply is held until after
-  // this first batch, pinning the order that used to drop it: event before reply.
-  await emitWailsEvent(page, IPC.codeSearch, {
-    searchId: 'search-1',
-    seq: 0,
-    files: [
-      {
-        path: 'b.ts',
-        matches: [
-          {
-            line: 1,
-            column: 8,
-            endColumn: 13,
-            preview: 'export const b = 2;',
-            previewMatchStart: 7,
-            previewMatchEnd: 12,
-            truncatedStart: false,
-            truncatedEnd: false,
-          },
-        ],
-        truncated: false,
-      },
-    ],
-    done: false,
-  });
-  control.release(IPC.codeWorkspaceStartSearch);
-  await expect(page.locator('[data-testid="repo-search-file-row"]')).toHaveCount(1);
-
-  await emitWailsEvent(page, IPC.codeSearch, {
-    searchId: 'search-1',
-    seq: 1,
-    files: [
-      {
-        path: 'a.ts',
-        matches: [
-          {
-            line: 1,
-            column: 8,
-            endColumn: 13,
-            preview: 'export const a = 1;',
-            previewMatchStart: 7,
-            previewMatchEnd: 12,
-            truncatedStart: false,
-            truncatedEnd: false,
-          },
-        ],
-        truncated: false,
-      },
-    ],
-    done: true,
-    stats: { filesScanned: 2, filesMatched: 2, filesSkipped: 0, matches: 2, truncated: false },
-  });
-
-  const fileRows = page.locator('[data-testid="repo-search-file-row"]');
-  await expect(fileRows).toHaveCount(2);
-  await expect(fileRows.nth(0)).toHaveAttribute('data-path', 'a.ts');
-  await expect(fileRows.nth(1)).toHaveAttribute('data-path', 'b.ts');
-
-  await expect(page.locator('[data-testid="repo-search-status"]')).toContainText(
-    '2 results in 2 files',
-  );
-
-  // A single click on a match row opens a preview tab (§7.3's own onSelect/onOpen split).
-  await page.locator('[data-testid="repo-search-match-row"][data-path="a.ts"]').click();
-  const previewTab = repoTab(page, 'repo-file');
-  await expect(previewTab).toHaveCount(1);
-  await expect(previewTab).toHaveAttribute('data-preview', 'true');
-  await expect(previewTab).toContainText('a.ts');
 });
 
 // Deliberately shallow: the deep review behaviour (a real branch comparison, marking, comments)
@@ -320,11 +171,9 @@ test('a repo workspace: switching the panel to Review mounts the review sidebar'
   await expect(picker.getByText('main', { exact: true })).toBeVisible();
 });
 
-// Review is a top-level tab alongside Repos/Files, so all three read as peers — this asserts that
-// structure directly (labels, order, and that the Files body's own inner strip is back down to two
-// segments) rather than only the "Review mounts the review sidebar" behaviour the test above
-// already covers.
-test('a repo workspace: the panel has three top-level tabs (Repos/Files/Review), and the Files tab keeps its own two-segment Files/Search strip', async ({
+// Review is a top-level tab beside Repos — the project file view lives in agent tasks now, so the
+// panel has exactly these two.
+test('a repo workspace: the panel has two top-level tabs (Repos/Review), no Files tab', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({ control: CONTROL });
@@ -333,25 +182,15 @@ test('a repo workspace: the panel has three top-level tabs (Repos/Files/Review),
   await repoRowById(page, REPO.id).click();
 
   const topTabs = page.locator(
-    '[data-testid="git-panel-tab-repos"], [data-testid="git-panel-tab-files"], [data-testid="git-panel-tab-review"]',
+    '[data-testid="git-panel-tab-repos"], [data-testid="git-panel-tab-review"]',
   );
-  await expect(topTabs).toHaveCount(3);
+  await expect(topTabs).toHaveCount(2);
   const labels = await topTabs.allTextContents();
-  expect(labels.map((l) => l.trim())).toEqual(['Repositories', 'Files', 'Review']);
-
-  // Files tab: its own inner strip is Files/Search only — Review is no longer one of its values.
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await expect(page.locator('[data-testid="git-panel-tab-files"]')).toHaveClass(/on/);
-  const innerStrip = page.locator(
-    '[data-testid="repo-view-files"], [data-testid="repo-view-search"]',
-  );
-  await expect(innerStrip).toHaveCount(2);
-  expect((await innerStrip.allTextContents()).map((l) => l.trim())).toEqual(['Files', 'Search']);
+  expect(labels.map((l) => l.trim())).toEqual(['Repositories', 'Review']);
 
   // Review shows the real ReviewView.vue bundle, not an empty container.
   await page.locator('[data-testid="git-panel-tab-review"]').click();
   await expect(page.locator('[data-testid="repo-review-host"]')).toBeVisible();
-  await expect(page.locator('[data-testid="repo-view-files"]')).toHaveCount(0);
 });
 
 // Deliberately shallow: tests/ui/ has no git-stream mock that can answer blame.line, so asserting
@@ -368,11 +207,7 @@ test('a repo workspace: the blame annotation stays off with no git record, and i
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.codeWorkspaceListRepos, response: [NO_GIT_REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: NO_GIT_REPO.id },
-        response: FILE_LISTING,
-      },
+      restoredRepoTabs(NO_GIT_REPO.id, [{ kind: 'repo-file', path: 'a.ts', active: true }]),
       {
         channel: IPC.codeWorkspaceReadFile,
         args: { id: NO_GIT_REPO.id, path: 'a.ts' },
@@ -387,12 +222,6 @@ test('a repo workspace: the blame annotation stays off with no git record, and i
       { channel: IPC.settingsSet, response: defaultSettings },
     ],
   });
-
-  const noGitRepoRow = page.locator(`[data-testid="repo-row"][data-repo-id="${NO_GIT_REPO.id}"]`);
-  await noGitRepoRow.click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await expect(treeRow(page, 'a.ts')).toBeVisible();
-  await treeRow(page, 'a.ts').click();
 
   const editor = page.locator('[data-testid="repo-file-editor"]');
   await expect(editor).toBeVisible();
@@ -428,17 +257,18 @@ test('contract: a repo workspace: the status bar blame item follows the cursor, 
   };
 
   {
-    const { window: page } = await relaunch({ control: CONTROL });
-    // See :364's own comment: lazy `gitTransportFor`, so this lands before Stream('gitgraph') is ever
-    // called as long as it precedes the click that opens the workspace.
-    await installGitStreamMock(page, REPO.repoId, {
-      'repo.open': undefined,
-      'blame.line': BLAME_RESULT,
+    // Restored active file tab: no tree opens a file any more. Boot opens the git transport, so
+    // the mock installs through relaunch's own `gitStream` option.
+    const { window: page } = await relaunch({
+      control: [
+        ...CONTROL,
+        restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'a.ts', active: true }]),
+      ],
+      gitStream: {
+        repoId: REPO.repoId,
+        extraResults: { 'repo.open': null, 'blame.line': BLAME_RESULT },
+      },
     });
-
-    await repoRowById(page, REPO.id).click();
-    await page.locator('[data-testid="git-panel-tab-files"]').click();
-    await treeRow(page, 'a.ts').click();
 
     const editor = page.locator('[data-testid="repo-file-editor"]');
     await expect(editor).toBeVisible();
@@ -479,7 +309,6 @@ test('contract: a repo workspace: the status bar blame item follows the cursor, 
     const { window: page } = await relaunch({
       control: [
         { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-        { channel: IPC.codeWorkspaceListFiles, args: { id: REPO.id }, response: FILE_LISTING },
         {
           channel: IPC.tabsList,
           response: [
@@ -585,11 +414,6 @@ test('contract: a repo workspace: expanding a row lists its worktrees, and switc
         args: { path: WORKTREE_PATH },
         response: WORKTREE_REPO,
       },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: WORKTREE_REPO.id },
-        response: FILE_LISTING,
-      },
     ],
   });
 
@@ -688,58 +512,6 @@ test('a worktree imported in an earlier session lists only under its parent', as
   await linkedRow.click({ button: 'right' });
   await expect(page.locator('[data-testid="context-menu"]')).toBeVisible();
   await expect(page.locator('[data-testid="menu-item-remove"]')).toBeVisible();
-});
-
-// A .ts row and a .go row carry different per-language icon styles (ported from the
-// diff tree's own setiIconFor rule, repo/fileIcon.ts), and a directory row still carries a real
-// codicon (folder/folder-opened) — no directory-icon rule was ported, since the diff
-// tree has none.
-test('a repo workspace: file-tree rows carry per-language icons, directories keep their codicon', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: {
-          paths: ['main.go', 'app.ts', 'src/util.ts'],
-          status: {},
-          truncated: false,
-        },
-      },
-      readFileSnap('main.go', 'package main\n'),
-    ],
-  });
-
-  await repoRowById(page, REPO.id).click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-
-  const goIcon = treeRow(page, 'main.go').locator('.node-icon');
-  const tsIcon = treeRow(page, 'app.ts').locator('.node-icon');
-  await expect(goIcon).toBeVisible();
-  await expect(tsIcon).toBeVisible();
-
-  const [goStyle, tsStyle] = await Promise.all([
-    goIcon.getAttribute('style'),
-    tsIcon.getAttribute('style'),
-  ]);
-  expect(goStyle).toContain('mask-image');
-  expect(tsStyle).toContain('mask-image');
-  expect(goStyle).not.toBe(tsStyle);
-
-  // The directory row synthesized from 'src/util.ts' keeps a real codicon glyph — not a mask icon.
-  const dirRow = treeRow(page, 'src');
-  await expect(dirRow.locator('.codicon-folder, .codicon-folder-opened')).toHaveCount(1);
-  await expect(dirRow.locator('.node-icon[style*="mask-image"]')).toHaveCount(0);
-
-  // P73 §2: opening main.go carries the same seti icon on its tab as on its tree row.
-  await treeRow(page, 'main.go').click();
-  const tabFileIcon = repoTab(page, 'repo-file').locator('.tab-file-icon');
-  await expect(tabFileIcon).toBeVisible();
-  expect(goStyle).not.toBeNull();
-  await expect(tabFileIcon).toHaveAttribute('style', goStyle as string);
 });
 
 // terminalId is a client-generated UUID (state/tabs.ts's own newUuid()) — unpredictable
@@ -1048,10 +820,12 @@ test('a repo workspace: "Open all changes" on a commit opens one multi-diff tab 
 // P121 §6.2: T1's own `pt-0.5` removal applies through the shared TabStrip.vue -- both the pinned
 // graph tab and a promoted file tab should centre in the 34px `h-tabbar` bar, same as Studio's own
 // T1 assertion.
-test('the pinned graph tab and a promoted file tab sit vertically centred in the tab-strip bar (P121 T1)', async ({
+test('the pinned graph tab and a file tab sit vertically centred in the tab-strip bar (P121 T1)', async ({
   relaunch,
 }) => {
-  const { window: page } = await relaunch({ control: CONTROL });
+  const { window: page } = await relaunch({
+    control: [...CONTROL, restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'a.ts' }])],
+  });
   await repoRowById(page, REPO.id).click();
   await page.locator('[data-testid="git-panel-tab-repos"]').click();
 
@@ -1068,14 +842,12 @@ test('the pinned graph tab and a promoted file tab sit vertically centred in the
 
   await assertCentred(repoTab(page, 'repo-graph'));
 
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'a.ts').click();
   await assertCentred(repoTab(page, 'repo-file'));
 });
 
 // P121 §6.2: the Git panel's own top-level tabs (S1, a default-variant ToggleGroup) get the same
 // 4px full-corner radius as every other default-variant instance; its label keeps normal letter
-// spacing, same as the Files/Search segmented control beside it (S2, unaffected by this phase).
+// spacing, same as every other default-variant toggle group.
 test('the Git panel top-level tabs render at 4px radius with normal letter spacing (P121 S1)', async ({
   relaunch,
 }) => {
@@ -1087,12 +859,7 @@ test('the Git panel top-level tabs render at 4px radius with normal letter spaci
   expect(await repos.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('4px');
   const reposSpacing = await repos.evaluate((el) => getComputedStyle(el).letterSpacing);
 
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  const filesView = page.locator('[data-testid="repo-view-files"]');
-  const filesSpacing = await filesView.evaluate((el) => getComputedStyle(el).letterSpacing);
-
   expect(reposSpacing).toBe('normal');
-  expect(filesSpacing).toBe('normal');
 });
 
 // The desktop app's own DOM-level check for the collapse feature —
@@ -1107,32 +874,39 @@ test('the Git panel top-level tabs render at 4px radius with normal letter spaci
 // Collapsed-by-default: `F0, [placeholder], G0, G1, M0, M1, M2` (7 rows, row 6 last); fully
 // expanded: 10 rows (row 9 last).
 test.describe('a repo workspace: graph branch collapse (P93 §8.4)', () => {
+  function multiBranchResults(extraResults?: Record<string, unknown>): Record<string, unknown> {
+    return {
+      'repo.open': {
+        kind: 'ok',
+        repo: {
+          repoId: REPO.repoId,
+          root: REPO.root,
+          gitDir: `${REPO.root}/.git`,
+          commonDir: `${REPO.root}/.git`,
+          isBare: false,
+          isLinkedWorktree: false,
+          head: { kind: 'branch', name: 'main' },
+        },
+      },
+      'refs.list': buildMultiBranchRefsList(),
+      ...extraResults,
+    };
+  }
+
   async function bootMultiBranchGraph(
     page: import('@playwright/test').Page,
     extraResults?: Record<string, unknown>,
+    // A restored file tab beside the graph opens the git transport at boot, so that run installs
+    // the mock through relaunch's `gitStream` and lands on the file tab until the graph is clicked.
+    preinstalled = false,
   ): Promise<void> {
-    await installGitStreamMock(
-      page,
-      REPO.repoId,
-      {
-        'repo.open': {
-          kind: 'ok',
-          repo: {
-            repoId: REPO.repoId,
-            root: REPO.root,
-            gitDir: `${REPO.root}/.git`,
-            commonDir: `${REPO.root}/.git`,
-            isBare: false,
-            isLinkedWorktree: false,
-            head: { kind: 'branch', name: 'main' },
-          },
-        },
-        'refs.list': buildMultiBranchRefsList(),
-        ...extraResults,
-      },
-      [buildGraphStreamChunk(REPO.repoId, 0, buildMultiBranchChunk())],
-    );
+    if (!preinstalled) {
+      await installGitStreamMock(page, REPO.repoId, multiBranchResults(extraResults), [
+        buildGraphStreamChunk(REPO.repoId, 0, buildMultiBranchChunk()),
+      ]);
+    }
     await repoRowById(page, REPO.id).click();
+    if (preinstalled) await repoTab(page, 'repo-graph').click();
     await expect(page.locator('[data-testid="repo-graph-host"]')).toBeVisible();
     await expect(
       page.locator('[data-testid="commit-grid"] .slick-row[data-row="6"]'),
@@ -1168,8 +942,15 @@ test.describe('a repo workspace: graph branch collapse (P93 §8.4)', () => {
   test('a manual expand and the toolbar collapse-off choice both survive a tab switch and back', async ({
     relaunch,
   }) => {
-    const { window: page } = await relaunch({ control: CONTROL });
-    await bootMultiBranchGraph(page);
+    const { window: page } = await relaunch({
+      control: [...CONTROL, restoredRepoTabs(REPO.id, [{ kind: 'repo-file', path: 'a.ts' }])],
+      gitStream: {
+        repoId: REPO.repoId,
+        extraResults: multiBranchResults(),
+        graphStreamChunks: [buildGraphStreamChunk(REPO.repoId, 0, buildMultiBranchChunk())],
+      },
+    });
+    await bootMultiBranchGraph(page, undefined, true);
 
     await messageCell(page, 1).click(); // expand feature-newer
     await expect(
@@ -1185,11 +966,9 @@ test.describe('a repo workspace: graph branch collapse (P93 §8.4)', () => {
       'false',
     );
 
-    // Switch to the Files tab (a real, unkept tab) and back to the pinned graph tab.
-    await page.locator('[data-testid="git-panel-tab-files"]').click();
-    await expect(treeRow(page, 'a.ts')).toBeVisible();
-    await treeRow(page, 'a.ts').click();
+    // Switch to a file tab (a real, unkept tab) and back to the pinned graph tab.
     await expect(repoTab(page, 'repo-file')).toHaveCount(1);
+    await repoTab(page, 'repo-file').click();
     await repoTab(page, 'repo-graph').click();
 
     await expect(
@@ -1236,13 +1015,16 @@ test.describe('a repo workspace: graph branch collapse (P93 §8.4)', () => {
 test('tab strip: drag reorders file tabs; the pinned graph tab never moves (P137)', async ({
   relaunch,
 }) => {
-  const { window: page } = await relaunch({ control: CONTROL });
+  const { window: page } = await relaunch({
+    control: [
+      ...CONTROL,
+      restoredRepoTabs(REPO.id, [
+        { kind: 'repo-file', path: 'a.ts' },
+        { kind: 'repo-file', path: 'b.ts', active: true },
+      ]),
+    ],
+  });
   await repoRowById(page, REPO.id).click();
-  await page.locator('[data-testid="git-panel-tab-files"]').click();
-  await treeRow(page, 'a.ts').click();
-  await treeRow(page, 'a.ts').dblclick();
-  await treeRow(page, 'b.ts').click();
-  await treeRow(page, 'b.ts').dblclick();
 
   const row = page.locator('[data-testid="tab-strip-row"] [data-testid="tab"]');
   await expect(row).toHaveCount(2);

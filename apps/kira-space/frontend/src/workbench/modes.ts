@@ -19,7 +19,7 @@ export const CONNECTION_PANEL_MODES: ReadonlySet<AppMode> = new Set([
   'kubernetes',
 ]);
 
-// Title-bar order: Space modules, the database, API, Docker and Kubernetes modules, Git, Memory last.
+// Title-bar order: Space modules, the database, API, Docker and Kubernetes modules, Git last.
 export const MODE_ORDER: AppMode[] = [
   'ade',
   'automations',
@@ -28,7 +28,6 @@ export const MODE_ORDER: AppMode[] = [
   'docker',
   'kubernetes',
   'git',
-  'memory',
 ];
 
 export const MODES: ModeRegistry<AppMode> = {
@@ -58,16 +57,6 @@ export const MODES: ModeRegistry<AppMode> = {
     panel: defineAsyncComponent(() => import('@workbench/automations/AutomationsPanel.vue')),
     start: defineAsyncComponent(() => import('@workbench/automations/AutomationsStart.vue')),
     newTab: defineAsyncComponent(() => import('@workbench/automations/AutomationsNewTab.vue')),
-  },
-  // A panel module that opens no tabs; the detail view is its main area.
-  memory: {
-    get label() {
-      return t('common.module.memory.label');
-    },
-    icon: 'lightbulb',
-    panel: defineAsyncComponent(() => import('@workbench/memory/MemoryPanel.vue')),
-    start: defineAsyncComponent(() => import('@workbench/memory/MemoryStart.vue')),
-    tabStrip: false,
   },
   studio: {
     get label() {

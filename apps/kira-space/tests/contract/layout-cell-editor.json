@@ -55,15 +55,6 @@
           "widthUserSet": false
         }
       },
-      "memory": {
-        "operations": {
-          "height": 200
-        },
-        "project": {
-          "width": 260,
-          "widthUserSet": false
-        }
-      },
       "studio": {
         "operations": {
           "height": 200

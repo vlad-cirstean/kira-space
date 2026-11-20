@@ -20,7 +20,7 @@ import (
 )
 
 // CodeWorkspaceService is the whole bound surface: repo import/rename/remove, the two read
-// primitives (ListFiles, ReadFile), and OpenWorkspace/CloseWorkspace/ReadDiff. WriteFile is the
+// primitives (ReadFile, ReadDiff), and OpenWorkspace/CloseWorkspace/ReadDiff. WriteFile is the
 // only method that writes into a repository's working tree (an edited file, hash-guarded and
 // atomic); every git invocation below goes through internal/codeworkspace, which builds every
 // Spec with ReadOnly: true.
@@ -94,7 +94,7 @@ func (s *CodeWorkspaceService) gitPathSetting() string {
 }
 
 // session resolves id's own code_repos row into an internal/codeworkspace.Session, ready for a
-// ListFiles/ReadFile/ReadDiff call — re-resolved on every request (Registry.Open now reuses a live
+// ReadFile/ReadDiff call — re-resolved on every request (Registry.Open now reuses a live
 // session when nothing that matters changed) rather than trusting a cached session this
 // method never re-checked against a stale git.path.
 func (s *CodeWorkspaceService) session(ctx context.Context, id string) (*codeworkspace.Session, *model.CodeRepo, error) {
@@ -405,18 +405,6 @@ func (s *CodeWorkspaceService) RemoveRepo(args CodeWorkspaceIDArgs) error {
 	return nil
 }
 
-func (s *CodeWorkspaceService) ListFiles(ctx context.Context, args CodeWorkspaceIDArgs) (codeworkspace.FileListing, error) {
-	ctx = filesCtx(ctx)
-	if args.ID == "" {
-		return codeworkspace.FileListing{}, ipcerr.Required("id")
-	}
-	sess, _, err := s.session(ctx, args.ID)
-	if err != nil {
-		return codeworkspace.FileListing{}, err
-	}
-	return ipcerr.InternalResult(codeworkspace.ListFiles(ctx, sess))
-}
-
 // ReadFile validates args.Path against the session's own root (§11) before ever touching disk —
 // every path crossing this boundary is checked for ".." traversal and symlink escape via
 // filepath.EvalSymlinks, since a repository can contain a symlink pointing anywhere on the
@@ -642,89 +630,30 @@ func (c *searchCoalescer) flush(files []codeworkspace.FileMatches, done bool, fi
 	})
 }
 
-// CodeWorkspaceSearchArgs is StartSearch's own args — windowKey addresses the coalesced push
-// channel at the one window that asked (EmitTo, D7), exactly like GrpcCallArgs.WindowKey.
-type CodeWorkspaceSearchArgs struct {
-	ID            string `json:"id"`
-	WindowKey     string `json:"windowKey"`
-	Query         string `json:"query"`
-	Regex         bool   `json:"regex"`
-	CaseSensitive bool   `json:"caseSensitive"`
-	WholeWord     bool   `json:"wholeWord"`
-}
-
 type CodeWorkspaceSearchHandle struct {
 	SearchID string `json:"searchId"`
 }
 
-// StartSearch validates args, compiles the pattern before returning (codeworkspace.ValidatePattern
-// — a bad regex is E_BAD_REQUEST on this call, never a stream error the panel has to render twice),
-// mints a search id, and starts one goroutine running codeworkspace.Search followed by the
-// coalescer's terminal flush. It returns the handle immediately — a full-worktree scan takes far
-// longer than an IPC call may (OpenWorkspace's own posture).
-func (s *CodeWorkspaceService) StartSearch(ctx context.Context, args CodeWorkspaceSearchArgs) (CodeWorkspaceSearchHandle, error) {
-	ctx = filesCtx(ctx)
-	if args.ID == "" {
-		return CodeWorkspaceSearchHandle{}, ipcerr.Required("id")
-	}
-	if args.WindowKey == "" {
-		return CodeWorkspaceSearchHandle{}, ipcerr.Required("windowKey")
-	}
-	if args.Query == "" {
-		return CodeWorkspaceSearchHandle{}, ipcerr.Required("query")
-	}
-	req := codeworkspace.SearchRequest{
-		Query:         args.Query,
-		Regex:         args.Regex,
-		CaseSensitive: args.CaseSensitive,
-		WholeWord:     args.WholeWord,
-	}
-	if err := codeworkspace.ValidatePattern(req); err != nil {
-		return CodeWorkspaceSearchHandle{}, ipcerr.BadRequest(err.Error())
-	}
-
-	sess, _, err := s.session(ctx, args.ID)
-	if err != nil {
-		return CodeWorkspaceSearchHandle{}, err
-	}
-
+// runSearch mints a search id and starts one goroutine running codeworkspace.Search followed by the
+// coalescer's terminal flush. The pattern is already validated (a bad regex is E_BAD_REQUEST on the
+// start call, never a stream error the panel has to render twice). It returns the handle
+// immediately: a full-worktree scan takes far longer than an IPC call may.
+func runSearch(emit appcore.Emitter, sess *codeworkspace.Session, windowKey string, req codeworkspace.SearchRequest) CodeWorkspaceSearchHandle {
 	searchID := ids.NewID()
-	coalescer := newSearchCoalescer(s.Deps.Events, args.WindowKey, searchID)
-	// sess.BeginSearch(), not ctx: this bound call returns long before a full-worktree scan
-	// finishes, so the search must outlive it — CancelSearch/Session.Close are the only two ways
-	// this context ever ends (D8).
+	coalescer := newSearchCoalescer(emit, windowKey, searchID)
+	// sess.BeginSearch(), not the call's ctx: the search must outlive the bound call;
+	// CancelSearch and Session.Close are the only two ways it ends (D8).
 	searchCtx := sess.BeginSearch()
 
 	go func() {
 		stats, err := codeworkspace.Search(searchCtx, sess, req, coalescer.push)
-		// CancelSearch (the panel's own Stop button) cancels searchCtx, which
-		// codeworkspace.Search surfaces as ctx.Err() == context.Canceled -- a clean, user-requested
-		// stop, not a failure. Rendering it as an E_INTERNAL error banner hid the partial-results
-		// summary line and made stopping a search look like it had failed. Session.Close ends
-		// searchCtx the same way (StartSearch's own doc comment), and gets the identical clean
-		// treatment here for the same reason: nothing is left to show it to by then anyway.
+		// A cancel (the panel's Stop button, or Session.Close) surfaces as context.Canceled: a clean,
+		// requested stop, not a failure. Showing it as an error hid the partial-results summary.
 		if err != nil && !errors.Is(err, context.Canceled) {
 			coalescer.finish(&stats, &CodeSearchEventErr{Code: string(ipcerr.CodeInternal), Message: err.Error()})
 			return
 		}
 		coalescer.finish(&stats, nil)
 	}()
-
-	return CodeWorkspaceSearchHandle{SearchID: searchID}, nil
-}
-
-// CancelSearch stops args.ID's own in-flight search (the workspace's one search, never a
-// specific search id — the renderer always means "stop what this panel is running"). Uses
-// Registry.Peek rather than s.session(): a search can only be running for a workspace that
-// already opened a session (StartSearch itself resolved one), so this must not create a fresh one
-// the way Open's normal fallback would, and stopping a search must not depend on git being
-// reachable right now the way every read path's own availability check does.
-func (s *CodeWorkspaceService) CancelSearch(args CodeWorkspaceIDArgs) error {
-	if args.ID == "" {
-		return ipcerr.Required("id")
-	}
-	if sess := s.Registry.Peek(args.ID); sess != nil {
-		sess.CancelSearch()
-	}
-	return nil
+	return CodeWorkspaceSearchHandle{SearchID: searchID}
 }

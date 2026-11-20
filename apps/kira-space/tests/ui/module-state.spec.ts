@@ -1,9 +1,7 @@
-import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan } from './support/adeV2';
+import { openPlan, openTaskFile, openTaskFiles, taskFilesControl } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import { emitWailsEvent } from './support/mockRuntime';
 import { roundTrip, switchModule } from './support/moduleRoundTrip';
 import { scrollTo, scrollTop } from './support/scroll';
@@ -13,8 +11,6 @@ import type { ControlSnapshot } from './support/types';
 // P660: view state of module panels and the Agents full view survives leaving the module and
 // coming back. One round trip per module: set state, switch away, switch back, assert.
 
-const panelTab = (page: Page, name: 'repos' | 'files' | 'review') =>
-  page.locator(`[data-testid="git-panel-tab-${name}"]`);
 const REPO = {
   id: 'repo-state-1',
   name: 'state-repo',
@@ -25,44 +21,35 @@ const REPO = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
-const GIT_CONTROL: ControlSnapshot[] = [
-  { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-  {
-    channel: IPC.codeWorkspaceListFiles,
-    args: { id: REPO.id },
-    response: {
-      paths: Array.from({ length: 80 }, (_, i) => `file-${String(i).padStart(2, '0')}.ts`),
-      status: {},
-      truncated: false,
-    },
-  },
-];
+const GIT_CONTROL: ControlSnapshot[] = [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }];
 
-test('Git: repo and file search, tree scroll survive a module round trip', async ({ relaunch }) => {
+test('Git: repo search survives a module round trip', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: GIT_CONTROL });
   await page.setViewportSize({ width: 1200, height: 520 });
   const search = page.locator('[data-testid="tree-search"]');
 
-  // Repos tab: the bar and its text.
   await page.locator('[data-testid="toggle-search"]').click();
   await search.fill('state');
-  await page.locator(`[data-testid="repo-row"][data-repo-id="${REPO.id}"]`).click();
-
-  // Files tab: its own text, and the tree scroll.
-  await panelTab(page, 'files').click();
-  await search.fill('file');
-  const tree = page.locator('[data-testid="virtual-list"]');
-  await expect(tree).toBeVisible();
-  await scrollTo(tree, 400);
-  const scrolled = await scrollTop(tree);
 
   await roundTrip(page, 'automations', 'git');
 
-  await expect(search).toHaveValue('file');
-  await expect(panelTab(page, 'files')).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(() => scrollTop(page.locator('[data-testid="virtual-list"]'))).toBe(scrolled);
-  await panelTab(page, 'repos').click();
   await expect(search).toHaveValue('state');
+});
+
+test('Agents: the task Files tab, its filter and its open file survive a module round trip', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch, taskFilesControl());
+  await openTaskFiles(page);
+  await openTaskFile(page, 'README.md');
+  await page.locator('[data-testid="ade-files-filter"]').fill('READ');
+
+  await roundTrip(page, 'git', 'ade');
+
+  await expect(page.locator('[data-testid="ade-files-filter"]')).toHaveValue('READ');
+  await expect(
+    page.locator('[data-testid="ade-files-viewer"][data-path="README.md"]'),
+  ).toBeVisible();
 });
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -113,62 +100,6 @@ test('Automations: search bar, text and list scroll survive a module round trip'
 
   await expect(page.locator(t('tree-search'))).toHaveValue('Script');
   await expect.poll(() => scrollTop(page.locator(`${t('automations-body')} > div`))).toBe(scrolled);
-});
-
-function memoryRow(i: number, over: Record<string, unknown> = {}) {
-  return {
-    id: `m${i}`,
-    lineageId: `m${i}`,
-    version: 1,
-    fact: `Fact number ${i}.`,
-    kind: 'fact',
-    reason: 'Added for the state spec.',
-    keywords: [],
-    origin: 'user',
-    sourceTag: null,
-    scope: 'personal',
-    project: null,
-    sessionId: null,
-    status: 'current',
-    historical: false,
-    supersedesId: null,
-    supersededById: null,
-    createdAt: '2026-03-01T10:00:00.000Z',
-    supersededAt: null,
-    versions: 1,
-    ...over,
-  };
-}
-
-test('Memory: results scroll and detail scroll survive a module round trip', async ({
-  relaunch,
-}) => {
-  const rows = Array.from({ length: 40 }, (_, i) => memoryRow(i));
-  const long = memoryRow(0, {
-    reason: Array.from({ length: 120 }, (_, i) => `Line ${i}`).join('\n\n'),
-  });
-  const { window: page } = await relaunch({
-    control: withMemory([
-      { channel: IPC.memoryRecent, response: [long, ...rows.slice(1)] },
-      { channel: IPC.memoryHistory, response: { memories: [long], events: [] } },
-      { channel: IPC.memoryContext, response: { memory: long, groups: [] } },
-    ]),
-  });
-  await page.setViewportSize({ width: 1200, height: 520 });
-  await switchModule(page, 'memory');
-  await page.locator(t('memory-row-m0')).click();
-  const detail = page.locator(t('memory-start'));
-  await expect(page.locator(t('memory-detail'))).toBeVisible();
-  await scrollTo(detail, 200);
-  const detailTop = await scrollTop(detail);
-  const results = page.locator(t('memory-results'));
-  await scrollTo(results, 300);
-  const resultsTop = await scrollTop(results);
-
-  await roundTrip(page, 'git', 'memory');
-
-  await expect.poll(() => scrollTop(page.locator(t('memory-start')))).toBe(detailTop);
-  await expect.poll(() => scrollTop(results)).toBe(resultsTop);
 });
 
 test('Agents: plan scroll, All sessions filter and picked file survive page and module switches', async ({

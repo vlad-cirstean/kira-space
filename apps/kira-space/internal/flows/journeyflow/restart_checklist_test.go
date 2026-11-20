@@ -24,7 +24,7 @@ func TestRestartChecklist(t *testing.T) {
 		},
 		"w-b": {{ID: "b1", Path: "/b1", Kind: "repo-graph", State: []byte(`{}`), Active: true, WorkspaceID: &ws}},
 	}
-	for key, mode := range map[string]string{"w-a": "ade", "w-b": "memory"} {
+	for key, mode := range map[string]string{"w-a": "ade", "w-b": "automations"} {
 		if _, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: key}); err != nil {
 			t.Fatal(err)
 		}
@@ -116,7 +116,7 @@ func TestRestartChecklist(t *testing.T) {
 			}
 		}
 	}
-	for key, mode := range map[string]string{"w-a": "ade", "w-b": "memory"} {
+	for key, mode := range map[string]string{"w-a": "ade", "w-b": "automations"} {
 		res, err := app.W.WindowsSvc.Ensure(windowsvc.EnsureArgs{WindowKey: key})
 		if err != nil || res.Mode != mode {
 			t.Errorf("window %s after restart = %+v, %v, want mode %s", key, res, err, mode)

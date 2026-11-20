@@ -61,7 +61,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/harness/claude"
 	"github.com/kirathecat/kira-studio/internal/harness/opencode"
 	"github.com/kirathecat/kira-studio/internal/harness/providers"
-	"github.com/kirathecat/kira-studio/internal/memory/embed"
 	"github.com/kirathecat/kira-studio/internal/scriptruns"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/testx"
@@ -93,7 +92,6 @@ type options struct {
 	leaseNow        func() time.Time
 	leaseElapsed    func() time.Duration
 	mobilePoll      time.Duration
-	embedSpec       *embed.Spec
 	providers       []harness.Provider
 	crSync          gitsession.CRSyncConfig
 	updates         *ade.UpdatesConfig
@@ -198,9 +196,6 @@ func WithCallWait(d time.Duration) Opt { return func(o *options) { o.callWait = 
 // WithRebaseTimeout bounds an ADE rebase run (20 minutes by default).
 func WithRebaseTimeout(d time.Duration) Opt { return func(o *options) { o.rebaseTimeout = d } }
 
-// WithEmbedSpec replaces the semantic-search model, so a test serves its files from a fake host.
-func WithEmbedSpec(s embed.Spec) Opt { return func(o *options) { o.embedSpec = &s } }
-
 // WithProvider registers test-only agent providers next to claude, in order.
 func WithProvider(ps ...harness.Provider) Opt { return func(o *options) { o.providers = ps } }
 
@@ -263,7 +258,7 @@ type App struct {
 	// limit for the hooks and askpass sockets). Home is the isolated HOME, SpaceHome the one app home,
 	// Work the directory test repositories are built in, BinDir the PATH-first fake tool directory,
 	// FakeDir where the fake agent records its calls.
-	Root, Home, SpaceHome, MemoryHome, Work, BinDir, FakeDir string
+	Root, Home, SpaceHome, Work, BinDir, FakeDir string
 	// dbMcpPort is the port the previous run bound, reused across Restart.
 	dbMcpPort int
 
@@ -271,6 +266,8 @@ type App struct {
 	Events     *Events
 	Browser    *Browser
 	FileOpener *FileOpener
+	// Editor records the VS Code launches of the task file view.
+	Editor *EditorLauncher
 	// ImageClipboard records multi-image clipboard writes; off until SetMulti(true).
 	ImageClipboard *ImageClipboard
 	Dialogs        *Dialogs
@@ -326,9 +323,9 @@ func New(t *testing.T, opts ...Opt) *App {
 	a := &App{
 		t: t, Root: root,
 		Home: filepath.Join(root, "home"), SpaceHome: filepath.Join(root, "space"),
-		MemoryHome: filepath.Join(root, "space", "memory"), Work: filepath.Join(root, "work"),
+		Work:   filepath.Join(root, "work"),
 		BinDir: filepath.Join(root, "bin"), FakeDir: filepath.Join(root, "fake"),
-		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, ImageClipboard: &ImageClipboard{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
+		Events: newEvents(), Browser: &Browser{}, FileOpener: &FileOpener{}, Editor: &EditorLauncher{}, ImageClipboard: &ImageClipboard{}, Dialogs: &Dialogs{}, WindowMgr: newWindowManager(),
 		KeepAwake: &KeepAwakeDriver{}, McpInstaller: &McpInstaller{}, OSAuth: &OSAuth{}, Focus: &WindowFocus{},
 		ProofWindows: &ProofShell{}, Clipboard: &Clipboard{}, Shortcuts: newShortcuts(),
 	}
@@ -506,8 +503,8 @@ func (a *App) build() {
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
 		Providers:       registry, IssueTracker: tracker,
-		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, EmbedSpec: a.opts.embedSpec, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
-		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
+		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
+		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, TaskRevealer: a.FileOpener, Editor: a.Editor, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},
 		MobileIsLAN:  func(ip netip.Addr) bool { return ip.IsLoopback() },

@@ -33,6 +33,12 @@ export function repoFileUri(mod: MonacoModule, repoId: string, path: string): st
   return repoFileUriObject(mod, repoId, path).toString();
 }
 
+// A file of a task branch's worktree: keyed by branch id, never by repo, so two tasks on one repo
+// never share a model.
+export function taskFileUri(mod: MonacoModule, branchId: string, path: string): string {
+  return mod.Uri.from({ scheme: 'kira-task', authority: branchId, path: `/${path}` }).toString();
+}
+
 // An externally opened file outside any repository: its absolute path under the file scheme.
 export function localFileUri(mod: MonacoModule, path: string): string {
   return mod.Uri.file(path).toString();

@@ -1,0 +1,62 @@
+{
+  "args:AdeTaskService.TaskFileRead": {
+    "branchId": "<id:1>",
+    "path": "README.md"
+  },
+  "args:AdeTaskService.TaskFiles": {
+    "branchId": "<id:1>"
+  },
+  "args:AdeTaskService.TaskFilesSearch": {
+    "branchId": "<id:1>",
+    "caseSensitive": false,
+    "query": "needle",
+    "regex": false,
+    "wholeWord": false,
+    "windowKey": "w1"
+  },
+  "editorMissing": {
+    "code": "E_NOT_FOUND",
+    "message": "VS Code was not found. Install it, or add its “code” command to your PATH."
+  },
+  "launchers": {
+    "editor": true,
+    "reveal": "fileManager"
+  },
+  "list": {
+    "paths": [
+      "README.md",
+      "base.txt",
+      "escape",
+      "src/a.go"
+    ],
+    "status": {
+      "README.md": "?",
+      "escape": "?",
+      "src/": "?"
+    },
+    "truncated": false
+  },
+  "read": {
+    "bytes": 28,
+    "kind": "found",
+    "language": "markdown",
+    "limitBytes": 8388608,
+    "stat": {
+      "hash": "4ce47458ffacafd15b3ae7c2521b4722d36bdef059bbb54c7420c7ccf2ff8724",
+      "size": 28
+    },
+    "text": "# Readme\nthe needle is here\n"
+  },
+  "refusal": {
+    "code": "E_BAD_REQUEST",
+    "message": "This path is outside the task worktree."
+  },
+  "search": {
+    "README.md": [
+      2
+    ],
+    "src/a.go": [
+      3
+    ]
+  }
+}

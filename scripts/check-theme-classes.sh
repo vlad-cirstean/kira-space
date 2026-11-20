@@ -565,7 +565,7 @@ check_class_in_attrs_all 'spin' 'animate-spin plus data-testid="tree-row-spinner
 # as each row's own class. Attribute-scoped: both names are heavy prose in this migration's own
 # comments (this file's own replacement messages above included) and `sticky-row` is also a
 # substring of real, ongoing `data-testid` values (`tree-sticky-row`, `collection-sticky-row`,
-# `repo-tree-sticky-row`) -- never `class`/`:class` attribute values, so the attribute scope
+# `ade-files-sticky-row`) -- never `class`/`:class` attribute values, so the attribute scope
 # leaves them alone.
 check_class_in_attrs_all 'virtual-row' 'VIRTUAL_ROW_CLASS (packages/workbench/src/behaviour/virtualRows.ts)'
 check_class_in_attrs_all 'sticky-row' 'STICKY_ROW_CLASS (packages/workbench/src/behaviour/virtualRows.ts)'

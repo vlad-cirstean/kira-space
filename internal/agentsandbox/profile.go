@@ -53,9 +53,6 @@ func Profile(p Policy, rt Runtime) string {
 		}
 		allowRead = append(allowRead, sub(filepath.Join(h, "Library", "Keychains")))
 	}
-	if rt.MemoryHome != "" {
-		allowRead = append(allowRead, sub(rt.MemoryHome))
-	}
 	allowRead = append(allowRead, subs(rt.PathPrefixes)...)
 	if rt.Agent.InstallPrefix != "" {
 		allowRead = append(allowRead, sub(rt.Agent.InstallPrefix))
@@ -95,9 +92,6 @@ func Profile(p Policy, rt Runtime) string {
 	}
 	if rt.Home != "" {
 		allowWrite = append(allowWrite, agentConfig(rt.Agent)...)
-	}
-	if rt.MemoryHome != "" {
-		allowWrite = append(allowWrite, sub(rt.MemoryHome))
 	}
 	b.rule("allow", "file-write*", allowWrite...)
 	if len(p.Allow) > 0 {

@@ -1,31 +1,16 @@
-// fileTree.ts's buildTree sorted with a fresh `localeCompare(..., { sensitivity: 'base' })`
+// fileTreeModel.ts's buildTree sorted with a fresh `localeCompare(..., { sensitivity: 'base' })`
 // call per comparison -- measured 20x slower than one hoisted Intl.Collator at scale (200k files,
 // the MaxListedFiles cap: 3,760ms -> 322ms). This locks in that the visible ordering is unchanged
 // (directories first, case-insensitive collation) after switching to the shared collator.
-import '@workbench/testing/unit/window';
-
 import { describe, expect, test } from 'bun:test';
-import { restoreAfterEach } from '@workbench/testing/unit/restoreAfterEach';
-import { setActivePinia } from 'pinia';
-import { pinia } from '../../frontend/src/state/pinia';
-
-setActivePinia(pinia);
-
-const { control } = await import('../../frontend/src/bridge/control');
-restoreAfterEach(control);
-
-const { useFileTreeStore } = await import('../../frontend/src/repo/state/fileTree');
-const fileTreeStore = useFileTreeStore();
-
-let repoCounter = 0;
-function freshRepoId() {
-  repoCounter += 1;
-  return `tree-sort-test-${repoCounter}`;
-}
+import {
+  buildTree,
+  type FileTreeRowVm,
+  flatten,
+} from '../../frontend/src/ade/v2/files/fileTreeModel';
 
 describe('C13-4: tree sort order after the Intl.Collator hoist', () => {
-  test('directories before files, each case-insensitive/locale-collated', async () => {
-    const repoId = freshRepoId();
+  test('directories before files, each case-insensitive/locale-collated', () => {
     const paths = [
       'Banana.ts',
       'apple.ts',
@@ -38,15 +23,8 @@ describe('C13-4: tree sort order after the Intl.Collator hoist', () => {
       '.env',
       'Apple/readme.md',
     ];
-    (
-      control as unknown as { codeWorkspaceListFiles: typeof control.codeWorkspaceListFiles }
-    ).codeWorkspaceListFiles = async () => ({ paths, status: {}, truncated: false });
-
-    fileTreeStore.ensureRepoTreeLoaded(repoId);
-    await Promise.resolve();
-    await Promise.resolve();
-
-    const rows = fileTreeStore.visibleRepoRows(repoId, '');
+    const rows: FileTreeRowVm[] = [];
+    flatten(buildTree(paths), 0, new Set(), {}, '', rows);
     const topLevel = rows.filter((r) => r.depth === 0);
 
     // Directories (Apple/, zebra/, Zebra/) sort before files, and within each group names collate

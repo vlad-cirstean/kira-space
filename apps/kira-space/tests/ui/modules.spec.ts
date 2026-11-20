@@ -1,7 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { IPC } from './support/ipcChannels';
-import { withMemory } from './support/memoryNav';
 import type { ControlSnapshot } from './support/types';
 
 // Module switching is multi-step, cross-store state (the mode store, the workspace
@@ -15,31 +14,14 @@ function modeTab(page: Page, mode: 'git' | 'automations' | 'ade') {
   return page.locator(`[data-testid="mode-tab"][data-mode="${mode}"]`);
 }
 
-test('the title bar hides Memory by default', async ({ relaunch }) => {
+test('the title bar lists Agents, Runs, the Studio modules, then Git last', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch();
   const modes = await page
     .locator('[data-testid="mode-tab"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
   expect(modes).toEqual(['ade', 'automations', 'studio', 'api', 'docker', 'kubernetes', 'git']);
-});
-
-test('the title bar lists Agents, Runs, the Studio modules, Git, then Memory last with Memory on', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({ control: withMemory() });
-  const modes = await page
-    .locator('[data-testid="mode-tab"]')
-    .evaluateAll((els) => els.map((e) => e.getAttribute('data-mode')));
-  expect(modes).toEqual([
-    'ade',
-    'automations',
-    'studio',
-    'api',
-    'docker',
-    'kubernetes',
-    'git',
-    'memory',
-  ]);
   await expect(modeTab(page, 'git')).toHaveClass(/is-active/);
   const tabs = page.locator('[data-testid="mode-tab"]');
   const names = ['Agents', 'Runs'];
@@ -47,8 +29,7 @@ test('the title bar lists Agents, Runs, the Studio modules, Git, then Memory las
     await expect(tabs.nth(i)).toHaveAccessibleName(name);
     expect((await tabs.nth(i).innerText()).trim()).toBe('');
   }
-  await expect(tabs.nth(-2)).toHaveAccessibleName('Git');
-  await expect(tabs.last()).toHaveAccessibleName('Memory');
+  await expect(tabs.last()).toHaveAccessibleName('Git');
   expect((await tabs.last().innerText()).trim()).toBe('');
   await modeTab(page, 'ade').hover();
   await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText('Agents');
@@ -126,15 +107,7 @@ test('round trip: a repo\'s tabs hide behind Terminal, a Terminal-module tab ope
   relaunch,
 }) => {
   const { window: page } = await relaunch({
-    control: [
-      { channel: IPC.codeWorkspaceListRepos, response: [REPO] },
-      {
-        channel: IPC.codeWorkspaceListFiles,
-        args: { id: REPO.id },
-        response: { paths: [], status: {}, truncated: false },
-      },
-      TERMINAL_OPEN_OK,
-    ],
+    control: [{ channel: IPC.codeWorkspaceListRepos, response: [REPO] }, TERMINAL_OPEN_OK],
   });
 
   // Git is active by default (this app's own boot mode, mockRuntime.ts's own WILDCARD_DEFAULTS) —

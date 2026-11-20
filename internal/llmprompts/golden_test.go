@@ -117,12 +117,9 @@ func TestGolden(t *testing.T) {
 		{"headless.finishStep.suffix.declared", HeadlessFinishStepSuffix.id, declared},
 		{"headless.finishStep.suffix.declared-nodesc", HeadlessFinishStepSuffix.id, FinishVars{Results: []ResultVar{{ID: "pass", OK: true}, {ID: "fail"}, {ID: "retry"}}}},
 
-		{"memory.mcp.remember.message.empty", MemoryRememberMessage.id, RememberVars{}},
 		{"headless.sandbox.note.write-enforced-tools", HeadlessSandboxNote.id, SandboxNoteVars{Access: "write", Worktree: "/wt/kira-space/feat-login", Network: true, Enforced: true, Tools: true}},
 		{"headless.sandbox.note.read-netoff-notenforced", HeadlessSandboxNote.id, SandboxNoteVars{Access: "read", Read: []string{"/specs/payments", "/wt/kira-space/feat-login"}}},
 		{"ade.manual.sandboxNote.write-netoff", AdeManualSandboxNote.id, SandboxNoteVars{Access: "write", Worktree: "/wt/kira-space/feat-login", Read: []string{"/specs/payments"}, Enforced: true}},
-		{"memory.mcp.remember.message.blank", MemoryRememberMessage.id, RememberVars{}},
-		{"memory.mcp.remember.message.given", MemoryRememberMessage.id, RememberVars{Text: "We use pnpm, not npm.\nCI runs on Linux."}},
 	}
 	files, err := filepath.Glob("testdata/golden/*.txt")
 	if err != nil {

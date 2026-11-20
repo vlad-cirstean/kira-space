@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-const DIALOG_METHODS = ['FilesService.ChooseFolder', 'MemoryImportService.Choose'];
+const DIALOG_METHODS = ['FilesService.ChooseFolder'];
 
 /**
  * A native dialog has no server-build equivalent. Fails the call loudly instead of letting the page

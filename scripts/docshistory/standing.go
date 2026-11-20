@@ -1,21 +1,17 @@
 package main
 
 import (
-	"context"
 	"crypto/sha1"
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"unicode"
 
-	"github.com/kirathecat/kira-studio/internal/memory/memfmt"
 	"github.com/kirathecat/kira-studio/internal/textloss"
-	"github.com/kirathecat/kira-studio/scripts/internal/runledger"
 )
 
 const (
@@ -25,9 +21,8 @@ const (
 	lookupCell    = 100
 )
 
-const standingUsage = `usage: docshistory doc <units|distill|render|verify|keep|show> [flags] <docs/ARCHITECTURE.md|docs/PACKAGING.md> [slug...]
+const standingUsage = `usage: docshistory doc <units|render|verify|keep|show> [flags] <docs/ARCHITECTURE.md|docs/PACKAGING.md> [slug...]
   units    print segments (slug, kind, chars)
-  distill  distill the prose units through the memory MCP ingest_files (costs tokens, resumable)
   keep     record the named units as verbatim
   render   write the distilled file
   verify   write the loss and structure report
@@ -542,10 +537,6 @@ func standingMain(args []string) error {
 	cmd := args[0]
 	fs := flag.NewFlagSet("doc "+cmd, flag.ContinueOnError)
 	runs := fs.String("runs", "docs/history-runs", "runs directory")
-	binary := fs.String("binary", "", "prebuilt kira-space binary (default: build one)")
-	maxUSD := fs.Float64("max-usd", 0, "stop starting units when charged plus in-flight estimates would pass this (0 = no cap)")
-	only := fs.String("only", "", "comma-separated unit slugs")
-	redo := fs.String("redo", "", "comma-separated unit slugs to rerun even when ok")
 	out := fs.String("out", "-", "verify report path, - for stdout")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -558,20 +549,9 @@ func standingMain(args []string) error {
 	if err != nil {
 		return err
 	}
-	set := func(s string) map[string]bool {
-		m := map[string]bool{}
-		for _, x := range strings.Split(s, ",") {
-			if x = strings.TrimSpace(x); x != "" {
-				m[x] = true
-			}
-		}
-		return m
-	}
 	switch cmd {
 	case "units":
 		return st.cmdUnits()
-	case "distill":
-		return st.cmdDistill(distillOpts{runs: *runs, binary: *binary, jobs: 1, maxUSD: *maxUSD, only: set(*only)}, set(*redo))
 	case "keep":
 		return st.cmdKeep(rest[1:])
 	case "render":
@@ -618,68 +598,6 @@ func mustShow(st standing) string {
 		os.Exit(1)
 	}
 	return src
-}
-
-func (st standing) cmdDistill(o distillOpts, redo map[string]bool) error {
-	if err := os.MkdirAll(o.runs, 0o755); err != nil {
-		return err
-	}
-	segs, recs, commit, _, err := st.load()
-	if err != nil {
-		return err
-	}
-	bin := o.binary
-	if bin == "" {
-		if bin, err = buildBinary(); err != nil {
-			return err
-		}
-		defer os.RemoveAll(filepath.Dir(bin))
-	}
-	led := runledger.New(o.runs, o.maxUSD)
-	var todo []segment
-	for _, s := range proseSegs(segs) {
-		if len(o.only) > 0 && !o.only[s.Slug] {
-			continue
-		}
-		r, ok := recs[s.Slug]
-		if ok && r.InputSha256 == sha(s.unitText(st.file)) && (r.State == stateOK || r.State == stateVerbatim || r.State == stateFallback) && !redo[s.Slug] {
-			continue
-		}
-		todo = append(todo, s)
-	}
-	fmt.Printf("%s: %d prose units, %d to run, spent so far %.4f USD\n", st.path, len(proseSegs(segs)), len(todo), led.Total())
-	ctx := context.Background()
-	for _, s := range todo {
-		text := s.unitText(st.file)
-		est := estimate(len(text))
-		if !led.Reserve(est) {
-			fmt.Fprintf(os.Stderr, "stopped: spend cap %.2f USD reached (charged %.4f)\n", o.maxUSD, led.Total())
-			break
-		}
-		u := Unit{Slug: s.Slug, ID: s.Slug, Title: s.Path, Text: text, Sha: sha(text)}
-		rec := distillUnit(ctx, bin, u, commit, led, est)
-		if err := appendLine(st.runFile, rec); err != nil {
-			return err
-		}
-		fmt.Printf("  %s %s in=%d lines=%d cost=%.4f %dms %s\n", s.Slug, rec.State, rec.InChars, len(rec.Lines), rec.CostUSD, rec.WallMs, rec.Reason)
-	}
-	fmt.Printf("charged total %.4f USD\n", led.Total())
-	return nil
-}
-
-func buildBinary() (string, error) {
-	dir, err := os.MkdirTemp("", "docshistory-bin-")
-	if err != nil {
-		return "", err
-	}
-	bin := filepath.Join(dir, "kira-space")
-	build := exec.Command("go", "build", "-tags", "server", "-o", bin, "./apps/kira-space")
-	build.Stdout, build.Stderr = os.Stderr, os.Stderr
-	if err := build.Run(); err != nil {
-		os.RemoveAll(dir)
-		return "", fmt.Errorf("build kira-space: %w", err)
-	}
-	return bin, nil
 }
 
 func (st standing) cmdKeep(slugs []string) error {
@@ -806,8 +724,8 @@ func normText(s string) string {
 }
 
 func measure(file string, s segment, r Record) unitLoss {
-	src := memfmt.StripMarkup(s.Body)
-	cur := memfmt.StripMarkup(strings.Join(r.Lines, " "))
+	src := stripMarkup(s.Body)
+	cur := stripMarkup(strings.Join(r.Lines, " "))
 	u := unitLoss{slug: s.Slug, in: len([]rune(s.Body)), cost: r.CostUSD, state: r.State, top: s.Top, heading: s.Heading}
 	if r.State == stateVerbatim {
 		u.out = u.in
@@ -925,7 +843,7 @@ func (v *verifyRun) structure(rerr error) {
 }
 
 func (v *verifyRun) hardOf(text string) lossCount {
-	c, _, _ := classify(textloss.LostText(memfmt.StripMarkup(text), ""))
+	c, _, _ := classify(textloss.LostText(stripMarkup(text), ""))
 	return c
 }
 
