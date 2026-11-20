@@ -76,16 +76,6 @@ func lostSet(old, cur []string) []string {
 	return out
 }
 
-func uniq(in []string) []string {
-	var out []string
-	for _, x := range in {
-		if !slices.Contains(out, x) {
-			out = append(out, x)
-		}
-	}
-	return out
-}
-
 // paths are the unique tokens holding "/", trimmed of surrounding punctuation.
 func paths(s string) []string {
 	var out []string
