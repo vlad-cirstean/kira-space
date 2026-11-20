@@ -7759,8 +7759,8 @@
       "offline": {
         "description": "You are offline. Showing what was last loaded."
       },
-      "updatedAgo": {
-        "label": "Updated {ago}"
+      "updated": {
+        "label": "Updated"
       }
     },
     "tabs": {

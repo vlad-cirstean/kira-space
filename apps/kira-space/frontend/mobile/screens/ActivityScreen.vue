@@ -8,6 +8,7 @@ import { FieldDescription } from '@theme/components/ui/field';
 import { formatRelative } from '@theme/format';
 import { type MessageKey, t } from '@theme/i18n';
 import QueryState from '@workbench/components/QueryState.vue';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 import { type ConnectionStatus, connectionStatus, lastFrameAt } from '../api/events';
@@ -141,9 +142,7 @@ const fetchedText = (at: number | null): string =>
         <span
           v-if="connectionStatus !== 'live' && lastFrameAt !== null"
           class="text-kira-sm text-subtle"
-          >{{
-            t('mobile.shell.updatedAgo.label', { ago: formatRelative(lastFrameAt, nowMs) })
-          }}</span
+          >{{ t('mobile.shell.updated.label') }} <RelativeTime :at="lastFrameAt" /></span
         >
       </li>
       <li

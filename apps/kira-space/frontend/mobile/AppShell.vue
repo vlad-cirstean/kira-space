@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { useQueryClient } from '@tanstack/vue-query';
-import CodiconIcon from '@theme/CodiconIcon.vue';
 import DetailHeader from '@theme/components/DetailHeader.vue';
 import StatusDot from '@theme/components/StatusDot.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
-import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { useOnline } from '@vueuse/core';
 import { useAgentMessageDefaults } from '@workbench/agent/agentInfo';
+import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { onMounted } from 'vue';
-import { useServerEvents } from './api/events';
+import { lastFrameAt, useServerEvents } from './api/events';
 import { useAgentSessionsStore } from './state/agentSessions';
 import { phoneKey } from './state/usePhoneStatus';
 import TabBar from './TabBar.vue';
@@ -18,10 +17,6 @@ const queryClient = useQueryClient();
 const agentSessions = useAgentSessionsStore();
 const online = useOnline();
 useAgentMessageDefaults(() => undefined);
-
-function refresh(): void {
-  void queryClient.invalidateQueries({ queryKey: ['adetask'] });
-}
 
 // Pushes sent while the stream was down are lost: refetch everything and re-read the agent state.
 const { connection } = useServerEvents(() => {
@@ -58,17 +53,12 @@ const DOT_LABEL = {
           :label="t(DOT_LABEL[connection])"
           data-testid="connection-dot"
         />
-      </template>
-      <template #actions>
-        <Button
-          size="touch-icon"
-          variant="toolbar"
-          :aria-label="t('common.action.refresh.label')"
-          data-testid="refresh"
-          @click="refresh"
+        <span
+          v-if="connection !== 'live' && lastFrameAt !== null"
+          class="text-kira-sm text-subtle"
+          data-testid="shell-updated"
+          >{{ t('mobile.shell.updated.label') }} <RelativeTime :at="lastFrameAt" /></span
         >
-          <CodiconIcon name="refresh" :size="13" />
-        </Button>
       </template>
     </DetailHeader>
     <Alert v-if="!online" variant="warn" strip data-testid="offline-banner">
