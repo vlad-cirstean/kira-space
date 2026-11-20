@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import type { ScriptRunRestoreItem, ScriptRunStarted } from '@shared/domain/scriptRuns';
+import type { ScriptRunRestoreItem } from '@shared/domain/scriptRuns';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import RestoreDialog from '@workbench/restore/RestoreDialog.vue';
-import type { RestoreRow } from '@workbench/restore/types';
+import type { RestoreConfirm, RestoreRow } from '@workbench/restore/types';
 import { appUpdateStoreKey } from '@workbench/state/createAppUpdateStore';
 import { computed, inject, ref } from 'vue';
-import { useAutomationsModule } from '../module';
-import { useScriptTabs } from '../scriptTabs';
 import { useDismissRunsRestore, useRestoreRuns } from './restoreQueries';
+import { runRestoreRows, useOpenRestoredRun } from './rows';
 
 const props = defineProps<{ items: readonly ScriptRunRestoreItem[] }>();
 const emit = defineEmits<{ close: [] }>();
 
-const ctx = useAutomationsModule();
-const tabs = useScriptTabs();
 const app = inject(appUpdateStoreKey);
 const restore = useRestoreRuns();
 const dismiss = useDismissRunsRestore();
@@ -27,67 +24,15 @@ const errors = computed(() => {
   return out;
 });
 
-function badges(it: ScriptRunRestoreItem): string[] {
-  const out: string[] = [];
-  if (it.kind === 'smart') out.push(t('common.smartScript.label'));
-  if (it.model) out.push(it.model);
-  if (it.trigger === 'scheduled') out.push(t('automations.run.triggerScheduled.label'));
-  if (it.trigger === 'mcp') out.push(t('automations.run.triggerMcp.label'));
-  if (it.taskTitle)
-    out.push(
-      it.branchLabel
-        ? t('automations.run.taskOnBranch.label', { task: it.taskTitle, branch: it.branchLabel })
-        : t('automations.run.taskOnly.label', { task: it.taskTitle }),
-    );
-  if (it.resume) out.push(t('automations.restore.resume.label'));
-  if (it.params.length > 0)
-    out.push(t('automations.restore.params.label', { count: it.params.length }));
-  return out;
-}
-
-const rows = computed<RestoreRow[]>(() =>
-  props.items.map((it) => ({
-    id: it.runId,
-    label: it.scriptName,
-    detail: it.command,
-    folder: it.cwd,
-    badges: badges(it),
-    state: it.status === 'ready' ? 'ready' : 'unavailable',
-    status: it.status,
-    reason: it.status === 'ready' ? undefined : it.reason,
-    error: errors.value.get(it.runId),
-  })),
-);
-
-// Opens the new run's tab the way the run dialog does.
-function openStarted(it: ScriptRunRestoreItem, started: ScriptRunStarted): void {
-  const key = { scriptId: it.scriptId, taskId: it.taskId, branchId: it.branchId };
-  if (!started.terminal) {
-    tabs.openRun({ ...key, runId: started.runId, label: it.scriptName });
-    return;
-  }
-  ctx.openTerminalTab({
-    cwd: started.terminal.cwd,
-    launch: {
-      command: it.command,
-      label: it.scriptName,
-      color: it.color,
-      kind: 'script',
-      scriptId: it.scriptId,
-      launchToken: started.terminal.token,
-      taskId: it.taskId,
-      branchId: it.branchId,
-    },
-    replace: tabs.replaceTarget(key),
-  });
-}
+const rows = computed<RestoreRow[]>(() => runRestoreRows(props.items, errors.value));
+const openStarted = useOpenRestoredRun();
 
 const callError = computed(() => {
   const err = restore.error.value ?? dismiss.error.value;
   return err ? errorText(err) : undefined;
 });
 
-async function submit(ids: string[]): Promise<void> {
+async function submit({ ids }: RestoreConfirm): Promise<void> {
   dismiss.reset();
   const byId = new Map(props.items.map((i) => [i.runId, i]));
   try {
@@ -126,6 +71,7 @@ async function dismissAll(): Promise<void> {
     :rows="rows"
     :pending="restore.isPending.value"
     :dismissing="dismiss.isPending.value"
+    :dismiss-label="t('common.action.dontRestore.label')"
     :call-error="callError"
     @confirm="submit"
     @dismiss="dismissAll"

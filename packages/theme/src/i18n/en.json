@@ -3140,6 +3140,9 @@
       "dismiss": {
         "label": "Dismiss"
       },
+      "dontRestore": {
+        "label": "Don’t restore"
+      },
       "download": {
         "label": "Download"
       },
@@ -18243,9 +18246,6 @@
       "title": "Quit {app}?"
     },
     "restore": {
-      "dismiss": {
-        "label": "Don’t restore"
-      },
       "selection": {
         "status": "{selected} of {total} selected"
       },

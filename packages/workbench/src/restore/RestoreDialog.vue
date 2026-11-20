@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import SectionHeading from '@theme/components/SectionHeading.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import {
@@ -21,7 +22,7 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { computed, ref } from 'vue';
 import RestoreRowItem from './RestoreRowItem.vue';
-import type { RestoreRow } from './types';
+import type { RestoreConfirm, RestoreRow } from './types';
 
 // Presentational: the adapters (Docker, Runs) own the data, the calls and the placement.
 const props = defineProps<{
@@ -29,12 +30,16 @@ const props = defineProps<{
   description: string;
   rows: RestoreRow[];
   pending: boolean;
-  dismissing: boolean;
+  dismissing?: boolean;
+  /** The footer Dismiss shows only with a label: a dialog whose X already dismisses passes none. */
+  dismissLabel?: string;
   callError?: string;
 }>();
 /** Ids the person unchecked. A ready row counts as selected unless listed, so rows that arrive later start checked. */
 const excluded = defineModel<string[]>('excluded', { default: () => [] });
-const emit = defineEmits<{ confirm: [ids: string[]]; dismiss: []; close: [] }>();
+/** What the person set on rows with an option; a row not listed has its option's default. */
+const optionChoice = defineModel<Record<string, boolean>>('options', { default: () => ({}) });
+const emit = defineEmits<{ confirm: [choice: RestoreConfirm]; dismiss: []; close: [] }>();
 
 const listed = computed(() => props.rows.filter((r) => r.state !== 'unavailable'));
 const unavailable = computed(() => props.rows.filter((r) => r.state === 'unavailable'));
@@ -43,6 +48,34 @@ const chosen = computed(() =>
   ready.value.filter((r) => !excluded.value.includes(r.id)).map((r) => r.id),
 );
 const showUnavailable = ref(false);
+
+// Consecutive rows of one group share a heading.
+const sections = computed(() => {
+  const out: { group: string; rows: RestoreRow[] }[] = [];
+  for (const r of listed.value) {
+    const group = r.group ?? '';
+    const last = out[out.length - 1];
+    if (last && last.group === group) last.rows.push(r);
+    else out.push({ group, rows: [r] });
+  }
+  return out;
+});
+
+function optionOn(r: RestoreRow): boolean {
+  if (!r.option) return false;
+  if (r.option.unsupportedReason) return false;
+  if (r.option.required) return true;
+  return optionChoice.value[r.id] ?? r.option.default ?? false;
+}
+
+function toggleOption(id: string, on: boolean): void {
+  optionChoice.value = { ...optionChoice.value, [id]: on };
+}
+
+const confirmed = computed<RestoreConfirm>(() => ({
+  ids: chosen.value,
+  options: ready.value.filter((r) => chosen.value.includes(r.id) && optionOn(r)).map((r) => r.id),
+}));
 
 const isChecked = (r: RestoreRow) => !excluded.value.includes(r.id);
 
@@ -90,18 +123,32 @@ function toggle(id: string, on: boolean): void {
           </div>
         </div>
 
-        <ul v-if="listed.length" class="m-0 flex list-none flex-col rounded-kira">
-          <li
-            v-for="r in listed"
-            :key="r.id"
-            data-testid="restore-row"
-            :data-id="r.id"
-            :data-state="r.state"
-            :data-status="r.status"
-          >
-            <RestoreRowItem :row="r" :checked="isChecked(r)" @toggle="(on) => toggle(r.id, on)" />
-          </li>
-        </ul>
+        <section
+          v-for="sec in sections"
+          :key="sec.group"
+          :data-testid="sec.group ? 'restore-group' : undefined"
+          :data-group="sec.group || undefined"
+        >
+          <SectionHeading v-if="sec.group" :label="sec.group" />
+          <ul class="m-0 flex list-none flex-col rounded-kira">
+            <li
+              v-for="r in sec.rows"
+              :key="r.id"
+              data-testid="restore-row"
+              :data-id="r.id"
+              :data-state="r.state"
+              :data-status="r.status"
+            >
+              <RestoreRowItem
+                :row="r"
+                :checked="isChecked(r)"
+                :option-on="isChecked(r) && optionOn(r)"
+                @toggle="(on) => toggle(r.id, on)"
+                @toggle-option="(on) => toggleOption(r.id, on)"
+              />
+            </li>
+          </ul>
+        </section>
 
         <Collapsible
           v-if="unavailable.length"
@@ -147,13 +194,14 @@ function toggle(id: string, on: boolean): void {
 
       <DialogFooter>
         <Button
+          v-if="dismissLabel"
           variant="dialog"
           size="kira-lg"
           :pending="dismissing"
           data-testid="restore-dismiss"
           @click="emit('dismiss')"
           >{{
-            t('workbench.restore.dismiss.label')
+            dismissLabel
           }}</Button
         >
         <Button
@@ -162,7 +210,7 @@ function toggle(id: string, on: boolean): void {
           :pending="pending"
           :disabled="chosen.length === 0"
           data-testid="restore-submit"
-          @click="emit('confirm', chosen)"
+          @click="emit('confirm', confirmed)"
           >{{
             t('workbench.restore.submit.label', { count: chosen.length })
           }}</Button
