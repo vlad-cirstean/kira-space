@@ -9,7 +9,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Planned |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
 | P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
-| P704 | Task Files: open in its own window, off the main chrome | Planned |
+| P704 | Task Files: open in its own window, off the main chrome | Done |
 | P705 | Mobile app: show the status info it is missing | Planned |
 | P706 | Pull request icon: one glyph for every PR status | Planned |
 
@@ -106,6 +106,14 @@ less important than Review: no big button, and no entry in the right-click menu.
 entry point (for example a small icon in the task header or a command palette entry) and the window
 reuses the review window's wiring. Remove the old tab, its layout space, specs and baselines; add the
 window spec. Keep the existing file views and diff behaviour inside the new window.
+
+Result: Files tab removed; task panel tabs are Main, Details, Sessions. Header icon `ade-panel-files`
+opens one Files window per task (`OpenFilesWindow` focuses an open one). Keys `adefiles-`, in-memory
+registry (`internal/ade/fileswindow.go`), never restored; Archive closes it, a native close releases
+file sessions. List and open file refetch on window focus; pane width persists per device. Guard U214.
+Flow `TestTaskFilesWindow` and UI specs share contract `ade-task-files`. Baselines `files-open`,
+`files-reading`, `files-search`, `files-launch-error`, `files-empty` and the doc screenshots showing a
+task panel header are re-recorded at chapter end. `files1` heap checkpoint dropped.
 
 ## P705
 
