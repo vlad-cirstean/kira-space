@@ -1163,6 +1163,7 @@ test('ram: ade-idle', async ({ relaunch }, info) => {
       await modeTab(page, mode).click();
       await page.waitForTimeout(1500);
     },
+    snapshot: 'keep',
     after: pss(name),
   });
   await runMemSteps({
@@ -1171,8 +1172,13 @@ test('ram: ade-idle', async ({ relaunch }, info) => {
     page,
     info,
     steps: [
-      { name: 'board', run: async () => {}, after: pss('board') },
-      { name: 'idle60', run: () => page.waitForTimeout(60_000), after: pss('idle60') },
+      { name: 'board', run: async () => {}, snapshot: true, after: pss('board') },
+      {
+        name: 'idle60',
+        run: () => page.waitForTimeout(60_000),
+        snapshot: true,
+        after: pss('idle60'),
+      },
       hop('left', 'git'),
       hop('back', 'ade'),
     ],
