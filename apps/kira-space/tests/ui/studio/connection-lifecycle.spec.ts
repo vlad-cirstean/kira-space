@@ -99,7 +99,7 @@ test('Delete asks first, then removes the connection and closes the dialog', asy
   ]);
   await page.locator('[data-testid="connection-delete"]').click();
   await expect(page.locator('[data-testid="confirm-dialog-message"]')).toContainText('Local');
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   expect(calls(control, IPC.connectionsDelete)).toHaveLength(0);
 
   await page.locator('[data-testid="connection-delete"]').click();

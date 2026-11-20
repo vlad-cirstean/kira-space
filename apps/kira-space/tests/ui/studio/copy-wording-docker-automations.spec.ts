@@ -220,7 +220,7 @@ test('remove script confirm: title, body and buttons', async ({ relaunch }) => {
   await expect(tid(page, 'confirm-dialog-message')).toHaveText(
     '“Build all” will no longer appear in Runs.',
   );
-  await expect(tid(page, 'confirm-dialog-cancel')).toHaveText('Cancel');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   await expect(tid(page, 'confirm-dialog-confirm')).toHaveText('Remove');
 });
 

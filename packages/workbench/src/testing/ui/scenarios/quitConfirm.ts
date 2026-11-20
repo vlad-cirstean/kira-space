@@ -48,10 +48,10 @@ export function registerQuitScenarios(env: Env): void {
     expect(control.log().some((e) => e.channel === IPC.lifecycleCancelQuit)).toBe(false);
   });
 
-  for (const how of ['Cancel', 'Escape'] as const) {
+  for (const how of ['X', 'Escape'] as const) {
     test(`${how} cancels the quit`, async ({ relaunch }) => {
       const { page, control, dialog } = await open(relaunch);
-      if (how === 'Cancel') await dialog.locator('[data-testid="confirm-dialog-cancel"]').click();
+      if (how === 'X') await dialog.locator('[data-testid="confirm-dialog-close"]').click();
       else await page.keyboard.press('Escape');
       await expect
         .poll(() => control.log().filter((e) => e.channel === IPC.lifecycleCancelQuit).length)

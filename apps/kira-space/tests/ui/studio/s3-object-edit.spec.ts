@@ -114,7 +114,7 @@ test('an object whose ACL cannot be read asks before the save resets it', async 
   await expect(page.locator('[data-testid="confirm-dialog"]')).toContainText(CONFLICT.Message);
 
   // Cancel keeps the staged edit and sends nothing more.
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(page.locator('[data-testid="keyvalue-object-edit-pending"]')).toBeVisible();
   expect((await stream.ops()).filter((o) => o.op === DATA_OP.mutate)).toHaveLength(1);
 

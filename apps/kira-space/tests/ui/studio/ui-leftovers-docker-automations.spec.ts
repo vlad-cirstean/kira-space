@@ -204,7 +204,7 @@ test('run file dialog: Escape on unsaved edits asks to discard first', async ({ 
   );
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="confirm-dialog"]')).toBeVisible();
-  await page.locator('[data-testid="confirm-dialog-cancel"]').click();
+  await page.locator('[data-testid="confirm-dialog-close"]').click();
   await expect(dialog).toBeVisible();
 
   await page.keyboard.press('Escape');

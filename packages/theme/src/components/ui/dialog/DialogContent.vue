@@ -65,8 +65,8 @@ const delegatedProps = reactiveOmit(
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 
-// Initial focus: a destructive dialog opens on its dismiss control (`data-dialog-dismiss`) so Enter
-// cancels instead of confirming; any other dialog may name a control with `data-dialog-initial`.
+// Initial focus: a destructive dialog opens on its header X (`data-dialog-dismiss`) so Enter
+// closes instead of confirming; any other dialog may name a control with `data-dialog-initial`.
 function onOpenAutoFocus(event: Event): void {
   const root = event.currentTarget as HTMLElement | null;
   const target = root?.querySelector<HTMLElement>(
@@ -88,7 +88,7 @@ const rootContext = injectDialogRootContext();
 const confirmDiscard = inject(CONFIRM_DISCARD_KEY, null);
 let asking = false;
 
-// Footer Cancel never asks: it is a plain DialogClose. Only the X and Esc route through here.
+// The X, Esc and the prompt hide chord close through here; the X is the only dismiss button.
 async function requestClose(): Promise<void> {
   if (asking) return;
   if (props.dirty && confirmDiscard) {

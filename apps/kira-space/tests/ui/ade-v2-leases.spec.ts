@@ -86,7 +86,7 @@ test('contract: Request release asks the holder, Force release revokes after a c
   await page.locator(t('ade-lease-holder-push')).click();
   await page.locator(t('ade-lease-force')).click();
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('Task C');
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   expect(calls(control, IPC.leasesForceRelease)).toHaveLength(0);
 
   await page.locator(t('ade-lease-holder-push')).click();
@@ -130,7 +130,7 @@ test('the queue editor adds a name and refuses an empty or duplicate one', async
   // push has a holder: removing it revokes the lease, so it asks first.
   await page.locator(t('ade-lease-remove-push')).click();
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('Task C');
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   expect(calls(control, IPC.leasesSaveQueues)).toHaveLength(1);
   await page.locator(t('ade-lease-remove-push')).click();
   await page.locator(t('confirm-dialog-confirm')).click();

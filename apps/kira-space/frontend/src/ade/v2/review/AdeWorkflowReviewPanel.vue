@@ -401,7 +401,7 @@ const stateLabel = (c: ReviewComment): string =>
       tone="primary"
       :testids="{
         root: 'ade-confirm-dialog',
-        cancel: 'ade-confirm-no',
+        close: 'ade-confirm-close',
         confirm: 'ade-confirm-yes',
       }"
       @confirm="confirmFinish"

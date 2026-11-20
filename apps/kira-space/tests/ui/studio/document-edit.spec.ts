@@ -216,7 +216,7 @@ test('a document changed on the server asks before it is overwritten', async ({ 
   await expect(dialog).toContainText(CONFLICT.Message);
 
   // Cancel keeps the editor open with the typed text and sends nothing more.
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(page.locator('[data-testid="document-edit-save"]')).toBeEnabled();
   expect(await editorText(page.locator('[data-testid="document-body"]'))).toBe(mine);
   expect((await stream.ops()).filter((o) => o.op === DATA_OP.mutate)).toHaveLength(1);

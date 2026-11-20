@@ -9,7 +9,7 @@ import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { postgresConnectionSummary } from './support/postgresFixture';
 
-// P264: a danger confirm opens on Cancel (Enter declines), a primary confirm opens on its confirm
+// P264: a danger confirm opens on the X (Enter closes), a primary confirm opens on its confirm
 // button (Enter accepts). No mutation snapshot is mocked for Delete: a stray call fails the mock.
 
 const CONN: ConnectionSummary = postgresConnectionSummary('conn-focus', 'Focus DB', 'blue');
@@ -44,7 +44,7 @@ const PASSWORD_REF = '${secret:focus.password}';
 
 const dialog = '[data-testid="confirm-dialog"]';
 
-test('danger confirm opens with Cancel focused; Enter declines', async ({ relaunch }) => {
+test('danger confirm opens with the X focused; Enter closes', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({ control: CONTROL });
   const row = page
     .locator('[data-testid="tree-row"][data-kind="connection"]')
@@ -53,7 +53,7 @@ test('danger confirm opens with Cancel focused; Enter declines', async ({ relaun
   await page.click('[data-testid="menu-item-delete"]');
 
   await expect(page.locator(dialog)).toBeVisible();
-  await expect(page.locator('[data-testid="confirm-dialog-cancel"]')).toBeFocused();
+  await expect(page.locator('[data-testid="confirm-dialog-close"]')).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator(dialog)).toHaveCount(0);
   await expect(row).toBeVisible();

@@ -106,7 +106,7 @@ test('menu Remove asks first', async ({ relaunch }) => {
   });
   await repoRow(page, SHOWN.id).click({ button: 'right' });
   await page.locator(t('menu-item-remove')).click();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   expect(calls(control, IPC.codeWorkspaceRemoveRepo)).toHaveLength(0);
   await repoRow(page, SHOWN.id).click({ button: 'right' });
   await page.locator(t('menu-item-remove')).click();

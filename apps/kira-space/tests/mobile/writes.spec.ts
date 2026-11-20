@@ -91,7 +91,7 @@ test.describe('with write access', () => {
       .filter({ hasText: 'Cart total test fails intermittently' });
     await card.locator('button').first().click();
     await card.locator(t('plan-step-next')).click();
-    for (const id of ['confirm-cancel', 'confirm-yes']) {
+    for (const id of ['confirm-close', 'confirm-yes']) {
       const box = await page.locator(t(id)).boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     }

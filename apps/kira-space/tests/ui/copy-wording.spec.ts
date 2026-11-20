@@ -38,7 +38,7 @@ type Relaunch = Parameters<typeof openPlan>[0];
 const openReposPage = (relaunch: Relaunch, extra: ControlSnapshot[] = []) =>
   openAdeRepos(relaunch, extra);
 
-test('removing a repository says what stays and offers Remove / Cancel', async ({ relaunch }) => {
+test('removing a repository says what stays and offers Remove', async ({ relaunch }) => {
   const { window: page } = await openReposPage(relaunch, [
     { channel: IPC.codeWorkspaceRemoveRepo },
   ]);
@@ -47,10 +47,10 @@ test('removing a repository says what stays and offers Remove / Cancel', async (
   await expect(dialog).toContainText('Remove repository?');
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('Files on disk stay.');
   await expect(page.locator(t('confirm-dialog-confirm'))).toHaveText('Remove');
-  await expect(page.locator(t('confirm-dialog-cancel'))).toHaveText('Cancel');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
 });
 
-test('force push asks with Cancel / Force push', async ({ relaunch }) => {
+test('force push asks with Force push', async ({ relaunch }) => {
   const board = adeFixture<{ plan: { unpushed: Record<string, boolean> } }>('board');
   board.plan.unpushed = { b_deps: true };
   const { window: page } = await openPlan(relaunch, [
@@ -60,11 +60,11 @@ test('force push asks with Cancel / Force push', async ({ relaunch }) => {
   await page.locator(t('ade-force-push')).click();
   const dialog = page.locator(t('ade-confirm-dialog'));
   await expect(dialog).toContainText('Force push?');
-  await expect(dialog.locator(t('ade-confirm-no'))).toHaveText('Cancel');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   await expect(dialog.locator(t('ade-confirm-yes'))).toHaveText('Force push');
 });
 
-test('abort rebase asks with Cancel / Abort', async ({ relaunch }) => {
+test('abort rebase asks with Abort', async ({ relaunch }) => {
   const board = adeBoard((b) => {
     const auth = b.branches.find((br) => br.id === 'b_auth');
     Object.assign(auth ?? {}, { base: 'develop', basePendingFrom: 'main', rebaseInProgress: true });
@@ -75,7 +75,9 @@ test('abort rebase asks with Cancel / Abort', async ({ relaunch }) => {
   await page.locator('[data-testid="ade-branch-row"][data-branch-id="b_auth"]').click();
   await page.locator(t('ade-panel-action-abort-rebase')).click();
   await expect(page.getByText('Abort rebase?')).toBeVisible();
-  await expect(page.locator(t('ade-confirm-no'))).toHaveText('Cancel');
+  await expect(
+    page.locator(t('ade-confirm-dialog')).getByRole('button', { name: 'Cancel' }),
+  ).toHaveCount(0);
   await expect(page.locator(t('ade-confirm-yes'))).toHaveText('Abort');
 });
 
@@ -150,9 +152,9 @@ studioTest.describe('databases module', () => {
       await expect(page.locator('[data-testid="confirm-dialog-message"]')).toContainText(
         `“${PG_CONN.name}” will be removed.`,
       );
-      await expect(page.locator('[data-testid="confirm-dialog-cancel"]')).toHaveText('Cancel');
+      await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
       await expect(page.locator('[data-testid="confirm-dialog-confirm"]')).toHaveText('Delete');
-      await expect(page.locator('[data-testid="confirm-dialog-cancel"]')).toBeFocused();
+      await expect(page.locator('[data-testid="confirm-dialog-close"]')).toBeFocused();
     },
   );
 

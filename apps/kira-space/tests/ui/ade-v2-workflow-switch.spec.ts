@@ -55,7 +55,7 @@ test('a switch that deletes runs names the counts and sends confirmed on Yes', a
 
 test('declining the confirm sends no second switch', async ({ relaunch }) => {
   const { window: page, control } = await pickBugfix(relaunch);
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('confirm-dialog-root'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskSetTaskWorkflow)).toHaveLength(1);
 });

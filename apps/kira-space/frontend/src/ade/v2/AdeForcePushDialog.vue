@@ -44,7 +44,7 @@ function confirm(): void {
     tone="danger"
     :testids="{
       root: 'ade-confirm-dialog',
-      cancel: 'ade-confirm-no',
+      close: 'ade-confirm-close',
       confirm: 'ade-confirm-yes',
       error: 'ade-confirm-error',
     }"

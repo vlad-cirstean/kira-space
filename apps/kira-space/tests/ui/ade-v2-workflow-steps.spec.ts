@@ -57,7 +57,7 @@ test('the tabs read Statuses, Steps, Workflows; Workflows opens first and a swit
   await page.locator(t('ade-wf-form-name')).fill('Edited');
   await page.locator(t('ade-wf-tab-steps')).click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('ade-wf-form-name'))).toHaveValue('Edited');
   await page.locator(t('ade-wf-tab-steps')).click();
   await page.locator(t('confirm-dialog-confirm')).click();

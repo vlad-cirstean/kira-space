@@ -47,7 +47,7 @@ test('the danger dialog opens with Cancel focused and Escape closes it unsent', 
   await revealRow(page, 'b_deps', 'board', 'ade-force-push');
   await page.locator('[data-testid="ade-force-push"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
-  await expect(dialog.locator('[data-testid="ade-confirm-no"]')).toBeFocused();
+  await expect(dialog.locator('[data-testid="ade-confirm-close"]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   expect(control.log().filter((e) => e.channel === IPC.adeTaskForcePush)).toHaveLength(0);

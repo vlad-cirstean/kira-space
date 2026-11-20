@@ -96,7 +96,7 @@ test('leaving the page with an unsaved settings edit asks first', async ({ relau
   await expect(page.locator(t('repo-file-save'))).toBeEnabled();
   await page.locator(t('ade-tab-plan')).click();
   await expect(page.locator(t('confirm-dialog'))).toBeVisible();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   await expect(page.locator(t('ade-repos'))).toBeVisible();
   await expect(page.locator(t('repo-file-save'))).toBeEnabled();
   await page.locator(t('ade-tab-plan')).click();
@@ -166,7 +166,7 @@ test('removing a repository asks first, from the repo head', async ({ relaunch }
     page.locator(`${t('ade-repos-repo-head')} ${t('ade-repos-repo-remove')}`),
   ).toHaveCount(1);
   await page.locator(t('ade-repos-repo-remove')).click();
-  await page.locator(t('confirm-dialog-cancel')).click();
+  await page.locator(t('confirm-dialog-close')).click();
   expect(calls(control, IPC.codeWorkspaceRemoveRepo)).toHaveLength(0);
   await page.locator(t('ade-repos-repo-remove')).click();
   await page.locator(t('confirm-dialog-confirm')).click();

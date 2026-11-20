@@ -213,7 +213,7 @@ test('a staged insert the reload cannot match is put to the user; keeping it res
   const dialog = page.locator(DIALOG);
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('may have been saved');
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expectUnknownOutcomeShown(page);
   await expect(page.locator('[data-testid="grid-row-insert"]')).toHaveCount(1);
   await expect(page.locator(COMMIT)).toBeVisible();
@@ -257,7 +257,7 @@ test('Commit after a failed reload settles first and never resends the insert', 
   // This Commit only settles the earlier one: it asks, keeps the insert and sends nothing.
   await page.click(COMMIT);
   await expect(page.locator(DIALOG)).toBeVisible();
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(page.locator('[data-testid="grid-row-insert"]')).toHaveCount(1);
   expect(await sentMutates(stream)).toHaveLength(1);
 });
@@ -348,7 +348,7 @@ test('a row another client changed during the lost acknowledgement still asks be
   // the grid asks (decision 3).
   await page.click(COMMIT);
   await expect(page.locator(DIALOG)).toContainText(CONFLICT.Message);
-  await page.click('[data-testid="confirm-dialog-cancel"]');
+  await page.click('[data-testid="confirm-dialog-close"]');
   await expect(gridCell(page, 0, 'name')).toHaveClass(/pending-edit/);
   expect(await sentMutates(stream)).toHaveLength(2);
 });

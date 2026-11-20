@@ -308,7 +308,9 @@ test('a pending base shows its tag, Retry rebase, and Abort rebase asks first', 
   await expect(page.locator(t('ade-panel-action-rebase-retry'))).toContainText('Retry rebase');
   await page.locator(t('ade-panel-action-abort-rebase')).click();
   await expect(page.getByText('Abort rebase?')).toBeVisible();
-  await expect(page.locator(t('ade-confirm-no'))).toHaveText('Cancel');
+  await expect(
+    page.locator(t('ade-confirm-dialog')).getByRole('button', { name: 'Cancel' }),
+  ).toHaveCount(0);
   await expect(page.locator(t('ade-confirm-yes'))).toHaveText('Abort');
   expect(calls(control, IPC.adeTaskAbortRebase)).toHaveLength(0);
   await page.locator(t('ade-confirm-yes')).click();

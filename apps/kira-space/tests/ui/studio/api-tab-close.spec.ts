@@ -130,7 +130,8 @@ test('a modified saved tab asks on close: Cancel keeps it, Discard drops the edi
   );
   await expect(page.locator('[data-testid="confirm-dialog-confirm"]')).toHaveText('Save');
   await expect(page.locator('[data-testid="confirm-dialog-secondary"]')).toHaveText('Discard');
-  await expect(page.locator('[data-testid="confirm-dialog-cancel"]')).toBeVisible();
+  await expect(page.locator('[data-testid="confirm-dialog-close"]')).toBeVisible();
+  await expect(dialog(page).getByRole('button', { name: 'Cancel' })).toHaveCount(0);
 
   await cancelConfirm(page);
   await expect(tabs(page)).toHaveCount(1);

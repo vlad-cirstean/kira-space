@@ -376,7 +376,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   await page.locator('[data-testid="menu-item-ade-day-toggle"]').click();
   const dialog = page.locator('[data-testid="ade-confirm-dialog"]');
   await expect(dialog).toContainText('Move tasks?');
-  await expect(dialog.locator('[data-testid="ade-confirm-no"]')).toHaveText('Cancel');
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   await expect(dialog.locator('[data-testid="ade-confirm-yes"]')).toHaveText('Move');
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);

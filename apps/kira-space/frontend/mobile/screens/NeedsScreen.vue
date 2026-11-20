@@ -171,7 +171,7 @@ async function confirmTakeOver(): Promise<void> {
       :error="takeOverError"
       :testids="{
         root: 'confirm-dialog',
-        cancel: 'confirm-cancel',
+        close: 'confirm-close',
         confirm: 'confirm-yes',
         error: 'confirm-error',
       }"

@@ -97,7 +97,7 @@ export function registerLifecycleScenarios(env: Env, options: Options): void {
     await header(page, 'B').click({ button: 'right' });
     await menuItem(page, 'delete').click();
     await expect(page.locator('[data-testid="confirm-dialog-message"]')).toContainText('“B”');
-    await page.click('[data-testid="confirm-dialog-cancel"]');
+    await page.click('[data-testid="confirm-dialog-close"]');
     expect(calls(calllog, IPC.customScriptsDeleteCollection)).toHaveLength(0);
 
     await header(page, 'B').click({ button: 'right' });

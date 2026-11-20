@@ -52,7 +52,7 @@ test.describe('with write access', () => {
     await app();
   });
 
-  test('take over asks with a title, an explanation and Take over / Cancel buttons', async ({
+  test('take over asks with a title, an explanation and Take over button and the X', async ({
     page,
   }) => {
     await page.locator(t('needs-take-over')).first().click();
@@ -62,6 +62,6 @@ test.describe('with write access', () => {
       'Taking over stops the background run and continues it in Claude Code on your computer.',
     );
     await expect(page.locator(t('confirm-yes'))).toHaveText('Take over');
-    await expect(page.locator(t('confirm-cancel'))).toHaveText('Cancel');
+    await expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   });
 });
