@@ -52,7 +52,7 @@ export const buttonVariants = cva(
         'title-labelled': 'h-5.5 px-1 gap-1',
       },
       // Outline tone of a `dialog` button: border, text or glyph and focus outline, no fill. Only
-      // the ADE task step action takes it, from `TaskAction.tone` (U208, U209).
+      // the ADE task step action takes it, from `TaskAction.tone` (U210, U211).
       outline: { agent: '', green: '', amber: '', red: '', purple: '' },
     },
     compoundVariants: [

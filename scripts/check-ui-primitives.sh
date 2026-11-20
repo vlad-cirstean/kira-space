@@ -37,7 +37,7 @@
 # Guards U191-U203: docs/HISTORY.md (v0.3.18).
 # Guard U204: docs/HISTORY.md (v0.3.18).
 # Guards U205-U207: docs/HISTORY.md (v0.3.18).
-# Guards U208-U209: docs/v0.3.19/plans/P692.md.
+# Guards U210-U211: docs/v0.3.19/plans/P692.md.
 #
 # Needs GNU grep -P like check-theme-classes.sh.
 set -e
@@ -386,8 +386,8 @@ U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand
 U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
 U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
 U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
-U208@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
-U209@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
+U210@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
+U211@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
 GUARDS
 
 # hits: "U<n> path"
