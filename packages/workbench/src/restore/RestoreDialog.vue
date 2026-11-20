@@ -88,7 +88,7 @@ function toggle(id: string, on: boolean): void {
 <template>
   <Dialog :open="true" @update:open="(v) => !v && emit('close')">
     <DialogContent size="lg" data-testid="restore-dialog">
-      <DialogHeader>
+      <DialogHeader close-testid="restore-close">
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>

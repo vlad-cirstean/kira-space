@@ -29,6 +29,7 @@ import * as OpsService from '@bindings/opsservice.js';
 import * as PromptsService from '@bindings/promptsservice.js';
 import * as RepoConfigService from '@bindings/repoconfigservice.js';
 import * as ScriptRunsService from '@bindings/scriptrunsservice.js';
+import * as SessionRestoreService from '@bindings/sessionrestoreservice.js';
 import * as SettingsService from '@bindings/settingsservice.js';
 import * as TabsService from '@bindings/tabsservice.js';
 import * as TerminalService from '@bindings/terminalservice.js';
@@ -87,6 +88,11 @@ import type {
   ScriptsSnapshot,
   SecretValues,
 } from '@shared/domain/scripts';
+import type {
+  SessionRestoreArgs,
+  SessionRestoreResult,
+  SessionRestoreState,
+} from '@shared/domain/sessionRestore';
 import { CHANNEL } from '@shared/protocol/events';
 import { scriptsSnapshotOf } from '@workbench/automations/createCustomScriptsStore';
 import { createCoreControl } from '@workbench/bridge/createCoreControl';
@@ -230,6 +236,12 @@ const spaceControl = {
   scriptRunsRestore: (items: ScriptRunRestoreChoice[]): Promise<ScriptRunRestoreResult> =>
     unwrap(ScriptRunsService.Restore({ items })).then((r) => trust<ScriptRunRestoreResult>(r)),
   scriptRunsRestoreDismiss: (): Promise<void> => unwrap(ScriptRunsService.RestoreDismiss()),
+  sessionRestoreState: (): Promise<SessionRestoreState> =>
+    unwrap(SessionRestoreService.State()).then((r) => trust<SessionRestoreState>(r)),
+  sessionRestoreClaim: (): Promise<boolean> => unwrap(SessionRestoreService.Claim()),
+  sessionRestoreRestore: (args: SessionRestoreArgs): Promise<SessionRestoreResult> =>
+    unwrap(SessionRestoreService.Restore(args)).then((r) => trust<SessionRestoreResult>(r)),
+  sessionRestoreClose: (): Promise<void> => unwrap(SessionRestoreService.Close()),
   scriptRunsResumeCommand: (runId: string): Promise<ScriptRunResumeLaunch> =>
     unwrap(ScriptRunsService.ResumeCommand({ runId })).then((r) => trust<ScriptRunResumeLaunch>(r)),
   scriptRunsReadLog: (id: string, afterSeq: number): Promise<ScriptRunLogPage> =>

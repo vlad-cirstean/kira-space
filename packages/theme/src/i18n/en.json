@@ -12192,6 +12192,15 @@
         }
       }
     },
+    "restore": {
+      "dialog": {
+        "description": "Kira stopped while these were running. Nothing starts until you confirm.",
+        "title": "Restore what was running"
+      },
+      "working": {
+        "label": "Was working"
+      }
+    },
     "settings": {
       "about": {
         "github": {

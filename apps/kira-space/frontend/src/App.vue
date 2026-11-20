@@ -46,6 +46,7 @@ import ConfigSyncToast from './configsync/ConfigSyncToast.vue';
 import HostViewWindow from './hostview/HostViewWindow.vue';
 import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
+import SessionRestoreHost from './restore/SessionRestoreHost.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useConfigSyncWindowStore } from './state/configSyncWindow';
@@ -258,6 +259,7 @@ function onToggleKeepAwake(): void {
       <PromptsToast />
       <ConfigSyncToast v-if="mainWindow()" />
     </CornerStack>
+    <SessionRestoreHost v-if="mainWindow()" />
     <ConfirmDialog />
     <AppLiveRegion />
     <UpdateDialog v-if="appUpdateStore.dialogOpen" :store="appUpdateStore" />
