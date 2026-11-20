@@ -217,12 +217,8 @@ async function confirmRemove(): Promise<void> {
             <Input :id="confirmTokenId" v-model="typedToken" class="w-full" />
           </Field>
         </DialogBody>
-        <DialogFooter>
-          <Button variant="dialog" size="kira-lg" data-dialog-dismiss @click="cancelRemove">{{
-            t('common.action.cancel.label')
-          }}</Button>
+        <DialogFooter v-if="pendingRemove?.preflight.verdict === 'dirty'">
           <Button
-            v-if="pendingRemove?.preflight.verdict === 'dirty'"
             variant="dialog-danger"
             size="kira-lg"
             :disabled="!canConfirmRemove"

@@ -348,9 +348,6 @@ async function save(): Promise<void> {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" @click="close">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button variant="dialog-primary" size="kira-lg" :disabled="!pageSizeValid" @click="save">
           {{ t('common.action.save.label') }}
         </Button>

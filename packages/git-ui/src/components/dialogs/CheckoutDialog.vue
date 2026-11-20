@@ -127,9 +127,6 @@ function stashAndCarry(): void {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" @click="cancel">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           v-if="canDiscard"
           :variant="canStashAndCarry ? 'dialog' : 'dialog-danger'"

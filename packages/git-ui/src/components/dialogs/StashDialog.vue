@@ -486,17 +486,11 @@ function onClose(): void {
 
       <DialogFooter>
         <template v-if="mode === 'create'">
-          <Button variant="dialog" size="kira-lg" @click="cancelCreate">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button variant="dialog-primary" size="kira-lg" @click="submitCreate">{{
             t('git.toolbar.stash.label')
           }}</Button>
         </template>
         <template v-else-if="mode === 'branch'">
-          <Button variant="dialog" size="kira-lg" @click="cancelBranch">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
@@ -507,9 +501,6 @@ function onClose(): void {
           </Button>
         </template>
         <template v-else-if="mode === 'save'">
-          <Button variant="dialog" size="kira-lg" @click="cancelSave">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button
             variant="dialog-primary"
             size="kira-lg"
@@ -520,9 +511,6 @@ function onClose(): void {
           </Button>
         </template>
         <template v-else-if="mode === 'popConfirm' && pending">
-          <Button variant="dialog" size="kira-lg" @click="cancelPop">{{
-            t('common.action.cancel.label')
-          }}</Button>
           <Button variant="dialog-primary" size="kira-lg" @click="confirmPop">
             {{ popConfirmLabel }}
           </Button>

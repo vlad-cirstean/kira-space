@@ -213,9 +213,6 @@ function confirm(): void {
       </DialogBody>
 
       <DialogFooter>
-        <Button variant="dialog" size="kira-lg" data-dialog-dismiss @click="cancel">{{
-          t('common.action.cancel.label')
-        }}</Button>
         <Button
           v-if="isHardDestructive && canStashFirst"
           :variant="stashFirst ? 'dialog-primary' : 'dialog-danger'"
