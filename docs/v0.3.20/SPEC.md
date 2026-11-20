@@ -6,7 +6,7 @@ Chapter v0.3.20, branch `chapter/v0.3.20`, tag `v0.3.20`. First phase `P694` (hi
 |---|-------|--------|
 | P694 | Agent prompts: when to write proofs, where the task Details live | Done |
 | P695 | Task files: watch on disk, submit narrowed, errors in state, no human diff for latest AI edits | Planned |
-| P696 | Dialogs: remove redundant buttons (audit every dialog) | Planned |
+| P696 | Dialogs: remove redundant buttons (audit every dialog) | Done |
 | P697 | Required services: repo scripts that must be running for a task | Planned |
 | P698 | Toasts: drop operation progress and success toasts the ops panel and task already show | Planned |
 
@@ -41,6 +41,18 @@ dialogs) and fix each: no Cancel beside No, no duplicate dismiss actions where t
 that carry a distinct outcome. Deliverable: audit list (dialog, buttons before and after) in the plan, a
 guard in `scripts/check-ui-primitives.sh` if a rule is mechanically checkable, updated UI specs and visual
 baselines. Independent of P694 and P695 (frontend dialogs only); plan lists any overlapping files.
+
+Result: Done. Audited 68 dialog files and 8 ConfirmDialogView hosts (table in `plans/P696.md`). Footer
+buttons that only dismissed are removed (Cancel, Close, Later, Not now where the header X does the same)
+in 50 dialog files; ConfirmDialogView lost its Cancel, so Cancel no longer sits beside Discard in
+`choose()`. Kept: buttons with their own outcome (Discard, Not now that declines, restore Dismiss,
+credential Cancel) and dismiss buttons where the X is hidden (UpdateDialog installing, TextPromptDialog).
+The header X carries `data-dialog-dismiss`, so destructive dialogs open focused on it. Guard `U212`.
+Dialog X testids are new where a footer id was removed; `ade-stage-dialog-close` replaces the plan's
+`ade-stage-close`, which the stage close-sessions toggle already uses. Specs updated (UI 43 spec files
+plus 86 related, all pass; mobile-ios all 54 pass, X measures 44px so no `touch` prop). Visual baselines
+git-stash, git-repo-settings, git-reset, repo-gate, new-connection, schema-dialog are re-recorded at
+chapter end; orphan `script-dialog` baseline removed. Frontend only.
 
 ## P697
 
