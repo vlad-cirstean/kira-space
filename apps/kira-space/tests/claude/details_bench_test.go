@@ -7,8 +7,8 @@ package claude
 // Knobs: KIRA_BENCH_FLOWS (comma list, default F1), KIRA_BENCH_ARMS (default: every registered arm),
 // KIRA_BENCH_REPS (default 3), KIRA_BENCH_BUDGET (USD for the round, default 1.5). KIRA_BENCH_OUT is
 // required: results never go to a default path. Arm T serves the frozen tool list in
-// testdata/details-bench/tools-baseline.json over stub backends. Arm R is the real agentmcp.Server (submit,
-// implicit-submit finish_step) and the files prompt fragment; its oracles are the spike flows' own.
+// testdata/details-bench/tools-baseline.json over stub backends. Arm R is the real agentmcp.Server (state, the
+// finish flush) and the files prompt fragment; its oracles are the spike flows' own.
 
 import (
 	"bytes"
@@ -82,13 +82,13 @@ func loadBenchBaseline(t *testing.T) benchBaseline {
 }
 
 // benchArmSetups are the registered arms. T serves the frozen tools; R serves the real agentmcp.Server
-// (submit, implicit-submit finish_step) over the task folder the files prompt names.
+// (state, the finish flush) over the task folder the files prompt names.
 var benchArmSetups = map[string]func(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()){
 	"T": benchSetupT,
 	"R": benchSetupR,
 }
 
-// benchSpaceR backs arm R's server: submit and step.finish read the stage's draft in the task folder as
+// benchSpaceR backs arm R's server: step.finish reads the stage's draft in the task folder as
 // the board does (the ade package is not importable from this module); branch.request answers once the
 // branch's setup is done, as the board does after the user approves.
 type benchSpaceR struct {
@@ -99,13 +99,6 @@ type benchSpaceR struct {
 func (s *benchSpaceR) body() string {
 	b, _ := os.ReadFile(s.draft)
 	return strings.TrimSpace(string(b))
-}
-
-func (s *benchSpaceR) Submit(_ context.Context, _ agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	if s.body() == "" {
-		return "accepted 0, pending user 0, invalid 0", nil
-	}
-	return "accepted 1, pending user 0, invalid 0\nhandovers/draft-implement.md: accepted", nil
 }
 
 func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, _ string, ok bool) (agentmcp.SubmitFinish, error) {
@@ -141,7 +134,7 @@ func (s *benchSpaceR) SpawnTask(ctx context.Context, c agentmcp.SpaceCall, a age
 	return res, err
 }
 
-// benchSetupR is the implementation arm: the real tool surface of a Space grant (submit, state, and
+// benchSetupR is the implementation arm: the real tool surface of a Space grant (state, and
 // create_task for an orchestrator) and the task folder with its Kira-written files, granted with --add-dir.
 func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlow) (string, []string, func()) {
 	return func(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
@@ -607,24 +600,11 @@ func TestDetailsBenchFrozenServes(t *testing.T) {
 	}
 }
 
-// benchBoardR is the real task board with its submit calls recorded: the proof oracles need what the
-// agent sent and what Kira answered.
+// benchBoardR is the real task board with its finish flushes recorded: the proof oracles need what Kira answered.
 type benchBoardR struct {
 	*ade.TaskBoard
 	mu      sync.Mutex
 	replies []string
-	reason  string
-}
-
-func (b *benchBoardR) Submit(ctx context.Context, call agentmcp.SpaceCall, in agentmcp.SubmitArgs) (string, error) {
-	out, err := b.TaskBoard.Submit(ctx, call, in)
-	b.mu.Lock()
-	b.replies = append(b.replies, out)
-	if strings.TrimSpace(in.Reason) != "" {
-		b.reason = in.Reason
-	}
-	b.mu.Unlock()
-	return out, err
 }
 
 func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCall, status string, ok bool) (agentmcp.SubmitFinish, error) {
@@ -635,26 +615,26 @@ func (b *benchBoardR) SubmitForFinish(ctx context.Context, call agentmcp.SpaceCa
 	return out, err
 }
 
-// reset forgets what earlier passes saw, so a pass's oracle reads that pass's own submits.
+// reset forgets what earlier passes saw, so a pass's oracle reads that pass's own flushes.
 func (b *benchBoardR) reset() {
 	b.mu.Lock()
-	b.replies, b.reason = nil, ""
+	b.replies = nil
 	b.mu.Unlock()
 }
 
-// seen reports whether a submit answered for the proof unit with the wanted line.
-func (b *benchBoardR) seen(want string) (bool, string) {
+// seen reports whether a flush answered for the proof unit with the wanted line.
+func (b *benchBoardR) seen(want string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, rp := range b.replies {
 		if strings.Contains(rp, want) {
-			return true, b.reason
+			return true
 		}
 	}
-	return false, b.reason
+	return false
 }
 
-// benchSetupRProof runs F2 and F3 on a real app: a real task folder, the real submit with the proof
+// benchSetupRProof runs F2 and F3 on a real app: a real task folder, the real finish flush with the proof
 // unit, and the board as the grant's tools. F3 starts from an accepted proof.
 func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string, func()) {
 	f := newAdeFixture(t, nil)
@@ -684,7 +664,7 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 		if err != nil || !strings.Contains(out, "accepted, new proof") {
 			t.Fatalf("seed submit: %q %v", out, err)
 		}
-		want = "pending user, change to"
+		want = "accepted, change to" // the task's only proof is its latest: the edit applies
 	}
 	r.afterPass = board.reset
 	r.realProof = func() (*spikeProof, bool, string) { return storedProof(f, task.ID, board, want) }
@@ -704,7 +684,7 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 }
 
 // storedProof reads the proof Kira holds for the task: the pending revision when an edit waits, else the
-// current one. seen is whether a submit answered for it with the wanted line.
+// current one. seen is whether a flush answered for it with the wanted line.
 func storedProof(f *adeFixture, taskID string, board *benchBoardR, want string) (*spikeProof, bool, string) {
 	list, err := f.W.AdeTask.TaskProofs(ctx, adewire.TaskArgs{TaskID: taskID})
 	if err != nil || len(list.Proofs) == 0 {
@@ -718,8 +698,8 @@ func storedProof(f *adeFixture, taskID string, board *benchBoardR, want string) 
 	if d.Pending != nil {
 		rev = *d.Pending
 	}
-	seen, reason := board.seen(want)
-	p := &spikeProof{Name: d.Name, Summary: d.Summary, Reason: reason, Pending: d.Pending != nil}
+	seen := board.seen(want)
+	p := &spikeProof{Name: d.Name, Summary: d.Summary, Pending: d.Pending != nil}
 	for _, m := range rev.Steps {
 		st, err := f.W.Proof.Step(bridge.ProofStepArgs{SessionID: d.ID, Rev: rev.Rev, Ordinal: m.Ordinal})
 		if err != nil {
@@ -802,9 +782,9 @@ func TestDetailsBenchArmRServes(t *testing.T) {
 			names = append(names, tl.Name)
 		}
 		slices.Sort(names)
-		want := []string{"state", "submit"}
+		want := []string{"state"}
 		if flow == "F4" || flow == "F6" {
-			want = []string{"create_task", "state", "submit"}
+			want = []string{"create_task", "state"}
 		}
 		if !slices.Equal(names, want) {
 			t.Fatalf("%s tools = %v, want %v", flow, names, want)

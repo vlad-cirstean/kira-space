@@ -391,7 +391,7 @@ var spikeFlows1b = []spikeFlow{
 			return "You are in a Kira Space task.\n\n" + r.inline() +
 				"\nYour assignment: the closed validation proof \"Orders match ledger\" is wrong: order 12's total is 1175, not 1150, in both the order_total and ledger_total columns. " +
 				"The table must then show these rows:\n" + jsonRows(r.correctedRows()) + "\n" +
-				"Change only the table step, keep the diagram and document steps as they are, and give the reason \"order 12 corrected\". Then reply: done." + r.folderLine()
+				"Change only the table step, keep the diagram and document steps as they are" + r.reasonClause("order 12 corrected") + ". Then reply: done." + r.folderLine()
 		},
 		oracle: func(r *spikeRun, _ string) (bool, string) {
 			var p *spikeProof
@@ -409,7 +409,7 @@ var spikeFlows1b = []spikeFlow{
 					return false, "edit never submitted"
 				}
 			}
-			if strings.TrimSpace(p.Reason) == "" {
+			if r.arm != "R" && strings.TrimSpace(p.Reason) == "" {
 				return false, "no reason"
 			}
 			return proofChecks(r, p, r.correctedRows())
