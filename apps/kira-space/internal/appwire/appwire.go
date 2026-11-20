@@ -6,6 +6,7 @@
 package appwire
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -613,6 +614,18 @@ func Build(opts Options) (*Wired, error) {
 			info, _ := w.AgentSvc.Info()
 			return info
 		},
+		ScriptRuns: func(_ context.Context, limit int) ([]any, error) {
+			runs, err := w.ScriptRuns.List(scriptruns.ListArgs{Limit: limit})
+			if err != nil {
+				return nil, err
+			}
+			out := make([]any, len(runs))
+			for i, r := range runs {
+				out[i] = r
+			}
+			return out, nil
+		},
+		Computer:  phoneComputer(w),
 		Approvals: w.Approvals,
 		Writer:    &bridge.MobileWriter{Svc: w.AdeTask, Launches: mobileLaunches},
 		Launches:  mobileLaunches,
@@ -883,5 +896,20 @@ func codeRepoIDs(repositories *repos.Repos) func() map[string]string {
 			out[repocfg.Key(r.RepoID)] = r.ID
 		}
 		return out
+	}
+}
+
+// phoneComputer is the phone's computer summary: Docker counts only, null when the module is off.
+func phoneComputer(w *Wired) func(context.Context) (mobileweb.Computer, error) {
+	return func(context.Context) (mobileweb.Computer, error) {
+		if w.Docker == nil {
+			return mobileweb.Computer{}, nil
+		}
+		st := w.Docker.Status(docker.StatusArgs{})
+		d := &mobileweb.DockerSummary{State: st.State, Reason: st.Reason}
+		if e := st.Engine; e != nil {
+			d.Running, d.Stopped, d.Total = e.Running, e.Stopped, e.Containers
+		}
+		return mobileweb.Computer{Docker: d}, nil
 	}
 }

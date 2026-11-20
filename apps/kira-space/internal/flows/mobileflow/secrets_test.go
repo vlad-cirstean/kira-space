@@ -34,6 +34,7 @@ func TestPhoneReadsNeverCarrySecrets(t *testing.T) {
 	for _, path := range []string{
 		"/api/ade/board", "/api/ade/workflows", "/api/ade/sessions", "/api/ade/repos",
 		"/api/ade/log?kind=run&id=" + f.runID, "/api/agent/sessions",
+		"/api/runs", "/api/computer",
 	} {
 		r := p.get(path)
 		if r.Status != http.StatusOK {
