@@ -34,7 +34,7 @@ var artMask = flowharness.Mask("id", "createdAt", "ref", "taskId", "sessionId")
 // reportCall writes links.yaml with the slots the task already holds plus the items, then submits it.
 func reportCall(items ...map[string]any) fakeagent.MCPCall {
 	return fakeagent.MCPCall{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true,
-		Files: map[string]string{"links.yaml": linksYAML(artSlots, items...)}}
+		Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML(artSlots, items...)}}
 }
 
 // artSlots keeps the Jira and PR slots TestTaskArtifacts sets, so a rewrite of links.yaml does not clear them.
@@ -333,9 +333,9 @@ func TestTaskArtifactsCapAtTwoHundred(t *testing.T) {
 	// The first 200 are accepted; the 201st is refused; a rename of a known link at the cap is accepted.
 	renamed := append([]map[string]any{artItem("link", "Link 0 again", "https://x.example/0", "")}, items[1:capN]...)
 	calls := []fakeagent.MCPCall{
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", items[:capN]...)}},
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", items...)}},
-		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Files: map[string]string{"links.yaml": linksYAML("", renamed...)}},
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", items[:capN]...)}},
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", items...)}},
+		{Server: agentmcp.ServerName, Tool: "submit", Tolerate: true, Args: map[string]any{"paths": []string{"links.yaml"}, "reason": "links changed"}, Files: map[string]string{"links.yaml": linksYAML("", renamed...)}},
 	}
 	f := newRunFixture(t, []fakeagent.Action{{MCP: calls, Name: "done"}}, agentStep("one", ""))
 	f.start(t, "feat/api-cap")

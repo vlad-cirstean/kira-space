@@ -212,6 +212,7 @@ type TaskBoard struct {
 	// watches holds the task folder watchers of tasks with a live agent grant (taskwatch.go).
 	watchMu    sync.Mutex
 	watches    map[string]*taskWatch
+	watchWG    sync.WaitGroup // final passes of stopped watchers
 	stopFlowW  func()
 	stopStepsW func()
 	wfTimer    *time.Timer

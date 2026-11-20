@@ -135,9 +135,19 @@ func (b *TaskBoard) unwatchTask(call agentmcp.SpaceCall) {
 		return
 	}
 	delete(b.watches, call.TaskID)
+	b.watchWG.Add(1)
 	b.watchMu.Unlock()
-	tw.stop(&call)
-	b.clearFileErrors(call.TaskID)
+	// A release can run under the task lock (CloseSession), which the final pass takes: run it aside.
+	go func() {
+		defer b.watchWG.Done()
+		tw.stop(&call)
+		b.watchMu.Lock()
+		_, again := b.watches[call.TaskID]
+		b.watchMu.Unlock()
+		if !again {
+			b.clearFileErrors(call.TaskID)
+		}
+	}()
 }
 
 // stopTaskWatches ends every watcher at board close; their last edits are not applied.
@@ -149,6 +159,7 @@ func (b *TaskBoard) stopTaskWatches() {
 	for _, tw := range all {
 		tw.stop(nil)
 	}
+	b.watchWG.Wait()
 }
 
 // addTree watches dir and every task-file folder below it, and returns the files found there.
