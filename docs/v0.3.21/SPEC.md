@@ -4,7 +4,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 
 | # | Phase | Status |
 |---|-------|--------|
-| P699 | File watching: one shared seam, FSEvents on macOS | Planned |
+| P699 | File watching: one shared seam, FSEvents on macOS | Done |
 | P700 | File interactions: one shared file service | Planned |
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Planned |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Planned |
@@ -26,6 +26,17 @@ realpath normalisation, dropped-event handling, and migration of `gitclient`, `f
 folder is enough for tasks (few files change at once); the plan checks the per-process stream limit and
 decides stream sharing. Keep `fsnotify` for Linux. Tests: the backend contract suite runs against both
 backends where the platform allows; plan states what only a Mac run can prove.
+
+Result: `internal/fswatch` (module root, leaf) is the seam: `Watch(Options{Roots, MaxDepth, SkipDir, Latency})`,
+caller-spelled events, scope verdicts, bounded output that overflows to one `Rescan`, and a shared `Debouncer`.
+FSEvents backend on darwin with cgo, fsnotify elsewhere. gitclient, ade folder watch, ade task watch and
+configfs migrated; direct library imports and `maxTaskWatches` deleted; guard G7 keeps it so. Decision: one
+stream per watcher, no sharing (about 50 streams expected, far below reported limits). Darwin delta: events
+under another worktree's own `worktrees/<name>/` dir no longer raise `refsChanged` (fsnotify never saw
+them); worktree add and remove still do. Task watch Rescan pushes the board with no pass. macOS CI job now
+runs the fswatch contract suite on both backends, configfs, `TestFolderWatch`, `TestDetailsWatch` (incl.
+`TestDetailsWatchBeyondEight`) and a no-cgo vet of fswatch; timeout 25 min. The FSEvents backend could not
+be built or run off a Mac: only PR CI proves it.
 
 ## P700
 

@@ -254,9 +254,9 @@ historical prose.
   frame p50/p95/max, frames over 50 ms and rendered-band coverage per run. Same gate. Run through the
   repo's own Playwright (`node node_modules/.bin/playwright`): the global `/opt/node22/bin/playwright`
   reports "No tests found".
-- **The FSEvents watcher is `darwin && cgo`** (`apps/kira-space/internal/gitclient/watcher_fsevents_darwin.go`), so
-  a Linux run exercises the `fsnotify` companion instead. Both satisfy the same seam and both are
-  covered by `watcher_test.go`; only the darwin backend's own behaviour needs real hardware.
+- **The FSEvents backend is `darwin && cgo`** (`internal/fswatch/backend_fsevents_darwin.go`), so a Linux run
+  exercises the fsnotify backend only. The `internal/fswatch` contract suite runs fsnotify on Linux and both
+  backends on the macOS CI job; only the darwin backend's own behaviour needs real hardware.
 - **The scoped Go race run** for a git-chapter phase is the git packages in play plus
   `internal` itself for the layering test, not the whole tree — `git show bd0c224688d9:docs/v1.3/SPEC.md`'s own "Full
   verification scope" note fixes the list and the reason. The unscoped tree stays worth running
@@ -329,7 +329,7 @@ historical prose.
   removed `internal/codeparse`, this repo's one unconditionally-cgo package). Every remaining cgo
   call either app makes (a handful of darwin-only files in repo-root `internal/secrets`, Kira Studio's own
   `internal/localauth`, repo-root `internal/metrics` (P116 H4: shared between both apps' own
-  metrics tickers), and Kira Space's own `internal/gitclient`'s FSEvents watcher) is behind a
+  metrics tickers), and `internal/fswatch`'s FSEvents backend) is behind a
   `darwin && cgo` build tag with a real, working `!darwin || !cgo` companion, invisible to a Linux
   build; `modernc.org/sqlite` (the sqlite adapter and each app's own storage) stays cgo-free on
   every platform. `go test ./apps/kira-space/internal/...` /
