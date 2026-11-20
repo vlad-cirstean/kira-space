@@ -407,31 +407,16 @@ func (s *Service) sizeProblems(entries []store.Entry) map[string]string {
 // one processes a single path; the pending item it returns is nil unless the file waits on the user.
 func (s *Service) one(ctx context.Context, st store.Store, req Request, rel string, e store.Entry, exists bool, row model.TaskFile, over map[string]string, intents map[string]string) (FileResult, *PendingItem) {
 	hasRow := row.TaskID != ""
-	if hint := ProofFolderHint(rel); hint != "" {
-		if !exists && !strings.HasSuffix(rel, "/") {
-			return FileResult{}, nil
-		}
-		return FileResult{Path: hintPath(rel), Status: StatusInvalid, Message: hint}, nil
-	}
-	if strings.HasSuffix(rel, "/") {
-		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, nil
-	}
 	class := Classify(rel)
 	h := s.cfg.Handlers[class.Kind]
-	if class.Kind == KindIgnored || h == nil {
-		if !exists || strings.HasPrefix(e.Rel, ".") || strings.Contains(rel, "/.") {
-			return FileResult{}, nil
-		}
-		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, nil
+	if res, done := skipPath(rel, e, exists, class, h); done {
+		return res, nil
 	}
 	fail := func(msg string, line int) (FileResult, *PendingItem) {
 		return s.markInvalid(req, rel, class, row, hasRow, e, msg, line), nil
 	}
-	if exists && e.Refused != "" {
-		return FileResult{Path: rel, Status: StatusInvalid, Message: fmt.Sprintf("%s: refused, it is a %s. Use a plain file.", rel, e.Refused)}, nil
-	}
-	if exists && hasRow && row.Review == model.TaskFileAccepted && row.Size == e.Size && string(e.Version) == row.Version {
-		return FileResult{Path: rel, Status: StatusUnchanged}, nil
+	if res, done := settledFile(rel, e, exists, row); done {
+		return res, nil
 	}
 	if msg, tooBig := over[rel]; tooBig && exists {
 		return fail(rel+": "+msg, 0)
@@ -477,6 +462,40 @@ func (s *Service) one(ctx context.Context, st store.Store, req Request, rel stri
 		return fail(fmt.Sprintf("%s: %v", rel, err), 0)
 	}
 	return s.decide(ctx, st, req, rel, class, h, parsed, info, hash, row, hasRow)
+}
+
+// skipPath short-circuits a path that is no task file: a proof-folder hint, a folder, an ignored kind or none.
+func skipPath(rel string, e store.Entry, exists bool, class Class, h Handler) (FileResult, bool) {
+	if hint := ProofFolderHint(rel); hint != "" {
+		if !exists && !strings.HasSuffix(rel, "/") {
+			return FileResult{}, true
+		}
+		return FileResult{Path: hintPath(rel), Status: StatusInvalid, Message: hint}, true
+	}
+	if strings.HasSuffix(rel, "/") {
+		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, true
+	}
+	if class.Kind == KindIgnored || h == nil {
+		if !exists || strings.HasPrefix(e.Rel, ".") || strings.Contains(rel, "/.") {
+			return FileResult{}, true
+		}
+		return FileResult{Path: rel, Status: StatusIgnored, Message: "not a task file."}, true
+	}
+	return FileResult{}, false
+}
+
+// settledFile answers a present file that needs no read: refused, or unchanged since accepted.
+func settledFile(rel string, e store.Entry, exists bool, row model.TaskFile) (FileResult, bool) {
+	if !exists {
+		return FileResult{}, false
+	}
+	if e.Refused != "" {
+		return FileResult{Path: rel, Status: StatusInvalid, Message: fmt.Sprintf("%s: refused, it is a %s. Use a plain file.", rel, e.Refused)}, true
+	}
+	if row.TaskID != "" && row.Review == model.TaskFileAccepted && row.Size == e.Size && string(e.Version) == row.Version {
+		return FileResult{Path: rel, Status: StatusUnchanged}, true
+	}
+	return FileResult{}, false
 }
 
 // markInvalid records the problem on the file's row (keeping its accepted copy) and returns the result.

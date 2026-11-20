@@ -22,31 +22,9 @@ func (b *TaskBoard) RequiredServices(ctx context.Context, taskID string) (adewir
 	if b.deps.RepoServices == nil || b.deps.CodeRepos == nil {
 		return out, nil
 	}
-	var repoIDs []string
-	for _, br := range tc.branches {
-		if !slices.Contains(repoIDs, br.CodeRepoID) {
-			repoIDs = append(repoIDs, br.CodeRepoID)
-		}
-	}
-	type repoRefs struct {
-		id   string
-		refs []model.ScriptRef
-	}
-	var todo []repoRefs
-	for _, id := range repoIDs {
-		rec, err := b.deps.CodeRepos.Get(id)
-		if err != nil {
-			return out, err
-		}
-		if rec == nil {
-			continue
-		}
-		if refs := b.deps.RepoServices(rec.RepoID); len(refs) > 0 {
-			todo = append(todo, repoRefs{id, refs})
-		}
-	}
-	if len(todo) == 0 {
-		return out, nil
+	todo, err := b.repoServiceRefs(tc)
+	if err != nil || len(todo) == 0 {
+		return out, err
 	}
 	all, err := b.listScripts()
 	if err != nil {
@@ -77,31 +55,71 @@ func (b *TaskBoard) RequiredServices(ctx context.Context, taskID string) (adewir
 				out.Items = append(out.Items, item)
 				continue
 			}
-			for _, sb := range tc.branches {
-				if sb.CodeRepoID != r.id || sb.Kind != model.AdeBranchKindMine || seen[script.ID+"/"+sb.ID] {
-					continue
-				}
-				seen[script.ID+"/"+sb.ID] = true
-				per := item
-				per.BranchID = sb.ID
-				at, err := cache.worktree(ctx, sb)
-				if err != nil {
-					return out, err
-				}
-				if at.attached == "" {
-					per.State = adewire.ServiceNoWorktree
-				} else {
-					var run *scriptruns.Run
-					if b.deps.ScriptRuns != nil {
-						if run, err = b.deps.ScriptRuns.Running(script.ID, taskID, sb.ID); err != nil {
-							return out, err
-						}
-					}
-					per.State, per.RunID = serviceState(run)
-				}
-				out.Items = append(out.Items, per)
+			per, err := b.branchServices(ctx, tc, taskID, item, script.ID, cache, seen)
+			if err != nil {
+				return out, err
 			}
+			out.Items = append(out.Items, per...)
 		}
+	}
+	return out, nil
+}
+
+type repoRefs struct {
+	id   string
+	refs []model.ScriptRef
+}
+
+// repoServiceRefs lists, per repo of the task's branches, the services its settings declare.
+func (b *TaskBoard) repoServiceRefs(tc *taskCtx) ([]repoRefs, error) {
+	var repoIDs []string
+	for _, br := range tc.branches {
+		if !slices.Contains(repoIDs, br.CodeRepoID) {
+			repoIDs = append(repoIDs, br.CodeRepoID)
+		}
+	}
+	var todo []repoRefs
+	for _, id := range repoIDs {
+		rec, err := b.deps.CodeRepos.Get(id)
+		if err != nil {
+			return nil, err
+		}
+		if rec == nil {
+			continue
+		}
+		if refs := b.deps.RepoServices(rec.RepoID); len(refs) > 0 {
+			todo = append(todo, repoRefs{id, refs})
+		}
+	}
+	return todo, nil
+}
+
+// branchServices adds one entry per mine branch of the item's repo for a service that runs in the ADE worktree.
+func (b *TaskBoard) branchServices(ctx context.Context, tc *taskCtx, taskID string, item adewire.RequiredService, scriptID string, cache *attachCache, seen map[string]bool) ([]adewire.RequiredService, error) {
+	var out []adewire.RequiredService
+	for _, sb := range tc.branches {
+		if sb.CodeRepoID != item.CodeRepoID || sb.Kind != model.AdeBranchKindMine || seen[scriptID+"/"+sb.ID] {
+			continue
+		}
+		seen[scriptID+"/"+sb.ID] = true
+		per := item
+		per.BranchID = sb.ID
+		at, err := cache.worktree(ctx, sb)
+		if err != nil {
+			return nil, err
+		}
+		if at.attached == "" {
+			per.State = adewire.ServiceNoWorktree
+		} else {
+			var run *scriptruns.Run
+			if b.deps.ScriptRuns != nil {
+				if run, err = b.deps.ScriptRuns.Running(scriptID, taskID, sb.ID); err != nil {
+					return nil, err
+				}
+			}
+			per.State, per.RunID = serviceState(run)
+		}
+		out = append(out, per)
 	}
 	return out, nil
 }
