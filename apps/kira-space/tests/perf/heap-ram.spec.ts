@@ -36,9 +36,12 @@ import { expandRow, findRow, openBrowseLeaf } from '../ui/studio/support/tree';
 import {
   adeBoard,
   adeV2Control,
+  emitLog,
   emitOpenSession,
   emitSessions,
   openTask,
+  openTaskFile,
+  taskFilesControl,
 } from '../ui/support/adeV2';
 import { contract } from '../ui/support/contract';
 import { installGitStreamMock } from '../ui/support/gitStreamMock';
@@ -63,7 +66,7 @@ import {
   agentFrames,
   agentsBoard,
   agentsSessions,
-  browserPss,
+  agentsSessionsStopped,
   connect,
   duplicateOpen,
   feedFrames,
@@ -76,6 +79,7 @@ import {
   newTerminal,
   openTerminalTab,
   pinClock,
+  pssAfter,
   type TabWorldOptions,
   tabWorld,
   worldEnabled,
@@ -446,47 +450,30 @@ for (const tasks of [20, 200]) {
     });
     await page.clock.install();
     await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
+    const pss = pssAfter(page, `ade${tasks}`);
+    const hopTo = (name: string, mode: string, label: string, snapshot?: 'keep'): MemStep => ({
+      name,
+      run: async () => {
+        await modeTab(page, mode).click();
+        await page.waitForTimeout(1500);
+        if (label) await logAdeDom(page, `ade${tasks} ${label}`);
+      },
+      snapshot,
+      after: pss(name),
+    });
     const s = await runMemSteps({
       app: APP,
       world: `ade${tasks}`,
       page,
       info,
       steps: [
-        { name: 'board', run: async () => {}, snapshot: true },
-        { name: 'task', run: () => openTask(page, first), snapshot: true },
-        {
-          name: 'left',
-          run: async () => {
-            await modeTab(page, 'git').click();
-            await page.waitForTimeout(1500);
-            await logAdeDom(page, `ade${tasks} left`);
-          },
-          snapshot: 'keep',
-        },
-        {
-          name: 'back',
-          run: async () => {
-            await modeTab(page, 'ade').click();
-            await page.waitForTimeout(1500);
-            await logAdeDom(page, `ade${tasks} back`);
-          },
-          snapshot: 'keep',
-        },
+        { name: 'board', run: async () => {}, snapshot: true, after: pss('board') },
+        { name: 'task', run: () => openTask(page, first), snapshot: true, after: pss('task') },
+        hopTo('left', 'git', 'left', 'keep'),
+        hopTo('back', 'ade', 'back', 'keep'),
         ...[2, 3].flatMap((n): MemStep[] => [
-          {
-            name: `left${n}`,
-            run: async () => {
-              await modeTab(page, 'git').click();
-              await page.waitForTimeout(1500);
-            },
-          },
-          {
-            name: `back${n}`,
-            run: async () => {
-              await modeTab(page, 'ade').click();
-              await page.waitForTimeout(1500);
-            },
-          },
+          hopTo(`left${n}`, 'git', ''),
+          hopTo(`back${n}`, 'ade', ''),
         ]),
       ],
     });
@@ -949,6 +936,18 @@ studioTest.describe('Studio worlds', () => {
   });
 });
 
+/** Selects task `id`'s card, then its panel tab. A selected card toggles closed on a second click, and
+ *  a running session sends the panel to Sessions: both seen after `switch10`. */
+async function openPanel(page: Page, id: string, tab: string): Promise<void> {
+  const panel = page.locator('[data-testid="ade-panel"]');
+  const head = page.locator(
+    `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`,
+  );
+  await head.click();
+  await panel.waitFor({ timeout: 3000 }).catch(() => head.click());
+  await page.locator(`[data-testid="ade-panel-tab-${tab}"]`).click();
+}
+
 // P661: agents module only. 10 active tasks, 200 archived, 300 stopped session rows, 4 running TUI
 // sessions fed Claude-like ED2 redraws; 2 panes opened, 10 task switches, 50 board and sessions
 // pushes. Report-only: RAM, PSS and HEAPSNAP lines. `KIRA_RAM_WORLD=ade-agents`,
@@ -957,20 +956,17 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
   test.skip(!worldEnabled('ade-agents'));
   const board = agentsBoard();
   const ids = board.tasks.map((t) => t.id);
-  const { window: page } = await relaunch({
+  const { window: page, control: mock } = await relaunch({
     control: adeV2Control([
       { channel: IPC.adeTaskBoard, response: board },
       { channel: IPC.adeTaskSessions, response: agentsSessions(ids) },
       { channel: IPC.mobileLaunchOpened, response: null },
+      ...taskFilesControl(),
     ]),
   });
   await page.clock.install();
   await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
-  const engine =
-    page.context().browser()?.browserType().name() === 'webkit' ? 'webkit' : 'chromium';
-  const pss = (label: string) => async () => {
-    console.log(`PSS ${APP} ade-agents ${engine} ${label} ${JSON.stringify(browserPss(engine))}`);
-  };
+  const pss = pssAfter(page, 'ade-agents');
   const pushes = (n: number): MemStep => ({
     name: `push${n}`,
     run: async () => {
@@ -1066,6 +1062,119 @@ test('ram: ade-agents', async ({ relaunch }, info) => {
         snapshot: true,
         after: pss('approval'),
       },
+      {
+        // P693 E3: 3 MB of run log on the push channel, the log visible (S3).
+        name: 'log3m',
+        run: async () => {
+          await pushApprovals(page, []);
+          await expect(page.locator('[data-testid="approvals-dialog"]')).toBeHidden();
+          await openPanel(page, 'T_bill', 'main');
+          await page
+            .locator('[data-testid="ade-step-block"][data-step-id="impl"]')
+            .locator('[data-testid="ade-run-line"][data-branch-id="b_bill"]')
+            .locator('[data-testid="ade-run-log-toggle"]')
+            .click();
+          await expect(page.locator('[data-testid="ade-run-log"]')).toBeVisible();
+          const PUSHES = 30;
+          const PER_PUSH = 100;
+          const text = (i: number) => `log line ${i} `.padEnd(1000, 'x');
+          for (let p = 0; p < PUSHES; p++) {
+            await emitLog(
+              page,
+              'run',
+              'r_T_bill_impl_b_bill',
+              Array.from({ length: PER_PUSH }, (_, k) => ({
+                seq: 10_000 + p * PER_PUSH + k,
+                at: 1_790_067_600_000 + p * PER_PUSH + k,
+                stream: 'event',
+                text: text(p * PER_PUSH + k),
+              })),
+            );
+            await page.waitForTimeout(50);
+          }
+          await page.waitForTimeout(1500);
+        },
+        snapshot: true,
+        after: pss('log3m'),
+      },
+      {
+        // P693 E3 (P691): task Files tab and one file; Monaco shows here (S7).
+        name: 'files1',
+        run: async () => {
+          await openPanel(page, 'T_cart', 'files');
+          await openTaskFile(page, 'README.md');
+          await page.waitForTimeout(1500);
+        },
+        snapshot: true,
+        after: pss('files1'),
+      },
+      {
+        // P693 E3: the four running sessions stop; adeTerminals must reap their xterms (S4).
+        name: 'stopped4',
+        run: async () => {
+          mock.respond(IPC.adeTaskSessions, agentsSessionsStopped(ids));
+          await emitSessions(page);
+          await page.waitForTimeout(2000);
+        },
+        snapshot: true,
+        after: pss('stopped4'),
+      },
+      {
+        name: 'left',
+        run: async () => {
+          await modeTab(page, 'git').click();
+          await page.waitForTimeout(1500);
+        },
+        snapshot: 'keep',
+        after: pss('left'),
+      },
+      {
+        name: 'back',
+        run: async () => {
+          await modeTab(page, 'ade').click();
+          await page.waitForTimeout(1500);
+        },
+        snapshot: 'keep',
+        after: pss('back'),
+      },
+    ],
+  });
+});
+
+// P693 E1: same board and sessions list as ade-agents (10 live, 200 archived, 300 stopped rows) but
+// no launched session: the idle floor of the module. `idle60` is a 60 s wait; `left`/`back` leave
+// and re-enter the ade mode.
+test('ram: ade-idle', async ({ relaunch }, info) => {
+  test.skip(!worldEnabled('ade-idle'));
+  const board = agentsBoard();
+  const { window: page } = await relaunch({
+    control: adeV2Control([
+      { channel: IPC.adeTaskBoard, response: board },
+      { channel: IPC.adeTaskSessions, response: { sessions: [] } },
+      { channel: IPC.mobileLaunchOpened, response: null },
+    ]),
+  });
+  await page.clock.install();
+  await expect(page.locator('[data-testid="ade-card"]').first()).toBeVisible({ timeout: 30_000 });
+  const pss = pssAfter(page, 'ade-idle');
+  const hop = (name: string, mode: string): MemStep => ({
+    name,
+    run: async () => {
+      await modeTab(page, mode).click();
+      await page.waitForTimeout(1500);
+    },
+    after: pss(name),
+  });
+  await runMemSteps({
+    app: APP,
+    world: 'ade-idle',
+    page,
+    info,
+    steps: [
+      { name: 'board', run: async () => {}, after: pss('board') },
+      { name: 'idle60', run: () => page.waitForTimeout(60_000), after: pss('idle60') },
+      hop('left', 'git'),
+      hop('back', 'ade'),
     ],
   });
 });

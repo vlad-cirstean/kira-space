@@ -101,6 +101,13 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
 
     const sinks = new Map<string, (bytes: Uint8Array) => void>();
     const drainByTabId = new Map<string, Drain>();
+    if (__KIRA_DEBUG_HOOKS__) {
+      (window as unknown as Record<string, unknown>).__kiraTerminalDrainBytes = () => {
+        let total = 0;
+        for (const d of drainByTabId.values()) total += d.bytes;
+        return total;
+      };
+    }
 
     function appendToDrain(tabId: string, bytes: Uint8Array): void {
       let drain = drainByTabId.get(tabId);

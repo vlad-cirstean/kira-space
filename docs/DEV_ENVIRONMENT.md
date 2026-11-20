@@ -989,6 +989,12 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   Space likewise without the flag), then `KIRA_RAM_SNAPSHOTS=1` takes heap snapshots (parsed with
   `heap-snapshot-toolkit`, `HEAPSNAP` lines; `KIRA_RAM_KEEP_SNAPSHOTS=1` keeps the files). Rebuild
   minified afterwards (`build:test:*`). Helpers: `memProbe.ts`, `heapSnapshot.ts` in `testing/ui/`.
+- Agents module RAM audit (P693): probe extensions E1 to E5. E1 `ade-idle` world, E2 `PSS` lines at every
+  `ade20`/`ade200` checkpoint, E3 `ade-agents` checkpoints `log3m`, `files1`, `stopped4`, `left`, `back`
+  (`KIRA_RAM_WORLD=ade-agents,ade-idle,ade`, either `heap` or `heap-webkit` project), E4 `queryBytes`,
+  `storeBytes` and the `__kiraTerminalStats` hook in each `RAM` record, E5 Go probe
+  `KIRA_RAM_PROBE=1 KIRA_RAM_OUT=<dir> go test ./apps/kira-space/internal/flows/adeflow -run '^TestRAMProbeAgents$' -count=1 -v -timeout 15m`
+  (prints `GORAM` lines, heap and goroutine profiles, process-table PSS per class).
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant
@@ -1021,6 +1027,8 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |
 | `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
+| `KIRA_RAM_PROBE` | `1` runs `TestRAMProbeAgents` (flows/adeflow, P693 Go RAM probe); skipped when unset | you |
+| `KIRA_RAM_OUT` | Output dir of that probe (heap and goroutine profiles, `space-go.jsonl`). Relative paths resolve against the repo root. Default `apps/kira-space/perf-ram/go/<unix time>/` | you |
 | `KIRA_TERMINAL_ID`, `KIRA_AGENT_HOOK_SOCKET`, `KIRA_AGENT_HOOK_TOKEN` | Identify a terminal and its hook socket to the Claude hook shim | `terminal` on launch, `harness/claude/hooks` |
 | `KIRA_USER_STATUSLINE` | The user's own statusline command the hook shim chains to | `harness/claude/hooks` shim |
 | `KIRA_ASKPASS_SOCK`, `KIRA_ASKPASS_TOKEN`, `KIRA_ASKPASS_OPID`, `KIRA_ASKPASS_TIMEOUT_MS` | Git askpass helper reaches the prompt broker; per-op id and timeout | `gitaskpass` broker. `loginshell` strips the first two |
