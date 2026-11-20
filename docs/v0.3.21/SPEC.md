@@ -8,7 +8,7 @@ Chapter v0.3.21, branch `chapter/v0.3.21`, tag `v0.3.21`. First phase `P699` (hi
 | P700 | File interactions: one shared file service | Done |
 | P701 | Restore after restart: dialog to resume scripts, Docker and agents | Done |
 | P702 | Agents remove worktrees; no prompt for worktree create or delete | Done |
-| P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Planned |
+| P703 | Edit prompts only for another agent's notes; the watcher raises them, no `submit` | Done |
 | P704 | Task Files: open in its own window, off the main chrome | Done |
 | P705 | Mobile app: show the status info it is missing | Done |
 | P706 | Pull request icon: one glyph for every PR status | Done |
@@ -140,6 +140,30 @@ guidance that points at it, and the flow, UI and real `claude` tests that call i
 stays. The plan decides where the approval row gets its explanation (a short `reason:` line in the file,
 or none, since the diff shows the change) and states how a watcher pass without a live agent (an outside
 edit by the user) never raises an approval.
+
+Result: An agent edit asks only for another agent's content. Author comes from handover and artifact
+`source` plus `session_id`, and from the proof link `source` plus `kira_session_id` (`ProofCache.Create`
+now writes both; legacy rows with no session id count as another agent). Asks: older note or handover
+edit, any note, handover, link or accepted-proof delete, link edit, older accepted-proof edit, collision
+with another agent's acceptance after the caller's last sync. User, pass, Kira, slot, own, create and
+latest edits apply. One live grant: the watcher pass runs as that agent and raises `details.edit` itself
+(`state.yaml` `pending` kind `details.edit`). No grant: banner only. Several: board push only, the finish
+flush decides. Removed: `submit` tool, `reason` (args, payload, UI row, `ProofEdit.Reason`), `CleanReason`,
+`ReasonError`, `StatusDeferred`, `Request.Watch`, `HeadlessToolSubmit`. README, headers, suffix,
+instructions and the files load hint reworded; P702's `worktree.remove` text kept. Flow
+`TestDetailsEditRules` plus UI `ade-v2-details-rules.spec.ts` share contract `ade-details-rules`. The flow
+runs the rows that reach the real stores (user and own note apply, another agent's older note and link
+wait, outside save is banner only); the full rule table (R1 to R16, collision, delete, legacy author) is
+`taskfiles` `TestDecide`, the watcher raise is `TestDetailsWatch` and `TestDetailsWatchLatestProof`, the
+finish flush reply is `TestDetailsFiles`. Two grants on one task (W3) has no flow: no harness drives two
+live grants on a task. Real `claude`: `TestAdeDetailsSubmit` is `TestAdeDetailsOnSave`; bench arm R lost
+`submit` (arm T and the spikes keep the frozen tool), its F3 oracles read the finish flush reply, and a
+task's only proof is its latest, so the late correction applies at once. New Known open item: an
+outside-editor save under one live grant is credited to the agent. Baselines to re-record at chapter end:
+contracts `ade-details-files`, `ade-details-watch`, `ade-details-rules`, `mobile-approvals`, `proof`,
+`proof-chart`, `proof-diagram`, `proof-explained`, `proof-files`, `proof-image` and `proof-pending` (proof
+`sessionId` is now the writing session; already re-recorded here), llmprompts goldens and `budget.tsv`,
+tool schema budget (unchanged numbers).
 
 ## P704
 

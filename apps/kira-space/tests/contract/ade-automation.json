@@ -71,7 +71,7 @@
       "summary": "summary-done"
     },
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tool: state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -88,7 +88,6 @@
         "Read",
         "Grep",
         "Glob",
-        "mcp__kira-space__submit",
         "mcp__kira-space__state"
       ],
       "mcpServers": [],
@@ -113,7 +112,7 @@
     "model": "sonnet",
     "outcome": null,
     "params": [],
-    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
+    "prompt": "Audit feat/api-login on main in <home>/kira-space-wts/api/<wt> for Fix login\n\nKira tool: state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "provider": "claude",
     "resumable": false,
     "resumedFrom": "",
@@ -130,7 +129,6 @@
         "Read",
         "Grep",
         "Glob",
-        "mcp__kira-space__submit",
         "mcp__kira-space__state"
       ],
       "mcpServers": [],
@@ -153,7 +151,6 @@
       "Read",
       "Grep",
       "Glob",
-      "mcp__kira-space__submit",
       "mcp__kira-space__state"
     ],
     "blocker": "",
@@ -264,7 +261,7 @@
       }
     ],
     "secretIssue": "",
-    "suffix": "Kira tools: submit, state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request; you name each, the user approves. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
+    "suffix": "Kira tool: state. Your working directory may be a repo root: read it, change nothing there. Create branches and worktrees only with state branch.request and remove them only with state worktree.remove; you name each. Never git branch, git worktree or git checkout -b. Work in the returned worktrees.\n\nWhen finished, call finish_step (or state with action step.finish, when finish_step is not listed) with status \"done\" and a one-line reason. If you could not finish, use status \"failed\" and the reason. If you need a decision, use status \"needs_input\" and your question.",
     "timeout": "15m",
     "tools": [
       "Read",
