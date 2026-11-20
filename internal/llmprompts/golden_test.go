@@ -114,6 +114,7 @@ func TestGolden(t *testing.T) {
 
 		{"headless.finishStep.suffix.implicit", HeadlessFinishStepSuffix.id, implicit},
 		{"headless.finishStep.suffix.implicit-pair", HeadlessFinishStepSuffix.id, implicit},
+		{"headless.finishStep.suffix.plain", HeadlessFinishStepSuffix.id, FinishVars{Implicit: true, Plain: true, Results: implicit.Results}},
 		{"headless.finishStep.suffix.declared", HeadlessFinishStepSuffix.id, declared},
 		{"headless.finishStep.suffix.declared-nodesc", HeadlessFinishStepSuffix.id, FinishVars{Results: []ResultVar{{ID: "pass", OK: true}, {ID: "fail"}, {ID: "retry"}}}},
 

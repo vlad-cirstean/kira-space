@@ -71,6 +71,7 @@ func Readme(in ReadmeInput) string {
 		"Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.",
 		fmt.Sprintf("Write: handovers/draft-%s.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).", oneLine(step, 80)),
 		"Ask first (submit with reason): notes/*.md (user notes), handovers/NNNN-*.md (handed), others' links, accepted proofs.",
+		"Write a proof for any checkable result before finishing.",
 	}...)
 	lines = append(lines, proofExample...)
 	lines = append(lines, proofLines(in.Proofs)...)

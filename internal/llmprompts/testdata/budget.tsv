@@ -1,5 +1,5 @@
 # id<TAB>max rendered-example runes (promptsizes). Ratchet: a new or longer prompt needs a visible line change.
-headless.finishStep.suffix	240
+headless.finishStep.suffix	278
 headless.space.suffix	328
 headless.rebase.reportSuffix	508
 headless.script.reportSuffix	269
