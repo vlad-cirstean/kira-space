@@ -49,6 +49,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/openedfiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/repocfg"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/sessionrestore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -243,6 +244,7 @@ type Wired struct {
 	Tabs            *bridge.TabsService
 	CustomScripts   *bridge.CustomScriptsService
 	ScriptRuns      *bridge.ScriptRunsService
+	SessionRestore  *bridge.SessionRestoreService
 	runs            *scriptruns.Service
 	sched           *scriptruns.Scheduler
 	runLoader       *scripts.Loader
@@ -572,6 +574,8 @@ func Build(opts Options) (*Wired, error) {
 	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
+	w.SessionRestore = &bridge.SessionRestoreService{Svc: sessionrestore.New(runs, sessionrestore.DockerOf(w.Docker.BoundService), w.AdeBoard,
+		sessionrestore.Options{MapError: bridge.AdeAgentRestoreError})}
 	w.Proof.Folder = w.AdeBoard.TaskFolder
 	w.Leases = &bridge.LeasesService{Board: w.AdeBoard}
 	// Registry.OnChange fires after every agent session registers or is removed (spawn and exit) —
@@ -708,7 +712,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.GitCredential),
 		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.HostView), application.NewService(w.IssueTracker), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
-		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.Terminal),
+		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.SessionRestore), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),
 		application.NewService(w.KeepAwake), application.NewService(w.Mobile), application.NewService(w.WindowsSvc), application.NewService(w.Update),
 		application.NewService(w.AgentNotifySvc), application.NewService(w.AgentUsageSvc),

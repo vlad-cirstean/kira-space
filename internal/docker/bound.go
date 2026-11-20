@@ -54,6 +54,11 @@ func CloseWindowBound(b *BoundService, windowKey string) {
 // A package function for the same reason as CloseWindowBound.
 func StartRestoreBound(b *BoundService) { b.m.restore.start() }
 
+// RestoreCurrentBound is the restore tracker's last published state; it never touches the engine, so
+// it cannot block on a dead socket. The tracker's first tick runs at boot. A package function for the
+// same reason as CloseWindowBound.
+func RestoreCurrentBound(b *BoundService) RestoreState { return b.m.restore.current() }
+
 // StopRestoreBound ends the restore tracker; app teardown calls it before the store's DB closes.
 func StopRestoreBound(b *BoundService) { b.m.restore.stop() }
 
