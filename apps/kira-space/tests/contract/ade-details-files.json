@@ -84,6 +84,23 @@
   "AdeTaskService.Handovers#final": {
     "handovers": [
       {
+        "body": "Newer note.",
+        "createdAt": 0,
+        "dismissed": false,
+        "edited": false,
+        "finished": false,
+        "fromStepId": "work",
+        "fromStepName": "Work",
+        "id": "<masked>",
+        "sessionId": "<masked>",
+        "source": "user",
+        "state": "note",
+        "taskId": "<masked>",
+        "toStepId": "",
+        "toStepName": "",
+        "updatedAt": 0
+      },
+      {
         "body": "Form wired; validation missing.",
         "createdAt": 0,
         "dismissed": false,

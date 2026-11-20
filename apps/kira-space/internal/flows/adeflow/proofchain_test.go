@@ -9,7 +9,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/internal/agentmcp"
 )
 
 // P543 proof chain, P643 files. Contract ade-proof-chain: tests/ui/ade-v2-proof-chain.spec.ts reads these.
@@ -56,7 +55,7 @@ func TestProofChain(t *testing.T) {
 	folder := dfFolder(t, app, login.ID)
 
 	writeProof(t, folder, "login-checks", "Login checks", "diagram", "table")
-	if reply := dfSubmit(t, app, login.ID, agentmcp.SubmitArgs{}); !strings.Contains(reply, "proofs/login-checks/") || !strings.Contains(reply, "accepted") {
+	if reply := dfSync(t, app, login.ID); !strings.Contains(reply, "proofs/login-checks/") || !strings.Contains(reply, "accepted") {
 		t.Fatalf("submit reply = %q", reply)
 	}
 	got := taskProofs(t, app, login.ID)
@@ -114,7 +113,7 @@ func TestProofSurvivesStageMoveAndArchive(t *testing.T) {
 	task := createTask(t, app, "Proofed", "flow", rec.ID)
 	folder := dfFolder(t, app, task.ID)
 	writeProof(t, folder, "checks", "Checks", "diagram", "table")
-	dfSubmit(t, app, task.ID, agentmcp.SubmitArgs{})
+	dfSync(t, app, task.ID)
 	proofID := taskProofs(t, app, task.ID)[0].ProofID
 	check := func(label string) {
 		t.Helper()

@@ -1,8 +1,7 @@
-import type { ApprovalItem } from '@shared/domain/approvals';
-import { answeredOk, liveItem } from '@workbench/testing/ui/approvals';
+import { answeredOk } from '@workbench/testing/ui/approvals';
 import { expect, test } from './fixtures';
-import { FIXED_NOW, openDetails, openPlan } from './support/adeV2';
-import { seedApprovals } from './support/approvals';
+import { openDetails, openPlan } from './support/adeV2';
+import { detailsEditItem, seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -56,12 +55,6 @@ const resolveArgs = (key: string): ResolveArgs => ({
   taskId: TASK,
 });
 
-function editItem(): ApprovalItem {
-  const [it] = contract<ApprovalItem[]>(SCENARIO, 'ApprovalsService.List#detailsEdit');
-  if (!it) throw new Error('contract has no details.edit item');
-  return liveItem(it, 1800, FIXED_NOW);
-}
-
 test('contract: the chain shows the note and the agent draft; Add note sends the contract args', async ({
   relaunch,
 }) => {
@@ -100,7 +93,7 @@ test('contract: the link an agent filed in links.yaml shows as a pill', async ({
 test('contract: an agent edit that waits shows its reason and files; Approve sends the paths', async ({
   relaunch,
 }) => {
-  const it = editItem();
+  const it = detailsEditItem(SCENARIO);
   const { reason, items } = it.payload as { reason: string; items: { path: string }[] };
   const paths = items.map((f) => f.path);
   const { window: page, control } = await openPlan(relaunch, [

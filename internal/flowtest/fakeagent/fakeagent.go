@@ -94,6 +94,9 @@ type Action struct {
 	MCPAfter []MCPCall `json:"mcpAfter,omitempty"`
 	// WaitBefore blocks until the path exists, before the shell and MCP calls run.
 	WaitBefore string `json:"waitBefore,omitempty"`
+	// TaskFiles are written under the task folder the prompt names (rel path to content, "" deletes)
+	// after WaitBefore and before the shell, in sorted order: an agent saving task files with no call.
+	TaskFiles map[string]string `json:"taskFiles,omitempty"`
 	// Stderr replaces the "fail" behaviour's message (a CLI error line such as a sign-in failure).
 	Stderr string `json:"stderr,omitempty"`
 	// Exit, when set, ends the run with that code instead of the named behaviour.
@@ -323,6 +326,7 @@ func runSideEffects(action Action, dir, cwd string, args []string) (code int, do
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+	changeTaskFiles(action.TaskFiles)
 	if action.Sh != "" {
 		cmd := exec.Command("sh", "-c", action.Sh)
 		cmd.Dir = cwd
@@ -454,6 +458,29 @@ func writeTaskFiles(files map[string]string) {
 		path := filepath.Join(string(m[1]), rel)
 		_ = os.MkdirAll(filepath.Dir(path), 0o755)
 		_ = os.WriteFile(path, []byte(body), 0o644)
+	}
+}
+
+// changeTaskFiles writes or, for an empty body, deletes files under the task folder the files prompt
+// names, one at a time in path order.
+func changeTaskFiles(files map[string]string) {
+	m := promptFiles.FindSubmatch(lastPrompt)
+	if m == nil {
+		return
+	}
+	rels := make([]string, 0, len(files))
+	for rel := range files {
+		rels = append(rels, rel)
+	}
+	sort.Strings(rels)
+	for _, rel := range rels {
+		path := filepath.Join(string(m[1]), rel)
+		if files[rel] == "" {
+			_ = os.Remove(path)
+			continue
+		}
+		_ = os.MkdirAll(filepath.Dir(path), 0o755)
+		_ = os.WriteFile(path, []byte(files[rel]), 0o644)
 	}
 }
 

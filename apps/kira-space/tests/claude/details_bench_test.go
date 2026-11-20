@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -672,7 +673,14 @@ func benchSetupRProof(t *testing.T, r *spikeRun, fl spikeFlow) (string, []string
 			rows = f3bRowCount
 		}
 		seedProofR(t, filepath.Join(folder, "proofs", "orders-match-ledger"), rows)
-		out, err := f.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "seed"}, agentmcp.SubmitArgs{})
+		var rels []string
+		_ = filepath.WalkDir(filepath.Join(folder, "proofs"), func(p string, d fs.DirEntry, err error) error {
+			if rel, rerr := filepath.Rel(folder, p); err == nil && rerr == nil && !d.IsDir() {
+				rels = append(rels, filepath.ToSlash(rel))
+			}
+			return nil
+		})
+		out, err := f.W.AdeBoard.SyncTaskFiles(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "seed"}, rels)
 		if err != nil || !strings.Contains(out, "accepted, new proof") {
 			t.Fatalf("seed submit: %q %v", out, err)
 		}

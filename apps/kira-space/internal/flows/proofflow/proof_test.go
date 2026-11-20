@@ -83,6 +83,7 @@ func TestProofEditFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	f.newest(t)
 	r := keyValueStep("replaced")
 	r["replacesOrdinal"] = 2
 	if c := f.edit(t, "Edit me", "tighten", map[string]any{"keepOrdinal": 1}, r, keyValueStep("brand new")); !c.Pending {

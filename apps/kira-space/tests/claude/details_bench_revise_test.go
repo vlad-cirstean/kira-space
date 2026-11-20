@@ -486,7 +486,7 @@ func TestDetailsBenchReviseServes(t *testing.T) {
 				for pass := 1; pass <= benchPasses; pass++ {
 					r.pass = pass
 					f3bEditFiles(t, r, proofDir, pass)
-					call(sess, "submit", map[string]any{"reason": "late correction"})
+					call(sess, "submit", map[string]any{"paths": []string{"proofs/" + filepath.Base(proofDir) + "/proof.md"}, "reason": "late correction"})
 					expect(pass, true, "revised")
 					if r.afterPass != nil {
 						r.afterPass()

@@ -58,6 +58,14 @@ func TestDecide(t *testing.T) {
 		{"accepted proof changed, no reason", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true}, Invalid, CauseProof, NotifyNone},
 		{"accepted proof image changed, reason", Input{Role: RoleRun, Kind: KindProofImage, Op: OpEdit, ProofAccepted: true, Reason: "fix"}, Pending, CauseProof, NotifyNone},
 		{"accepted proof deleted, reason", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Reason: "dup"}, Pending, CauseProofDelete, NotifyNone},
+		{"latest note edited", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"latest note created", Input{Role: RoleRun, Kind: KindNote, Op: OpCreate, Latest: true}, Invalid, CauseNote, NotifyNone},
+		{"latest handed handover edited", Input{Role: RoleRun, Kind: KindHandover, Op: OpEdit, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"latest handed handover deleted", Input{Role: RoleRun, Kind: KindHandover, Op: OpDelete, Latest: true}, Invalid, CauseHandover, NotifyNone},
+		{"latest note edited over a collision", Input{Role: RoleRun, Kind: KindNote, Op: OpEdit, Latest: true, Collision: coll}, Invalid, CauseCollision, NotifyNone},
+		{"latest accepted proof edited", Input{Role: RoleRun, Kind: KindProof, Op: OpEdit, ProofAccepted: true, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"latest accepted proof file created", Input{Role: RoleRun, Kind: KindProofData, Op: OpCreate, ProofAccepted: true, Latest: true}, Accept, CauseNone, NotifyNone},
+		{"latest accepted proof deleted, no reason", Input{Role: RoleRun, Kind: KindProof, Op: OpDelete, ProofAccepted: true, Latest: true}, Invalid, CauseProofDelete, NotifyNone},
 		{"kira file written", Input{Role: RoleRun, Kind: KindState, Op: OpEdit}, Restore, CauseKiraReadOnly, NotifyNone},
 		{"readme deleted", Input{Role: RoleManual, Kind: KindReadme, Op: OpDelete}, Restore, CauseKiraReadOnly, NotifyNone},
 	}
@@ -76,7 +84,7 @@ func TestDecide(t *testing.T) {
 
 func TestReasonError(t *testing.T) {
 	got := ReasonError("proofs/orders/proof.md", CauseProof)
-	want := `proofs/orders/proof.md: needs reason (the user approves changes to an accepted proof). Call submit again with {"reason": "order 12 corrected"}.`
+	want := `proofs/orders/proof.md: needs reason (the user approves changes to an accepted proof). Call submit with {"paths": ["proofs/orders/proof.md"], "reason": "order 12 corrected"}.`
 	if got != want {
 		t.Fatalf("got %q\nwant %q", got, want)
 	}

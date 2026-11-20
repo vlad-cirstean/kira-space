@@ -374,22 +374,29 @@ func TestPhoneDetailsEdit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "Check the error states."}); err != nil {
-		t.Fatal(err)
+	for _, body := range []string{"Check the error states.", "Newer note."} {
+		if _, err := app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: body}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	where, err := app.W.AdeTask.DetailsFolder(ctx, adewire.DiskChangesArgs{TaskID: task.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	notes, err := filepath.Glob(filepath.Join(where.Path, "notes", "*.md"))
-	if err != nil || len(notes) != 1 {
+	if err != nil || len(notes) != 2 {
 		t.Fatalf("note files = %v, %v", notes, err)
 	}
+	// The newest note is free to edit: the edit that waits for the user is on the older one.
+	older := notes[0]
+	if raw, err := os.ReadFile(older); err != nil || string(raw) != "Check the error states." {
+		older = notes[1]
+	}
 	const changed = "Check the error states and the empty form."
-	if err := os.WriteFile(notes[0], []byte(changed), 0o644); err != nil {
+	if err := os.WriteFile(older, []byte(changed), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rel := filepath.Join("notes", filepath.Base(notes[0]))
+	rel := filepath.Join("notes", filepath.Base(older))
 	reply, err := app.W.AdeBoard.Submit(ctx, agentmcp.SpaceCall{TaskID: task.ID, SessionID: "session-1"},
 		agentmcp.SubmitArgs{Paths: []string{rel}, Reason: "the empty form case is missing"})
 	if err != nil || !strings.HasPrefix(reply, "accepted 0, pending user 1, invalid 0") {

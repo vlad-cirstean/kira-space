@@ -242,3 +242,25 @@ func TestChangedBudget(t *testing.T) {
 		t.Fatalf("changed = %v", got)
 	}
 }
+
+// A file whose hash equals an open Kira write intent is Kira mid-write: submit leaves it for the
+// write's own transaction, so the watcher never answers it as an agent edit.
+func TestSubmitSkipsOpenIntent(t *testing.T) {
+	e := newEnv(t)
+	const rel = "notes/20261101T090000-a1.md"
+	e.seed(rel, "user note\n")
+	e.disk(rel, "kira rewrite\n")
+	err := e.svc.cfg.Index.InTx(func(tx Tx) error {
+		return tx.PutIntent(model.TaskFileIntent{TaskID: e.taskID, RelPath: rel, SHA256: sum([]byte("kira rewrite\n")), Writer: string(RoleKira), CreatedAt: 1})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res := e.submit(RoleRun, "s1", "", rel); len(res.Files) != 0 {
+		t.Fatalf("results %+v, want none for a file Kira is writing", res.Files)
+	}
+	e.disk(rel, "agent edit\n")
+	if f := e.submit(RoleRun, "s1", "", rel).find(rel); f.Status != StatusInvalid {
+		t.Fatalf("a file that is not what Kira writes: %+v", f)
+	}
+}
