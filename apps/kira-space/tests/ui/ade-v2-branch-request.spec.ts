@@ -7,8 +7,10 @@ import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
 
-// An agent's branch request as an approvals item, and the Task tab row that reopens it.
-// Contract ade-branch-request; backend half: flows/adeflow TestBranchRequest (branchrequest_test.go).
+// An agent's branch request as an approvals item, and the Task tab row that reopens it. Creating a
+// branch needs no approval (P702), so the generic dialog cases run on an adopt item and the Task tab
+// row on a rename item. Contracts ade-branch-adopt and ade-branch-rename; backend halves:
+// flows/adeflow TestBranchAdopt and TestBranchRename. Contract ade-branch-request keeps the added row.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -16,16 +18,16 @@ interface Pl {
   items: { id: string; branch: string; base?: string }[];
 }
 
-function item(key = 'branch'): ApprovalItem {
-  const [it] = contract<ApprovalItem[]>('ade-branch-request', `ApprovalsService.List#${key}`);
+function item(scenario = 'ade-branch-adopt', key = 'adopt'): ApprovalItem {
+  const [it] = contract<ApprovalItem[]>(scenario, `ApprovalsService.List#${key}`);
   if (!it) throw new Error('contract has no item');
   return liveItem(it, 1800, FIXED_NOW);
 }
 
 const payload = () => item().payload as Pl;
 
-async function openRequest(relaunch: Parameters<typeof openPlan>[0], key = 'branch') {
-  const it = item(key);
+async function openRequest(relaunch: Parameters<typeof openPlan>[0]) {
+  const it = item();
   const { window: page, control } = await openPlan(relaunch, [
     ...seedApprovals([it]),
     { channel: IPC.approvalsAnswer, response: answeredOk([it.id]) },
@@ -34,86 +36,13 @@ async function openRequest(relaunch: Parameters<typeof openPlan>[0], key = 'bran
   return { page, control, it };
 }
 
-test('contract: the item lists every branch and Approve sends the checked items', async ({
-  relaunch,
-}) => {
-  const { page, control, it } = await openRequest(relaunch);
+test('contract: the dialog shows the request origin and its branch', async ({ relaunch }) => {
+  const { page } = await openRequest(relaunch);
   const dialog = page.locator(t('approvals-dialog'));
-  await expect(dialog.locator(t('approval-origin'))).toContainText(
-    (it.origin.step || 'run').toString(),
-  );
-  const { items } = payload();
-  expect(items).toHaveLength(2);
-  for (const row of items) {
-    await expect(dialog.locator(t(`ade-branch-request-item-${row.id}`))).toContainText(row.branch);
-  }
-  const [kept, dropped] = items;
-  await dialog
-    .locator(t(`ade-branch-request-item-${dropped?.id}`))
-    .getByRole('checkbox')
-    .click();
-  await dialog.locator(t(`approval-approve-${it.id}`)).click();
-  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
-  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
-    ids: [it.id],
-    approve: true,
-    options: {
-      [it.id]: {
-        itemIds: [kept?.id],
-        remoteItemIds: [],
-        shownItemIds: items.map((row) => row.id),
-      },
-    },
-  });
-});
-
-test('contract: an item with an agent base shows where the branch starts', async ({ relaunch }) => {
-  const { page, control, it } = await openRequest(relaunch, 'branchBase');
-  const dialog = page.locator(t('approvals-dialog'));
-  const [row] = (it.payload as Pl).items;
-  if (!row?.base) throw new Error('contract item has no base');
-  const line = dialog.locator(t(`ade-branch-request-item-${row.id}`));
-  await expect(line).toContainText(row.branch);
-  await expect(line).toContainText(row.base);
-  await dialog.locator(t(`approval-approve-${it.id}`)).click();
-  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
-  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
-    ids: [it.id],
-    approve: true,
-    options: {
-      [it.id]: { itemIds: [row.id], remoteItemIds: [], shownItemIds: [row.id] },
-    },
-  });
-});
-
-test('contract: twenty asked, seven kept checked: Approve sends exactly those seven', async ({
-  relaunch,
-}) => {
-  const { page, control, it } = await openRequest(relaunch, 'twenty');
-  const dialog = page.locator(t('approvals-dialog'));
-  const { items } = it.payload as Pl;
-  expect(items).toHaveLength(20);
-  const kept = items.filter((_, i) => i % 3 === 0).slice(0, 7);
-  for (const row of items) {
-    if (kept.includes(row)) continue;
-    await dialog
-      .locator(t(`ade-branch-request-item-${row.id}`))
-      .getByRole('checkbox')
-      .click();
-  }
-  await dialog.locator(t(`approval-approve-${it.id}`)).click();
-  await expect.poll(() => calls(control, IPC.approvalsAnswer)).toHaveLength(1);
-  expect(calls(control, IPC.approvalsAnswer)[0]?.args).toEqual({
-    ids: [it.id],
-    approve: true,
-    options: {
-      [it.id]: {
-        itemIds: kept.map((row) => row.id),
-        remoteItemIds: [],
-        shownItemIds: items.map((row) => row.id),
-      },
-    },
-  });
+  await expect(dialog.locator(t('approval-origin'))).toContainText('Session');
+  const [row] = payload().items;
+  if (!row) throw new Error('item has no row');
+  await expect(dialog.locator(t(`ade-branch-request-item-${row.id}`))).toContainText(row.branch);
 });
 
 test('an answered item that stays listed (late call) can be approved again', async ({
@@ -175,7 +104,7 @@ test('approving with nothing checked shows the refusal inline', async ({ relaunc
 });
 
 test('the Task tab row reopens the item after it was minimised', async ({ relaunch }) => {
-  const it = item();
+  const it = item('ade-branch-rename', 'branch');
   const { window: page } = await openPlan(relaunch, [
     ...seedApprovals([it]),
     {
@@ -195,7 +124,7 @@ test('the Task tab row reopens the item after it was minimised', async ({ relaun
   await expect(page.locator(t('approvals-dialog'))).toBeVisible();
 });
 
-test('a repo added by an approved request shows in the task Branches', async ({ relaunch }) => {
+test('a repo an agent added shows in the task Branches', async ({ relaunch }) => {
   const added = contract<{ id: string; setup: Record<string, unknown> | null }>(
     'ade-branch-request',
     'AdeTaskBoard.Board.addedBranch',

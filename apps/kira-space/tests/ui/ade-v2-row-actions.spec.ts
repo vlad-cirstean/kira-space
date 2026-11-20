@@ -178,9 +178,9 @@ test('the card menu switches the workflow; a refusal opens the confirm and Yes r
   });
 });
 
-// Backend half: adeflow branchrequest_test.go (contract ade-branch-request).
+// Backend half: adeflow branchrename_test.go (contract ade-branch-rename): a rename still asks the user.
 test('the branch request chip on the card reopens the approvals item', async ({ relaunch }) => {
-  const [it] = contract<ApprovalItem[]>('ade-branch-request', 'ApprovalsService.List#branch');
+  const [it] = contract<ApprovalItem[]>('ade-branch-rename', 'ApprovalsService.List#branch');
   if (!it) throw new Error('contract has no item');
   const live = liveItem(it, 1800, FIXED_NOW);
   const { window: page } = await openPlan(relaunch, [
