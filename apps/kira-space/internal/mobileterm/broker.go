@@ -2,6 +2,7 @@ package mobileterm
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -119,6 +120,9 @@ type Broker struct {
 
 	mu      sync.Mutex
 	entries map[string]*entry
+	// recording gates the replay ring: a phone attaches only while phone access is on, so with it off
+	// no output is kept.
+	recording atomic.Bool
 }
 
 func New(d Deps) *Broker {
@@ -134,6 +138,27 @@ func New(d Deps) *Broker {
 	return &Broker{deps: d, entries: map[string]*entry{}}
 }
 
+// SetRecording turns replay capture on or off. Off drops the ring of every terminal no phone holds.
+func (b *Broker) SetRecording(on bool) {
+	b.recording.Store(on)
+	if on {
+		return
+	}
+	b.mu.Lock()
+	all := make([]*entry, 0, len(b.entries))
+	for _, e := range b.entries {
+		all = append(all, e)
+	}
+	b.mu.Unlock()
+	for _, e := range all {
+		e.mu.Lock()
+		if e.conn == nil {
+			e.ring = nil
+		}
+		e.mu.Unlock()
+	}
+}
+
 func (b *Broker) get(id string) *entry {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -146,7 +171,7 @@ func (b *Broker) getOrCreate(id string) *entry {
 	defer b.mu.Unlock()
 	e := b.entries[id]
 	if e == nil {
-		e = &entry{id: id, ring: newRing(ringCap)}
+		e = &entry{id: id}
 		b.entries[id] = e
 	}
 	return e
@@ -160,8 +185,14 @@ func (b *Broker) Opened(id string, cols, rows int) {
 }
 
 func (b *Broker) Output(id string, data []byte) {
+	if !b.recording.Load() {
+		return
+	}
 	e := b.getOrCreate(id)
 	e.mu.Lock()
+	if e.ring == nil {
+		e.ring = newRing(ringCap)
+	}
 	e.ring.Append(data)
 	c := e.conn
 	e.mu.Unlock()
@@ -230,6 +261,9 @@ func (b *Broker) Attach(sessionID string, dev repos.MobileDeviceRow, cols, rows 
 	if e.state != stateDesktop && e.deviceID != dev.ID {
 		e.mu.Unlock()
 		return nil, ipcerr.T(ipcerr.CodeConflict, "backend.space.mobileterm.controlledElsewhere.body", nil)
+	}
+	if e.ring == nil {
+		e.ring = newRing(ringCap)
 	}
 	c := &phoneConn{e: e, device: dev.ID, notify: make(chan struct{}, 1), done: make(chan struct{})}
 	if old := e.conn; old != nil {

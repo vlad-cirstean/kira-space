@@ -61,3 +61,13 @@ before the sessions push. Smoke (Chromium, `KIRA_RAM_WORLD=ade-agents`, 1 repeat
 at start; smoke only, never audit data): `__kiraTerminalStats.terminals` = 4 entries at `files1`, empty
 at `stopped4`, `left`, `back`. Pass B ArrayBuffer check follows in the re-measure.
 No existing spec covers reap on exit for ADE; none added (plan: A adds no spec).
+
+## F3: lazy mobile replay ring
+
+Wiring confirmed: boot `StartMobileIfEnabled` reads `cfg.Mobile.Enabled`; `SetEnabled` is the toggle;
+`TestPhoneTerminalAttach` `pairedPhone` runs `SetEnabled(true)` before `startSession`. Gate is
+`Mobile.Enabled`, not "server running". `Broker.SetRecording` (default off), ring created on first
+recorded output or on `Attach`, dropped on disable for terminals with no phone connection.
+Flow test `TestPhoneTerminalReplayStartsAtAccess`: fails with the gate disabled (replay held the
+banner), passes with it. Smoke (1 run, host load1 4.50 at start, smoke only): `mobileterm` absent from
+`pprof -base heap-boot heap-idle60` top rows (harness base64 11.22 MB, next 0.13 MB).

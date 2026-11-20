@@ -81,6 +81,7 @@ func newTestBroker(t *testing.T) (*Broker, *fakeReg, *fakeClock) {
 		Registry: reg, Now: clk.Now, AfterFunc: clk.AfterFunc,
 		Sessions: func(s string) (string, bool) { return "t-" + s, s != "gone" },
 	})
+	b.SetRecording(true)
 	b.Opened("t-s1", 100, 30)
 	return b, reg, clk
 }
@@ -204,6 +205,7 @@ func (f *blockReg) Write(id string, b []byte) error {
 func TestBroker_InputDoesNotBlockEntry(t *testing.T) {
 	reg := &blockReg{entered: make(chan struct{}), release: make(chan struct{})}
 	b := New(Deps{Registry: reg, Sessions: func(s string) (string, bool) { return "t-" + s, true }})
+	b.SetRecording(true)
 	b.Opened("t-s1", 100, 30)
 	c, err := b.Attach("s1", phoneA, 50, 20)
 	if err != nil {
