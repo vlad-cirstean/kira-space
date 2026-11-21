@@ -64,5 +64,12 @@ taskFilesWindowTest(
     await expect(page.locator(t('ade-files-window-title'))).toHaveText(/\S/);
     await expect(page.locator(t('ade-files-body'))).toBeVisible();
     await expect(page.locator(t('ade-plan'))).toHaveCount(0);
+    // The task colour is a 3px line on the title bar's top edge.
+    const [bar, line] = await Promise.all([
+      page.locator('.wails-drag').boundingBox(),
+      page.locator(t('ade-files-window-colour')).boundingBox(),
+    ]);
+    expect(line?.height).toBe(3);
+    expect(Math.abs((line?.y ?? 0) - (bar?.y ?? 99))).toBeLessThanOrEqual(1);
   },
 );

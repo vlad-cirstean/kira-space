@@ -157,9 +157,10 @@ test('a card shows its step, progress, span and a one-line title with the full t
   const search = card(page, 'T_search');
   await expect(search.locator('[data-testid="ade-step-label"]')).toHaveText('Make CI green 3/6');
   await expect(search).toContainText('50.0%');
-  await expect(search.locator('[data-testid="ade-card-meta"]')).toHaveText(
-    '3d → Mon 28 · SRCH-41 · web-app',
-  );
+  const meta = search.locator('[data-testid="ade-card-meta"]');
+  await expect(meta).toHaveText('3d → Mon 28');
+  await expect(meta).not.toContainText('web-app');
+  await expect(search.locator('[data-testid="ade-task-key"]')).toHaveText('SRCH-41');
   await expect(search.locator('[data-testid="ade-card-title"]')).toHaveText('Search v2');
   const title = card(page, 'T_push').locator('[data-testid="ade-card-title"]');
   await expect(title).toHaveText(longTitle);
@@ -194,10 +195,10 @@ test('the Plan shows 7 days; later work sits in Later with its date; no date con
   expect(ids.indexOf('T_alerts')).toBeGreaterThanOrEqual(0);
   expect(ids.indexOf('T_alerts')).toBeLessThan(ids.indexOf('T_csv'));
   await expect(card(page, 'T_alerts').locator('[data-testid="ade-card-meta"]')).toHaveText(
-    /^Tue 29 Sep · /,
+    'Tue 29 Sep',
   );
   await expect(card(page, 'T_csv').locator('[data-testid="ade-card-meta"]')).toHaveText(
-    /^Wed 30 Sep · /,
+    'Wed 30 Sep',
   );
   await expect(page.locator('[data-testid="ade-more-week"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="ade-add-day"]')).toHaveCount(0);
@@ -258,9 +259,9 @@ async function dragCardToBand(
     .toBe(true);
   const [from, to] = JSON.parse(last) as [DOMRect | null, DOMRect | null];
   if (!from || !to) throw new Error('drag geometry missing');
-  // A review card is one 22px row: grab inside it, not 30px down.
-  const grabY = from.y + Math.min(30, from.height / 2);
-  await page.mouse.move(from.x + 40, grabY);
+  // A review card is one 22px row; on a task card grab line 1 (the status button below is no drag handle).
+  const grabY = from.y + Math.min(16, from.height / 2);
+  await page.mouse.move(from.x + 120, grabY);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, grabY + 20, { steps: 4 });
   // Below the band's last card means "append to the day"; the top padding now means "before the
@@ -319,8 +320,8 @@ test('dragging between two cards shows the slot between them and writes the orde
   await card(page, dragged).scrollIntoViewIfNeeded();
   const from = await card(page, dragged).boundingBox();
   if (!from) throw new Error('drag source missing');
-  const grabY = from.y + Math.min(30, from.height / 2);
-  await page.mouse.move(from.x + 40, grabY);
+  const grabY = from.y + Math.min(16, from.height / 2);
+  await page.mouse.move(from.x + 120, grabY);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, grabY + 20, { steps: 4 });
   const slot = bandOf(page, 3).locator('[data-testid="ade-drop-slot"]');
@@ -395,7 +396,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a 1px edge on the plan ground and a task swatch, 16px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a 1px edge and a 3px task colour top edge on the plan ground, 16px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -406,19 +407,25 @@ test('a card is a 6px rounded box with a 1px edge on the plan ground and a task 
       radius: s.borderTopLeftRadius,
       top: s.borderTopWidth,
       left: s.borderLeftWidth,
+      topColor: s.borderTopColor,
       bg: s.backgroundColor,
     };
   });
   expect({ radius: style.radius, top: style.top, left: style.left }).toEqual({
     radius: '6px',
-    top: '1px',
+    top: '3px',
     left: '1px',
   });
-  expect(
-    await box
-      .locator('[data-testid="ade-task-swatch"]')
-      .evaluate((el) => getComputedStyle(el).backgroundColor),
-  ).not.toBe('rgba(0, 0, 0, 0)');
+  const borderColor = await page.evaluate(() => {
+    const span = document.createElement('span');
+    span.style.color = 'var(--kira-border)';
+    document.body.appendChild(span);
+    const color = getComputedStyle(span).color;
+    span.remove();
+    return color;
+  });
+  expect(style.topColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(style.topColor).not.toBe(borderColor);
   const [chrome, plan] = await Promise.all([
     page.evaluate(() => {
       const span = document.createElement('span');
@@ -463,7 +470,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   await card(page, 'T_search').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_search')).toHaveAttribute('aria-current', 'true');
   await expect(marked).toHaveCount(1);
-  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
+  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(
     focusColor,
   );
 
@@ -477,7 +484,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
     span.remove();
     return color;
   });
-  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
+  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(
     edge,
   );
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
@@ -541,7 +548,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     await page.mouse.up();
     await expectQuiet();
   }
-  expect(await cardEl.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(focusColor);
+  expect(await cardEl.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(focusColor);
 
   await page.keyboard.press('Tab');
   await head.focus();
@@ -553,7 +560,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
   expect(ring).toEqual({ visible: true, style: 'solid', color: focusColor });
 });
 
-test('plan cards use colour only for the task swatch, status, problems and the repo badge', async ({
+test('plan cards use colour only for the task colour line, status, problems and the repo badge', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);

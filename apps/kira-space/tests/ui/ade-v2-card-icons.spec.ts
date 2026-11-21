@@ -189,11 +189,11 @@ test('hover actions sit right', async ({ relaunch }) => {
   const actions = head.locator(t('ade-card-actions'));
   await expect(actions).toBeVisible();
   const title = await head.locator(t('ade-card-title')).boundingBox();
-  const status = await head.locator(t('ade-row-status')).boundingBox();
+  const action = await head.locator('[data-testid^="ade-task-action-"]').first().boundingBox();
   const box = await actions.boundingBox();
-  if (!title || !status || !box) throw new Error('no box');
-  // The cluster overlays the end of the title cell, left of the status column.
-  expect(box.x + box.width).toBeLessThanOrEqual(status.x + 1);
+  if (!title || !action || !box) throw new Error('no box');
+  // The cluster overlays the end of the title cell, left of the action column.
+  expect(box.x + box.width).toBeLessThanOrEqual(action.x + 1);
   expect(title).toEqual(titleBefore);
 
   const r = page.locator(row('b_auth'));

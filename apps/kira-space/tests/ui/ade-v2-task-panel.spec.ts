@@ -1,5 +1,12 @@
 import { expect, test } from './fixtures';
-import { adeFixture, archivedTaskFx, FIXED_NOW, openPlan, openTask } from './support/adeV2';
+import {
+  adeBoard,
+  adeFixture,
+  archivedTaskFx,
+  FIXED_NOW,
+  openPlan,
+  openTask,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { line, openCard } from './support/links';
@@ -91,6 +98,29 @@ test('the tabs are Main, Details and Sessions, Main first, and Files is an icon'
   await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
   await expect(page.locator(t('ade-panel-tab-files'))).toHaveCount(0);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
+  const [headBox, lineBox] = await Promise.all([
+    page.locator(t('ade-panel-head')).boundingBox(),
+    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
+  ]);
+  expect(lineBox?.height).toBe(3);
+  expect(Math.abs((lineBox?.y ?? 0) - (headBox?.y ?? 99))).toBeLessThanOrEqual(1);
+});
+
+test('a parked task dashes its panel colour line', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const deps = b.tasks.find((x) => x.id === 'T_deps');
+        if (deps) Object.assign(deps, { kind: 'parked' });
+      }),
+    },
+  ]);
+  await openTask(page, 'T_deps');
+  await expect(page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`)).toHaveAttribute(
+    'data-parked',
+    'true',
+  );
 });
 
 test('Files is a header icon: no tab, no right-click or More entry', async ({ relaunch }) => {
@@ -98,7 +128,7 @@ test('Files is a header icon: no tab, no right-click or More entry', async ({ re
   await openTask(page, 'T_cart');
   await expect(page.locator(t('ade-panel-files'))).toBeVisible();
   const files = page.locator('[data-testid^="menu-item-"][data-testid*="files"]');
-  await page.locator(t('ade-panel-dot')).click({ button: 'right' });
+  await page.locator(t('ade-panel-title')).click({ button: 'right' });
   await expect(page.locator('[data-testid^="menu-item-"]').first()).toBeVisible();
   await expect(files).toHaveCount(0);
   await page.keyboard.press('Escape');

@@ -66,7 +66,7 @@ const facts = computed(() =>
     <AdeTaskStatusMenu :card="card" />
     <span
       v-if="facts"
-      class="max-w-2/5 shrink-0 truncate text-kira-sm text-subtle"
+      class="max-w-1/4 shrink-0 truncate text-kira-sm text-subtle"
       data-testid="ade-shelf-facts"
       >{{
         facts

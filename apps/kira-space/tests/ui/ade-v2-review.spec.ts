@@ -51,6 +51,12 @@ reviewTest('a review window boots three panes for its branch', async ({ relaunch
   await expect(bar.locator(t('ade-review-title'))).toBeVisible();
   await expect(bar.locator(t('ade-review-branch'))).toBeVisible();
   expect((await bar.boundingBox())?.height).toBe(34);
+  const [barBox, lineBox] = await Promise.all([
+    bar.boundingBox(),
+    page.locator(t('ade-review-task-colour')).boundingBox(),
+  ]);
+  expect(lineBox?.height).toBe(3);
+  expect(Math.abs((lineBox?.y ?? 0) - (barBox?.y ?? 99))).toBeLessThanOrEqual(1);
   await expect(page.getByText('Review · ')).toHaveCount(0);
 });
 

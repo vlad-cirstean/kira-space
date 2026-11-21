@@ -26,7 +26,7 @@ async function firstChildTestId(page: Page, selector: string): Promise<string | 
     });
 }
 
-test('the lead slot holds the agent indicator first and the task colour sits beside the title', async ({
+test('the lead slot holds the agent indicator first and the task colour sits on the top edge', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -39,7 +39,7 @@ test('the lead slot holds the agent indicator first and the task colour sits bes
   const box = await page.locator(`${head('T_bill')} ${t('ade-card-sessions')}`).boundingBox();
   expect(Math.round(box?.height ?? 0)).toBe(24);
   await expect(page.locator(t('ade-card-dot'))).toHaveCount(0);
-  await expect(page.locator(`${t('ade-row-lead')} ${t('ade-task-swatch')}`)).toHaveCount(0);
+  await expect(page.locator(`${t('ade-row-lead')} ${t('ade-task-line')}`)).toHaveCount(0);
   // A task without sessions keeps an empty slot so status text lines up.
   await page.locator(t('ade-load-all')).click();
   const none = page.locator(`${head('T_csv')} ${t('ade-row-lead')}`);
@@ -132,7 +132,9 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
   await page.locator(t('ade-later')).waitFor();
   await expect(page.locator(t('ade-shelf-dot'))).toHaveCount(0);
   const row = page.locator(t('ade-shelf-row')).first();
-  await expect(row.locator(t('ade-task-swatch'))).toHaveCount(1);
+  await expect(row.locator(t('ade-task-line'))).toHaveCount(1);
+  // Shelf rows have no branch rows, so the repo label stays in their facts.
+  await expect(row.locator(t('ade-shelf-facts'))).toHaveCount(1);
   expect(await firstChildTestId(page, t('ade-shelf-row'))).toBe('ade-row-lead');
   const taskId = await row.getAttribute('data-task-id');
   const status = row.locator(t('ade-row-status'));
@@ -151,44 +153,57 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
 
 const heads = (page: Page) => page.locator(`${t('ade-card')} ${t('ade-card-head')}`);
 
-test('a task card wears its colour as a swatch beside the title, on the plan ground', async ({
-  relaunch,
-}) => {
-  const { window: page } = await openPlan(relaunch);
+test('a task card wears its colour as a 3px top edge, on the plan ground', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskBoard,
+      response: adeBoard((b) => {
+        const deps = b.tasks.find((x) => x.id === 'T_deps');
+        if (deps) Object.assign(deps, { kind: 'parked' });
+      }),
+    },
+  ]);
   await page.locator(t('ade-load-all')).click();
   const planBg = await page
     .locator(t('ade-plan'))
     .evaluate((el) => getComputedStyle(el).backgroundColor);
-  const cards = await page.locator(t('ade-card')).evaluateAll((els) =>
-    els.map((e) => {
-      const cs = getComputedStyle(e);
-      const head = e.querySelector('[data-testid="ade-card-head"]');
-      const swatch = head?.querySelector('[data-testid="ade-task-swatch"]') as HTMLElement | null;
-      return {
-        left: cs.borderLeftWidth,
-        top: cs.borderTopWidth,
-        inlineEdge: (e as HTMLElement).style.borderLeftColor,
-        bg: cs.backgroundColor,
-        hasHead: head !== null,
-        swatches: head?.querySelectorAll('[data-testid="ade-task-swatch"]').length ?? 0,
-        painted: swatch ? swatch.style.background !== '' || swatch.style.borderColor !== '' : false,
-        inLead:
-          head?.querySelector('[data-testid="ade-row-lead"] [data-testid="ade-task-swatch"]') !==
-          null,
-      };
-    }),
-  );
+  const read = () =>
+    page.locator(t('ade-card')).evaluateAll((els) =>
+      els.map((e) => {
+        const cs = getComputedStyle(e);
+        const head = e.querySelector('[data-testid="ade-card-head"]');
+        return {
+          id: e.getAttribute('data-task-id'),
+          left: cs.borderLeftWidth,
+          top: cs.borderTopWidth,
+          topStyle: cs.borderTopStyle,
+          topColor: cs.borderTopColor,
+          inlineTop: (e as HTMLElement).style.borderTopColor,
+          leftColor: cs.borderLeftColor,
+          bg: cs.backgroundColor,
+          marks: head?.querySelectorAll('[data-testid="ade-task-line"]').length ?? 0,
+          swatches: e.querySelectorAll('[data-testid="ade-task-swatch"]').length,
+        };
+      }),
+    );
+  const cards = await read();
   expect(cards.length).toBeGreaterThan(0);
   for (const c of cards) {
     expect(c.left).toBe('1px');
-    expect(c.top).toBe('1px');
-    expect(c.inlineEdge).toBe('');
+    expect(c.top).toBe('3px');
+    expect(c.inlineTop).not.toBe('');
     expect(c.bg).toBe(planBg);
-    if (!c.hasHead) continue;
-    expect(c.swatches).toBe(1);
-    expect(c.painted).toBe(true);
-    expect(c.inLead).toBe(false);
+    expect(c.marks).toBe(0);
+    expect(c.swatches).toBe(0);
   }
+  expect(cards.find((c) => c.id === 'T_deps')?.topStyle).toBe('dashed');
+  expect(cards.find((c) => c.id === 'T_bill')?.topStyle).toBe('solid');
+  const before = cards.find((c) => c.id === 'T_bill');
+  await page.locator(head('T_bill')).click();
+  await expect(page.locator(card('T_bill'))).toHaveAttribute('aria-current', 'true');
+  const after = (await read()).find((c) => c.id === 'T_bill');
+  expect(after?.topColor).toBe(before?.topColor);
+  expect(after?.leftColor).not.toBe(before?.leftColor);
 });
 
 test('card head buttons stay inside the card with the panel open', async ({ relaunch }) => {
@@ -327,18 +342,45 @@ for (const [name, width, height, open] of [
       });
       const cell = (el: Element, i: number) => el.children[1]?.children[i];
       return {
-        swatch: heads.map((h) => r(h.querySelector('[data-testid="ade-task-swatch"]'))?.x),
         title: heads.map((h) => r(h.querySelector('[data-testid="ade-card-title"]'))?.x),
-        swatchGap: (() => {
-          const h = heads[0];
-          const sw = r(h?.querySelector('[data-testid="ade-task-swatch"]'));
-          const ti = r(h?.querySelector('[data-testid="ade-card-title"]'));
-          return sw && ti ? ti.x - (sw.x + sw.w) : -1;
-        })(),
         spanTitle: [...document.querySelectorAll('[data-testid="ade-span-row"]')].map(
           (el) => r(el.querySelector('span.truncate'))?.x,
         ),
         status: heads.map((h) => r(h.querySelector('[data-testid="ade-row-status"]'))?.x),
+        statusY: heads.map((h) => {
+          const st = r(h.querySelector('[data-testid="ade-row-status"]'));
+          const ti = r(h.querySelector('[data-testid="ade-card-title"]'));
+          return st && ti ? st.y + st.h / 2 - (ti.y + ti.h / 2) : null;
+        }),
+        time: heads.map((h) => {
+          const line2 = h.children[1]?.children[1];
+          const b = r(line2?.lastElementChild);
+          return b ? { x: b.x, right: b.x + b.w, w: b.w } : null;
+        }),
+        pr: rows.map((el) => r(cell(el, 3))?.x),
+        tagRight: rows.map((el) => {
+          const b = r(cell(el, 4));
+          return b ? b.x + b.w : null;
+        }),
+        keys: Object.fromEntries(
+          heads.map((h) => {
+            const key = h.querySelector('[data-testid="ade-task-key"]') as HTMLElement | null;
+            const title = r(h.querySelector('[data-testid="ade-card-title"]'));
+            const action = r(h.children[1]?.children[0]?.lastElementChild);
+            const k = r(key);
+            return [
+              h.closest('[data-testid="ade-card"]')?.getAttribute('data-task-id') ?? '',
+              {
+                text: key?.textContent ?? null,
+                x: k?.x ?? null,
+                right: k ? k.x + k.w : null,
+                titleRight: title ? title.x + title.w : null,
+                actionX: action?.x ?? null,
+                clipped: key ? key.scrollWidth > key.clientWidth : false,
+              },
+            ];
+          }),
+        ),
         meta: heads.map((h) => r(h.querySelector('[data-testid="ade-card-meta"]'))?.x),
         headH: heads.map((h) => r(h)?.h),
         action: heads.map((h) => {
@@ -367,15 +409,31 @@ for (const [name, width, height, open] of [
       expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(1);
       return v[0];
     };
-    same(geo.swatch);
-    expect(geo.swatchGap).toBeLessThanOrEqual(7);
-    expect(geo.swatchGap).toBeGreaterThanOrEqual(5);
     expect(geo.spanTitle.length).toBeGreaterThan(0);
     expect(
       Math.max(...geo.spanTitle.map(Number)) - Math.min(...geo.spanTitle.map(Number)),
     ).toBeLessThanOrEqual(1);
     expect(Math.abs((geo.spanTitle[0] ?? 0) - (geo.title[0] ?? 0))).toBeLessThanOrEqual(1);
-    same(geo.status);
+    // Status leads line 2 at the title x; the estimate spans the branch rows' PR and tag slots.
+    const statusX = same(geo.status);
+    expect(Math.abs((statusX ?? 0) - (geo.title[0] ?? 0))).toBeLessThanOrEqual(1);
+    for (const dy of geo.statusY) expect(dy).toBeGreaterThan(8);
+    const timed = geo.time.filter((x): x is { x: number; right: number; w: number } => x !== null);
+    expect(timed.length).toBeGreaterThan(3);
+    same(timed.map((x) => x.x));
+    expect(Math.round(timed[0]?.w ?? 0)).toBe(50);
+    expect(Math.abs((timed[0]?.x ?? 0) - (same(geo.pr) ?? 0))).toBeLessThanOrEqual(1);
+    expect(Math.abs((timed[0]?.right ?? 0) - (same(geo.tagRight) ?? 0))).toBeLessThanOrEqual(1);
+    // The key follows the title and is never cut; a long title truncates ahead of it.
+    expect(geo.keys.T_cart?.text).toBe('WEB-311');
+    expect(geo.keys.T_search?.text).toBe('SRCH-41');
+    expect(geo.keys.T_notif?.text).toBeNull();
+    expect(geo.keys.T_bill?.text).toBeNull();
+    expect(
+      Math.abs((geo.keys.T_search?.x ?? 0) - ((geo.keys.T_search?.titleRight ?? 0) + 6)),
+    ).toBeLessThanOrEqual(1);
+    expect(geo.keys.T_cart?.right ?? 0).toBeLessThanOrEqual((geo.keys.T_cart?.actionX ?? 0) - 5);
+    for (const k of Object.values(geo.keys)) expect(k.clipped).toBe(false);
     same(geo.meta);
     same(geo.name);
     const tagX = same(geo.tag);
@@ -395,6 +453,7 @@ for (const [name, width, height, open] of [
         return [
           q(`${c} [data-testid="ade-card-title"]`),
           q(`${c} [data-testid="ade-row-status"]`),
+          q(`${c} [data-testid="ade-task-key"]`),
           q(`${row} [data-testid="ade-branch-name"]`),
         ];
       });
