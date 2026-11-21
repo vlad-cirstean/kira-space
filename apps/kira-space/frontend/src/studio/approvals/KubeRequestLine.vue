@@ -112,9 +112,11 @@ const TOKEN = {
       <span :class="TOKEN.flag">{{ FLAG.l }}</span>
       <Tooltip :disabled="!changed('labelSelector')">
         <TooltipTrigger as-child>
-          <span class="break-all" :class="changed('labelSelector') && MARK"
+          <span class="break-words" :class="changed('labelSelector') && MARK"
             ><template v-for="(tk, i) in selector" :key="i"
-              ><span :class="TOKEN[tk.kind]">{{ tk.text }}</span></template
+              ><span :class="TOKEN[tk.kind]"
+                >{{ tk.text }}<wbr v-if="tk.kind === 'op' && tk.text === ','"></span
+              ></template
             ></span
           >
         </TooltipTrigger>
