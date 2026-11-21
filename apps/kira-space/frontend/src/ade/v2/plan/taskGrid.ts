@@ -8,8 +8,10 @@ export const BRANCH_GRID =
   'grid min-w-0 flex-1 grid-cols-[--spacing(20)_minmax(0,1fr)_auto_var(--spacing-control)_var(--spacing-control)] items-center gap-x-1.5 gap-y-0.5';
 export const SLOT = 'flex w-control shrink-0 items-center justify-center';
 /** Row ground for a hover overlay: the card sets it, a hovered or selected row overrides it. */
-export const GROUND_CARD = '[--row-ground:var(--color-elevated)]';
-export const GROUND_PARKED = '[--row-ground:var(--color-chrome)]';
+export const GROUND_CARD = '[--row-ground:var(--color-chrome)]';
+/** Task colour: a 10px rounded square before the title; the gap keeps the title x where there is none. */
+export const TASK_SWATCH = 'box-border size-2.5 shrink-0 rounded-kira-sm';
+export const TASK_SWATCH_GAP = 'w-2.5 shrink-0';
 export const GROUND_ROW = 'bg-(--row-ground) hover:[--row-ground:var(--color-field)]';
 export const GROUND_SELECTED = 'bg-(--row-ground) [--row-ground:var(--color-select)]';
 /** Hover actions laid over the end of the text cell: no reflow when they appear. */

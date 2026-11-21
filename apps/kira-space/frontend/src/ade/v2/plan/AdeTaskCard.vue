@@ -45,7 +45,6 @@ import AdeTaskTitle from './AdeTaskTitle.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import {
   GROUND_CARD,
-  GROUND_PARKED,
   GROUND_ROW,
   GROUND_SELECTED,
   HOVER_OVERLAY,
@@ -53,6 +52,8 @@ import {
   TASK_LEAD,
   TASK_STATUS_CELL,
   TASK_STEP_CELL,
+  TASK_SWATCH,
+  TASK_SWATCH_GAP,
 } from './taskGrid';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
@@ -123,10 +124,10 @@ const segClass = (state: string): string => {
 const boxClass = computed(() => {
   const c = props.card;
   return [
-    c.parked ? `bg-chrome ${GROUND_PARKED}` : GROUND_CARD,
-    'cursor-grab border border-l-3',
-    selected.value ? 'border-focus' : 'border-transparent',
-    inRipple.value && !selected.value ? 'outline-1 outline-border' : '',
+    'bg-chrome cursor-grab border',
+    GROUND_CARD,
+    c.parked ? 'border-dashed' : '',
+    selected.value ? 'border-focus' : inRipple.value ? 'border-subtle/50' : 'border-border',
   ];
 });
 </script>
@@ -144,7 +145,6 @@ const boxClass = computed(() => {
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira"
       :class="boxClass"
-      :style="{ borderLeftColor: card.color }"
       :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"
@@ -173,6 +173,12 @@ const boxClass = computed(() => {
         </span>
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
+            <span
+              :class="[TASK_SWATCH, card.parked ? 'border-2' : '']"
+              :style="card.parked ? { borderColor: card.color } : { background: card.color }"
+              data-testid="ade-task-swatch"
+              aria-hidden="true"
+            />
             <span class="relative flex min-w-0 flex-1 items-center">
               <AdeTaskTitle :card="card" />
               <span
@@ -230,6 +236,7 @@ const boxClass = computed(() => {
             <span :class="TASK_ACTION_CELL"><AdeTaskActionButton :card="card" icon /></span>
           </div>
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
+            <span :class="TASK_SWATCH_GAP" aria-hidden="true" />
             <span :class="TASK_STEP_CELL"
               ><template v-if="p.hasWorkflow && !card.parked">
                 <TextTooltip :text="p.workflowTip">
