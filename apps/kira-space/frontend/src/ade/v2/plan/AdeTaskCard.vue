@@ -248,7 +248,7 @@ const boxClass = computed(() => {
                 <AdeStepMenu :card="card" />
                 <TextTooltip v-if="p.showBar" :text="p.barTip">
                   <span
-                    class="shrink-0 text-kira-sm text-muted-foreground"
+                    class="shrink-0 text-kira-sm @max-lg:hidden text-muted-foreground"
                     data-testid="ade-step-percent"
                     >{{
                       formatPercent(p.percent)

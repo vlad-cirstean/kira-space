@@ -227,7 +227,7 @@ const ruleClass = computed(() => {
       >
         <CodiconIcon name="indent" :size="13" class="mx-[5.5px] shrink-0 text-subtle" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ s.title }}</span>
-        <span class="w-20 shrink-0 truncate text-left text-kira-sm text-subtle">{{ s.note }}</span>
+        <span class="w-28 shrink-0 truncate text-left text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="w-control shrink-0" aria-hidden="true" />
       </Button>
     </div>

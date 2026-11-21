@@ -3,7 +3,7 @@
 export const TASK_LEAD = 'inline-flex w-6 shrink-0 justify-center';
 export const TASK_STATUS_CELL = 'flex w-20 shrink-0 min-w-0 items-center overflow-hidden';
 export const TASK_ACTION_CELL = 'flex w-control shrink-0 items-center justify-center';
-export const TASK_STEP_CELL = 'flex w-24 shrink-0 min-w-0 items-center gap-1 @lg:w-32';
+export const TASK_STEP_CELL = 'flex w-32 shrink-0 min-w-0 items-center gap-1 @lg:w-48';
 export const BRANCH_GRID =
   'grid min-w-0 flex-1 grid-cols-[--spacing(20)_minmax(0,1fr)_auto_var(--spacing-control)_var(--spacing-control)] items-center gap-x-1.5 gap-y-0.5';
 export const SLOT = 'flex w-control shrink-0 items-center justify-center';
