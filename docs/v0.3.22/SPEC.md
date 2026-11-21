@@ -318,3 +318,9 @@ fails (cost 1.36, context 1.05 against 1.0). Total phase spend about 3.73 USD. N
 residual is README read, draft write and a `state.yaml` read after the draft write (2 of 3 runs, the
 "read fileErrors after each edit" line, a watcher-contract decision); F1 cost 1.29 to 1.31 is
 unchanged and not covered by A.
+
+Recalibration (user choice, free): cost bounds F1 1.35, F6 1.40 (F4, F5 stay 1.2); context F6 1.08
+(F5 stays 1.0, F1 to F4 1.05). All recorded ratios fit (F6 1.36/1.05, F1 1.29-1.31 cost). Still
+open: F1's recorded failed-call mean (R 0.33 vs T 0.00, one failed Bash) fails the unchanged
+failed-call rule and F1 was not rerun after the last prompt fix, so the row stays Todo pending a
+clean F1 round (about 0.4 USD) or a decision on that rule.
