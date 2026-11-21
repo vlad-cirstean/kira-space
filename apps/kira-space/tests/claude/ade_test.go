@@ -129,6 +129,10 @@ func (f *adeFixture) runLog(t *testing.T, runID string) string {
 	}
 }
 
+// allowShell is a project setting that lets a TUI session run shell commands unasked: the step's
+// first message sends the agent exploring, and these tests have no one to answer a permission prompt.
+var allowShell = map[string]string{".claude/settings.json": `{"permissions":{"allow":["Bash"]}}` + "\n"}
+
 // poison is a project setting that breaks any run that loads it.
 var poison = map[string]string{".claude/settings.json": `{"permissions":{"deny":["mcp__kira-space__state"]}}` + "\n"}
 
@@ -195,7 +199,7 @@ func TestAdeStepResults(t *testing.T) {
 // TestAdeManualSession opens a manual step's TUI session in the real claude, drives it with Send and
 // follows it through the hooks.
 func TestAdeManualSession(t *testing.T) {
-	f := newAdeFixture(t, nil)
+	f := newAdeFixture(t, allowShell)
 	f.saveWorkflow(t, "flow", manualStepYAML)
 	task := f.createTask(t, "flow")
 	launch, err := f.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})
