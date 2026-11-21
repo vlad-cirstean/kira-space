@@ -24,6 +24,7 @@ before implementation starts.
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
+| P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Todo |
 
 ## P716
 
@@ -517,3 +518,41 @@ the dummies; dropping `--exclude-dir=dist` makes `S10 scan self-test — build o
 macOS grep; binary dummies passed with the old script on Linux and removing `-I` left S18 green. The
 `-I` guard is proven only by `checks (macOS)` on this chapter's PR and v0.3.23's release. Dummies
 and temporary `bun install`/bindings copy removed.
+
+## P725
+
+User: "The column search thing in sql data view have it as part of the column projection where i
+have a searchbox too and an eye icon to scroll to the specific column".
+
+Today. P658 (v0.3.16) put a "Column name" field at the right end of the data view's filter toolbar
+(`FilterToolbar.vue`, testid `column-filter-input`, chord `data.filterColumns` ⇧⌘F). Typing narrows
+the grid's rendered columns (`columnFilter.ts` `visibleColumnOrder`, runtime `columnFilter`, applied
+by `SlickGridHost.vue` after a debounce). The Columns menu (`ColumnsMenu.vue`, toolbar button
+`toolbar-columns`) lists every column with a drag handle and a visibility checkbox; it has no search
+box and no way to reach a column in the grid.
+
+Reading chosen. Move column search into the Columns menu and drop the grid narrowing:
+
+- Remove the toolbar field, its status text, runtime `columnFilter`, `visibleColumnOrder` and the
+  host's filter apply path. The grid always renders the projection in stored order.
+- Columns menu gets a search box on top. It filters the menu's rows only (same matching as P658:
+  case-insensitive substring, whitespace or comma terms OR-ed). No match shows "No match".
+- Each row gets a button that scrolls the grid to that column (SlickGrid `scrollColumnIntoView`). It
+  keeps the menu open and leaves the checkbox alone. Disabled with a tooltip for a column the grid
+  does not render (unticked in the committed projection).
+- ⇧⌘F stays: it opens the Columns menu with focus in the search box. Its chip moves to the Columns
+  button tooltip. Registry id `data.filterColumns` kept.
+- Drag reorder keeps working while the list is filtered (moves by column name).
+
+Icon. The user asked for an eye. In this toolbar `eye-closed` already means mask preview, and across
+the app eye and eye-closed mean show or hide. Next to a visibility checkbox an eye reads as a second
+visibility toggle. Plan uses codicon `target` (locate) instead. User may override at chapter end: a
+one-word swap.
+
+Scope. Frontend only. No backend half: search and scroll never call the bridge; the UI spec asserts
+no extra `data:read` and an unchanged projection. Search text is menu-local, cleared on close.
+
+Deliverable. One plan `plans/P725.md`, one Sonnet pass. UI spec rewritten
+(`data-view-column-search.spec.ts`), shortcut-hint and module-state specs updated, unit spec for the
+removed filter deleted, `data-grid.png` baseline regenerated in PR CI. Throwaway screenshots for the
+user at chapter end.
