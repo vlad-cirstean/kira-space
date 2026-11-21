@@ -19,7 +19,7 @@ before implementation starts.
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
 | P720 | API module variables and environments: UX redesign | Todo |
 | P721 | Remove development, debugging and validation leftovers | Todo |
-| P722 | Window tabs: tear off and re-attach, new-window button without text | Done |
+| P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 
