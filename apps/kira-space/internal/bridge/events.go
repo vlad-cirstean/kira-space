@@ -88,6 +88,12 @@ const (
 	// ChannelReviewCode is the Review Code menu item (ade.reviewCode): opens the review for the
 	// focused task or branch on the Plan board.
 	ChannelReviewCode = "kira:menu:reviewCode"
+	// The four below are module actions (app.new, app.newAlternate, app.import, api.environments):
+	// one chord each, the renderer picks the effect by active module.
+	ChannelNew             = "kira:menu:new"
+	ChannelNewAlternate    = "kira:menu:newAlternate"
+	ChannelImport          = "kira:menu:import"
+	ChannelApiEnvironments = "kira:menu:apiEnvironments"
 )
 
 // P132 Part 2's op log channels, hoisted to internal/appevent (shared with Kira Studio's own

@@ -1458,17 +1458,29 @@
       "edit": {
         "label": "Edit"
       },
+      "environments": {
+        "label": "Environments…"
+      },
       "find": {
         "label": "Find"
       },
       "format": {
         "label": "Format"
       },
+      "import": {
+        "label": "Import…"
+      },
       "importDataGrip": {
         "label": "Import DataGrip Connections…"
       },
       "importPostman": {
         "label": "Import from Postman…"
+      },
+      "new": {
+        "label": "New"
+      },
+      "newAlternate": {
+        "label": "New Alternate"
       },
       "newConnection": {
         "label": "New Connection"

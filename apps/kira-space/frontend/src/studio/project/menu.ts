@@ -645,7 +645,7 @@ export function emptyBackgroundMenu(): MenuItem[] {
       id: 'new-connection',
       label: t('studio.project.connectionDialog.newConnection.title'),
       icon: ICON.add,
-      shortcut: 'app.newConnection',
+      shortcut: 'app.new',
       run: () => useConnectionDialogStore().openNew(),
     },
     {
