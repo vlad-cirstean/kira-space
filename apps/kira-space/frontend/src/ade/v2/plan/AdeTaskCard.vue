@@ -43,6 +43,17 @@ import AdeTaskSessions from './AdeTaskSessions.vue';
 import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
 import AdeTaskTitle from './AdeTaskTitle.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
+import {
+  GROUND_CARD,
+  GROUND_PARKED,
+  GROUND_ROW,
+  GROUND_SELECTED,
+  HOVER_OVERLAY,
+  TASK_ACTION_CELL,
+  TASK_LEAD,
+  TASK_STATUS_CELL,
+  TASK_STEP_CELL,
+} from './taskGrid';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
 
@@ -112,7 +123,7 @@ const segClass = (state: string): string => {
 const boxClass = computed(() => {
   const c = props.card;
   return [
-    c.parked ? 'bg-chrome' : '',
+    c.parked ? `bg-chrome ${GROUND_PARKED}` : GROUND_CARD,
     'cursor-grab border border-l-3',
     selected.value ? 'border-focus' : 'border-transparent',
     inRipple.value && !selected.value ? 'outline-1 outline-border' : '',
@@ -143,7 +154,7 @@ const boxClass = computed(() => {
         v-if="!card.review"
         ref="head"
         class="group/head box-border flex h-board-row w-full items-center gap-1.5 px-2"
-        :class="headSelected ? 'bg-select' : 'hover:bg-field'"
+        :class="headSelected ? GROUND_SELECTED : GROUND_ROW"
         role="button"
         tabindex="0"
         :aria-label="t('space.ade.plan.card.open.aria', { title: card.title })"
@@ -152,7 +163,7 @@ const boxClass = computed(() => {
         @keydown.enter.self="emit('select')"
         @keydown.space.self.prevent="emit('select')"
       >
-        <span class="inline-flex w-6 shrink-0 justify-center" data-testid="ade-row-lead">
+        <span :class="TASK_LEAD" data-testid="ade-row-lead">
           <AdeTaskSessions
             v-if="card.sessions"
             :task-id="card.task.id"
@@ -162,123 +173,137 @@ const boxClass = computed(() => {
         </span>
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
-            <span class="flex min-w-0 flex-1 items-center"><AdeTaskTitle :card="card" /></span>
-            <span
-              class="hidden shrink-0 items-center gap-0.5 group-hover/head:flex group-focus-visible/head:flex group-has-[:focus-visible]/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
-              data-testid="ade-card-actions"
-            >
-              <AdeTaskAddMenu v-if="!card.review" :card="card" />
-              <DropdownMenu v-if="baseChoices.length > 1">
-                <DropdownMenuTrigger as-child>
-                  <TooltipIconButton
-                    icon="git-branch"
-                    :label="t('space.ade.plan.card.changeBase.tooltip')"
-                    :aria-label="t('space.ade.rebase.changeBase.label')"
-                    class="size-4.5 shrink-0"
-                    data-testid="ade-card-change-base"
-                    @click.stop
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
-                  <MenuItems :items="baseItems" />
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <TooltipIconButton
-                v-else-if="baseChoices.length === 1"
-                icon="git-branch"
-                :label="t('space.ade.rebase.changeBase.label')"
-                class="size-4.5 shrink-0"
-                disabled-trigger
-                :disabled="baseChoices[0].disabled"
-                data-testid="ade-card-change-base"
-                @click.stop="dialogs.act(baseChoices[0].act)"
+            <span class="relative flex min-w-0 flex-1 items-center">
+              <AdeTaskTitle :card="card" />
+              <span
+                class="hidden group-hover/head:flex group-focus-visible/head:flex group-has-[:focus-visible]/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+                :class="HOVER_OVERLAY"
+                data-testid="ade-card-actions"
               >
-                <VarText :parts="baseChoices[0].tip" />
-              </TooltipIconButton>
-              <TooltipIconButton
-                v-if="choices.length"
-                icon="git-compare"
-                :label="t('space.ade.board.taskMenu.reviewCode.label')"
-                :kbd="formatShortcut('ade.reviewCode')"
-                class="size-4.5 shrink-0"
-                disabled-trigger
-                :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
-                :disabled="choices.every((c) => c.disabled)"
-                data-testid="ade-card-review"
-                @click.stop="
-                  (ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)
-                "
-              >
-                <VarText :parts="reviewTip" />
-              </TooltipIconButton>
+                <AdeTaskAddMenu v-if="!card.review" :card="card" />
+                <DropdownMenu v-if="baseChoices.length > 1">
+                  <DropdownMenuTrigger as-child>
+                    <TooltipIconButton
+                      icon="git-branch"
+                      :label="t('space.ade.plan.card.changeBase.tooltip')"
+                      :aria-label="t('space.ade.rebase.changeBase.label')"
+                      class="size-4.5 shrink-0"
+                      data-testid="ade-card-change-base"
+                      @click.stop
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" data-testid="ade-card-change-base-menu">
+                    <MenuItems :items="baseItems" />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <TooltipIconButton
+                  v-else-if="baseChoices.length === 1"
+                  icon="git-branch"
+                  :label="t('space.ade.rebase.changeBase.label')"
+                  class="size-4.5 shrink-0"
+                  disabled-trigger
+                  :disabled="baseChoices[0].disabled"
+                  data-testid="ade-card-change-base"
+                  @click.stop="dialogs.act(baseChoices[0].act)"
+                >
+                  <VarText :parts="baseChoices[0].tip" />
+                </TooltipIconButton>
+                <TooltipIconButton
+                  v-if="choices.length"
+                  icon="git-compare"
+                  :label="t('space.ade.board.taskMenu.reviewCode.label')"
+                  :kbd="formatShortcut('ade.reviewCode')"
+                  class="size-4.5 shrink-0"
+                  disabled-trigger
+                  :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
+                  :disabled="choices.every((c) => c.disabled)"
+                  data-testid="ade-card-review"
+                  @click.stop="
+                    (ev: MouseEvent) => reviewCode.openTask(card, ev.currentTarget as HTMLElement)
+                  "
+                >
+                  <VarText :parts="reviewTip" />
+                </TooltipIconButton>
+              </span>
             </span>
-            <AdeTaskStatusMenu :card="card" />
-            <AdeTaskActionButton :card="card" icon />
+            <span :class="TASK_STATUS_CELL"><AdeTaskStatusMenu :card="card" /></span>
+            <span :class="TASK_ACTION_CELL"><AdeTaskActionButton :card="card" icon /></span>
           </div>
-          <div class="flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden">
-            <template v-if="p.hasWorkflow && !card.parked">
-              <TextTooltip :text="p.workflowTip">
-                <span
-                  class="inline-flex w-12 shrink-0 items-center gap-0.5"
-                  data-testid="ade-step-segs"
-                >
+          <div class="flex h-4.5 min-w-0 items-center gap-1.5">
+            <span :class="TASK_STEP_CELL"
+              ><template v-if="p.hasWorkflow && !card.parked">
+                <TextTooltip :text="p.workflowTip">
                   <span
-                    v-for="seg in p.segments"
-                    :key="seg.id"
-                    class="h-1.5 flex-1 rounded-kira-sm"
-                    :class="segClass(seg.state)"
-                  />
-                </span>
-              </TextTooltip>
-              <AdeStepMenu :card="card" />
-              <TextTooltip v-if="p.showBar" :text="p.barTip">
-                <span
-                  class="shrink-0 text-kira-sm text-muted-foreground"
-                  data-testid="ade-step-percent"
-                  >{{
-                    formatPercent(p.percent)
-                  }}</span
-                >
-              </TextTooltip>
-            </template>
-            <AdeEstimateChip v-if="!card.review" :card="card" />
-            <AdeTagIcon
-              v-if="tagGlyph"
-              :glyph="TASK_TAG_GLYPH[tagGlyph.kind]"
-              :kind="tagGlyph.kind"
-              :label="tagGlyph.label"
-              :tip="tagGlyph.tip"
-              :tone="tagGlyph.tone"
-              :color="tagGlyph.color"
-            />
-            <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
-            <AdeOpStatus :task-id="card.task.id" />
-            <AdeAttention v-if="card.attention" :tip="card.attention" :item="card.attentionItem" />
-            <AdeAutomationChip :task-id="card.task.id" />
-            <AdeLeaseChip :task-id="card.task.id" />
-            <AdeUpdatesPopover v-if="taskUpdates.length" :task-id="card.task.id" />
-            <span v-if="card.parent" class="inline-flex min-w-0 max-w-24">
-              <AdeParentChip
-                :parent="card.parent"
-                @select="card.parent && ui.select(card.parent.id)"
-              />
-            </span>
-            <Button
-              v-if="card.task.branchRequestId"
-              type="button"
-              variant="toolbar"
-              size="inline"
-              class="h-4.5 min-w-0 max-w-24 truncate rounded-kira-sm px-1 text-kira-sm text-tone-amber"
-              data-testid="ade-card-branch-request"
-              @click.stop="approvalsStore.open(`branch.request:${card.task.branchRequestId}`)"
+                    class="inline-flex w-10 shrink-0 items-center gap-0.5"
+                    data-testid="ade-step-segs"
+                  >
+                    <span
+                      v-for="seg in p.segments"
+                      :key="seg.id"
+                      class="h-1.5 flex-1 rounded-kira-sm"
+                      :class="segClass(seg.state)"
+                    />
+                  </span>
+                </TextTooltip>
+                <AdeStepMenu :card="card" />
+                <TextTooltip v-if="p.showBar" :text="p.barTip">
+                  <span
+                    class="shrink-0 text-kira-sm text-muted-foreground"
+                    data-testid="ade-step-percent"
+                    >{{
+                      formatPercent(p.percent)
+                    }}</span
+                  >
+                </TextTooltip>
+              </template></span
             >
-              {{ t('space.ade.taskTab.branchRequest.label') }}
-            </Button>
             <span
               class="min-w-0 flex-1 text-kira-sm leading-3.5 text-subtle"
               data-testid="ade-card-meta"
               ><TruncatedText :text="card.meta" /></span
             >
+            <span class="flex shrink-0 items-center gap-1">
+              <AdeTagIcon
+                v-if="tagGlyph"
+                :glyph="TASK_TAG_GLYPH[tagGlyph.kind]"
+                :kind="tagGlyph.kind"
+                :label="tagGlyph.label"
+                :tip="tagGlyph.tip"
+                :tone="tagGlyph.tone"
+                :color="tagGlyph.color"
+              />
+              <AdeOrchestratorBadge v-if="card.orchestrator" icon-only />
+              <AdeOpStatus :task-id="card.task.id" />
+              <AdeAttention
+                v-if="card.attention"
+                :tip="card.attention"
+                :item="card.attentionItem"
+              />
+              <AdeAutomationChip :task-id="card.task.id" />
+              <AdeLeaseChip :task-id="card.task.id" />
+              <AdeUpdatesPopover v-if="taskUpdates.length" :task-id="card.task.id" />
+              <span v-if="card.parent" class="inline-flex min-w-0 max-w-24">
+                <AdeParentChip
+                  :parent="card.parent"
+                  @select="card.parent && ui.select(card.parent.id)"
+                />
+              </span>
+              <Button
+                v-if="card.task.branchRequestId"
+                type="button"
+                variant="toolbar"
+                size="inline"
+                class="h-4.5 min-w-0 max-w-24 truncate rounded-kira-sm px-1 text-kira-sm text-tone-amber"
+                data-testid="ade-card-branch-request"
+                @click.stop="approvalsStore.open(`branch.request:${card.task.branchRequestId}`)"
+              >
+                {{ t('space.ade.taskTab.branchRequest.label') }}
+              </Button>
+            </span>
+            <span :class="TASK_STATUS_CELL"
+              ><AdeEstimateChip v-if="!card.review" :card="card" /></span
+            >
+            <span class="w-control shrink-0" aria-hidden="true" />
           </div>
         </div>
       </div>

@@ -145,7 +145,6 @@ U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders
 U101 apps/kira-space/frontend/mobile/TabBar.vue # count badge marks items needing attention, not a tab count
 U101 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # count marks agent requests awaiting the person
 U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a white ground for scanner contrast
-U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # plan board history and span row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/studio/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
