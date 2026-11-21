@@ -187,14 +187,30 @@ function showCell(e: MouseEvent, r: number, c: number): void {
     target: grid.value?.columns[c]?.label ?? '',
     row: r + 1,
   });
-  try {
-    const value: unknown = JSON.parse(cell);
-    cellValue.value =
-      typeof value === 'object' && value !== null ? JSON.stringify(value, null, 2) : cell;
-  } catch {
-    cellValue.value = cell;
-  }
+  cellValue.value = cell;
   cellOpen.value = true;
+}
+// The one expand button mounts in the hovered (or, for keyboard, focused-row) cell only.
+const activeCell = ref<{ row: number; col: number } | null>(null);
+function firstFilledCol(r: number): number {
+  return Math.max(
+    0,
+    (grid.value?.rows[r] ?? []).findIndex((cell) => cell !== null),
+  );
+}
+function trackCell(e: Event, r: number): void {
+  const td = (e.target as HTMLElement).closest<HTMLElement>('td[data-col]');
+  if (td) activeCell.value = { row: r, col: Number(td.dataset.col) };
+  else if (activeCell.value?.row !== r) activeCell.value = { row: r, col: firstFilledCol(r) };
+}
+function releaseCell(e: Event, r: number): void {
+  // The open popover is anchored to this cell; its focus and the pointer leaving must not drop it.
+  if (activeCell.value?.row !== r || cellOpen.value) return;
+  const row = e.currentTarget as HTMLElement;
+  const focused =
+    e instanceof FocusEvent ? (e.relatedTarget as Node | null) : document.activeElement;
+  if (focused && row.contains(focused)) return;
+  activeCell.value = null;
 }
 const scrollRef = ref<HTMLElement | null>(null);
 const {
@@ -309,6 +325,10 @@ const padBottom = computed(() => {
                     :data-expanded="isOpenRow(r) ? '' : undefined"
                     data-testid="db-mcp-preview-row"
                     @click="toggleRow(r)"
+                    @mouseover="trackCell($event, r)"
+                    @focusin="trackCell($event, r)"
+                    @mouseleave="releaseCell($event, r)"
+                    @focusout="releaseCell($event, r)"
                     @keydown.enter.self.prevent="toggleRow(r)"
                     @keydown.space.self.prevent="toggleRow(r)"
                   >
@@ -331,11 +351,26 @@ const padBottom = computed(() => {
                         data-testid="db-mcp-preview-row-toggle"
                         @click.stop="toggleRow(r)"
                       />
+                      <ResizeHandle
+                        axis="y"
+                        :size="heightOf(r)"
+                        :min="rowHeight"
+                        :max="480"
+                        :label="t('studio.dbMcp.preview.rowResize.aria')"
+                        class="absolute inset-x-0 -bottom-px z-1"
+                        :tabindex="0"
+                        data-testid="db-mcp-preview-row-resize"
+                        @live="(h: number) => setHeight(r, h)"
+                        @commit="(h: number) => setHeight(r, h)"
+                        @click.stop
+                        @dblclick.stop="resetHeight(r)"
+                      />
                     </TableCell>
                     <TableCell
                       v-for="(cell, c) in grid.rows[r]"
                       :key="c"
-                      class="group/cell relative max-w-80 align-top font-data"
+                      :data-col="c"
+                      class="relative max-w-80 align-top font-data"
                       :data-null="cell === null ? '' : undefined"
                     >
                       <span v-if="cell === null" class="italic text-muted-foreground">{{
@@ -353,29 +388,15 @@ const padBottom = computed(() => {
                       </div>
                       <span v-else class="block truncate pr-4">{{ cell }}</span>
                       <TooltipIconButton
-                        v-if="cell !== null"
+                        v-if="cell !== null && activeCell?.row === r && activeCell.col === c"
                         icon="screen-full"
                         :icon-size="12"
                         variant="toolbar"
                         size="title"
-                        class="absolute top-0.5 right-0.5 bg-elevated opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100"
+                        class="absolute top-0.5 right-0.5 bg-elevated"
                         :label="t('studio.dbMcp.preview.cellShow.tooltip')"
                         data-testid="db-mcp-preview-expand"
                         @click.stop="(e: MouseEvent) => showCell(e, r, c)"
-                      />
-                      <ResizeHandle
-                        axis="y"
-                        :size="heightOf(r)"
-                        :min="rowHeight"
-                        :max="480"
-                        :label="t('studio.dbMcp.preview.rowResize.aria')"
-                        class="absolute inset-x-0 -bottom-px z-1"
-                        :tabindex="c === 0 ? 0 : -1"
-                        data-testid="db-mcp-preview-row-resize"
-                        @live="(h: number) => setHeight(r, h)"
-                        @commit="(h: number) => setHeight(r, h)"
-                        @click.stop
-                        @dblclick.stop="resetHeight(r)"
                       />
                     </TableCell>
                   </TableRow>

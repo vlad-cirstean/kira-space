@@ -75,11 +75,8 @@ test('contract: the held result shows as a table and Send answers by item id', a
 const LONG = 'The customer wrote a very long note that no cropped cell can show in full. '.repeat(
   6,
 );
-const JSON_CELL = JSON.stringify({
-  id: 7,
-  tags: ['a', 'b'],
-  address: { city: 'Berlin', zip: '10115' },
-});
+// Not round-trippable through JSON.parse: bigint id, trailing zero, exponent.
+const JSON_CELL = '{"id":9007199254740993,"price":1.10,"n":1e2,"tags":["a","b"]}';
 function bigResult() {
   const columns = [
     { name: 'id', dataType: 'INTEGER', typeClass: 'number' },
@@ -182,11 +179,11 @@ test('contract: the row handle drags, steps by key and resets on double-click', 
   await expect.poll(height).toBeGreaterThan(dragged);
   await handle.dblclick();
   await expect.poll(height).toBeLessThanOrEqual(base + 1);
-  // The handle is the only stop in the row's cells that is a resize separator.
+  // The one handle per row is a resize separator.
   await expect(handle).toHaveAttribute('role', 'separator');
 });
 
-test('contract: the full value opens in a popover with Copy, JSON pretty-printed, NULL has no button', async ({
+test('contract: the full value opens in a popover with Copy, shown and copied as held, NULL has no button', async ({
   relaunch,
 }) => {
   const { page, rows } = await openBig(relaunch);
@@ -198,11 +195,9 @@ test('contract: the full value opens in a popover with Copy, JSON pretty-printed
   await expand.click();
   const popover = page.locator('[data-testid="db-mcp-preview-cell"]');
   await expect(popover).toContainText('meta · row 2');
-  await expect(popover.locator('pre')).toHaveText(JSON.stringify(JSON.parse(JSON_CELL), null, 2));
+  await expect(popover.locator('pre')).toHaveText(JSON_CELL);
   await popover.locator('[data-testid="db-mcp-preview-cell-copy"]').click();
-  await expect
-    .poll(() => lastClipboardWrite(page))
-    .toBe(JSON.stringify(JSON.parse(JSON_CELL), null, 2));
+  await expect.poll(() => lastClipboardWrite(page)).toBe(JSON_CELL);
   await page.keyboard.press('Escape');
   await expect(popover).toHaveCount(0);
   // Enter on the focused expand button opens it too.
@@ -211,7 +206,8 @@ test('contract: the full value opens in a popover with Copy, JSON pretty-printed
   await page.keyboard.press('Enter');
   await expect(popover).toContainText(LONG.trim());
   await page.keyboard.press('Escape');
-  // A NULL cell carries no expand button.
+  // A NULL cell carries no expand button, even hovered.
+  await rows.nth(2).locator('td[data-null]').hover();
   await expect(
     rows.nth(2).locator('td[data-null] [data-testid="db-mcp-preview-expand"]'),
   ).toHaveCount(0);
@@ -222,10 +218,13 @@ test('contract: the chevron and expand controls are buttons in the Tab order', a
 }) => {
   const { page, rows } = await openBig(relaunch);
   const chevron = rows.first().locator('[data-testid="db-mcp-preview-row-toggle"]');
-  const expand = rows.first().locator('[data-testid="db-mcp-preview-expand"]').first();
+  const expand = rows.first().locator('[data-testid="db-mcp-preview-expand"]');
   await expect(chevron).toHaveJSProperty('tagName', 'BUTTON');
-  await expect(expand).toHaveJSProperty('tagName', 'BUTTON');
   await chevron.focus();
+  // Focus in a row mounts its single expand button; the row's resize separator sits between.
+  await expect(expand).toHaveCount(1);
+  await expect(expand).toHaveJSProperty('tagName', 'BUTTON');
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await expect(expand).toBeFocused();
 });
