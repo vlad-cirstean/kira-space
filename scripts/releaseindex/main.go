@@ -41,6 +41,6 @@ func run(asset, publish string) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.WriteString(os.Stdout, out)
+	_, err = os.Stdout.WriteString(out)
 	return err
 }

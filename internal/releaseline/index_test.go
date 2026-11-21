@@ -1,6 +1,7 @@
 package releaseline
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"os"
@@ -192,7 +193,7 @@ func TestIndexGolden(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(want) != string(out) {
+	if !bytes.Equal(want, out) {
 		t.Fatalf("%s is stale; run go test ./internal/releaseline -run IndexGolden -update", path)
 	}
 }
