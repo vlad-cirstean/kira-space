@@ -304,3 +304,5 @@ error, new window pre-registered). UI spec: in-page drag handling (drag-out sign
 order and active tab). Playwright cannot drive native cross-window drag. Manual checklist for the
 user on macOS, Windows and Linux: tear off, re-attach to another window, drop on desktop, tear off
 the last tab, new-window button icon, tooltip and shortcut.
+
+Spike (`plans/P722-spike.md`): drag-back is feasible via frontend pointer-up coordinates plus Go hit-test of live windows; not feasible on Linux Wayland (window positions report 0,0). The planner starts from that file.
