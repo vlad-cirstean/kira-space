@@ -570,7 +570,7 @@ CREATE TABLE "kube_clusters" (
   context TEXT NOT NULL,
   server TEXT NOT NULL,
   mcp_description TEXT NOT NULL DEFAULT '',
-  mcp_enabled INTEGER NOT NULL DEFAULT 0 CHECK (mcp_enabled IN (0, 1)), mcp_approval TEXT NOT NULL DEFAULT 'prompt' CHECK (mcp_approval IN ('prompt', 'allow')),
+  mcp_enabled INTEGER NOT NULL DEFAULT 0 CHECK (mcp_enabled IN (0, 1)), mcp_approval TEXT NOT NULL DEFAULT 'prompt' CHECK (mcp_approval IN ('prompt', 'allow')), mcp_review TEXT NOT NULL DEFAULT 'inherit' CHECK (mcp_review IN ('inherit', 'review', 'send')),
   UNIQUE (context, server)
 ) STRICT;
 

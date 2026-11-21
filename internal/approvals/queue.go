@@ -19,6 +19,7 @@ const (
 	KindDbResponse    = "db.response"
 	KindDbExemption   = "db.exemption"
 	KindKubeRead      = "kube.read"
+	KindKubeResponse  = "kube.response"
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
 	KindTaskCreate    = "task.create"

@@ -1,0 +1,300 @@
+{
+  "ApprovalsService.List#describePod": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.response:<id:1>",
+      "kind": "kube.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 1748,
+        "context": "kind-dev",
+        "isError": false,
+        "namespace": "default",
+        "operation": "describe",
+        "requested": false,
+        "server": "<kube>",
+        "statement": "kubectl describe pods web-1 -n default --context kind-dev"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#describeSecret": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.response:<id:1>",
+      "kind": "kube.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 552,
+        "context": "kind-dev",
+        "isError": false,
+        "namespace": "default",
+        "operation": "describe",
+        "requested": false,
+        "server": "<kube>",
+        "statement": "kubectl describe secrets db-creds -n default --context kind-dev"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#list": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.response:<id:1>",
+      "kind": "kube.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 338,
+        "context": "kind-dev",
+        "isError": false,
+        "namespace": "default",
+        "operation": "list",
+        "requested": false,
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default --context kind-dev"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#logs": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.response:<id:1>",
+      "kind": "kube.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 71,
+        "context": "kind-dev",
+        "isError": false,
+        "namespace": "default",
+        "operation": "logs",
+        "requested": false,
+        "server": "<kube>",
+        "statement": "kubectl logs web-1 -n default -c app --tail 2 --context kind-dev"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#readOption": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.read:<id:1>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "context": "kind-dev",
+        "namespace": "default",
+        "operation": "list",
+        "reviewOffered": true,
+        "reviewResult": false,
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default --context kind-dev"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#readOptionOn": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "kube.read:<id:3>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "context": "kind-dev",
+        "namespace": "default",
+        "operation": "list",
+        "reviewOffered": true,
+        "reviewResult": true,
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default --context kind-dev"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#describePod": {
+    "isError": false,
+    "keep": [],
+    "raw": "",
+    "requestId": "<id:1>",
+    "script": null,
+    "text": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\",\"name\":\"web-1\",\"namespace\":\"default\",\"uid\":\"uid-pod-default-web-1\",\"created\":\"<time>\",\"labels\":{\"app\":\"web\"},\"annotations\":{},\"owners\":[{\"kind\":\"ReplicaSet\",\"name\":\"web-1-rs\"}],\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\",\"reason\":\"\",\"message\":\"\",\"lastTransition\":\"<time>\"},{\"type\":\"PodScheduled\",\"status\":\"True\",\"reason\":\"Scheduled\",\"message\":\"assigned to node-1\",\"lastTransition\":\"<time>\"}],\"containers\":[{\"name\":\"init\",\"init\":true},{\"name\":\"app\",\"init\":false},{\"name\":\"sidecar\",\"init\":false}],\"events\":[{\"type\":\"Normal\",\"reason\":\"Started\",\"message\":\"container started\",\"count\":1,\"first\":\"<time>\",\"last\":\"<time>\",\"source\":\"kubelet\"},{\"type\":\"Normal\",\"reason\":\"Pulled\",\"message\":\"image pulled\",\"count\":1,\"first\":\"<time>\",\"last\":\"<time>\",\"source\":\"kubelet\"}],\"manifest\":\"apiVersion: v1\\nkind: Pod\\nmetadata:\\n  creationTimestamp: \\\"<time>\\\"\\n  labels:\\n    app: web\\n  name: web-1\\n  namespace: default\\n  ownerReferences:\\n  - apiVersion: apps/v1\\n    kind: ReplicaSet\\n    name: web-1-rs\\n    uid: uid-rs\\n  uid: uid-pod-default-web-1\\nspec:\\n  containers:\\n  - image: example/app:1\\n    name: app\\n    resources: {}\\n  - image: example/sidecar:1\\n    name: sidecar\\n    resources: {}\\n  initContainers:\\n  - name: init\\n    resources: {}\\nstatus:\\n  conditions:\\n  - lastProbeTime: null\\n    lastTransitionTime: \\\"<time>\\\"\\n    status: \\\"True\\\"\\n    type: Ready\\n  - lastProbeTime: null\\n    lastTransitionTime: \\\"<time>\\\"\\n    message: assigned to node-1\\n    reason: Scheduled\\n    status: \\\"True\\\"\\n    type: PodScheduled\\n  phase: Running\\n\",\"manifestTruncated\":false}"
+  },
+  "DbMcpService.PendingResponse#describeSecret": {
+    "isError": false,
+    "keep": [],
+    "raw": "",
+    "requestId": "<id:1>",
+    "script": null,
+    "text": "{\"kind\":\"Secret\",\"apiVersion\":\"v1\",\"name\":\"db-creds\",\"namespace\":\"default\",\"uid\":\"uid-secret-db-creds\",\"created\":\"<time>\",\"labels\":{},\"annotations\":{\"owner\":\"team-a\"},\"owners\":[],\"conditions\":[],\"containers\":[],\"events\":[],\"manifest\":\"apiVersion: v1\\ndata:\\n  password: \\u003c14 bytes\\u003e\\n  user: \\u003c5 bytes\\u003e\\nkind: Secret\\nmetadata:\\n  annotations:\\n    owner: team-a\\n  creationTimestamp: \\\"<time>\\\"\\n  name: db-creds\\n  namespace: default\\n  uid: uid-secret-db-creds\\ntype: Opaque\\n\",\"manifestTruncated\":false}"
+  },
+  "DbMcpService.PendingResponse#list": {
+    "isError": false,
+    "keep": [],
+    "raw": "",
+    "requestId": "<id:1>",
+    "script": null,
+    "text": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":3,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"db-0\",\"namespace\":\"default\",\"cells\":[\"db-0\",\"1/1\",\"Running\",\"0\",\"5m\"]}],\"truncated\":false}"
+  },
+  "DbMcpService.PendingResponse#logs": {
+    "isError": false,
+    "keep": [],
+    "raw": "",
+    "requestId": "<id:1>",
+    "script": null,
+    "text": "{\"lines\":[{\"text\":\"line two\"},{\"text\":\"line three\"}],\"truncated\":false}"
+  },
+  "args:ApprovalsService.Answer#describePod": {
+    "approve": true,
+    "ids": [
+      "kube.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#describeSecret": {
+    "approve": true,
+    "ids": [
+      "kube.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#list": {
+    "approve": true,
+    "ids": [
+      "kube.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#logs": {
+    "approve": true,
+    "ids": [
+      "kube.response:<id:1>"
+    ],
+    "options": null
+  },
+  "args:ApprovalsService.Answer#tick": {
+    "approve": true,
+    "ids": [
+      "kube.read:<id:2>"
+    ],
+    "options": {
+      "kube.read:<id:2>": {
+        "reviewResult": true
+      }
+    }
+  },
+  "args:SettingsService.Set#on": {
+    "patch": {
+      "dbMcp": {
+        "kubeReviewResponses": true
+      }
+    }
+  }
+}

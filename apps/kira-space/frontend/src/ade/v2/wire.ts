@@ -654,7 +654,7 @@ interface DbAuditLimit {
 /** An approval raised inside a Kira Studio call. */
 export interface DbAuditApproval {
   id: string;
-  /** The approvals kind: db.query, db.response, db.exemption, kube.read, script.run or api.request. */
+  /** The approvals kind: db.query, db.response, db.exemption, kube.read, kube.response, script.run, api.request or api.response. */
   subject: string;
   reason: string;
   stage: string;

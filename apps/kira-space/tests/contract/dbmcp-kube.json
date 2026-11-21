@@ -20,6 +20,8 @@
         "context": "kind-dev",
         "namespace": "default",
         "operation": "list",
+        "reviewOffered": true,
+        "reviewResult": false,
         "server": "<kube>",
         "statement": "kubectl get pods -n default --context kind-dev"
       },
@@ -43,7 +45,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "default",
         "server": "<kube>",
@@ -58,7 +61,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -73,7 +77,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<down>",
@@ -88,7 +93,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -114,7 +120,8 @@
         "mcp": {
           "approval": "allow",
           "description": "dev cluster, safe to read",
-          "enabled": true
+          "enabled": true,
+          "review": "inherit"
         },
         "namespace": "default",
         "server": "<kube>",
@@ -129,7 +136,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -144,7 +152,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<down>",
@@ -159,7 +168,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -178,7 +188,8 @@
   "KubernetesService.SetMcp": {
     "approval": "allow",
     "description": "dev cluster, safe to read",
-    "enabled": true
+    "enabled": true,
+    "review": "inherit"
   },
   "OpsService.Recent": [
     {
@@ -222,7 +233,8 @@
     "mcp": {
       "approval": "allow",
       "description": "dev cluster, safe to read",
-      "enabled": true
+      "enabled": true,
+      "review": "inherit"
     }
   },
   "args:KubernetesService.SetMcp:enable": {
@@ -230,7 +242,17 @@
     "mcp": {
       "approval": "prompt",
       "description": "",
-      "enabled": true
+      "enabled": true,
+      "review": "inherit"
+    }
+  },
+  "args:KubernetesService.SetMcp:review": {
+    "clusterId": "<masked>",
+    "mcp": {
+      "approval": "allow",
+      "description": "dev cluster, safe to read",
+      "enabled": true,
+      "review": "review"
     }
   }
 }

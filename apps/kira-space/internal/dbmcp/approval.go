@@ -300,8 +300,8 @@ type ApprovalRequest struct {
 	Plan *ApprovalPlan
 	// Cluster is set for a Kubernetes read; Target is then empty.
 	Cluster *ApprovalCluster
-	// Subject is the approvals kind key. Empty derives it: kube.read with a Cluster, db.response
-	// at the response stage, else db.query.
+	// Subject is the approvals kind key. Empty derives it: kube.read with a Cluster (kube.response at the
+	// response stage), db.response at the response stage, else db.query.
 	Subject string
 	// Origin says which client asked; the tools copy it from the call's context.
 	Origin ApprovalOrigin
@@ -353,6 +353,8 @@ func (r ApprovalRequest) subject() string {
 	switch {
 	case r.Subject != "":
 		return r.Subject
+	case r.Cluster != nil && r.Stage == ApprovalStageResponse:
+		return approvals.KindKubeResponse
 	case r.Cluster != nil:
 		return approvals.KindKubeRead
 	case r.Stage == ApprovalStageResponse:
@@ -405,7 +407,7 @@ func newApprovalBrokerCaps(now func() time.Time, q *approvals.Queue, perResult, 
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total, timeout: ApprovalTimeout}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindKubeResponse, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b

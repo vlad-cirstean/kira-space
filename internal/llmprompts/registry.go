@@ -961,7 +961,16 @@ var DbmcpToolAPIRequestReview = define(Entry{
 // DbmcpToolKubeListClusters describes the kube_list_clusters tool.
 var DbmcpToolKubeListClusters = define(Entry{
 	ID: "dbmcp.tool.kube_list_clusters", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_clusters",
-	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and approval mode (prompt or allow).",
+	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and approval mode (prompt or allow). reviewResults true: the user holds list, describe and logs results until they send them.",
+}, NoVars{})
+
+// DbmcpToolKubeReview is added to the description of every kube tool that returns cluster data.
+var DbmcpToolKubeReview = define(Entry{
+	ID: "dbmcp.tool.kube.reviewSuffix", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolKubeReview.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolKubeReview.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolKubeReview.usedBy.body",
+	Default:    "The user may hold the result for review before you get it (reviewResults in kube_list_clusters). A withheld result is an error with no data; the read ran, so do not rerun it to get the data.",
 }, NoVars{})
 
 // DbmcpToolKubeDiscover describes the kube_discover tool.
