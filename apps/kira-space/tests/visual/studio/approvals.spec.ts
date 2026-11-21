@@ -29,3 +29,19 @@ test('approvals dialog and toast', async ({ relaunch }) => {
     mask: [page.locator('[data-testid="approvals-toast-expires"]')],
   });
 });
+
+// P719: API request with several values still needed, each with its own Use once / Keep choice.
+
+test('api approval with one-time value rows', async ({ relaunch }) => {
+  const [item] = contract<ApprovalItem[]>('e2e-user-value-once', 'ApprovalsService.List#mixed');
+  const { window: page } = await relaunch({ control: [] });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await pushApprovals(page, [liveItem(item as ApprovalItem, 600, Date.now())]);
+  const dialog = page.locator('[data-testid="approvals-dialog"]');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('[data-testid="api-input-otp"]')).toBeVisible();
+  await settleFonts(page);
+  await expect(dialog).toHaveScreenshot('approvals-api-input-once.png', {
+    mask: [page.locator('[data-testid="approval-countdown"]')],
+  });
+});

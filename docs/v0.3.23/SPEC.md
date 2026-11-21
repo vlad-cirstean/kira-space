@@ -205,6 +205,20 @@ Open questions. Who picks one-time: user per input in the card (toggle), agent p
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
+Result. Done. Each typed value on the API card gets a compact Use once / Keep N min choice; the agent's
+`reuse` hint seeds it, the user decides. A one-time value lives in an in-memory overlay
+(`agentapi.Input.Once`), never `Store.Put`, is masked in the echo, and its bytes are zeroed after the
+send and on every exit; Go strings from masking and JSON decoding stay in process memory until GC
+(documented in ARCHITECTURE). A script that read one cannot `commit` anything derived
+(`errDerivedOnce`); the card shows "Not kept". Only `inputs` are in scope; module `{{name}}` variables
+are P720. Card redesign after review: P715 prompt unchanged, then one row per value still needed, one
+badge "Sends: <names>", no extra headings, hints or warnings. Flow `e2e-user-value-once` and UI spec
+`approvals-api-input-once` share one contract; visual shot `approvals-api-input-once`. Run:
+`dbmcpflow`, `apiflow`, `agentapi`, `dbmcp`, `keptvars`, `llmprompts` pass; 3 UI specs (16 tests) pass;
+`bun run test:claude:db` passes (`TestDbMcpKeptChainThroughClaude` among 12). One full-package
+`dbmcpflow` run under load failed `TestE2EHeldWritesAPI` (`rawBytes` 747 vs 748, then a withhold
+timeout); three isolated reruns and a second full run passed.
+
 ## P720
 
 User: "The api module variables and env handling editing etc is horrible, come with a more intuitive

@@ -89,5 +89,7 @@ export const keptStagedSchema = /*#__PURE__*/ z.object({
   secret: z.boolean(),
   preview: z.string(),
   previewTruncated: z.boolean(),
+  // The script read a one-time value, so Kira will not keep this one.
+  blocked: z.boolean().default(false),
 });
 export type KeptStaged = z.infer<typeof keptStagedSchema>;

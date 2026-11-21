@@ -145,11 +145,11 @@ func TestInputDeclarationRules(t *testing.T) {
 		err   string
 	}{
 		{"five", five, "at most 4 inputs"},
-		{"duplicate", []InputDecl{{"a", "A"}, {"a", "B"}}, "declared twice"},
-		{"bad name", []InputDecl{{"1a", "A"}}, "kept variable name"},
-		{"empty label", []InputDecl{{"a", "  "}}, "label of 1 to 80 characters"},
-		{"long label", []InputDecl{{"a", long}}, "label of 1 to 80 characters"},
-		{"multiline label", []InputDecl{{"a", "x\ny"}}, "on one line"},
+		{"duplicate", []InputDecl{{Name: "a", Label: "A"}, {Name: "a", Label: "B"}}, "declared twice"},
+		{"bad name", []InputDecl{{Name: "1a", Label: "A"}}, "kept variable name"},
+		{"empty label", []InputDecl{{Name: "a", Label: "  "}}, "label of 1 to 80 characters"},
+		{"long label", []InputDecl{{Name: "a", Label: long}}, "label of 1 to 80 characters"},
+		{"multiline label", []InputDecl{{Name: "a", Label: "x\ny"}}, "on one line"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

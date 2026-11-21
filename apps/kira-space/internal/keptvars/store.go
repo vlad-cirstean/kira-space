@@ -184,6 +184,9 @@ func (s *Store) ttlFor(p Put) time.Duration {
 	return min(ttl, MaxTTL)
 }
 
+// Retention is how long a value Put now would be kept: the setting, capped at MaxTTL.
+func (s *Store) Retention() time.Duration { return s.ttlFor(Put{}) }
+
 // Put stores a value under a name in a scope, replacing an entry of the same name from the same kind
 // of source. It refuses at a cap; it never evicts.
 func (s *Store) Put(p Put) (Meta, error) {

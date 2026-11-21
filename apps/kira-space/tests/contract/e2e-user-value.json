@@ -36,7 +36,9 @@
         "host": "127.0.0.1",
         "inputs": [
           {
+            "keepMinutes": 60,
             "label": "API key",
+            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -199,7 +201,9 @@
         "host": "127.0.0.1",
         "inputs": [
           {
+            "keepMinutes": 60,
             "label": "API key",
+            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -317,8 +321,10 @@
         "host": "127.0.0.1",
         "inputs": [
           {
+            "keepMinutes": 60,
             "keptId": "kv_apikey",
             "label": "API key",
+            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "stored"
@@ -449,6 +455,9 @@
     ],
     "options": {
       "api.request:<id:1>": {
+        "inputModes": {
+          "apikey": "keep"
+        },
         "inputs": {
           "apikey": "e2e-typed-secret-7Q9"
         }
