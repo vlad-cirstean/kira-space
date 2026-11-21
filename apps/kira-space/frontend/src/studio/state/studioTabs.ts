@@ -138,6 +138,10 @@ export const studioTabsHooks = {
     useCellSelectionStore().clearSelectedCellFor(`${tabId}::preview`);
     usePendingChangesStore().clearPending(tabId);
   },
+  // A tab moved in from another window keeps never being persisted here.
+  onReceived(record: TabRecord, meta: { incognito: boolean }) {
+    if (meta.incognito) useTabIncognitoStore().setIncognito(record.id, true);
+  },
   // P71 §3.1: duplicating an incognito tab to try a variant must not silently start persisting it
   // — the copy carries the flag too.
   onDuplicated(source: TabRecord, duplicate: TabRecord) {

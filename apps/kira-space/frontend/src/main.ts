@@ -48,6 +48,7 @@ import { GENERAL_WORKSPACE, useWorkspaceStore } from './state/workspace';
 import { hydrateStudio, startStudioSync } from './studio/boot';
 import { installStudioDebugHooks } from './studio/debugHooks';
 import { hydrateProofWindow } from './studio/proof/boot';
+import { installTabInbox } from './workbench/tabWindowMove';
 // styles.css re-exports @workbench/workbench.css (itself @theme/base.css) and adds one more @source
 // over packages/git-ui/src, so this app's own unprefixed root scans git-ui's migrated shadcn call
 // sites too. Importing both here would compile base.css as two separate Tailwind roots and double
@@ -228,6 +229,9 @@ async function mountShell(): Promise<void> {
         : (workspaceStore.openRepos[0] as string),
     );
   }
+
+  // Tabs other windows moved here: after the restore and fall-forward above, so the arrival wins.
+  if (workbenchWindow) installTabInbox();
 
   // The files window drains what was opened for it, then again on every arrival. Subscribe first so
   // none is missed; no teardown, the window is the lifetime. Pending drains atomically in Go.

@@ -49,6 +49,13 @@ const (
 	ChannelWindowFlushBeforeClose = appevent.ChannelWindowFlushBeforeClose
 )
 
+// ChannelTabsInbound nudges one window (EmitTo, nil payload) to pull the tabs moved to it;
+// ChannelWindowsChanged tells every window the live window set changed (broadcast, nil payload).
+const (
+	ChannelTabsInbound    = "kira:tabs:inbound"
+	ChannelWindowsChanged = "kira:windows:changed"
+)
+
 // ChannelTerminal is the embedded terminal's own push channel — Kira Studio's own
 // ChannelTerminal (internal/bridge/terminal.go's own coalescer), EmitTo'd to the one window that
 // opened it.

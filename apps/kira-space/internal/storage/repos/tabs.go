@@ -3,9 +3,11 @@ package repos
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
@@ -113,4 +115,53 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 		}
 		return nil
 	})
+}
+
+// Move re-keys one tab from window src to window dst in one transaction. persist false deletes
+// src's row and writes none for dst: the tab is incognito or a session-only kind. The row lands
+// last in dst, inactive: dst activates it on receive and saves.
+func (r *TabsRepo) Move(src, dst string, rec model.TabRecord, persist bool) error {
+	if err := rec.Validate(); err != nil {
+		return fmt.Errorf("repos/tabs: move: %w", err)
+	}
+	c := kiraschema.Tabs
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move %s: begin: %w", rec.ID, err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var owner string
+	sel := r.Dialect.Select(c.WindowKey).From(c.Table)
+	sel.Where(sel.Equal(c.ID, rec.ID))
+	switch err := sqlb.QueryRow(tx, sel).Scan(&owner); {
+	case errors.Is(err, sql.ErrNoRows):
+	case err != nil:
+		return fmt.Errorf("repos/tabs: move %s: owner: %w", rec.ID, err)
+	case owner != src:
+		return fmt.Errorf("repos/tabs: tab %s: %w", rec.ID, appstorage.ErrTabOwnedElsewhere)
+	}
+
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.ID, rec.ID), del.Equal(c.WindowKey, src))
+	if _, err := sqlb.Exec(tx, del); err != nil {
+		return fmt.Errorf("repos/tabs: move %s: delete: %w", rec.ID, err)
+	}
+	if persist {
+		order, err := sqlb.NextSortOrder(tx, r.Dialect, c.Table, c.SortOrder, func(sb *sqlbuilder.SelectBuilder) string {
+			return sb.Equal(c.WindowKey, dst)
+		})
+		if err != nil {
+			return fmt.Errorf("repos/tabs: move %s: %w", rec.ID, err)
+		}
+		ib := r.Dialect.InsertInto(c.Table).Cols(append(append([]string{}, tabsColumns...), c.WindowKey)...).
+			Values(rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), order, false, rec.WorkspaceID, dst)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
+			return fmt.Errorf("repos/tabs: move %s: insert: %w", rec.ID, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repos/tabs: move %s: commit: %w", rec.ID, err)
+	}
+	return nil
 }

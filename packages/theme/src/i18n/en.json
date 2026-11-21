@@ -18568,6 +18568,16 @@
     "tabStrip": {
       "duplicate": {
         "label": "Duplicate tab"
+      },
+      "moveToNewWindow": {
+        "label": "Move to new window"
+      },
+      "moveToWindow": {
+        "label": "Move to window",
+        "option": "Window {number}"
+      },
+      "tearOff": {
+        "hint": "Release to move to another window."
       }
     },
     "terminal": {
@@ -18576,6 +18586,9 @@
       },
       "link": {
         "tooltip": "{modifier}-click to open, right-click for more"
+      },
+      "moveTruncated": {
+        "status": "Output truncated during move"
       },
       "startFailed": {
         "error": "Couldn’t start the terminal."

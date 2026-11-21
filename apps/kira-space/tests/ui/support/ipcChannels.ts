@@ -180,6 +180,14 @@ export const IPC = {
 
   tabsList: 'kira:tabs:list',
   tabsSave: 'kira:tabs:save',
+  tabsMove: 'kira:tabs:move',
+  tabsInbound: 'kira:tabs:inbound-pull',
+  tabsTargets: 'kira:tabs:targets',
+  tabsCapabilities: 'kira:tabs:capabilities',
+  tabsCloseEmptyWindow: 'kira:tabs:closeEmptyWindow',
+  // The push nudging a window to pull its inbox, and the live-window list changing.
+  tabsInboundEvent: 'kira:tabs:inbound',
+  windowsChanged: 'kira:windows:changed',
 
   codeWorkspaceListRepos: 'kira:codeWorkspace:listRepos',
   codeWorkspaceRepoHeads: 'kira:codeWorkspace:repoHeads',
@@ -227,6 +235,9 @@ export const IPC = {
   terminalWrite: 'kira:terminal:write',
   terminalResize: 'kira:terminal:resize',
   terminalClose: 'kira:terminal:close',
+  terminalHold: 'kira:terminal:hold',
+  terminalAdopt: 'kira:terminal:adopt',
+  terminalRelease: 'kira:terminal:release',
   terminal: 'kira:terminal:data',
 
   // Boot: the ade module's agent-session hydration, and the agent push channels the workbench shares.

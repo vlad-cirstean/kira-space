@@ -3,6 +3,7 @@ import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { tabChipVariants } from '@theme/components/ui/tabs';
+import { tooltipContentVariants } from '@theme/components/ui/tooltip';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -13,6 +14,7 @@ import { revealElement } from '../behaviour/focus';
 import { useSortableReorder } from '../behaviour/sortableReorder';
 import { type TabLike, type TabStripHost, useWorkbenchHost } from '../host';
 import { wheelToHorizontal } from '../lib/wheelScroll';
+import { useShortcut } from '../shortcuts/useShortcut';
 import { type MenuItem, useContextMenuStore } from '../state/contextMenu';
 
 // P103 Part 2 (§5.4): Kira Studio's own workbench/panels/TabStrip.vue and Kira Space's, unified.
@@ -111,9 +113,9 @@ function closeItems(tab: TabLike): MenuItem[] {
 // §8.10's Tab row: Close · Close others · Close to the right · Close all · — · Duplicate tab ·
 // Copy name · plus whatever the tab's own kind appends (D22).
 // §6.1: a pinned tab's own menu is reduced to just "Copy name".
-function onContextMenu(e: MouseEvent, tab: TabLike): void {
+function menuItemsFor(tab: TabLike): MenuItem[] {
   if (isPinned(tab)) {
-    contextMenuStore.openContextMenu(e, [
+    return [
       {
         type: 'item',
         id: 'copy-name',
@@ -121,8 +123,7 @@ function onContextMenu(e: MouseEvent, tab: TabLike): void {
         icon: 'copy',
         run: () => copyText(titleFor(tab)),
       },
-    ]);
-    return;
+    ];
   }
   const closeGroup = closeItems(tab);
   const { duplicateTab } = host.tabs;
@@ -140,6 +141,7 @@ function onContextMenu(e: MouseEvent, tab: TabLike): void {
           } as const,
         ]
       : []),
+    ...moveItems(tab),
     {
       type: 'item',
       id: 'copy-name',
@@ -149,7 +151,45 @@ function onContextMenu(e: MouseEvent, tab: TabLike): void {
     },
     ...(host.kinds[tab.kind]?.menuExtras(tab) ?? []),
   ];
-  contextMenuStore.openContextMenu(e, items);
+  return items;
+}
+
+function onContextMenu(e: MouseEvent, tab: TabLike): void {
+  contextMenuStore.openContextMenu(e, menuItemsFor(tab));
+}
+
+// Move to another window (P722): a new one, or one of the others the host lists.
+function moveItems(tab: TabLike): MenuItem[] {
+  const move = host.windowMove;
+  if (!move?.canMove(tab)) return [];
+  const targets = move.targets.value;
+  return [
+    {
+      type: 'item',
+      id: 'move-to-new-window',
+      label: t('workbench.tabStrip.moveToNewWindow.label'),
+      icon: 'empty-window',
+      run: () => move.move(tab, { newWindow: true }),
+    },
+    ...(targets.length > 0
+      ? [
+          {
+            type: 'submenu',
+            id: 'move-to-window',
+            label: t('workbench.tabStrip.moveToWindow.label'),
+            icon: 'multiple-windows',
+            items: targets.map(
+              (target): MenuItem => ({
+                type: 'item',
+                id: `move-to-window-${target.number}`,
+                label: t('workbench.tabStrip.moveToWindow.option', { number: target.number }),
+                run: () => move.move(tab, { target: target.key }),
+              }),
+            ),
+          } as const,
+        ]
+      : []),
+  ];
 }
 
 const tabs = computed(() => host.tabs.tabsForWorkspace(host.activeWorkspace.value));
@@ -187,14 +227,43 @@ function onWheel(e: WheelEvent): void {
   if (wheelToHorizontal(stripRef.value, e)) e.preventDefault();
 }
 
+// Shift+F10 or the ContextMenu key on a focused tab opens its menu; WebKit fires no `contextmenu`
+// for the key. The menu is how the keyboard moves a tab to another window.
+useShortcut(stripRef, ['menu.open'], (_id, e) => {
+  const chip = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-testid="tab"]');
+  const tab = tabs.value.find((candidate) => candidate.id === chip?.dataset.tabId);
+  if (chip && tab) contextMenuStore.openContextMenuFor(chip, menuItemsFor(tab));
+});
+
 const moveTab = host.tabs.moveTab;
+const tearOff = host.windowMove;
+const tearing = ref(false);
 if (moveTab) {
   // Pinned chips sit outside `stripRef`, so they never take part.
-  useSortableReorder(stripRef, () => scrollingTabs.value.map(({ tab }) => tab.id), moveTab, {
-    draggable: '[data-testid="tab"]',
-    filter: '[data-testid="tab-close"]',
-    direction: 'horizontal',
-    keyboard: true,
+  const { outside } = useSortableReorder(
+    stripRef,
+    () => scrollingTabs.value.map(({ tab }) => tab.id),
+    moveTab,
+    {
+      draggable: '[data-testid="tab"]',
+      filter: '[data-testid="tab-close"]',
+      direction: 'horizontal',
+      keyboard: true,
+      canDropOutside: (id) => {
+        const tab = tabs.value.find((candidate) => candidate.id === id);
+        return !!tearOff && !!tab && tearOff.dragOut.value && tearOff.canMove(tab);
+      },
+      onDropOutside: (id, drop) => {
+        const tab = tabs.value.find((candidate) => candidate.id === id);
+        if (!tab) return;
+        void tearOff?.move(tab, {
+          drop: { ...drop, innerWidth: window.innerWidth, innerHeight: window.innerHeight },
+        });
+      },
+    },
+  );
+  watch(outside, (v) => {
+    tearing.value = v;
   });
 }
 </script>
@@ -203,7 +272,7 @@ if (moveTab) {
   <!-- P91 §8: always one wrapper — the Automations module's own normal initial state is zero tabs,
        which needs the "+" (below) just as much as a populated strip does. -->
   <div
-    class="h-full flex items-center min-w-0"
+    class="relative h-full flex items-center min-w-0"
     :class="{ 'px-1': tabs.length === 0 }"
     :data-testid="tabs.length > 0 ? 'tab-strip-wrapper' : 'tab-strip-empty'"
   >
@@ -330,6 +399,17 @@ if (moveTab) {
          app's own WorkbenchShell.vue, not a tab strip actions/tab new class published from
          workbench.css — the data-testid is what's shared now. -->
     <slot name="new-tab" />
+    <!-- Over the strip while a tab dragged out of the window is held outside it; the dragged clone
+         clips at the window edge, so this is the only sign the release moves it elsewhere. -->
+    <div
+      v-if="tearing"
+      class="absolute left-1/2 top-1 -translate-x-1/2"
+      :class="tooltipContentVariants()"
+      role="status"
+      data-testid="tab-tearoff-hint"
+    >
+      {{ t('workbench.tabStrip.tearOff.hint') }}
+    </div>
     <!-- `.tab-chip`'s hover/attention/close-reveal rules moved into `:class` ternaries
          above -- `group` on each chip replaces `.tab-chip:hover .tab-close`/`.tab-chip.is-active
          .tab-close` (`group-hover/tab:opacity-100`, plus the active branch's own `opacity-100`).

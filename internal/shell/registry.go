@@ -13,6 +13,7 @@ type windowEntry struct {
 	detach    func()
 	ephemeral bool
 	order     int
+	focusSeq  uint64
 }
 
 // WindowRegistry tracks every currently open window by its key. Window creation runs on
@@ -22,6 +23,7 @@ type windowEntry struct {
 type WindowRegistry struct {
 	mu      sync.Mutex
 	entries map[string]windowEntry
+	focusN  uint64
 	// OnChange runs outside the lock after every Add, AddEphemeral and removal.
 	OnChange func()
 }
@@ -188,6 +190,44 @@ func (r *WindowRegistry) MainKey() (string, bool) {
 		}
 	}
 	return best, found
+}
+
+// Touch records that key's window just took focus: later Geometry calls rank it above older ones.
+func (r *WindowRegistry) Touch(key string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if e, ok := r.entries[key]; ok {
+		r.focusN++
+		e.focusSeq = r.focusN
+		r.entries[key] = e
+	}
+}
+
+// Geometry snapshots every live window for the tab-drop hit-test. Bounds, IsVisible and
+// IsMinimised hop to the main thread, so they run outside r.mu.
+func (r *WindowRegistry) Geometry() []WindowGeom {
+	type live struct {
+		key string
+		e   windowEntry
+	}
+	r.mu.Lock()
+	entries := make([]live, 0, len(r.entries))
+	for k, e := range r.entries {
+		if e.win != nil {
+			entries = append(entries, live{k, e})
+		}
+	}
+	r.mu.Unlock()
+	geoms := make([]WindowGeom, 0, len(entries))
+	for _, l := range entries {
+		b := l.e.win.Bounds()
+		geoms = append(geoms, WindowGeom{
+			Key: l.key, Order: l.e.order, Ephemeral: l.e.ephemeral, FocusSeq: l.e.focusSeq,
+			Bounds: WindowBounds{X: float64(b.X), Y: float64(b.Y), Width: float64(b.Width), Height: float64(b.Height)},
+			Hidden: !l.e.win.IsVisible() || l.e.win.IsMinimised(),
+		})
+	}
+	return geoms
 }
 
 // Has reports whether key is registered, ephemeral or not.

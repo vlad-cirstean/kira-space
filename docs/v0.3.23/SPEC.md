@@ -363,6 +363,22 @@ the last tab, new-window button icon, tooltip and shortcut.
 
 Spike (`plans/P722-spike.md`): drag-back is feasible via frontend pointer-up coordinates plus Go hit-test of live windows; not feasible on Linux Wayland (window positions report 0,0). The planner starts from that file.
 
+**Result.** Implemented per `plans/P722.md`.
+
+- Go: atomic `TabsRepo.Move`, `TabsService.Move`/`Inbound`/`Targets`/`Capabilities`, window geometry,
+  MRU focus order and drop hit-test, `Registry.Hold`/`Adopt`/`Release`/`Reown` for Runs terminals.
+  `Forget` is the package function `bridge.ForgetTabWindow`.
+- Frontend: Sortable tear-off with hint, tab menu move items, inbox install, terminal snapshot via
+  `@xterm/addon-serialize` 0.14.0, icon-only new-window button (aria-label, `window.new` chip kept).
+- Fixed a Sortable quirk: `ignoreNextClick` set at fallback drag start swallowed the next click after
+  a release outside the window; `sortableReorder` now dispatches one.
+- Contract files `tab-move.json` and `terminal-move.json` use ':' as key suffix separator.
+- Tests: flow `TestTabMove`, `TestTerminalMove` (real PTY), coalescer unit test, all `-race`; UI
+  `tab-window-move.spec.ts` (14). UI specs use `data` tabs (a restored http tab is dirty) and the
+  files window for the non-movable case. No visual baselines added.
+- Unverified: macOS, Windows, real Linux X11 cross-window drag, mixed-DPI. Manual checklist in plan
+  section 11. Playwright cannot drive a native cross-window drag.
+
 ## P723
 
 User: "Remove the flake restarter. I think it s uselesss as you re already monitoring prs for ci

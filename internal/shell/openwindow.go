@@ -102,6 +102,7 @@ func wireLifecycle(d WindowOpenerDeps, win *application.WebviewWindow, key strin
 		hide, _ := closeDecision(ephemeral, d.Windows.OthersReal(key))
 		return hide
 	})
+	win.OnWindowEvent(events.Common.WindowFocus, func(*application.WindowEvent) { d.Windows.Touch(key) })
 	win.OnWindowEvent(events.Common.WindowClosing, func(*application.WindowEvent) {
 		// A window that closes mid-quit-handshake without ever acking through the flush channel is
 		// removed from the pending set here rather than being waited out for the full timeout
