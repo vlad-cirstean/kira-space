@@ -8,7 +8,7 @@
 # P119 adds a real one, but only on an explicit Update click, through scripts/install.sh — ad-hoc
 # signed, correct bundle identity) reasserted against the Wails bundle's own layout.
 #
-# Static checks (S1, S2, S5) always run — S3/S4 were electron-builder.yml checks removed in the
+# Static checks (S1, S2, S5, S16, S17) always run — S3/S4 were electron-builder.yml checks removed in the
 # P57 rewrite; the numbering was never closed up, and check IDs stay as-is since docs/PACKAGING.md
 # cross-references them. Artifact checks (A1, A3, A5, A6, A7, N2 over the .app; A4, N3 over the .dmg P10
 # ships) run only when that artifact exists; otherwise they print "skipped" and pass.
@@ -175,10 +175,20 @@ if [ "${INSTALL_URL_COUNT:-0}" -ne 1 ]; then
 fi
 
 # --- S16: install.sh's stepping rule is the updater's (P653) ------------------------------------
-# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in a JXA twin of
-# releaseline.NextStep. Replay the Go table (internal/releaseline/testdata/next_step.json) through it.
+# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in an awk twin of
+# releaseline.NextStep (index_next_step). Replay the Go table, rendered as release indexes
+# (internal/releaseline/testdata/next_step_index.json), through it; the JXA apiToIndex fallback must
+# also render the same index text as releaseline.FormatIndex.
 if ! bun scripts/check-install-step.ts; then
-  fail "installer stepping drifted" "scripts/install.sh's nextStep disagrees with internal/releaseline's NextStep table"
+  fail "installer stepping drifted" "scripts/install.sh's index_next_step or apiToIndex disagrees with internal/releaseline's table"
+fi
+
+# --- S17: install.sh resolves releases from the index, not the API (P707) -----------------------
+# Runs resolve_release and download_release against a local fake GitHub: tag, --tag, stepping, hash
+# and size checks, index and download failures, and the API fallback's rate-limit errors. The request
+# log proves the normal path makes no API call.
+if ! bun scripts/check-install-resolve.ts; then
+  fail "installer resolve drifted" "scripts/install.sh no longer resolves and verifies releases as scripts/check-install-resolve.ts expects"
 fi
 
 # --- S13: Kira Space's document types match the file-type vocabulary (P332) --------------------

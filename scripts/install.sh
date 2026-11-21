@@ -2,6 +2,9 @@
 # kira-install-contract: 2
 # scripts/install.sh installs or updates Kira Space on this Mac: it downloads the latest published
 # release's disk image (or the release named by --tag), verifies it, and swaps it into /Applications, then opens the app.
+# Releases resolve from the release index asset of the latest release (kira-space-releases.txt: tag,
+# size and sha256 of every eligible release), never from the rate-limited GitHub REST API, except
+# while the latest release predates the index (docs/PACKAGING.md §7).
 # Interactive: `curl -fsSL <raw-url> | sh` — the same command installs a fresh
 # copy or replaces an older one. Self-update: the app itself runs this script with
 # --wait-pid/--notify-fd, stages the new bundle, hands off over fd 3, then quits once it reads that
@@ -20,6 +23,291 @@
 # scripts/verify-packaging.sh checks the two agree literally).
 set -eu
 
+# Test seam: scripts/check-install-resolve.ts sources this file with KIRA_INSTALL_SOURCE_ONLY=1 and
+# points GH_WEB, GH_API and CURL_PROTO at a local fake GitHub. Only main sets them for a real run,
+# to hard-coded https URLs; no env var changes where a real run fetches from.
+#
+# Globals the functions below read: GH_WEB GH_API CURL_PROTO INDEX_ASSET ASSET APP_NAME WORK LOG
+# NOTIFY_FD. They set: TAG ASSET_SIZE ASSET_DIGEST FAIL_MSG.
+
+# log: interactive mode writes to stderr AND appends to $LOG; self-update mode writes stderr
+# only — the app already made stdout/stderr the log file itself, so appending again here would
+# duplicate every line (§2.1).
+log() {
+  TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  printf '%s\n' "[$TS] $1" >&2
+  if [ -z "$NOTIFY_FD" ]; then
+    printf '%s\n' "[$TS] $1" >>"$LOG" 2>/dev/null || true
+  fi
+}
+
+die() {
+  FAIL_MSG="$1"
+  log "ERROR: $1"
+  exit 1
+}
+
+# ---- release index ----------------------------------------------------------------------------
+# The index (internal/releaseline index.go) lists every eligible release, one line each:
+#   v0.3.3 kira-space-macos-arm64.dmg 43912345 sha256:<64 lowercase hex>
+# Order is never trusted. The awk below avoids {n} intervals and other gawk-isms: macOS ships BWK awk.
+
+# index_check FILE: exit 0 only for a well-formed index (the same rules as releaseline.ParseIndex).
+index_check() {
+  awk '
+    BEGIN { FS = "[ ]" }
+    NR == 1 { if ($0 != "# kira-release-index 1") bad = 1; next }
+    {
+      n++
+      if (NF != 4) { bad = 1; next }
+      if ($1 !~ /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/) bad = 1
+      if ($2 == "") bad = 1
+      if ($3 !~ /^[1-9][0-9]*$/ || length($3) > 15) bad = 1
+      if (length($4) != 71 || $4 !~ /^sha256:[0-9a-f]+$/) bad = 1
+      if ($1 in seen) bad = 1
+      seen[$1] = 1
+    }
+    END { exit ((bad || n == 0) ? 1 : 0) }
+  ' "$1"
+}
+
+# index_max FILE: the highest tag.
+index_max() {
+  awk '
+    NR > 1 {
+      split(substr($1, 2), p, ".")
+      a = p[1] + 0; b = p[2] + 0; c = p[3] + 0
+      if (!have || a > ma || (a == ma && (b > mb || (b == mb && c > mc)))) {
+        have = 1; ma = a; mb = b; mc = c; tag = $1
+      }
+    }
+    END { if (have) print tag }
+  ' "$1"
+}
+
+# index_entry FILE TAG: "<size> <digest>" of the release's $ASSET, or nothing.
+index_entry() {
+  awk -v t="$2" -v a="$ASSET" 'NR > 1 && $1 == t && $2 == a { print $3, $4; exit }' "$1"
+}
+
+# index_next_step FILE CURRENT: the tag to install for a running version, or nothing. The awk twin of
+# releaseline.NextStep and of the JXA nextStep it replaced: the last patch of the installed minor when
+# newer, else the lowest release of the next minor. CURRENT parses like semver: optional v, optional
+# -prerelease (sorts below its own version), +build ignored. scripts/check-install-step.ts (S16)
+# replays internal/releaseline/testdata/next_step_index.json through it.
+index_next_step() {
+  awk -v cur="$2" '
+    BEGIN {
+      s = cur
+      sub(/^v/, "", s)
+      i = index(s, "+")
+      if (i > 0) {
+        if (substr(s, i) !~ /^\+[0-9A-Za-z.-]+$/) exit
+        s = substr(s, 1, i - 1)
+      }
+      i = index(s, "-")
+      if (i > 0) {
+        if (substr(s, i) !~ /^-[0-9A-Za-z.-]+$/) exit
+        pre = 1
+        s = substr(s, 1, i - 1)
+      }
+      if (s !~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/) exit
+      split(s, p, ".")
+      ca = p[1] + 0; cb = p[2] + 0; cc = p[3] + 0
+      ok = 1
+    }
+    NR > 1 && ok {
+      split(substr($1, 2), p, ".")
+      a = p[1] + 0; b = p[2] + 0; c = p[3] + 0
+      if (a == ca && b == cb) {
+        if (!own || c > ownTop) { own = 1; ownTop = c }
+      } else if (a > ca || (a == ca && b > cb)) {
+        if (!nx || a < na || (a == na && (b < nb || (b == nb && c < nc)))) { nx = 1; na = a; nb = b; nc = c }
+      }
+    }
+    END {
+      if (!ok) exit
+      if (own && (ownTop > cc || (ownTop == cc && pre))) print "v" ca "." cb "." ownTop
+      else if (nx) print "v" na "." nb "." nc
+    }
+  ' "$1"
+}
+
+# fetch_index: $WORK/index.txt from the latest release (a web redirect, no API rate limit). 404 means
+# the latest release predates the index: fetch_api_index. Any other failure dies without the API.
+fetch_index() {
+  INDEX_FILE="$WORK/index.txt"
+  set +e
+  HTTP_STATUS="$(curl --proto "$CURL_PROTO" --proto-redir "$CURL_PROTO" --tlsv1.2 -fsSL \
+    --connect-timeout 20 --retry 3 --retry-delay 2 --max-filesize 1048576 \
+    -o "$INDEX_FILE" -w '%{http_code}' \
+    "$GH_WEB/releases/latest/download/$INDEX_ASSET" </dev/null)"
+  CURL_STATUS=$?
+  set -e
+  if [ "$CURL_STATUS" = "0" ]; then
+    index_check "$INDEX_FILE" || die "release index is malformed"
+  elif [ "$HTTP_STATUS" = "404" ]; then
+    fetch_api_index
+  else
+    die "couldn't reach GitHub to read the release index (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
+  fi
+}
+
+# fetch_api_index: transitional, only while the latest release carries no index (v0.3.21 and
+# older). Lists releases over the REST API (unauthenticated: 60 requests/hour/IP) and converts them
+# to index text. Remove with the v0.4 minor bump (docs/PACKAGING.md §7).
+fetch_api_index() {
+  log "release index not found on the latest release; using the GitHub API"
+  PAGE=1
+  while [ "$PAGE" -le 10 ]; do
+    rm -f "$WORK/api-headers.txt"
+    # No --retry: curl retries 429, which only spends more of the budget.
+    set +e
+    HTTP_STATUS="$(curl --proto "$CURL_PROTO" --proto-redir "$CURL_PROTO" --tlsv1.2 -fsSL \
+      --connect-timeout 20 \
+      -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
+      -D "$WORK/api-headers.txt" -o "$WORK/releases-$PAGE.json" -w '%{http_code}' \
+      "$GH_API/releases?per_page=100&page=$PAGE" </dev/null)"
+    CURL_STATUS=$?
+    set -e
+    if [ "$CURL_STATUS" != "0" ]; then
+      case "$HTTP_STATUS" in
+        403 | 429)
+          LIMIT_NOTE=""
+          if grep -qi '^x-ratelimit-remaining: *0' "$WORK/api-headers.txt" 2>/dev/null; then
+            LIMIT_NOTE=" x-ratelimit-remaining: 0,"
+          fi
+          die "GitHub API rate limit reached for this network (HTTP $HTTP_STATUS,$LIMIT_NOTE unauthenticated). The latest release predates the release index; try again in an hour."
+          ;;
+      esac
+      die "couldn't list releases (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
+    fi
+    # A page with fewer than 100 releases is the last one.
+    PAGE_COUNT="$(grep -o '"tag_name"' "$WORK/releases-$PAGE.json" | wc -l | tr -d ' ')"
+    [ "$PAGE_COUNT" -ge 100 ] || break
+    PAGE=$((PAGE + 1))
+  done
+  [ "$PAGE" -le 10 ] || PAGE=10
+  # JXA (osascript -l JavaScript), not plutil/jq/python3: plutil rejects JSON nulls (GitHub's
+  # release JSON has them), jq ships only from macOS 15, sed/grep over JSON is fragile, and
+  # python3 on 14 is a stub that prompts to install the Command Line Tools. JXA ships with every
+  # macOS since 10.10. apiToIndex follows releaseline.FormatIndex; S16 checks they agree.
+  cat >"$WORK/api-index.js" <<'API_INDEX_JXA_EOF'
+function hasAsset(r, name) {
+  var assets = r.assets || [];
+  for (var i = 0; i < assets.length; i++) {
+    var a = assets[i];
+    if (a.name === name && a.state === "uploaded" && a.size > 0) return a;
+  }
+  return null;
+}
+function cmpVer(a, b) {
+  for (var i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  }
+  return 0;
+}
+// The index text for a releases listing, "" when no release is eligible (the Go twin: releaseline.FormatIndex).
+function apiToIndex(rels, asset) {
+  var rows = [];
+  var seen = {};
+  for (var i = 0; i < rels.length; i++) {
+    var r = rels[i];
+    var m = /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(r.tag_name);
+    if (!m || r.draft || r.prerelease) continue;
+    var a = hasAsset(r, asset);
+    if (!a) continue;
+    if (seen[r.tag_name]) throw new Error("duplicate release " + r.tag_name);
+    seen[r.tag_name] = true;
+    if (!/^sha256:[0-9a-f]{64}$/.test(a.digest || "")) {
+      throw new Error("release " + r.tag_name + ": asset " + asset + " has no sha256 digest");
+    }
+    rows.push({ tag: r.tag_name, v: [Number(m[1]), Number(m[2]), Number(m[3])], size: a.size, digest: a.digest });
+  }
+  if (rows.length === 0) return "";
+  rows.sort(function (x, y) { return cmpVer(x.v, y.v); });
+  var out = "# kira-release-index 1\n";
+  for (var j = 0; j < rows.length; j++) {
+    out += rows[j].tag + " " + asset + " " + rows[j].size + " " + rows[j].digest + "\n";
+  }
+  return out;
+}
+function run(argv) {
+  var app = Application.currentApplication();
+  app.includeStandardAdditions = true;
+  var rels = [];
+  for (var p = 1; p <= Number(argv[2]); p++) {
+    rels = rels.concat(JSON.parse(app.read(Path(argv[1] + "/releases-" + p + ".json"))));
+  }
+  // osascript appends its own newline.
+  return apiToIndex(rels, argv[0]).replace(/\n$/, "");
+}
+API_INDEX_JXA_EOF
+  osascript -l JavaScript "$WORK/api-index.js" "$ASSET" "$WORK" "$PAGE" >"$INDEX_FILE" </dev/null \
+    || die "couldn't read the release list from the GitHub API"
+  [ -s "$INDEX_FILE" ] || die "no published release yet"
+  index_check "$INDEX_FILE" || die "release index is malformed"
+}
+
+# resolve_release REQ_TAG CUR_VERSION SELF_UPDATE: sets TAG, ASSET_SIZE and ASSET_DIGEST.
+# Interactive installs take the newest release. A self-update without --tag (apps up to 0.3.14)
+# steps one minor at a time, else the newest.
+resolve_release() {
+  fetch_index
+  if [ -n "$1" ]; then
+    TAG="$1"
+  else
+    TAG=""
+    if [ "$3" = "1" ]; then
+      if [ -n "$2" ]; then
+        TAG="$(index_next_step "$INDEX_FILE" "$2")"
+      fi
+      if [ -n "$TAG" ]; then
+        log "stepping from $2 to $TAG"
+      else
+        log "no update step found from '$2'; taking the latest release"
+      fi
+    fi
+    if [ -z "$TAG" ]; then
+      TAG="$(index_max "$INDEX_FILE")"
+    fi
+    [ -n "$TAG" ] || die "no published release yet"
+  fi
+  ENTRY="$(index_entry "$INDEX_FILE" "$TAG")"
+  [ -n "$ENTRY" ] || die "release $TAG is not a published release (not in the release index)"
+  ASSET_SIZE="${ENTRY% *}"
+  ASSET_DIGEST="${ENTRY#* }"
+}
+
+# download_release: $WORK/app.dmg for $TAG, checked against the index's size and sha256.
+download_release() {
+  # --speed-limit/--speed-time: abort a stalled transfer instead of hanging forever.
+  set +e
+  HTTP_STATUS="$(curl --proto "$CURL_PROTO" --proto-redir "$CURL_PROTO" --tlsv1.2 -fsSL \
+    --connect-timeout 20 --retry 3 --retry-delay 2 --speed-limit 1024 --speed-time 60 \
+    -o "$WORK/app.dmg" -w '%{http_code}' \
+    "$GH_WEB/releases/download/$TAG/$ASSET" </dev/null)"
+  CURL_STATUS=$?
+  set -e
+  if [ "$CURL_STATUS" != "0" ]; then
+    if [ "$HTTP_STATUS" = "404" ]; then
+      die "release $TAG's disk image is not downloadable (HTTP 404)"
+    fi
+    die "couldn't download $APP_NAME (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
+  fi
+
+  GOT_SIZE="$(wc -c <"$WORK/app.dmg" | tr -d ' ')"
+  if [ "$GOT_SIZE" != "$ASSET_SIZE" ]; then
+    die "downloaded file size ($GOT_SIZE bytes) does not match the release's reported size ($ASSET_SIZE bytes)"
+  fi
+
+  WANT_HASH="${ASSET_DIGEST#sha256:}"
+  GOT_HASH="$(shasum -a 256 "$WORK/app.dmg" </dev/null | awk '{print $1}')"
+  if [ "$GOT_HASH" != "$WANT_HASH" ]; then
+    die "downloaded file's sha256 does not match the release's reported digest"
+  fi
+}
+
 main() {
   # ---- fixed environment (§2.2) --------------------------------------------------------------
   PATH=/usr/bin:/bin:/usr/sbin:/sbin
@@ -31,36 +319,21 @@ main() {
   # Every global this script touches gets a default here, up front — set -u then never trips on a
   # variable a later step hasn't reached yet, including inside cleanup, which can run at any point
   # once its trap is armed.
-  WAIT_PID="" NOTIFY_FD="" LOG="" REQ_TAG=""
+  WAIT_PID="" NOTIFY_FD="" LOG="" REQ_TAG="" TAG="" ASSET_SIZE="" ASSET_DIGEST=""
   # Kira Space is the only app.
   APP_NAME="Kira Space"
   BUNDLE_ID="com.kirathecat.kira-space"
   ASSET="kira-space-macos-arm64.dmg"
+  INDEX_ASSET="kira-space-releases.txt"
+  GH_WEB="https://github.com/vlad-cirstean/kira-space"
+  GH_API="https://api.github.com/repos/vlad-cirstean/kira-space"
+  CURL_PROTO="=https"
   SLUG="space"
   LOG_NAME="Kira Space"
   WORK="" STAGE="" MNT=""
   MOUNTED=0
   HANDED_OFF=0
   FAIL_MSG=""
-
-  # ---- small helpers, defined before anything that could call them ------------------------------
-
-  # log: interactive mode writes to stderr AND appends to $LOG; self-update mode writes stderr
-  # only — the app already made stdout/stderr the log file itself, so appending again here would
-  # duplicate every line (§2.1).
-  log() {
-    TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    printf '%s\n' "[$TS] $1" >&2
-    if [ -z "$NOTIFY_FD" ]; then
-      printf '%s\n' "[$TS] $1" >>"$LOG" 2>/dev/null || true
-    fi
-  }
-
-  die() {
-    FAIL_MSG="$1"
-    log "ERROR: $1"
-    exit 1
-  }
 
   # cleanup is the only exit path (trap cleanup EXIT, §2.4). $? is captured first, before anything
   # else here can overwrite it.
@@ -143,14 +416,6 @@ APPLESCRIPT_EOF
     echo "usage: --tag must match ^v[0-9]+\.[0-9]+\.[0-9]+\$" >&2
     exit 2
   fi
-  if [ -n "$REQ_TAG" ]; then
-    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
-    RELEASE_DESC="release $REQ_TAG"
-  else
-    RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/latest"
-    RELEASE_DESC="the latest release"
-  fi
-
   LOG="$HOME/Library/Logs/$LOG_NAME/install.log"
   mkdir -p "$(dirname "$LOG")"
   chmod 700 "$(dirname "$LOG")" 2>/dev/null || true
@@ -196,213 +461,24 @@ APPLESCRIPT_EOF
   trap 'exit 130' INT TERM HUP
 
   # ---- 4b: step one minor at a time (self-update without --tag) -------------------------------
-  # Apps up to 0.3.14 run this script without --tag, so it would install /releases/latest and skip
-  # the intermediate minors' migrations. Apply the updater's stepping rule (internal/releaseline
-  # NextStep) here: the last patch of the installed minor when newer, else the lowest release of the
-  # next minor. nextStep below must stay identical to it; scripts/verify-packaging.sh (S16) runs it
-  # against internal/releaseline/testdata/next_step.json, the table the Go test uses. Newer apps
-  # always pass --tag, so this only ever serves the older ones. Interactive mode is a clean install
-  # or a deliberate reinstall and keeps taking the latest release.
+  # Apps up to 0.3.14 run this script without --tag, so it would install the newest release and skip
+  # the intermediate minors' migrations. resolve_release applies the updater's stepping rule
+  # (internal/releaseline NextStep) through index_next_step, which scripts/verify-packaging.sh (S16)
+  # holds to internal/releaseline/testdata/next_step_index.json. Newer apps always pass --tag, so
+  # this only ever serves the older ones. Interactive mode is a clean install or a deliberate
+  # reinstall and keeps taking the newest release.
+  CUR_VERSION="" SELF_UPDATE=0
   if [ -n "$NOTIFY_FD" ] && [ -z "$REQ_TAG" ]; then
+    SELF_UPDATE=1
     CUR_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
       "/Applications/$APP_NAME.app/Contents/Info.plist" 2>/dev/null || echo '')"
-    PAGE=1
-    while [ "$PAGE" -le 10 ]; do
-      curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
-        -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
-        -o "$WORK/releases-$PAGE.json" \
-        "https://api.github.com/repos/vlad-cirstean/kira-space/releases?per_page=100&page=$PAGE" </dev/null \
-        || die "couldn't list releases to pick the next update step"
-      # A page with fewer than 100 releases is the last one.
-      PAGE_COUNT="$(grep -o '"tag_name"' "$WORK/releases-$PAGE.json" | wc -l | tr -d ' ')"
-      [ "$PAGE_COUNT" -ge 100 ] || break
-      PAGE=$((PAGE + 1))
-    done
-    [ "$PAGE" -le 10 ] || PAGE=10
-    cat >"$WORK/step-release.js" <<'STEP_JXA_EOF'
-function parseVer(tag) {
-  var m = /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(tag);
-  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-}
-function cmpVer(a, b) {
-  for (var i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
-  }
-  return 0;
-}
-function hasAsset(r, name) {
-  var assets = r.assets || [];
-  for (var i = 0; i < assets.length; i++) {
-    var a = assets[i];
-    if (a.name === name && a.state === "uploaded" && a.size > 0) return true;
-  }
-  return false;
-}
-// The tag to install for a running version, or "" when none (the Go twin: releaseline.NextStep).
-function nextStep(current, rels, asset) {
-  var m = /^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/.exec(current);
-  if (!m) return "";
-  var cur = [Number(m[1]), Number(m[2]), Number(m[3])];
-  var curPre = m[4] !== undefined;
-  var byKey = {};
-  var lines = [];
-  for (var i = 0; i < rels.length; i++) {
-    var r = rels[i];
-    if (r.draft || r.prerelease || !hasAsset(r, asset)) continue;
-    var v = parseVer(r.tag_name);
-    if (!v) continue;
-    var key = v[0] + "." + v[1];
-    if (!byKey[key]) {
-      byKey[key] = { major: v[0], minor: v[1], vs: [] };
-      lines.push(byKey[key]);
-    }
-    byKey[key].vs.push(v);
-  }
-  lines.sort(function (a, b) { return cmpVer([a.major, a.minor, 0], [b.major, b.minor, 0]); });
-  for (var j = 0; j < lines.length; j++) {
-    var l = lines[j];
-    l.vs.sort(cmpVer);
-    var c = cmpVer([l.major, l.minor, 0], [cur[0], cur[1], 0]);
-    var top = l.vs[l.vs.length - 1];
-    var pick = null;
-    if (c === 0) {
-      // A prerelease of x.y.z sorts below x.y.z itself.
-      var d = cmpVer(top, cur);
-      if (d > 0 || (d === 0 && curPre)) pick = top;
-    } else if (c > 0) {
-      pick = l.vs[0];
-    }
-    if (pick) return "v" + pick.join(".");
-  }
-  return "";
-}
-function run(argv) {
-  var app = Application.currentApplication();
-  app.includeStandardAdditions = true;
-  var rels = [];
-  for (var p = 1; p <= Number(argv[3]); p++) {
-    rels = rels.concat(JSON.parse(app.read(Path(argv[2] + "/releases-" + p + ".json"))));
-  }
-  return nextStep(argv[0], rels, argv[1]);
-}
-STEP_JXA_EOF
-    STEP_TAG=""
-    if [ -n "$CUR_VERSION" ]; then
-      STEP_TAG="$(osascript -l JavaScript "$WORK/step-release.js" "$CUR_VERSION" "$ASSET" "$WORK" "$PAGE" \
-        </dev/null)" || die "couldn't pick the next update step"
-    fi
-    if [ -n "$STEP_TAG" ]; then
-      log "stepping from $CUR_VERSION to $STEP_TAG"
-      REQ_TAG="$STEP_TAG"
-      RELEASE_URL="https://api.github.com/repos/vlad-cirstean/kira-space/releases/tags/$REQ_TAG"
-      RELEASE_DESC="release $REQ_TAG"
-    else
-      log "no update step found from '$CUR_VERSION'; taking the latest release"
-    fi
   fi
 
   # ---- 5: resolve release --------------------------------------------------------------------
-  RELEASE_JSON="$WORK/release.json"
-  set +e
-  HTTP_STATUS="$(curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
-    -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
-    -o "$RELEASE_JSON" -w '%{http_code}' \
-    "$RELEASE_URL" </dev/null)"
-  CURL_STATUS=$?
-  set -e
-  if [ "$CURL_STATUS" != "0" ]; then
-    if [ "$HTTP_STATUS" = "404" ]; then
-      if [ -n "$REQ_TAG" ]; then
-        die "no published release $REQ_TAG"
-      fi
-      die "no published release yet"
-    fi
-    die "couldn't reach GitHub to check for a release (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
-  fi
-
-  # JXA (osascript -l JavaScript), not plutil/jq/python3: plutil rejects JSON nulls (GitHub's
-  # release JSON has them), jq ships only from macOS 15, sed/grep over JSON is fragile, and
-  # python3 on 14 is a stub that prompts to install the Command Line Tools. JXA ships with every
-  # macOS since 10.10.
-  cat >"$WORK/parse-release.js" <<'JXA_EOF'
-function run(argv) {
-  var jsonPath = argv[0];
-  var assetName = argv[1];
-  var app = Application.currentApplication();
-  app.includeStandardAdditions = true;
-  var raw = app.read(Path(jsonPath));
-  var data = JSON.parse(raw);
-  var tagName = (data.tag_name === undefined || data.tag_name === null) ? "" : data.tag_name;
-  var draft = data.draft ? "true" : "false";
-  var prerelease = data.prerelease ? "true" : "false";
-  var url = "";
-  var size = "";
-  var digest = "";
-  var assets = data.assets || [];
-  for (var i = 0; i < assets.length; i++) {
-    if (assets[i].name === assetName) {
-      url = assets[i].browser_download_url || "";
-      size = (assets[i].size === undefined || assets[i].size === null) ? "" : String(assets[i].size);
-      digest = (assets[i].digest === undefined || assets[i].digest === null) ? "" : assets[i].digest;
-      break;
-    }
-  }
-  return [tagName, draft, prerelease, url, size, digest].join("\n");
-}
-JXA_EOF
-
-  osascript -l JavaScript "$WORK/parse-release.js" "$RELEASE_JSON" "$ASSET" \
-    >"$WORK/release.txt" </dev/null \
-    || die "couldn't parse the release metadata"
-
-  TAG="$(sed -n '1p' "$WORK/release.txt")"
-  IS_DRAFT="$(sed -n '2p' "$WORK/release.txt")"
-  IS_PRERELEASE="$(sed -n '3p' "$WORK/release.txt")"
-  ASSET_URL="$(sed -n '4p' "$WORK/release.txt")"
-  ASSET_SIZE="$(sed -n '5p' "$WORK/release.txt")"
-  ASSET_DIGEST="$(sed -n '6p' "$WORK/release.txt")"
-
-  # Belt-and-braces: releases/latest already excludes both, and a tag lookup does not.
-  [ "$IS_DRAFT" = "false" ] || die "$RELEASE_DESC is a draft"
-  [ "$IS_PRERELEASE" = "false" ] || die "$RELEASE_DESC is a prerelease"
-  if [ -n "$REQ_TAG" ] && [ "$TAG" != "$REQ_TAG" ]; then
-    die "asked for release $REQ_TAG, GitHub returned '$TAG'"
-  fi
-  if ! expr "$TAG" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null; then
-    die "release tag '$TAG' does not look like v<major>.<minor>.<patch>"
-  fi
-  case "$ASSET_URL" in
-    "https://github.com/vlad-cirstean/kira-space/releases/download/$TAG/"*) ;;
-    *) die "release asset URL is not the expected GitHub download URL" ;;
-  esac
-  case "$ASSET_SIZE" in
-    '' | *[!0-9]*) die "release asset '$ASSET' was not found on $RELEASE_DESC" ;;
-  esac
+  resolve_release "$REQ_TAG" "$CUR_VERSION" "$SELF_UPDATE"
 
   # ---- 6: download ----------------------------------------------------------------------------
-  # --speed-limit/--speed-time: abort a stalled transfer instead of hanging forever.
-  curl --proto '=https' --tlsv1.2 -fsSL --connect-timeout 20 --retry 3 --retry-delay 2 \
-    --speed-limit 1024 --speed-time 60 \
-    -o "$WORK/app.dmg" "$ASSET_URL" </dev/null \
-    || die "couldn't download $APP_NAME"
-
-  GOT_SIZE="$(wc -c <"$WORK/app.dmg" | tr -d ' ')"
-  if [ "$GOT_SIZE" != "$ASSET_SIZE" ]; then
-    die "downloaded file size ($GOT_SIZE bytes) does not match the release's reported size ($ASSET_SIZE bytes)"
-  fi
-
-  case "$ASSET_DIGEST" in
-    sha256:*)
-      WANT_HASH="${ASSET_DIGEST#sha256:}"
-      GOT_HASH="$(shasum -a 256 "$WORK/app.dmg" </dev/null | awk '{print $1}')"
-      if [ "$GOT_HASH" != "$WANT_HASH" ]; then
-        die "downloaded file's sha256 does not match the release's reported digest"
-      fi
-      ;;
-    *)
-      die "the release reported no sha256 digest for $ASSET (got '$ASSET_DIGEST'); refusing to install unverified. Ad-hoc codesign below only detects corruption, not tampering"
-      ;;
-  esac
+  download_release
 
   # ---- 7: mount and copy ----------------------------------------------------------------------
   hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$MNT" "$WORK/app.dmg" \
@@ -494,4 +570,4 @@ JXA_EOF
   exit 0
 }
 
-main "$@"
+[ "${KIRA_INSTALL_SOURCE_ONLY:-}" = 1 ] || main "$@"
