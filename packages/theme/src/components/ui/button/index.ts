@@ -51,8 +51,9 @@ export const buttonVariants = cva(
         title: 'size-5.5',
         'title-labelled': 'h-5.5 px-1 gap-1',
       },
-      // Outline tone of a `dialog` button: border, text or glyph and focus outline, no fill. Only
-      // the ADE task step action takes it, from `TaskAction.tone` (U210, U211).
+      // Outline tone of a `dialog` button: border, text or glyph and focus outline, no fill. A
+      // `toolbar` button takes the tone on text and focus outline only, no border (plan card icon).
+      // Only the ADE task step action takes it, from `TaskAction.tone` (U210, U211).
       outline: { agent: '', green: '', amber: '', red: '', purple: '' },
     },
     compoundVariants: [
@@ -80,6 +81,31 @@ export const buttonVariants = cva(
         variant: 'dialog',
         outline: 'purple',
         class: 'border-status-violet text-status-violet focus-visible:outline-status-violet',
+      },
+      {
+        variant: 'toolbar',
+        outline: 'agent',
+        class: 'text-agent hover:text-agent focus-visible:outline-agent',
+      },
+      {
+        variant: 'toolbar',
+        outline: 'green',
+        class: 'text-status-green hover:text-status-green focus-visible:outline-status-green',
+      },
+      {
+        variant: 'toolbar',
+        outline: 'amber',
+        class: 'text-status-amber hover:text-status-amber focus-visible:outline-status-amber',
+      },
+      {
+        variant: 'toolbar',
+        outline: 'red',
+        class: 'text-error hover:text-error focus-visible:outline-error',
+      },
+      {
+        variant: 'toolbar',
+        outline: 'purple',
+        class: 'text-status-violet hover:text-status-violet focus-visible:outline-status-violet',
       },
     ],
     defaultVariants: {

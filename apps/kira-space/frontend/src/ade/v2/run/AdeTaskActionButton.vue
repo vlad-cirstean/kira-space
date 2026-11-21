@@ -27,7 +27,7 @@ function warm(): void {
       v-if="icon"
       :icon="TASK_ACTION_ICON[action.kind]"
       :label="action.label"
-      variant="dialog"
+      variant="toolbar"
       :outline="action.tone"
       size="kira-icon"
       class="shrink-0"
