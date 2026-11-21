@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -153,6 +154,11 @@ func (s *Server) kubeRun(ctx context.Context, call kubeCall, statement func(kube
 		var text string
 		if req, text = s.prepareKube(ctx, call, sc); text != "" {
 			return errResult(text)
+		}
+	}
+	for _, key := range kubeRequired[call.op] {
+		if strings.TrimSpace(req.text(key)) == "" {
+			return errResult(key + " cannot be empty. " + kubeNothingRead)
 		}
 	}
 	reviewable := kubeReviewable(call.op)
@@ -393,10 +399,12 @@ func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
 		}
 		return text
 	}
-	// dataSchema pins script to an object and drops it while scripts are off.
-	dataSchema := func(sch *jsonschema.Schema) *jsonschema.Schema {
+	// dataSchema pins script to an object and drops it while scripts are off. A prepare can set the
+	// required args, so with scripts on they may be omitted; kubeRun enforces them on the final request.
+	dataSchema := func(op string, sch *jsonschema.Schema) *jsonschema.Schema {
 		if scripts {
 			pinScriptObject(sch)
+			sch.Required = slices.DeleteFunc(sch.Required, func(n string) bool { return slices.Contains(kubeRequired[op], n) })
 		} else {
 			delete(sch.Properties, "script")
 		}
@@ -411,16 +419,16 @@ func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
 	}, withPanicRecovery(s, "kube_discover", s.kubeDiscoverTool))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_list_resources", Description: reviewed(llmprompts.DbmcpToolKubeListResources),
-		InputSchema: dataSchema(llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeListArgs](src, llmprompts.DbmcpToolKubeListResources.ID(),
+		InputSchema: dataSchema(kubeList, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeListArgs](src, llmprompts.DbmcpToolKubeListResources.ID(),
 			map[string]any{"maxRows": llmprompts.LimitVars{Default: kubeListDefaultRows, Max: kubeListMaxRows}}), "clusterId", "kind")),
 	}, withPanicRecovery(s, "kube_list_resources", s.kubeListResources))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_describe", Description: reviewed(llmprompts.DbmcpToolKubeDescribe),
-		InputSchema: dataSchema(llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeDescribeArgs](src, llmprompts.DbmcpToolKubeDescribe.ID(), nil), "clusterId", "kind", "name")),
+		InputSchema: dataSchema(kubeDescribe, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeDescribeArgs](src, llmprompts.DbmcpToolKubeDescribe.ID(), nil), "clusterId", "kind", "name")),
 	}, withPanicRecovery(s, "kube_describe", s.kubeDescribeTool))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_pod_logs", Description: reviewed(llmprompts.DbmcpToolKubePodLogs),
-		InputSchema: dataSchema(llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubePodLogsArgs](src, llmprompts.DbmcpToolKubePodLogs.ID(),
+		InputSchema: dataSchema(kubeLogs, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubePodLogsArgs](src, llmprompts.DbmcpToolKubePodLogs.ID(),
 			map[string]any{"tail": llmprompts.LimitVars{Default: kubeLogsDefaultTail, Max: kubeLogsMaxTail}}), "clusterId", "namespace", "pod")),
 	}, withPanicRecovery(s, "kube_pod_logs", s.kubePodLogs))
 }

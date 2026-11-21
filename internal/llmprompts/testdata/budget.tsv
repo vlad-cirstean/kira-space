@@ -169,7 +169,7 @@ headless.tool.state.action.remote.fetch	58
 headless.tool.state.action.branch.push	56
 headless.tool.state.action.review.reply	83
 headless.tool.state.action.step.finish	170
-dbmcp.tool.kube.scripts	1173
+dbmcp.tool.kube.scripts	1197
 dbmcp.tool.kube_list_resources.arg.script	79
 dbmcp.tool.kube_list_resources.arg.script.prepare	145
 dbmcp.tool.kube_list_resources.arg.script.transform	138
