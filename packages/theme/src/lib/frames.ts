@@ -11,7 +11,7 @@ export const floatingSurface = 'rounded-kira border border-border bg-elevated te
 export const dialogSurface = 'rounded-kira border border-border bg-dialog text-fg shadow-kira';
 
 /** The insertion line a drag shows between two rows. */
-export const dropIndicator = 'pointer-events-none absolute inset-x-0 h-0.5 bg-focus';
+export const dropIndicator = 'pointer-events-none absolute inset-x-0 h-0.5 bg-select-edge';
 
 /** The tab strip row of a window: tab-bar height on the chrome background. */
 export const windowTabStrip = 'h-tabbar min-h-0 shrink-0 overflow-hidden bg-chrome';

@@ -3,16 +3,20 @@ import {
   buttonVariantHits,
   codeParityHits,
   componentsTsHit,
+  cssSelectionHits,
+  engineThemeHits,
   eventHits,
   fileNameHit,
   folderHits,
   idRegistryHits,
   menuShortcutHits,
   migrationHits,
+  neutralTokenHits,
   oversizeVueHit,
   piniaHits,
   rawIdHits,
   rawSqlHits,
+  selectionClassHits,
   specHelperHits,
   stateAndMenuNameHits,
   testSuffixHit,
@@ -324,5 +328,91 @@ describe('N17 semantic button variant', () => {
         `<Button\n  variant="dialog-primary"\n  :pending="a > b"\n>\n  {{ t('x.approve.label') }}\n</Button>`,
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe('N18 selection stays neutral', () => {
+  const tokens = (select: string) =>
+    [
+      `--kira-select: ${select};`,
+      '--kira-select-edge: #71717a;',
+      '--kira-select-text: #45454d;',
+      '--kira-focus: #a1a1aa;',
+      '--kira-bg-input: #27272c;',
+    ].join('\n');
+
+  test('a blue selection token fails, the grey passes', () => {
+    expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
+    expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
+    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(4);
+  });
+
+  test('Monaco keeps every required grey key and ::selection stays themed', () => {
+    const keys = [
+      'editor.selectionBackground',
+      'editor.inactiveSelectionBackground',
+      'editor.selectionHighlightBackground',
+      'editor.wordHighlightStrongBackground',
+      'editor.hoverHighlightBackground',
+      'editorSuggestWidget.selectedBackground',
+      'list.activeSelectionBackground',
+      'list.focusBackground',
+      'list.inactiveSelectionBackground',
+      'list.inactiveFocusBackground',
+      'list.dropBackground',
+      'peekViewResult.selectionBackground',
+      'inputOption.activeBackground',
+      'list.activeSelectionForeground',
+      'inputOption.activeForeground',
+      'inputOption.activeBorder',
+      'peekView.border',
+      'minimap.selectionHighlight',
+    ];
+    const monaco = (skip = '', literal = '') =>
+      keys
+        .filter((k) => k !== skip)
+        .map(
+          (k) =>
+            `      '${k}': ${k === literal ? "'#264f78'" : "cssVar('--kira-select', '#36363c')"},`,
+        )
+        .join('\n');
+    const term = "selectionBackground: cssVar('--kira-select-text'),";
+    const base = '::selection { background-color: var(--kira-select-text); }';
+    expect(engineThemeHits(monaco(), term, base)).toEqual([]);
+    expect(engineThemeHits(monaco('list.dropBackground'), term, base)[0]?.message).toContain(
+      'list.dropBackground',
+    );
+    expect(engineThemeHits(monaco('', 'peekView.border'), term, base)).toHaveLength(1);
+    expect(engineThemeHits(monaco(), "selectionBackground: '#264f78',", base)).toHaveLength(1);
+    expect(engineThemeHits(monaco(), term, '')).toHaveLength(1);
+  });
+
+  test('blue utilities marking selection fail, on-state controls pass', () => {
+    const hits = (path: string, src: string) => selectionClassHits(path, src);
+    expect(hits('p/X.vue', "selected ? 'border-focus' : 'border-border'")[0]?.rule).toBe('N18');
+    expect(hits('p/X.vue', "x && 'ring-1'; isSelected && 'bg-info/10'")).toHaveLength(1);
+    expect(hits('p/X.vue', "'data-[state=on]:decoration-primary underline'")).toHaveLength(1);
+    expect(hits('p/X.vue', "'aria-selected:bg-accent'")).toHaveLength(1);
+    expect(hits('p/X.vue', "selected ? 'border-select-edge' : 'border-border'")).toEqual([]);
+    expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
+    expect(
+      hits(
+        'packages/theme/src/components/ui/checkbox/Checkbox.vue',
+        "'data-[state=checked]:bg-primary'",
+      ),
+    ).toEqual([]);
+    expect(hits('p/X.spec.ts', "selected ? 'border-focus' : ''")).toEqual([]);
+  });
+
+  test('CSS selection rules and blue literals fail outside tokens.css', () => {
+    expect(
+      cssSelectionHits('p/a.css', '.row.selected { outline: 1px solid var(--kira-accent); }'),
+    ).toHaveLength(1);
+    expect(
+      cssSelectionHits('p/a.css', '.row.inserted { background: var(--kira-accent); }'),
+    ).toEqual([]);
+    expect(cssSelectionHits('p/a.css', '.x { color: #3b6ed1; }')).toHaveLength(1);
+    expect(cssSelectionHits('p/tokens.css', ':root { --a: #3b6ed1; }')).toEqual([]);
+    expect(cssSelectionHits('p/a.css', '.x { color: #36363c; } /* #3b6ed1 */')).toEqual([]);
   });
 });

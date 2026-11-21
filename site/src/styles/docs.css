@@ -16,7 +16,7 @@
   --sl-color-gray-6: var(--kira-bg-chrome);
   --sl-color-gray-7: var(--kira-bg-chrome);
   --sl-color-black: var(--kira-bg);
-  --sl-color-accent-low: var(--kira-select);
+  --sl-color-accent-low: #1f3354; /* site keeps its blue brand (P710) */
   --sl-color-accent: var(--kira-accent);
   --sl-color-accent-high: #75beff;
   --sl-color-text-accent: var(--kira-info);

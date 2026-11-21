@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N17.
+ * Code convention guard N1-N7 and N8-N18.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -28,6 +28,10 @@
  * discard/force need `dialog-danger`; no `dialog*` variant takes a `text|bg|border-error|ok|warn`
  * class. A justified exception is marked `<!-- conventions-allow N17: reason -->` before the element.
  *
+ * N18 selection stays neutral (P710): the selection and focus tokens are grey, Monaco and xterm read
+ * only grey tokens for selection keys, `::selection` is themed, and no selection variant or
+ * `selected ?` expression picks a blue utility or CSS rule. Blue means primary, info or data.
+ *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
  */
@@ -51,7 +55,8 @@ export type Rule =
   | 'N14'
   | 'N15'
   | 'N16'
-  | 'N17';
+  | 'N17'
+  | 'N18';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -705,6 +710,240 @@ function rawSqlFileHits(): Hit[] {
   return paths.flatMap((p) => rawSqlHits(p, readFileSync(join(REPO_ROOT, p), 'utf8')));
 }
 
+const NEUTRAL_TOKENS = [
+  '--kira-select',
+  '--kira-select-edge',
+  '--kira-select-text',
+  '--kira-focus',
+  '--kira-bg-input',
+] as const;
+const NEUTRAL_SPREAD = 12;
+const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
+const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
+const TERMINAL_PATH = 'packages/workbench/src/terminal/terminalRenderer.ts';
+const BASE_CSS_PATH = 'packages/theme/src/base.css';
+const TOKENS_CSS_PATH = 'packages/theme/src/tokens.css';
+const MONACO_SELECTION_KEY =
+  /[Ss]election|focusBackground|focusOutline|focusBorder|dropBackground|hoverHighlight|wordHighlight|inputOption\.active|peekView\.border/;
+const MONACO_REQUIRED_KEYS = [
+  'editor.selectionBackground',
+  'editor.inactiveSelectionBackground',
+  'editor.selectionHighlightBackground',
+  'editor.wordHighlightStrongBackground',
+  'editor.hoverHighlightBackground',
+  'editorSuggestWidget.selectedBackground',
+  'list.activeSelectionBackground',
+  'list.focusBackground',
+  'list.inactiveSelectionBackground',
+  'list.inactiveFocusBackground',
+  'list.dropBackground',
+  'peekViewResult.selectionBackground',
+  'inputOption.activeBackground',
+  'list.activeSelectionForeground',
+  'inputOption.activeForeground',
+  'inputOption.activeBorder',
+  'peekView.border',
+  'minimap.selectionHighlight',
+];
+const BLUE_UTILITY =
+  '(?:bg|border|ring|outline|decoration|text|fill|stroke)-(?:focus|primary|info|accent|status-(?:blue|sky|indigo)|conn-(?:blue|indigo|cyan))(?:/\\d+)?(?![\\w-])';
+const SELECTION_VARIANT =
+  '(?:data-\\[(?:selected|highlighted|state=(?:on|active|checked|open))[^\\]]*\\]|data-(?:selected|highlighted)|aria-(?:selected|current|pressed|checked)|group-data-selected/[\\w-]+):';
+const BLUE_BEHIND_VARIANT = new RegExp(`${SELECTION_VARIANT}(?:[\\w-]+:)*${BLUE_UTILITY}`);
+const SELECTED_EXPR = /(?:\bselected|\bisSelected|\w+Selected)\b[^'"`\n]*(?:\?|&&)/;
+const BLUE_LITERAL = new RegExp(`['"\`][^'"\`]*(?<![\\w-])${BLUE_UTILITY}[^'"\`]*['"\`]`);
+// On-state controls paint --primary when checked; swatch pickers paint the data colour.
+const N18_CLASS_ALLOW = [
+  'packages/theme/src/components/ui/checkbox/Checkbox.vue',
+  'packages/theme/src/components/ui/switch/Switch.vue',
+  'packages/theme/src/components/ui/radio-group/RadioGroupItem.vue',
+  'ade/v2/statusColors.ts',
+  'connColor.ts',
+];
+const N18_CLASS_DIRS = [
+  'apps/kira-space/frontend/src',
+  'apps/kira-space/frontend/mobile',
+  'packages/workbench/src',
+  'packages/git-ui/src',
+  'packages/docker-ui/src',
+  'packages/theme/src',
+];
+const BLUE_REF =
+  /var\(--kira-(?:accent|focus|info|status-blue|status-sky|status-indigo|conn-blue)\)/;
+const SELECTION_SELECTOR = /selected|highlight|::selection|:checked|is-active/;
+
+function hexSpread(hex: string): number | undefined {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) return undefined;
+  const ch = [m[1], m[2], m[3]].map((h) => Number.parseInt(h ?? '0', 16));
+  return Math.max(...ch) - Math.min(...ch);
+}
+
+/** N18: the selection and focus tokens are 6-digit neutral greys. */
+export function neutralTokenHits(tokensCss: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const token of NEUTRAL_TOKENS) {
+    const value = new RegExp(`${token}:\\s*([^;\\s]+)`).exec(tokensCss)?.[1];
+    const spread = value === undefined ? undefined : hexSpread(value);
+    if (value === undefined) {
+      hits.push({ rule: 'N18', path: TOKENS_CSS_PATH, message: `${token} is missing` });
+    } else if (spread === undefined || spread > NEUTRAL_SPREAD) {
+      hits.push({
+        rule: 'N18',
+        path: TOKENS_CSS_PATH,
+        message: `${token} is ${value}, not a neutral 6-digit grey`,
+      });
+    }
+  }
+  return hits;
+}
+
+/** N18: Monaco and xterm selection keys read grey tokens, `::selection` is themed. */
+export function engineThemeHits(monacoTs: string, terminalTs: string, baseCss: string): Hit[] {
+  const hits: Hit[] = [];
+  const keys = new Map<string, string | undefined>();
+  for (const m of monacoTs.matchAll(/^\s*(?:'([\w.]+)'|(\w+)):\s*(.*)$/gm)) {
+    const key = m[1] ?? m[2] ?? '';
+    keys.set(key, /cssVar\(\s*'(--[\w-]+)'/.exec(m[3] ?? '')?.[1]);
+  }
+  for (const [key, token] of keys) {
+    if (!MONACO_SELECTION_KEY.test(key) || key.startsWith('editor.find')) continue;
+    if (token === undefined || !NEUTRAL_READS.has(token)) {
+      hits.push({
+        rule: 'N18',
+        path: MONACO_THEME_PATH,
+        message: `${key} must read a neutral selection token, not ${token ?? 'a literal'}`,
+      });
+    }
+  }
+  for (const key of MONACO_REQUIRED_KEYS) {
+    if (!keys.has(key)) {
+      hits.push({
+        rule: 'N18',
+        path: MONACO_THEME_PATH,
+        message: `${key} is not set; vs-dark's blue would show`,
+      });
+    }
+  }
+  for (const m of terminalTs.matchAll(/(selection\w*Background):\s*(.*)$/gm)) {
+    const token = /cssVar\(\s*'(--[\w-]+)'/.exec(m[2] ?? '')?.[1];
+    if (token === undefined || !NEUTRAL_READS.has(token)) {
+      hits.push({
+        rule: 'N18',
+        path: TERMINAL_PATH,
+        message: `${m[1]} must read a neutral selection token`,
+      });
+    }
+  }
+  if (!/::selection\s*\{[^}]*var\(--kira-select-text\)/.test(baseCss)) {
+    hits.push({
+      rule: 'N18',
+      path: BASE_CSS_PATH,
+      message: '::selection must use var(--kira-select-text)',
+    });
+  }
+  return hits;
+}
+
+/** N18: no blue utility behind a selection variant or a `selected` conditional. */
+export function selectionClassHits(path: string, source: string): Hit[] {
+  if (!/\.(?:vue|ts)$/.test(path) || path.endsWith('.spec.ts') || path.includes('/testing/')) {
+    return [];
+  }
+  if (N18_CLASS_ALLOW.some((a) => path.endsWith(a))) return [];
+  const hits: Hit[] = [];
+  source.split('\n').forEach((line, i) => {
+    const behind = BLUE_BEHIND_VARIANT.exec(line)?.[0];
+    const picked = SELECTED_EXPR.test(line) ? BLUE_LITERAL.exec(line)?.[0] : undefined;
+    const found = behind ?? picked;
+    if (found) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: blue utility marks selection (${found.trim()}); use select/select-edge`,
+      });
+    }
+  });
+  return hits;
+}
+
+const BLUE_COLOUR_LITERAL = /#[0-9a-f]{6}\b|#[0-9a-f]{3}\b|rgba?\([^)]*\)/gi;
+
+function isBlueLiteral(literal: string): boolean {
+  let r: number;
+  let g: number;
+  let b: number;
+  if (literal.startsWith('#')) {
+    const h =
+      literal.length === 4 ? [...literal.slice(1)].map((c) => c + c).join('') : literal.slice(1);
+    [r, g, b] = [0, 2, 4].map((o) => Number.parseInt(h.slice(o, o + 2), 16)) as [
+      number,
+      number,
+      number,
+    ];
+  } else {
+    const n = (literal.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    if (n.length < 3) return false;
+    [r, g, b] = n as [number, number, number];
+  }
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return false;
+  const sat = d / (1 - Math.abs(2 * l - 1));
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  let hue: number;
+  if (max === rn) hue = ((gn - bn) / d) % 6;
+  else if (max === gn) hue = (bn - rn) / d + 2;
+  else hue = (rn - gn) / d + 4;
+  hue = (hue * 60 + 360) % 360;
+  return sat > 0.25 && hue >= 190 && hue <= 260;
+}
+
+/** N18: a selection-named CSS rule never uses a blue token, and no .css but tokens.css holds a blue literal. */
+export function cssSelectionHits(path: string, source: string): Hit[] {
+  if (!path.endsWith('.css')) return [];
+  const hits: Hit[] = [];
+  const bare = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = (m[1] ?? '').trim();
+    if (SELECTION_SELECTOR.test(selector) && BLUE_REF.test(m[2] ?? '')) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `rule '${selector.slice(0, 60)}' uses a blue token for selection`,
+      });
+    }
+  }
+  if (!path.endsWith('/tokens.css')) {
+    for (const lit of bare.match(BLUE_COLOUR_LITERAL) ?? []) {
+      if (isBlueLiteral(lit)) {
+        hits.push({ rule: 'N18', path, message: `blue colour literal ${lit} outside tokens.css` });
+      }
+    }
+  }
+  return hits;
+}
+
+function selectionHits(): Hit[] {
+  const read = (p: string) => readFileSync(join(REPO_ROOT, p), 'utf8');
+  const hits = [
+    ...neutralTokenHits(read(TOKENS_CSS_PATH)),
+    ...engineThemeHits(read(MONACO_THEME_PATH), read(TERMINAL_PATH), read(BASE_CSS_PATH)),
+  ];
+  for (const root of N18_CLASS_DIRS) {
+    for (const path of walk(root)) {
+      if (!/\.(?:vue|ts|css)$/.test(path)) continue;
+      const source = read(path);
+      hits.push(...selectionClassHits(path, source), ...cssSelectionHits(path, source));
+    }
+  }
+  return hits;
+}
+
 function collectHits(): Hit[] {
   const hits: Hit[] = [];
   const dirs = new Set<string>();
@@ -722,6 +961,7 @@ function collectHits(): Hit[] {
   );
   hits.push(...specHits());
   hits.push(...rawSqlFileHits());
+  hits.push(...selectionHits());
   hits.push(...menuHits(allPaths));
   for (const { path, literal } of EVENT_FILES) {
     hits.push(...eventHits(path, readFileSync(join(REPO_ROOT, path), 'utf8'), literal));
@@ -761,7 +1001,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N17).');
+  console.log('check-conventions: every convention holds (N1-N18).');
   return 0;
 }
 

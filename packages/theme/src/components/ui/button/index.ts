@@ -21,7 +21,8 @@ export const buttonVariants = cva(
           'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg aria-expanded:bg-field aria-expanded:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok data-[tone=warn]:text-warn data-[tone=warn]:hover:text-warn data-[tone=info]:text-info data-[tone=info]:hover:text-info',
         // Dialog buttons by meaning: neutral, confirm, approve, deny, destructive. Alphas keep
         // text at 4.5:1 or more on the tinted fill against `--kira-bg`.
-        dialog: 'justify-center border-border bg-transparent text-fg hover:bg-field',
+        dialog:
+          'justify-center border-border bg-transparent text-fg hover:bg-field aria-pressed:border-select-edge aria-pressed:bg-select',
         'dialog-primary': 'justify-center border-primary bg-primary/15 text-fg hover:bg-primary/25',
         'dialog-approve':
           'justify-center border-ok bg-ok/15 text-ok hover:bg-ok/25 focus-visible:outline-ok',

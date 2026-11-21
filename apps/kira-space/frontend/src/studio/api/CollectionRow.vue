@@ -111,7 +111,7 @@ function onKeydown(e: KeyboardEvent): void {
         'h-row',
         stickyClass,
         dragging && SORTABLE_GHOST_CLASS,
-        dropZone === 'into' && 'ring-1 ring-inset ring-focus bg-focus/10',
+        dropZone === 'into' && 'ring-1 ring-inset ring-select-edge bg-field',
         props.class,
       )
     "

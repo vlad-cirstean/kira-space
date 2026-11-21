@@ -7,7 +7,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Done |
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Done |
 | P709 | Task list: aligned rows, calmer design | Done |
-| P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
+| P710 | Selection highlight: neutral grey everywhere, not blue | Done |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Todo |
@@ -167,6 +167,29 @@ actions): the plan lists each remaining blue use and why it stays. Focus rings k
 accessible contrast. Tests: visual baselines re-recorded with each changed baseline inspected;
 a guard or lint so a hardcoded selection blue cannot return. Runs after P709 (shares the
 selected-card styles).
+
+**Result.** Tokens (`packages/theme/src/tokens.css`): `--kira-select` #36363c (fill), new
+`--kira-select-edge` #71717a (frame, ring, underline, drop target), new `--kira-select-text` #45454d
+(`::selection`, Monaco, xterm), `--kira-focus` #a1a1aa (keyboard focus only, 7.24:1 on chrome).
+`--kira-accent` stays blue for primary action and on-state controls. Hover stays `bg-field`.
+Monaco: 13 selection, highlight, list, drop and find-toggle keys now grey (vs-dark blues no longer
+leak). xterm selection, chart brush edge, slick editing outline, selected plan card, radio card,
+document row, workflow node, link pill, tag, SecondaryTabs underline, mobile latched Ctrl
+(`dialog` variant `aria-pressed`) grey. Non-focus uses of the focus token retargeted: drop lines and
+drop zones to `select-edge`, drag badge `bg-fg`, git HEAD ring, current-branch check and links to
+`info`. Site pins its blue `--sl-color-accent-low`. Guard N18 (`scripts/check-conventions.ts`, 4 spec
+tests) keeps tokens, engine keys, selection classes and CSS neutral. Blue kept (primary, info,
+links, data palettes, checkbox, switch, radio dot, progress): plan `P710.md` section 3.3.
+No flow test: pure styling, no IPC.
+
+Specs: `selection-colour.spec.ts` new (computed fill, edge, hover, `::selection`; plan and grid);
+updated `automationsSmart.ts`, `control-sizing.spec.ts`, `resize-handle-color.spec.ts`,
+`ade-v2-plan.spec.ts`. 197 targeted UI specs pass. Visual baselines re-recorded and inspected (6;
+every other baseline unchanged because no selection shows in it): `workflow-graph`,
+`workflow-graph-manual`, `workflow-graph-script`, `workflow-graph-review` (selected step node and
+choice chips blue to grey, checkbox stays blue), `git-graph`, `git-graph-detail` (HEAD ring and halo
+`info`, near identical; selected row grey). Before and after shots (13 pairs, gitignored):
+`screenshots/p710/{before,after}/`.
 
 ## P711
 

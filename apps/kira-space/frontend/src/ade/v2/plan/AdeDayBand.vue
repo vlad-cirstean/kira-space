@@ -78,7 +78,7 @@ const sortable = useDraggable(dropEl, {
 });
 
 const slotClass =
-  'h-control-lg shrink-0 rounded-kira border border-dashed border-focus bg-focus/10';
+  'h-control-lg shrink-0 rounded-kira border border-dashed border-select-edge bg-select';
 const greyed = computed(() => props.band.weekend || props.band.dayOff);
 const empty = computed(
   () => props.cards.length === 0 && props.spans.length === 0 && props.history.length === 0,
