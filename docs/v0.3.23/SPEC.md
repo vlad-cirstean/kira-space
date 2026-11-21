@@ -350,3 +350,10 @@ Deliverable. One plan `plans/P723.md`, one Sonnet pass. No UI tests, no new test
 Verify. Final grep finds no `pr-rerun-flaky` or flake-rerun reference outside `docs/history/`;
 lint (`bun run lint` as in `docs/DEV_ENVIRONMENT.md`) and the repo's workflow and guard checks
 (`scripts/verify-packaging.sh`, pre-commit hook) pass.
+
+Result. Deleted `.github/workflows/pr-rerun-flaky.yml`. `docs/PACKAGING.md` §7: dropped it from the
+status list; "Chapter PR to release (P330)" lost the rerun sentences, `pr.yml` folded into the merge
+step, steps renumbered to 4. `scripts/retry.sh` kept. Grep finds no leftover reference outside
+`docs/history/` and `docs/v0.3.23/`. `workflow_run` workflows run from the default branch, so the
+removal takes effect only once this chapter's PR merges to `main`; until then the old workflow still
+reruns failed PR runs. Pushing a workflow change needs a token with the `workflow` scope.
