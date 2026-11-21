@@ -67,7 +67,8 @@ test('the title bar has a New window button, rightmost of the action row, that c
   });
   const newWindow = window.locator('[data-testid="new-window"]');
   await expect(newWindow).toBeVisible();
-  await expect(newWindow).toContainText('New window');
+  await expect(newWindow).toHaveAttribute('aria-label', 'New window');
+  await expect(newWindow).toHaveText('');
 
   // DOM order: Connections, Operations, Settings, keep-awake, New window (P87's own reorder).
   const testIds = await window
