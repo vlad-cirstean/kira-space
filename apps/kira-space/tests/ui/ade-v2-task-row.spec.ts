@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { openPlan } from './support/adeV2';
+import { adeBoard, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -267,5 +267,102 @@ for (const [name, width] of [
     await expect(
       page.locator(t('ade-branch-tip')).getByText('Release · failed').first(),
     ).toBeVisible();
+  });
+}
+
+// Layout only, no backend half. Card heads and board branch rows share fixed column tracks: the
+// text flexes and truncates, every other column keeps its x, and hover never moves a box.
+const LONG_TITLE =
+  'Cart total test fails intermittently when the promo code and the gift card are applied in the same checkout session on Safari';
+const gridBoard = adeBoard((b) => {
+  Object.assign(b.tasks.find((x) => x.id === 'T_cart') ?? {}, { title: LONG_TITLE });
+  Object.assign(b.tasks.find((x) => x.id === 'T_notif') ?? {}, { title: 'Fix' });
+});
+
+for (const [name, width, height, open] of [
+  ['the full-width list', 1440, 1000, ''],
+  ['the open-task list', 1280, 900, 'T_cart'],
+] as const) {
+  test(`plan rows keep fixed columns and hover never reflows (${name})`, async ({ relaunch }) => {
+    const { window: page } = await openPlan(relaunch, [
+      { channel: IPC.adeTaskBoard, response: gridBoard },
+    ]);
+    await page.setViewportSize({ width, height });
+    await page.locator(t('ade-load-all')).click();
+    if (open) await page.locator(head(open)).click();
+
+    const geo = await page.evaluate(() => {
+      const r = (el: Element | null | undefined) => {
+        const b = el?.getBoundingClientRect();
+        return b ? { x: b.x, y: b.y, w: b.width, h: b.height } : null;
+      };
+      const heads = [...document.querySelectorAll('[data-testid="ade-card-head"]')];
+      const rows = heads.flatMap((h) => {
+        const list = [
+          ...(h
+            .closest('[data-testid="ade-card"]')
+            ?.querySelectorAll('[data-testid="ade-branch-row"]') ?? []),
+        ];
+        return list.length ? [list[0]] : [];
+      });
+      const cell = (el: Element, i: number) => el.children[1]?.children[i];
+      return {
+        status: heads.map((h) => r(h.querySelector('[data-testid="ade-row-status"]'))?.x),
+        meta: heads.map((h) => r(h.querySelector('[data-testid="ade-card-meta"]'))?.x),
+        headH: heads.map((h) => r(h)?.h),
+        action: heads.map((h) => {
+          const line1 = h.children[1]?.children[0];
+          const b = r(line1?.lastElementChild);
+          return b ? b.x + b.w / 2 : null;
+        }),
+        name: rows.map((el) => r(el.querySelector('[data-testid="ade-branch-name"]'))?.x),
+        tag: rows.map((el) => {
+          const b = r(cell(el, 4));
+          return b ? b.x + b.w / 2 : null;
+        }),
+        rowH: rows.map((el) => r(el)?.h),
+        overflow: [
+          ...document.querySelectorAll(
+            '[data-testid="ade-card-title"], [data-testid="ade-branch-name"]',
+          ),
+        ]
+          .filter((el) => el.scrollWidth > el.clientWidth + 1)
+          .filter((el) => getComputedStyle(el).textOverflow !== 'ellipsis').length,
+      };
+    });
+    const same = (xs: (number | null | undefined)[]) => {
+      const v = xs.filter((x): x is number => typeof x === 'number');
+      expect(v.length).toBeGreaterThan(3);
+      expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(1);
+      return v[0];
+    };
+    same(geo.status);
+    same(geo.meta);
+    same(geo.name);
+    const tagX = same(geo.tag);
+    expect(Math.abs((tagX ?? 0) - (same(geo.action) ?? 0))).toBeLessThanOrEqual(1);
+    expect(new Set(geo.headH)).toEqual(new Set([44]));
+    for (const h of geo.rowH) expect([28, 44]).toContain(Math.round(h ?? 0));
+    expect(geo.overflow).toBe(0);
+
+    const boxes = async () =>
+      page.evaluate(() => {
+        const q = (sel: string) => {
+          const b = document.querySelector(sel)?.getBoundingClientRect();
+          return b ? [b.x, b.width, b.height].map(Math.round) : null;
+        };
+        const c = '[data-testid="ade-card"][data-task-id="T_auth"]';
+        const row = '[data-testid="ade-branch-row"][data-branch-id="b_auth"]';
+        return [
+          q(`${c} [data-testid="ade-card-title"]`),
+          q(`${c} [data-testid="ade-row-status"]`),
+          q(`${row} [data-testid="ade-branch-name"]`),
+        ];
+      });
+    const before = await boxes();
+    await page.locator(head('T_auth')).hover();
+    expect(await boxes()).toEqual(before);
+    await page.locator(`${t('ade-branch-row')}[data-branch-id="b_auth"]`).hover();
+    expect(await boxes()).toEqual(before);
   });
 }
