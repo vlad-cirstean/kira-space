@@ -154,6 +154,8 @@ const dbMcpSettingsSchema = /*#__PURE__*/ z.object({
   apiScripts: z.boolean().default(true),
   // Hold each API response for the user's review before the agent gets it.
   apiReviewResponses: z.boolean().default(false),
+  // Hold each cluster list, describe and logs result for the user's review before the agent gets it.
+  kubeReviewResponses: z.boolean().default(false),
 });
 
 // advanced carries just gitLogLevel here — this app's own diagnostic log verbosity, its entire
@@ -348,6 +350,7 @@ const settingsSchema = /*#__PURE__*/ z.object({
     keptRetentionMinutes: KEPT_RETENTION_MINUTES_DEFAULT,
     apiScripts: true,
     apiReviewResponses: false,
+    kubeReviewResponses: false,
   }),
 });
 export type Settings = z.infer<typeof settingsSchema>;
@@ -450,5 +453,6 @@ export const defaultSettings: Settings = {
     keptRetentionMinutes: KEPT_RETENTION_MINUTES_DEFAULT,
     apiScripts: true,
     apiReviewResponses: false,
+    kubeReviewResponses: false,
   },
 };

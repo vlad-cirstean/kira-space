@@ -18,6 +18,8 @@ import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
 import { useMutationAction } from '@workbench/behaviour/asyncAction';
 import { computed, ref, useId, watch } from 'vue';
+import { useSettingsStore } from '../../../state/settings';
+import ReviewChoiceField from '../../components/ReviewChoiceField.vue';
 import { useClusters, useSetClusterMcp } from '../queries';
 import type { KubeMcpSettings } from '../wire';
 
@@ -25,6 +27,7 @@ const props = defineProps<{ clusterId: string }>();
 const open = defineModel<boolean>('open', { required: true });
 
 const clusters = useClusters();
+const settingsStore = useSettingsStore();
 const cluster = computed(() => clusters.data.value?.clusters.find((c) => c.id === props.clusterId));
 const saving = useMutationAction(useSetClusterMcp());
 
@@ -104,6 +107,13 @@ const idBase = useId();
               @update:model-value="(v) => (draft!.approval = v === 'allow' ? 'allow' : 'prompt')"
             />
           </Field>
+          <ReviewChoiceField
+            v-model="draft.review"
+            :label="t('kubernetes.mcp.review.label')"
+            :app-on="settingsStore.dbMcp.kubeReviewResponses"
+            testid="kube-mcp-review"
+          />
+          <FieldDescription>{{ t('kubernetes.mcp.review.hint') }}</FieldDescription>
         </template>
         <Alert v-if="saving.error.value" variant="error" data-testid="kube-mcp-error">
           <AlertDescription>{{ saving.error.value }}</AlertDescription>

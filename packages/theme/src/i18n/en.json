@@ -7047,6 +7047,10 @@
       },
       "menu": {
         "label": "MCP settings…"
+      },
+      "review": {
+        "hint": "Holds a list, describe or logs result until you send it on. Inherit follows the app-wide setting.",
+        "label": "Hold results for review"
       }
     },
     "namespace": {
@@ -14428,6 +14432,20 @@
         "formatted": {
           "option": "Formatted"
         },
+        "kube": {
+          "logsTruncated": {
+            "status": "Older lines were cut off at the size limit"
+          },
+          "manifestTruncated": {
+            "status": "Manifest cut off at the size limit"
+          },
+          "reviewResultOn": {
+            "body": "Already on by this cluster’s settings or Kira’s."
+          },
+          "secretRedacted": {
+            "hint": "Secret values are redacted by Kira."
+          }
+        },
         "op": {
           "liftLimit": {
             "label": "Lift limit"
@@ -17636,6 +17654,10 @@
           "toggle": {
             "aria": "Expose cluster {name} to agents"
           }
+        },
+        "kubePreview": {
+          "description": "Holds each list, describe and logs result until you send it on. A cluster’s MCP dialog can override this.",
+          "label": "Review cluster results before the AI gets them"
         },
         "masked": {
           "status": "{count} masked column | {count} masked columns"

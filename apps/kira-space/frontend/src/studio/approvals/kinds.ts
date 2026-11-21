@@ -10,6 +10,7 @@ import {
   dbQueryPayloadSchema,
   dbResponsePayloadSchema,
   kubeReadPayloadSchema,
+  kubeResponsePayloadSchema,
 } from '@shared/domain/dbmcp';
 import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
@@ -29,6 +30,7 @@ import DbQueryDetails from './DbQueryDetails.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import DbResponseDetails from './DbResponseDetails.vue';
 import KubeReadBody from './KubeReadBody.vue';
+import KubeResponseBody from './KubeResponseBody.vue';
 import ProofOpenWindow from './ProofOpenWindow.vue';
 import ProofReviewBody from './ProofReviewBody.vue';
 import ProofReviewDetails from './ProofReviewDetails.vue';
@@ -459,6 +461,19 @@ function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
   return out;
 }
 
+// The location already ends in the namespace when one is set.
+function kubeWhere(
+  schema: typeof kubeReadPayloadSchema | typeof kubeResponsePayloadSchema,
+): (item: ApprovalItem) => string {
+  return (item) =>
+    [
+      item.target.location,
+      schema.parse(item.payload).namespace ? '' : t('kubernetes.namespace.all.option'),
+    ]
+      .filter(Boolean)
+      .join(' · ');
+}
+
 // P520: Studio's approval kinds (internal/approvals Kind* constants). Each maps a subject to its
 // renderers; the shared surface supplies the chrome.
 export function studioApprovalKinds(): ApprovalKinds {
@@ -516,18 +531,22 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'kube.read': {
       content: markRaw(KubeReadBody),
+      footerAction: markRaw(ReviewResultOption),
       operation: (item) =>
         t(KUBE_OPERATION_LABEL[kubeReadPayloadSchema.parse(item.payload).operation]),
       // The location already ends in the namespace when one is set.
-      where: (item) =>
-        [
-          item.target.location,
-          kubeReadPayloadSchema.parse(item.payload).namespace
-            ? ''
-            : t('kubernetes.namespace.all.option'),
-        ]
-          .filter(Boolean)
-          .join(' · '),
+      where: kubeWhere(kubeReadPayloadSchema),
+    },
+    'kube.response': {
+      content: markRaw(KubeResponseBody),
+      monaco: true,
+      operation: () => t('common.field.result.label'),
+      verdict: () => resultVerdict(true, 'studio.dbMcp.approval.verdict.dbWriteResult.hint'),
+      where: kubeWhere(kubeResponsePayloadSchema),
+      labels: () => ({
+        approve: t('studio.dbMcp.preview.send.label'),
+        deny: t('studio.dbMcp.preview.withhold.label'),
+      }),
     },
     'script.run': {
       content: markRaw(ScriptRunBody),

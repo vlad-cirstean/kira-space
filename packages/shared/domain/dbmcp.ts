@@ -214,8 +214,42 @@ export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   namespace: z.string(),
   operation: z.enum(['discover', 'list', 'describe', 'logs']),
   statement: z.string(),
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
 });
 export type KubeReadPayload = z.infer<typeof kubeReadPayloadSchema>;
+
+// kube.response item payload (dbmcp kubeResponsePayload): no result; the text comes from the
+// pending-response query.
+export const kubeResponsePayloadSchema = /*#__PURE__*/ z.object({
+  context: z.string(),
+  server: z.string(),
+  namespace: z.string(),
+  operation: z.enum(['list', 'describe', 'logs']),
+  statement: z.string(),
+  isError: z.boolean(),
+  bytes: z.number(),
+  requested: z.boolean().default(false),
+});
+export type KubeResponsePayload = z.infer<typeof kubeResponsePayloadSchema>;
+
+// The held kube results as the agent gets them (dbmcp kubeListResources, kubeDescribeTool, kubePodLogs).
+export const kubeListResultSchema = /*#__PURE__*/ z.object({
+  columns: z.array(z.string()),
+  rows: z.array(z.object({ name: z.string(), namespace: z.string(), cells: z.array(z.string()) })),
+  rowCount: z.number(),
+  truncated: z.boolean(),
+});
+export const kubeDescribeResultSchema = /*#__PURE__*/ z.object({
+  kind: z.string(),
+  name: z.string(),
+  manifest: z.string(),
+  manifestTruncated: z.boolean().default(false),
+});
+export const kubeLogsResultSchema = /*#__PURE__*/ z.object({
+  lines: z.array(z.object({ ts: z.string().optional(), text: z.string() })),
+  truncated: z.boolean(),
+});
 
 // One param or env entry of a script request. A secret's value is always empty; saved says its value
 // comes from the script's saved secret values.

@@ -30,6 +30,9 @@ const toggle = useAsyncAction((enabled: boolean) => dbMcpStore.setDbMcpEnabled(e
 const preview = useAsyncAction((enabled: boolean) =>
   settingsStore.patchSettings({ dbMcp: { previewResponses: enabled } }),
 );
+const kubePreview = useAsyncAction((enabled: boolean) =>
+  settingsStore.patchSettings({ dbMcp: { kubeReviewResponses: enabled } }),
+);
 const focus = useAsyncAction((enabled: boolean) =>
   settingsStore.patchSettings({ dbMcp: { focusOnApproval: enabled } }),
 );
@@ -42,6 +45,7 @@ const actionError = computed(
   () =>
     toggle.error.value ??
     preview.error.value ??
+    kubePreview.error.value ??
     focus.error.value ??
     regenerate.error.value ??
     install.error.value,
@@ -49,6 +53,7 @@ const actionError = computed(
 function clearActionErrors(): void {
   toggle.reset();
   preview.reset();
+  kubePreview.reset();
   focus.reset();
   regenerate.reset();
   install.reset();
@@ -60,6 +65,10 @@ async function onToggleDbMcpEnabled(enabled: boolean): Promise<void> {
 async function onTogglePreviewResponses(enabled: boolean): Promise<void> {
   clearActionErrors();
   await preview.run(enabled);
+}
+async function onToggleKubePreviewResponses(enabled: boolean): Promise<void> {
+  clearActionErrors();
+  await kubePreview.run(enabled);
 }
 async function onToggleFocusOnApproval(enabled: boolean): Promise<void> {
   clearActionErrors();
@@ -95,6 +104,7 @@ const dbMcpTokenExpired = computed(() => tokenExpired(dbMcpStore.status.expiresA
 // FontSizeField.vue's own precedent comment) now that the field wrapper is a plain <Field> div.
 const dbMcpEnabledId = useId();
 const dbMcpPreviewId = useId();
+const dbMcpKubePreviewId = useId();
 const dbMcpFocusId = useId();
 </script>
 
@@ -135,6 +145,24 @@ const dbMcpFocusId = useId();
           t('studio.settings.dbMcp.preview.label')
         }}</FieldLabel>
         <FieldDescription>{{ t('studio.settings.dbMcp.preview.description') }}</FieldDescription>
+      </FieldContent>
+    </Field>
+
+    <Field orientation="horizontal">
+      <Switch
+        :id="dbMcpKubePreviewId"
+        :model-value="settingsStore.dbMcp.kubeReviewResponses"
+        :disabled="kubePreview.pending.value"
+        data-testid="settings-kube-mcp-preview"
+        @update:model-value="(v) => onToggleKubePreviewResponses(v === true)"
+      />
+      <FieldContent>
+        <FieldLabel :for="dbMcpKubePreviewId">{{
+          t('studio.settings.dbMcp.kubePreview.label')
+        }}</FieldLabel>
+        <FieldDescription>{{
+          t('studio.settings.dbMcp.kubePreview.description')
+        }}</FieldDescription>
       </FieldContent>
     </Field>
 
