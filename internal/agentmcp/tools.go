@@ -23,6 +23,8 @@ var (
 	StateToolIDs = []harness.MCPTool{State}
 
 	// ReviewReply and SandboxToolIDs are state actions now: a review round or a sandboxed run lists state.
+	// A Space state lists review.reply too: the CLI keeps the first schema a conversation loads and a
+	// review round resumes the implementer's Space conversation.
 	ReviewReply    = State
 	SandboxToolIDs = StateToolIDs
 )

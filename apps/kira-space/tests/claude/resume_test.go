@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -349,4 +350,63 @@ func TestAdeRestoreSessionContinue(t *testing.T) {
 		t.Fatalf("restored session on claude session %q, want %q", got, claudeID)
 	}
 	f.requireCostUnder(t)
+}
+
+// recordedEnum returns the enum of property prop of the tool schema the CLI saved in the session's
+// transcript when it first loaded that deferred tool (CLI 2.1.330: an attachment of type
+// deferred_tools_record). --resume replays it and a later ToolSearch does not refresh it.
+func recordedEnum(t *testing.T, home, sessionID, tool, prop string) []string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(home, ".claude", "projects", "*", sessionID+".jsonl"))
+	if err != nil || len(matches) == 0 {
+		t.Fatalf("no transcript for session %s under %s (%v)", sessionID, home, err)
+	}
+	raw, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var find func(v any) []string
+	find = func(v any) []string {
+		switch x := v.(type) {
+		case map[string]any:
+			if x["name"] == tool {
+				schema, _ := x["input_schema"].(map[string]any)
+				props, _ := schema["properties"].(map[string]any)
+				p, _ := props[prop].(map[string]any)
+				if enum, ok := p["enum"].([]any); ok {
+					out := make([]string, 0, len(enum))
+					for _, e := range enum {
+						s, _ := e.(string)
+						out = append(out, s)
+					}
+					return out
+				}
+			}
+			for _, c := range x {
+				if out := find(c); out != nil {
+					return out
+				}
+			}
+		case []any:
+			for _, c := range x {
+				if out := find(c); out != nil {
+					return out
+				}
+			}
+		}
+		return nil
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		var entry struct {
+			Attachment map[string]any `json:"attachment"`
+		}
+		if json.Unmarshal([]byte(line), &entry) != nil || entry.Attachment["type"] != "deferred_tools_record" {
+			continue
+		}
+		if enum := find(entry.Attachment); enum != nil {
+			return enum
+		}
+	}
+	t.Fatalf("session %s transcript has no deferred_tools_record entry for %s with a %q enum: CLI 2.1.330 format changed? Rerun the DEV_ENVIRONMENT hand probe", sessionID, tool, prop)
+	return nil
 }

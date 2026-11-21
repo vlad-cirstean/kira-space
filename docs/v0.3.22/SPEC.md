@@ -10,7 +10,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P710 | Selection highlight: neutral grey everywhere, not blue | Done |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
-| P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Todo |
+| P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
 
 ## P707
 
@@ -259,3 +259,28 @@ implementer session makes the model report the state tool has no `review.reply` 
 review grant adds it. Headless runs only. Deliverable: root-cause (is the grant missing on resume,
 or does the resumed session cache the tool list) and fix code or test so it passes repeatedly
 against the real CLI. Also watch `TestAdeBranchRequest` (one 3 min headless timeout in a full run).
+
+Result: root cause was product, not test. CLI 2.1.330 saves a deferred MCP tool's schema in the
+transcript (`deferred_tools_record`) at the first `ToolSearch` load and replays it on `--resume`; a
+later `ToolSearch` does not refresh it (planner probe: stale description and enum quoted, new action
+still accepted by the server). The implement run is a Space grant, whose `state` enum lacked
+`review.reply`; the review round resumes that conversation, so haiku saw a stale enum and failed about
+half of runs. Fix: `internal/agentmcp/state.go` lists `review.reply` for review or Space tool sets
+(`reviewOrSpace`); `reviewState` refusal says it works only in a review round. Rule in ARCHITECTURE:
+a tool's schema never gains an action across resumes of one conversation. Plan: `plans/P713.md`.
+Guards: `TestReviewRoundStateIsSubsetOfSpaceState` (hermetic); `TestAdeReviewStep` reads the
+implementer transcript and asserts the recorded `state` enum has `review.reply` (red before the fix
+every run, green after). Schema budgets unchanged (run 474 of 500, push 512 of 540). Real runs:
+`TestAdeReviewStep` 6 of 6 after the fix (293 s, spend under 0.15 USD); whole ADE row passes
+(0.0986 USD). `TestAdeBranchRequest` flaked, two causes, both test-side haiku choices: a shell
+redirect into the worktree was refused outside the working folders (run stalled before the rename), and
+a finish with `failed` after the expected refusal. Prompt now names the Write tool, `git -C` and a
+`done` finish; failing runs dump the run log tail. 5 of 5 with the final prompt (before: 4 of
+20 failed: two 3 min stalls, two failed finishes at about 99 s; two had their log). No `testTimeout` change. Flow test item skipped: the fake agent records no `tools/list`.
+Details bench (free check passes; paid round capped at its 1.50 USD guard, 18 of 24 runs, 1.49 USD):
+all runs pass; context R/T F4 0.90, F5 0.98, F6 1.06, F1 0.99; cost R/T F4 0.97, F5 1.28, F6 1.43,
+F1 1.12. The gate marks F5 and F6 fail (2 reps each); the Space schema grew by one enum value and one
+line, about 20 tokens. Baseline round at the parent of the fix (same guard, 18 of 24 runs, 1.44 USD):
+all pass; context R/T F4 0.90, F5 0.97, F6 1.06, F1 1.01; cost R/T F4 0.87, F5 1.39, F6 1.48, F1 1.28.
+The gate fails F5 and F6 there too (F1 on cost, inconclusive): pre-existing, not caused by P713;
+post-fix ratios are the same or lower. Budgets and thresholds unchanged.
