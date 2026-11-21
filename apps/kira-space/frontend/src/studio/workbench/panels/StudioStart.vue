@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import { pathTail } from '@shared/domain/tree';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { colorMarkClass, connIconClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
@@ -69,33 +71,43 @@ function openRecent(entry: RecentTableEntry): void {
     :description="t('studio.start.empty.body')"
     data-testid="first-run"
   >
-    <Button
-      type="button"
-      variant="dialog-primary"
-      size="kira-lg"
-      class="gap-1"
-      @click="connectionDialogStore.openNew"
+    <TextTooltip
+      :text="t('studio.project.connectionDialog.newConnection.title')"
+      :shortcut="moduleShortcut('studio', 'app.new')"
     >
-      <span class="size-4 flex items-center justify-center shrink-0"
-        ><CodiconIcon :name="ICON.add" :size="13" /></span
-      >
-      {{ t('studio.project.connectionDialog.newConnection.title') }}
-    </Button>
-    <template #secondary>
       <Button
         type="button"
-        variant="dialog"
+        variant="dialog-primary"
         size="kira-lg"
         class="gap-1"
-        :pending="datagripImportStore.picking"
-        data-testid="first-run-import-datagrip"
-        @click="datagripImportStore.pickAndScanDataGripProject"
+        @click="connectionDialogStore.openNew"
       >
         <span class="size-4 flex items-center justify-center shrink-0"
-          ><CodiconIcon name="cloud-download" :size="13" /></span
+          ><CodiconIcon :name="ICON.add" :size="13" /></span
         >
-        {{ t('studio.start.importDataGrip.label') }}
+        {{ t('studio.project.connectionDialog.newConnection.title') }}
       </Button>
+    </TextTooltip>
+    <template #secondary>
+      <TextTooltip
+        :text="t('studio.start.importDataGrip.label')"
+        :shortcut="moduleShortcut('studio', 'app.import')"
+      >
+        <Button
+          type="button"
+          variant="dialog"
+          size="kira-lg"
+          class="gap-1"
+          :pending="datagripImportStore.picking"
+          data-testid="first-run-import-datagrip"
+          @click="datagripImportStore.pickAndScanDataGripProject"
+        >
+          <span class="size-4 flex items-center justify-center shrink-0"
+            ><CodiconIcon name="cloud-download" :size="13" /></span
+          >
+          {{ t('studio.start.importDataGrip.label') }}
+        </Button>
+      </TextTooltip>
     </template>
   </ModuleStart>
 

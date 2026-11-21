@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import { t } from '@theme/i18n';
 import TabStripNewButton from '@workbench/components/TabStripNewButton.vue';
 import { computed } from 'vue';
@@ -22,6 +23,7 @@ function onClick(): void {
     v-if="visible"
     :label="t('common.newTerminal.label')"
     :tooltip="t('space.repo.newTerminal.tooltip')"
+    :shortcut="moduleShortcut('git', 'app.new')"
     @click="onClick"
   />
 </template>

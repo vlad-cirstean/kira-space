@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ShortcutId } from '@shared/domain/shortcuts';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 
 // `click` emits the button element itself so a caller anchoring a dropdown menu
@@ -7,6 +8,7 @@ defineProps<{
   label: string;
   tooltip: string;
   hasPopup?: boolean;
+  shortcut?: ShortcutId;
 }>();
 
 const emit = defineEmits<{ click: [button: HTMLButtonElement] }>();
@@ -23,6 +25,7 @@ function onClick(e: MouseEvent): void {
       :label="tooltip"
       :aria-label="label"
       size="title"
+      :shortcut="shortcut"
       :aria-haspopup="hasPopup ? 'menu' : undefined"
       data-testid="tab-strip-new"
       @click="onClick"
