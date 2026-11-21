@@ -287,7 +287,7 @@ U102@@v@@@@shortSha(/shortId( in a component (use Identifier :short)@@\bshort(?:
 U103@@vt@@@@bare .sort() (end on a stable key)@@\.sort\(\)
 U104@@v@@@@toolbar divider must use ToolbarSeparator (P351)@@class="[^"]*(?:\bw-px\b[^"]*\bh-3\.5\b|\bh-3\.5\b[^"]*\bw-px\b)
 U104@@v@@ToolbarSeparator.vue@@toolbar divider must use ToolbarSeparator (P351)@@<Separator\b(?&t)\sorientation="vertical"
-U105@@vt@@AdeDayBand.vue@@repeating gradient texture (surfaces are flat tokens)@@repeating-(?:linear|radial|conic)-gradient
+U105@@vt@@AdeDayBand.vue|AdeTaskLine.vue@@repeating gradient texture (surfaces are flat tokens)@@repeating-(?:linear|radial|conic)-gradient
 U106@@v@@@@filled button (outline or toolbar; see P525 rules)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?class="[^"]*${TOK}bg-(?:primary|agent|tone-[a-z]+-solid|ok|warn|error|info)(?![\w/-])
 U107@@v@@@@icon in a dialog header (title, description and actions only)@@(?s)<DialogHeader\b(?&t)>(?:(?!</DialogHeader>|<Button\b|<TooltipIconButton\b).)*?<(?:CodiconIcon|EngineIcon|svg)\b
 U108@@v@@@@toolbar pressed look by class (use aria-pressed / aria-expanded; the toolbar variant draws it)@@<(?:Button|TooltipIconButton)\b(?&t)\s:class="[^"]*'bg-field
@@ -314,7 +314,7 @@ U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl o
 U129@@vt@@@@arbitrary shadow (shadows come from the elevation tiers, RBo.3)@@${TOK}!?shadow-\[
 U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|MaskedValue.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
 U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
-U132@@vt@@/ade/v2/plan/|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
+U132@@vt@@AdeActivityIcon.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
 U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
 U134@@v@@DateTimePicker.vue|AdeSessionStrip.vue|DynamicValuesDialog.vue|AdeTaskStatuses.vue@@labelled toolbar Button without leading icon (RB.2; CodiconIcon 13 first, select-like trigger ends chevron-down)@@<Button\b(?=(?&t)\svariant="toolbar")(?=(?&t)\ssize="kira")(?!(?&t)\s:?aria-pressed=)(?&t)>(?!(?:(?!</Button\s*>)[\s\S])*?name="chevron-down")\s*(?!<(?:CodiconIcon|Spinner|EngineIcon)\b)(?!</Button)\S
 U135@@v@@@@Kbd inside Button (Button kbd prop)@@<Button\b(?&t)>(?:(?!</Button\s*>)[\s\S])*?<Kbd\b

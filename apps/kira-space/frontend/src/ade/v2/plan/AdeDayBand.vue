@@ -8,8 +8,7 @@ import { useDraggable } from 'vue-draggable-plus';
 import type { TimelineBand } from '../board/timeline';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
-import AdeTaskSwatch from './AdeTaskSwatch.vue';
-import { TASK_SWATCH_GAP } from './taskGrid';
+import { TASK_EDGE } from './taskGrid';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
 // One day of the timeline: left day bar, date heading, history rows, overdue and overflow strips, the day's cards and
@@ -166,7 +165,6 @@ const ruleClass = computed(() => {
           :size="13"
           class="mx-[5.5px] shrink-0 text-muted-foreground"
         />
-        <span :class="TASK_SWATCH_GAP" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ h.title }}</span>
         <span class="min-w-20 max-w-28 shrink-0 truncate text-kira-sm text-muted-foreground">{{
           h.meta
@@ -222,13 +220,14 @@ const ruleClass = computed(() => {
         :key="s.taskId"
         variant="toolbar"
         class="h-row w-auto justify-start gap-1.5 border border-border px-2 font-normal data-[selected]:bg-select"
+        :class="TASK_EDGE"
+        :style="{ borderTopColor: s.color }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
         @click="emit('select', s.taskId)"
       >
         <CodiconIcon name="indent" :size="13" class="mx-[5.5px] shrink-0 text-subtle" />
-        <AdeTaskSwatch :color="s.color" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ s.title }}</span>
         <span class="w-28 shrink-0 truncate text-left text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="w-control shrink-0" aria-hidden="true" />

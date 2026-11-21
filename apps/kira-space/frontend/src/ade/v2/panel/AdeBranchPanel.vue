@@ -28,6 +28,7 @@ import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
 import { baseNameOf } from '../board/reviewCode';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { type CardModel, type PlanModel, usePlanModel } from '../plan/usePlanModel';
 import { prStateLabel } from '../pr/prGlyph';
 import { useChangeRequests, useRetrySetup } from '../queries';
@@ -292,6 +293,11 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     ]"
   >
     <template #header>
+      <AdeTaskLine
+        variant="edge"
+        :color="card.review ? 'var(--kira-info)' : card.color"
+        :parked="card.parked"
+      />
       <DetailHeader
         data
         wrap
@@ -312,12 +318,6 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           </Button>
         </template>
         <template #leading>
-          <span
-            class="box-border size-3 shrink-0 rounded-kira-sm border-2"
-            :class="card.review && 'border-info'"
-            :style="card.review ? undefined : { borderColor: card.color }"
-            data-testid="ade-panel-dot"
-          />
           <TextTooltip :text="row.tag.tip">
             <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]">{{ chipLabel }}</Badge>
           </TextTooltip>

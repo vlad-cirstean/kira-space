@@ -7,9 +7,9 @@ import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
 import AdeTaskKey from '../plan/AdeTaskKey.vue';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
-import AdeTaskSwatch from '../plan/AdeTaskSwatch.vue';
 import AdeTaskTitle from '../plan/AdeTaskTitle.vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
@@ -57,7 +57,7 @@ const facts = computed(() =>
     <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
-    <AdeTaskSwatch :color="card.color" :parked="card.parked" />
+    <AdeTaskLine variant="mark" :color="card.color" :parked="card.parked" />
     <span class="flex min-w-0 flex-1 items-center gap-1.5" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
       <AdeTaskKey :card="card" />

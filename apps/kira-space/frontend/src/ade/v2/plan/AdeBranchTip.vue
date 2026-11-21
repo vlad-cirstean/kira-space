@@ -9,6 +9,7 @@ import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { tagLabel } from '../board/actions';
+import AdeTaskLine from './AdeTaskLine.vue';
 import type { BranchRowModel } from './usePlanModel';
 import { usePlanModel } from './usePlanModel';
 
@@ -41,11 +42,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
     </TooltipTrigger>
     <TooltipContent variant="surface" side="bottom" align="start" data-testid="ade-branch-tip">
       <div class="flex items-center gap-1.5">
-        <span
-          v-if="color"
-          class="size-2.5 shrink-0 rounded-kira-sm"
-          :style="{ background: color }"
-        />
+        <AdeTaskLine v-if="color" variant="mark" :color="color" />
         <span class="min-w-0 font-data font-medium wrap-anywhere">{{ row.name }}</span>
       </div>
       <span v-if="row.context" class="block text-kira-sm text-muted-foreground">{{
@@ -71,11 +68,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
         <template v-if="row.base">
           <dt>{{ t('space.common.base.label') }}</dt>
           <dd class="flex items-center gap-1">
-            <span
-              v-if="row.base.color"
-              class="size-2 shrink-0 rounded-kira-sm"
-              :style="{ background: row.base.color }"
-            />
+            <AdeTaskLine v-if="row.base.color" variant="mark" :color="row.base.color" />
             <VarText :parts="row.base.tip" />
           </dd>
         </template>

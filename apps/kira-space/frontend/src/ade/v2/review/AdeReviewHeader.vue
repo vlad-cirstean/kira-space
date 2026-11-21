@@ -14,6 +14,7 @@ import { computed } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { taskTitle } from '../board/labels';
 import { taskColor } from '../palette';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { useAdeReviewWindowStore } from '../state/adeReviewWindow';
 import type { ReviewWindowTarget } from '../wire';
 import AdeReviewActions from './AdeReviewActions.vue';
@@ -55,11 +56,6 @@ const headHint = computed(() => {
 <template>
   <TitleBarBase>
     <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-review-header">
-      <span
-        class="inline-block size-2.5 shrink-0 rounded-kira-sm"
-        :style="{ background: taskColor(task?.color ?? 0) }"
-        data-testid="ade-review-task-colour"
-      />
       <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
       <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
       <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
@@ -125,5 +121,12 @@ const headHint = computed(() => {
         @click="store.toggleAgentPanel()"
       />
     </div>
+    <AdeTaskLine
+      v-if="task"
+      variant="edge"
+      :color="taskColor(task.color)"
+      :parked="task.kind === 'parked'"
+      data-testid="ade-review-task-colour"
+    />
   </TitleBarBase>
 </template>

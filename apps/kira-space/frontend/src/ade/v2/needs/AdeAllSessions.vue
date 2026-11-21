@@ -8,6 +8,7 @@ import { useKeptState } from '@workbench/behaviour/viewState';
 import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { ACTIVITY_RANK, type ActivityKind } from '../activity';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { usePlanModel } from '../plan/usePlanModel';
 import type { SessionView } from '../sessions/sessionView';
 import { useSessionViews } from '../sessions/useSessionViews';
@@ -127,7 +128,7 @@ const summary = computed(() => {
     >
       <SectionHeading :label="g.title">
         <template #leading>
-          <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
+          <AdeTaskLine variant="mark" :color="g.color" />
         </template>
       </SectionHeading>
       <AdeAllSessionRow v-for="r in g.rows" :key="r.session.id" :view="r" :archived="g.archived" />

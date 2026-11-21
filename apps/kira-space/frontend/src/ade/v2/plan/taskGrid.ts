@@ -13,9 +13,10 @@ export const BRANCH_GRID =
 export const SLOT = 'flex w-control shrink-0 items-center justify-center';
 /** Row ground for a hover overlay: the card sets it, a hovered or selected row overrides it. */
 export const GROUND_CARD = '[--row-ground:var(--color-chrome)]';
-/** Task colour: a 10px rounded square before the title; the gap keeps the title x where there is none. */
-export const TASK_SWATCH = 'box-border size-2.5 shrink-0 rounded-kira-sm';
-export const TASK_SWATCH_GAP = 'w-2.5 shrink-0';
+/** Task colour on a card or span row: its top border, coloured inline. */
+export const TASK_EDGE = 'border-t-3';
+export const TASK_LINE_EDGE = 'pointer-events-none absolute inset-x-0 top-0 h-0.75';
+export const TASK_LINE_MARK = 'inline-block h-0.75 w-4 shrink-0 rounded-full';
 export const GROUND_ROW = 'bg-(--row-ground) hover:[--row-ground:var(--color-field)]';
 export const GROUND_SELECTED = 'bg-(--row-ground) [--row-ground:var(--color-select)]';
 /** Hover actions laid over the end of the text cell: no reflow when they appear. */

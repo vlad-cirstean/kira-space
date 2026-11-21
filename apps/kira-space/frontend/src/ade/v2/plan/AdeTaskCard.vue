@@ -42,7 +42,6 @@ import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskKey from './AdeTaskKey.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
 import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
-import AdeTaskSwatch from './AdeTaskSwatch.vue';
 import AdeTaskTitle from './AdeTaskTitle.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import {
@@ -51,6 +50,7 @@ import {
   GROUND_SELECTED,
   HOVER_OVERLAY,
   TASK_ACTION_CELL,
+  TASK_EDGE,
   TASK_LEAD,
   TASK_STATUS_CELL,
   TASK_STEP_CELL,
@@ -126,6 +126,7 @@ const boxClass = computed(() => {
   const c = props.card;
   return [
     'bg-chrome cursor-grab border',
+    TASK_EDGE,
     GROUND_CARD,
     c.parked ? 'border-dashed' : '',
     selected.value ? 'border-focus' : inRipple.value ? 'border-subtle/50' : 'border-border',
@@ -146,6 +147,7 @@ const boxClass = computed(() => {
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira"
       :class="boxClass"
+      :style="{ borderTopColor: card.color }"
       :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"
@@ -174,7 +176,6 @@ const boxClass = computed(() => {
         </span>
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
-            <AdeTaskSwatch :color="card.color" :parked="card.parked" />
             <span class="relative flex min-w-0 flex-1 items-center gap-1.5">
               <AdeTaskTitle :card="card" />
               <AdeTaskKey :card="card" />

@@ -18,6 +18,7 @@ import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useOpenFilesWindow, useUpdateTask } from '../queries';
@@ -152,14 +153,9 @@ const label = computed(() =>
       />
     </template>
     <template #header>
+      <AdeTaskLine variant="edge" :color="card.color" :parked="card.parked" />
       <DetailHeader @contextmenu="taskMenu.open">
         <template #leading>
-          <span
-            class="box-border size-3 shrink-0 rounded-kira-sm"
-            :class="card.parked ? 'border-2' : ''"
-            :style="card.parked ? { borderColor: card.color } : { background: card.color }"
-            data-testid="ade-panel-dot"
-          />
           <Badge v-if="card.parked" variant="default">{{ label }}</Badge>
           <AdeChip v-else :label="label" :color="card.status.color" />
           <AdeOrchestratorBadge v-if="card.orchestrator" />

@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
 import AdeRunLog from '../panel/AdeRunLog.vue';
+import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { THEME_TONE } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
@@ -90,10 +91,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
           }}</span
         >
         <span class="flex items-center gap-1 truncate text-kira-sm text-subtle">
-          <span
-            class="inline-block size-2 shrink-0 rounded-kira-sm"
-            :style="{ background: taskColor }"
-          />
+          <AdeTaskLine variant="mark" :color="taskColor" />
           {{ taskTitle }}
         </span>
       </div>
