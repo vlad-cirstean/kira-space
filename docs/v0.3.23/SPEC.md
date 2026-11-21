@@ -16,7 +16,7 @@ before implementation starts.
 | P716 Part 1 | Remove the chain steps panel from DB and API prompts | Done |
 | P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
 | P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
-| P717 | Result review for every MCP tool that returns data | Todo |
+| P717 | Result review for every MCP tool that returns data | Done |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
 | P720 | API module variables and environments: UX redesign | Todo |
@@ -135,6 +135,16 @@ as the flow test. Visual baselines for new dialogs. Prompt text changes: run the
 row of `docs/DEV_ENVIRONMENT.md` "Real `claude` tests".
 
 Open questions. Which metadata-only tools get review. Defaults per tool (always, per call, by rule).
+
+Result. Done. User decisions: review covers `kube_list_resources`, `kube_describe` and `kube_pod_logs`; metadata tools, `kube_discover` and scripts get none (a script's own result keeps its run approval); one cluster setting covers the three; the Kubernetes switch sits next to the Databases switch in the Studio MCP Server pane; screenshots are reviewed at chapter end.
+
+Backend. `internal/dbmcp/held.go` is the one held-result path: `holdResult`, `heldRefusalText` and one `heldCall` per family; `heldRefusal`, `apiHeldRefusal` and `apiSentSuffix` are gone, DB and API texts byte-identical (`TestHeldRefusalTexts`). Kube: `McpSettings.Review` (`inherit|review|send`, column `mcp_review`, migration 0105), `dbMcp.kubeReviewResponses`, `reviewResolver`, new `kube.response` approval kind and `kubeResponsePayload`, `kube.read` tick, `kube_list_clusters` `reviewResults`, `DbmcpToolKubeReview` suffix on the three tools (`budget.tsv` updated), `api.response` payload gains `masked` secret names. Cluster turned off during the read or the review withholds.
+
+Frontend. `ResultReview.vue` takes `views` with one slot each; `ReviewTable.vue` (P715 grid) and `ReviewLog.vue` are shared; `KubeResponseBody.vue` shows Table, Manifest or Log beside JSON. `ReviewResultOption.vue` has a kube family. Cluster dialog gets "Hold results for review", the Studio MCP Server pane a Kubernetes switch, the audit row a `kube.response` label. Mask notes: DB `Masked columns`, API `Secrets masked`, kube Secret redaction line. `check-ui-primitives.sh` U62 exemption moved to `ReviewTable.vue`.
+
+Deviations. The describe screenshot with a manifest and JSON tab uses a Pod: the kube fake has no ConfigMap, and the JSON tab and `kube-review-manifest` view are the same code. The Server pane keeps two plain switches, not a FieldSet. Unverified: no run on a real cluster (fake only). `llmpromptsflow` `TestList` count raised to 170 (this phase added one prompt; one more was already missing from the constant).
+
+Tests. Flow `kube_review_test.go` (contract `kube-review`): list, describe (Secret and Pod) and logs held and sent byte-exact, Withhold text with one read, over-cap withheld unseen, settings matrix (inherit, review, send, discover never held), tick on a prompt card, cluster turned off in review; `TestKubeMcp` records the dialog's review save. UI `approvals-kube-review.spec.ts` (9), `kubernetes-mcp.spec.ts` review field, `dbmcp-preview.spec.ts` Kubernetes switch, `approvals-alignment.spec.ts` kube.response and kube.read option: all pass; `approvals-api-response`, `dbmcp-preview` and the DB/API UI specs pass after the refactor. Visual `kube-review.spec.ts` (6 new baselines, all opened); `approvals`, `approvals-prompt` and `approvals-kept-secret` baselines unchanged (the `approvals-api-input-once` countdown mask flaked once, passed on rerun). Real `claude`: `bun run test:claude:db -count=1`, 13 pass including new `TestKubeMcpThroughClaudeReviewWithheld` (the agent reports the result withheld, pods read once). Final screenshots: scratchpad `p717-final/`.
 
 ## P718
 
