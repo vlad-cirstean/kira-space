@@ -191,7 +191,7 @@ const addAnchor = computed(() => addButton.value?.$el);
         </Button>
       </PopoverTrigger>
     </TextTooltip>
-    <PopoverAnchor :reference="addAnchor" />
+    <PopoverAnchor :reference="addAnchor" class="hidden" />
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <PopoverBar>
         <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
