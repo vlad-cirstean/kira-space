@@ -133,13 +133,13 @@ const detailsOpen = ref(false);
     :data-kind="item.kind"
   >
     <div class="flex min-w-0 flex-wrap items-center gap-x-2" data-testid="approval-target">
-      <component
-        :is="def.targetIcon"
+      <span
         v-if="def?.targetIcon"
-        :item="item"
-        class="shrink-0 self-center"
+        class="inline-flex shrink-0 self-center"
         data-testid="approval-target-icon"
-      />
+      >
+        <component :is="def.targetIcon" :item="item" />
+      </span>
       <span
         class="min-w-0 break-words text-kira-lg font-medium text-fg"
         :class="def?.targetData && 'font-data'"
@@ -269,5 +269,9 @@ const detailsOpen = ref(false);
         </ApprovalDetails>
       </CollapsibleContent>
     </Collapsible>
+    <ApprovalDetails v-else-if="requester">
+      <dt>{{ t('workbench.approvals.askedBy.label') }}</dt>
+      <dd data-testid="approval-origin">{{ requester }}</dd>
+    </ApprovalDetails>
   </section>
 </template>
