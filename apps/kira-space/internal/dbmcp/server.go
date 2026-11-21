@@ -162,6 +162,10 @@ type Config struct {
 	PreviewResponses func() bool
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
+	// KubeReviewResponses reports whether kube list, describe and logs results are held for the user's review
+	// (dbMcp.kubeReviewResponses), read fresh on every call. It is the default for clusters whose review setting
+	// is inherit. Required with Kube, for the same reason as PreviewResponses.
+	KubeReviewResponses func() bool
 	// Ops backs operations; nil leaves it unregistered. Runs adds
 	// script runs to them; nil means none are listed or stoppable.
 	Ops  OpsControl
@@ -262,6 +266,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.PreviewResponses == nil {
 		return nil, fmt.Errorf("dbmcp: Config.PreviewResponses is required")
+	}
+	if cfg.Kube != nil && cfg.KubeReviewResponses == nil {
+		return nil, fmt.Errorf("dbmcp: Config.KubeReviewResponses is required with Config.Kube")
 	}
 
 	// plain/minted served the old in-memory-plaintext gate (F8) — cfg.Token() (bridge's

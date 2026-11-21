@@ -9,7 +9,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "default",
         "server": "<kube>",
@@ -24,7 +25,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -39,7 +41,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<down>",
@@ -54,7 +57,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -100,7 +104,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "https://alpha.example:6443",
@@ -115,7 +120,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "https://beta.example:6443",
@@ -542,7 +548,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<down>",
@@ -557,7 +564,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "default",
         "server": "<kube>",
@@ -572,7 +580,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",
@@ -587,7 +596,8 @@
         "mcp": {
           "approval": "prompt",
           "description": "",
-          "enabled": false
+          "enabled": false,
+          "review": "inherit"
         },
         "namespace": "",
         "server": "<kube>",

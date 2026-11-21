@@ -76,6 +76,8 @@ type kubeClusterView struct {
 	Current     bool   `json:"current"`
 	Description string `json:"description"`
 	Approval    string `json:"approval"`
+	// ReviewResults says list, describe and logs results are held for the user before the AI gets them.
+	ReviewResults bool `json:"reviewResults"`
 }
 
 type kubeKindView struct {
@@ -113,8 +115,19 @@ func noClusterResult(id string) (*mcp.CallToolResult, any, error) {
 	return errResult(fmt.Sprintf("no cluster %q exposed to MCP", id))
 }
 
-// kubeRun is the gate every cluster read passes: exposure, the approval for prompt, then the read.
-// The kubernetes service records the op-log row.
+// kubeReviewFor reports whether the cluster's list, describe and logs results are held for the user: the
+// cluster's own setting, or the app's when it inherits.
+func (s *Server) kubeReviewFor(c kubernetes.Cluster) bool {
+	return reviewResolver(s.cfg.KubeReviewResponses)(c.Mcp.Review)
+}
+
+// kubeReviewable says whether an operation returns data from the cluster that the user can review. Discover
+// returns namespaces and kinds only.
+func kubeReviewable(op string) bool { return op != kubeDiscover }
+
+// kubeRun is the gate every cluster read passes: exposure, the approval for prompt, the read, then the
+// review of its result when the cluster, the app or the approver asks for one. The kubernetes service
+// records the op-log row.
 func (s *Server) kubeRun(ctx context.Context, clusterID, op, namespace string, statement func(kubernetes.Cluster) string, read func(context.Context) (any, error)) (*mcp.CallToolResult, any, error) {
 	c, found, err := s.resolveCluster(ctx, clusterID)
 	if err != nil {
@@ -123,14 +136,18 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, op, namespace string, s
 	if !found {
 		return noClusterResult(clusterID)
 	}
+	reviewable := kubeReviewable(op)
+	req := ApprovalRequest{
+		ConnectionID: c.ID, ConnectionName: c.Context, Kind: "kubernetes",
+		Class: adapters.ClassRead, Statement: statement(c), Reason: ApprovalReasonPermission,
+		Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: namespace, Operation: op},
+		Origin:  originFrom(ctx), OfferReview: reviewable, ReviewOn: reviewable && s.kubeReviewFor(c),
+	}
+	var choice ApprovalChoice
 	// Fail closed: anything but "allow" asks.
 	if c.Mcp.Approval != "allow" {
-		outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
-			ConnectionID: c.ID, ConnectionName: c.Context, Kind: "kubernetes",
-			Class: adapters.ClassRead, Statement: statement(c), Reason: ApprovalReasonPermission,
-			Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: namespace, Operation: op},
-			Origin:  originFrom(ctx),
-		})
+		var outcome ApprovalOutcome
+		outcome, choice = s.cfg.Approvals.RequestChoice(ctx, req)
 		if outcome != ApprovalApproved {
 			return approvalOutcomeError(outcome, fmt.Sprintf("Kubernetes read on %q", c.Context))
 		}
@@ -148,7 +165,36 @@ func (s *Server) kubeRun(ctx context.Context, clusterID, op, namespace string, s
 	if err != nil {
 		return toolError(err)
 	}
-	return jsonResult(out)
+	res, o, err := jsonResult(out)
+	if err != nil || !reviewable {
+		return res, o, err
+	}
+	// Read after the read: the user may have changed the setting while it ran. A cluster that is gone now
+	// is held and withheld by the recheck.
+	fresh, found, ferr := s.resolveCluster(ctx, clusterID)
+	if choice.ReviewResult || ferr != nil || !found || s.kubeReviewFor(fresh) {
+		if refusal := s.holdKube(ctx, req, c, op, res, choice.ReviewResult); refusal != "" {
+			return errResult(refusal)
+		}
+	}
+	return res, o, nil
+}
+
+// holdKube holds the result of a cluster read until the user sends or withholds it. A non-empty string is
+// the refusal text; "" means the user sent it and res goes out untouched. req is the pre-run request, whose
+// cluster and statement name the call.
+func (s *Server) holdKube(ctx context.Context, req ApprovalRequest, c kubernetes.Cluster, op string, res *mcp.CallToolResult, requested bool) string {
+	held := ApprovalResponse{IsError: res.IsError, Text: resultText(res), Requested: requested}
+	held.Bytes = len(held.Text)
+	call := kubeHeldCall(c.Context, op)
+	req.OfferReview, req.ReviewOn = false, false
+	return s.holdResult(ctx, req, held, call, func() string {
+		// The review can take up to ApprovalTimeout: a cluster turned off meanwhile wins.
+		if _, found, err := s.resolveCluster(ctx, c.ID); err != nil || !found {
+			return call.suffix(call.ran + ", but the cluster was turned off while its result was in review, so it was withheld.")
+		}
+		return ""
+	})
 }
 
 func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
@@ -164,7 +210,7 @@ func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _
 		out = append(out, kubeClusterView{
 			ID: c.ID, Context: c.Context, Cluster: c.Cluster, Server: c.Server, Namespace: c.Namespace,
 			Current: c.Current, Description: c.Mcp.Description,
-			Approval: c.Mcp.Approval,
+			Approval: c.Mcp.Approval, ReviewResults: s.kubeReviewFor(c),
 		})
 	}
 	return jsonResult(out)

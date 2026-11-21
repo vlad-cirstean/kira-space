@@ -2937,6 +2937,9 @@
         "badMcpMode": {
           "error": "Unknown MCP approval mode: {mode}"
         },
+        "badMcpReview": {
+          "error": "Unknown MCP review setting: {review}"
+        },
         "badSelector": {
           "error": "Invalid label selector: {message}"
         },
