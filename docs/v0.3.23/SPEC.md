@@ -19,15 +19,34 @@ before implementation starts.
 
 ## P716
 
-User decision: removing the chain steps UI and reworking MCP chaining is its own phase, first in the
-chapter. Rework chaining for all MCP tools that support it (DB, API, kube): no chain UI in the approval
-prompt (no "Earlier / This step" chain steps, no chain panel). Simpler model: a script stores a result in
-a kept variable and the agent makes a follow-up request that reads it. Kept variables are secret or
-plain; the user can preview both. Secrets are revealed behind the same local-auth fingerprint prompt the
-app uses for other secrets (`apps/kira-space/internal/localauth`, credential-reveal flow, spec
-`apps/kira-space/tests/ui/studio/credential-reveal.spec.ts`). Removes the existing `ChainSteps` UI from
-the DB and API prompts; P715 (v0.3.22) ships it. P717 (kube) depends on this: no chain UI, no chain
-steps.
+User decision: removing the old chain steps panel and reworking MCP chaining is its own phase, first
+in the chapter. Rework chaining for all MCP tools that support it (DB, API, kube). Removes the existing
+`ChainSteps` panel ("Earlier / This step") from the DB and API prompts; P715 (v0.3.22) ships it. Kept
+variables are secret or plain; the user can preview both. Secrets are revealed behind the same
+local-auth fingerprint prompt the app uses for other secrets (`apps/kira-space/internal/localauth`,
+credential-reveal flow, spec `apps/kira-space/tests/ui/studio/credential-reveal.spec.ts`). All of this
+holds under both models below.
+
+Two models. The plan proposes both, compares them (clicks, clarity, backend cost, risk) and recommends
+one; user decides.
+
+- A. No chain UI. A script stores a result in a kept variable and the agent makes a follow-up request
+  that reads it. No chain panel, no chain steps.
+- B. User alternative: "keep the chaining but have it like its own prompt. I see the first step, I can
+  also review the results. Then I can see the next and allow it. I can also go back to the previous one.
+  It has to be simple and uniform with what I already have." Each step is its own approval prompt, same
+  dialog and look as every other prompt. The dialog lets the user review each step's result (existing
+  result review), move forward to the next step's prompt and approve it, and go back to a previous step
+  (read-only view of what was approved and its result). Uniform with the existing queue (counter, Deny
+  all) and P715's design; no separate chain panel.
+
+Under B the plan states what the backend must support: how steps are linked (by kept values or an
+explicit chain id), what the old `ChainSteps` code gives and what is reused, and whether a previous
+step's result is still available after review (retention, secrets masked, memory cap, what "go back"
+shows once the result was released to the agent).
+
+P717 (kube) depends on this phase: it follows the model the user picks, so it ships no panel from the
+old `ChainSteps` UI.
 
 Agent awareness (user: "The AI should be aware of the chaining capability by storing those variables
 and secrets"). Agent-facing text in `internal/llmprompts/registry.go` (checkprompts rules: terse,
@@ -40,14 +59,17 @@ Instructions, `server.go`) never mentions kept variables or chaining; only the `
 So the agent learns it per tool, not at connect time: the plan adds it to the instructions, the
 DB/API/kube tool descriptions and `list_kept_variables`.
 
-Deliverable. Design phase: plan with screenshots (before: real frontend; proposal: prototype), user
+Deliverable. Design phase: plan with screenshots (before: real frontend; proposal: prototype of A and B), user
 approves, then implementation.
 
 Tests. Flow test: script keeps a plain and a secret value, follow-up request reads both, secret
 absent from AI-facing output. UI spec: same scenario, preview of plain and secret, fingerprint prompt
-on secret reveal, no chain UI in DB and API cards. Prompt text changes: run the matching row of
+on secret reveal, old chain panel gone from DB and API cards; under B also step forward and back. Prompt text changes: run the matching row of
 `docs/DEV_ENVIRONMENT.md` "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses
 kept variables unprompted.
+
+Open questions. A or B (user decides after the plan's comparison). Under B: how steps are linked, and
+whether "go back" shows a released result.
 
 ## P717
 
@@ -65,8 +87,8 @@ until the response is final). Switch: `scriptsOn` in `jsscript.go` (Studio MCP s
 `KubeReadBody.vue`, kind def in `frontend/src/studio/approvals/kinds.ts`; API and DB cards show
 scripts with `JsScriptBlock.vue` and kept reads with `KeptVariablesPanel.vue`.
 
-Chaining rework (P716): kube follows the simpler model. Scripts and
-kept variables only; no chain steps, no chain panel in the kube card. Kube tool descriptions and
+Chaining rework (P716): kube follows the model the user picks in P716. Scripts and
+kept variables; no panel from the old chain steps UI in the kube card. Kube tool descriptions and
 `DbmcpInstructions` tell the AI it can store a result in a kept variable and read it in a follow-up
 request (see P716 "Agent awareness").
 
@@ -87,7 +109,7 @@ secret read). UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): sam
 shows scripts, kept reads and verdict row. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
 "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses kept variables unprompted.
 
-Open questions. Prepare stage for kube: DB has none because the statement must be what the user
+Open questions. Chaining model per P716 (A or B). Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
 
