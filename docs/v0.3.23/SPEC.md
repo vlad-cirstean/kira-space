@@ -391,8 +391,8 @@ script and passes with the new one; removing `-I` or the `bin` exclusion makes S
 proven by `checks (macOS)` on this chapter's PR.
 
 Post-merge. Re-dispatching `release.yml -f tag=v0.3.22` cannot succeed: `build` checks out the tag's
-commit `c7534c9f0`, which carries the old S10, and `tag` refuses moving the tag to a commit not on
-`main` that is not the tag's. v0.3.22's changes ship in v0.3.23, whose release builds with the fix.
+commit `c7534c9f0`, which carries the old S10. Moving the tag to a fixed `main` commit would make
+v0.3.22 ship v0.3.23's code. v0.3.22's changes ship in v0.3.23, whose release builds with the fix.
 `docs/PACKAGING.md` §7 "Recovery" covers this case ("Real failure: delete the tag ...; the fix ships
 as the next chapter"). The orchestrating session reports it; the user decides whether to delete the
 `v0.3.22` tag (`git push --delete origin v0.3.22`) or leave it unreleased. No re-dispatch unless the
