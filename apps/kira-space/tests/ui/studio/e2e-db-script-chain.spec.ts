@@ -46,7 +46,7 @@ test('contract: the held read shows the envelope, the script and the ids it keep
     .poll(() => editorText(page.locator('[data-testid="db-review-result"]')))
     .toContain('"count": 2');
   await expect(page.locator('[data-testid="db-review-keep-ids"]')).toContainText(
-    /List of 2\s*\[\s*1,\s*2\s*\]/,
+    /List of 2\s*Plain\s*\[\s*1,\s*2\s*\]/,
   );
   await page.click('[data-testid="db-review-view-raw"]');
   await expect(page.locator('[data-testid="db-mcp-preview-row"]')).toHaveCount(2);
@@ -80,6 +80,7 @@ test('contract: a scripted write asks as a write with its script, Deny answers t
   });
   await pushApprovals(page, [liveItem(it)]);
   await expect(page.locator('[data-testid="db-approval-script"]')).toBeVisible();
+  await expect(page.locator('[data-testid="approval-chain"]')).toHaveCount(0);
   await page.click(`[data-testid="approval-deny-${it.id}"]`);
   await expect
     .poll(() => answered(control))
@@ -97,6 +98,7 @@ test('contract: the exemption shows the script and the kept param, Approve answe
   await expect(page.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="db-approval-script"]')).toBeVisible();
   await expect(page.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(page.locator('[data-testid="approval-chain"]')).toHaveCount(0);
   await approve(page, it);
   await expect
     .poll(() => answered(control))

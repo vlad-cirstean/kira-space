@@ -59,6 +59,7 @@
           "mayKeep": [
             {
               "name": "n",
+              "secret": false,
               "sites": [
                 {
                   "field": "script",

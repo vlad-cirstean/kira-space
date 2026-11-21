@@ -150,6 +150,9 @@ func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]In
 	} else if !ok {
 		return keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables"+inputsDeclHint, name)
 	} else if e.Bound() && origin != "" && e.Origin != origin {
+		if e.Source.Kind != keptvars.SourceUser {
+			return keptErr("the secret kept as %q belongs to %s and is not sent to %s", name, e.Origin, origin)
+		}
 		return otherOriginError(name, e.Origin, origin)
 	}
 	kp.entries[name] = e

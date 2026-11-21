@@ -5,15 +5,15 @@ import (
 	"regexp"
 )
 
-// ScriptSite is one literal kept.get("name") or kept.set("name", ...) call in a script. From and To are
+// ScriptSite is one literal kept.get("name"), kept.set("name", ...) or kept.setSecret("name", ...) call in a script. From and To are
 // UTF-16 code units of the source, the unit an editor indexes by.
 type ScriptSite struct {
 	Name     string
-	Op       string // "get" or "set"
+	Op       string // "get", "set" or "setSecret"
 	From, To int
 }
 
-var scriptCallRE = regexp.MustCompile(`\bkept\.(get|set)\(\s*(?:"([A-Za-z][A-Za-z0-9_]{0,39})"|'([A-Za-z][A-Za-z0-9_]{0,39})')`)
+var scriptCallRE = regexp.MustCompile(`\bkept\.(get|setSecret|set)\(\s*(?:"([A-Za-z][A-Za-z0-9_]{0,39})"|'([A-Za-z][A-Za-z0-9_]{0,39})')`)
 
 // ScanScript lists the literal kept calls of src. Comments and strings count too: over-listing is the safe
 // side, because the host functions refuse every name the scan did not find.

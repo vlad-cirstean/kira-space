@@ -2,6 +2,7 @@
 import type { TransformView } from '@shared/domain/dbmcp';
 import type { KeptUse } from '@shared/domain/kept';
 import HighlightedText from '@theme/components/HighlightedText.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { FieldDescription } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -39,13 +40,20 @@ const readsInScript = computed(() =>
     />
     <p v-if="script.mayKeep.length" class="m-0 text-kira-sm" :data-testid="`${testid}-may-keep`">
       {{ t('studio.kept.mayKeep.label') }}
-      <HighlightedText
-        v-for="m in script.mayKeep"
-        :key="m.name"
-        class="mr-1 font-data"
-        :parts="[{ text: m.name, match: true }]"
-        :mark-class="KEPT_MARK_CLASS"
-      />
+      <span v-for="m in script.mayKeep" :key="m.name" class="mr-2 inline-flex items-center gap-1">
+        <HighlightedText
+          class="font-data"
+          :parts="[{ text: m.name, match: true }]"
+          :mark-class="KEPT_MARK_CLASS"
+        />
+        <Badge
+          :variant="m.secret ? 'warn' : 'info'"
+          :data-testid="`${testid}-may-keep-${m.name}-${m.secret ? 'secret' : 'plain'}`"
+          >{{
+            t(m.secret ? 'common.secret.label' : 'studio.kept.kind.plain.label')
+          }}</Badge
+        >
+      </span>
     </p>
     <FieldDescription v-if="readsInScript" :data-testid="`${testid}-script-reads`">{{
       t('studio.kept.scriptReads.hint')
