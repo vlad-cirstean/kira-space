@@ -50,11 +50,6 @@ var benchSetup func(*testing.T, *spikeRun, spikeFlow) (string, []string, func())
 // benchRunCapUSD is execute's per-run budget while the benchmark runs; zero keeps the spike cap.
 var benchRunCapUSD float64
 
-// benchRoles are the grant shapes whose tool lists the baseline freezes, by flow.
-var benchRoles = []struct{ name, flow string }{
-	{"run", "F5"}, {"run-proof", "F2"}, {"orchestrator", "F4"},
-}
-
 func benchRoleOf(flow string) string {
 	switch flow {
 	case "F2", "F3", "F3b":
