@@ -14,7 +14,7 @@ before implementation starts.
 | # | Phase | Status |
 |---|-------|--------|
 | P716 Part 1 | Remove the chain steps panel from DB and API prompts | Done |
-| P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Todo |
+| P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
 | P716 Part 3 | Agent awareness of kept variables, real `claude` test | Todo |
 | P717 | Result review for every MCP tool that returns data | Todo |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
@@ -84,6 +84,8 @@ whether "go back" shows a released result.
 User chose model A (no chain UI; kept variables; agent makes the follow-up request) as the baseline and may rework it after seeing screenshots at chapter end. Plan: `plans/P716-design.md`. Parts keep the number P716: Part 1 removes the panel, Part 2 adds secret and plain kept variables with preview and reveal, Part 3 tells the agent.
 
 Result, Part 1. Done. `ChainSteps.vue`, its three call sites (`DbQueryBody`, `DbExemptionBody`, `ApiRequestBody`), the `studio.dbMcp.approval.chain.*` strings, the chain asserts in `e2e-kept-chain.spec.ts`, the visual case 'script card with its chain' and its baseline are gone. The kept-variables panel stays. `e2e-kept-chain` and `e2e-db-script-chain` specs assert the old `approval-chain` element no longer renders.
+
+Result, Part 2. Done. Transform scripts keep with `kept.set(name, v)` (plain) or `kept.setSecret(name, v)` (secret); names are plan-time literals, `prepare` scripts cannot keep. A `setSecret` value is masked in the script output and the agent sees only name, type, size, `secret` flag and expiry. API-made secrets bind to the request origin; a use against another origin is refused with `the secret kept as "x" belongs to <origin> and is not sent to <origin>`. DB-kept secrets bind to no origin. The held-result review lists "Will keep" with Secret/Plain badges: plain values preview, secrets show dots and reveal through `KeptVarsService.RevealStaged` behind the local-auth prompt (confirmation fallback). Cards badge the kinds the script may keep, Settings shows the kind per entry. Tests: flow `TestE2EKeptSecret` and `TestDbMcpQueryScriptKeepSecret` (contract `e2e-kept-secret`), UI spec `e2e-kept-secret.spec.ts` (4 tests), visual `approvals-kept-secret.spec.ts` (3 baselines).
 
 ## P717
 
