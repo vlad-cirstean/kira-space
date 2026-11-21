@@ -364,6 +364,20 @@ for (const platform of PLATFORMS) {
       );
     });
 
+    studioTest(
+      'dialog X: a dialog opened by mouse after an earlier Tab shows no tooltip, first Esc closes it',
+      async ({ relaunch }) => {
+        const { window: page } = await relaunch({ control: DB_CONTROL, ...launch });
+        await page.keyboard.press('Tab');
+        await page.click('[data-testid="add-connection"]');
+        const dialog = page.locator('[data-testid="new-connection-dialog"]');
+        await expect(dialog.locator('[data-dialog-dismiss]')).toBeFocused();
+        await expect(page.locator(TIP)).toHaveCount(0);
+        await page.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+      },
+    );
+
     // Chips sit in one right-aligned column at the menu item's inner right edge.
     async function expectRightAligned(page: Page): Promise<void> {
       const menu = page.locator('[data-testid="context-menu"]');

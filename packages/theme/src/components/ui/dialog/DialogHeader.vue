@@ -27,14 +27,19 @@ const requestClose = inject(DIALOG_REQUEST_CLOSE_KEY, null);
 // Esc closes a dialog, Shift+Esc a prompt; the X runs the same close.
 const isPrompt = inject(DIALOG_PROMPT_KEY, false);
 // Dialog focus lands on the X; a focus-opened tooltip would take the first Esc meant for the dialog.
-// Only that programmatic focus is swallowed: Tab focus (a Tab keydown just before) shows the chord.
+// Only that programmatic focus is swallowed: Tab focus (the same Tab's focus move) shows the chord.
+// The flag clears right after the Tab's default action, so a later pointer or async open never sees it.
 const closeEl = useTemplateRef<HTMLElement>('closeEl');
 let tabbing = false;
 useEventListener(
   document,
   'keydown',
   (e) => {
-    tabbing = e.key === 'Tab';
+    if (e.key !== 'Tab') return;
+    tabbing = true;
+    setTimeout(() => {
+      tabbing = false;
+    });
   },
   { capture: true },
 );
