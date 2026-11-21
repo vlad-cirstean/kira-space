@@ -6,16 +6,17 @@ in open chapter v0.3.22's `SPEC.md`).
 Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
 before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
 
-P716 to P719 are design phases: plan proposes the design with screenshots, user approves it
+P716 to P720 are design phases: plan proposes the design with screenshots, user approves it
 before implementation starts.
 
 | # | Phase | Status |
 |---|-------|--------|
 | P716 | Rework MCP chaining for DB, API and kube: kept variables, no chain UI | Todo |
-| P717 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
-| P718 | API MCP: one-time variable values typed in the approval prompt | Todo |
-| P719 | API module variables and environments: UX redesign | Todo |
-| P720 | Remove development, debugging and validation leftovers | Todo |
+| P717 | Result review for every MCP tool that returns data | Todo |
+| P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
+| P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
+| P720 | API module variables and environments: UX redesign | Todo |
+| P721 | Remove development, debugging and validation leftovers | Todo |
 
 ## P716
 
@@ -45,13 +46,10 @@ explicit chain id), what the old `ChainSteps` code gives and what is reused, and
 step's result is still available after review (retention, secrets masked, memory cap, what "go back"
 shows once the result was released to the agent).
 
-Result review (user: "review results should work for all MCP tools that handle data: DB, API, kube").
-The design shows result review under both models, uniform across DB, API and kube: under A the review
-of a result that a script kept or transformed, under B the review inside each step's prompt and in the
-back view.
+Result review is P717; the design here shows it under both models, uniform across DB, API and kube.
 
-P717 (kube) depends on this phase: it follows the model the user picks, so it ships no panel from the
-old `ChainSteps` UI.
+P717 (result review) and P718 (kube) depend on this phase: they follow the model the user picks, so
+neither ships a panel from the old `ChainSteps` UI.
 
 Agent awareness (user: "The AI should be aware of the chaining capability by storing those variables
 and secrets"). Agent-facing text in `internal/llmprompts/registry.go` (checkprompts rules: terse,
@@ -78,6 +76,53 @@ whether "go back" shows a released result.
 
 ## P717
 
+User: "review results should work for all MCP tools that handle data: DB, API, kube." Own phase, after
+P716 (chaining; review is shown under both of its models) and before kube (P718).
+
+Today (read in code). DB and API let the user review a result before the AI gets it.
+`ReviewResultOption.vue` is the `footerAction` of `db.query`, `db.exemption` and `api.request` in
+`frontend/src/studio/approvals/kinds.ts`: a "Review result" checkbox, shown checked and disabled when
+connection or environment settings already turn review on (`reviewOffered`, `reviewResult` in the
+payload). The server runs the call, holds the result (`reviewResponse` in `internal/dbmcp/tools.go`,
+size and wait limits, withheld on timeout) and queues a second item rendered by `DbResponseBody.vue`
+or `ApiResponseBody.vue` with `ResultReview.vue` (Send to AI / Withhold, table or text view, staged
+kept values). Defaults: per connection `McpReview` read, write and DDL (`reviewFor`, `reviewForMode`
+in `permissions.go`; `browse_table` uses its mode alone); API `apiReviewFor` (`api_review.go`; a script
+reading a secret kept value forces review). Kube has none (`kube_tools.go`, `KubeReadBody.vue`); an
+earlier planner called kube review its own phase and the user confirms: it is this phase, for every
+data-returning tool.
+
+Tools registered with `mcp.AddTool` (read in `internal/dbmcp`): `list_connections`, `list_children`,
+`describe`, `browse_table`, `run_query` (`server.go`); `api_list_environments`, `api_request`
+(`api_tools.go`); `kube_list_clusters`, `kube_discover`, `kube_list_resources`, `kube_describe`,
+`kube_pod_logs` (`kube_tools.go`); `list_scripts`, `run_script`, `get_script_run` (`script_tools.go`);
+`operations` (`ops_tools.go`); `list_kept_variables` (`kept_tools.go`). Call sites of the review hold
+today: `run_query`, `browse_table` (masked mode), `api_request`. The audit confirms the rest by tool.
+
+Scope. (1) Audit: per tool, what data it returns to the AI, whether review exists, and whether review
+fits (metadata-only lists may stay unreviewed; the plan argues each, user decides). (2) One UX and one
+component for all: "Review result" checkbox in the prompt footer, result dialog, Send to AI / Withhold,
+table, text, JSON and log views, secret masking info. (3) With a transform `script`, review shows what
+the AI would receive, raw view alongside (as `api-review-raw`). (4) Settings and defaults: what exists
+(`McpReview`, API review setting, `reviewResolver`), whether kube and others get an always, per call or
+by rule setting, and how it reads in Studio MCP settings. (5) Backend: one held-result path with the
+same size and wait limits and refusal texts for every tool, no per-tool copy. P716's chaining models
+(A or B) show review the same way.
+
+Deliverable. Design phase: plan with the audit table, screenshots (before: real frontend; proposal:
+prototype in P715's style) for DB, API and kube, user approves, then implementation.
+
+Tests. Flow test per tool class (`internal/flows/dbmcpflow/`): call held for review, Send releases the
+result, Withhold and timeout withhold it, transformed result is what review shows and the AI gets,
+masking as the plan defines. UI spec (`tests/ui/studio/`, next to the DB and API review specs): same
+scenario from the prompt: tick Review result, result dialog views, Send to AI and Withhold, same result
+as the flow test. Visual baselines for new dialogs. Prompt text changes: run the `bun run test:claude:db`
+row of `docs/DEV_ENVIRONMENT.md` "Real `claude` tests".
+
+Open questions. Which metadata-only tools get review. Defaults per tool (always, per call, by rule).
+
+## P718
+
 User: "Add js script chaining for kube mcp as well. Make sure the prompt dialogs are like for db and
 api."
 
@@ -92,15 +137,8 @@ until the response is final). Switch: `scriptsOn` in `jsscript.go` (Studio MCP s
 `KubeReadBody.vue`, kind def in `frontend/src/studio/approvals/kinds.ts`; API and DB cards show
 scripts with `JsScriptBlock.vue` and kept reads with `KeptVariablesPanel.vue`.
 
-Result review today (read in code): DB and API let the user review a result before the AI gets it.
-`ReviewResultOption.vue` is the `footerAction` of `db.query`, `db.exemption` and `api.request` in
-`kinds.ts`: a "Review result" checkbox, shown checked and disabled when connection or environment
-settings already turn review on (`reviewOffered`, `reviewResult` in the payload). The server runs the
-call, holds the result (`reviewResponse` in `internal/dbmcp/tools.go`, size and wait limits, withheld
-on timeout) and queues a second item rendered by `DbResponseBody.vue` / `ApiResponseBody.vue` with
-`ResultReview.vue` (Send to AI / Withhold, table or text view, staged kept values). Kube has none:
-`kube_tools.go` and `KubeReadBody.vue` offer no review. An earlier planner called kube result review
-its own phase; the user overrides that.
+Result review: the kube card integrates P717's result review (all five kube tools); no kube-only
+review mechanism here.
 
 Chaining rework (P716): kube follows the model the user picks in P716. Scripts and
 kept variables; no panel from the old chain steps UI in the kube card. Kube tool descriptions and
@@ -109,36 +147,26 @@ request (see P716 "Agent awareness").
 
 Scope. (1) Kube read tools take the same `script` argument and kept-variable chaining as API and DB,
 reusing `jsscript.go`, `kept_script.go` and the same refusal texts, caps and switch; no second
-script mechanism. (2) Result review for all five kube tools, same UX and component as DB and API: "Review result"
-checkbox in the prompt footer (`ReviewResultOption`, settings-driven default on), result dialog with
-Send to AI / Withhold, data table or text view, logs view for `kube_pod_logs`, secret masking info
-as in DB and API. `kube_tools.go` has no masking today; the plan states what kube masks (for example
-Secret data in `kube_describe`) and how review shows it. With a
-`script`, review shows what the AI would receive (the transformed result, raw view alongside, as in API
-`api-review-raw`). Reuse `ResultReview.vue`, the held-result path and its limits; no kube-only
-mechanism. (3) Kube approval card gets P715's redesign (verdict row, connection line, kind
+script mechanism. (2) Kube approval card gets P715's redesign (verdict row, connection line, kind
 badges, highlighted statement and scripts, collapsed Details, stock buttons with shortcut chips).
 Reference `plans/P715.md` on `stream/p715` (v0.3.22), do not re-derive it; its plan covers DB and API
-only, so P717 maps each element to the kube card. Starts after P715 lands on `chapter/v0.3.22` and
-this branch picks it up, and after P716.
+only, so P718 maps each element to the kube card. Starts after P715 lands on `chapter/v0.3.22` and
+this branch picks it up, and after P716 and P717.
 
 Deliverable. Plan with screenshots (before: real frontend; proposal: prototype in P715's style),
 user approves, then implementation.
 
 Tests. Flow test (`internal/flows/dbmcpflow/kube_test.go` or sibling): kube read with transform,
 kept chain into an API or DB call and back, refusal paths (scripts off, `kept.set` in prepare,
-secret read). Kube result review, flow: each of the five tools held for review, Send releases the
-result, Withhold and timeout withhold it, transformed result is what review shows and the AI gets,
-masking as the plan defines. UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): same scenario, card
-shows scripts, kept reads and verdict row; kube result review spec: tick Review result, result dialog
-with table, text and logs views, Send to AI and Withhold, same result as the flow test. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
+secret read). UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): same scenario, card
+shows scripts, kept reads and verdict row. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
 "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses kept variables unprompted.
 
-Open questions. Chaining model per P716 (A or B). Kube result review is decided: yes. Prepare stage for kube: DB has none because the statement must be what the user
+Open questions. Chaining model per P716 (A or B). Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
 
-## P718
+## P719
 
 User: "For the variables in the api mcp, i want it to support also one time usage that i input there
 in the prompt. Like providing a one time token that i don't need persisted longer than that. By
@@ -172,7 +200,7 @@ Open questions. Who picks one-time: user per input in the card (toggle), agent p
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
-## P719
+## P720
 
 User: "The api module variables and env handling editing etc is horrible, come with a more intuitive
 and practical solution. Also improve the design."
@@ -201,7 +229,7 @@ and inspected.
 Open questions. Settled in the plan with the user: inline editing in the variables tab vs dialog;
 where agent access settings live after the redesign.
 
-## P720
+## P721
 
 User: "Check the code for code used for debugging or validating stuff for development and remove all
 of them. To give an example we still had cheetah grid from an experiment. I think we have benchmarks
@@ -219,7 +247,7 @@ Scope. Audit across Go, frontend, packages, scripts: experiment dependencies (`p
 dump and trace helpers, dev-only routes, commented-out code, test files no suite runs, fixtures
 without readers.
 
-Deliverable. Findings file `plans/P720.md`, committed before any removal: per item file:line,
+Deliverable. Findings file `plans/P721.md`, committed before any removal: per item file:line,
 consumers, verdict keep or remove. Remove everything with no live consumer. Items with a live
 consumer (CI job, a gate such as the details bench, docs reference) go to the user for a decision,
 never silently removed or kept. Docs referencing a removed item are updated in the same commit.
