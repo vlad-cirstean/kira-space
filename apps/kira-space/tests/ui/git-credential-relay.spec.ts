@@ -32,7 +32,12 @@ test('relay prompt shows its label and text; submit calls GitCredentialService.P
   await expect(window.locator('[data-testid="git-credential-prompt"]')).toHaveText(prompt.prompt);
 
   await window.fill('[data-testid="git-credential-input"]', 'hunter2');
-  await window.click('[data-testid="git-credential-submit"]');
+  const submit = window.locator('[data-testid="git-credential-submit"]');
+  // A dialog-primary button rests on no fill; hover fills it.
+  await expect(submit).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await submit.hover();
+  await expect(submit).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await submit.click();
 
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.gitCredentialProvide)?.args)

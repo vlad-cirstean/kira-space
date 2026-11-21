@@ -94,7 +94,13 @@ test('workflow graph: Delete removes the selected step, but edits text inside a 
 
   await step.click();
   await step.press('Meta+Backspace');
-  await page.locator(t('confirm-dialog-confirm')).click();
+  const confirm = page.locator(t('confirm-dialog-confirm'));
+  // A dialog-danger button rests on no fill; hover fills it.
+  await expect(confirm).toHaveAttribute('data-variant', 'dialog-danger');
+  await expect(confirm).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await confirm.hover();
+  await expect(confirm).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await confirm.click();
   await expect(step).toHaveCount(0);
   await page.locator(t('ade-wf-save')).click();
   await expect.poll(() => calls(control, IPC.adeTaskSaveWorkflow)).toHaveLength(1);

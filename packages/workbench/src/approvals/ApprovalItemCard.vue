@@ -245,11 +245,7 @@ const detailsOpen = ref(false);
       </li>
     </ul>
 
-    <Collapsible
-      v-if="def && !bodyFailed"
-      v-model:open="detailsOpen"
-      data-testid="approval-details-section"
-    >
+    <Collapsible v-if="def" v-model:open="detailsOpen" data-testid="approval-details-section">
       <CollapsibleTrigger as-child>
         <Button
           variant="link-meta"
@@ -262,7 +258,7 @@ const detailsOpen = ref(false);
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent class="flex flex-col gap-1 pt-2 pl-4">
-        <component :is="def.details" v-if="def.details" :item="item" />
+        <component :is="def.details" v-if="def.details && !bodyFailed" :item="item" />
         <ApprovalDetails v-if="requester">
           <dt>{{ t('workbench.approvals.askedBy.label') }}</dt>
           <dd data-testid="approval-origin">{{ requester }}</dd>

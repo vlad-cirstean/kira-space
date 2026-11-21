@@ -276,3 +276,13 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
     .toEqual(args);
   await expect(page.locator('[data-testid="settings-db-mcp-preview"]')).toBeChecked();
 });
+
+test('contract: the statement in Details is syntax highlighted', async ({ relaunch }) => {
+  const item = first();
+  const { window: page } = await relaunch({ control: mocks(item.id) });
+  await pushApprovals(page, [item]);
+  await page.click('[data-testid="approval-details-toggle"]');
+  await expect(
+    page.locator('[data-testid="db-mcp-preview-statement"] [data-colorized] span').first(),
+  ).toBeVisible();
+});

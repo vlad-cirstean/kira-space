@@ -3,6 +3,7 @@ import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/appro
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { editorOverflows, scrollBodyToEnd } from './support/approvalItems';
 import { editorText } from './support/editorText';
 
 // Contract approvals-api-script. Backend half: dbmcpflow TestApiRequestScripted, the same scenario.
@@ -53,7 +54,14 @@ test('contract: both scripts show highlighted next to the prepared request', asy
   await expect
     .poll(() => editorText(card.locator('[data-testid="api-approval-body-text"]')))
     .toContain('"items"');
+  await card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs 2 scripts' }).hover();
+  await expect(page.locator('[data-slot="tooltip-content"]').last()).toContainText(
+    'only what the transform script returns',
+  );
   await card.locator('[data-testid="approval-details-toggle"]').click();
+  await expect(
+    card.locator('[data-testid="api-approval-script-input"][data-colorized] span').first(),
+  ).toBeVisible();
   await expect(card.locator('[data-testid="api-approval-script-changed"]')).toContainText(
     'body, contentType',
   );
@@ -76,4 +84,37 @@ test('contract: Send answers the item id', async ({ relaunch }) => {
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
     .toEqual({ ids: [it.id], approve: true, options: null });
+});
+
+test('contract: long scripts scroll the body and wrap their sources', async ({ relaunch }) => {
+  const it = item();
+  const payload = it.payload as unknown as ScriptPayload;
+  const source = (name: string) =>
+    Array.from(
+      { length: 70 },
+      (_, i) => `const ${name}${i} = '${'v'.repeat(i % 7 === 0 ? 260 : 24)}';`,
+    ).join('\n');
+  const long = {
+    ...it,
+    payload: {
+      ...payload,
+      script: {
+        prepare: { ...payload.script.prepare, source: source('prep') },
+        transform: { ...payload.script.transform, source: source('tr') },
+      },
+    },
+  } as unknown as ApprovalItem;
+  const { window: page } = await relaunch({});
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await pushApprovals(page, [liveItem(long)]);
+  const footer = page.locator('[data-testid="approvals-footer"]');
+  await expect(footer).toHaveAttribute('data-more-below', 'true');
+  await page.click('[data-testid="approval-details-toggle"]');
+  const end = await scrollBodyToEnd(page);
+  expect(end.scrollable).toBe(true);
+  expect(end.scrollTop).toBeGreaterThan(0);
+  await expect(footer).toHaveAttribute('data-more-below', 'false');
+  for (const overflow of await editorOverflows(page)) expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.locator('[data-testid="approval-details-toggle"]')).toBeInViewport();
+  await expect(page.locator('[data-testid="approval-origin"]')).toBeInViewport();
 });
