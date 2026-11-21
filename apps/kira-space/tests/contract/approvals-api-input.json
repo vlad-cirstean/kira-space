@@ -36,7 +36,9 @@
         "host": "127.0.0.1",
         "inputs": [
           {
+            "keepMinutes": 60,
             "label": "API key",
+            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -105,6 +107,9 @@
     ],
     "options": {
       "api.request:<id:1>": {
+        "inputModes": {
+          "apikey": "keep"
+        },
         "inputs": {
           "apikey": "typed-secret-value-42"
         }

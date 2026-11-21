@@ -355,8 +355,8 @@ the renderer build, typecheck, lint, the Go unit tests, and the static half of `
 
 ## 7. CI, releases, install and update
 
-**Status:** applied. `.github/workflows/` holds `pr.yml`, `pr-auto-merge.yml`, `pr-rerun-flaky.yml`,
-`release-on-merge.yml`, `release.yml`, `release-retention.yml`, `cache-warm.yml` and `pages.yml`
+**Status:** applied. `.github/workflows/` holds `pr.yml`, `pr-auto-merge.yml`, `release-on-merge.yml`,
+`release.yml`, `release-retention.yml`, `cache-warm.yml` and `pages.yml`
 (`db-compat.yml` and `test-matrix.yml` existed at one point but were folded into `release.yml`'s own
 jobs, see `docs/ARCHITECTURE.md`).
 
@@ -386,11 +386,9 @@ The bundle assertion lives only in `release.yml`'s own "Assert packaged bundle a
 
 1. The close phase pushes `chapter/vX.Y.Z` and opens the PR to `main`.
 2. `pr-auto-merge.yml` refuses a malformed head or an existing tag, then enables squash auto-merge.
-3. `pr.yml` runs. `pr-rerun-flaky.yml` reruns failed jobs while `run_attempt < 3`, only for the
-   PR's current head and newest run. A cancelled run reruns only when a job hit its timeout, never
-   when superseded or cancelled by hand (P365).
-4. Once the ruleset's required checks pass, GitHub merges.
-5. `release-on-merge.yml` tags the squash commit (`merge_commit_sha`) as `vX.Y.Z`, dispatches
+3. `pr.yml` runs. Once the ruleset's required checks pass, GitHub merges. A failed check stays
+   failed until a fix lands on the chapter branch (CLAUDE.md "PR CI"); nothing reruns it.
+4. `release-on-merge.yml` tags the squash commit (`merge_commit_sha`) as `vX.Y.Z`, dispatches
    `pages.yml` and `cache-warm.yml` (once per merge, deduplicated by the warm run's title), and
    dispatches `release.yml -f tag=vX.Y.Z`. A merge made with `GITHUB_TOKEN` starts no workflow
    except `workflow_dispatch` and `repository_dispatch`. So it has four entry points into one

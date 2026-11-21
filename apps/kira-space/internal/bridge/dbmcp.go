@@ -424,6 +424,8 @@ type DbMcpPendingKeep struct {
 	Secret           bool   `json:"secret"`
 	Preview          string `json:"preview"`
 	PreviewTruncated bool   `json:"previewTruncated"`
+	// Blocked: the script read a one-time value, so this value will not be kept.
+	Blocked bool `json:"blocked"`
 }
 
 // DbMcpPendingScript is the script of a held result.

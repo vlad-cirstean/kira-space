@@ -18,6 +18,10 @@ type KeptStore interface {
 	List(scope string) []keptvars.Meta
 	// Put stores a value a script kept, after the response is final.
 	Put(p keptvars.Put) (keptvars.Meta, error)
+	// Clear removes entries by id (a stored input the user replaced with a one-time value).
+	Clear(ids ...string) int
+	// Retention is how long a value kept now lives.
+	Retention() time.Duration
 	// OnRemove calls fn once, with the first removal among ids.
 	OnRemove(ids []string, fn func(keptvars.Removal)) (stop func())
 }

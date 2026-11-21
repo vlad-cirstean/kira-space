@@ -118,19 +118,26 @@ const maxInputBytes = 8 << 10
 // SuppliedInputs are the values the approver typed, by input name, trimmed. They travel on the approve
 // answer only and are zeroed by Wipe once Kira has stored them or the call ended. Go strings decoded from
 // the answer JSON cannot be zeroed, so the wipe covers the copies Kira owns (stated in ARCHITECTURE).
-type SuppliedInputs map[string][]byte
+type SuppliedInputs map[string]Supplied
 
-// Take returns the value of name and forgets it; the caller owns the bytes.
-func (si SuppliedInputs) Take(name string) []byte {
-	v := si[name]
+// Supplied is one typed value. Once says the user chose to use it for this request only: it is never put in
+// the kept store.
+type Supplied struct {
+	Value []byte
+	Once  bool
+}
+
+// Take returns name's value and forgets it; the caller owns the bytes. ok is false when none was typed.
+func (si SuppliedInputs) Take(name string) (Supplied, bool) {
+	v, ok := si[name]
 	delete(si, name)
-	return v
+	return v, ok
 }
 
 // Wipe zeroes every value still held.
 func (si SuppliedInputs) Wipe() {
 	for name, v := range si {
-		clear(v)
+		clear(v.Value)
 		delete(si, name)
 	}
 }
@@ -139,6 +146,9 @@ func (si SuppliedInputs) Wipe() {
 type answerOptions struct {
 	ReviewResult bool              `json:"reviewResult"`
 	Inputs       map[string]string `json:"inputs"`
+	// InputModes says per typed input whether to keep it ("keep") or use it for this request only ("once").
+	// Absent means once.
+	InputModes map[string]string `json:"inputModes"`
 }
 
 // ApprovalActionResult is what Approve/Deny report — also never an error.
@@ -196,6 +206,8 @@ type HeldKeep struct {
 	Secret           bool
 	Preview          string
 	PreviewTruncated bool
+	// Blocked says the script read a one-time value, so this value is not kept.
+	Blocked bool
 }
 
 // HeldScript is the script a held result came from.
@@ -310,6 +322,8 @@ type ApprovalRequest struct {
 	Exemption *ApprovalExemption
 	// Inputs are the values the card asks the user to type (api.request); labels only, never values.
 	Inputs []ApprovalInput
+	// KeepMinutes is how long a typed value is kept when the user picks "keep"; shown on the card.
+	KeepMinutes int
 	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the
 	// connection's settings already review this call, so the choice is moot.
 	OfferReview bool
@@ -414,7 +428,7 @@ func (o brokerOwner) Answer(ref string, a approvals.Answer) error {
 			return ipcerr.Contract("approval options are not understood")
 		}
 	}
-	res, err := o.b.answer(ref, ApprovalChoice{ReviewResult: opts.ReviewResult}, opts.Inputs)
+	res, err := o.b.answer(ref, ApprovalChoice{ReviewResult: opts.ReviewResult}, opts.Inputs, opts.InputModes)
 	if err != nil {
 		return err
 	}
@@ -427,13 +441,13 @@ func (o brokerOwner) Answer(ref string, a approvals.Answer) error {
 // answer approves ref with choice and typed inputs. A choice or input the item does not take is a contract
 // error and leaves the item pending; the check shares the lock with the lookup so a resolve cannot slip
 // between them.
-func (b *ApprovalBroker) answer(ref string, choice ApprovalChoice, typed map[string]string) (ApprovalActionResult, error) {
+func (b *ApprovalBroker) answer(ref string, choice ApprovalChoice, typed, modes map[string]string) (ApprovalActionResult, error) {
 	b.mu.Lock()
 	entry, ok := b.entryLocked(ref)
 	var supplied SuppliedInputs
 	var err error
 	if ok {
-		supplied, err = checkAnswer(entry.req, choice, typed)
+		supplied, err = checkAnswer(entry.req, choice, typed, modes)
 	}
 	b.mu.Unlock()
 	if err != nil {
@@ -443,7 +457,7 @@ func (b *ApprovalBroker) answer(ref string, choice ApprovalChoice, typed map[str
 }
 
 // checkAnswer validates what the approver sent against what the item offers. Errors name a label, never a value.
-func checkAnswer(req ApprovalRequest, choice ApprovalChoice, typed map[string]string) (SuppliedInputs, error) {
+func checkAnswer(req ApprovalRequest, choice ApprovalChoice, typed, modes map[string]string) (SuppliedInputs, error) {
 	if choice != (ApprovalChoice{}) && !req.OfferReview {
 		return nil, ipcerr.Contract("reviewResult is not offered for this approval")
 	}
@@ -461,8 +475,24 @@ func checkAnswer(req ApprovalRequest, choice ApprovalChoice, typed map[string]st
 			return nil, err
 		}
 		if value != nil {
-			supplied[name] = value
+			supplied[name] = Supplied{Value: value, Once: true}
 		}
+	}
+	for name, mode := range modes {
+		sv, typedOK := supplied[name]
+		switch {
+		case !slices.ContainsFunc(req.Inputs, func(in ApprovalInput) bool { return in.Name == name }):
+			supplied.Wipe()
+			return nil, ipcerr.Contract("a mode was sent for an input this approval does not ask for")
+		case !typedOK:
+			supplied.Wipe()
+			return nil, ipcerr.Contract("a mode was sent for an input without a value")
+		case mode != "once" && mode != "keep":
+			supplied.Wipe()
+			return nil, ipcerr.Contract("an input mode is once or keep")
+		}
+		sv.Once = mode == "once"
+		supplied[name] = sv
 	}
 	for _, in := range req.Inputs {
 		if _, ok := supplied[in.Name]; in.Needed && !ok {

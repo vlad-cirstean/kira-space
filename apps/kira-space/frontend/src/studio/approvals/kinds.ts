@@ -201,21 +201,28 @@ function apiVerdict(item: ApprovalItem): ApprovalVerdict {
       tooltip: scripts.join('\n'),
     });
   }
-  if (p.credentials.length > 0) {
+  // One badge names everything the request sends that the user did not write: shared secrets, then the values
+  // typed on the card (once or kept). The card's rows carry no second list.
+  const sent = [...new Set([...p.credentials.map((c) => c.name), ...p.inputs.map((i) => i.name)])];
+  if (sent.length > 0) {
     facts.push({
-      text: t('studio.dbMcp.approval.api.sends.status', {
-        names: p.credentials.map((c) => c.name).join(', '),
-      }),
+      text: t('studio.dbMcp.approval.api.sends.status', { names: sent.join(', ') }),
       tone: isRead(p.method) ? 'neutral' : 'warn',
       icon: 'key',
-      tooltip: p.credentials
-        .map((c) =>
+      tooltip: [
+        ...p.credentials.map((c) =>
           t('studio.dbMcp.approval.api.credential.label', {
             name: c.name,
             hosts: c.hosts.join(', '),
           }),
-        )
-        .join('\n'),
+        ),
+        ...p.inputs.map((i) =>
+          t('studio.dbMcp.approval.api.input.label', {
+            name: i.name,
+            host: i.origin.replace(/^https?:\/\//, ''),
+          }),
+        ),
+      ].join('\n'),
     });
   }
   if (isRead(p.method)) {
@@ -401,14 +408,6 @@ function isRead(method: string): boolean {
 function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.inputs.some((i) => i.state === 'needed')) {
-    out.push({
-      text: t('studio.kept.risk.input.status'),
-      tone: 'warn',
-      testid: 'api-approval-input',
-      tooltip: t('studio.kept.risk.input.tooltip'),
-    });
-  }
   out.push(
     ...keptRisks(
       p.kept.filter((u) => !u.pending),

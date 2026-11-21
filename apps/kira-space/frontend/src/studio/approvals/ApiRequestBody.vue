@@ -73,7 +73,6 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
 <template>
   <div class="flex flex-col gap-1" data-testid="api-approval-body">
     <ChainSteps :kept="kept" :current="`${payload.method} ${payload.url}`" :scripts="scripts" />
-    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
     <KeptVariablesPanel v-if="keptRows.length" :uses="keptRows" :pair-name="pairName" />
     <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
     <template v-if="payload.body">
@@ -134,5 +133,6 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
       testid="api-approval"
       script-testid="api-approval-script-transform"
     />
+    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
   </div>
 </template>
