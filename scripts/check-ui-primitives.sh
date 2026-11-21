@@ -139,6 +139,7 @@ U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # s
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
+U62 apps/kira-space/frontend/src/studio/approvals/PendingResponse.vue # Left/Right rove the one expand button across cells; the popover takes focus itself so Copy shows no tooltip over the first Esc
 # B (apps/kira-space)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count

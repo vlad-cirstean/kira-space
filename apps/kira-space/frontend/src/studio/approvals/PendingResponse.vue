@@ -23,7 +23,7 @@ import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { loadMaskRules, maskRulesQueryKey } from '../state/maskRules';
 import FlushEditor from './FlushEditor.vue';
 import { usePendingResponse } from './pendingResponse';
@@ -190,27 +190,76 @@ function showCell(e: MouseEvent, r: number, c: number): void {
   cellValue.value = cell;
   cellOpen.value = true;
 }
-// The one expand button mounts in the hovered (or, for keyboard, focused-row) cell only.
-const activeCell = ref<{ row: number; col: number } | null>(null);
+// The one expand button mounts in the hovered cell and in the keyboard-focused cell. Separate refs:
+// pointer motion must not unmount the button that holds focus or opened the popover.
+type CellPos = { row: number; col: number };
+const hoverCell = ref<CellPos | null>(null);
+const focusCell = ref<CellPos | null>(null);
+const isActiveCell = (r: number, c: number): boolean =>
+  (hoverCell.value?.row === r && hoverCell.value.col === c) ||
+  (focusCell.value?.row === r && focusCell.value.col === c);
 function firstFilledCol(r: number): number {
   return Math.max(
     0,
     (grid.value?.rows[r] ?? []).findIndex((cell) => cell !== null),
   );
 }
-function trackCell(e: Event, r: number): void {
+// Cell under the event, else the row's first filled cell (chevron, handle, row gap).
+function cellAt(e: Event, r: number, current: CellPos | null): CellPos | null {
   const td = (e.target as HTMLElement).closest<HTMLElement>('td[data-col]');
-  if (td) activeCell.value = { row: r, col: Number(td.dataset.col) };
-  else if (activeCell.value?.row !== r) activeCell.value = { row: r, col: firstFilledCol(r) };
+  if (td) return { row: r, col: Number(td.dataset.col) };
+  return current?.row === r ? null : { row: r, col: firstFilledCol(r) };
 }
-function releaseCell(e: Event, r: number): void {
-  // The open popover is anchored to this cell; its focus and the pointer leaving must not drop it.
-  if (activeCell.value?.row !== r || cellOpen.value) return;
-  const row = e.currentTarget as HTMLElement;
-  const focused =
-    e instanceof FocusEvent ? (e.relatedTarget as Node | null) : document.activeElement;
-  if (focused && row.contains(focused)) return;
-  activeCell.value = null;
+function trackCell(e: Event, r: number, focus: boolean): void {
+  // The open popover is anchored on one cell; pointer motion elsewhere must not move the button.
+  if (cellOpen.value && !focus) return;
+  const target = focus ? focusCell : hoverCell;
+  const next = cellAt(e, r, target.value);
+  if (!next || (target.value?.row === next.row && target.value.col === next.col)) return;
+  target.value = next;
+}
+const rowEl = (r: number): HTMLElement | null =>
+  scrollRef.value?.querySelector<HTMLElement>(`tr[data-row="${r}"]`) ?? null;
+// Open popover is anchored to this cell; its focus and the pointer leaving must not drop it.
+function releaseHover(r: number): void {
+  if (hoverCell.value?.row !== r || cellOpen.value) return;
+  hoverCell.value = null;
+}
+let movingFocus = false;
+function releaseFocus(e: FocusEvent, r: number): void {
+  if (focusCell.value?.row !== r || cellOpen.value || movingFocus) return;
+  const next = e.relatedTarget as Node | null;
+  if (next && (e.currentTarget as HTMLElement).contains(next)) return;
+  focusCell.value = null;
+}
+// Closing the popover re-evaluates what the pointer and focus left behind.
+watch(cellOpen, async (open) => {
+  if (open) return;
+  await nextTick();
+  const hr = hoverCell.value?.row;
+  if (hr !== undefined && !rowEl(hr)?.matches(':hover')) hoverCell.value = null;
+  const fr = focusCell.value?.row;
+  if (fr !== undefined && !rowEl(fr)?.contains(document.activeElement)) focusCell.value = null;
+});
+// Focus the popover itself, not its Copy button: a focus-opened tooltip would take the first Esc.
+function focusPopover(e: Event): void {
+  e.preventDefault();
+  (e.currentTarget as HTMLElement | null)?.focus();
+}
+// ArrowLeft/Right on the expand button roves across the row's filled cells.
+async function moveCell(r: number, from: number, dir: 1 | -1): Promise<void> {
+  const cells = grid.value?.rows[r] ?? [];
+  for (let c = from + dir; c >= 0 && c < cells.length; c += dir) {
+    if (cells[c] === null) continue;
+    movingFocus = true;
+    focusCell.value = { row: r, col: c };
+    await nextTick();
+    rowEl(r)
+      ?.querySelector<HTMLElement>(`td[data-col="${c}"] [data-testid="db-mcp-preview-expand"]`)
+      ?.focus();
+    movingFocus = false;
+    return;
+  }
 }
 const scrollRef = ref<HTMLElement | null>(null);
 const {
@@ -325,10 +374,10 @@ const padBottom = computed(() => {
                     :data-expanded="isOpenRow(r) ? '' : undefined"
                     data-testid="db-mcp-preview-row"
                     @click="toggleRow(r)"
-                    @mouseover="trackCell($event, r)"
-                    @focusin="trackCell($event, r)"
-                    @mouseleave="releaseCell($event, r)"
-                    @focusout="releaseCell($event, r)"
+                    @mouseover="trackCell($event, r, false)"
+                    @focusin="trackCell($event, r, true)"
+                    @mouseleave="releaseHover(r)"
+                    @focusout="releaseFocus($event, r)"
                     @keydown.enter.self.prevent="toggleRow(r)"
                     @keydown.space.self.prevent="toggleRow(r)"
                   >
@@ -388,7 +437,7 @@ const padBottom = computed(() => {
                       </div>
                       <span v-else class="block truncate pr-4">{{ cell }}</span>
                       <TooltipIconButton
-                        v-if="cell !== null && activeCell?.row === r && activeCell.col === c"
+                        v-if="cell !== null && isActiveCell(r, c)"
                         icon="screen-full"
                         :icon-size="12"
                         variant="toolbar"
@@ -397,6 +446,8 @@ const padBottom = computed(() => {
                         :label="t('studio.dbMcp.preview.cellShow.tooltip')"
                         data-testid="db-mcp-preview-expand"
                         @click.stop="(e: MouseEvent) => showCell(e, r, c)"
+                        @keydown.left.prevent="moveCell(r, c, -1)"
+                        @keydown.right.prevent="moveCell(r, c, 1)"
                       />
                     </TableCell>
                   </TableRow>
@@ -417,6 +468,7 @@ const padBottom = computed(() => {
                 align="start"
                 class="w-120 max-w-[80vw]"
                 data-testid="db-mcp-preview-cell"
+                @open-auto-focus="focusPopover"
               >
                 <div
                   class="flex items-center justify-between gap-2 text-kira-sm text-muted-foreground"

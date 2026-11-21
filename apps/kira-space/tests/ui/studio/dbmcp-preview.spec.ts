@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
@@ -227,6 +228,41 @@ test('contract: the chevron and expand controls are buttons in the Tab order', a
   await page.keyboard.press('Tab');
   await page.keyboard.press('Tab');
   await expect(expand).toBeFocused();
+});
+
+test('contract: arrows rove the expand button across cells, focus survives the pointer and the popover', async ({
+  relaunch,
+}) => {
+  const { page, rows } = await openBig(relaunch);
+  const expand = '[data-testid="db-mcp-preview-expand"]';
+  const row = rows.first();
+  const popover = page.locator('[data-testid="db-mcp-preview-cell"]');
+  await row.locator('[data-testid="db-mcp-preview-row-toggle"]').focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(row.locator(expand)).toBeFocused();
+  const col = (el: Locator) => el.evaluate((n) => n.closest('td')?.getAttribute('data-col'));
+  const start = await col(row.locator(expand));
+  await page.keyboard.press('ArrowRight');
+  await expect(row.locator(expand)).toBeFocused();
+  expect(await col(row.locator(expand))).not.toBe(start);
+  await page.keyboard.press('ArrowLeft');
+  await expect(row.locator(expand)).toBeFocused();
+  expect(await col(row.locator(expand))).toBe(start);
+  // Roving reaches a later column's full value.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(popover).toBeVisible();
+  // The pointer moving over other rows must not unmount the opener.
+  await rows.nth(5).hover();
+  await expect(row.locator(expand)).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(row.locator(expand)).toBeFocused();
+  // Pointer over another row, focus stays on the keyboard button.
+  await rows.nth(6).hover();
+  await expect(row.locator(expand)).toBeFocused();
 });
 
 test('contract: Withhold denies the held result', async ({ relaunch }) => {
