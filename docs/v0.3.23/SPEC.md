@@ -17,7 +17,7 @@ before implementation starts.
 | P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
 | P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
 | P717 | Result review for every MCP tool that returns data | Done |
-| P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
+| P718 | Kube MCP: JS script chaining, approval prompts like database and API | Done |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
 | P720 | API module variables and environments: UX redesign | Todo |
 | P721 | Remove development, debugging and validation leftovers | Todo |
@@ -190,6 +190,8 @@ shows scripts, kept reads and verdict row. Visual baseline for the kube card. Pr
 Open questions. Chaining model per P716 (A or B). Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
+
+Result. Done. Decisions (user delegated, reviews screenshots at chapter end): scripts on `kube_list_resources`, `kube_describe`, `kube_pod_logs` only; prepare may change any arg but never `clusterId`, the tool or the verb; kube scripts read plain kept values only (secret or user-typed refused with the shared `keptReadNotAllowed` text) and may keep plain and secret; no `{{kept}}` templates in kube args; scripts run under approval `allow` with no card; no cluster colour line. Backend: `kube_script.go` (prepare, transform, envelope `{kind:"script", output, input:{operation,rowCount,truncated}, kept}`), `kubeRun` reuses `apiScripts`, `keptRun`, `watchKept` and the P717 held path (staged keeps commit after Send, dropped on Withhold, timeout and every other exit). With scripts on, args a prepare can set (kind, name, namespace, pod) leave the tool schema `required`; `kubeRun` enforces them on the final request. Card: `KubeRequestLine` (kubectl line from the final args, dotted underline on args the prepare set), kept panel, both scripts, may-keep badges, Read verdict with scripts fact, Details; scripted review shows Agent gets, raw table, script and Will keep with fingerprint reveal. Fixed `TransformScriptBlock` showing "reads kept variables" for a prepare-only read. Tests on contract `e2e-kube-script`: flow `TestE2EKubeScript`, UI `e2e-kube-script.spec.ts`; three visual baselines in `approvals.spec.ts`; `kubernetes-mcp.spec.ts`, `approvals-alignment.spec.ts` and `approvals-api-script.spec.ts` updated. `TestKubeMcpKeptChainThroughClaude` gives the task only plus "never write the pod's name yourself"; the model kept the pod with a kube transform and read it in the `kube_pod_logs` prepare. `bun run test:claude:db`: 19 results, none skipped. Also refreshed the stale `api-http` contract (`secretSet`).
 
 ## P719
 
