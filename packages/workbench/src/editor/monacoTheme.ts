@@ -162,12 +162,12 @@ export function defineKiraTheme(mod: MonacoModule): void {
       'editor.foreground': cssVar('--kira-fg', '#d4d4d8'),
       'editorWidget.background': cssVar('--kira-bg-elevated', '#212125'),
       'editorWidget.border': cssVar('--kira-border', '#323237'),
-      'editor.selectionBackground': cssVar('--kira-select', '#1f3354'),
+      'editor.selectionBackground': cssVar('--kira-select-text', '#45454d'),
       'editor.lineHighlightBackground': cssVar('--kira-bg-input', '#27272c'),
       'editorLineNumber.foreground': cssVar('--kira-fg-muted', '#a1a1aa'),
       'editorCursor.foreground': cssVar('--kira-fg', '#d4d4d8'),
       'editorGutter.background': cssVar('--kira-bg', '#1b1b1e'),
-      focusBorder: cssVar('--kira-focus', '#5a8ae6'),
+      focusBorder: cssVar('--kira-focus', '#a1a1aa'),
       // P663: sashes (diff split, widget resize) default to focusBorder; keep them grey.
       'sash.hoverBorder': cssVar('--kira-resize-hover', '#52525b'),
       // §4.5: the themed wavy underline replacing CodeMirror's hard-coded raster squiggle.
@@ -179,7 +179,7 @@ export function defineKiraTheme(mod: MonacoModule): void {
       // §4.8: the completion popup's chrome — primitives.css's own floating-panel tokens.
       'editorSuggestWidget.background': cssVar('--kira-bg-elevated', '#212125'),
       'editorSuggestWidget.border': cssVar('--kira-border', '#323237'),
-      'editorSuggestWidget.selectedBackground': cssVar('--kira-select', '#1f3354'),
+      'editorSuggestWidget.selectedBackground': cssVar('--kira-select', '#36363c'),
       'editorSuggestWidget.highlightForeground': cssVar('--kira-syntax-function', '#d8d2a0'),
 
       // The ~16 keys above cover the editor surface itself; the context menu, the
@@ -205,10 +205,24 @@ export function defineKiraTheme(mod: MonacoModule): void {
 
       'list.hoverBackground': cssVar('--kira-bg-input', '#27272c'),
       'list.hoverForeground': cssVar('--kira-fg', '#d4d4d8'),
-      'list.activeSelectionBackground': cssVar('--kira-select', '#1f3354'),
-      'list.activeSelectionForeground': cssVar('--kira-accent-fg', '#ffffff'),
-      'list.focusBackground': cssVar('--kira-select', '#1f3354'),
-      'list.focusOutline': cssVar('--kira-focus', '#5a8ae6'),
+      'list.activeSelectionBackground': cssVar('--kira-select', '#36363c'),
+      'list.activeSelectionForeground': cssVar('--kira-fg', '#d4d4d8'),
+      'list.focusBackground': cssVar('--kira-select', '#36363c'),
+      'list.focusOutline': cssVar('--kira-focus', '#a1a1aa'),
+      // P710: vs-dark ships blue for each of these; keep selection, highlight and drop grey.
+      'editor.inactiveSelectionBackground': cssVar('--kira-select', '#36363c'),
+      'editor.selectionHighlightBackground': cssVar('--kira-select', '#36363c'),
+      'editor.wordHighlightStrongBackground': cssVar('--kira-select', '#36363c'),
+      'editor.hoverHighlightBackground': cssVar('--kira-select', '#36363c'),
+      'list.inactiveSelectionBackground': cssVar('--kira-select', '#36363c'),
+      'list.inactiveFocusBackground': cssVar('--kira-select', '#36363c'),
+      'list.dropBackground': cssVar('--kira-select', '#36363c'),
+      'peekViewResult.selectionBackground': cssVar('--kira-select', '#36363c'),
+      'inputOption.activeBackground': cssVar('--kira-select', '#36363c'),
+      'inputOption.activeForeground': cssVar('--kira-fg', '#d4d4d8'),
+      'inputOption.activeBorder': cssVar('--kira-select-edge', '#71717a'),
+      'peekView.border': cssVar('--kira-select-edge', '#71717a'),
+      'minimap.selectionHighlight': cssVar('--kira-select-text', '#45454d'),
       'list.highlightForeground': cssVar('--kira-syntax-function', '#d8d2a0'),
 
       'dropdown.background': cssVar('--kira-bg-input', '#27272c'),

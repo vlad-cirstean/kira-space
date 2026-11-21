@@ -12,6 +12,7 @@ export interface ChartTheme {
   tooltipBorder: string;
   tooltipText: string;
   brush: string;
+  brushEdge: string;
   selected: string;
   fontFamily: string;
   series: string[];
@@ -35,6 +36,7 @@ function chartTheme(): ChartTheme {
     tooltipBorder: token('--kira-border'),
     tooltipText: token('--kira-fg'),
     brush: token('--kira-select'),
+    brushEdge: token('--kira-select-edge'),
     selected: token('--kira-fg'),
     fontFamily: getComputedStyle(document.body).fontFamily,
     series: [
