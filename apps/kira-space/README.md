@@ -204,9 +204,9 @@ Run from the repo root. Shared scripts (`setup`, `lint`, `typecheck`, `test:go`)
 ## Tests
 
 TypeScript suites under `apps/kira-space/tests/`: `unit/`, `ui/`, `ipc/`, `mobile/`, `e2e-real/`,
-`visual/`, opt-in `perf/` and `proto/`, shared `contract/` fixtures. Each tier holds a `studio/`
-subdirectory for the Studio module's specs, run as separate `-studio` Playwright projects. Opt-in
-real-`claude` Go modules: `claude/` and `claude-studio/`. Go suite under `apps/kira-space/`,
+`visual/`, `screenshots/`, opt-in `perf/` (own `playwright.perf.config.ts`), shared `contract/`
+fixtures. Several tiers hold a `studio/` subdirectory for the Studio module's specs, run by the same
+Playwright projects. Opt-in real-`claude` Go module: `tests/claude/`. Go suite under `apps/kira-space/`,
 flow tier included (`test:flows`). `packages/db-fixtures/` is the shared DB fixture corpus for the
 Studio module.
 

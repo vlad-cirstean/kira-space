@@ -4065,8 +4065,8 @@ repo's CI runs.
 - The git perf probes TestGraphStreamPerf and TestG8PerfBaseline (internal/flows/gitflow/) run only with KIRA_GIT_PERF=1 and assert nothing, printing one key=value line each, because a hard threshold would be flaky on real macOS hardware; numbers are in docs/PERF.md §2.13.
 - internal/queryplan/parse_test.go and tests/unit/explain-plan.spec.ts read the same fixtures in tests/fixtures/studio/explain-plans/, pinning the Go EXPLAIN-parser port against the frontend parser so drift in either fails on the same bytes.
 - internal/mask/parity_test.go and tests/unit/mask-parity.spec.ts both read 66 shared masking fixture pairs under tests/fixtures/studio/mask/.
-- apps/kira-space/playwright.config.ts runs six projects: ui, ui-timing, ipc-frontend, e2e-real, visual and perf; perf is opt-in, serial, in no suite script, and lives in tests/perf/. All but ui-timing are fullyParallel.
-- Kira Space's apps/kira-space/playwright.config.ts has projects ui, mobile-ios, mobile-insecure (Chromium, insecure-origin spec only), e2e-real (workers: 2) and visual.
+- apps/kira-space/playwright.config.ts runs ten projects: ui, ui-clipboard, ui-heap, ui-timing, ipc-frontend, mobile-ios, mobile-insecure, e2e-real, visual and screenshots. All but ui-timing are fullyParallel. perf lives in its own apps/kira-space/playwright.perf.config.ts, opt-in and in no suite script.
+- mobile-insecure is Chromium and runs the insecure-origin spec only; e2e-real runs workers: 2.
 - The ui project can be fullyParallel (unlike the old e2e project's workers: 1) because the serialisation existed for Electron apps contending over wall-clock/RSS budgets and Docker containers, which this tier lacks.
 - ui-timing runs with workers: 1, serially after ui finishes (dependencies: ['ui']), because its real-millisecond wall-clock assertions need the rest of the tier's CPU contention out of the way.
 - e2e-real runs workers: 2 safely because a per-test KIRA_SPACE_HOME plus WAILS_SERVER_PORT gives each instance its own SQLite app storage and secrets.
