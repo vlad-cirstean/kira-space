@@ -168,7 +168,7 @@ const ruleClass = computed(() => {
         />
         <span :class="TASK_SWATCH_GAP" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ h.title }}</span>
-        <span class="min-w-20 shrink-0 whitespace-nowrap text-kira-sm text-muted-foreground">{{
+        <span class="min-w-20 max-w-28 shrink-0 truncate text-kira-sm text-muted-foreground">{{
           h.meta
         }}</span>
         <span class="w-control shrink-0" aria-hidden="true" />
