@@ -44,7 +44,7 @@ export function apiSavedGrpcRequestKey(itemId: string) {
 }
 export const apiEnvironmentsKey = ['apiEnvironments'] as const;
 export const apiConfigKey = ['apiConfig'] as const;
-export const apiAgentAccessKey = ['apiAgentAccess'] as const;
+const apiAgentAccessKey = ['apiAgentAccess'] as const;
 export function apiVariablesKey(scope: VariableScope, ownerId: string) {
   return ['apiVariables', scope, ownerId] as const;
 }

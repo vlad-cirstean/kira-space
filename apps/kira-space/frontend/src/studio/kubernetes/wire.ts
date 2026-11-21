@@ -37,7 +37,7 @@ export interface KubeMcpSettings {
 
 type KubeMcpApproval = 'prompt' | 'allow';
 /** inherit follows dbMcp.kubeReviewResponses. */
-export type KubeMcpReview = 'inherit' | 'review' | 'send';
+type KubeMcpReview = 'inherit' | 'review' | 'send';
 
 export interface KubeClusters {
   config: KubeConfigInfo;

@@ -414,7 +414,6 @@ export type StreamTabRecord = Extract<TabRecord, { kind: 'stream' }>;
 export type BrowseTabRecord = Extract<TabRecord, { kind: 'browse' }>;
 export type HttpRequestTabRecord = Extract<TabRecord, { kind: 'http-request' }>;
 export type GrpcRequestTabRecord = Extract<TabRecord, { kind: 'grpc-request' }>;
-export type EnvironmentsTabRecord = Extract<TabRecord, { kind: 'environments' }>;
 
 export function asDataTab(tab: TabRecord | null | undefined): DataTabRecord | null {
   return tab && tab.kind === 'data' ? tab : null;

@@ -22,7 +22,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 
 // A held result as a grid, every row: click expands a row in place, its handle resizes it, a cell opens a
 // popover with Copy. Rows are virtualized. Whatever the MCP, the grid shows cells verbatim.
-export interface ReviewColumn {
+interface ReviewColumn {
   label: string;
   title?: string;
   masked?: boolean;

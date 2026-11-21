@@ -32,29 +32,6 @@ export const VARIABLES_SECTION_POINTERS = {
   agent: ['/agentAutoApproveReads', '/agentReview'],
 } as const satisfies Record<Exclude<VariablesSection, 'yaml'>, readonly string[]>;
 
-const SECRET_REF = /^\$\{secret:([^}]+)\}$/;
-
-/** The secret name inside a whole-value `${secret:name}` reference, '' for anything else. */
-export function secretNameOf(ref: string | undefined): string {
-  return SECRET_REF.exec(ref ?? '')?.[1] ?? '';
-}
-
-export const secretRef = (name: string): string => `\${secret:${name}}`;
-
-/** The file name without its kind suffix. */
-export function fileStem(file: string): string {
-  return file.replace(/\.(collection|environment)\.yaml$/, '');
-}
-
-/** A valid secret name for a variable: `<file stem>.<variable name>`, lowercase, 64 characters at most. */
-export function variableSecretName(stem: string, variable: string): string {
-  const slug = variable
-    .toLowerCase()
-    .replace(/[^a-z0-9_.-]+/g, '-')
-    .replace(/^[^a-z0-9]+/, '');
-  return `${stem}.${slug || 'variable'}`.slice(0, 64);
-}
-
 /** A row as the file holds it: empty keys dropped, and a secret never keeps a plain value. */
 export function cleanVariable(v: ApiFileVariable): ApiFileVariable {
   const out: ApiFileVariable = { name: v.name };
