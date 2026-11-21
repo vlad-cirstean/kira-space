@@ -8,6 +8,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/componen
 import { Input } from '@theme/components/ui/input';
 import {
   Popover,
+  PopoverAnchor,
   PopoverBar,
   PopoverBody,
   PopoverContent,
@@ -20,7 +21,7 @@ import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
 import BranchPicker from '@workbench/components/pickers/BranchPicker.vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useRepos } from '../../repo/state/reposQueries';
 import AdeLinkTarget from './AdeLinkTarget.vue';
 import { firstWork, offsetToIso } from './board/calendar';
@@ -166,6 +167,9 @@ async function pick(value: string): Promise<void> {
     },
   );
 }
+// The tooltip's trigger ref wraps the popover trigger's, so the anchor is set from the button itself.
+const addButton = useTemplateRef<{ $el: HTMLElement }>('addButton');
+const addAnchor = computed(() => addButton.value?.$el);
 </script>
 
 <template>
@@ -176,6 +180,7 @@ async function pick(value: string): Promise<void> {
     >
       <PopoverTrigger as-child>
         <Button
+          ref="addButton"
           variant="toolbar"
           size="kira"
           data-testid="ade-add"
@@ -186,6 +191,7 @@ async function pick(value: string): Promise<void> {
         </Button>
       </PopoverTrigger>
     </TextTooltip>
+    <PopoverAnchor :reference="addAnchor" />
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <PopoverBar>
         <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
