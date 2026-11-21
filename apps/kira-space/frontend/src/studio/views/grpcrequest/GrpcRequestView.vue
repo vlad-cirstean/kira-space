@@ -258,7 +258,6 @@ onMounted(() => {
     registerCommand('view.run', onCall),
     registerCommand('view.refresh', onCall),
     registerCommand('view.format', onBeautify),
-    registerCommand('api.save', onSave),
   ];
 });
 onUnmounted(() => {
