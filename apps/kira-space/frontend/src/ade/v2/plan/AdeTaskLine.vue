@@ -1,22 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { TASK_LINE_EDGE, TASK_LINE_MARK } from './taskGrid';
+import { TASK_LINE_EDGE, TASK_LINE_MARK, TASK_LINE_UNDER } from './taskGrid';
 
-// Task colour as a line: `edge` overlays the top of a relative header, `mark` sits inline before a
-// name. Parked dashes it (shape cue, not hue alone).
-const props = defineProps<{ color: string; parked?: boolean; variant: 'edge' | 'mark' }>();
-const paint = computed(() => ({
-  background: props.parked
-    ? `repeating-linear-gradient(90deg, ${props.color} 0 6px, transparent 6px 10px)`
-    : props.color,
-}));
+// Task colour as a line: `edge` overlays the top of a relative header, `under` the bottom of a
+// title bar (directly above the content), `mark` sits inline before a name.
+const props = defineProps<{ color: string; variant: 'edge' | 'under' | 'mark' }>();
+const CLASS = { edge: TASK_LINE_EDGE, under: TASK_LINE_UNDER, mark: TASK_LINE_MARK };
 </script>
 
 <template>
   <span
-    :class="variant === 'edge' ? TASK_LINE_EDGE : TASK_LINE_MARK"
-    :style="paint"
-    :data-parked="parked || undefined"
+    :class="CLASS[props.variant]"
+    :style="{ background: color }"
     data-testid="ade-task-line"
     aria-hidden="true"
   />

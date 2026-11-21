@@ -57,7 +57,7 @@ const facts = computed(() =>
     <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
-    <AdeTaskLine variant="mark" :color="card.color" :parked="card.parked" />
+    <AdeTaskLine variant="mark" :color="card.color" />
     <span class="flex min-w-0 flex-1 items-center gap-1.5" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
       <AdeTaskKey :card="card" />

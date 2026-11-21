@@ -128,7 +128,6 @@ const boxClass = computed(() => {
     'bg-chrome cursor-grab border',
     TASK_EDGE,
     GROUND_CARD,
-    c.parked ? 'border-dashed' : '',
     selected.value ? 'border-focus' : inRipple.value ? 'border-subtle/50' : 'border-border',
   ];
 });

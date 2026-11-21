@@ -36,9 +36,8 @@ const title = computed(() => {
       </div>
       <AdeTaskLine
         v-if="task"
-        variant="edge"
+        variant="under"
         :color="taskColor(task.color)"
-        :parked="task.kind === 'parked'"
         data-testid="ade-files-window-colour"
       />
     </TitleBarBase>

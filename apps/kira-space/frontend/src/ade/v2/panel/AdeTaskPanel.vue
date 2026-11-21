@@ -153,7 +153,7 @@ const label = computed(() =>
       />
     </template>
     <template #header>
-      <AdeTaskLine variant="edge" :color="card.color" :parked="card.parked" />
+      <AdeTaskLine variant="edge" :color="card.color" />
       <DetailHeader @contextmenu="taskMenu.open">
         <template #leading>
           <Badge v-if="card.parked" variant="default">{{ label }}</Badge>

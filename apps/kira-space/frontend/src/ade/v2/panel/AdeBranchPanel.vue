@@ -293,11 +293,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     ]"
   >
     <template #header>
-      <AdeTaskLine
-        variant="edge"
-        :color="card.review ? 'var(--kira-info)' : card.color"
-        :parked="card.parked"
-      />
+      <AdeTaskLine variant="edge" :color="card.review ? 'var(--kira-info)' : card.color" />
       <DetailHeader
         data
         wrap

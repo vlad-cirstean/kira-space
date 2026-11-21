@@ -123,9 +123,8 @@ const headHint = computed(() => {
     </div>
     <AdeTaskLine
       v-if="task"
-      variant="edge"
+      variant="under"
       :color="taskColor(task.color)"
-      :parked="task.kind === 'parked'"
       data-testid="ade-review-task-colour"
     />
   </TitleBarBase>
