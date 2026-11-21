@@ -7,6 +7,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Todo |
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
 | P709 | Task list: aligned rows, calmer design | Todo |
+| P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
 
 ## P707
 
@@ -44,3 +45,18 @@ and type scale, calmer colour and contrast, hover and selection states that do n
 Tailwind utilities and shadcn-vue only; no new styling mechanism. Same behaviour, same test ids.
 Result shows before and after screenshots of the running app (Playwright against the real
 frontend) with long, short and empty-field tasks.
+
+## P710
+
+Every selected thing is blue today: a selected task, a selected grid cell or row in Studio, a
+selected list item, menu item or tab. Looks dated. Deliverable: one neutral grey highlight
+across the whole app. Find the global token(s) behind selection and hover (theme tokens in
+`packages/theme`, Tailwind `select`/`field`/accent utilities, AG/slick grid and Monaco/xterm
+selection colours, shadcn-vue `accent`), change them to a grey that reads on the black ground
+in every surface (list rows, cards, menus, trees, grids, cells, tabs, dialogs, command palette,
+mobile app where it shares tokens), and fix every hardcoded blue that stands in for selection.
+Keep real blue where it means something other than selection (links, info, open PR, primary
+actions): the plan lists each remaining blue use and why it stays. Focus rings keep a visible,
+accessible contrast. Tests: visual baselines re-recorded with each changed baseline inspected;
+a guard or lint so a hardcoded selection blue cannot return. Runs after P709 (shares the
+selected-card styles).
