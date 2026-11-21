@@ -73,7 +73,7 @@
     "test:go:containers": "sh scripts/go-test-split.sh containers",
     "test:claude": "cd apps/kira-space/tests/claude && CGO_ENABLED=1 go test -v -timeout 40m ./...",
     "test:claude:details": "cd apps/kira-space/tests/claude && CGO_ENABLED=1 KIRA_BENCH=run go test -v -timeout 40m -run 'TestDetailsBench$' ./...",
-    "test:claude:db": "cd apps/kira-space/tests/claude && CGO_ENABLED=1 go test -v -timeout 15m -run 'TestDbMcp|TestKubeMcpThroughClaude|TestProofMcpThroughClaude|TestProofChartThroughClaude|TestSmartScriptRun' ./...",
+    "test:claude:db": "cd apps/kira-space/tests/claude && CGO_ENABLED=1 go test -v -timeout 15m -run 'TestDbMcp|TestKubeMcp|TestProofMcpThroughClaude|TestProofChartThroughClaude|TestSmartScriptRun' ./...",
     "lint:claude": "sh scripts/install-golangci-lint.sh && cd apps/kira-space/tests/claude && \"$(go env GOPATH)/bin/golangci-lint\" run",
     "test:compat": "sh scripts/db-compat.sh",
     "test:matrix": "sh scripts/test-matrix.sh",

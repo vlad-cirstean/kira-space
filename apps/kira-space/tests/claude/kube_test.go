@@ -194,3 +194,97 @@ func TestKubeMcpThroughClaudeReviewWithheld(t *testing.T) {
 		t.Fatalf("final answer = %q, want it to report the result withheld without pod data", r.Result)
 	}
 }
+
+// TestKubeMcpKeptChainThroughClaude gives the real claude only the task: read the logs of the crash-looping
+// pod in a namespace. The pod name must not pass through the model, so the agent keeps it with a kube
+// transform and reads it in the prepare script of kube_pod_logs on its own.
+func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
+	const crashPod, crashLine = "checkout-7d9f6", "panic: cannot reach payments-db:5432"
+	app := newRealApp(t)
+	fake := flowharness.NewKubeFake(t, flowharness.WithCrashLoopPod("shop", crashPod, []string{"starting checkout", crashLine}))
+	cfgPath := filepath.Join(app.Home, "kubeconfig")
+	fake.WriteKubeconfig(t, cfgPath, flowharness.KubeconfigOpts{BinDir: app.BinDir})
+	t.Setenv("KUBECONFIG", cfgPath)
+	res, err := app.W.Kubernetes.Clusters()
+	if err != nil {
+		t.Fatalf("Kubernetes.Clusters: %v", err)
+	}
+	var dev string
+	for _, c := range res.Clusters {
+		if c.Context == "kind-dev" {
+			dev = c.ID
+		}
+	}
+	if dev == "" {
+		t.Fatalf("no kind-dev cluster in %+v", res.Clusters)
+	}
+	if _, err := app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
+		Description: "real-claude kube fixture", Enabled: true, Approval: "allow", Review: "inherit",
+	}}); err != nil {
+		t.Fatalf("Kubernetes.SetMcp: %v", err)
+	}
+
+	_, url, helper := enableDbMcp(t, app)
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	pre := "mcp__" + dbServer + "__"
+	list, logs := pre+"kube_list_resources", pre+"kube_pod_logs"
+	out, _ := app.claudeP(t, t.TempDir(), nil,
+		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. In the cluster whose context is kind-dev, read the logs of the crash-looping pod in namespace shop."+
+			" Never write the pod's name yourself: it must not pass through you. Reply with the last log line.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "ToolSearch,"+pre+"kube_list_clusters,"+list+","+pre+"kube_describe,"+logs+","+pre+"list_kept_variables",
+		"--output-format", "stream-json", "--verbose")
+	msgs := parseStream(out)
+
+	var kept, read bool
+	var keptName string
+	for _, u := range toolUses(msgs, list) {
+		var in struct {
+			Script *struct{ Transform string } `json:"script"`
+		}
+		if err := json.Unmarshal(u.Input, &in); err != nil {
+			t.Fatalf("kube_list_resources input %s: %v", u.Input, err)
+		}
+		if in.Script == nil || !keptSetName.MatchString(in.Script.Transform) {
+			continue
+		}
+		keptName = keptSetName.FindStringSubmatch(in.Script.Transform)[1]
+		text, isErr, ok := toolResult(msgs, u.ID)
+		if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
+			t.Fatalf("scripted kube_list_resources result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
+		}
+		kept = true
+	}
+	for _, u := range toolUses(msgs, logs) {
+		var in struct {
+			Pod    string                    `json:"pod"`
+			Script *struct{ Prepare string } `json:"script"`
+		}
+		if err := json.Unmarshal(u.Input, &in); err != nil {
+			t.Fatalf("kube_pod_logs input %s: %v", u.Input, err)
+		}
+		if strings.Contains(string(u.Input), crashPod) {
+			t.Fatalf("kube_pod_logs input %s carries the pod name, want it kept and read by name", u.Input)
+		}
+		text, isErr, ok := toolResult(msgs, u.ID)
+		if in.Script != nil && keptName != "" && strings.Contains(in.Script.Prepare, keptName) && ok && !isErr && strings.Contains(text, crashLine) {
+			read = true
+		}
+	}
+	if !kept || !read {
+		t.Fatalf("kept = %v, read through prepare = %v, want both:\n%s", kept, read, tail(out, 2500))
+	}
+	if r := resultMsg(t, msgs); r.IsError || strings.Contains(r.Result, crashPod) || !strings.Contains(r.Result, "payments-db") {
+		t.Fatalf("final answer = %q (error %v), want the last log line and no pod name", r.Result, r.IsError)
+	}
+}
