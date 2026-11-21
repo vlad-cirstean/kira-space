@@ -460,7 +460,7 @@ useEventListener(treeBodyEl, 'contextmenu', onBackgroundContextMenu);
     </div>
     <div
       v-if="drag.dragging.value && dragCount > 1"
-      class="pointer-events-none fixed z-(--kira-z-popover) min-w-5 rounded-full bg-focus px-1.5 text-center text-kira-sm text-primary-foreground"
+      class="pointer-events-none fixed z-(--kira-z-popover) min-w-5 rounded-full bg-fg px-1.5 text-center text-kira-sm text-chrome"
       :style="{ left: `${pointer.x + 12}px`, top: `${pointer.y + 12}px` }"
       :aria-label="t('studio.api.collections.dragCount.aria', { count: dragCount })"
       data-testid="collection-drag-count"

@@ -162,7 +162,7 @@ function buildBadgeElement(
   }
   const classes: string[] = [];
   // G-UX (item 1): a subtle ring on the current-branch badge itself. `ring-current` (not a fixed
-  // tone like `ring-focus`): the ring must read as "this badge" however many tones exist
+  // tone like `ring-info`): the ring must read as "this badge" however many tones exist
   // (ok/warn today), never a colour of its own that can clash with the badge's own text-{tone}.
   if (spec.isCurrentBranch) classes.push('outline outline-1 -outline-offset-1 outline-current');
   badge.className = refBadgeClass(variant, 'shrink min-w-0', ...classes);
@@ -203,7 +203,7 @@ function buildBadgeElement(
     // "reliably reach the accessibility tree as a second, non-text signal" reasoning the dot it
     // replaces already established (the "no colour/shape-only meaning" still applies).
     const check = document.createElement('span');
-    check.className = 'codicon codicon-check shrink-0 text-focus';
+    check.className = 'codicon codicon-check shrink-0 text-info';
     check.setAttribute('role', 'img');
     check.setAttribute('aria-label', t('git.common.currentBranch.tooltip'));
     badge.appendChild(check);
