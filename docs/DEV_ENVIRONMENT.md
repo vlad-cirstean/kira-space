@@ -422,6 +422,8 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
   path outside trusted `projects` opens a blocking "Adding a new directory" dialog, so no SessionStart
   (CLI 2.1.330). Kira passes extra dirs as `permissions.additionalDirectories` instead. The suite seeds
   only cwd trust, on purpose: seeding add-dir trust would hide a regression.
+  The suite unsets `CLAUDE_CODE_CHILD_SESSION` (inherited from a host Claude session it stops the TUI
+  writing its transcript, so `--resume` finds nothing).
 - The server build's `EmitTo` broadcasts to every page (`internal/shell/emitto_server.go`, P231). Payloads without
   a window key reach all pages: close-flush request, `AdeTaskOpenSession`, `ChannelMobileOpenLaunch`. With two pages
   in `e2e-real`, closing one window flushes all; focusing an ADE session opens it in all. Use one page per such test.

@@ -5,7 +5,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | # | Phase | Status |
 |---|-------|--------|
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Todo |
-| P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
+| P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Done |
 | P709 | Task list: aligned rows, calmer design | Todo |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
@@ -37,6 +37,26 @@ in DEV_ENVIRONMENT first; check the installed `claude` version's hook contract a
 `internal/harness/claude/hooks` and the settings Kira writes) and fix the code or the tests so
 all four pass against the real CLI. If a test cannot run here for a reason outside the repo
 (auth, network), say exactly which and why.
+
+Result: root cause was product, not tests. CLI 2.1.330 stops a TUI `--add-dir` path outside trusted
+`.claude.json` `projects` at a blocking dialog (default "No, exit") before any hook; Kira passed the
+task folder that way on every TUI launch. Fix: `Launch.AddDirs` replaces the flag; the claude hook
+listener writes `permissions.additionalDirectories` into the launch's one settings file
+(`ComposeInto`, else per-terminal `settings-<id>.json`). Headless keeps `--add-dir`; no listener means
+dirs not granted, logged. Plan: `plans/P708.md`. Guard: `TestAdHocSession` asserts no `--add-dir` in
+the TUI argv and the task folder in the settings file. Two further blockers showed once SessionStart
+fired, fixed in the tests: `CLAUDE_CODE_CHILD_SESSION` inherited from the host session stops a TUI
+writing its transcript (Resume found no conversation), now unset with the other parent ids; the
+manual step's first message sends haiku exploring and a shell command prompt had no answerer, so
+`TestAdeManualSession` and `TestAdeRestoreSessionContinue` seed `Bash` allow in project settings.
+`TestHookStopBlock` flaked about half of runs (haiku released its own lease before the Stop); the
+prompt now says not to; 6 of 6 pass after. Verified against the real CLI: all five target tests,
+the hook, config-isolation rows and `lint:claude` pass, 0.019 USD of `claude -p` spend. Whole module:
+`TestAdeReviewStep` fails about half of runs, also at base 605a98ec3 (2 of 4 failed there): a
+headless review round resumes the implementer session and haiku sometimes reports no `review.reply`
+action; not touched, different subsystem. `TestAdeBranchRequest` failed once in the full run, passed
+on rerun and at base.
+
 
 ## P709
 
