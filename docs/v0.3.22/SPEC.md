@@ -6,7 +6,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 |---|-------|--------|
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Todo |
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
-| P709 | Task list: aligned rows, calmer design | Todo |
+| P709 | Task list: aligned rows, calmer design | Done |
 
 ## P707
 
@@ -44,3 +44,15 @@ and type scale, calmer colour and contrast, hover and selection states that do n
 Tailwind utilities and shadcn-vue only; no new styling mechanism. Same behaviour, same test ids.
 Result shows before and after screenshots of the running app (Playwright against the real
 frontend) with long, short and empty-field tasks.
+
+Result: fixed column grid (`plan/taskGrid.ts`) shared by card heads, board branch rows, span and
+history rows. Status, estimate, action, PR and tag keep one x whatever the content; title, meta
+and branch name truncate. Hover actions overlay the text cell end on the row ground, so hover
+never moves a box. Branch names drop to regular weight, muted until hover or selection. Plan
+content caps at `max-w-4xl`. Step cell widened (`w-32`, `@lg:w-48`); step percent hides in the
+narrow pane. New layout spec `plan rows keep fixed columns and hover never reflows`; the "hover
+actions sit right" assertions now pin the overlay edge and unmoved boxes. Dropped stale U37
+exemption for `AdeTaskCard.vue`. Visual baselines re-recorded (`plan-branches-stacked`,
+`-review`, `-pending`, `plan-day-bars`); full `visual` run 53 passed; 280 targeted `ui` tests
+passed. Dark only: no light theme exists (ARCHITECTURE Known open item). Before and after
+screenshots (uncommitted, gitignored): `screenshots/p709/{before,after}/`.
