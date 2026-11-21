@@ -80,3 +80,26 @@ visual baselines unchanged. Full `ade-v2` + `consistency` + `panel-resize` ui ru
 before = `beeeebe48`. Cards on black: the edge (`#323237` on `#131315`) plus 16px gaps separate
 them; read the after shots for contrast.
 
+
+Iteration 3 (user feedback on the iteration 2 shots): (1) Card meta is schedule only (`3d → Mon 28`):
+repo names left it (branch rows show them); shelf rows keep repo names in their facts, since they
+have no branch rows (one line in `AdeShelfRow.vue` if "nowhere" was meant). (2) Jira key
+(`AdeTaskKey`, muted mono) follows the title, never truncated, skipped when it is the title; the
+title truncates ahead of it. (3) Status leads line 2 in the 80px column at the title x; line 1 is
+title, key, hover overlay and step action; the estimate cell (50px, right-aligned) spans the branch
+rows' PR and tag slots; step cell `w-28` (`@lg:w-48`). (4) Task colour is a 3px line in the full
+colour (`AdeTaskLine`), replacing the swatch: a left bar was rejected because its mass grows with
+branch count and it crowds the structure column, a top edge has one mass on every card. Cards and
+span rows colour their top border (dashed when parked, selected keeps the colour on top and the
+focus colour on the other sides); task and branch panel heads and the review and Files title bars
+overlay a 3px edge (review window without a task: no line); shelf rows, All sessions, needs rows
+and the branch tooltip get a 16x3 mark. `AdeTaskSwatch` deleted. U105 allows the parked dash
+gradient in `AdeTaskLine`; stale U132 exemptions dropped. Shelf facts cap `max-w-1/4` so the title
+keeps room. Specs: `ade-v2-task-row` (grid, key, time cell, top edge), `ade-v2-plan` (card box,
+focus on the left edge, meta, drag grab on line 1 since line 2 now starts with the status
+button), `ade-v2-card-icons`, `ade-v2-task-panel`, `ade-v2-review`, `ade-v2-task-files-window`.
+Baselines re-recorded: `plan-branches-stacked`, `-review`, `plan-day-bars`, `plan-branch-tip`,
+`plan-branch-plain-tip`, `files-open`, `-reading`, `-search`, `-launch-error`. Full `ade-v2` +
+`consistency` + `panel-resize` ui run (845) green after fixes; full `visual` run green after
+re-record. Shots (uncommitted, gitignored): `screenshots/p709-iter3/{before,after}/`, before =
+`22a7d1cab`.
