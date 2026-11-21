@@ -6,26 +6,28 @@ in open chapter v0.3.22's `SPEC.md`).
 Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
 before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
 
-P716, P717 and P718 are design phases: plan proposes the design with screenshots, user approves it
+P716 to P719 are design phases: plan proposes the design with screenshots, user approves it
 before implementation starts.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P716 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
-| P717 | API MCP: one-time variable values typed in the approval prompt | Todo |
-| P718 | API module variables and environments: UX redesign | Todo |
-| P719 | Remove development, debugging and validation leftovers | Todo |
+| P716 | Rework MCP chaining for DB, API and kube: kept variables, no chain UI | Todo |
+| P717 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
+| P718 | API MCP: one-time variable values typed in the approval prompt | Todo |
+| P719 | API module variables and environments: UX redesign | Todo |
+| P720 | Remove development, debugging and validation leftovers | Todo |
 
-## Chaining rework (user decision)
+## P716
 
-Applies across P716 and P717; first design question of the chapter. Rework MCP chaining for all MCP
-tools that support chaining (DB, API, kube): no chain UI in the approval prompt (no "Earlier / This
-step" chain steps, no chain panel). Simpler model: a script stores a result in a kept variable and
-the agent makes a follow-up request that reads it. Kept variables are secret or plain; the user can
-preview both. Secrets are revealed behind the same local-auth fingerprint prompt the app uses for
-other secrets (`apps/kira-space/internal/localauth`, credential-reveal flow, spec
-`apps/kira-space/tests/ui/studio/credential-reveal.spec.ts`). P715 (v0.3.22) still ships the
-existing chain steps; this chapter removes them. P716 must not ship chain steps.
+User decision: removing the chain steps UI and reworking MCP chaining is its own phase, first in the
+chapter. Rework chaining for all MCP tools that support it (DB, API, kube): no chain UI in the approval
+prompt (no "Earlier / This step" chain steps, no chain panel). Simpler model: a script stores a result in
+a kept variable and the agent makes a follow-up request that reads it. Kept variables are secret or
+plain; the user can preview both. Secrets are revealed behind the same local-auth fingerprint prompt the
+app uses for other secrets (`apps/kira-space/internal/localauth`, credential-reveal flow, spec
+`apps/kira-space/tests/ui/studio/credential-reveal.spec.ts`). Removes the existing `ChainSteps` UI from
+the DB and API prompts; P715 (v0.3.22) ships it. P717 (kube) depends on this: no chain UI, no chain
+steps.
 
 Agent awareness (user: "The AI should be aware of the chaining capability by storing those variables
 and secrets"). Agent-facing text in `internal/llmprompts/registry.go` (checkprompts rules: terse,
@@ -35,12 +37,19 @@ stored (names, kinds, source, expiry, never secret values); secret values are ne
 Today (read in `registry.go`): the connect-time `DbmcpInstructions` (sent through `ServerOptions`
 Instructions, `server.go`) never mentions kept variables or chaining; only the `run_query`,
 `api_request` and `list_kept_variables` tool descriptions do, and no kube tool description does.
-So the agent learns it per tool, not at connect time: the plan adds it to the instructions and kube.
+So the agent learns it per tool, not at connect time: the plan adds it to the instructions, the
+DB/API/kube tool descriptions and `list_kept_variables`.
 
-Open question. Scope of removing the existing chain steps UI from the DB and API prompts, and whether
-it is its own phase. Not decided: no phase added, no renumbering until the user decides.
+Deliverable. Design phase: plan with screenshots (before: real frontend; proposal: prototype), user
+approves, then implementation.
 
-## P716
+Tests. Flow test: script keeps a plain and a secret value, follow-up request reads both, secret
+absent from AI-facing output. UI spec: same scenario, preview of plain and secret, fingerprint prompt
+on secret reveal, no chain UI in DB and API cards. Prompt text changes: run the matching row of
+`docs/DEV_ENVIRONMENT.md` "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses
+kept variables unprompted.
+
+## P717
 
 User: "Add js script chaining for kube mcp as well. Make sure the prompt dialogs are like for db and
 api."
@@ -56,18 +65,18 @@ until the response is final). Switch: `scriptsOn` in `jsscript.go` (Studio MCP s
 `KubeReadBody.vue`, kind def in `frontend/src/studio/approvals/kinds.ts`; API and DB cards show
 scripts with `JsScriptBlock.vue` and kept reads with `KeptVariablesPanel.vue`.
 
-Chaining rework (see "Chaining rework (user decision)"): kube follows the simpler model. Scripts and
+Chaining rework (P716): kube follows the simpler model. Scripts and
 kept variables only; no chain steps, no chain panel in the kube card. Kube tool descriptions and
 `DbmcpInstructions` tell the AI it can store a result in a kept variable and read it in a follow-up
-request (see "Agent awareness").
+request (see P716 "Agent awareness").
 
 Scope. (1) Kube read tools take the same `script` argument and kept-variable chaining as API and DB,
 reusing `jsscript.go`, `kept_script.go` and the same refusal texts, caps and switch; no second
 script mechanism. (2) Kube approval card gets P715's redesign (verdict row, connection line, kind
 badges, highlighted statement and scripts, collapsed Details, stock buttons with shortcut chips).
 Reference `plans/P715.md` on `stream/p715` (v0.3.22), do not re-derive it; its plan covers DB and API
-only, so P716 maps each element to the kube card. Starts after P715 lands on `chapter/v0.3.22` and
-this branch picks it up.
+only, so P717 maps each element to the kube card. Starts after P715 lands on `chapter/v0.3.22` and
+this branch picks it up, and after P716.
 
 Deliverable. Plan with screenshots (before: real frontend; proposal: prototype in P715's style),
 user approves, then implementation.
@@ -78,12 +87,11 @@ secret read). UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): sam
 shows scripts, kept reads and verdict row. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
 "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses kept variables unprompted.
 
-Open questions. Scope of removing the existing chain steps UI from the DB and API prompts (P715
-ships it), and whether that is its own phase; user decides. Prepare stage for kube: DB has none because the statement must be what the user
+Open questions. Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
 
-## P717
+## P718
 
 User: "For the variables in the api mcp, i want it to support also one time usage that i input there
 in the prompt. Like providing a one time token that i don't need persisted longer than that. By
@@ -96,9 +104,9 @@ default 60 min (`internal/storage/model/settings.go`), range 5 to 240
 (`internal/storage/model/dbsettings.go`), store cap `MaxTTL` 240 min, fallback `DefaultTTL` 1 h
 (`internal/keptvars/entry.go`). So the user's "30 min" is 60 min by default.
 
-Chaining rework (see "Chaining rework (user decision)"): one-time inputs fit the same model. No
+Chaining rework (P716): one-time inputs fit the same model. No
 chain UI for them; a one-time value is never kept, so no follow-up request can read it. The `inputs`
-text in `api_request` and `DbmcpInstructions` says so (see "Agent awareness").
+text in `api_request` and `DbmcpInstructions` says so (see P716 "Agent awareness").
 
 Scope. A typed value can be marked one-time: used for this one request only, never `Put` in the kept
 store, wiped after send, never in op log, approval payload, result or anything given to the AI. A
@@ -113,12 +121,11 @@ reaches the request, store stays empty, next request asks again, value absent fr
 log, derived `kept.set` refused. UI spec (next to `tests/ui/studio/approvals-api-input.spec.ts`):
 same scenario from the card. If prompt text changes, run the `bun run test:claude:db` row too.
 
-Open questions. Scope of removing the existing chain steps UI from the DB and API prompts, and
-whether that is its own phase; user decides (same question as in P716). Who picks one-time: user per input in the card (toggle), agent per input declaration,
+Open questions. Who picks one-time: user per input in the card (toggle), agent per input declaration,
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
-## P718
+## P719
 
 User: "The api module variables and env handling editing etc is horrible, come with a more intuitive
 and practical solution. Also improve the design."
@@ -147,7 +154,7 @@ and inspected.
 Open questions. Settled in the plan with the user: inline editing in the variables tab vs dialog;
 where agent access settings live after the redesign.
 
-## P719
+## P720
 
 User: "Check the code for code used for debugging or validating stuff for development and remove all
 of them. To give an example we still had cheetah grid from an experiment. I think we have benchmarks
@@ -165,7 +172,7 @@ Scope. Audit across Go, frontend, packages, scripts: experiment dependencies (`p
 dump and trace helpers, dev-only routes, commented-out code, test files no suite runs, fixtures
 without readers.
 
-Deliverable. Findings file `plans/P719.md`, committed before any removal: per item file:line,
+Deliverable. Findings file `plans/P720.md`, committed before any removal: per item file:line,
 consumers, verdict keep or remove. Remove everything with no live consumer. Items with a live
 consumer (CI job, a gate such as the details bench, docs reference) go to the user for a decision,
 never silently removed or kept. Docs referencing a removed item are updated in the same commit.
