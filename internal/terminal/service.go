@@ -3,6 +3,7 @@ package terminal
 import (
 	"encoding/base64"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/kirathecat/kira-studio/internal/appevent"
@@ -108,6 +109,7 @@ func (s *Service) Close(terminalID string) error {
 // the reader goroutine before the coalescer does; onExit runs after the exit event is sent.
 func (s *Service) OpenWithCoalescedOutput(p OpenParams, windowKey, terminalID string, tap func([]byte), onExit func()) (*Session, error) {
 	coalescer := newOutputCoalescer(s.Emit, windowKey, terminalID)
+	coalescer.onDone = func() { s.Registry.untrackOutput(terminalID, coalescer) }
 	p.OnData = coalescer.push
 	if tap != nil {
 		p.OnData = func(b []byte) {
@@ -125,7 +127,11 @@ func (s *Service) OpenWithCoalescedOutput(p OpenParams, windowKey, terminalID st
 			onExit()
 		}
 	}
-	return s.Registry.Open(p)
+	sess, err := s.Registry.Open(p)
+	if err == nil {
+		s.Registry.trackOutput(terminalID, sess, coalescer)
+	}
+	return sess, err
 }
 
 // ---- the coalescing terminal-output push channel ----
@@ -140,9 +146,12 @@ const (
 type Event struct {
 	TerminalID string `json:"terminalId"`
 	Data       string `json:"data,omitempty"` // base64, absent on the exit event
-	Exited     bool   `json:"exited"`
-	ExitCode   *int   `json:"exitCode,omitempty"`
-	Error      string `json:"error,omitempty"`
+	// End is the cumulative byte count of the session's output including this chunk. A window
+	// adopting a moved terminal uses it to order live chunks against the held bytes (P722).
+	End      int64  `json:"end"`
+	Exited   bool   `json:"exited"`
+	ExitCode *int   `json:"exitCode,omitempty"`
+	Error    string `json:"error,omitempty"`
 }
 
 // outputCoalescerFinal is the extra payload only the exit flush carries.
@@ -151,14 +160,33 @@ type outputCoalescerFinal struct {
 	errMsg   string
 }
 
+// maxHeldBytes caps the output buffered while a terminal moves between windows.
+const maxHeldBytes = 1 << 20
+
 // outputCoalescer wraps appevent.Coalescer[[]byte, outputCoalescerFinal]: flush on 16 KiB
 // accumulated or a 16ms timer, whichever first; the exit event always flushes, even with nothing
 // pending, so the renderer's "running" state can never strand.
+//
+// mu orders every flush against hold, adopt and release: a flush either emits and advances end, or
+// buffers, never both. Lock order across the package is Registry.mu then mu; flush never takes
+// Registry.mu while holding mu.
 type outputCoalescer struct {
 	emit       appevent.Emitter
-	windowKey  string
 	terminalID string
 	gen        *appevent.Coalescer[[]byte, outputCoalescerFinal]
+	// onDone runs, outside mu, after an exit event was emitted rather than held.
+	onDone func()
+
+	mu        sync.Mutex
+	windowKey string // EmitTo target
+	end       int64  // cumulative bytes emitted or handed over by adopt
+	held      bool
+	pending   string // window the hold ends in, set by Reown; "" until then
+	buf       [][]byte
+	bufBytes  int
+	total     int64 // bytes produced while held, dropped chunks included
+	truncated bool
+	final     *outputCoalescerFinal
 }
 
 func newOutputCoalescer(emit appevent.Emitter, windowKey, terminalID string) *outputCoalescer {
@@ -176,26 +204,174 @@ func (c *outputCoalescer) finish(exitCode int, errMsg string) {
 }
 
 func (c *outputCoalescer) flush(batch [][]byte, done bool, final outputCoalescerFinal) {
-	var data string
-	if len(batch) > 0 {
-		n := 0
-		for _, b := range batch {
-			n += len(b)
-		}
-		buf := make([]byte, 0, n)
-		for _, b := range batch {
-			buf = append(buf, b...)
-		}
-		data = base64.StdEncoding.EncodeToString(buf)
+	n := 0
+	for _, b := range batch {
+		n += len(b)
 	}
-	var exitCode *int
-	var errMsg string
-	if done {
+	raw := make([]byte, 0, n)
+	for _, b := range batch {
+		raw = append(raw, b...)
+	}
+
+	c.mu.Lock()
+	if c.held {
+		c.holdLocked(raw)
+		if done {
+			c.final = &final
+		}
+		c.mu.Unlock()
+		return
+	}
+	c.emitLocked(raw, done, &final)
+	c.mu.Unlock()
+	if done && c.onDone != nil {
+		c.onDone()
+	}
+}
+
+// emitLocked sends raw (and, when done, the exit) to windowKey and advances end. Caller holds mu.
+func (c *outputCoalescer) emitLocked(raw []byte, done bool, final *outputCoalescerFinal) {
+	c.end += int64(len(raw))
+	ev := Event{TerminalID: c.terminalID, End: c.end, Exited: done}
+	if len(raw) > 0 {
+		ev.Data = base64.StdEncoding.EncodeToString(raw)
+	}
+	if done && final != nil {
 		ec := final.exitCode
-		exitCode = &ec
-		errMsg = final.errMsg
+		ev.ExitCode = &ec
+		ev.Error = final.errMsg
 	}
-	c.emit.EmitTo(c.windowKey, appevent.ChannelTerminal, Event{
-		TerminalID: c.terminalID, Data: data, Exited: done, ExitCode: exitCode, Error: errMsg,
-	})
+	c.emit.EmitTo(c.windowKey, appevent.ChannelTerminal, ev)
+}
+
+// holdLocked buffers raw, dropping the oldest chunks past maxHeldBytes. Caller holds mu.
+func (c *outputCoalescer) holdLocked(raw []byte) {
+	if len(raw) == 0 {
+		return
+	}
+	c.total += int64(len(raw))
+	c.buf = append(c.buf, raw)
+	c.bufBytes += len(raw)
+	for c.bufBytes > maxHeldBytes && len(c.buf) > 1 {
+		c.bufBytes -= len(c.buf[0])
+		c.buf[0] = nil
+		c.buf = c.buf[1:]
+		c.truncated = true
+	}
+	if c.bufBytes > maxHeldBytes {
+		c.buf[0] = c.buf[0][c.bufBytes-maxHeldBytes:]
+		c.bufBytes = maxHeldBytes
+		c.truncated = true
+	}
+}
+
+func (c *outputCoalescer) clearHoldLocked() {
+	c.held, c.pending = false, ""
+	c.buf, c.bufBytes, c.total, c.truncated, c.final = nil, 0, 0, false, nil
+}
+
+// hold stops emission: later output is buffered. end is what the current owner already received.
+func (c *outputCoalescer) hold() (end int64, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.held {
+		return 0, ErrAlreadyMoving
+	}
+	c.held = true
+	return c.end, nil
+}
+
+// reown retargets the coalescer at to. Held: the hold ends there at adopt. Not held: events go
+// there at once.
+func (c *outputCoalescer) reown(to string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.held {
+		c.pending = to
+		return
+	}
+	c.windowKey = to
+}
+
+// adopt ends the hold in window key and hands over the buffer and any recorded exit.
+func (c *outputCoalescer) adopt(key string) (AdoptResult, error) {
+	c.mu.Lock()
+	if !c.held {
+		c.mu.Unlock()
+		return AdoptResult{}, ErrNotHeld
+	}
+	if c.pending != key {
+		c.mu.Unlock()
+		return AdoptResult{}, ErrNotOwner
+	}
+	data := joinChunks(c.buf, c.bufBytes)
+	c.end += c.total
+	res := AdoptResult{End: c.end, Truncated: c.truncated}
+	if len(data) > 0 {
+		res.Data = base64.StdEncoding.EncodeToString(data)
+	}
+	exited := c.final != nil
+	if exited {
+		res.Exited, res.ExitCode, res.Error = true, &c.final.exitCode, c.final.errMsg
+	}
+	c.windowKey = key
+	c.clearHoldLocked()
+	c.mu.Unlock()
+	if exited && c.onDone != nil {
+		c.onDone()
+	}
+	return res, nil
+}
+
+// release ends the hold in the current window: one event with the buffer, then the exit if any.
+func (c *outputCoalescer) release() {
+	c.mu.Lock()
+	if !c.held {
+		c.mu.Unlock()
+		return
+	}
+	data := joinChunks(c.buf, c.bufBytes)
+	c.end += c.total - int64(len(data))
+	exited := c.final != nil
+	var final *outputCoalescerFinal
+	if exited {
+		f := *c.final
+		final = &f
+	}
+	c.clearHoldLocked()
+	if len(data) > 0 || exited {
+		c.emitLocked(data, exited, final)
+	}
+	c.mu.Unlock()
+	if exited && c.onDone != nil {
+		c.onDone()
+	}
+}
+
+// forget drops a hold whose target window closed. It reports whether an exit was recorded, so the
+// caller can untrack a session that already ended.
+func (c *outputCoalescer) forget(key string) (dropped, exited bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.held {
+		return false, false
+	}
+	target := c.pending
+	if target == "" {
+		target = c.windowKey
+	}
+	if target != key {
+		return false, false
+	}
+	exited = c.final != nil
+	c.clearHoldLocked()
+	return true, exited
+}
+
+func joinChunks(chunks [][]byte, n int) []byte {
+	out := make([]byte, 0, n)
+	for _, b := range chunks {
+		out = append(out, b...)
+	}
+	return out
 }
