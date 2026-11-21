@@ -20,7 +20,7 @@ import (
 // returns what the shim printed: the hook reply body, empty when the app has nothing to say.
 func hook(t *testing.T, app *flowharness.App, terminalID, payload string) string {
 	t.Helper()
-	_, env, _ := app.W.AgentHooks.Compose("claude", terminalID, "", "claude", "")
+	_, env, _ := app.W.AgentHooks.Compose("claude", terminalID, "", "claude", "", nil)
 	st := app.W.AgentHooks.Status("claude")
 	if !st.Running || len(env) == 0 {
 		t.Fatalf("hooks not running: %+v", st)

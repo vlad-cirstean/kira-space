@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/internal/harness"
@@ -35,12 +36,6 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 		word(appendSystemPromptFileFlag)
 		word(s.ContextFile)
 	}
-	if len(s.AddDirs) > 0 {
-		word("--add-dir")
-		for _, d := range s.AddDirs {
-			word(d)
-		}
-	}
 	if len(s.DisallowedTools) > 0 {
 		word("--disallowedTools")
 		for _, t := range s.DisallowedTools {
@@ -65,7 +60,7 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 			word(t)
 		}
 	}
-	launch := harness.Launch{SessionID: s.SessionID}
+	launch := harness.Launch{SessionID: s.SessionID, AddDirs: slices.Clone(s.AddDirs)}
 	if s.Hermetic {
 		launch.Env = append(launch.Env, hermeticEnv...)
 	}
@@ -81,8 +76,8 @@ func (p *Provider) InteractiveCommand(s harness.InteractiveSpec) harness.Launch 
 	return launch
 }
 
-// WithPrompt ends flag parsing with `--` so a trailing variadic flag (--add-dir a b) cannot take
-// the prompt.
+// WithPrompt ends flag parsing with `--` so a trailing variadic flag (--disallowedTools a b) cannot
+// take the prompt.
 func (*Provider) WithPrompt(command, prompt string) string {
 	return command + " -- " + loginshell.Quote(prompt)
 }

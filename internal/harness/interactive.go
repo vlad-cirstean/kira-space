@@ -10,6 +10,10 @@ type Launch struct {
 	SessionID string
 	// ConfigFile is the Kira-written provider config file a hook listener extends in place; "" = none.
 	ConfigFile string
+	// AddDirs are the dirs the provider's hook listener grants through the settings it composes,
+	// not through the command. Claude sets it: a TUI `--add-dir` stops at a per-directory trust
+	// dialog before any hook (CLI 2.1.330).
+	AddDirs []string
 }
 
 // Interactive builds the launch of a TUI session.

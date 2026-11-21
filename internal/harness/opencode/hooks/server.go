@@ -94,7 +94,8 @@ func (s *Server) Status() harness.HookStatus {
 // Compose returns command unchanged and the env that loads the plugin and points it at this
 // server through OPENCODE_CONFIG_DIR (Q-OC2, verified); OPENCODE_CONFIG_CONTENT carries the agent
 // context. The env carries the token: never return it from a bound method.
-func (s *Server) Compose(terminalID, _, command string) (string, []string) {
+// opencode grants extra dirs in its own config, so addDirs is ignored.
+func (s *Server) Compose(terminalID, _, command string, _ []string) (string, []string) {
 	return command, []string{
 		"KIRA_TERMINAL_ID=" + terminalID,
 		"KIRA_AGENT_HOOK_SOCKET=" + s.ln.SockPath,
