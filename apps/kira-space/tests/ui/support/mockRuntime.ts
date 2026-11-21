@@ -73,6 +73,11 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   gitCredentialProvide: 'GitCredentialService.Provide',
   tabsList: 'TabsService.List',
   tabsSave: 'TabsService.Save',
+  tabsMove: 'TabsService.Move',
+  tabsInbound: 'TabsService.Inbound',
+  tabsTargets: 'TabsService.Targets',
+  tabsCapabilities: 'TabsService.Capabilities',
+  tabsCloseEmptyWindow: 'TabsService.CloseEmptyWindow',
   codeWorkspaceListRepos: 'CodeWorkspaceService.ListRepos',
   codeWorkspaceRepoHeads: 'CodeWorkspaceService.RepoHeads',
   codeWorkspaceRepoWorktreeLinks: 'CodeWorkspaceService.RepoWorktreeLinks',
@@ -115,6 +120,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   terminalWrite: 'TerminalService.Write',
   terminalResize: 'TerminalService.Resize',
   terminalClose: 'TerminalService.Close',
+  terminalHold: 'TerminalService.Hold',
+  terminalAdopt: 'TerminalService.Adopt',
+  terminalRelease: 'TerminalService.Release',
 
   // P116 G5/G6: the two new bound methods window-chrome parity adds.
   windowsOpenNew: 'WindowsService.OpenNew',
@@ -579,6 +587,10 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // Boot resets the window's git connection (repo/git/boundGit.ts).
   [IPC.gitResetWindow]: 'null',
   [IPC.tabsSave]: 'null',
+  // Boot reads the window list, drag-out support and the move inbox (workbench/tabWindowMove.ts).
+  [IPC.tabsCapabilities]: JSON.stringify({ dragOut: false }),
+  [IPC.tabsTargets]: '[]',
+  [IPC.tabsInbound]: '[]',
   // Boot drains Finder-opened files; none by default.
   [IPC.openedFilesIsFilesWindow]: 'false',
   [IPC.configSyncIsReviewWindow]: 'false',

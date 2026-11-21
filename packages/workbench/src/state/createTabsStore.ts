@@ -114,6 +114,17 @@ export interface TabsStoreActions<K extends string, R extends TabRecordLike> {
     opts: { skipUnchanged: boolean },
   ): void;
   saveNow(): void;
+  /** Cancels the debounce and resolves once every save queued so far, the current set included,
+   *  settled. A tab move awaits it so no later save names the tab it just gave away. */
+  settleSaves(): Promise<void>;
+  /** Asks the question closing the tab asks, when it holds unsaved work; false means keep it. */
+  confirmRelease(id: string): Promise<boolean>;
+  /** The tab's record as stored, `order` and `active` included; null for an unknown id. */
+  serializeTab(id: string): R | null;
+  /** Removes a tab that moved to another window: closes it without the discard question and saves. */
+  removeMovedTab(id: string): void;
+  /** Adds a tab another window handed over, last and active. A tab already here is only activated. */
+  receiveTab(raw: R, meta: { incognito: boolean }): R;
 }
 
 export interface TabsHost<
@@ -153,6 +164,9 @@ export interface TabsHost<
    *  hook, copying the source tab's incognito flag onto the duplicate so "Duplicate tab" on an
    *  incognito tab doesn't silently start persisting the copy. */
   onDuplicated?(source: R, duplicate: R): void;
+  /** Runs in `receiveTab` right after a moved-in record joins the list, before the first save — Kira
+   *  Studio's own hook, restoring the incognito flag so the tab is never persisted here. */
+  onReceived?(record: R, meta: { incognito: boolean }): void;
   /** Adds extra actions/state to the returned store, given the generic actions above plus
    *  `dropPageStoresForTab`/`dropAllPagesForTab`/`saveNow` (public precisely so `extend` — and,
    *  for Kira Studio, code outside the store entirely — can reach them). Runs once, inside the
@@ -611,6 +625,43 @@ export function createTabsStore<
       saveNow();
     }
 
+    function settleSaves(): Promise<void> {
+      saveDebounced.cancel();
+      return enqueueSave(JSON.stringify(persistableTabs()));
+    }
+
+    async function confirmRelease(id: string): Promise<boolean> {
+      const ids = new Set([id]);
+      return dirtyCount(ids) === 0 || (await confirmCloses(ids));
+    }
+
+    function serializeTab(id: string): R | null {
+      const tab = tabsState.tabs.find((t) => t.id === id);
+      return tab ? (JSON.parse(JSON.stringify(tab)) as R) : null;
+    }
+
+    function removeMovedTab(id: string): void {
+      closeTabInternal(id);
+      saveNow();
+    }
+
+    function receiveTab(raw: R, meta: { incognito: boolean }): R {
+      const existing = tabsState.tabs.find((t) => t.id === raw.id);
+      if (existing) {
+        activateTab(existing.id);
+        return existing;
+      }
+      const kind = host.kinds[raw.kind];
+      const state = kind ? (kind.parseState(raw.state) ?? kind.defaultState()) : raw.state;
+      tabsState.tabs.push({ ...raw, state, order: tabsState.tabs.length, active: true });
+      const record = tabsState.tabs[tabsState.tabs.length - 1];
+      host.onReceived?.(record, meta);
+      setActiveTabId(record.id, host.workspaceKeyOf(record));
+      host.onOpened?.(record, true);
+      saveNow();
+      return record;
+    }
+
     function activateTab(id: string): void {
       const target = tabsState.tabs.find((t) => t.id === id);
       if (!target) return;
@@ -723,6 +774,11 @@ export function createTabsStore<
       promoteTab,
       patchTabState,
       saveNow,
+      settleSaves,
+      confirmRelease,
+      serializeTab,
+      removeMovedTab,
+      receiveTab,
     };
 
     const extra = host.extend(actions);
