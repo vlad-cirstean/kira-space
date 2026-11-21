@@ -196,6 +196,8 @@ type ApprovalResponse struct {
 	// Keep are the values the script will keep once the user sends the result: previews, never the
 	// agent's text. Empty without kept.set.
 	Keep []HeldKeep
+	// staged is the run that holds the values of Keep until the result is sent; only StagedSecret reads them.
+	staged *keptRun
 }
 
 // HeldKeep is one value a held result will keep. Preview is empty for a secret.
@@ -639,6 +641,19 @@ func (b *ApprovalBroker) ResponseFor(requestID string) (ApprovalResponse, bool) 
 		return ApprovalResponse{}, false
 	}
 	return *e.req.Response, true
+}
+
+// StagedSecret returns the text of a secret value the held result of requestID will keep, for the user's
+// reveal. false once the request resolved, or for a name that is not a staged secret.
+func (b *ApprovalBroker) StagedSecret(requestID, name string) (string, bool) {
+	b.mu.Lock()
+	e, ok := b.entryLocked(requestID)
+	var run *keptRun
+	if ok && e.req.Stage == ApprovalStageResponse && e.req.Response != nil {
+		run = e.req.Response.staged
+	}
+	b.mu.Unlock()
+	return run.stagedSecret(name)
 }
 
 // Approve resolves requestID as approved. Deny resolves it as denied. Both report
