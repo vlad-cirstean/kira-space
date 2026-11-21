@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { defaultLayout } from '@shared/domain/layout';
 import { expect, test } from './fixtures';
 import { adeBoard, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -25,7 +26,7 @@ async function firstChildTestId(page: Page, selector: string): Promise<string | 
     });
 }
 
-test('the lead slot holds the agent indicator first and no colour square remains', async ({
+test('the lead slot holds the agent indicator first and the task colour sits beside the title', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -38,6 +39,7 @@ test('the lead slot holds the agent indicator first and no colour square remains
   const box = await page.locator(`${head('T_bill')} ${t('ade-card-sessions')}`).boundingBox();
   expect(Math.round(box?.height ?? 0)).toBe(24);
   await expect(page.locator(t('ade-card-dot'))).toHaveCount(0);
+  await expect(page.locator(`${t('ade-row-lead')} ${t('ade-task-swatch')}`)).toHaveCount(0);
   // A task without sessions keeps an empty slot so status text lines up.
   await page.locator(t('ade-load-all')).click();
   const none = page.locator(`${head('T_csv')} ${t('ade-row-lead')}`);
@@ -130,6 +132,7 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
   await page.locator(t('ade-later')).waitFor();
   await expect(page.locator(t('ade-shelf-dot'))).toHaveCount(0);
   const row = page.locator(t('ade-shelf-row')).first();
+  await expect(row.locator(t('ade-task-swatch'))).toHaveCount(1);
   expect(await firstChildTestId(page, t('ade-shelf-row'))).toBe('ade-row-lead');
   const taskId = await row.getAttribute('data-task-id');
   const status = row.locator(t('ade-row-status'));
@@ -148,30 +151,44 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
 
 const heads = (page: Page) => page.locator(`${t('ade-card')} ${t('ade-card-head')}`);
 
-test('a task card keeps a 3px task-colour left edge and no fill', async ({ relaunch }) => {
+test('a task card wears its colour as a swatch beside the title, on the plan ground', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch);
   await page.locator(t('ade-load-all')).click();
+  const planBg = await page
+    .locator(t('ade-plan'))
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
   const cards = await page.locator(t('ade-card')).evaluateAll((els) =>
     els.map((e) => {
       const cs = getComputedStyle(e);
+      const head = e.querySelector('[data-testid="ade-card-head"]');
+      const swatch = head?.querySelector('[data-testid="ade-task-swatch"]') as HTMLElement | null;
       return {
-        coloured: (e as HTMLElement).style.borderLeftColor !== '',
         left: cs.borderLeftWidth,
         top: cs.borderTopWidth,
-        inlineBg: (e as HTMLElement).style.backgroundColor,
+        inlineEdge: (e as HTMLElement).style.borderLeftColor,
         bg: cs.backgroundColor,
+        hasHead: head !== null,
+        swatches: head?.querySelectorAll('[data-testid="ade-task-swatch"]').length ?? 0,
+        painted: swatch ? swatch.style.background !== '' || swatch.style.borderColor !== '' : false,
+        inLead:
+          head?.querySelector('[data-testid="ade-row-lead"] [data-testid="ade-task-swatch"]') !==
+          null,
       };
     }),
   );
-  const coloured = cards.filter((c) => c.coloured);
-  expect(coloured.length).toBeGreaterThan(0);
-  for (const c of coloured) {
-    expect(c.left).toBe('3px');
+  expect(cards.length).toBeGreaterThan(0);
+  for (const c of cards) {
+    expect(c.left).toBe('1px');
     expect(c.top).toBe('1px');
-    expect(c.inlineBg).toBe('');
+    expect(c.inlineEdge).toBe('');
+    expect(c.bg).toBe(planBg);
+    if (!c.hasHead) continue;
+    expect(c.swatches).toBe(1);
+    expect(c.painted).toBe(true);
+    expect(c.inLead).toBe(false);
   }
-  const plain = cards.find((c) => !c.coloured) ?? cards[0];
-  for (const c of coloured) expect(c.bg).toBe(plain?.bg);
 });
 
 test('card head buttons stay inside the card with the panel open', async ({ relaunch }) => {
@@ -280,12 +297,15 @@ const gridBoard = adeBoard((b) => {
 });
 
 for (const [name, width, height, open] of [
-  ['the full-width list', 1440, 1000, ''],
+  ['the widened list', 1440, 1000, ''],
   ['the open-task list', 1280, 900, 'T_cart'],
 ] as const) {
   test(`plan rows keep fixed columns and hover never reflows (${name})`, async ({ relaunch }) => {
+    // Panel always open: a 340px panel leaves the list past the wide-grid breakpoint at 1440.
+    const widened = { ...defaultLayout, panel: { ...defaultLayout.panel, ade: { width: 340 } } };
     const { window: page } = await openPlan(relaunch, [
       { channel: IPC.adeTaskBoard, response: gridBoard },
+      ...(open ? [] : [{ channel: IPC.layoutGetAll, response: widened }]),
     ]);
     await page.setViewportSize({ width, height });
     await page.locator(t('ade-load-all')).click();
@@ -307,6 +327,17 @@ for (const [name, width, height, open] of [
       });
       const cell = (el: Element, i: number) => el.children[1]?.children[i];
       return {
+        swatch: heads.map((h) => r(h.querySelector('[data-testid="ade-task-swatch"]'))?.x),
+        title: heads.map((h) => r(h.querySelector('[data-testid="ade-card-title"]'))?.x),
+        swatchGap: (() => {
+          const h = heads[0];
+          const sw = r(h?.querySelector('[data-testid="ade-task-swatch"]'));
+          const ti = r(h?.querySelector('[data-testid="ade-card-title"]'));
+          return sw && ti ? ti.x - (sw.x + sw.w) : -1;
+        })(),
+        spanTitle: [...document.querySelectorAll('[data-testid="ade-span-row"]')].map(
+          (el) => r(el.querySelector('span.truncate'))?.x,
+        ),
         status: heads.map((h) => r(h.querySelector('[data-testid="ade-row-status"]'))?.x),
         meta: heads.map((h) => r(h.querySelector('[data-testid="ade-card-meta"]'))?.x),
         headH: heads.map((h) => r(h)?.h),
@@ -336,6 +367,14 @@ for (const [name, width, height, open] of [
       expect(Math.max(...v) - Math.min(...v)).toBeLessThanOrEqual(1);
       return v[0];
     };
+    same(geo.swatch);
+    expect(geo.swatchGap).toBeLessThanOrEqual(7);
+    expect(geo.swatchGap).toBeGreaterThanOrEqual(5);
+    expect(geo.spanTitle.length).toBeGreaterThan(0);
+    expect(
+      Math.max(...geo.spanTitle.map(Number)) - Math.min(...geo.spanTitle.map(Number)),
+    ).toBeLessThanOrEqual(1);
+    expect(Math.abs((geo.spanTitle[0] ?? 0) - (geo.title[0] ?? 0))).toBeLessThanOrEqual(1);
     same(geo.status);
     same(geo.meta);
     same(geo.name);

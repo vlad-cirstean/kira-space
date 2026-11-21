@@ -69,7 +69,8 @@ test('the estimate chip writes the estimate and the task menu opens the same pop
   const { window: page, control } = await openPlan(relaunch);
   await revealHead(page, 'T_notif', 'ade-card-est');
   await page.locator(`${card('T_notif')} ${t('ade-card-est')}`).click();
-  const field = page.locator(t('ade-estimate-num'));
+  // The always-open panel has its own estimate field: the chip popover's has a row id.
+  const field = page.locator(`[id^="ade-row-est-"]${t('ade-estimate-num')}`);
   await field.fill('3');
   await field.press('Enter');
   await expect.poll(() => calls(control, IPC.adeTaskUpdateTask)).toHaveLength(1);
@@ -81,6 +82,7 @@ test('the estimate chip writes the estimate and the task menu opens the same pop
   await expect(field).toHaveCount(0);
   await page.locator(card('T_notif')).click({ button: 'right', position: { x: 60, y: 30 } });
   await page.locator(item('ade-task-estimate')).click();
+  // The task is the open one, so the menu entry reaches the panel's estimate field.
   await expect(page.locator(t('ade-estimate-num'))).toBeVisible();
 });
 

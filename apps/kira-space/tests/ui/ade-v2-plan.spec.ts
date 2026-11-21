@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { defaultLayout } from '@shared/domain/layout';
 import { expect, test } from './fixtures';
 import { adeBoard, adeFixture, bandOf, FIXED_NOW, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
@@ -140,8 +141,13 @@ test('a card shows its step, progress, span and a one-line title with the full t
         if (t) t.title = longTitle;
       }),
     },
+    {
+      channel: IPC.layoutGetAll,
+      response: { ...defaultLayout, panel: { ...defaultLayout.panel, ade: { width: 340 } } },
+    },
   ]);
-  await page.setViewportSize({ width: 560, height: 900 });
+  // Panel always open: widen the list past the narrow grid (list = viewport - panel width).
+  await page.setViewportSize({ width: 900, height: 900 });
   const search = card(page, 'T_search');
   await expect(search.locator('[data-testid="ade-step-label"]')).toHaveText('Make CI green 3/6');
   await expect(search).toContainText('50.0%');
@@ -383,7 +389,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a task-colour left edge on the terminal ground, 16px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a 1px edge on the plan ground and a task swatch, 16px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -394,16 +400,19 @@ test('a card is a 6px rounded box with a task-colour left edge on the terminal g
       radius: s.borderTopLeftRadius,
       top: s.borderTopWidth,
       left: s.borderLeftWidth,
-      leftColor: s.borderLeftColor,
       bg: s.backgroundColor,
     };
   });
   expect({ radius: style.radius, top: style.top, left: style.left }).toEqual({
     radius: '6px',
     top: '1px',
-    left: '3px',
+    left: '1px',
   });
-  expect(style.leftColor).not.toBe('rgba(0, 0, 0, 0)');
+  expect(
+    await box
+      .locator('[data-testid="ade-task-swatch"]')
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).not.toBe('rgba(0, 0, 0, 0)');
   const [chrome, plan] = await Promise.all([
     page.evaluate(() => {
       const span = document.createElement('span');
@@ -416,7 +425,7 @@ test('a card is a 6px rounded box with a task-colour left edge on the terminal g
     page.locator('[data-testid="ade-plan"]').evaluate((el) => getComputedStyle(el).backgroundColor),
   ]);
   expect(plan).toBe(chrome);
-  expect(style.bg).not.toBe(plan);
+  expect(style.bg).toBe(plan);
   const head = await box.locator('[data-testid="ade-card-head"]').boundingBox();
   expect(head?.height).toBe(44);
 
@@ -454,8 +463,16 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
+  const edge = await page.evaluate(() => {
+    const span = document.createElement('span');
+    span.style.color = 'var(--kira-border)';
+    document.body.appendChild(span);
+    const color = getComputedStyle(span).color;
+    span.remove();
+    return color;
+  });
   expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(
-    'rgba(0, 0, 0, 0)',
+    edge,
   );
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
 
@@ -530,7 +547,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
   expect(ring).toEqual({ visible: true, style: 'solid', color: focusColor });
 });
 
-test('plan cards use colour only for task edge, status, problems and the repo badge', async ({
+test('plan cards use colour only for the task swatch, status, problems and the repo badge', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);

@@ -22,6 +22,10 @@ const card = (page: Page, id: string) =>
 
 async function openTask(page: Page, id: string): Promise<void> {
   await card(page, id).click();
+  await expect(page.locator(`[data-testid="ade-card"][data-task-id="${id}"]`)).toHaveAttribute(
+    'aria-current',
+    'true',
+  );
   await expect(page.locator('[data-testid="ade-panel"]')).toBeVisible();
 }
 
