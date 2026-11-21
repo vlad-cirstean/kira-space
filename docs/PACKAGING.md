@@ -541,7 +541,7 @@ install or update. Readers reject any malformed line, duplicate, other header or
 The index is a publish-time snapshot: change draft or prerelease flags only by deleting a release,
 never by editing them after publish. `--tag` of a tag not in the index dies with `not a published
 release`. Retention can leave a deleted intermediate listed until the next publish; `--tag` of it dies
-with `not downloadable (HTTP 404)`. Step targets (a minor's first and last release) are always kept.
+with `not a published release (its disk image is gone, HTTP 404)`. Step targets (a minor's first and last release) are always kept.
 Apps up to 0.3.14 pass no `--tag` in self-update mode (`--wait-pid`), so the script steps itself with
 an awk `index_next_step` over the index and the installed bundle's `CFBundleShortVersionString`,
 falling back to the index's newest release when no version or step is found. S16 holds it to the Go

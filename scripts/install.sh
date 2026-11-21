@@ -71,14 +71,14 @@ index_check() {
   ' "$1"
 }
 
-# index_max FILE: the highest tag.
+# index_max FILE: the highest tag with a $ASSET line.
 index_max() {
-  awk '
-    NR > 1 {
+  awk -v a="$ASSET" '
+    NR > 1 && $2 == a {
       split(substr($1, 2), p, ".")
-      a = p[1] + 0; b = p[2] + 0; c = p[3] + 0
-      if (!have || a > ma || (a == ma && (b > mb || (b == mb && c > mc)))) {
-        have = 1; ma = a; mb = b; mc = c; tag = $1
+      x = p[1] + 0; y = p[2] + 0; z = p[3] + 0
+      if (!have || x > ma || (x == ma && (y > mb || (y == mb && z > mc)))) {
+        have = 1; ma = x; mb = y; mc = z; tag = $1
       }
     }
     END { if (have) print tag }
@@ -92,11 +92,11 @@ index_entry() {
 
 # index_next_step FILE CURRENT: the tag to install for a running version, or nothing. The awk twin of
 # releaseline.NextStep and of the JXA nextStep it replaced: the last patch of the installed minor when
-# newer, else the lowest release of the next minor. CURRENT parses like semver: optional v, optional
+# newer, else the lowest release of the next minor; only lines for $ASSET count, like Eligible. CURRENT parses like semver: optional v, optional
 # -prerelease (sorts below its own version), +build ignored. scripts/check-install-step.ts (S16)
 # replays internal/releaseline/testdata/next_step_index.json through it.
 index_next_step() {
-  awk -v cur="$2" '
+  awk -v cur="$2" -v asset="$ASSET" '
     BEGIN {
       s = cur
       sub(/^v/, "", s)
@@ -116,7 +116,7 @@ index_next_step() {
       ca = p[1] + 0; cb = p[2] + 0; cc = p[3] + 0
       ok = 1
     }
-    NR > 1 && ok {
+    NR > 1 && ok && $2 == asset {
       split(substr($1, 2), p, ".")
       a = p[1] + 0; b = p[2] + 0; c = p[3] + 0
       if (a == ca && b == cb) {
@@ -291,7 +291,7 @@ download_release() {
   set -e
   if [ "$CURL_STATUS" != "0" ]; then
     if [ "$HTTP_STATUS" = "404" ]; then
-      die "release $TAG's disk image is not downloadable (HTTP 404)"
+      die "release $TAG is not a published release (its disk image is gone, HTTP 404)"
     fi
     die "couldn't download $APP_NAME (curl exit $CURL_STATUS, HTTP $HTTP_STATUS)"
   fi

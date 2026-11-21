@@ -139,7 +139,7 @@ const cases: Case[] = [
     name: 'disk image 404',
     index: ok(indexOf(row('v0.3.22'))),
     assetStatus: 404,
-    wantErr: ['not downloadable'],
+    wantErr: ['not a published release'],
   },
   {
     name: 'index 404, API 403 rate limited',
