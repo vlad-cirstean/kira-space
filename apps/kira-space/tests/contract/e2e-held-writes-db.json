@@ -41,6 +41,7 @@
     "isError": false,
     "keep": [
       {
+        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",
@@ -99,7 +100,7 @@
     "options": null
   },
   "result#scopeFull": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"too many kept variables (64 per session); ask the user to clear some in the Kept variables view\"}]}",
-  "result#send": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"w\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":3600}]}",
+  "result#send": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"w\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}",
   "result#tooLarge": "script failed: script runtime error at line 1, column 9: Error: kept variable \"w\": a kept value is larger than 1 MiB or nested deeper than 64 levels. The query ran; its result is not returned.",
   "result#userEntry": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"a kept variable of that name was supplied by the user and cannot be replaced\"}]}"
 }

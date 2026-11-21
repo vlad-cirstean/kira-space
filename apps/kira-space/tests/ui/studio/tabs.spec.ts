@@ -102,6 +102,7 @@ test('tabs — independent state, context menu, colours', async ({ relaunch }) =
     'close-all',
     '--separator--',
     'duplicate-tab',
+    'move-to-new-window',
     'copy-name',
     'reveal-in-project-panel',
   ]);

@@ -208,6 +208,10 @@ type ShellHooks struct {
 	Shortcuts shell.GlobalShortcuts
 	// Wayland overrides shell.IsWayland (a flow-test seam); nil uses the process environment.
 	Wayland func() bool
+	// OpenTornWindow opens a window for a moved tab; nil Bounds cascades from the focused window.
+	OpenTornWindow func(rec shell.WindowRecord)
+	// WindowGeometry snapshots live windows for the drop hit-test; nil uses the window registry.
+	WindowGeometry func() []shell.WindowGeom
 }
 
 // Wired is the built object graph.
@@ -404,7 +408,10 @@ func Build(opts Options) (*Wired, error) {
 		promptDeps.Now = opts.Clock.Now
 	}
 	w.Prompts = prompts.New(promptDeps)
-	w.Windows.OnChange = w.Prompts.Reroute
+	w.Windows.OnChange = func() {
+		w.Prompts.Reroute()
+		events.Broadcast(bridge.ChannelWindowsChanged)
+	}
 	credentialRelay.Prompts = w.Prompts
 	w.PromptsSvc = &bridge.PromptsService{Bound: &prompts.Bound{R: w.Prompts}}
 	w.Approvals = approvals.New(w.Prompts)
@@ -560,6 +567,10 @@ func Build(opts Options) (*Wired, error) {
 	runs.ADE = w.AdeBoard
 	// A native close never unmounts the Files window, so the board releases its file sessions.
 	w.OnWindowClosing = append(w.OnWindowClosing, w.AdeBoard.ForgetFilesWindow)
+	// P722: a closed window drops the tabs and terminal holds waiting for it.
+	w.Tabs.Terminals = bridge.TabTerminals{Reown: terminalRegistry.Reown}
+	w.OnWindowClosing = append(w.OnWindowClosing,
+		func(key string) { bridge.ForgetTabWindow(w.Tabs, key) }, terminalRegistry.ForgetMoves)
 	w.watchRepoConfig(events)
 	w.sched = &scriptruns.Scheduler{Svc: runs, Clock: opts.Clock}
 	loader, err := scripts.NewLoader(scripts.LoaderOptions{
@@ -684,6 +695,14 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.ConfigSyncSvc.Review.CloseWindow = closeWindow
 	w.ConfigSyncSvc.Review.SetWindowTitle = setTitle
 	w.bindCapture(h, closeWindow, focusWindow)
+	geometry := h.WindowGeometry
+	if geometry == nil {
+		geometry = w.Windows.Geometry
+	}
+	w.Tabs.Windows = bridge.TabWindows{
+		Geometry: geometry, Open: h.OpenTornWindow, Focus: focusWindow, Close: closeWindow,
+		Positions: func() bool { return shell.WindowPositionsKnown(h.Wayland) },
+	}
 }
 
 // bindCapture points the capture service at the shell and registers the hotkey from stored settings.

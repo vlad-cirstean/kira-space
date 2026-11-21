@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const dbServer = "kira-studio"
+
+var keptSetName = regexp.MustCompile(`kept\.(?:set|setSecret)\(\s*["']([^"']+)["']`)
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -339,9 +342,10 @@ func TestDbMcpSessionStep(t *testing.T) {
 	}
 }
 
-// TestDbMcpKeptChainThroughClaude (P686): Claude Code accepts the generated run_query schema with `script`
-// (nullable object) and `params`, and a model chains by name: a script keeps the ids it read, and a second
-// call binds them by name. The flow tests cover every rule; this checks the real client and model.
+// TestDbMcpKeptChainThroughClaude (P686, P716): Claude Code accepts the generated run_query schema with
+// `script` (nullable object) and `params`. The prompt names the task only: the model learns kept variables
+// from the tool descriptions alone, keeps the ids in a script and binds them by name in a second call. The
+// flow tests cover every rule; this checks the real client and model.
 func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
@@ -367,15 +371,15 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 	}
 	tool := "mcp__" + dbServer + "__run_query"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_connections, then call run_query on the connection named "+connName+
-			" with sql \"select id, body from notes order by id\", an empty path, mode read and this exact script: kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return result.rowCount;"+
-			" Then call run_query again on the same connection with sql \"select body from notes where id in (select value from json_each(?)) order by id\", an empty path, mode read and params [\"ids\"]."+
-			" Reply with the bodies it returned.",
+		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. The connection named "+connName+
+			" has a notes table (id, body). Read every note's id in one read query, then in a second read query fetch the bodies of those ids, ordered by id."+
+			" Do not put the ids in your own text or your own sql: they must never pass through you. Reply with the bodies.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_kept_variables",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	var scripted, bound bool
+	var keptName string
 	for _, u := range toolUses(msgs, tool) {
 		var in struct {
 			Script *string  `json:"script"`
@@ -386,12 +390,13 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 		}
 		text, isErr, ok := toolResult(msgs, u.ID)
 		switch {
-		case in.Script != nil && strings.Contains(*in.Script, "kept.set"):
-			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"ids"`) || strings.Contains(text, "[1,2]") {
+		case in.Script != nil && keptSetName.MatchString(*in.Script):
+			keptName = keptSetName.FindStringSubmatch(*in.Script)[1]
+			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, "[1,2]") {
 				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
 			}
 			scripted = true
-		case len(in.Params) == 1 && in.Params[0] == "ids":
+		case keptName != "" && len(in.Params) == 1 && in.Params[0] == keptName:
 			if !ok || isErr || !strings.Contains(text, "one") || !strings.Contains(text, "two") {
 				t.Fatalf("params run_query result = %q (ok=%v, error=%v), want both bodies", text, ok, isErr)
 			}

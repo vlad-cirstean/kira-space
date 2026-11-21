@@ -349,11 +349,8 @@ test('collections — search filters the tree, keeps ancestors, and restores the
   await expect(collectionRow(page, 'item-create')).toHaveCount(0);
 });
 
-// P28 D16(d) removes P22b D8's Environments category from the collections panel — the user asked
-// for the environment list to stop sharing the panel with the collections tree. What replaced it as
-// the way in is the panel header's own Environments action, which opens the environments *tab*
-// (D16c) — and each row there still opens the same openVariableSetTab('environment', …) the
-// category's rows used to, which is what the tail of this test still checks.
+// The environment list does not share the panel with the collections tree. The panel header's
+// Variables action opens the Variables tab: one column per environment.
 const ENVIRONMENTS = [
   {
     id: 'env-prod',
@@ -371,7 +368,7 @@ const ENVIRONMENTS = [
   },
 ];
 
-test('collections — no environments category in the panel; the header action opens the environments tab, and a row there opens one as a variables tab', async ({
+test('collections — no environments category in the panel; the header action opens the Variables tab with a column per environment', async ({
   relaunch,
 }) => {
   const CONTROL: ControlSnapshot[] = [
@@ -383,29 +380,16 @@ test('collections — no environments category in the panel; the header action o
 
   await expect(collectionRow(page, 'col-1')).toBeVisible();
 
-  // D16(d): gone outright — neither the category's toggle nor any of its rows exists any more.
   await expect(page.locator('[data-testid="environments-category-toggle"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="environments-category-row"]')).toHaveCount(0);
 
-  // D16(c)/(e): the panel header's action — server-environment, not the old settings gear — opens
-  // the environments tab rather than a dialog.
   await page.click('[data-testid="api-environments"]');
-  const environments = page.locator('[data-testid="environments-dialog"]');
-  await expect(environments).toBeVisible();
-  await expect(page.locator('[data-testid="environment-row"]')).toHaveCount(2);
-  await expect(page.locator('[data-testid="environment-row"][data-id="env-prod"]')).toBeVisible();
-
-  // The same openVariableSetTab('environment', …) the removed category's rows used to make — and,
-  // unlike the dialog this replaced, opening it no longer closes the list behind it.
-  await page
-    .locator('[data-testid="environment-row"][data-id="env-prod"]')
-    .locator('[data-testid="environment-edit-variables"]')
-    .click();
-  const view = page.locator('[data-testid="variables-dialog"][data-scope="environment"]');
-  await expect(view).toBeVisible();
-  // Two tabs now, and that is the point: the environments tab stays open behind the variables
-  // tab it opened, where the dialog it replaced used to close itself. Assert the ACTIVE one.
-  await expect(page.locator('[data-testid="tab"][data-active="true"]')).toContainText('Prod');
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
+  await expect(page.locator('[data-testid="matrix-col-env-prod"]')).toBeVisible();
+  await expect(page.locator('[data-testid="matrix-col-env-staging"]')).toBeVisible();
+  await expect(page.locator('[data-testid="tab"][data-tab-kind="environments"]')).toHaveCount(1);
+  // Opening it again reuses the one tab.
+  await page.click('[data-testid="api-environments"]');
   await expect(page.locator('[data-testid="tab"][data-tab-kind="environments"]')).toHaveCount(1);
 });
 
@@ -547,6 +531,5 @@ test('collections — after a restart the tree and the active environment come b
   await page.click('[data-testid="api-environments"]');
   const active = envs.find((e) => e.isActive);
   expect(active).toBeDefined();
-  const activeRow = page.locator(`[data-testid="environment-row"][data-id="${active?.id}"]`);
-  await expect(activeRow.locator('[role="radio"]')).toBeChecked();
+  await expect(page.locator(`[data-testid="matrix-activate-${active?.id}"]`)).toBeChecked();
 });

@@ -17,10 +17,12 @@ import { useKeptReveal } from './useKeptReveal';
 // A kept value as the user sees it: a preview in the data font, the whole value on demand. A secret
 // shows dots; Reveal asks the OS gate, shows the value for a minute and only then offers Copy. The
 // agent never gets any of this. `staged` is a value not stored yet
-// (a held result's "Will keep"): only its preview exists, so nothing offers the whole value.
+// (a held result's "Will keep"): only its preview exists, so nothing offers the whole value. A staged
+// secret has `stagedReveal`: the held result's request and the name, read behind the same gate.
 const props = defineProps<{
   entry: { id: string; type: string; secret: boolean; preview: string; previewTruncated: boolean };
   staged?: boolean;
+  stagedReveal?: { requestId: string; name: string };
 }>();
 
 const PREVIEW_LINES = 20;
@@ -66,7 +68,11 @@ const fullDoc = computed(() => {
   return indentJson(json) ?? json;
 });
 
-const secretReveal = useKeptReveal(() => props.entry.id);
+const secretReveal = useKeptReveal((confirmed) =>
+  props.stagedReveal
+    ? control.keptRevealStaged(props.stagedReveal.requestId, props.stagedReveal.name, confirmed)
+    : control.keptReveal(props.entry.id, confirmed),
+);
 
 async function valueText(): Promise<string> {
   return props.entry.previewTruncated
@@ -85,7 +91,7 @@ async function valueText(): Promise<string> {
         v-text="secretReveal.value.value"
       />
       <MaskedValue v-else class="font-data" data-testid="kept-value-secret" />
-      <template v-if="!staged">
+      <template v-if="!staged || stagedReveal">
         <CopyIconButton
           v-if="secretReveal.value.value !== null"
           :text="secretReveal.value.value"

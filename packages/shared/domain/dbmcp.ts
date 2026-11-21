@@ -131,7 +131,13 @@ const transformViewSchema = /*#__PURE__*/ z.object({
   hash: z.string(),
   // Kept variables the script may write (P678), with their calls in the source.
   mayKeep: z
-    .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+    .array(
+      z.object({
+        name: z.string(),
+        secret: z.boolean().default(false),
+        sites: z.array(keptSiteSchema),
+      }),
+    )
     .nullish()
     .transform((v) => v ?? []),
 });
@@ -256,6 +262,9 @@ export const apiInputSchema = /*#__PURE__*/ z.object({
   state: z.enum(['needed', 'stored']),
   origin: z.string(),
   keptId: z.string().optional(),
+  // The choice the card starts on (the agent's reuse hint) and what "keep" holds the value for.
+  mode: z.enum(['once', 'keep']).default('once'),
+  keepMinutes: z.number().default(60),
 });
 export type ApiInput = z.infer<typeof apiInputSchema>;
 

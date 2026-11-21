@@ -74,7 +74,12 @@ const parsedRaw = computed(() => {
           <ApprovalCode v-else data-testid="api-review-result">{{ text }}</ApprovalCode>
         </template>
         <template #after>
-          <StagedKeepList v-if="keep.length" :keep="keep" testid="api-review-keep" />
+          <StagedKeepList
+            v-if="keep.length"
+            :keep="keep"
+            :request-id="requestId"
+            testid="api-review-keep"
+          />
         </template>
         <template #script>
           <JsScriptBlock

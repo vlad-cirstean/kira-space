@@ -278,9 +278,8 @@ test('the HTTP request pane toggle sits at --kira-control-h (P117 A1)', async ({
   expect(height).toBeCloseTo(controlH, 0);
 });
 
-// P117 A2: EnvironmentsView's filter InputGroup moved to variant="kira" -- stock rendered at 32px
-// under this view's 22px row chrome.
-test('the environments filter sits at --kira-control-h, and New environment never clips (P117 A2)', async ({
+// P117 A2: the Variables tab's filter sits at the toolbar density, and New environment never clips.
+test('the variables filter sits at --kira-control-h, and New environment never clips (P117 A2)', async ({
   relaunch,
 }) => {
   const ENVIRONMENTS = [
@@ -293,21 +292,21 @@ test('the environments filter sits at --kira-control-h, and New environment neve
   const { window: page } = await relaunch({ control: CONTROL });
   await modeTab(page, 'api').click();
   await page.click('[data-testid="api-environments"]');
-  await expect(page.locator('[data-testid="environments-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 
   const controlH = await rootVar(page, '--kira-control-h');
   const filterHeight = await page
-    .locator('[data-testid="environments-filter"]')
+    .locator('[data-testid="variables-filter"]')
     .locator('xpath=ancestor::fieldset[@data-slot="search-field"][1]')
     .evaluate((el) => el.getBoundingClientRect().height);
   expect(filterHeight).toBeCloseTo(controlH, 0);
 
-  const newEnvBox = await page.locator('[data-testid="new-environment"]').boundingBox();
-  const dialogBox = await page.locator('[data-testid="environments-dialog"]').boundingBox();
-  if (newEnvBox === null || dialogBox === null) {
+  const newEnvBox = await page.locator('[data-testid="matrix-new-env"]').boundingBox();
+  const viewBox = await page.locator('[data-testid="variables-matrix"]').boundingBox();
+  if (newEnvBox === null || viewBox === null) {
     throw new Error('expected both boxes to be measurable');
   }
-  expect(newEnvBox.x + newEnvBox.width).toBeLessThanOrEqual(dialogBox.x + dialogBox.width + 1);
+  expect(newEnvBox.x + newEnvBox.width).toBeLessThanOrEqual(viewBox.x + viewBox.width + 1);
 });
 
 // P122 §6.2: the reference value itself -- the SQL data view's WHERE filter, `InputGroup

@@ -18,6 +18,10 @@ type KeptStore interface {
 	List(scope string) []keptvars.Meta
 	// Put stores a value a script kept, after the response is final.
 	Put(p keptvars.Put) (keptvars.Meta, error)
+	// Clear removes entries by id (a stored input the user replaced with a one-time value).
+	Clear(ids ...string) int
+	// Retention is how long a value kept now lives.
+	Retention() time.Duration
 	// OnRemove calls fn once, with the first removal among ids.
 	OnRemove(ids []string, fn func(keptvars.Removal)) (stop func())
 }
@@ -65,7 +69,7 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	}
 	return jsonResult(map[string]any{
 		"variables": out,
-		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. Values are held by Kira and never shown to you.",
+		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
 	})
 }
 

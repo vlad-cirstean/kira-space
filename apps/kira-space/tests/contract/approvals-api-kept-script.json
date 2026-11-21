@@ -93,6 +93,7 @@
             "mayKeep": [
               {
                 "name": "ids",
+                "secret": false,
                 "sites": [
                   {
                     "field": "script",
@@ -128,5 +129,5 @@
     ],
     "options": null
   },
-  "result": "{\"result\":{\"count\":2},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":0}]}"
+  "result": "{\"result\":{\"count\":2},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

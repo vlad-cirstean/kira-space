@@ -63,6 +63,7 @@
             "mayKeep": [
               {
                 "name": "domains",
+                "secret": false,
                 "sites": [
                   {
                     "field": "script",
@@ -196,6 +197,7 @@
     "isError": false,
     "keep": [
       {
+        "blocked": false,
         "bytes": 19,
         "items": 2,
         "name": "domains",
@@ -234,5 +236,5 @@
     ],
     "options": null
   },
-  "result#send": "{\"result\":2,\"kept\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":0}]}"
+  "result#send": "{\"result\":2,\"kept\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

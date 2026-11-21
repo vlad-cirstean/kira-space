@@ -32,7 +32,7 @@ test('contract: the held result lists w with its preview before anything is stor
   const { window: page } = await relaunch({ control: mocks('send') });
   await pushApprovals(page, [liveItem(item())]);
   await expect(page.locator('[data-testid="db-review-keep-w"]')).toContainText(
-    /List of 2\s*\[\s*1,\s*2\s*\]/,
+    /List of 2\s*Plain\s*\[\s*1,\s*2\s*\]/,
   );
 });
 

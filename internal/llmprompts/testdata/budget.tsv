@@ -41,7 +41,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	314
 restore.continue.line	44
-dbmcp.instructions	1196
+dbmcp.instructions	1460
 dbmcp.tool.list_connections	653
 dbmcp.tool.list_scripts	130
 dbmcp.tool.run_script	337
@@ -52,7 +52,7 @@ dbmcp.tool.get_script_run	228
 dbmcp.tool.get_script_run.arg.runId	23
 dbmcp.tool.get_script_run.arg.waitSeconds	74
 dbmcp.tool.api_list_environments	312
-dbmcp.tool.api_request	1171
+dbmcp.tool.api_request	1455
 dbmcp.tool.api_request.arg.environmentId	68
 dbmcp.tool.api_request.arg.method	47
 dbmcp.tool.api_request.arg.url	53
@@ -70,15 +70,16 @@ dbmcp.tool.api_request.arg.form.value	42
 dbmcp.tool.api_request.arg.timeoutSeconds	35
 dbmcp.tool.api_request.arg.maxResponseBytes	56
 dbmcp.tool.api_request.arg.followRedirects	101
-dbmcp.tool.list_kept_variables	258
+dbmcp.tool.list_kept_variables	352
 dbmcp.tool.api_request.arg.inputs	263
 dbmcp.tool.api_request.arg.inputs.name	33
 dbmcp.tool.api_request.arg.inputs.label	58
+dbmcp.tool.api_request.arg.inputs.reuse	88
 dbmcp.tool.api_request.arg.script	82
 dbmcp.tool.api_request.arg.script.prepare	279
 dbmcp.tool.api_request.arg.script.input	49
 dbmcp.tool.api_request.arg.script.transform	395
-dbmcp.tool.api_request.scripts	824
+dbmcp.tool.api_request.scripts	1003
 dbmcp.tool.api_request.reviewSuffix	183
 dbmcp.tool.list_children	222
 dbmcp.tool.list_children.arg.connectionId	36
@@ -148,7 +149,7 @@ dbmcp.tool.operations.arg.cancel	41
 dbmcp.tool.operations	228
 dbmcp.tool.run_query.arg.explain	75
 dbmcp.tool.run_query.arg.includeRaw	59
-dbmcp.tool.run_query.scripts	1314
+dbmcp.tool.run_query.scripts	1446
 dbmcp.tool.get_script_run.arg.contains	70
 dbmcp.tool.get_script_run.arg.from	50
 dbmcp.tool.get_script_run.arg.lines	42

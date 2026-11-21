@@ -296,6 +296,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	}}
 	agentAPI := &agentapi.Service{Kept: w.Kept, Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings), Access: bridge.AgentAPIAccess(repositories.Settings)}
 	embedded := w.wireEmbedded(deps, installer, dbm.connectionsSvc, dbm.oplogWiring, proofSvc, agentAPI, opts)
+	w.KeptVars.Staged = embedded.dbMcpSvc.Approvals
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()
 

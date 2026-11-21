@@ -63,6 +63,64 @@ import { on, trust, unwrap, windowKey } from './rpc';
 // takes `tabs: TabRecord[]` for that app's own (large, discriminated-union) TabRecord, and the
 // bivariant check that lets every other field here stay narrow didn't clear an array of one —
 // `unknown` (checked once as a whole, not per element) does.
+/** A drag-out release, in the source window's client coordinates (CSS px). */
+export interface TabDrop {
+  clientX: number;
+  clientY: number;
+  grabX: number;
+  grabY: number;
+  innerWidth: number;
+  innerHeight: number;
+}
+
+/** The screen and process state of a Runs terminal tab that moves with it (P722). */
+export interface TabTerminalPayload {
+  snapshot: string;
+  cols: number;
+  rows: number;
+  status: 'running' | 'exited' | 'failed';
+  exitCode?: number;
+  error?: string;
+  shell: string;
+}
+
+export type TabMoveTo = { target: string } | { newWindow: true } | { drop: TabDrop };
+
+export interface TabMoveArgs<T> {
+  tab: T;
+  incognito: boolean;
+  terminal?: TabTerminalPayload;
+  to: TabMoveTo;
+}
+
+/** A tab waiting in this window's inbox. */
+export interface TabInbound<T> {
+  tab: T;
+  incognito: boolean;
+  terminal?: TabTerminalPayload;
+}
+
+export interface TabWindowTarget {
+  key: string;
+  number: number;
+}
+
+/** What `HoldResult` of `terminalHold` carries. */
+export interface TerminalHold {
+  end: number;
+  live: boolean;
+}
+
+/** What `terminalAdopt` returns: the output held while the terminal moved. */
+export interface TerminalAdopt {
+  data: string;
+  end: number;
+  truncated: boolean;
+  exited: boolean;
+  exitCode?: number;
+  error?: string;
+}
+
 export interface CoreBindings {
   settings: {
     GetAll(): Promise<unknown>;
@@ -75,6 +133,19 @@ export interface CoreBindings {
   tabs: {
     List(a: { windowKey: string }): Promise<unknown>;
     Save(a: { windowKey: string; tabs: unknown }): Promise<void>;
+    Move(a: {
+      windowKey: string;
+      tab: unknown;
+      incognito: boolean;
+      target: string;
+      newWindow: boolean;
+      drop: TabDrop | null;
+      terminal?: unknown;
+    }): Promise<unknown>;
+    Inbound(a: { windowKey: string }): Promise<unknown>;
+    Targets(a: { windowKey: string }): Promise<unknown>;
+    Capabilities(): Promise<unknown>;
+    CloseEmptyWindow(a: { windowKey: string }): Promise<unknown>;
   };
   lifecycle: {
     Flushed(a: { windowKey: string }): void;
@@ -100,6 +171,9 @@ export interface CoreBindings {
     Write(a: { terminalId: string; data: string }): Promise<void>;
     Resize(a: { terminalId: string; cols: number; rows: number }): Promise<void>;
     Close(a: { terminalId: string }): Promise<void>;
+    Hold(a: { terminalId: string }): Promise<unknown>;
+    Adopt(a: { terminalId: string; windowKey: string }): Promise<unknown>;
+    Release(a: { terminalId: string }): Promise<void>;
   };
   files: {
     ChooseFolder(a: { title: string }): Promise<unknown>;
@@ -202,6 +276,17 @@ export interface CoreControl<S, L, T, P, M> {
   // Both scoped to this page's own workbench (windowKey, read once at module load — P8 D2/F6).
   tabsList: () => Promise<T[]>;
   tabsSave: (tabs: T[]) => Promise<void>;
+  /** Moves one tab to another window (P722); resolves with the key where it now lives. */
+  tabsMove: (args: TabMoveArgs<T>) => Promise<{ windowKey: string; created: boolean }>;
+  /** Pops the tabs other windows moved here. */
+  tabsInbound: () => Promise<TabInbound<T>[]>;
+  /** The other live windows. */
+  tabsTargets: () => Promise<TabWindowTarget[]>;
+  tabsCapabilities: () => Promise<{ dragOut: boolean }>;
+  /** Asks Go to close this window when it holds no tab and is not the last one. */
+  tabsCloseEmptyWindow: () => Promise<boolean>;
+  onTabsInbound: (cb: () => void) => () => void;
+  onWindowsChanged: (cb: () => void) => () => void;
 
   terminalDefaultCwd: () => Promise<{ path: string }>;
   terminalOpen: (
@@ -217,6 +302,12 @@ export interface CoreControl<S, L, T, P, M> {
   terminalWrite: (terminalId: string, data: string) => Promise<void>;
   terminalResize: (terminalId: string, cols: number, rows: number) => Promise<void>;
   terminalClose: (terminalId: string) => Promise<void>;
+  /** Stops a live terminal's output reaching this window and buffers it (tab move). */
+  terminalHold: (terminalId: string) => Promise<TerminalHold>;
+  /** Makes this window the terminal's output target; returns what was held meanwhile. */
+  terminalAdopt: (terminalId: string) => Promise<TerminalAdopt>;
+  /** Ends a hold in this window after a failed move. */
+  terminalRelease: (terminalId: string) => Promise<void>;
   onTerminal: (cb: (event: TerminalEvent) => void) => () => void;
 
   // P116 H5's own ten — see this file's header comment.
@@ -309,6 +400,28 @@ export function createCoreControl<S, L, T, P, M>(
     tabsList: (): Promise<T[]> =>
       unwrap(b.tabs.List({ windowKey })).then((r) => trust<T[]>(r ?? [])),
     tabsSave: (tabs: T[]): Promise<void> => unwrap(b.tabs.Save({ windowKey, tabs })),
+    tabsMove: ({ tab, incognito, terminal, to }: TabMoveArgs<T>) =>
+      unwrap(
+        b.tabs.Move({
+          windowKey,
+          tab,
+          incognito,
+          target: 'target' in to ? to.target : '',
+          newWindow: 'newWindow' in to,
+          drop: 'drop' in to ? to.drop : null,
+          terminal: terminal ?? null,
+        }),
+      ).then((r) => trust<{ windowKey: string; created: boolean }>(r)),
+    tabsInbound: (): Promise<TabInbound<T>[]> =>
+      unwrap(b.tabs.Inbound({ windowKey })).then((r) => trust<TabInbound<T>[]>(r ?? [])),
+    tabsTargets: (): Promise<TabWindowTarget[]> =>
+      unwrap(b.tabs.Targets({ windowKey })).then((r) => trust<TabWindowTarget[]>(r ?? [])),
+    tabsCapabilities: (): Promise<{ dragOut: boolean }> =>
+      unwrap(b.tabs.Capabilities()).then((r) => trust<{ dragOut: boolean }>(r)),
+    tabsCloseEmptyWindow: (): Promise<boolean> =>
+      unwrap(b.tabs.CloseEmptyWindow({ windowKey })).then((r) => trust<boolean>(r)),
+    onTabsInbound: (cb: () => void): (() => void) => on(CHANNEL.tabsInbound, cb),
+    onWindowsChanged: (cb: () => void): (() => void) => on(CHANNEL.windowsChanged, cb),
 
     terminalDefaultCwd: (): Promise<{ path: string }> =>
       unwrap(b.terminal.DefaultCwd()).then((r) => trust<{ path: string }>(r)),
@@ -341,6 +454,12 @@ export function createCoreControl<S, L, T, P, M>(
     terminalResize: (terminalId: string, cols: number, rows: number): Promise<void> =>
       unwrap(b.terminal.Resize({ terminalId, cols, rows })),
     terminalClose: (terminalId: string): Promise<void> => unwrap(b.terminal.Close({ terminalId })),
+    terminalHold: (terminalId: string): Promise<TerminalHold> =>
+      unwrap(b.terminal.Hold({ terminalId })).then((r) => trust<TerminalHold>(r)),
+    terminalAdopt: (terminalId: string): Promise<TerminalAdopt> =>
+      unwrap(b.terminal.Adopt({ terminalId, windowKey })).then((r) => trust<TerminalAdopt>(r)),
+    terminalRelease: (terminalId: string): Promise<void> =>
+      unwrap(b.terminal.Release({ terminalId })),
     onTerminal: (cb: (event: TerminalEvent) => void): (() => void) => on(CHANNEL.terminal, cb),
 
     onOpenSettings: (cb: () => void): (() => void) => on(CHANNEL.openSettings, cb),

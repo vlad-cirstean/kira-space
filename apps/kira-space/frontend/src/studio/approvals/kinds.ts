@@ -201,21 +201,28 @@ function apiVerdict(item: ApprovalItem): ApprovalVerdict {
       tooltip: scripts.join('\n'),
     });
   }
-  if (p.credentials.length > 0) {
+  // One badge names everything the request sends that the user did not write: shared secrets, then the values
+  // typed on the card (once or kept). The card's rows carry no second list.
+  const sent = [...new Set([...p.credentials.map((c) => c.name), ...p.inputs.map((i) => i.name)])];
+  if (sent.length > 0) {
     facts.push({
-      text: t('studio.dbMcp.approval.api.sends.status', {
-        names: p.credentials.map((c) => c.name).join(', '),
-      }),
+      text: t('studio.dbMcp.approval.api.sends.status', { names: sent.join(', ') }),
       tone: isRead(p.method) ? 'neutral' : 'warn',
       icon: 'key',
-      tooltip: p.credentials
-        .map((c) =>
+      tooltip: [
+        ...p.credentials.map((c) =>
           t('studio.dbMcp.approval.api.credential.label', {
             name: c.name,
             hosts: c.hosts.join(', '),
           }),
-        )
-        .join('\n'),
+        ),
+        ...p.inputs.map((i) =>
+          t('studio.dbMcp.approval.api.input.label', {
+            name: i.name,
+            host: i.origin.replace(/^https?:\/\//, ''),
+          }),
+        ),
+      ].join('\n'),
     });
   }
   if (isRead(p.method)) {
@@ -355,6 +362,10 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   ];
 }
 
+// A name the script may keep, marked when a kept.setSecret call writes it.
+const mayKeepName = (m: { name: string; secret: boolean }): string =>
+  m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
+
 // The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
 function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
   if (!script) return [];
@@ -362,7 +373,7 @@ function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
   if (script.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {
-        names: script.mayKeep.map((m) => m.name).join(', '),
+        names: script.mayKeep.map(mayKeepName).join(', '),
       }),
       tone: 'neutral',
       testid: 'db-approval-kept-writes',
@@ -401,14 +412,6 @@ function isRead(method: string): boolean {
 function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.inputs.some((i) => i.state === 'needed')) {
-    out.push({
-      text: t('studio.kept.risk.input.status'),
-      tone: 'warn',
-      testid: 'api-approval-input',
-      tooltip: t('studio.kept.risk.input.tooltip'),
-    });
-  }
   out.push(
     ...keptRisks(
       p.kept.filter((u) => !u.pending),
@@ -419,7 +422,7 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   if (p.script?.transform?.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {
-        names: p.script.transform.mayKeep.map((m) => m.name).join(', '),
+        names: p.script.transform.mayKeep.map(mayKeepName).join(', '),
       }),
       tone: 'neutral',
       testid: 'api-approval-kept-writes',

@@ -16,7 +16,6 @@ import {
   keptScriptRanges,
   prettyKeptJson,
 } from '../kept/keptHighlight';
-import ChainSteps from './ChainSteps.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
@@ -34,12 +33,6 @@ const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload)
 const kept = computed(() => payload.value.kept);
 const keptRows = computed(() => kept.value.filter((u) => !u.pending));
 
-const scripts = computed(() => {
-  const out: ('prepare' | 'transform')[] = [];
-  if (payload.value.script?.prepare) out.push('prepare');
-  if (payload.value.script?.transform) out.push('transform');
-  return out;
-});
 const urlKept = computed(() => keptRanges(kept.value, 'url'));
 
 const keptNames = computed(() => new Set(kept.value.map((u) => u.name)));
@@ -72,8 +65,6 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
 
 <template>
   <div class="flex flex-col gap-1" data-testid="api-approval-body">
-    <ChainSteps :kept="kept" :current="`${payload.method} ${payload.url}`" :scripts="scripts" />
-    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
     <KeptVariablesPanel v-if="keptRows.length" :uses="keptRows" :pair-name="pairName" />
     <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
     <template v-if="payload.body">
@@ -134,5 +125,6 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
       testid="api-approval"
       script-testid="api-approval-script-transform"
     />
+    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
   </div>
 </template>

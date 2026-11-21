@@ -16,7 +16,7 @@ const SC = 'e2e-user-value';
 type Answer = {
   ids: string[];
   approve: boolean;
-  options: Record<string, { inputs: Record<string, string> }>;
+  options: Record<string, { inputs: Record<string, string>; inputModes: Record<string, string> }>;
 };
 const item = (key: string) =>
   contract<ApprovalItem[]>(SC, `ApprovalsService.List#${key}`)[0] as ApprovalItem;
@@ -35,13 +35,12 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   page.on('console', (m) => logs.push(m.text()));
   await pushApprovals(page, [liveItem(it)]);
   const approve = page.locator(`[data-testid="approval-approve-${it.id}"]`);
-  await expect(page.locator('[data-testid="api-approval-input"]')).toHaveText(
-    'Needs a value from you',
-  );
   await expect(approve).toBeDisabled();
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
   await field.fill(VALUE());
+  // The recorded answer keeps the value: the card starts on "Use once".
+  await page.click('[data-testid="api-input-apikey-keep"]');
   await expect(approve).toBeEnabled();
   await approve.click();
   await expect

@@ -524,15 +524,15 @@ studioTest.describe('databases module', () => {
     await expectCatalogText(loc(page, 'project-panel'), { allow: ALLOW });
   });
 
-  studioTest('environments view', async ({ relaunch }) => {
+  studioTest('variables view', async ({ relaunch }) => {
     const { window: page } = await relaunch({
       control: [{ channel: IPC.collectionsList, response: { collections: [], items: [] } }],
     });
     await setPseudoLocale(page);
     await modeTab(page, 'api').click();
     await page.click('[data-testid="api-environments"]');
-    await expect(loc(page, 'environments-dialog')).toBeVisible();
-    await expectCatalogText(loc(page, 'environments-dialog'), { allow: ALLOW });
+    await expect(loc(page, 'variables-matrix')).toBeVisible();
+    await expectCatalogText(loc(page, 'variables-matrix'), { allow: ALLOW });
   });
 
   studioTest('saved queries menu', async ({ relaunch }) => {

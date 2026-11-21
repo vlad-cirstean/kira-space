@@ -29,6 +29,20 @@ export async function sortableHover(
   await page.waitForTimeout(300);
 }
 
+/** Drags `source` past the window edge (client `to`, negative x is left of the viewport) and
+ *  releases there; the pointer stays captured, so the release still reaches the page. */
+export async function dragTabOut(page: Page, source: Locator, to: Point): Promise<void> {
+  const from = await source.boundingBox();
+  if (!from) throw new Error('dragTabOut: chip has no box');
+  const start = boxCenter(from);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 10, start.y, { steps: 5 });
+  await page.mouse.move(to.x, to.y, { steps: 15 });
+  await page.waitForTimeout(150);
+  await page.mouse.up();
+}
+
 export async function dragTab(page: Page, source: Locator, target: Locator): Promise<void> {
   const from = await source.boundingBox();
   const to = await target.boundingBox();

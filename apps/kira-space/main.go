@@ -206,6 +206,12 @@ func main() {
 			rec.Bounds = shell.CascadeFrom(app.Window.Current())
 			shell.OpenWindow(winDeps, rec)
 		},
+		OpenTornWindow: func(rec shell.WindowRecord) {
+			if rec.Bounds == nil {
+				rec.Bounds = shell.CascadeFrom(app.Window.Current())
+			}
+			shell.OpenWindow(winDeps, rec)
+		},
 		OpenNewWindow:      openNew,
 		OpenNewWindowKeyed: func(key string) { shell.OpenNewWindowKeyed(winDeps, key) },
 		OpenPopup:          func(key string) { shell.OpenPopup(winDeps, key, shell.PopupSpec{Width: 560, Height: 320}) },

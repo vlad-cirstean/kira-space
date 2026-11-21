@@ -346,7 +346,7 @@ func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 	}
 	// Final point: the agent gets res, and the staged values are stored.
 	if o.Failure == "" && sc.hasTransform() && ctx.Err() == nil {
-		if saved, failed := sc.kept.commit(keptSourceOf(ctx, plan)); len(saved)+len(failed) > 0 {
+		if saved, failed := sc.kept.commit(keptSourceOf(ctx, plan), plan.Origin); len(saved)+len(failed) > 0 {
 			return apiAgentResult(sc, o, saved, failed)
 		}
 	}

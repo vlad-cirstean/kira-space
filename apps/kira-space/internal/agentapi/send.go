@@ -68,7 +68,12 @@ func (s *Service) Send(ctx context.Context, in Input, approved *Planned) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	m := newMask(opened, used, s.keptSecrets(), p.secretKeptTexts())
+	// A one-time value masks like a kept secret: an echo shows {{kept.<name>}}.
+	kept := s.keptSecrets()
+	for _, e := range in.Once {
+		kept = append(kept, e)
+	}
+	m := newMask(opened, used, kept, p.secretKeptTexts())
 	return s.run(ctx, p, req, optionsFor(p, g, m), m)
 }
 

@@ -34,11 +34,17 @@ type keptRun struct {
 
 	mu           sync.Mutex
 	prepareReads bool
-	staged       map[string]json.RawMessage
-	order        []string
+	staged map[string]json.RawMessage
+	order  []string
+	// secretNames are the staged names a kept.setSecret call wrote: secret whatever the script read.
+	secretNames map[string]bool
 	// secretRead taints every value the run stages: it may have copied a secret.
 	secretRead  bool
 	secretForms []string
+	// once are the values the user typed for this request only, read before the store; onceRead is set when a
+	// script read one, so nothing the run derives may be kept.
+	once     map[string]keptvars.Entry
+	onceRead bool
 	// sourceExpiry is the earliest expiry among the secret or bound values read.
 	sourceExpiry time.Time
 	// boundOrigin is the origin of the bound (user or user-derived) values the run read; mixedOrigins is set
@@ -47,10 +53,12 @@ type keptRun struct {
 	mixedOrigins bool
 }
 
-// keptMayKeep is a name the transform script may keep, with where its source says so.
+// keptMayKeep is a name the transform script may keep, with where its source says so. Secret is set when a
+// kept.setSecret call names it; a value may also turn secret at run time (the script read a secret).
 type keptMayKeep struct {
-	Name  string              `json:"name"`
-	Sites []agentapi.KeptSite `json:"sites"`
+	Name   string              `json:"name"`
+	Secret bool                `json:"secret"`
+	Sites  []agentapi.KeptSite `json:"sites"`
 }
 
 // keptRunFor reads the scripts for kept.get and kept.set calls and snapshots what they may read. nil
@@ -59,11 +67,11 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	if s.cfg.Kept == nil || sc == nil {
 		return nil, ""
 	}
-	k := &keptRun{store: s.cfg.Kept, scope: scope, sites: map[scriptStage][]keptvars.ScriptSite{}, staged: map[string]json.RawMessage{}}
+	k := &keptRun{store: s.cfg.Kept, scope: scope, sites: map[scriptStage][]keptvars.ScriptSite{}, staged: map[string]json.RawMessage{}, secretNames: map[string]bool{}}
 	k.sites[stagePrepare] = keptvars.ScanScript(sc.Prepare)
 	k.sites[stageTransform] = keptvars.ScanScript(sc.Transform)
-	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op == "set" }) {
-		return nil, "kept.set is available in the transform script only. " + nothing
+	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op != "get" }) {
+		return nil, "kept.set and kept.setSecret are available in the transform script only. " + nothing
 	}
 	if len(k.sites[stagePrepare]) == 0 && len(k.sites[stageTransform]) == 0 {
 		return nil, ""
@@ -84,8 +92,8 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 		for _, st := range k.sites[stage] {
 			site := agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To}
-			if st.Op == "set" {
-				k.addMayKeep(st.Name, site)
+			if st.Op != "get" {
+				k.addMayKeep(st.Name, site, st.Op == "setSecret")
 				continue
 			}
 			k.addUse(st.Name, site)
@@ -94,14 +102,15 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	return k, ""
 }
 
-func (k *keptRun) addMayKeep(name string, site agentapi.KeptSite) {
+func (k *keptRun) addMayKeep(name string, site agentapi.KeptSite, secret bool) {
 	for i := range k.mayKeep {
 		if k.mayKeep[i].Name == name {
 			k.mayKeep[i].Sites = append(k.mayKeep[i].Sites, site)
+			k.mayKeep[i].Secret = k.mayKeep[i].Secret || secret
 			return
 		}
 	}
-	k.mayKeep = append(k.mayKeep, keptMayKeep{Name: name, Sites: []agentapi.KeptSite{site}})
+	k.mayKeep = append(k.mayKeep, keptMayKeep{Name: name, Secret: secret, Sites: []agentapi.KeptSite{site}})
 }
 
 func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
@@ -111,7 +120,7 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 			return
 		}
 	}
-	e, ok := k.store.Get(k.scope, name)
+	e, ok := k.lookup(name)
 	if !ok {
 		return
 	}
@@ -125,12 +134,22 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 	k.uses = append(k.uses, u)
 }
 
-// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced):
-// a use made at plan time holds the old entry id, or none for a value that did not exist yet.
-func (k *keptRun) rebind(names []string) {
+// lookup reads a name from the one-time overlay, then the store.
+func (k *keptRun) lookup(name string) (keptvars.Entry, bool) {
+	if e, ok := k.once[name]; ok {
+		return e, true
+	}
+	return k.store.Get(k.scope, name)
+}
+
+// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced) or
+// the overlay got one-time values: a use made at plan time holds the old entry id, or none for a value that
+// did not exist yet.
+func (k *keptRun) rebind(names []string, once map[string]keptvars.Entry) {
 	if k == nil {
 		return
 	}
+	k.once = once
 	for _, name := range names {
 		var sites []agentapi.KeptSite
 		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
@@ -173,7 +192,8 @@ func (k *keptRun) Bindings(stage scriptStage) []jsengine.Binding {
 	}
 	funcs := map[string]jsengine.HostFunc{"get": k.get(stage)}
 	if stage == stageTransform {
-		funcs["set"] = k.set
+		funcs["set"] = k.set(false)
+		funcs["setSecret"] = k.set(true)
 	}
 	return []jsengine.Binding{{Name: "kept", Funcs: funcs}}
 }
@@ -197,7 +217,7 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			return nil, errors.New("this kept variable is not listed in this script: call kept.get with a literal name")
 		}
 		planned := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name })
-		e, ok := k.store.Get(k.scope, name)
+		e, ok := k.lookup(name)
 		if planned < 0 || !ok || e.ID != k.uses[planned].ID {
 			return nil, fmt.Errorf("no kept variable %q (it may have expired, been cleared or been replaced since approval)", name)
 		}
@@ -211,6 +231,7 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			k.noteBound(e.Origin, e.ExpiresAt)
 		}
 		k.mu.Lock()
+		k.onceRead = k.onceRead || k.once[name].ID == e.ID && e.ID != ""
 		k.prepareReads = k.prepareReads || stage == stagePrepare
 		k.mu.Unlock()
 		return e.Value, nil
@@ -247,33 +268,48 @@ func (k *keptRun) noteExpiry(at time.Time) {
 	}
 }
 
-// set stages a value; nothing reaches the store before Commit.
-func (k *keptRun) set(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
-	a, err := hostArgs(args, 2, "kept.set takes a name and a value")
-	if err != nil {
-		return nil, err
+// set stages a value for kept.set, or for kept.setSecret when secret; nothing reaches the store before commit.
+func (k *keptRun) set(secret bool) jsengine.HostFunc {
+	op, call := "set", "kept.set"
+	if secret {
+		op, call = "setSecret", "kept.setSecret"
 	}
-	var name string
-	if json.Unmarshal(a[0], &name) != nil || !k.declared(stageTransform, "set", name) {
-		return nil, errors.New("this kept variable is not listed in this script: call kept.set with a literal name")
-	}
-	if len(a[1]) > keptvars.MaxValueBytes {
-		return nil, fmt.Errorf("kept variable %q: %w", name, keptvars.ErrTooLarge)
-	}
-	if _, _, _, err := keptvars.Describe(a[1]); err != nil {
-		return nil, fmt.Errorf("kept variable %q: %w", name, err)
-	}
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	if _, seen := k.staged[name]; !seen {
-		if len(k.order) >= maxKeptScriptNames {
-			return nil, fmt.Errorf("a script can keep at most %d values per run", maxKeptScriptNames)
+	return func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
+		a, err := hostArgs(args, 2, call+" takes a name and a value")
+		if err != nil {
+			return nil, err
 		}
-		k.order = append(k.order, name)
+		var name string
+		if json.Unmarshal(a[0], &name) != nil || !k.declared(stageTransform, op, name) {
+			return nil, errors.New("this kept variable is not listed in this script: call " + call + " with a literal name")
+		}
+		if len(a[1]) > keptvars.MaxValueBytes {
+			return nil, fmt.Errorf("kept variable %q: %w", name, keptvars.ErrTooLarge)
+		}
+		typ, _, _, err := keptvars.Describe(a[1])
+		if err != nil {
+			return nil, fmt.Errorf("kept variable %q: %w", name, err)
+		}
+		k.mu.Lock()
+		defer k.mu.Unlock()
+		if _, seen := k.staged[name]; !seen {
+			if len(k.order) >= maxKeptScriptNames {
+				return nil, fmt.Errorf("a script can keep at most %d values per run", maxKeptScriptNames)
+			}
+			k.order = append(k.order, name)
+		}
+		k.staged[name] = bytes.Clone(a[1])
+		if secret {
+			k.secretNames[name] = true
+			// The agent never sees the value: mask it from the transform's result like a secret the script read.
+			k.secretForms = append(k.secretForms, keptvars.SecretTexts(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: a[1]})...)
+		}
+		return nil, nil
 	}
-	k.staged[name] = bytes.Clone(a[1])
-	return nil, nil
 }
+
+// secretStaged reports whether the staged name will be stored as a secret. The caller holds k.mu.
+func (k *keptRun) secretStaged(name string) bool { return k.secretRead || k.secretNames[name] }
 
 // drop forgets the staged values: the user withheld the response, or nothing completed.
 func (k *keptRun) drop() {
@@ -286,11 +322,12 @@ func (k *keptRun) drop() {
 		clear(v)
 	}
 	clear(k.staged)
+	clear(k.secretNames)
 	k.order = nil
 }
 
-// stagedViews is what the review card shows under "Will keep": a preview per value, none for a value the
-// run may have copied from a secret.
+// stagedViews is what the review card shows under "Will keep": a preview per value, none for a secret (one
+// kept.setSecret wrote, or one the run may have copied from a secret).
 func (k *keptRun) stagedViews() []HeldKeep {
 	if k == nil {
 		return nil
@@ -301,8 +338,8 @@ func (k *keptRun) stagedViews() []HeldKeep {
 	for _, name := range k.order {
 		v := k.staged[name]
 		typ, items, size, _ := keptvars.Describe(v)
-		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretRead}
-		if !k.secretRead {
+		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretStaged(name), Blocked: k.onceRead}
+		if !h.Secret {
 			h.Preview, h.PreviewTruncated = keptvars.Preview(v, keptvars.PreviewBytes)
 		}
 		out = append(out, h)
@@ -310,13 +347,33 @@ func (k *keptRun) stagedViews() []HeldKeep {
 	return out
 }
 
+// stagedSecret is the text of a staged secret value, for the user's reveal while its result is held. false
+// for an unknown name, a value that is not secret (its preview is shown) or one already stored or dropped.
+func (k *keptRun) stagedSecret(name string) (string, bool) {
+	if k == nil {
+		return "", false
+	}
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	v, ok := k.staged[name]
+	if !ok || !k.secretStaged(name) {
+		return "", false
+	}
+	typ, _, _, _ := keptvars.Describe(v)
+	return keptvars.SecretText(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: v}), true
+}
+
 // keptSummary is what the agent learns about a value it kept: never the value.
 type keptSummary struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
 	Items            int    `json:"items"`
+	Secret           bool   `json:"secret"`
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
+
+// errDerivedOnce is the refusal text for a value derived from a one-time user value.
+const errDerivedOnce = "the script read a value the user gave for this request only, so nothing derived from it can be kept"
 
 // errMixedOrigins is the refusal text for values derived from user values bound to different origins.
 const errMixedOrigins = "the script read user values supplied for different origins, so its values cannot be bound to one origin"
@@ -327,8 +384,10 @@ type keptFailure struct {
 	Error string `json:"error"`
 }
 
-// commit stores the staged values. A refusal names its cap or rule, never a value.
-func (k *keptRun) commit(src keptvars.Source) ([]keptSummary, []keptFailure) {
+// commit stores the staged values. A refusal names its cap or rule, never a value. secretOrigin is the origin a
+// kept.setSecret value is bound to ("" binds none): the one its request went to, so the agent cannot send a
+// session token somewhere else.
+func (k *keptRun) commit(src keptvars.Source, secretOrigin string) ([]keptSummary, []keptFailure) {
 	if k == nil {
 		return nil, nil
 	}
@@ -337,23 +396,31 @@ func (k *keptRun) commit(src keptvars.Source) ([]keptSummary, []keptFailure) {
 	var saved []keptSummary
 	var failed []keptFailure
 	for _, name := range k.order {
+		if k.onceRead {
+			failed = append(failed, keptFailure{Name: name, Error: errDerivedOnce})
+			continue
+		}
 		if k.mixedOrigins {
 			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})
 			continue
 		}
-		put := keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretRead, Source: src, Origin: k.boundOrigin}
+		put := keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretStaged(name), Source: src, Origin: k.boundOrigin}
+		if put.Origin == "" && k.secretNames[name] {
+			put.Origin = secretOrigin
+		}
 		put.NotAfter = k.sourceExpiry
 		m, err := k.store.Put(put)
 		if err != nil {
 			failed = append(failed, keptFailure{Name: name, Error: err.Error()})
 			continue
 		}
-		saved = append(saved, keptSummary{Name: name, Type: m.Type, Items: m.Items, ExpiresInSeconds: max(int(math.Ceil(time.Until(m.ExpiresAt).Seconds())), 0)})
+		saved = append(saved, keptSummary{Name: name, Type: m.Type, Items: m.Items, Secret: m.Secret, ExpiresInSeconds: max(int(math.Ceil(time.Until(m.ExpiresAt).Seconds())), 0)})
 	}
 	for _, v := range k.staged {
 		clear(v)
 	}
 	clear(k.staged)
+	clear(k.secretNames)
 	k.order = nil
 	return saved, failed
 }

@@ -2,12 +2,11 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../../ui/fixtures';
 import { richApi } from '../../ui/studio/support/approvalItems';
-import { withTimes } from '../../ui/studio/support/keptTimes';
 import { contract } from '../../ui/support/contract';
 import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
 
-// P715: an API write with headers, a data review row resized taller, and a script card with its chain.
+// P715: an API write with headers, a data review row resized taller.
 
 const mask = (page: import('@playwright/test').Page) => [
   page.locator('[data-testid="approval-countdown"]'),
@@ -68,20 +67,6 @@ test('data review with a resized row', async ({ relaunch }) => {
   await settleFonts(page);
   await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveScreenshot(
     'approvals-review-resized-row.png',
-    { mask: mask(page) },
-  );
-});
-
-test('script card with its chain', async ({ relaunch }) => {
-  const [found] = contract<ApprovalItem[]>('e2e-kept-chain', 'ApprovalsService.List#step3');
-  if (!found) throw new Error('contract has no item');
-  const { window: page } = await relaunch({ control: [] });
-  await page.setViewportSize({ width: 1400, height: 900 });
-  await pushApprovals(page, [withTimes(found)]);
-  await expect(page.locator('[data-testid="approval-chain"]')).toBeVisible();
-  await settleFonts(page);
-  await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveScreenshot(
-    'approvals-script-chain.png',
     { mask: mask(page) },
   );
 });

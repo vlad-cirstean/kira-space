@@ -1,6 +1,7 @@
 package agentapi
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
+	"github.com/kirathecat/kira-studio/internal/ids"
 )
 
 // Limits on declared inputs.
@@ -22,6 +24,8 @@ const (
 type InputDecl struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`
+	// Reuse says the agent plans more requests with the same value: the card suggests keeping it.
+	Reuse bool `json:"reuse,omitempty"`
 }
 
 // InputState is where a declared input stands at plan time.
@@ -32,15 +36,19 @@ const (
 	InputNeeded InputState = "needed"
 	// InputStored: a live user entry of the same origin holds it.
 	InputStored InputState = "stored"
+	// InputOnce: the user typed it for this request only; it is in Input.Once, never in the store.
+	InputOnce InputState = "once"
 )
 
-// InputUse is a declared input as planned. KeptID is the live entry for a stored input, "" for a needed one.
+// InputUse is a declared input as planned. KeptID is the live entry for a stored input (the overlay entry for a
+// one-time one), "" for a needed one. Reuse is the agent's suggestion to keep the value.
 type InputUse struct {
 	Name   string     `json:"name"`
 	Label  string     `json:"label"`
 	State  InputState `json:"state"`
 	KeptID string     `json:"keptId"`
 	Origin string     `json:"origin"`
+	Reuse  bool       `json:"reuse"`
 }
 
 // MissingInputs counts the declared inputs without a stored value.
@@ -108,15 +116,19 @@ func checkDecls(decls []InputDecl) (map[string]InputDecl, error) {
 		if n := utf8.RuneCountInString(label); n < 1 || n > maxLabelRunes || strings.IndexFunc(label, unicode.IsControl) >= 0 {
 			return nil, fmt.Errorf("input %q needs a label of 1 to %d characters on one line", d.Name, maxLabelRunes)
 		}
-		byName[d.Name] = InputDecl{Name: d.Name, Label: label}
+		byName[d.Name] = InputDecl{Name: d.Name, Label: label, Reuse: d.Reuse}
 	}
 	return byName, nil
 }
 
 // judgeInput decides one declared input against the live entry, if any.
-func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputUse, error) {
-	use := InputUse{Name: d.Name, Label: d.Label, State: InputNeeded, Origin: origin}
+func judgeInput(d InputDecl, e keptvars.Entry, live, once bool, origin string) (InputUse, error) {
+	use := InputUse{Name: d.Name, Label: d.Label, State: InputNeeded, Origin: origin, Reuse: d.Reuse}
 	if !live {
+		return use, nil
+	}
+	if once {
+		use.State, use.KeptID = InputOnce, e.ID
 		return use, nil
 	}
 	if e.Source.Kind != keptvars.SourceUser {
@@ -145,6 +157,14 @@ func (s *Service) checkRoom(scope string, missing int) error {
 }
 
 var errInputMissing = errors.New("an input has no value yet; nothing was sent")
+
+// OnceEntry is the overlay entry of a value the user typed for one request: a secret user string bound to the
+// origin, with a fresh id and no expiry. value is the JSON string; the caller wipes it after the send.
+func OnceEntry(name, origin string, value json.RawMessage) keptvars.Entry {
+	e := pendingEntry(name, origin)
+	e.ID, e.Value = "once_"+ids.NewID(), value
+	return e
+}
 
 // pendingEntry stands in for the value a needed input will get: a secret user string.
 func pendingEntry(name, origin string) keptvars.Entry {

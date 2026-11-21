@@ -1,19 +1,21 @@
 # v0.3.23
 
 Chapter v0.3.23, branch `chapter/v0.3.23`, tag `v0.3.23`. First phase `P716` (highest phase: `P715`,
-in open chapter v0.3.22's `SPEC.md`).
+in `docs/history/07-v0.3.15.md`, chapter v0.3.22).
 
 Code review at chapter end: 2 rounds (user request).
 
-Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
-before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
+Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`). v0.3.22's PR merged as #55 (`c7534c9f0`). Rebase
+onto `main` before this chapter's PR opens.
 
 P716 to P720 are design phases: plan proposes the design with screenshots, user approves it
 before implementation starts.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P716 | Rework MCP chaining for DB, API and kube: kept variables, no chain UI | Todo |
+| P716 Part 1 | Remove the chain steps panel from DB and API prompts | Done |
+| P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
+| P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
 | P717 | Result review for every MCP tool that returns data | Todo |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
@@ -21,6 +23,7 @@ before implementation starts.
 | P721 | Remove development, debugging and validation leftovers | Todo |
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
+| P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 
 ## P716
 
@@ -77,6 +80,14 @@ kept variables unprompted.
 
 Open questions. A or B (user decides after the plan's comparison). Under B: how steps are linked, and
 whether "go back" shows a released result.
+
+User chose model A (no chain UI; kept variables; agent makes the follow-up request) as the baseline and may rework it after seeing screenshots at chapter end. Plan: `plans/P716-design.md`. Parts keep the number P716: Part 1 removes the panel, Part 2 adds secret and plain kept variables with preview and reveal, Part 3 tells the agent.
+
+Result, Part 1. Done. `ChainSteps.vue`, its three call sites (`DbQueryBody`, `DbExemptionBody`, `ApiRequestBody`), the `studio.dbMcp.approval.chain.*` strings, the chain asserts in `e2e-kept-chain.spec.ts`, the visual case 'script card with its chain' and its baseline are gone. The kept-variables panel stays. `e2e-kept-chain` and `e2e-db-script-chain` specs assert the old `approval-chain` element no longer renders.
+
+Result, Part 2. Done. Transform scripts keep with `kept.set(name, v)` (plain) or `kept.setSecret(name, v)` (secret); names are plan-time literals, `prepare` scripts cannot keep. A `setSecret` value is masked in the script output and the agent sees only name, type, size, `secret` flag and expiry. API-made secrets bind to the request origin; a use against another origin is refused with `the secret kept as "x" belongs to <origin> and is not sent to <origin>`. DB-kept secrets bind to no origin. The held-result review lists "Will keep" with Secret/Plain badges: plain values preview, secrets show dots and reveal through `KeptVarsService.RevealStaged` behind the local-auth prompt (confirmation fallback). Cards badge the kinds the script may keep, Settings shows the kind per entry. Tests: flow `TestE2EKeptSecret` and `TestDbMcpQueryScriptKeepSecret` (contract `e2e-kept-secret`), UI spec `e2e-kept-secret.spec.ts` (4 tests), visual `approvals-kept-secret.spec.ts` (3 baselines).
+
+Result, Part 3. Done. `DbmcpInstructions`, `run_query` and `api_request` script args and `list_kept_variables` now name `kept.set` (plain, user previews) and `kept.setSecret` (secret, fingerprint reveal), the `secret` flag in the kept summary, that API-made secrets go only to their host, and that a one-time value is never kept so no later call reads it (the sentence P719 deferred). Text stays generic for kube; kube adopts scripts in P718. `budget.tsv` raised for the five touched entries. `TestDbMcpKeptChainThroughClaude` now gives the task only (read ids, fetch bodies by those ids, ids never through the model); the model chose `kept.set` and bound the name in `params` on its own. `bun run test:claude:db -count=1`: 12 pass, none skipped.
 
 ## P717
 
@@ -204,6 +215,20 @@ Open questions. Who picks one-time: user per input in the card (toggle), agent p
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
+Result. Done. Each typed value on the API card gets a compact Use once / Keep N min choice; the agent's
+`reuse` hint seeds it, the user decides. A one-time value lives in an in-memory overlay
+(`agentapi.Input.Once`), never `Store.Put`, is masked in the echo, and its bytes are zeroed after the
+send and on every exit; Go strings from masking and JSON decoding stay in process memory until GC
+(documented in ARCHITECTURE). A script that read one cannot `commit` anything derived
+(`errDerivedOnce`); the card shows "Not kept". Only `inputs` are in scope; module `{{name}}` variables
+are P720. Card redesign after review: P715 prompt unchanged, then one row per value still needed, one
+badge "Sends: <names>", no extra headings, hints or warnings. Flow `e2e-user-value-once` and UI spec
+`approvals-api-input-once` share one contract; visual shot `approvals-api-input-once`. Run:
+`dbmcpflow`, `apiflow`, `agentapi`, `dbmcp`, `keptvars`, `llmprompts` pass; 3 UI specs (16 tests) pass;
+`bun run test:claude:db` passes (`TestDbMcpKeptChainThroughClaude` among 12). One full-package
+`dbmcpflow` run under load failed `TestE2EHeldWritesAPI` (`rawBytes` 747 vs 748, then a withhold
+timeout); three isolated reruns and a second full run passed.
+
 ## P720
 
 User: "The api module variables and env handling editing etc is horrible, come with a more intuitive
@@ -232,6 +257,34 @@ and inspected.
 
 Open questions. Settled in the plan with the user: inline editing in the variables tab vs dialog;
 where agent access settings live after the redesign.
+
+Result. One Variables tab (⌥⌘E) replaces the Environments tab, the variable-set tab and the request
+overview: a grid with a row per name and a column per file (collection default, then each
+environment), edited in place. Backend: `ApiConfigService.EditVariables` (set, unset, rename, lock,
+unlock, describe, share, move), `ApiVariable.secretSet`, import `secretsUnset`, duplicate copies
+sealed values. Frontend: `VariablesView`, `VariablesMatrix`, `VariableCell`, `SecretCellInput`
+(P516 eye), `EnvironmentColumnMenu`, `RequestVariablesPanel` (quick fix of a missing name), narrow
+mode below 760 px. Legacy `variables` and `environments` tabs reopen as the Variables tab (drop at
+v0.4.0). Flow: `apiflow.TestApiVariablesMatrix` writes contract `api-variables-matrix`; UI:
+`api-variables-matrix.spec.ts` replays it; visual `studio/variables.spec.ts` (grid, narrow, request
+popover). Other UI specs moved to the grid; specs of removed UI (typed secret in the dialog, drag
+reorder, overview list) deleted or rewritten.
+
+Defaults used for the plan's open questions 1 to 8: as written in `plans/P720.md`.
+
+Deviations. Rename and colour reuse the dialog's Environment section. No separate
+`VariableRowMenu.vue`: the row menu lives in `menu.ts`. Narrow mode picker also offers the collection
+column. A lock click on a mixed row makes it uniform. With no collection or environment the empty
+state offers New environment and New collection; with an environment the grid shows even when empty.
+`form.submit` and `form.cancel` are native Enter and Escape, not registry shortcuts. Share with
+agents on a secret with no detectable host opens Agent access. Inline fields trim values. The
+new-environment input commits on blur when non-blank. Environment reorder is Move left and Move right
+in the column menu; drag is gone. Rename shows an info alert with Find usages, not a toast. The
+history popover ignores focus-outside so it survives the menu's focus restore. The dialog's bulk
+editor is the only dotenv editor.
+
+Unverified. Wails bindings not regenerated (`wails3` missing here, bindings gitignored; typecheck
+passes). Real `claude` tests not run: no Claude integration code changed.
 
 ## P721
 
@@ -310,6 +363,22 @@ the last tab, new-window button icon, tooltip and shortcut.
 
 Spike (`plans/P722-spike.md`): drag-back is feasible via frontend pointer-up coordinates plus Go hit-test of live windows; not feasible on Linux Wayland (window positions report 0,0). The planner starts from that file.
 
+**Result.** Implemented per `plans/P722.md`.
+
+- Go: atomic `TabsRepo.Move`, `TabsService.Move`/`Inbound`/`Targets`/`Capabilities`, window geometry,
+  MRU focus order and drop hit-test, `Registry.Hold`/`Adopt`/`Release`/`Reown` for Runs terminals.
+  `Forget` is the package function `bridge.ForgetTabWindow`.
+- Frontend: Sortable tear-off with hint, tab menu move items, inbox install, terminal snapshot via
+  `@xterm/addon-serialize` 0.14.0, icon-only new-window button (aria-label, `window.new` chip kept).
+- Fixed a Sortable quirk: `ignoreNextClick` set at fallback drag start swallowed the next click after
+  a release outside the window; `sortableReorder` now dispatches one.
+- Contract files `tab-move.json` and `terminal-move.json` use ':' as key suffix separator.
+- Tests: flow `TestTabMove`, `TestTerminalMove` (real PTY), coalescer unit test, all `-race`; UI
+  `tab-window-move.spec.ts` (14). UI specs use `data` tabs (a restored http tab is dirty) and the
+  files window for the non-movable case. No visual baselines added.
+- Unverified: macOS, Windows, real Linux X11 cross-window drag, mixed-DPI. Manual checklist in plan
+  section 11. Playwright cannot drive a native cross-window drag.
+
 ## P723
 
 User: "Remove the flake restarter. I think it s uselesss as you re already monitoring prs for ci
@@ -350,3 +419,66 @@ Deliverable. One plan `plans/P723.md`, one Sonnet pass. No UI tests, no new test
 Verify. Final grep finds no `pr-rerun-flaky` or flake-rerun reference outside `docs/history/`;
 lint (`bun run lint` as in `docs/DEV_ENVIRONMENT.md`) and the repo's workflow and guard checks
 (`scripts/verify-packaging.sh`, pre-commit hook) pass.
+
+Result. Deleted `.github/workflows/pr-rerun-flaky.yml`. `docs/PACKAGING.md` §7: dropped it from the
+status list; "Chapter PR to release (P330)" lost the rerun sentences, `pr.yml` folded into the merge
+step, steps renumbered to 4. `scripts/retry.sh` kept. Grep finds no leftover reference outside
+`docs/history/` and `docs/v0.3.23/`. `workflow_run` workflows run from the default branch, so the
+removal takes effect only once this chapter's PR merges to `main`; until then the old workflow still
+reruns failed PR runs. Pushing a workflow change needs a token with the `workflow` scope.
+
+## P724
+
+Cause. Release run 44942506459 (tag `v0.3.22`, commit `c7534c9f0`) failed in `build (macOS)`, step
+"Verify packaging", so `publish` was skipped and v0.3.22 has no release. `scripts/verify-packaging.sh`
+S10 runs `grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/` and
+requires exactly one hit, `internal/appupdate/checker.go`'s `indexURL`. After `bun run package` the
+Go binary embeds that constant, so grep also reports `Binary file apps/kira-space/bin/Kira Space
+matches` and the same for `Kira Space.app/Contents/MacOS/Kira Space`: 3 hits, `verify-packaging:
+FAILED`. Local and PR CI runs have no built binary, so the check passed there.
+
+v0.3.21 (run 44840061445, commit `03d33b5ca`). Not the same failure. Its "Verify packaging" passed:
+S10 then required zero hits (`releases/download` only) and the checker used the API, so no source or
+binary carried the string. `build` and `publish` succeeded and v0.3.21 is published. The run reads
+`failure` only because `install smoke (macOS)`, which runs after publish, got HTTP 403 from the GitHub
+API on all three install attempts (rate limit; P707 moved `install.sh` to the release index in
+v0.3.22). P707 (v0.3.22) added `indexURL` and the exactly-one rule, which no pre-release run could
+exercise against a binary.
+
+Fix. Scan source only. One helper in `verify-packaging.sh` greps text files (`grep -I`) with build and
+vendor dirs excluded (`bin`, `dist`, `dist-mobile`, `node_modules`, `bindings`); S10 and S2 (same
+latent shape: scans `apps/` incl. `bin/` and `frontend/dist`) use it. Invariant stays: exactly one
+release-download reference in source, `checker.go`'s `indexURL`. New S18 self-test runs the same scan
+and S10 verdict against a tiny temp fixture holding fake binaries and a `dist` bundle that carry the
+URL, so a missing build can no longer hide the bug. `checks (macOS)` in `pr.yml` gains
+`bun run verify:packaging`, so S18 runs under macOS grep in PR CI before any release.
+
+Verify. No macOS build: `bun run verify:packaging` passes on Linux with S18; a simulated release tree
+(dummy `bin/Kira Space` and `.app` binaries carrying the URL) reproduces the CI failure with the old
+script and passes with the new one; removing `-I` or the `bin` exclusion makes S18 fail. macOS grep is
+proven by `checks (macOS)` on this chapter's PR.
+
+Post-merge. Re-dispatching `release.yml -f tag=v0.3.22` cannot succeed: `build` checks out the tag's
+commit `c7534c9f0`, which carries the old S10. Moving the tag to a fixed `main` commit would make
+v0.3.22 ship v0.3.23's code. v0.3.22's changes ship in v0.3.23, whose release builds with the fix.
+`docs/PACKAGING.md` §7 "Recovery" covers this case ("Real failure: delete the tag ...; the fix ships
+as the next chapter"). The orchestrating session reports it; the user decides whether to delete the
+`v0.3.22` tag (`git push --delete origin v0.3.22`) or leave it unreleased. No re-dispatch unless the
+user asks.
+
+Deliverable. One plan `plans/P724.md`, one Sonnet pass. No UI tests.
+
+Result. Commits on `stream/p724`: `cdfb3275a` fix (helper `source_grep`, `s10_verdict`, S2 and S10 on
+them, S18, header comment), `41b99f034` ci (`bun run verify:packaging` in `checks (macOS)`, comment),
+docs commit (`PACKAGING.md` S2/S10/S18 bullets, §5 list, CI job row). Hooks passed unbypassed.
+
+Verify. `bun run verify:packaging` on Linux: `all checks passed`, S18 silent. Simulated release tree
+(text dummies carrying the URL in `bin/Kira Space` and the `.app` binary): old script prints both S10
+failures and `FAILED`; new script has no S10 failure (only my incomplete dummy `.app` tripped A7
+`Assets.car missing`). Mutation, local only, restored: dropping `--exclude-dir=bin` makes S10 fail on
+the dummies; dropping `--exclude-dir=dist` makes `S10 scan self-test — build output counted:
+...frontend/dist/assets/index.js` fail. Not reproducible on Linux: dropping `-I`. GNU grep 3.11 sends
+`binary file matches` to stderr (the script discards it), so the 3-hit failure appears only with
+macOS grep; binary dummies passed with the old script on Linux and removing `-I` left S18 green. The
+`-I` guard is proven only by `checks (macOS)` on this chapter's PR and v0.3.23's release. Dummies
+and temporary `bun install`/bindings copy removed.

@@ -41,7 +41,9 @@
         "host": "127.0.0.1",
         "inputs": [
           {
+            "keepMinutes": 60,
             "label": "API key",
+            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -258,6 +260,7 @@
           "mayKeep": [
             {
               "name": "w",
+              "secret": false,
               "sites": [
                 {
                   "field": "script",
@@ -356,6 +359,7 @@
           "mayKeep": [
             {
               "name": "w",
+              "secret": false,
               "sites": [
                 {
                   "field": "script",
@@ -423,6 +427,7 @@
     "isError": false,
     "keep": [
       {
+        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",
@@ -444,6 +449,7 @@
     "isError": false,
     "keep": [
       {
+        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",

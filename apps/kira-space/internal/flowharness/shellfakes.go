@@ -267,6 +267,39 @@ type WindowManager struct {
 	// Known is the set of window keys Close and Focus report true for.
 	Known      map[string]bool
 	appFocused bool
+	// Geom is what the tab drop hit-test sees; SetGeometry replaces it.
+	Geom []shell.WindowGeom
+	// OpenedTorn records the windows opened for a moved tab.
+	OpenedTorn []shell.WindowRecord
+}
+
+// SetGeometry scripts the live windows tab moves see and marks each key known.
+func (w *WindowManager) SetGeometry(geoms ...shell.WindowGeom) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.Geom = append([]shell.WindowGeom(nil), geoms...)
+	for _, g := range geoms {
+		w.Known[g.Key] = true
+	}
+}
+
+func (w *WindowManager) geometry() []shell.WindowGeom {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return append([]shell.WindowGeom(nil), w.Geom...)
+}
+
+// openTorn records a window opened for a moved tab, marks it known and adds it to the geometry.
+func (w *WindowManager) openTorn(rec shell.WindowRecord) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.OpenedTorn = append(w.OpenedTorn, rec)
+	w.Known[rec.Key] = true
+	g := shell.WindowGeom{Key: rec.Key, Order: rec.Order}
+	if rec.Bounds != nil {
+		g.Bounds = *rec.Bounds
+	}
+	w.Geom = append(w.Geom, g)
 }
 
 // SetAppFocused sets what AppFocused reports; default false.

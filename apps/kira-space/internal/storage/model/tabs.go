@@ -31,10 +31,11 @@ var dbTabKinds = map[string]bool{
 	"keyvalue": true, "stream": true, "browse": true,
 	"http-request": true,
 	"grpc-request": true,
-	// A collection's or environment's variable set, opened as a tab. A row of this kind is
-	// silently dropped on restore if this line is forgotten.
+	// Legacy (P720): a variable-set row restores as the Variables tab. Drop with the restore mapping in
+	// state/tabKinds.ts at v0.4.0.
 	"variable-set": true,
-	// The environment list. Same drop-on-restore warning as variable-set.
+	// The Variables tab (kind name kept from the environment list). A row of this kind is silently
+	// dropped on restore if this line is forgotten.
 	"environments": true,
 }
 
@@ -60,6 +61,26 @@ var RenderableTabKinds = func() map[string]bool {
 	}
 	return kinds
 }()
+
+// AutomationsWorkspaceID is the workspace id the Runs module's terminals carry (automationsModule.ts).
+const AutomationsWorkspaceID = "automations"
+
+// IsSessionTabKind reports whether kind never persists across restarts (P722: moves write no row).
+func IsSessionTabKind(kind string) bool {
+	return kind == "terminal" || kind == "script-run"
+}
+
+// IsMovableTab reports whether a tab may move between windows (P722): Studio and API kinds,
+// Runs script runs and Runs terminals. Repository kinds and repo terminals stay put.
+func IsMovableTab(rec TabRecord) bool {
+	switch {
+	case dbTabKinds[rec.Kind], rec.Kind == "script-run":
+		return true
+	case rec.Kind == "terminal":
+		return rec.WorkspaceID != nil && *rec.WorkspaceID == AutomationsWorkspaceID
+	}
+	return false
+}
 
 // IsRenderableTabKind reports whether kind is one of the renderable tab kinds.
 func IsRenderableTabKind(kind string) bool {

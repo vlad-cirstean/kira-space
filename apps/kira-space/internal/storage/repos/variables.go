@@ -101,6 +101,10 @@ func (r *VariablesRepo) SetActiveEnvironment(id string) error {
 
 // ---- variables ----
 
+// apiSecretOwner is apifiles.SecretOwner, the owner of every Api secret (apifiles imports this package's
+// model, so the constant is repeated here).
+const apiSecretOwner = "api"
+
 func scopeColumn(scope model.VariableScope) (string, error) {
 	switch scope {
 	case model.VariableScopeCollection:
@@ -123,7 +127,10 @@ func (r *VariablesRepo) List(scope model.VariableScope, ownerID string) ([]model
 		return nil, fmt.Errorf("repos/variables: ownerId is required")
 	}
 	c := kiraschema.APIVariables
-	sb := r.Dialect.Select(c.ID, c.Name, c.Value, c.IsSecret, c.SortOrder, c.Description).From(c.Table)
+	sv := kiraschema.SecretValues
+	secretSet := "EXISTS (SELECT 1 FROM " + sv.Table + " WHERE " + sv.Scope + " = '" + string(secrets.ScopeVariable) + "' AND " +
+		sv.Owner + " = '" + apiSecretOwner + "' AND " + sv.Name + " = " + c.Table + "." + c.SecretRef + ")"
+	sb := r.Dialect.Select(c.ID, c.Name, c.Value, c.IsSecret, c.SortOrder, c.Description, secretSet).From(c.Table)
 	sb.Where(sb.Equal(column, ownerID)).OrderBy(c.SortOrder, c.Name)
 	rows, err := sqlb.Query(r.db, sb)
 	if err != nil {
@@ -134,11 +141,12 @@ func (r *VariablesRepo) List(scope model.VariableScope, ownerID string) ([]model
 	out := []model.Variable{}
 	for rows.Next() {
 		v := model.Variable{Scope: scope, OwnerID: ownerID}
-		var isSecret int
-		if err := rows.Scan(&v.ID, &v.Name, &v.Value, &isSecret, &v.SortOrder, &v.Description); err != nil {
+		var isSecret, secretSet int
+		if err := rows.Scan(&v.ID, &v.Name, &v.Value, &isSecret, &v.SortOrder, &v.Description, &secretSet); err != nil {
 			return nil, fmt.Errorf("repos/variables: scan variable: %w", err)
 		}
 		v.IsSecret = isSecret != 0
+		v.SecretSet = v.IsSecret && secretSet != 0
 		out = append(out, v)
 	}
 	if err := rows.Err(); err != nil {

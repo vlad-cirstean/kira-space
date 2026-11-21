@@ -5,7 +5,7 @@ import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
 
-// The Environments view lists what agents may use; the variables dialog's Agent access tab edits it
+// The Variables tab marks what agents may use; the variables dialog's Agent access tab edits it
 // over the same draft as the YAML tab. Backend half: apiflow.TestApiAgentAccess writes the
 // api-agent-access contract.
 
@@ -36,9 +36,10 @@ const agentFormCall = (name: string): ControlSnapshot => ({
   response: form(name),
 });
 
+const ENV_ID = access()[0]?.id ?? '';
 const ENVIRONMENTS = [
   {
-    id: access()[0]?.id,
+    id: ENV_ID,
     name: 'Staging',
     sortOrder: 0,
     isActive: false,
@@ -69,32 +70,44 @@ async function openAgentTab(
   });
   await openHttpMode(app.window);
   await app.window.click('[data-testid="api-environments"]');
-  await app.window.click('[data-testid="api-agent-access-edit"]');
+  await app.window.click(`[data-testid="matrix-col-menu-${ENV_ID}"]`);
+  await app.window.click('[data-testid="menu-item-agent"]');
   await expect(app.window.locator(dlg)).toBeVisible();
   await expect(app.window.locator('[data-testid="api-section-agent"]')).toBeVisible();
   return app;
 }
 
-test('contract: the overview lists shared variables and hosts above Secrets', async ({
-  relaunch,
-}) => {
+test('contract: the matrix marks the variables agents may use', async ({ relaunch }) => {
+  const rows = access()[0]?.variables.map((v, i) => ({
+    id: `var-${v.name}`,
+    scope: 'environment',
+    ownerId: ENV_ID,
+    name: v.name,
+    value: v.hosts ? '' : 'https://staging.example.com',
+    isSecret: !!v.hosts,
+    secretSet: !!v.hosts,
+    sortOrder: i,
+    description: '',
+  }));
   const app = await relaunch({
     control: [
       { channel: IPC.collectionsList, response: { collections: [], items: [] } },
       { channel: IPC.variablesListEnvironments, response: ENVIRONMENTS },
       { channel: IPC.apiConfigAgentAccess, response: access() },
+      {
+        channel: IPC.variablesList,
+        args: { scope: 'environment', ownerId: ENV_ID },
+        response: rows,
+      },
     ],
   });
   const page = app.window;
   await openHttpMode(page);
   await page.click('[data-testid="api-environments"]');
-  const overview = page.locator('[data-testid="api-agent-access"]');
-  const token = overview.locator('[data-testid="api-agent-access-var-token"]');
-  await expect(token).toContainText('staging.example.com');
-  await expect(token).toContainText('Secret');
-  const above = await overview.boundingBox();
-  const below = await page.locator('[data-testid="api-secrets"]').boundingBox();
-  expect(above && below && above.y < below.y).toBe(true);
+  await expect(page.locator(`[data-testid="matrix-cell-token-${ENV_ID}"]`)).toHaveAttribute(
+    'data-shared',
+    'true',
+  );
 });
 
 test('contract: Edit opens the dialog on Agent access', async ({ relaunch }) => {

@@ -27,6 +27,8 @@ export const TIMING = {
   fileSettle: 300,
   /** Stat poll of the files a review window lists. */
   reviewStamp: 1500,
+  /** Longest a terminal move waits for output already sent to reach the source window. */
+  terminalMoveSettle: 2000,
   /** Hover info popup delay. */
   hoverInfo: 400,
   pollFast: 5000,

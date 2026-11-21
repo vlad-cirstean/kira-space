@@ -117,7 +117,17 @@ type keptPlan struct {
 
 func keptErr(format string, args ...any) error { return fmt.Errorf(format, args...) }
 
-func (s *Service) lookupKept(scope, name string) (keptvars.Entry, bool) {
+// lookupKept finds the entry a name refers to: the request's one-time overlay first, then the store. once says
+// the entry came from the overlay.
+func (s *Service) lookupKept(in Input, name string) (e keptvars.Entry, ok, once bool) {
+	if e, ok := in.Once[name]; ok {
+		return e, true, true
+	}
+	e, ok = s.lookupStore(in.Scope, name)
+	return e, ok, false
+}
+
+func (s *Service) lookupStore(scope, name string) (keptvars.Entry, bool) {
 	if s.Kept == nil || scope == "" || keptvars.ValidName(name) != nil {
 		return keptvars.Entry{}, false
 	}
@@ -126,9 +136,9 @@ func (s *Service) lookupKept(scope, name string) (keptvars.Entry, bool) {
 
 // admit records the entry a reference names: a live entry, or the stand-in of a needed input.
 func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]InputDecl, origin string) error {
-	e, ok := s.lookupKept(in.Scope, name)
+	e, ok, once := s.lookupKept(in, name)
 	if d, declared := decls[name]; declared {
-		use, err := judgeInput(d, e, ok, origin)
+		use, err := judgeInput(d, e, ok, once, origin)
 		if err != nil {
 			return err
 		}
@@ -140,6 +150,9 @@ func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]In
 	} else if !ok {
 		return keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables"+inputsDeclHint, name)
 	} else if e.Bound() && origin != "" && e.Origin != origin {
+		if e.Source.Kind != keptvars.SourceUser {
+			return keptErr("the secret kept as %q belongs to %s and is not sent to %s", name, e.Origin, origin)
+		}
 		return otherOriginError(name, e.Origin, origin)
 	}
 	kp.entries[name] = e
@@ -158,8 +171,8 @@ func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]Inp
 		if done[d.Name] {
 			continue
 		}
-		e, ok := s.lookupKept(in.Scope, d.Name)
-		use, err := judgeInput(decls[d.Name], e, ok, origin)
+		e, ok, once := s.lookupKept(in, d.Name)
+		use, err := judgeInput(decls[d.Name], e, ok, once, origin)
 		if err != nil {
 			return err
 		}
