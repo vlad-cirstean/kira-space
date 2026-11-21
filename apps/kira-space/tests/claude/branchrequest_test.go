@@ -50,15 +50,31 @@ func TestAdeBranchRequest(t *testing.T) {
 	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 8m\n" +
 		"    allowed_tools: [\"Write\", \"Bash(git:*)\"]\n" +
 		"    prompt: You have no branch yet. Call state with action branch.request and args repo api, branch feat/hello and base feat/base. It creates the branch at once. " +
-		"In the worktree it returns, create the file hello.txt containing hi and commit it with git. " +
+		"In the worktree it returns, create the file hello.txt containing hi with the Write tool (a shell redirect outside your working folders is refused), then commit it with git -C on the worktree path. " +
 		"Then call state with action branch.rename and args repo api, from feat/hello and to feat/greet, and wait for the answer. " +
-		"Then call state with action worktree.remove and args repo api and branch feat/greet. Kira refuses it because your run holds the branch, so do not retry. " +
-		"Then call state with action step.finish and args status done.\n"
+		"Then call state with action worktree.remove and args repo api and branch feat/greet. Kira refuses it because your run holds the branch, so do not retry. The refusal is the expected result, not a failure. " +
+		"Then call state with action step.finish and args status done, never failed.\n"
 	f.saveWorkflow(t, "flow", step+manualStepYAML)
 	task := f.createTask(t, "flow")
 	if _, err := f.W.AdeTask.StartRun(ctx, adewire.StartRunArgs{TaskID: task.ID}); err != nil {
 		t.Fatalf("StartRun: %v", err)
 	}
+
+	// A stalled agent leaves no other trace: show where its log stops.
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		if b, err := f.W.AdeTask.Board(ctx); err == nil {
+			for _, tk := range b.Tasks {
+				for _, r := range tk.Runs {
+					if tk.ID == task.ID {
+						t.Logf("run %s %s; log tail:\n%s", r.ID, r.State, tail(f.runLog(t, r.ID), 2500))
+					}
+				}
+			}
+		}
+	})
 
 	// Only the rename asks: the create must never open an approvals item.
 	var req adewire.BranchRequest

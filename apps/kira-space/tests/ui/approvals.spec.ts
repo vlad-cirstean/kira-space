@@ -35,7 +35,7 @@ test('contract: three calls show as three groups and Approve sends the picked it
     { channel: IPC.approvalsAnswer, response: answeredOk(answer.ids) },
   ]);
   const dialog = page.locator(t('approvals-dialog'));
-  await expect(dialog.locator(t('approvals-count'))).toHaveText('1');
+  await expect(dialog.locator(t('approvals-position'))).toHaveCount(0);
   await expect(dialog.locator('[data-testid^="ade-branch-request-call-"]')).toHaveCount(3);
 
   // Items sort by branch: c0 adopts feat/held, c1 renames feat/new, c2 renames feat/w-new. Drop
@@ -82,7 +82,7 @@ studioTest.describe('databases module', () => {
       const dialog = page.locator('[data-testid="approvals-dialog"]');
       const toast = page.locator('[data-testid="approvals-toast"]');
       await expect(dialog).toBeVisible();
-      await expect(page.locator('[data-testid="approvals-count"]')).toHaveText('2');
+      await expect(page.locator('[data-testid="approvals-position"]')).toHaveText('1 of 2');
 
       await page.keyboard.press('Shift+Escape');
       await expect(dialog).toHaveCount(0);

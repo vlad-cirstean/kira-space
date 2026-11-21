@@ -258,7 +258,6 @@ onMounted(() => {
     registerCommand('view.run', onCall),
     registerCommand('view.refresh', onCall),
     registerCommand('view.format', onBeautify),
-    registerCommand('api.save', onSave),
   ];
 });
 onUnmounted(() => {
@@ -301,7 +300,7 @@ onUnmounted(() => {
         }}</Badge></TextTooltip
       >
       <template #actions>
-        <TextTooltip :text="saveTooltip">
+        <TextTooltip shortcut="form.save" :text="saveTooltip">
           <TooltipDisabledTrigger>
             <Button
               variant="toolbar"
@@ -322,6 +321,7 @@ onUnmounted(() => {
         <TooltipIconButton
           :icon="ICON.refresh"
           :label="t('common.action.refresh.label')"
+          shortcut="view.refresh"
           data-testid="grpc-request-refresh"
           @click="onCall"
         />
@@ -375,6 +375,7 @@ onUnmounted(() => {
         </NativeSelect>
       </div>
       <TextTooltip
+        shortcut="view.run"
         :text="
           !running && tab.state.service && tab.state.method && !methodResolved
             ? t('studio.grpc.call.waitingSchema.tooltip')
@@ -424,6 +425,7 @@ onUnmounted(() => {
         v-if="tab.state.requestPane === 'message'"
         icon="expand-all"
         :label="t('studio.api.common.beautify.label')"
+        shortcut="view.format"
         data-testid="grpc-beautify"
         @click="onBeautify"
       />

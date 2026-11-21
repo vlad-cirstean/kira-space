@@ -65,6 +65,7 @@ test('contract: pending requests render on Need You with the brief and count', a
   await expect(card.locator(t('ade-task-create-brief'))).toContainText(
     'Hand back the endpoint list.',
   );
+  await card.locator(t('approval-details-toggle')).click();
   await expect(card.locator(t('ade-task-create-workflow'))).toContainText('Flow');
   await expect(page.locator(t('phone-approvals-count'))).toHaveText('1');
   await expect(page.locator(t('tab-needs-badge'))).toHaveText('5');

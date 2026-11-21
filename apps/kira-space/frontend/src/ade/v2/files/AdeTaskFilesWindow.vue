@@ -2,6 +2,7 @@
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
 import { paneFrame, windowBody } from '@theme/lib/frames';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { computed } from 'vue';
@@ -28,16 +29,17 @@ const title = computed(() => {
   <div class="flex h-full flex-col" data-testid="ade-files-window">
     <TitleBarBase>
       <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-files-window-header">
-        <span
-          class="inline-block size-2.5 shrink-0 rounded-kira-sm"
-          :style="{ background: taskColor(task?.color ?? 0) }"
-          data-testid="ade-files-window-colour"
-        />
         <TitleBarTitle data-testid="ade-files-window-title">{{ title }}</TitleBarTitle>
         <span class="shrink-0 text-kira-sm text-muted-foreground">{{
           t('common.module.files.label')
         }}</span>
       </div>
+      <ColorLine
+        v-if="task"
+        variant="under"
+        :color="taskColor(task.color)"
+        data-testid="ade-files-window-colour"
+      />
     </TitleBarBase>
     <div :class="windowBody">
       <section :class="paneFrame" class="min-w-0 flex-1">

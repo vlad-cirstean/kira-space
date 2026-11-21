@@ -121,7 +121,7 @@ const option = computed<EChartsOption>(() => {
       brushType: 'lineX',
       brushMode: 'single',
       transformable: false,
-      brushStyle: { color: c.brush, borderColor: c.bar },
+      brushStyle: { color: c.brush, borderColor: c.brushEdge },
     },
     toolbox: { show: false },
     series: [

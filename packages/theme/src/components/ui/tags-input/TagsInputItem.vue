@@ -17,7 +17,7 @@ const forwarded = useForwardProps(delegatedProps);
     v-bind="forwarded"
     :class="
       cn(
-        'flex items-center gap-1 rounded-kira-sm border border-border bg-fg/10 px-1.5 font-data text-kira-sm data-[state=active]:border-primary',
+        'flex items-center gap-1 rounded-kira-sm border border-border bg-fg/10 px-1.5 font-data text-kira-sm data-[state=active]:border-select-edge',
         props.class,
       )
     "

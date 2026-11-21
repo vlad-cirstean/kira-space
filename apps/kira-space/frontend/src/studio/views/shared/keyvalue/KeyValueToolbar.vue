@@ -187,6 +187,7 @@ defineExpose({
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
         :pressed="!!rt?.searchOpen"
+        shortcut="view.find"
         data-testid="keyvalue-search"
         @click="keyValueViewStore.toggleSearchOpen(viewKey)"
       />

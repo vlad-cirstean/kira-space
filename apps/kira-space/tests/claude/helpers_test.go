@@ -89,9 +89,10 @@ exec %q "$@"
 
 	// Pin the model for app-composed launches (no --model on those argvs) and stop the agent
 	// session running this suite from leaking its identity into the child (the sandbox's remote
-	// session id does too: the child reuses it as its own session_id).
+	// session id does too: the child reuses it as its own session_id). CLAUDE_CODE_CHILD_SESSION makes
+	// a TUI skip writing its transcript (CLI 2.1.330), so a later --resume finds no conversation.
 	t.Setenv("ANTHROPIC_MODEL", "haiku")
-	for _, k := range []string{"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDECODE"} {
+	for _, k := range []string{"CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDECODE", "CLAUDE_CODE_CHILD_SESSION"} {
 		t.Setenv(k, "")
 		_ = os.Unsetenv(k)
 	}

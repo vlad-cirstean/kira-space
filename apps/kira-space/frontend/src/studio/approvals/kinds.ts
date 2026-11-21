@@ -1,4 +1,5 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
+import type { ConnectionKind } from '@shared/domain/connection';
 import { connectionKindSchema } from '@shared/domain/connection';
 import {
   apiRequestPayloadSchema,
@@ -12,11 +13,11 @@ import {
 } from '@shared/domain/dbmcp';
 import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
-import { type MessageKey, t } from '@theme/i18n';
-import type { ApprovalKinds, ApprovalRisk } from '@workbench/approvals/registry';
+import { joinSentences, type MessageKey, t } from '@theme/i18n';
+import type { ApprovalKinds, ApprovalRisk, ApprovalVerdict } from '@workbench/approvals/registry';
 import { formatCount, formatDuration } from '@workbench/behaviour/format';
-import { markRaw } from 'vue';
-import { KIND_LABEL } from '../project/connection/kinds';
+import { type FunctionalComponent, h, markRaw } from 'vue';
+import EngineIcon from '../theme/EngineIcon.vue';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ApiRequestDetails from './ApiRequestDetails.vue';
 import ApiResponseBody from './ApiResponseBody.vue';
@@ -24,6 +25,7 @@ import ApiResponseDetails from './ApiResponseDetails.vue';
 import DbExemptionBody from './DbExemptionBody.vue';
 import DbExemptionDetails from './DbExemptionDetails.vue';
 import DbQueryBody from './DbQueryBody.vue';
+import DbQueryDetails from './DbQueryDetails.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import DbResponseDetails from './DbResponseDetails.vue';
 import KubeReadBody from './KubeReadBody.vue';
@@ -49,6 +51,199 @@ const KUBE_OPERATION_LABEL = {
 } as const satisfies Record<string, MessageKey>;
 
 const RANK: Record<string, number> = { read: 0, write: 1, ddl: 2 };
+
+type Fact = NonNullable<ApprovalVerdict['facts']>[number];
+
+const READ_ONLY_TOOLTIP: Record<string, MessageKey> = {
+  session: 'studio.dbMcp.approval.readOnly.session.hint',
+  app: 'studio.dbMcp.approval.readOnly.app.hint',
+  none: 'studio.dbMcp.approval.readOnly.none.hint',
+};
+
+// Every read runs on the read lane, and a read-only connection never reaches a write prompt (the
+// permission check refuses write and ddl first), so a read prompt is read-only by enforcement.
+function readOnlyWording(enforcement: string, connReadOnly: boolean): string {
+  return joinSentences(
+    t(READ_ONLY_TOOLTIP[enforcement] ?? READ_ONLY_TOOLTIP.none),
+    connReadOnly && t('studio.dbMcp.approval.readOnly.connection.hint'),
+  );
+}
+
+function dbVerdict(item: ApprovalItem): ApprovalVerdict {
+  const p = (item.kind === 'db.exemption' ? dbExemptionPayloadSchema : dbQueryPayloadSchema).parse(
+    item.payload,
+  );
+  const facts: Fact[] = [];
+  if ('script' in p && p.script) {
+    facts.push({
+      text: t('studio.dbMcp.approval.fact.scripts.status', { count: 1 }),
+      tone: 'warn',
+      icon: 'code',
+      tooltip: t('studio.dbMcp.approval.query.scriptResult.hint'),
+    });
+  }
+  const cls = item.operation.class;
+  if (cls === 'read') {
+    const wording = readOnlyWording(p.enforcement, item.target.readOnly);
+    // Kira's own check is not the database's, so it earns a badge and the kind badge carries no lock.
+    const lock = p.enforcement === 'app' ? {} : { lock: true, tooltip: wording };
+    if (p.enforcement === 'app') {
+      facts.unshift({
+        text: t('studio.dbMcp.approval.fact.checkedByKira.status'),
+        tone: 'caution',
+        icon: 'shield',
+        tooltip: wording,
+      });
+    }
+    if ('explain' in p && p.explain) {
+      return {
+        label: t('studio.console.explain.label'),
+        tone: 'ok',
+        hue: 'explain',
+        icon: 'graph',
+        facts,
+        ...lock,
+      };
+    }
+    const label =
+      p.mode === 'masked'
+        ? t('studio.dbMcp.approval.op.maskedRead.label')
+        : t('studio.project.connectionDialog.mcp.read.label');
+    return { label, tone: 'ok', hue: 'read', icon: 'eye', facts, ...lock };
+  }
+  if (cls === 'write') {
+    return {
+      label: t('studio.project.connectionDialog.mcp.write.label'),
+      tone: 'warn',
+      hue: 'write',
+      icon: 'edit',
+      facts,
+    };
+  }
+  if (cls === 'ddl') {
+    return {
+      label: t('studio.dbMcp.approval.verdict.schemaChange.label'),
+      tone: 'error',
+      hue: 'schema',
+      icon: 'symbol-structure',
+      facts,
+    };
+  }
+  return {
+    label: t('studio.dbMcp.approval.target.unclassified.label'),
+    tone: 'warn',
+    icon: 'question',
+    facts,
+  };
+}
+
+// "Lift limit" does not say read, so a read-only exemption keeps a separate green Read-only badge.
+function exemptionVerdict(item: ApprovalItem): ApprovalVerdict {
+  const v = dbVerdict(item);
+  const facts =
+    v.lock && v.tooltip
+      ? [
+          {
+            text: t('common.state.readOnly.status'),
+            tone: 'ok' as const,
+            icon: 'lock',
+            tooltip: v.tooltip,
+          },
+          ...(v.facts ?? []),
+        ]
+      : v.facts;
+  return {
+    ...v,
+    label: t('studio.dbMcp.approval.op.liftLimit.label'),
+    tone: 'warn',
+    hue: 'write',
+    icon: 'unlock',
+    lock: false,
+    tooltip: undefined,
+    facts,
+  };
+}
+
+// The held result: one badge naming what produced it. The table and the Send / Withhold buttons
+// already say the rest.
+function resultVerdict(read: boolean, ranTooltip: MessageKey): ApprovalVerdict {
+  return read
+    ? {
+        label: t('studio.dbMcp.approval.verdict.readResult.label'),
+        tone: 'ok',
+        hue: 'read',
+        icon: 'eye',
+      }
+    : {
+        label: t('studio.dbMcp.approval.verdict.writeResult.label'),
+        tone: 'warn',
+        hue: 'write',
+        icon: 'edit',
+        tooltip: t(ranTooltip),
+      };
+}
+
+const DbTargetIcon: FunctionalComponent<{ item: ApprovalItem }> = (p) =>
+  h(EngineIcon, { kind: p.item.target.kind as ConnectionKind, size: 16 });
+
+function apiVerdict(item: ApprovalItem): ApprovalVerdict {
+  const p = apiRequestPayloadSchema.parse(item.payload);
+  const facts: Fact[] = [];
+  const scripts = [
+    p.script?.prepare && t('studio.dbMcp.approval.api.scriptPrepare.hint'),
+    p.script?.transform && t('studio.dbMcp.approval.api.scriptTransform.hint'),
+  ].filter((x): x is string => !!x);
+  if (scripts.length > 0) {
+    facts.push({
+      text: t('studio.dbMcp.approval.fact.scripts.status', { count: scripts.length }),
+      tone: 'warn',
+      icon: 'code',
+      tooltip: scripts.join('\n'),
+    });
+  }
+  if (p.credentials.length > 0) {
+    facts.push({
+      text: t('studio.dbMcp.approval.api.sends.status', {
+        names: p.credentials.map((c) => c.name).join(', '),
+      }),
+      tone: isRead(p.method) ? 'neutral' : 'warn',
+      icon: 'key',
+      tooltip: p.credentials
+        .map((c) =>
+          t('studio.dbMcp.approval.api.credential.label', {
+            name: c.name,
+            hosts: c.hosts.join(', '),
+          }),
+        )
+        .join('\n'),
+    });
+  }
+  if (isRead(p.method)) {
+    return {
+      label: t('studio.project.connectionDialog.mcp.read.label'),
+      tone: 'ok',
+      hue: 'read',
+      icon: 'eye',
+      facts,
+    };
+  }
+  if (p.method === 'DELETE') {
+    return {
+      label: t('common.action.delete.label'),
+      tone: 'error',
+      hue: 'delete',
+      icon: 'trash',
+      facts,
+    };
+  }
+  return {
+    label: t('studio.project.connectionDialog.mcp.write.label'),
+    tone: 'warn',
+    hue: 'write',
+    icon: 'edit',
+    facts,
+  };
+}
 const MAX_PLAN_ISSUES = 2;
 
 function dbOperation(item: ApprovalItem): string {
@@ -59,16 +254,8 @@ function dbOperation(item: ApprovalItem): string {
 // "PostgreSQL · db.internal · shop / public": the connection's kind label, then its location.
 function connectionWhere(item: ApprovalItem): string {
   const kind = connectionKindSchema.safeParse(item.target.kind).data;
-  return [kind ? KIND_LABEL[kind] : item.target.kind, item.target.location]
-    .filter(Boolean)
-    .join(' · ');
-}
-
-function rowsRisk(estimated: number): ApprovalRisk {
-  return {
-    text: t('studio.dbMcp.approval.risk.rows.status', { rows: formatCount(estimated) }),
-    tone: 'warn',
-  };
+  // The engine icon names a known kind; text only for an unknown one.
+  return [kind ? '' : item.target.kind, item.target.location].filter(Boolean).join(' · ');
 }
 
 // The plan's estimate over its threshold, then its issues: two tags, the rest as "+N more".
@@ -76,12 +263,33 @@ function planRisks(plan: DbMcpApprovalPlan | null, withRows: boolean): ApprovalR
   if (!plan) return [];
   const out: ApprovalRisk[] = [];
   if (withRows && plan.estimatedRowsRead !== null && plan.estimatedRowsRead > plan.thresholdRows) {
-    out.push({ ...rowsRisk(plan.estimatedRowsRead), testid: 'db-mcp-approval-plan-rows' });
+    out.push({
+      text: t('studio.dbMcp.approval.plan.rowsOver.status', {
+        rows: formatCount(plan.estimatedRowsRead),
+        limit: formatCount(plan.thresholdRows),
+      }),
+      tone: 'warn',
+      testid: 'db-mcp-approval-plan-rows',
+    });
+  } else if (
+    withRows &&
+    plan.estimatedRowsRead !== null &&
+    plan.issues.some((i) => i.severity === 'warn')
+  ) {
+    // The estimate frames the warnings; a clean plan shows nothing.
+    out.push({
+      text: t('studio.dbMcp.approval.plan.rowsUnder.status', {
+        rows: formatCount(plan.estimatedRowsRead),
+        limit: formatCount(plan.thresholdRows),
+      }),
+      tone: 'neutral',
+      testid: 'db-mcp-approval-plan-rows',
+    });
   }
   for (const issue of plan.issues.slice(0, MAX_PLAN_ISSUES)) {
     out.push({
-      text: issue.severity,
-      tone: 'warn',
+      text: issue.message,
+      tone: issue.severity === 'warn' ? 'warn' : 'neutral',
       tooltip: issue.message,
       testid: 'db-mcp-approval-plan-issue',
     });
@@ -121,7 +329,10 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
             measured: show(l.measured),
             max: show(l.max),
           })
-        : t('studio.dbMcp.approval.risk.rows.status', { rows: show(l.measured) });
+        : t('studio.dbMcp.approval.exemption.limitHit.status', {
+            measured: show(l.measured),
+            max: show(l.max),
+          });
     return {
       text,
       tone: 'warn',
@@ -132,6 +343,11 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   // Each datum once: the plan's estimate only when no expensive_query limit already says it.
   const hasRowsLimit = p.limits.some((l) => l.limit === 'expensive_query');
   return [
+    {
+      text: t('studio.dbMcp.approval.exemption.reason.status', { reason: p.reason }),
+      tone: 'neutral',
+      testid: 'db-mcp-exemption-reason',
+    },
     ...out,
     ...planRisks(p.plan, !hasRowsLimit),
     ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
@@ -152,12 +368,6 @@ function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
       testid: 'db-approval-kept-writes',
     });
   }
-  out.push({
-    text: t('studio.dbMcp.approval.risk.scriptResult.status'),
-    tone: 'neutral',
-    testid: 'db-approval-transform',
-    tooltip: t('studio.dbMcp.approval.query.scriptResult.hint'),
-  });
   return out;
 }
 
@@ -191,21 +401,6 @@ function isRead(method: string): boolean {
 function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (!isRead(p.method) && p.credentials.length > 0) {
-    out.push({
-      text: t('studio.dbMcp.approval.risk.credentialSent.status'),
-      tone: 'warn',
-      testid: 'api-approval-credential',
-      tooltip: p.credentials
-        .map((c) =>
-          t('studio.dbMcp.approval.api.credential.label', {
-            name: c.name,
-            hosts: c.hosts.join(', '),
-          }),
-        )
-        .join('\n'),
-    });
-  }
   if (p.inputs.some((i) => i.state === 'needed')) {
     out.push({
       text: t('studio.kept.risk.input.status'),
@@ -230,22 +425,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       testid: 'api-approval-kept-writes',
     });
   }
-  if (p.script?.prepare) {
-    out.push({
-      text: t('studio.dbMcp.approval.risk.builtByScript.status'),
-      tone: 'neutral',
-      testid: 'api-approval-prepare',
-      tooltip: t('studio.dbMcp.approval.api.scriptPrepare.hint'),
-    });
-  }
-  if (p.script?.transform) {
-    out.push({
-      text: t('studio.dbMcp.approval.risk.scriptResult.status'),
-      tone: 'neutral',
-      testid: 'api-approval-transform',
-      tooltip: t('studio.dbMcp.approval.api.scriptTransform.hint'),
-    });
-  }
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),
@@ -259,13 +438,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
 function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiResponsePayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.class === 'write') {
-    out.push({
-      text: t('studio.dbMcp.approval.risk.requestSent.status'),
-      tone: 'warn',
-      testid: 'api-review-sent',
-    });
-  }
   if (p.reason === 'userValue') {
     out.push({
       text: t('studio.kept.risk.userValue.status'),
@@ -290,8 +462,11 @@ export function studioApprovalKinds(): ApprovalKinds {
   return {
     'db.query': {
       content: markRaw(DbQueryBody),
+      details: markRaw(DbQueryDetails),
       monaco: true,
       footerAction: markRaw(ReviewResultOption),
+      verdict: dbVerdict,
+      targetIcon: markRaw(DbTargetIcon),
       operation: (item) => {
         const p = dbQueryPayloadSchema.parse(item.payload);
         if (p.explain) return t('studio.console.explain.label');
@@ -308,6 +483,8 @@ export function studioApprovalKinds(): ApprovalKinds {
       details: markRaw(DbExemptionDetails),
       footerAction: markRaw(ReviewResultOption),
       operation: () => t('studio.dbMcp.approval.op.liftLimit.label'),
+      verdict: exemptionVerdict,
+      targetIcon: markRaw(DbTargetIcon),
       where: connectionWhere,
       risks: exemptionRisks,
       labels: () => ({
@@ -320,17 +497,15 @@ export function studioApprovalKinds(): ApprovalKinds {
       monaco: true,
       details: markRaw(DbResponseDetails),
       operation: () => t('common.field.result.label'),
+      verdict: (item) => {
+        const p = dbResponsePayloadSchema.parse(item.payload);
+        return resultVerdict(
+          !p.alreadyRan && (p.mode === undefined || p.mode === 'read' || p.mode === 'masked'),
+          'studio.dbMcp.approval.verdict.dbWriteResult.hint',
+        );
+      },
+      targetIcon: markRaw(DbTargetIcon),
       where: connectionWhere,
-      risks: (item) =>
-        dbResponsePayloadSchema.parse(item.payload).alreadyRan
-          ? [
-              {
-                text: t('studio.dbMcp.approval.risk.alreadyRan.status'),
-                tone: 'warn',
-                testid: 'db-mcp-preview-ran',
-              },
-            ]
-          : [],
       labels: () => ({
         approve: t('studio.dbMcp.preview.send.label'),
         deny: t('studio.dbMcp.preview.withhold.label'),
@@ -364,6 +539,7 @@ export function studioApprovalKinds(): ApprovalKinds {
       details: markRaw(ApiRequestDetails),
       footerAction: markRaw(ReviewResultOption),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
+      verdict: apiVerdict,
       where: (item) =>
         apiRequestPayloadSchema.parse(item.payload).environment?.name ??
         t('studio.api.environments.none.option'),
@@ -384,6 +560,11 @@ export function studioApprovalKinds(): ApprovalKinds {
       monaco: true,
       details: markRaw(ApiResponseDetails),
       operation: () => t('common.field.result.label'),
+      verdict: (item) =>
+        resultVerdict(
+          apiResponsePayloadSchema.parse(item.payload).class === 'read',
+          'studio.dbMcp.approval.verdict.apiWriteResult.hint',
+        ),
       where: (item) =>
         apiResponsePayloadSchema.parse(item.payload).environment?.name ??
         t('studio.api.environments.none.option'),

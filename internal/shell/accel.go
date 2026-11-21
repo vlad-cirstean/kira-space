@@ -2,8 +2,8 @@ package shell
 
 import "strings"
 
-// Chord is the Go port of packages/shared/domain/shortcuts.ts's chord shape, for the 13
-// `global: true` bindings menu.ts consumes. Only the modifier vocabulary differs: Wails'
+// Chord is the Go port of packages/shared/domain/shortcuts.ts's chord shape, for the
+// `scope: 'global'` bindings the native menu consumes. Only the modifier vocabulary differs: Wails'
 // parseAccelerator (keys.go:182-217) accepts "Ctrl", never "Control", and SetAccelerator silently
 // drops an accelerator it cannot parse (menuitem.go:275-287) — so a verbatim port would leave
 // Next/Previous Tab with no accelerator at all.
@@ -34,11 +34,15 @@ func (c Chord) Accelerator() string {
 	return strings.Join(parts, "+")
 }
 
-// Shortcuts mirrors SHORTCUTS' `global: true` rows by id (packages/shared/domain/shortcuts.ts),
+// Shortcuts mirrors SHORTCUTS' `scope: 'global'` rows by id (packages/shared/domain/shortcuts.ts),
 // so the table can be diffed against the TS by name.
 var Shortcuts = map[string]Chord{
 	"app.settings":               {Key: ",", CmdOrCtrl: true},
-	"app.newConnection":          {Key: "N", CmdOrCtrl: true},
+	"app.new":                    {Key: "N", CmdOrCtrl: true},
+	"app.newAlternate":           {Key: "N", CmdOrCtrl: true, Alt: true},
+	"app.import":                 {Key: "O", CmdOrCtrl: true},
+	"app.checkForUpdates":        {Key: "U", CmdOrCtrl: true, Shift: true},
+	"api.environments":           {Key: "E", CmdOrCtrl: true, Alt: true},
 	"view.toggleProjectPanel":    {Key: "B", CmdOrCtrl: true},
 	"view.toggleOperationsPanel": {Key: "J", CmdOrCtrl: true},
 	"view.commandPalette":        {Key: "P", CmdOrCtrl: true, Shift: true},

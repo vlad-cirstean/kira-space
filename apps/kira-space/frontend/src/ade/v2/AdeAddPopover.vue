@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
 import {
   Popover,
+  PopoverAnchor,
   PopoverBar,
   PopoverBody,
   PopoverContent,
@@ -168,17 +171,24 @@ async function pick(value: string): Promise<void> {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <Button
-        variant="toolbar"
-        size="kira"
-        data-testid="ade-add"
-        @pointerenter="prefetchNotesEditor"
+    <PopoverAnchor as-child>
+      <TextTooltip
+        :text="t('space.ade.add.trigger.label')"
+        :shortcut="moduleShortcut('ade', 'app.new')"
       >
-        <CodiconIcon name="add" :size="13" />
-        {{ t('space.ade.add.trigger.label') }}
-      </Button>
-    </PopoverTrigger>
+        <PopoverTrigger as-child>
+          <Button
+            variant="toolbar"
+            size="kira"
+            data-testid="ade-add"
+            @pointerenter="prefetchNotesEditor"
+          >
+            <CodiconIcon name="add" :size="13" />
+            {{ t('space.ade.add.trigger.label') }}
+          </Button>
+        </PopoverTrigger>
+      </TextTooltip>
+    </PopoverAnchor>
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <PopoverBar>
         <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />

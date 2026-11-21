@@ -317,11 +317,19 @@ export async function revealRow(
   await expect(row.locator(`[data-testid="${testid}"]`).first()).toBeVisible();
 }
 
+/**
+ * Clicks the head of task `id` and waits until it is the selected card. The panel is always open
+ * (the top task fills it before any click), so "panel visible" no longer proves the switch.
+ */
+export async function selectTask(page: Page, id: string): Promise<void> {
+  const card = page.locator(`[data-testid="ade-card"][data-task-id="${id}"]`);
+  await card.locator('[data-testid="ade-card-head"]').click();
+  await expect(card).toHaveAttribute('aria-current', 'true');
+}
+
 /** Opens the Sessions tab of task `taskId`'s panel. */
 export async function openSessions(page: Page, taskId: string): Promise<void> {
-  await page
-    .locator(`[data-testid="ade-card"][data-task-id="${taskId}"] [data-testid="ade-card-head"]`)
-    .click();
+  await selectTask(page, taskId);
   await page.locator('[data-testid="ade-panel-tab-sessions"]').click();
   await expect(page.locator('[data-testid="ade-sessions-tab"]')).toBeVisible();
 }
@@ -392,9 +400,7 @@ export async function emitAgentSessions(page: Page, terminalIds: readonly string
 
 /** Opens the bill task's panel from its card. */
 export async function openBillTask(page: Page): Promise<void> {
-  await page
-    .locator('[data-testid="ade-card"][data-task-id="T_bill"] [data-testid="ade-card-head"]')
-    .click();
+  await selectTask(page, 'T_bill');
   await page.locator('[data-testid="ade-panel"]').waitFor();
 }
 
@@ -485,9 +491,7 @@ export const SCRIPTS: ControlSnapshot = {
 
 /** Selects the card of `id` and waits for its Task tab. */
 export async function openTask(page: Page, id: string): Promise<void> {
-  await page
-    .locator(`[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`)
-    .click();
+  await selectTask(page, id);
   await page.locator('[data-testid="ade-main-tab"]').waitFor();
 }
 

@@ -20,8 +20,7 @@ export interface UseRequestTabSaveOptions<T> {
 
 /** HttpRequestView.vue's and GrpcRequestView.vue's own onSave/onSaveAs pair — byte-identical apart
  *  from which store method/converter each calls. An incognito tab has no route into a persisting
- *  editor — both no-op, which also covers each view's own registerCommand('api.save', onSave) and
- *  the command palette entry it registers. */
+ *  editor — both no-op. */
 export function useRequestTabSave<T>(options: UseRequestTabSaveOptions<T>) {
   function onSave(): void {
     if (options.incognito()) return;

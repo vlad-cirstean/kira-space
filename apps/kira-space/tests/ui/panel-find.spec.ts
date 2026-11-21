@@ -77,12 +77,3 @@ test('menu Find event focuses the panel search holding focus', async ({ relaunch
   await emitWailsEvent(page, IPC.viewFind, undefined);
   await expect(page.locator(t('tree-search'))).toBeFocused();
 });
-
-test('palette Search panel command focuses the active panel search', async ({ relaunch }) => {
-  const { window: page } = await relaunch({ control: GIT_CONTROL });
-  await emitWailsEvent(page, IPC.commandPalette, undefined);
-  await expect(page.locator(t('command-palette-input'))).toBeVisible();
-  await page.locator('[data-command-id="panel.find"]').click();
-  await expect(page.locator(t('command-palette-input'))).toHaveCount(0);
-  await expect(page.locator(t('tree-search'))).toBeFocused();
-});

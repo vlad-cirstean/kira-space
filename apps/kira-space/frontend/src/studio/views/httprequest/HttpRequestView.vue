@@ -279,15 +279,22 @@ const requestPane = useLiveSize(
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 useShortcut(rootEl, ['form.save'], onSave);
+// Capture: the body editor (Monaco) must not claim these first.
+useShortcut(
+  rootEl,
+  ['api.copyAsCurl', 'api.editRaw'],
+  (id) => {
+    if (id === 'api.copyAsCurl') void onCopyAsCurl();
+    else onEditRaw();
+  },
+  { capture: true },
+);
 
 let unregisterCommands: Array<() => void> = [];
 onMounted(() => {
   unregisterCommands = [
     registerCommand('view.run', onSend),
     registerCommand('view.refresh', onSend),
-    registerCommand('api.save', onSave),
-    registerCommand('api.copyAsCurl', onCopyAsCurl),
-    registerCommand('api.editRaw', onEditRaw),
   ];
 });
 onUnmounted(() => {
@@ -333,7 +340,7 @@ onUnmounted(() => {
         }}</Badge></TextTooltip
       >
       <template #actions>
-        <TextTooltip :text="saveTooltip">
+        <TextTooltip shortcut="form.save" :text="saveTooltip">
           <TooltipDisabledTrigger>
             <Button
               variant="toolbar"
@@ -354,6 +361,7 @@ onUnmounted(() => {
         <TooltipIconButton
           :icon="ICON.refresh"
           :label="t('common.action.refresh.label')"
+          shortcut="view.refresh"
           data-testid="http-request-refresh"
           @click="onSend"
         />
@@ -393,7 +401,7 @@ onUnmounted(() => {
           <CodiconIcon name="unverified" :size="13" />
         </Badge></TextTooltip
       >
-      <TextTooltip :text="t('common.action.send.label')">
+      <TextTooltip shortcut="view.run" :text="t('common.action.send.label')">
         <TooltipDisabledTrigger>
           <!-- conventions-allow N17: send is the query Run commit; outline primary, not approve (RB.2) --><Button
             variant="dialog-primary"
@@ -414,6 +422,7 @@ onUnmounted(() => {
           icon="terminal"
           :label="t('studio.api.copyAsCurl.title')"
           :aria-label="t('studio.api.copyAsCurl.title')"
+          shortcut="api.copyAsCurl"
           data-testid="http-copy-as-curl"
           @click="onCopyAsCurl"
         />
@@ -423,6 +432,7 @@ onUnmounted(() => {
           :aria-label="t('studio.api.editRaw.title')"
           disabled-trigger
           :disabled="!canEditRaw"
+          shortcut="api.editRaw"
           data-testid="http-edit-raw"
           @click="onEditRaw"
         />

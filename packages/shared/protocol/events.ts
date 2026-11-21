@@ -25,6 +25,11 @@ export const CHANNEL = {
   viewFormat: 'kira:menu:viewFormat',
   // Space only: the Review Code menu item (ade.reviewCode).
   reviewCode: 'kira:menu:reviewCode',
+  // Module actions: one chord each, effect follows the active module.
+  new: 'kira:menu:new',
+  newAlternate: 'kira:menu:newAlternate',
+  import: 'kira:menu:import',
+  apiEnvironments: 'kira:menu:apiEnvironments',
   appFlushBeforeClose: 'kira:app:flushBeforeClose',
   windowFlushBeforeClose: 'kira:window:flushBeforeClose',
   connectionState: 'kira:connection:state',

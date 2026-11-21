@@ -4,6 +4,7 @@ import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import { t } from '@theme/i18n';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
+import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
 import { keptHover } from '../kept/keptFormat';
@@ -15,15 +16,17 @@ import {
   keptScriptRanges,
   prettyKeptJson,
 } from '../kept/keptHighlight';
+import ChainSteps from './ChainSteps.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
+import RequestLine from './RequestLine.vue';
 import TransformScriptBlock from './TransformScriptBlock.vue';
 import UserInputsPanel from './UserInputsPanel.vue';
 
-// What the agent would send: path and query, then the body. Host, headers and variables sit on
-// line 1 and in the details. A credential's value never reaches this view. Kept variables list
-// first, and every place the request reads one is marked.
+// What the agent would send: request line, body, headers and variables, then scripts. A
+// credential's value never reaches this view. Kept variables list first, and every place the
+// request reads one is marked.
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload));
@@ -31,29 +34,13 @@ const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload)
 const kept = computed(() => payload.value.kept);
 const keptRows = computed(() => kept.value.filter((u) => !u.pending));
 
-// Sliced after the authority, not through `new URL()`: that would percent-encode the braces of a
-// reference and move the offsets the sites carry.
-const pathStart = computed(() => {
-  const url = payload.value.url;
-  const scheme = url.indexOf('://');
-  const from = scheme < 0 ? 0 : scheme + 3;
-  const end = url.slice(from).search(/[/?#]/);
-  return end < 0 ? url.length : from + end;
+const scripts = computed(() => {
+  const out: ('prepare' | 'transform')[] = [];
+  if (payload.value.script?.prepare) out.push('prepare');
+  if (payload.value.script?.transform) out.push('transform');
+  return out;
 });
-const pathAndQuery = computed(() => {
-  const rest = payload.value.url.slice(pathStart.value);
-  const hash = rest.indexOf('#');
-  return (hash < 0 ? rest : rest.slice(0, hash)) || '/';
-});
-const urlParts = computed(() =>
-  keptParts(
-    pathAndQuery.value,
-    keptRanges(kept.value, 'url').map((r) => ({
-      from: r.from - pathStart.value,
-      to: r.to - pathStart.value,
-    })),
-  ),
-);
+const urlKept = computed(() => keptRanges(kept.value, 'url'));
 
 const keptNames = computed(() => new Set(kept.value.map((u) => u.name)));
 const json = computed(() => {
@@ -71,6 +58,11 @@ const formParts = (row: number, part: 'name' | 'value') => {
 };
 // The prepare script's own kept calls (reads); the transform block marks its own.
 const keptSites = computed(() => kept.value.flatMap((u) => u.sites));
+const headerParts = (row: number, part: 'name' | 'value') => {
+  const text = payload.value.headers[row]?.[part] ?? '';
+  const ranges = keptRanges(kept.value, 'header', row, part);
+  return ranges.length ? keptParts(text, ranges) : null;
+};
 const pairName = (field: 'header' | 'query' | 'form', index: number): string => {
   if (field === 'header') return payload.value.headers[index]?.name ?? '';
   if (field === 'query') return payload.value.query[index]?.name ?? '';
@@ -80,12 +72,10 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
 
 <template>
   <div class="flex flex-col gap-1" data-testid="api-approval-body">
+    <ChainSteps :kept="kept" :current="`${payload.method} ${payload.url}`" :scripts="scripts" />
     <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
     <KeptVariablesPanel v-if="keptRows.length" :uses="keptRows" :pair-name="pairName" />
-    <ApprovalCode data-testid="api-approval-url"
-      ><HighlightedText v-if="kept.length" :parts="urlParts" :mark-class="KEPT_MARK_CLASS" />
-      <template v-else>{{ pathAndQuery }}</template></ApprovalCode
-    >
+    <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
     <template v-if="payload.body">
       <ApprovalPairs
         v-if="payload.body.form"
@@ -107,6 +97,28 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
         <template v-else>{{ payload.body.text }}</template></ApprovalCode
       >
     </template>
+    <ApprovalDetails v-if="payload.headers.length || payload.variables.length" class="py-1">
+      <template v-if="payload.headers.length">
+        <dt>{{ t('studio.http.pane.headers.label') }}</dt>
+        <dd>
+          <ApprovalPairs
+            :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
+            :highlight="headerParts"
+            :mark-class="KEPT_MARK_CLASS"
+            testid="api-approval-headers"
+          />
+        </dd>
+      </template>
+      <template v-if="payload.variables.length">
+        <dt>{{ t('common.module.variables.label') }}</dt>
+        <dd>
+          <ApprovalPairs
+            :rows="payload.variables.map((v) => ({ name: v.name, value: v.value }))"
+            testid="api-approval-variables"
+          />
+        </dd>
+      </template>
+    </ApprovalDetails>
     <JsScriptBlock
       v-if="payload.script?.prepare"
       :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"

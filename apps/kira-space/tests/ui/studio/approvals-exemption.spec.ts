@@ -29,7 +29,7 @@ test('contract: a rows limit shows measured value, reason and statement', async 
   await expect(c.locator('[data-testid="approval-operation"]')).toHaveText('Lift limit');
   const limits = c.locator('[data-testid="db-mcp-exemption-limit"]');
   await expect(limits).toHaveCount(1);
-  await expect(limits).toHaveText('~5,000 rows');
+  await expect(limits).toContainText('Estimated 5,000 rows, over the 1,000 row limit');
   await expect(c.locator('[data-testid="db-mcp-exemption-reason"]')).toContainText(
     'the report needs every row',
   );

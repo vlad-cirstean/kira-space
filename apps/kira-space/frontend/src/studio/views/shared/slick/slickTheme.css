@@ -276,14 +276,14 @@
    file did (`border-color: var(--kira-accent)`) — producing a thick, inset accent box unlike the
    incumbent's own 1px edge-to-edge one. The incumbent's own `.cell-input-overlay` never had this
    problem at all: it is a *sibling* overlay positioned from `editingCellRect` in JS, never a child
-   of `.grid-cell`, so its own accent ring (a 1px inset `outline`, `DataGrid.vue:2113-2124`) was
+   of `.grid-cell`, so its own focus ring (a 1px inset `outline`, `DataGrid.vue:2113-2124`) was
    always the ONLY box drawn. `KiraCellEditor`'s own `<input>` genuinely is a child of `.slick-cell`
    (§5 D8's own note: SlickGrid never calls a separate `.position()`/`document.body` mount for the
    stock text editor), so the equivalent fix here is the same 1px `outline` moved onto the input
    itself (below) with the cell's own border turned off entirely — never a cell-level border at any
    width. `padding: 0` similarly turns off the inherited `.slick-cell` padding (`0 var(--kira-s-4)`)
    for this state only: with it left in, the input's own `width: 100%` filled only the padding box,
-   leaving the accent ring visibly inset from the cell's real edges instead of flush with them. */
+   leaving the focus ring visibly inset from the cell's real edges instead of flush with them. */
 .slick-grid-host .slick-cell.editable {
   background: transparent;
   border: none;
@@ -316,13 +316,13 @@
 .slick-grid-host [data-testid="grid-cell-insert"] .cell-input.cell-generated {
   @apply text-muted-foreground cursor-default;
 }
-/* The accent ring itself — DataGrid.vue's own `.cell-input` base rule (`:2113-2124`),
-   `outline: 1px solid var(--kira-accent); outline-offset: -1px`, ported verbatim. Declared after
+/* The focus ring itself (P710: neutral --kira-focus, was accent). DataGrid.vue's `.cell-input`
+   base rule (`:2113-2124`) ported: `outline: 1px solid; outline-offset: -1px`. Declared after
    the shared sizing rule above so its `outline: none` doesn't need `!important` to lose the
    cascade — same declared-after-for-priority pattern the type-colour/priority-signal rules already
    use elsewhere in this file. */
 .slick-grid-host .slick-cell.editable .cell-input {
-  outline: 1px solid var(--kira-accent);
+  outline: 1px solid var(--kira-focus);
   outline-offset: -1px;
 }
 

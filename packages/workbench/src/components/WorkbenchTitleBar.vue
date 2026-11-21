@@ -57,6 +57,7 @@ async function onSelect(mode: M): Promise<void> {
         variant="title"
         size="title"
         :aria-pressed="projectVisible"
+        shortcut="view.toggleProjectPanel"
         data-testid="toggle-project-panel"
         @click="emit('toggleProject')"
       />
@@ -67,6 +68,7 @@ async function onSelect(mode: M): Promise<void> {
         variant="title"
         size="title"
         :aria-pressed="operationsVisible"
+        shortcut="view.toggleOperationsPanel"
         data-testid="toggle-operations-panel"
         @click="emit('toggleOperations')"
       />
@@ -76,6 +78,7 @@ async function onSelect(mode: M): Promise<void> {
         :icon-size="16"
         variant="title"
         size="title"
+        shortcut="app.settings"
         data-testid="open-settings"
         @click="emit('openSettings')"
       />

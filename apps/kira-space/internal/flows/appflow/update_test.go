@@ -1,11 +1,9 @@
 package appflow_test
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
@@ -14,28 +12,33 @@ import (
 	"github.com/kirathecat/kira-studio/internal/releaseline"
 )
 
-const updateAsset = "test.dmg"
+const (
+	updateAsset  = "test.dmg"
+	updateDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+)
 
 func updateRelease(tag string, edit func(*releaseline.Release)) releaseline.Release {
-	r := releaseline.Release{Tag: tag, Assets: []releaseline.Asset{{ID: 1, Name: updateAsset, State: "uploaded", Size: 10}}}
+	r := releaseline.Release{Tag: tag, Assets: []releaseline.Asset{{ID: 1, Name: updateAsset, State: "uploaded", Size: 10, Digest: updateDigest}}}
 	if edit != nil {
 		edit(&r)
 	}
 	return r
 }
 
-// releasesServer serves rels newest first, two per page, like GitHub's paginated listing.
-func releasesServer(t *testing.T, rels []releaseline.Release, failPage int, failWith func(http.ResponseWriter)) *httptest.Server {
+// indexServer serves rels as the release index (draft, prerelease and asset-less rows drop out),
+// or whatever failWith writes when set.
+func indexServer(t *testing.T, rels []releaseline.Release, failWith func(http.ResponseWriter)) *httptest.Server {
 	t.Helper()
+	body, err := releaseline.FormatIndex(rels, updateAsset, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-		if page == failPage {
+		if failWith != nil {
 			failWith(w)
 			return
 		}
-		lo, hi := (page-1)*2, page*2
-		lo, hi = min(lo, len(rels)), min(hi, len(rels))
-		_ = json.NewEncoder(w).Encode(rels[lo:hi])
+		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
 	return srv
@@ -43,12 +46,12 @@ func releasesServer(t *testing.T, rels []releaseline.Release, failPage int, fail
 
 func updateChecker(srv *httptest.Server, running string) *appupdate.Checker {
 	return appupdate.NewCheckerFrom(appupdate.CheckerOptions{
-		AppName: "Kira Space", Version: running, ReleasesURL: srv.URL, Asset: updateAsset, PerPage: 2,
+		AppName: "Kira Space", Version: running, IndexURL: srv.URL, Asset: updateAsset,
 	})
 }
 
 func TestUpdateStepsOneMinorAtATime(t *testing.T) {
-	srv := releasesServer(t, []releaseline.Release{
+	srv := indexServer(t, []releaseline.Release{
 		updateRelease("v0.6.0-rc.1", func(r *releaseline.Release) { r.Prerelease = true }),
 		updateRelease("v0.5.1", nil),
 		updateRelease("v0.5.0", func(r *releaseline.Release) { r.Draft = true }),
@@ -58,7 +61,7 @@ func TestUpdateStepsOneMinorAtATime(t *testing.T) {
 		updateRelease("v0.4.0", nil),
 		updateRelease("v0.3.14", nil),
 		updateRelease("v0.3.9", nil),
-	}, 0, nil)
+	}, nil)
 
 	// Each running version is a fresh process: a new checker, as after a relaunch.
 	for _, tc := range []struct{ running, target string }{
@@ -83,16 +86,22 @@ func TestUpdateCheckFailsClosed(t *testing.T) {
 	rels := []releaseline.Release{updateRelease("v0.4.0", nil), updateRelease("v0.3.14", nil), updateRelease("v0.3.9", nil)}
 	var ie *ipcerr.Error
 
-	srv := releasesServer(t, rels, 2, func(w http.ResponseWriter) { w.WriteHeader(http.StatusInternalServerError) })
+	srv := indexServer(t, rels, func(w http.ResponseWriter) { w.WriteHeader(http.StatusInternalServerError) })
 	app := flowharness.New(t, flowharness.WithUpdateChecker(updateChecker(srv, "0.3.9")))
 	if _, err := app.W.Update.Check(ctx); !errors.As(err, &ie) || ie.Code != "E_UNAVAILABLE" {
-		t.Fatalf("Check with a failing page = %v, want E_UNAVAILABLE", err)
+		t.Fatalf("Check with a failing index = %v, want E_UNAVAILABLE", err)
 	}
 	if st, _ := app.W.Update.Status(ctx); st.UpdateAvailable {
-		t.Fatalf("Status after a failed listing offers %+v, want no update", st)
+		t.Fatalf("Status after a failed check offers %+v, want no update", st)
 	}
 
-	srv = releasesServer(t, rels, 1, func(w http.ResponseWriter) {
+	srv = indexServer(t, rels, func(w http.ResponseWriter) { _, _ = w.Write([]byte("<html>not an index</html>")) })
+	app = flowharness.New(t, flowharness.WithUpdateChecker(updateChecker(srv, "0.3.9")))
+	if _, err := app.W.Update.Check(ctx); !errors.As(err, &ie) || ie.Code != "E_UNAVAILABLE" {
+		t.Fatalf("Check with a malformed index = %v, want E_UNAVAILABLE", err)
+	}
+
+	srv = indexServer(t, rels, func(w http.ResponseWriter) {
 		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.WriteHeader(http.StatusForbidden)
 	})

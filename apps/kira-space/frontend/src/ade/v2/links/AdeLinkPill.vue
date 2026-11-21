@@ -22,7 +22,7 @@ withDefaults(defineProps<{ item: LinkItem; showKind?: boolean; as?: 'button' | '
     :type="as === 'button' ? 'button' : undefined"
     :class="
       cn(
-        'max-w-48 min-w-0 px-1.5 text-fg focus-visible:focus-ring data-[state=open]:ring-1 data-[state=open]:ring-info',
+        'max-w-48 min-w-0 px-1.5 text-fg focus-visible:focus-ring data-[state=open]:ring-1 data-[state=open]:ring-select-edge',
         item.origin === 'detected' &&
           'border border-dashed border-border bg-transparent text-muted-foreground',
       )

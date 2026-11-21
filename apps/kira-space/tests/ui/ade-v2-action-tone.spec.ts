@@ -67,7 +67,10 @@ for (const c of cases) {
     const want = await token(page, c.tokenName);
     expect(want).not.toBe(await token(page, '--kira-border'));
     const h = hosts(page, c.kind);
-    for (const host of [h.card, h.panel, h.block]) {
+    // The plan card icon is toolbar: tone on the glyph, no border.
+    await expect(h.card).toBeVisible();
+    await expect.poll(() => look(h.card)).toEqual({ border: 'rgba(0, 0, 0, 0)', text: want });
+    for (const host of [h.panel, h.block]) {
       await expect(host).toBeVisible();
       await expect.poll(() => look(host)).toEqual({ border: want, text: want });
     }

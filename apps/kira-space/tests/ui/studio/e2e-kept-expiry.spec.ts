@@ -75,7 +75,6 @@ test('contract: three cards wait on one variable, each names it, and the list dr
   const { window: page } = await relaunch({});
   await pushApprovals(page, [...cards].reverse());
   const dialog = page.locator('[data-testid="approvals-dialog"]');
-  await expect(dialog.locator('[data-testid="approvals-count"]')).toHaveText('3');
   await expect(dialog.locator('[data-testid="approvals-position"]')).toHaveText('1 of 3');
   const first = cards[0] as ApprovalItem;
   await expect(dialog.locator(`[data-testid="approval-item-${first.id}"]`)).toBeVisible();

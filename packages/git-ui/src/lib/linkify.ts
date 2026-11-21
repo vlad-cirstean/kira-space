@@ -67,7 +67,7 @@ function linkifySegments(text: string): LinkifiedSegment[] {
 }
 
 /** Button class for a URL in a commit message; Tailwind scans `.ts` source too. */
-const LINKIFY_URL_CLASS = 'bg-transparent border-0 p-0 text-focus cursor-pointer hover:underline';
+const LINKIFY_URL_CLASS = 'bg-transparent border-0 p-0 text-info cursor-pointer hover:underline';
 
 /** Appends one line's worth of linkified DOM to `parent` — a text node per plain-text segment,
  *  and per URL segment: a `<button>` (styled via `LINKIFY_URL_CLASS`) calling `onOpenExternal`

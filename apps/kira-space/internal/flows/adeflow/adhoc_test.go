@@ -1,6 +1,7 @@
 package adeflow_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,41 @@ func TestAdHocSession(t *testing.T) {
 	s := waitSession(t, app, launch.SessionID, "running")
 	if s.Mode != "tui" || s.TaskID != task.ID || s.BranchID != br.ID || s.StepID != "" {
 		t.Fatalf("session = %+v, want a tui on the task branch with no step", s)
+	}
+	// The task folder is granted in the launch's settings file; a TUI `--add-dir` would stop the real CLI at its trust dialog.
+	var matches []string
+	for deadline := time.Now().Add(5 * time.Second); len(matches) == 0 && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		matches, _ = filepath.Glob(filepath.Join(app.FakeDir, "*.args"))
+	}
+	if len(matches) != 1 {
+		t.Fatalf("fake argv files = %v, want the one TUI launch", matches)
+	}
+	rawArgv, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	argv := strings.Split(string(rawArgv), "\n")
+	mustLack(t, "TUI argv", strings.Join(argv, " "), "--add-dir")
+	var settings string
+	for i, a := range argv {
+		if a == "--settings" && i+1 < len(argv) {
+			settings = argv[i+1]
+		}
+	}
+	rawSettings, err := os.ReadFile(settings)
+	if err != nil {
+		t.Fatalf("settings file %q from argv: %v", settings, err)
+	}
+	var perms struct {
+		Permissions struct {
+			AdditionalDirectories []string `json:"additionalDirectories"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(rawSettings, &perms); err != nil {
+		t.Fatal(err)
+	}
+	if dirs := perms.Permissions.AdditionalDirectories; len(dirs) == 0 || filepath.Base(dirs[0]) != task.ID {
+		t.Fatalf("additionalDirectories = %v, want the task folder %s", dirs, task.ID)
 	}
 	if raw, _ := os.ReadFile(filepath.Join(app.FakeDir, "api-1.prompt")); strings.TrimSpace(string(raw)) != "" {
 		t.Fatalf("ad hoc session got a first prompt:\n%s", raw)

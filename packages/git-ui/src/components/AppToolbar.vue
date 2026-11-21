@@ -403,6 +403,7 @@ const stashDisabled = computed(
       icon="search"
       :label="t('common.action.search.label')"
       :pressed="searchOpen"
+      shortcut="view.find"
       data-testid="search-toggle-button"
       @click="emit('toggleSearch')"
     />

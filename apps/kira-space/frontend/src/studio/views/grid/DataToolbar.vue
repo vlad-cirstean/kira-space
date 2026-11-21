@@ -370,6 +370,7 @@ function onDeleteRow(): void {
       :label="generateDataTooltip"
       :aria-label="t('studio.shortcuts.palette.generateData.label')"
       disabled-trigger
+      shortcut="data.generate"
       data-testid="toolbar-generate-data"
       :disabled="!canGenerateData"
       @click="onGenerateData"
@@ -379,6 +380,7 @@ function onDeleteRow(): void {
       :label="deleteRowTooltip"
       :aria-label="t('studio.grid.deleteRows.aria')"
       disabled-trigger
+      shortcut="grid.deleteRows"
       data-testid="toolbar-delete-row"
       :disabled="!canDeleteRows"
       @click="onDeleteRow"
@@ -387,6 +389,7 @@ function onDeleteRow(): void {
       icon="search"
       :label="t('studio.common.searchPage.label')"
       :pressed="!!rt?.searchOpen"
+      shortcut="view.find"
       data-testid="toolbar-search"
       @click="onToggleSearch"
     />

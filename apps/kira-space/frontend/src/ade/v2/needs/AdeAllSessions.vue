@@ -5,6 +5,7 @@ import SectionHeading from '@theme/components/SectionHeading.vue';
 import { type MessageKey, t } from '@theme/i18n';
 import { compareNatural } from '@workbench/behaviour/match';
 import { useKeptState } from '@workbench/behaviour/viewState';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed } from 'vue';
 import AdeActivityIcon from '../AdeActivityIcon.vue';
 import { ACTIVITY_RANK, type ActivityKind } from '../activity';
@@ -127,7 +128,7 @@ const summary = computed(() => {
     >
       <SectionHeading :label="g.title">
         <template #leading>
-          <span class="size-2.5 shrink-0 rounded-kira-sm" :style="{ background: g.color }" />
+          <ColorLine data-testid="ade-task-line" variant="mark" :color="g.color" />
         </template>
       </SectionHeading>
       <AdeAllSessionRow v-for="r in g.rows" :key="r.session.id" :view="r" :archived="g.archived" />

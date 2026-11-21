@@ -61,6 +61,12 @@ test('contract: a script rewrites the body and the card shows the result the req
   await expect(c.locator('[data-testid="api-approval-body-text"]')).toContainText(
     '"id": 9007199254740993',
   );
+  const chain = c.locator('[data-testid="approval-chain"]');
+  await expect(chain.locator('[data-testid="approval-chain-step"]')).not.toHaveCount(0);
+  const current = chain.locator('[data-testid="approval-chain-current"]');
+  await expect(current).toContainText('POST');
+  await expect(current.locator('[data-slot="badge"]')).not.toHaveCount(0);
+  await c.locator('[data-testid="approval-details-toggle"]').click();
   await expect(c.locator('[data-testid="api-approval-script-changed"]')).toBeVisible();
 });
 

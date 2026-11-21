@@ -36,7 +36,7 @@ withDefaults(
 
 // `text`: bare underlined words, no chip (approval content tabs); idle text is muted by the Toggle base.
 const TEXT_ITEM =
-  'h-auto min-w-0 px-0 bg-transparent text-kira-sm font-normal text-subtle hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-fg data-[state=on]:underline data-[state=on]:decoration-primary data-[state=on]:underline-offset-3';
+  'h-auto min-w-0 px-0 bg-transparent text-kira-sm font-normal text-subtle hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-fg data-[state=on]:underline data-[state=on]:decoration-select-edge data-[state=on]:underline-offset-3';
 
 // `choice`: form single-select. Solid `bg-select` fill; `segmented` selected equals hover (`bg-field`).
 const CHOICE_ITEM = 'max-w-full data-[state=on]:bg-select aria-pressed:bg-select';

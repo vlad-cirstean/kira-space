@@ -122,8 +122,12 @@ export interface CardModel {
   tag: TaskCell['tag'] | null;
   /** Task step action; which kinds render is `useTaskAction`'s call. */
   action: TaskAction | null;
-  /** `3d → Mon 28 · PAY-102 · api · web-app`. */
+  /** `3d → Mon 28`: schedule only. */
   meta: string;
+  /** Jira key shown after the title; empty when none or when it is the title. */
+  issueKey: string;
+  /** Repo labels of the task's branches, in branch order; the shelf row shows them. */
+  repos: string[];
   attention: string;
   attentionItem: NeedsItem | null;
   /** The task's agent sessions as one state, `null` when it has none. */
@@ -202,22 +206,23 @@ function buildRow(c: Ctx, task: Task, bid: string, depth: number): BranchRowMode
   };
 }
 
-function cardMeta(c: Ctx, entry: TimelineEntry, task: Task, branches: Branch[]): string {
-  const repoNames: string[] = [];
+function repoNamesOf(c: Ctx, branches: Branch[]): string[] {
+  const names: string[] = [];
   for (const br of branches) {
     const label = c.repoLabel(br.codeRepoId);
-    if (!repoNames.includes(label)) repoNames.push(label);
+    if (!names.includes(label)) names.push(label);
   }
-  const jira = task.jira?.key;
+  return names;
+}
+
+function cardMeta(c: Ctx, entry: TimelineEntry): string {
   const dated = entry.day !== LATER && entry.day >= WINDOW_DAYS;
-  return (
-    (dated
-      ? `${dayLabel(c.cal, entry.day)} ${monthLabel(dateParts(c.cal, entry.day).month)} · `
-      : '') +
-    (entry.days.length > 1 ? `${entry.span}d → ${dayLabel(c.cal, entry.end)} · ` : '') +
-    (jira ? `${jira} · ` : '') +
-    repoNames.join(' · ')
-  );
+  return [
+    dated ? `${dayLabel(c.cal, entry.day)} ${monthLabel(dateParts(c.cal, entry.day).month)}` : '',
+    entry.days.length > 1 ? `${entry.span}d → ${dayLabel(c.cal, entry.end)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 function titleOfTask(c: Ctx, task: Task): string {
@@ -267,11 +272,13 @@ function buildCard(c: Ctx, id: string): CardModel | null {
   const first = branches[0];
   const mine = branches.filter((br) => br.kind === 'mine');
   const needsOf = c.needs.items.find((n) => ASKS.has(n.kind) && n.taskId === id);
+  const title = taskTitle(task, first, first ? c.prTitle(first.id) : '');
+  const key = task.jira?.key ?? '';
   return {
     task,
     entry,
     color: taskColor(task.color),
-    title: taskTitle(task, first, first ? c.prTitle(first.id) : ''),
+    title,
     defaultTitle: taskTitle({ ...task, title: '' }, first, first ? c.prTitle(first.id) : ''),
     progress,
     workflow,
@@ -280,7 +287,9 @@ function buildCard(c: Ctx, id: string): CardModel | null {
     blocked,
     tag: cell?.tag ?? null,
     action: cell?.action ?? null,
-    meta: cardMeta(c, entry, task, branches),
+    meta: cardMeta(c, entry),
+    issueKey: key && key !== title ? key : '',
+    repos: repoNamesOf(c, branches),
     attention: needsOf?.what ?? '',
     attentionItem: needsOf ?? null,
     sessions: taskSessionsOf(sessions),

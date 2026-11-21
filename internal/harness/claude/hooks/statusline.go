@@ -98,11 +98,15 @@ func (s *Server) wrapStatusLine(user *statusLineEntry) (*statusLineEntry, []stri
 	return entry, extra
 }
 
-// composeStatusLine writes this terminal's settings file (hooks plus the statusline wrapper, no user
-// statusline: that comes only from the app's settings) and returns its single-quoted path.
-func (s *Server) composeStatusLine(terminalID string) (string, error) {
-	entry, _ := s.wrapStatusLine(nil)
-	doc, err := buildHooksDocument(s.quotedShim, entry)
+// composeTerminalSettings writes this terminal's settings file (hooks, the optional statusline
+// wrapper with no user statusline since that comes only from the app's settings, and the optional
+// additionalDirectories) and returns its single-quoted path.
+func (s *Server) composeTerminalSettings(terminalID string, addDirs []string, statusLine bool) (string, error) {
+	var entry *statusLineEntry
+	if statusLine {
+		entry, _ = s.wrapStatusLine(nil)
+	}
+	doc, err := buildHooksDocument(s.quotedShim, entry, addDirs)
 	if err != nil {
 		return "", err
 	}

@@ -112,6 +112,8 @@ type pendingIntent struct {
 	Provider string
 	// ConfigFile is the Kira-written provider config file the listener extends in place; "" = none.
 	ConfigFile string
+	// AddDirs are the launch's extra dirs; the hooks listener grants them through its settings.
+	AddDirs []string
 	// Op is the session op Prepare was given; Compose ends it ok, an expired intent ends it as an error.
 	Op *oplog.Op
 }
@@ -218,7 +220,7 @@ type Tracker struct {
 	// replyFailedFn takes back a reply the hook listener could not deliver.
 	replyFailedFn func(recordID string, reply harness.HookReply)
 
-	hooks func(provider, terminalID, cwd, command, configFile string) (string, []string, error)
+	hooks func(provider, terminalID, cwd, command, configFile string, addDirs []string) (string, []string, error)
 
 	// graceTimers are Compose's pending Reconcile timers, stopped by Close; graceWG waits for a
 	// callback already running.
@@ -315,13 +317,13 @@ func (t *Tracker) SetStoppedHandler(fn func(recordID string)) {
 // SetHooks installs the launch-composition callback (harness.Hooks.Compose) — called
 // once in main.go before any window exists, so Compose never races an unset hooks func with a
 // real launch.
-func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command, configFile string) (string, []string, error)) {
+func (t *Tracker) SetHooks(fn func(provider, terminalID, cwd, command, configFile string, addDirs []string) (string, []string, error)) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.hooks = fn
 }
 
-func (t *Tracker) hooksFn() func(string, string, string, string, string) (string, []string, error) {
+func (t *Tracker) hooksFn() func(string, string, string, string, string, []string) (string, []string, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.hooks
@@ -413,7 +415,7 @@ func (t *Tracker) Prepare(args PrepareArgs) (PrepareResult, error) {
 
 	terminalID := ids.NewID()
 	intent := pendingIntent{
-		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, ConfigFile: launch.ConfigFile, Cwd: cwd, Command: command, Message: args.Message,
+		RecordID: recordID, AgentSessionID: agentSessionID, Env: launch.Env, ConfigFile: launch.ConfigFile, AddDirs: launch.AddDirs, Cwd: cwd, Command: command, Message: args.Message,
 		Resume: args.Resume != "", CreatedAt: now,
 		TaskID: args.TaskID, BranchID: args.BranchID, StepID: args.StepID, Resumes: args.Resumes, Purpose: args.Purpose,
 		Provider: agent.ID(), Op: args.Op,
@@ -630,7 +632,7 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 		if hooks == nil {
 			return command, nil, nil
 		}
-		return hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command, "")
+		return hooks(t.deps.Agent.Active().ID(), terminalID, cwd, command, "", nil)
 	}
 
 	defer func() {
@@ -650,13 +652,13 @@ func (t *Tracker) Compose(terminalID, cwd, command string) (_ string, _ []string
 	if hooks := t.hooksFn(); hooks != nil {
 		var hookEnv []string
 		var err error
-		if composed, hookEnv, err = hooks(intent.Provider, terminalID, cwd, command, intent.ConfigFile); err != nil {
+		if composed, hookEnv, err = hooks(intent.Provider, terminalID, cwd, command, intent.ConfigFile, intent.AddDirs); err != nil {
 			return "", nil, err
 		}
 		env = append(env, hookEnv...)
 	}
 	if intent.Message != "" {
-		// The command can end in a variadic flag (--add-dir a b), which would swallow the prompt.
+		// The command can end in a variadic flag (--disallowedTools a b), which would swallow the prompt.
 		agent, err := t.deps.Agent.For(intent.Provider)
 		if err != nil {
 			return "", nil, err

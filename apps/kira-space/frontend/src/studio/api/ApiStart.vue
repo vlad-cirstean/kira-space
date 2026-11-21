@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -36,34 +38,49 @@ function onImportCurl(): void {
     :description="t('studio.api.start.emptyHint')"
     data-testid="api-start"
   >
-    <Button
-      variant="dialog-primary"
-      size="kira-lg"
-      data-testid="new-request-start"
-      @click="openApiRequestTab"
+    <TextTooltip
+      :text="t('studio.api.common.newRequest.label')"
+      :shortcut="moduleShortcut('api', 'app.new')"
     >
-      <CodiconIcon :name="ICON.add" :size="13" />
-      {{ t('studio.api.common.newRequest.label') }}
-    </Button>
+      <Button
+        variant="dialog-primary"
+        size="kira-lg"
+        data-testid="new-request-start"
+        @click="openApiRequestTab"
+      >
+        <CodiconIcon :name="ICON.add" :size="13" />
+        {{ t('studio.api.common.newRequest.label') }}
+      </Button>
+    </TextTooltip>
     <template #secondary>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        data-testid="new-grpc-request-start"
-        @click="openGrpcRequestTab"
+      <TextTooltip
+        :text="t('shared.grpc.newRequest.title')"
+        :shortcut="moduleShortcut('api', 'app.newAlternate')"
       >
-        <CodiconIcon name="symbol-interface" :size="13" />
-        {{ t('shared.grpc.newRequest.title') }}
-      </Button>
-      <Button
-        variant="dialog"
-        size="kira-lg"
-        data-testid="import-collection-start"
-        @click="onImport"
+        <Button
+          variant="dialog"
+          size="kira-lg"
+          data-testid="new-grpc-request-start"
+          @click="openGrpcRequestTab"
+        >
+          <CodiconIcon name="symbol-interface" :size="13" />
+          {{ t('shared.grpc.newRequest.title') }}
+        </Button>
+      </TextTooltip>
+      <TextTooltip
+        :text="t('studio.api.common.importCollection.label')"
+        :shortcut="moduleShortcut('api', 'app.import')"
       >
-        <CodiconIcon name="cloud-download" :size="13" />
-        {{ t('studio.api.common.importCollection.label') }}
-      </Button>
+        <Button
+          variant="dialog"
+          size="kira-lg"
+          data-testid="import-collection-start"
+          @click="onImport"
+        >
+          <CodiconIcon name="cloud-download" :size="13" />
+          {{ t('studio.api.common.importCollection.label') }}
+        </Button>
+      </TextTooltip>
       <Button variant="dialog" size="kira-lg" data-testid="import-curl-start" @click="onImportCurl">
         <CodiconIcon name="terminal" :size="13" />
         {{ t('studio.api.common.importCurl.label') }}

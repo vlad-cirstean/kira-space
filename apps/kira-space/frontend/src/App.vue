@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AppMode } from '@shared/domain/mode';
+import type { ModuleAction } from '@shared/domain/moduleShortcuts';
 // P104 §6.1: every converted call site reaches timing (delayDuration/skipDelayDuration) through
 // this one provider.
 import { TooltipProvider } from '@theme/components/ui/tooltip';
@@ -48,6 +49,7 @@ import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
 import SessionRestoreHost from './restore/SessionRestoreHost.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
+import { runModuleAction } from './shortcuts/moduleActions';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useConfigSyncWindowStore } from './state/configSyncWindow';
 import { useKeepAwakeStore } from './state/keepAwake';
@@ -100,7 +102,6 @@ useAgentMessageDefaults(() => settingsStore.agent.provider, control);
 const modeStore = useModeStore();
 const keepAwakeStore = useKeepAwakeStore();
 const paletteStore = usePaletteStore();
-providePaletteCommands(appPaletteCommands());
 const appUpdateStore = useAppUpdateStore();
 provide(appUpdateStoreKey, appUpdateStore);
 // P246: one dialog per routed popup kind; PromptHost shows the one the router targeted here.
@@ -137,6 +138,7 @@ const mainWindow = (): boolean =>
   !openedFilesWindow.active &&
   !configSyncWindow.active &&
   !proofWindow.active;
+providePaletteCommands(appPaletteCommands(mainWindow));
 const panelLabel = computed(() =>
   CONNECTION_PANEL_MODES.has(modeStore.active)
     ? t('common.module.connections.label')
@@ -144,6 +146,20 @@ const panelLabel = computed(() =>
 );
 
 let unsubscribe: Array<() => void> = [];
+
+// Global module chords: one menu accelerator each, the active module picks the effect.
+function moduleActionSubscriptions(): Array<() => void> {
+  const on = (subscribe: (cb: () => void) => () => void, action: ModuleAction) =>
+    subscribe(() => {
+      if (mainWindow()) runModuleAction(action);
+    });
+  return [
+    on(control.onNew, 'app.new'),
+    on(control.onNewAlternate, 'app.newAlternate'),
+    on(control.onImport, 'app.import'),
+    on(control.onApiEnvironments, 'api.environments'),
+  ];
+}
 
 onMounted(() => {
   unsubscribe = [
@@ -167,6 +183,7 @@ onMounted(() => {
     control.onViewFind(() => {
       if (!openFocusedPanelSearch()) runCommand('view.find');
     }),
+    ...moduleActionSubscriptions(),
     studioControl.onNewConnection(() => connectionDialogStore.openNew()),
     studioControl.onNewRequest(() => {
       modeStore.setMode('api');
@@ -182,7 +199,7 @@ onMounted(() => {
     }),
     studioControl.onViewRefresh(() => runCommand('view.refresh')),
     studioControl.onViewRun(() => runCommand('view.run')),
-    studioControl.onViewRunAll(() => runCommand('view.run-all')),
+    studioControl.onViewRunAll(() => runCommand('view.runAll')),
     studioControl.onViewFormat(() => runCommand('view.format')),
   ];
 });

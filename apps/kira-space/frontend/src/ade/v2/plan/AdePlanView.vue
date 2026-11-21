@@ -14,7 +14,7 @@ import { errorText } from '@workbench/bridge/codedError';
 import ConfirmDialogView from '@workbench/components/ConfirmDialogView.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useSettingsStore } from '../../../state/settings';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { dayLabel, firstWork, isoToOffset, LATER, nextWork } from '../board/calendar';
@@ -35,7 +35,7 @@ import { type BranchRowModel, type CardModel, type PlanModel, usePlanModel } fro
 const ui = useAdeBoardUiStore();
 const settingsStore = useSettingsStore();
 const contextMenu = useContextMenuStore();
-const { model, today, repoLabel, settings, boardQuery } = usePlanModel();
+const { model, today, repoLabel, settings, boardQuery, history } = usePlanModel();
 const setPlan = useSetPlan();
 const refresh = useRefresh();
 
@@ -43,6 +43,23 @@ const scrollEl = ref<HTMLElement | null>(null);
 const headerEl = ref<HTMLElement | null>(null);
 const { height: headerHeight } = useElementSize(headerEl);
 const { y: scrollY } = useScroll(scrollEl);
+
+// The panel never closes: with no selection, or one gone from both board and History, the top
+// Plan task takes it.
+const fallbackId = computed(() => {
+  const m = model.value;
+  if (!m) return null;
+  const id = ui.selectedTaskId;
+  if (id && (m.cardFor(id) || history.value.some((h) => h.taskId === id))) return null;
+  return m.view.bands.filter((b) => !b.isLater).flatMap((b) => b.taskIds)[0] ?? null;
+});
+watch(
+  fallbackId,
+  (id) => {
+    if (id) ui.select(id);
+  },
+  { immediate: true },
+);
 
 // ---- refresh
 const refreshing = useAsyncAction(refreshAll);

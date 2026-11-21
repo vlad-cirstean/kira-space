@@ -64,16 +64,29 @@ const DIFF_SNAP: ControlSnapshot = {
   },
 };
 
-test('the menu command palette event opens the palette with the Space commands', async ({
+// The palette lists only commands with no other entry point: the three API ones, in API mode.
+test('the menu command palette event lists the three API-only commands in API mode', async ({
   relaunch,
 }) => {
-  const { window: page } = await relaunch();
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.collectionsList, response: { collections: [], items: [] } }],
+  });
+  await page.locator('[data-testid="mode-tab"][data-mode="api"]').click();
   await emitWailsEvent(page, IPC.commandPalette, undefined);
   await expect(page.locator(t('command-palette-input'))).toBeVisible();
   const items = page.locator(t('command-palette-item'));
-  await expect(items.filter({ hasText: 'Open settings' })).toHaveCount(1);
-  await expect(items.filter({ hasText: 'Show or hide repositories' })).toHaveCount(1);
-  await expect(items.filter({ hasText: 'Go to next tab' })).toHaveCount(1);
+  await expect(items).toHaveCount(3);
+  await expect
+    .poll(() => items.evaluateAll((els) => els.map((e) => e.getAttribute('data-command-id'))))
+    .toEqual(['api.variables', 'api.dynamicValues', 'api.importCurl']);
+});
+
+test('the command palette is empty outside API mode', async ({ relaunch }) => {
+  const { window: page } = await relaunch();
+  await page.locator('[data-testid="mode-tab"][data-mode="git"]').click();
+  await emitWailsEvent(page, IPC.commandPalette, undefined);
+  await expect(page.locator(t('command-palette-empty'))).toBeVisible();
+  await expect(page.locator(t('command-palette-item'))).toHaveCount(0);
 });
 
 test('the menu find event focuses the open diff find widget', async ({ relaunch }) => {

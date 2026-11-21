@@ -14,17 +14,15 @@ import {
 import { expandRow, findRow, openRowMenu } from './studio/support/tree';
 import { IPC } from './support/ipcChannels';
 
-// P663: every pane/column resize bar is neutral grey (--kira-resize*), never the blue
-// --kira-focus. Idle line = --kira-border, hover and drag one grey step up each.
+// P663: every pane/column resize bar is neutral grey (--kira-resize*), never blue (selection and
+// focus are neutral grey too). Idle line = --kira-border, hover and drag one grey step up each.
 
 const IDLE_LINE = 'rgb(50, 50, 55)';
 const HOVER = 'rgb(82, 82, 91)';
 const DRAG = 'rgb(142, 142, 151)';
-const FOCUS_BLUE = 'rgb(90, 138, 230)';
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
 function expectNeutral(color: string): void {
-  expect(color).not.toBe(FOCUS_BLUE);
   const rgb = color.match(/\d+/g)?.slice(0, 3).map(Number);
   if (!rgb || rgb.length < 3) throw new Error(`unparsable colour ${color}`);
   expect(Math.max(...rgb) - Math.min(...rgb)).toBeLessThanOrEqual(12);

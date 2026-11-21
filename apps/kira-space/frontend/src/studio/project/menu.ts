@@ -1,5 +1,6 @@
 import type { ConnectionSummary } from '@shared/domain/connection';
 import { AWS_STYLE_KINDS, FILE_KINDS } from '@shared/domain/connection';
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import { decodePath } from '@shared/domain/tree';
 import { formatConnectionUri } from '@shared/domain/uri';
 import { joinSentences, t } from '@theme/i18n';
@@ -645,7 +646,7 @@ export function emptyBackgroundMenu(): MenuItem[] {
       id: 'new-connection',
       label: t('studio.project.connectionDialog.newConnection.title'),
       icon: ICON.add,
-      shortcut: 'app.newConnection',
+      shortcut: moduleShortcut('studio', 'app.new'),
       run: () => useConnectionDialogStore().openNew(),
     },
     {

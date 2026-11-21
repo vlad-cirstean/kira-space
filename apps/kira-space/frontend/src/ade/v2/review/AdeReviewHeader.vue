@@ -7,6 +7,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
@@ -55,11 +56,6 @@ const headHint = computed(() => {
 <template>
   <TitleBarBase>
     <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-review-header">
-      <span
-        class="inline-block size-2.5 shrink-0 rounded-kira-sm"
-        :style="{ background: taskColor(task?.color ?? 0) }"
-        data-testid="ade-review-task-colour"
-      />
       <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
       <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
       <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
@@ -125,5 +121,11 @@ const headHint = computed(() => {
         @click="store.toggleAgentPanel()"
       />
     </div>
+    <ColorLine
+      v-if="task"
+      variant="under"
+      :color="taskColor(task.color)"
+      data-testid="ade-review-task-colour"
+    />
   </TitleBarBase>
 </template>

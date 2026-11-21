@@ -91,6 +91,12 @@ test('the tabs are Main, Details and Sessions, Main first, and Files is an icon'
   await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
   await expect(page.locator(t('ade-panel-tab-files'))).toHaveCount(0);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
+  const [headBox, lineBox] = await Promise.all([
+    page.locator(t('ade-panel-head')).boundingBox(),
+    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
+  ]);
+  expect(lineBox?.height).toBe(3);
+  expect(Math.abs((lineBox?.y ?? 0) - (headBox?.y ?? 99))).toBeLessThanOrEqual(1);
 });
 
 test('Files is a header icon: no tab, no right-click or More entry', async ({ relaunch }) => {
@@ -98,7 +104,7 @@ test('Files is a header icon: no tab, no right-click or More entry', async ({ re
   await openTask(page, 'T_cart');
   await expect(page.locator(t('ade-panel-files'))).toBeVisible();
   const files = page.locator('[data-testid^="menu-item-"][data-testid*="files"]');
-  await page.locator(t('ade-panel-dot')).click({ button: 'right' });
+  await page.locator(t('ade-panel-title')).click({ button: 'right' });
   await expect(page.locator('[data-testid^="menu-item-"]').first()).toBeVisible();
   await expect(files).toHaveCount(0);
   await page.keyboard.press('Escape');

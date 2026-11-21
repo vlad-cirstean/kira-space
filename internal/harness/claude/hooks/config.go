@@ -36,18 +36,27 @@ type hookMatcherEntry struct {
 	Hooks []hookCommand `json:"hooks"`
 }
 
+// permissionsEntry is the settings `permissions` object, only the key Kira sets.
+type permissionsEntry struct {
+	AdditionalDirectories []string `json:"additionalDirectories,omitempty"`
+}
+
 // hooksDocument is hooks.json's own top-level shape — the settings hook map is
 // partialRecord(enum(events), array(hookMatcherEntry)), read from the installed CLI's own schema.
 type hooksDocument struct {
-	Hooks      map[string][]hookMatcherEntry `json:"hooks"`
-	StatusLine *statusLineEntry              `json:"statusLine,omitempty"`
+	Hooks       map[string][]hookMatcherEntry `json:"hooks"`
+	StatusLine  *statusLineEntry              `json:"statusLine,omitempty"`
+	Permissions *permissionsEntry             `json:"permissions,omitempty"`
 }
 
 // buildHooksDocument renders hooks.json (§2.4): one identical command hook — quotedShimCommand,
 // already wrapped in single quotes by ShellSingleQuote — for every event in hookEvents. Generated
 // with encoding/json over a Go struct, never hand-assembled JSON text.
-func buildHooksDocument(quotedShimCommand string, statusLine *statusLineEntry) ([]byte, error) {
+func buildHooksDocument(quotedShimCommand string, statusLine *statusLineEntry, addDirs []string) ([]byte, error) {
 	doc := hooksDocument{Hooks: make(map[string][]hookMatcherEntry, len(hookEvents)), StatusLine: statusLine}
+	if len(addDirs) > 0 {
+		doc.Permissions = &permissionsEntry{AdditionalDirectories: addDirs}
+	}
 	for _, event := range hookEvents {
 		doc.Hooks[event] = []hookMatcherEntry{{
 			Hooks: []hookCommand{{Type: "command", Command: quotedShimCommand, Timeout: hookCommandTimeoutSeconds}},

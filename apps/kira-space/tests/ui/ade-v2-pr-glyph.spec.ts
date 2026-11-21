@@ -92,3 +92,26 @@ test('the pending dot pulses, and stops pulsing under reduced motion while stayi
   await expect.poll(animation).toBe('none');
   await expect(dot).toBeVisible();
 });
+
+test('a merged branch with a PR shows one merge glyph, without a PR it keeps the tag', async ({
+  relaunch,
+}) => {
+  const row = (id: string) => `${t('ade-branch-row')}[data-branch-id="${id}"]`;
+  const withPr = await openPlan(relaunch, control());
+  const merged = withPr.window.locator(row('b_cart'));
+  await expect(merged.locator(t('ade-branch-pr'))).toHaveAttribute('data-pr-state', 'merged');
+  await expect(merged.locator(t('ade-tag'))).toHaveCount(0);
+  await expect(merged.locator('[data-icon="git-merge"], .codicon-git-merge')).toHaveCount(1);
+  // An open PR keeps its row's tag.
+  await expect(withPr.window.locator(`${row('b_hooks')} ${t('ade-tag')}`)).toHaveCount(1);
+});
+
+test('a merged branch without a PR keeps the merged tag', async ({ relaunch }) => {
+  const none = [
+    { channel: IPC.adeTaskChangeRequests, response: { ...changeRequests(), branches: {} } },
+  ];
+  const { window: page } = await openPlan(relaunch, none);
+  const merged = page.locator(`${t('ade-branch-row')}[data-branch-id="b_cart"]`);
+  await expect(merged.locator(t('ade-branch-pr'))).toHaveCount(0);
+  await expect(merged.locator(`${t('ade-tag')}[data-kind="merged"]`)).toHaveCount(1);
+});

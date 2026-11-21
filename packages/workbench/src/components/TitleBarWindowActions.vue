@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
@@ -39,8 +40,15 @@ const keepAwakeTooltip = computed(() => {
     data-testid="toggle-keep-awake"
     @click="emit('toggleKeepAwake')"
   />
-  <Button variant="title" size="title-labelled" data-testid="new-window" @click="emit('newWindow')">
-    <CodiconIcon name="empty-window" :size="16" />
-    <span>{{ t('workbench.titleBar.newWindow.label') }}</span>
-  </Button>
+  <TextTooltip :text="t('workbench.titleBar.newWindow.label')" shortcut="window.new">
+    <Button
+      variant="title"
+      size="title-labelled"
+      data-testid="new-window"
+      @click="emit('newWindow')"
+    >
+      <CodiconIcon name="empty-window" :size="16" />
+      <span>{{ t('workbench.titleBar.newWindow.label') }}</span>
+    </Button>
+  </TextTooltip>
 </template>

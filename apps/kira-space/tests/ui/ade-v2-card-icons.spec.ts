@@ -95,7 +95,14 @@ test('each branch row has one tag; kinds map to glyphs and urgent ones are solid
   await page.locator(t('ade-load-all')).click();
   const rows = page.locator(t('ade-branch-row'));
   const n = await rows.count();
-  for (let i = 0; i < n; i++) await expect(rows.nth(i).locator(t('ade-tag'))).toHaveCount(1);
+  for (let i = 0; i < n; i++) {
+    // The PR glyph of a merged change request already says merged: its row's tag slot is empty.
+    const prMerged = await rows
+      .nth(i)
+      .locator(`${t('ade-branch-pr')}[data-pr-state="merged"]`)
+      .count();
+    await expect(rows.nth(i).locator(t('ade-tag'))).toHaveCount(prMerged ? 0 : 1);
+  }
   const tags = await page.locator(`${t('ade-branch-row')} ${t('ade-tag')}`).evaluateAll((els) =>
     els.map((e) => ({
       kind: e.getAttribute('data-kind') ?? '',
@@ -177,26 +184,30 @@ test('state glyphs and danger actions stay visible; the action cluster shows on 
 test('hover actions sit right', async ({ relaunch }) => {
   const { window: page } = await open(relaunch, failedRebase);
   const head = page.locator(`${task('T_auth')} ${t('ade-card-head')}`);
+  const titleBefore = await head.locator(t('ade-card-title')).boundingBox();
   await head.hover();
   const actions = head.locator(t('ade-card-actions'));
   await expect(actions).toBeVisible();
   const title = await head.locator(t('ade-card-title')).boundingBox();
-  const status = await head.locator(t('ade-row-status')).boundingBox();
+  const action = await head.locator('[data-testid^="ade-task-action-"]').first().boundingBox();
   const box = await actions.boundingBox();
-  if (!title || !status || !box) throw new Error('no box');
-  expect(box.x).toBeGreaterThanOrEqual(title.x + title.width);
-  expect(box.x + box.width).toBeLessThanOrEqual(status.x + 1);
+  if (!title || !action || !box) throw new Error('no box');
+  // The cluster overlays the end of the title cell, left of the action column.
+  expect(box.x + box.width).toBeLessThanOrEqual(action.x + 1);
+  expect(title).toEqual(titleBefore);
 
   const r = page.locator(row('b_auth'));
+  const nameBefore = await r.locator(t('ade-branch-name')).boundingBox();
   await r.hover();
   const rowActions = r.locator(t('ade-branch-actions'));
   await expect(rowActions).toBeVisible();
   const name = await r.locator(t('ade-branch-name')).boundingBox();
   const rb = await rowActions.boundingBox();
-  const rr = await r.boundingBox();
-  if (!name || !rb || !rr) throw new Error('no box');
-  expect(rb.x).toBeGreaterThanOrEqual(name.x + name.width);
-  expect(rr.x + rr.width - (rb.x + rb.width)).toBeLessThanOrEqual(60);
+  // Left edge of the PR slot, the first fixed column right of the text.
+  const prSlotX = await r.evaluate((el) => el.children[1]?.children[3]?.getBoundingClientRect().x);
+  if (!name || !rb || prSlotX === undefined) throw new Error('no box');
+  expect(rb.x + rb.width).toBeLessThanOrEqual(prSlotX + 1);
+  expect(name).toEqual(nameBefore);
 });
 
 test('Shift+F10 on a focused row opens the row menu', async ({ relaunch }) => {

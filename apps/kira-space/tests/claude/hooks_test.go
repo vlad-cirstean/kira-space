@@ -284,7 +284,7 @@ func TestHookStopBlock(t *testing.T) {
 
 	if err := f.W.AdeTask.Send(ctx, adewire.SendArgs{
 		SessionID: launch.SessionID,
-		Message:   "Call state with action lease.acquire and args queue push. Then run the Bash command sleep 5 six times, one after another. Then reply done.",
+		Message:   "Call state with action lease.acquire and args queue push. Then run the Bash command sleep 5 six times, one after another. Do not release the lease until a hook message tells you to. Then reply done.",
 	}); err != nil {
 		t.Fatalf("Send: %v", err)
 	}

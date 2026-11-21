@@ -120,9 +120,11 @@ U41 packages/theme/src/wrapSelection.ts # modifier-free typing guard on beforein
 U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps Shift+Enter to meta-Enter bytes, not an app shortcut
 U62 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host owns terminal focus: Terminal.focus(), not DOM focus
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
+U11 apps/kira-space/frontend/src/studio/approvals/RequestLine.vue # method and host weight in a code line, not a heading
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
+U36 packages/workbench/src/approvals/ApprovalItemCard.vue # outlined focus box: Card draws no border, and the box must read as one frame around the request
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
@@ -137,6 +139,7 @@ U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # s
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
+U62 apps/kira-space/frontend/src/studio/approvals/PendingResponse.vue # Left/Right rove the one expand button across cells; the popover takes focus itself so Copy shows no tooltip over the first Esc
 # B (apps/kira-space)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
@@ -145,7 +148,6 @@ U101 packages/theme/src/components/SecondaryTabs.vue # countBadge opt-in renders
 U101 apps/kira-space/frontend/mobile/TabBar.vue # count badge marks items needing attention, not a tab count
 U101 apps/kira-space/frontend/mobile/components/PhoneApprovals.vue # count marks agent requests awaiting the person
 U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a white ground for scanner contrast
-U37 apps/kira-space/frontend/src/ade/v2/plan/AdeTaskCard.vue # plan board task card selected fill, P129 board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # plan board history and span row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/studio/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
@@ -315,7 +317,7 @@ U128@@vt@@ModuleStart.vue|MobilePairingDialog.vue|PairScreen.vue@@text-kira-xl o
 U129@@vt@@@@arbitrary shadow (shadows come from the elevation tiers, RBo.3)@@${TOK}!?shadow-\[
 U130@@v@@SectionHeading.vue|PanelHeader.vue|DetailSection.vue|MaskedValue.vue|MobilePairingDialog.vue|PairScreen.vue|ProofScreenshotMenu.vue@@hand case or tracking outside header primitives (RTy.3)@@${TOK}(?:uppercase|normal-case|tracking-(?:tighter|tight|normal|wide|wider|widest))(?![\w-])
 U131@@v@@@@EmptyState without icon or loading (RE.2)@@<EmptyState\b(?!(?&t)\s(?::?icon|loading)(?=[\s=/>]))
-U132@@vt@@/ade/v2/plan/|AdeShelfRow.vue|AdeActivityIcon.vue|AdeTaskPanel.vue|AdeBranchPanel.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
+U132@@vt@@AdeActivityIcon.vue|AdeStepNode.vue@@border-l-3 or border-2 off the plan board and glyph outlines (RBo.2)@@${TOK}!?(?:border-l-3|border-2)(?![\w-])
 U133@@v@@@@form control without id, aria-label or aria-labelledby (RF.1; FieldLabel for/id, or aria-label in bars, rows and cells; a v-bind of attrs forwards the caller's name)@@<(?:Input|Textarea|NativeSelect|InputGroupInput|InputGroupTextarea|NumberStepperInput|AutocompleteField)\b(?!(?&t)\s(?:(?::?id|:?aria-label|:?aria-labelledby)=|v-bind="[$]?attrs"))
 U134@@v@@DateTimePicker.vue|AdeSessionStrip.vue|DynamicValuesDialog.vue|AdeTaskStatuses.vue@@labelled toolbar Button without leading icon (RB.2; CodiconIcon 13 first, select-like trigger ends chevron-down)@@<Button\b(?=(?&t)\svariant="toolbar")(?=(?&t)\ssize="kira")(?!(?&t)\s:?aria-pressed=)(?&t)>(?!(?:(?!</Button\s*>)[\s\S])*?name="chevron-down")\s*(?!<(?:CodiconIcon|Spinner|EngineIcon)\b)(?!</Button)\S
 U135@@v@@@@Kbd inside Button (Button kbd prop)@@<Button\b(?&t)>(?:(?!</Button\s*>)[\s\S])*?<Kbd\b
@@ -345,14 +347,14 @@ U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<Fie
 U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
 U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
 U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
-U162@@v@@ViewHead.vue|ApprovalItemCard.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
+U162@@v@@ViewHead.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
 U163@@v@@@@relative time as bare template text (use RelativeTime)@@\{\{\s*formatRelative\(
 U164@@v@@VirtualList.vue@@hand virtual listbox (use VirtualList)@@(?s)\A(?=.*useVirtualRows\()(?=.*useListNavigation\b[<(])(?=.*role="listbox")
 U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]
 U166@@vt@@SaveConflictAlert.vue|confirmOverwrite.ts@@hand save-conflict alert (use SaveConflictAlert)@@common\.action\.overwrite\.label
 U167@@vt@@ConfigFormProblemAlert.vue@@hand config form problem alert (use ConfigFormProblemAlert)@@common\.configForm\.problem\.status
 U168@@vt@@ResetToDefaultButton.vue|PromptDetail.vue@@hand reset-to-default button (use ResetToDefaultButton)@@common\.action\.resetToDefault\.label
-U169@@vt@@frames.ts@@hand drop indicator (use dropIndicator)@@['"](?=[^'"]*${TOK}h-0\.5(?![\w-]))(?=[^'"]*${TOK}bg-focus(?![\w-]))
+U169@@vt@@frames.ts@@hand drop indicator (use dropIndicator)@@['"](?=[^'"]*${TOK}h-0\.5(?![\w-]))(?=[^'"]*${TOK}bg-select-edge(?![\w-]))
 U170@@vt@@frames.ts@@hand window tab strip (use windowTabStrip)@@['"](?=[^'"]*${TOK}h-tabbar(?![\w-]))(?=[^'"]*${TOK}min-h-0(?![\w-]))(?=[^'"]*${TOK}bg-chrome(?![\w-]))
 U171@@v@@CopyIconButton.vue@@hand copy icon button (use CopyIconButton)@@(?<![\w:-])icon="copy"|:icon="(?:ICON\.copy|copied\b[^"]*)"
 U172@@vt@@format.ts@@hand masked value (use MaskedValue, MASKED_TEXT)@@(?:•){4}|'•'\.repeat\(
@@ -390,7 +392,7 @@ U204@@v@@@@log view finds outside useLogFilter (filter lines; no FindBar or hand
 U205@@vt@@codedError.ts@@hand conflict check (use isConflict)@@\??\.code\s*[!=]==\s*'E_CONFLICT'
 U206@@vt@@guardedDraft.ts@@hand base-hash draft (use useGuardedDraft)@@\bbaseHash\s*[:=]\s*(?:ref|shallowRef)\(
 U207@@v@@@@config file dialog outside ConfigFileDialog (render the shell)@@(?s)\A(?=.*\buseConfigFormDraft\().*<Dialog\b
-U210@@v@@@@task step action without its tone outline (variant="dialog" :outline="action.tone", no class tone or bound class, P692)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="dialog")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
+U210@@v@@@@task step action without its tone (variant="dialog" or icon variant="toolbar" with :outline="action.tone", no class tone or bound class, P692, P709)@@<(?:Button|TooltipIconButton)\b(?=(?&t)\s:data-testid="\x60ade-task-action-)(?:(?!(?&t)\s:outline="action\.tone")|(?!(?&t)\svariant="(?:dialog|toolbar)")|(?=(?&t)\s:class=)|(?=(?&t)\sclass="[^"]*${TOK}(?:border|text|bg|outline)-))
 U211@@v@@AdeTaskActionButton.vue|TooltipIconButton.vue@@Button outline tone off the task step action (only AdeTaskActionButton, P692)@@<(?:Button|TooltipIconButton|SplitButton)\b(?&t)\s:?outline=
 U212@@v@@GitCredentialDialog.vue|UpdateDialog.vue@@dismiss-only button in a dialog footer (the header X closes; keep buttons with their own outcome, P696)@@<DialogFooter\b(?&t)>(?:(?!</DialogFooter\s*>)[\s\S])*?(?:<DialogClose\b|t\('common\.action\.(?:cancel|close)\.label'\))
 U213@@vt@@@@progress or success toast (the op chip and the Operations panel show progress and result; toast only errors, P698)@@\btoast(?:\.(?:loading|success|promise|info|warning|message|custom))?\(

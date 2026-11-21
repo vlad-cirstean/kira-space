@@ -34,7 +34,13 @@ export interface Binding {
 
 export const SHORTCUTS = {
   'app.settings': { scope: 'global', chord: { key: ',', cmdOrCtrl: true } },
-  'app.newConnection': { scope: 'global', chord: { key: 'N', cmdOrCtrl: true } },
+  // New, New Alternate and Import are one chord each; the effect follows the active module
+  // (apps/kira-space/frontend/src/shortcuts/moduleActions.ts).
+  'app.new': { scope: 'global', chord: { key: 'N', cmdOrCtrl: true } },
+  'app.newAlternate': { scope: 'global', chord: { key: 'N', cmdOrCtrl: true, alt: true } },
+  'app.import': { scope: 'global', chord: { key: 'O', cmdOrCtrl: true } },
+  'app.checkForUpdates': { scope: 'global', chord: { key: 'U', cmdOrCtrl: true, shift: true } },
+  'api.environments': { scope: 'global', chord: { key: 'E', cmdOrCtrl: true, alt: true } },
   'view.toggleProjectPanel': { scope: 'global', chord: { key: 'B', cmdOrCtrl: true } },
   'view.toggleOperationsPanel': { scope: 'global', chord: { key: 'J', cmdOrCtrl: true } },
   'view.commandPalette': { scope: 'global', chord: { key: 'P', cmdOrCtrl: true, shift: true } },
@@ -47,6 +53,11 @@ export const SHORTCUTS = {
   // P13 D7: VS Code's own Format Document chord — ⌥⇧F on macOS — so it's the one a user already
   // has in their fingers.
   'view.format': { scope: 'view', chord: { key: 'F', shift: true, alt: true } },
+  'view.explain': { scope: 'view', chord: { key: 'X', cmdOrCtrl: true, shift: true } },
+  'api.copyAsCurl': { scope: 'view', chord: { key: 'C', cmdOrCtrl: true, shift: true } },
+  'api.editRaw': { scope: 'view', chord: { key: 'E', cmdOrCtrl: true, shift: true } },
+  'data.generate': { scope: 'view', chord: { key: 'I', cmdOrCtrl: true, shift: true } },
+  'data.filterColumns': { scope: 'view', chord: { key: 'F', cmdOrCtrl: true, shift: true } },
   'tab.next': { scope: 'global', chord: { key: 'Tab', ctrl: true } },
   'tab.prev': { scope: 'global', chord: { key: 'Tab', ctrl: true, shift: true } },
   'tab.close': { scope: 'global', chord: { key: 'W', cmdOrCtrl: true } },

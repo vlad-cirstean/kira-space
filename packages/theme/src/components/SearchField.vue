@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import type { ShortcutId } from '@shared/domain/shortcuts';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import ShortcutKbd from '@theme/components/ShortcutKbd.vue';
 import {
   InputGroup,
   InputGroupAddon,
@@ -7,6 +9,7 @@ import {
   InputGroupInput,
 } from '@theme/components/ui/input-group';
 import { t } from '@theme/i18n';
+import { ariaKeyShortcuts } from '@theme/shortcutText';
 import { useTemplateRef } from 'vue';
 
 // The one search/filter text box. Attrs (data-testid, @keydown, @keydown.enter, ...) land
@@ -20,11 +23,14 @@ const _props = withDefaults(
     placeholder?: string;
     ariaLabel?: string;
     size?: 'kira' | 'kira-lg';
+    /** Registry chord that focuses this field: a chip while the field is empty (a tooltip would pop open when the chord focuses it). */
+    shortcut?: ShortcutId;
   }>(),
   {
     placeholder: () => t('common.action.search.label'),
     ariaLabel: undefined,
     size: 'kira',
+    shortcut: undefined,
   },
 );
 
@@ -61,10 +67,14 @@ defineExpose({ focus });
       :model-value="model"
       :placeholder="placeholder"
       :aria-label="ariaLabel ?? placeholder"
+      :aria-keyshortcuts="shortcut && ariaKeyShortcuts(shortcut)"
       :size="size"
       @update:model-value="model = String($event)"
       @keydown.escape="onEscape"
     />
+    <InputGroupAddon v-if="shortcut && model === ''" align="inline-end">
+      <ShortcutKbd :id="shortcut" />
+    </InputGroupAddon>
     <InputGroupAddon v-if="model !== ''" align="inline-end">
       <InputGroupButton
         size="icon-xs"

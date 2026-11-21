@@ -4,6 +4,7 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { TONE_BADGE } from '@theme/lib/statusTone';
 import { formatRelative } from '@workbench/behaviour/format';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
@@ -90,10 +91,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
           }}</span
         >
         <span class="flex items-center gap-1 truncate text-kira-sm text-subtle">
-          <span
-            class="inline-block size-2 shrink-0 rounded-kira-sm"
-            :style="{ background: taskColor }"
-          />
+          <ColorLine data-testid="ade-task-line" variant="mark" :color="taskColor" />
           {{ taskTitle }}
         </span>
       </div>

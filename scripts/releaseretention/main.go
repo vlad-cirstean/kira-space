@@ -6,8 +6,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -36,7 +34,7 @@ func run(releasesPath, latest, asset, deletesPath string) error {
 	if err != nil {
 		return err
 	}
-	rels, err := parseReleases(data)
+	rels, err := releaseline.DecodeReleases(data)
 	if err != nil {
 		return err
 	}
@@ -70,29 +68,4 @@ func run(releasesPath, latest, asset, deletesPath string) error {
 		fmt.Fprintf(&b, "%d\t%s\n", x.ID, x.Tag)
 	}
 	return os.WriteFile(deletesPath, []byte(b.String()), 0o644)
-}
-
-// parseReleases accepts an array of pages (gh --slurp) or a flat array of releases, or a mix.
-func parseReleases(data []byte) ([]releaseline.Release, error) {
-	var items []json.RawMessage
-	if err := json.Unmarshal(data, &items); err != nil {
-		return nil, fmt.Errorf("decode releases: %w", err)
-	}
-	var out []releaseline.Release
-	for _, it := range items {
-		if bytes.HasPrefix(bytes.TrimSpace(it), []byte("[")) {
-			var page []releaseline.Release
-			if err := json.Unmarshal(it, &page); err != nil {
-				return nil, fmt.Errorf("decode releases page: %w", err)
-			}
-			out = append(out, page...)
-			continue
-		}
-		var r releaseline.Release
-		if err := json.Unmarshal(it, &r); err != nil {
-			return nil, fmt.Errorf("decode release: %w", err)
-		}
-		out = append(out, r)
-	}
-	return out, nil
 }

@@ -61,6 +61,7 @@ const projectionCount = computed(() => {
       <TooltipIconButton
         :icon="ICON.refresh"
         :label="t('common.action.refresh.label')"
+        shortcut="view.refresh"
         data-testid="document-refresh"
         @click="emit('refresh')"
       />
@@ -175,6 +176,7 @@ const projectionCount = computed(() => {
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
         :pressed="!!rt?.searchOpen"
+        shortcut="view.find"
         data-testid="document-toolbar-search"
         @click="documentViewStore.toggleSearchOpen(tab.id)"
       />

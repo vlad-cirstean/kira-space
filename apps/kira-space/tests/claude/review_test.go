@@ -3,6 +3,7 @@ package claude
 import (
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -170,6 +171,10 @@ func TestAdeReviewStep(t *testing.T) {
 		t.Fatal("question unanswered")
 	}
 	implSession := r.claudeSession(t, round.Run.SessionID)
+	// The resumed implementer sees the schema recorded at its first load: it must list review.reply.
+	if enum := recordedEnum(t, r.Home, implSession, "mcp__kira-space__state", "action"); !slices.Contains(enum, "review.reply") {
+		t.Fatalf("implementer's recorded state schema lacks review.reply: %v", enum)
+	}
 
 	var res gitrpc.ReviewCommentSetStateResult
 	r.gs.MustRequest("review.comment.setState", gitrpc.ReviewCommentSetStateParams{

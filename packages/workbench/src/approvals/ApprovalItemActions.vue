@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
-import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   Tooltip,
@@ -9,7 +8,6 @@ import {
   TooltipTrigger,
 } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, watch } from 'vue';
 import { logWarn } from '../bridge/log';
@@ -42,46 +40,46 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
 
 <template>
   <div class="flex w-full items-center gap-3" data-testid="approval-footer">
-    <div class="min-w-0 flex-1 text-kira-sm text-subtle" data-testid="approval-origin">
-      <TruncatedText :text="requester.value" />
-    </div>
-    <component
-      :is="def?.footerAction"
-      v-if="def?.footerAction"
-      :item="item"
-      @options="(v: unknown) => store.setOption(item.id, v)"
-    />
-    <div class="flex shrink-0 items-center gap-1.5">
-      <Button
-        variant="dialog-deny"
-        size="kira-lg"
-        :pending="busy"
-        :kbd="formatShortcut('prompt.deny')"
-        :data-testid="`approval-deny-${item.id}`"
-        @click="answer([item.id], false)"
-      >
-        {{ labels.value?.deny ?? t('common.action.deny.label') }}
-      </Button>
-      <Tooltip v-if="def && !unreadable" :disabled="blank === null">
-        <TooltipTrigger as-child>
-          <TooltipDisabledTrigger :disabled="blank !== null">
-            <Button
-              variant="dialog-approve"
-              size="kira-lg"
-              :pending="busy"
-              :disabled="blank !== null"
-              :kbd="formatShortcut('form.submit')"
-              :data-testid="`approval-approve-${item.id}`"
-              @click="answer([item.id], true)"
-            >
-              {{ labels.value?.approve ?? t('common.action.approve.label') }}
-            </Button>
-          </TooltipDisabledTrigger>
-        </TooltipTrigger>
-        <TooltipContent>{{
-          t('workbench.approvals.input.required.tooltip', { label: blank ?? '' })
-        }}</TooltipContent>
-      </Tooltip>
+    <slot name="start" />
+    <div class="ml-auto flex shrink-0 items-center gap-3" data-testid="approval-actions">
+      <component
+        :is="def?.footerAction"
+        v-if="def?.footerAction"
+        :item="item"
+        @options="(v: unknown) => store.setOption(item.id, v)"
+      />
+      <div class="flex items-center gap-1.5">
+        <Button
+          variant="dialog-deny"
+          size="kira-lg"
+          :pending="busy"
+          shortcut="prompt.deny"
+          :data-testid="`approval-deny-${item.id}`"
+          @click="answer([item.id], false)"
+        >
+          {{ labels.value?.deny ?? t('common.action.deny.label') }}
+        </Button>
+        <Tooltip v-if="def && !unreadable" :disabled="blank === null">
+          <TooltipTrigger as-child>
+            <TooltipDisabledTrigger :disabled="blank !== null">
+              <Button
+                variant="dialog-approve"
+                size="kira-lg"
+                :pending="busy"
+                :disabled="blank !== null"
+                shortcut="form.submit"
+                :data-testid="`approval-approve-${item.id}`"
+                @click="answer([item.id], true)"
+              >
+                {{ labels.value?.approve ?? t('common.action.approve.label') }}
+              </Button>
+            </TooltipDisabledTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{{
+            t('workbench.approvals.input.required.tooltip', { label: blank ?? '' })
+          }}</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   </div>
 </template>

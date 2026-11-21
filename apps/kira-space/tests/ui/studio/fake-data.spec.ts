@@ -172,7 +172,9 @@ test('fake data generator — gate, defaults, preview, generate, failure', async
   const dialog = page.locator('[data-testid="generate-data-dialog"]');
 
   // --- scenario 2: the default plan is schema-derived ---------------------------------------
-  await page.click('[data-testid="toolbar-generate-data"]');
+  // The ⇧⌘I chord, from inside the data grid, does what the toolbar button does.
+  await page.locator('[data-testid="grid-cell"]').first().click();
+  await page.keyboard.press('Meta+Shift+I');
   await expect(dialog).toBeVisible();
   await expect(page.locator('[data-testid="generate-data-recipe-tenant_id"]')).toHaveValue(
     'sequence',

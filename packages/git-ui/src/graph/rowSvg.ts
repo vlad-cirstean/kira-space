@@ -176,8 +176,8 @@ export interface NodeShapePlan {
    *  dot at all) and only an inline style reliably wins that cascade. */
   readonly filled: boolean;
   readonly dashed: boolean;
-  /** The HEAD ring — an unfilled ring in `--kira-focus` (the same token the existing
-   *  branch-badge dot already uses), drawn in addition to whichever shapes `nodeKind` itself
+  /** The HEAD ring — an unfilled ring in `--kira-info` ("you are here"; P710: focus is
+   *  neutral grey), drawn in addition to whichever shapes `nodeKind` itself
    *  already returns (stash/merge precedence untouched). `true` only for this one shape; every
    *  other `NodeShapePlan` this module produces leaves it `undefined`, which `buildNodeElement`
    *  treats identically to `false`. */
@@ -295,17 +295,17 @@ function buildNodeElement(plan: NodeShapePlan): SVGCircleElement {
   circle.setAttribute('r', fmt(plan.r));
 
   // G-UX (item 1): the HEAD halo, like the HEAD ring below, is never lane-coloured —
-  // `fill-focus/15` paints it in `--kira-focus` at low opacity.
+  // `fill-info/15` paints it in `--kira-info` at low opacity.
   if (plan.isHeadHalo) {
-    circle.setAttribute('class', 'fill-focus/15');
+    circle.setAttribute('class', 'fill-info/15');
     return circle;
   }
 
-  // G19 D1: the HEAD ring is never lane-coloured — `stroke-focus` paints
-  // it in `--kira-focus`, the same token the existing branch-badge dot already uses, so it
+  // G19 D1: the HEAD ring is never lane-coloured — `stroke-info` paints
+  // it in `--kira-info` ("you are here"), so it
   // never takes `laneClass`, which is about this row's own lane colour.
   if (plan.isHeadRing) {
-    circle.setAttribute('class', 'stroke-focus');
+    circle.setAttribute('class', 'stroke-info');
     circle.setAttribute('stroke-width', String(GEOMETRY.headRingStrokeWidth));
     circle.style.fill = 'none';
     return circle;

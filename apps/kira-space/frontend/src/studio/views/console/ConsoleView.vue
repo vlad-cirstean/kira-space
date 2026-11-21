@@ -15,7 +15,17 @@ import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
 import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
-import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { useShortcut } from '@workbench/shortcuts/useShortcut';
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  shallowRef,
+  useTemplateRef,
+  watch,
+} from 'vue';
 import type { ConsoleTabRecord } from '../../../state/tabDomain';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import { useRunState } from '../../state/runState';
@@ -211,14 +221,26 @@ function onGoToMatch(match: Match): void {
   resultGridRef.value?.goToMatch(match);
 }
 
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
+// Capture: Monaco holds focus while typing. Same guard as the Explain button (shown with a
+// dialect, disabled while a run is blocked).
+useShortcut(
+  rootEl,
+  ['view.explain'],
+  () => {
+    if (!dialect.value || runBlocked.value) return;
+    onExplain();
+  },
+  { capture: true },
+);
+
 let unregisterCommands: Array<() => void> = [];
 
 onMounted(() => {
   unregisterCommands = [
     registerCommand('view.run', runStatement),
-    registerCommand('view.run-all', runAll),
+    registerCommand('view.runAll', runAll),
     registerCommand('view.format', onFormat),
-    registerCommand('view.explain', onExplain),
     registerCommand('view.find', onToggleSearch),
   ];
 });
@@ -229,7 +251,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col min-h-0" data-testid="console-view" :data-path="tab.path">
+  <div
+    ref="rootEl"
+    class="h-full flex flex-col min-h-0"
+    data-testid="console-view"
+    :data-path="tab.path"
+  >
     <ViewHead
       :color="railColor"
       icon="terminal"
@@ -260,7 +287,7 @@ onUnmounted(() => {
           @click="onStop"
         />
       </div>
-      <TextTooltip :text="t('studio.console.run.tooltip')">
+      <TextTooltip shortcut="view.run" :text="t('studio.console.run.tooltip')">
         <TooltipDisabledTrigger>
           <Button
             variant="dialog-primary"
@@ -274,7 +301,7 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
-      <TextTooltip :text="t('studio.console.runAll.tooltip')">
+      <TextTooltip shortcut="view.runAll" :text="t('studio.console.runAll.tooltip')">
         <TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -288,7 +315,10 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
-      <TextTooltip v-if="canFormat" :text="t('studio.console.format.tooltip')"
+      <TextTooltip
+        shortcut="view.format"
+        v-if="canFormat"
+        :text="t('studio.console.format.tooltip')"
         ><TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -302,7 +332,7 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger></TextTooltip
       >
-      <TextTooltip v-if="dialect" :text="explainTooltip"
+      <TextTooltip shortcut="view.explain" v-if="dialect" :text="explainTooltip"
         ><TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -357,6 +387,7 @@ onUnmounted(() => {
         icon="search"
         :label="t('studio.console.findInResult.label')"
         :pressed="!!rt?.searchOpen"
+        shortcut="view.find"
         data-testid="console-search"
         @click="onToggleSearch"
       />

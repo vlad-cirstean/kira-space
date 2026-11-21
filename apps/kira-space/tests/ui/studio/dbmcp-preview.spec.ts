@@ -1,9 +1,11 @@
+import type { Locator } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { defaultSettings } from '../../../frontend/src/state/settingsDomain';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
+import { installClipboardSpy, lastClipboardWrite } from './support/clipboard';
 import { editorText } from './support/editorText';
 import { openSettings } from './support/settings';
 
@@ -47,15 +49,17 @@ test('contract: the held result shows as a table and Send answers by item id', a
   const { window: page, control } = await relaunch({ control: mocks(item.id) });
 
   await pushApprovals(page, [item]);
-  await expect(page.locator('[data-testid="approval-operation"]')).toHaveText('Result');
+  await expect(page.locator('[data-testid="approval-operation"]')).toHaveText('Read result');
   const headers = page.locator('[data-testid="db-mcp-preview-column"]');
   await expect(headers).toHaveText(result.columns.map((c) => c.name));
   const rows = page.locator('[data-testid="db-mcp-preview-row"]');
   await expect(rows).toHaveCount(result.rows.length);
   for (const [i, row] of result.rows.entries()) {
-    await expect(rows.nth(i).locator('td')).toHaveText(row.map((cell) => cell ?? 'NULL'));
+    await expect(rows.nth(i).locator('td:not(:first-child)')).toHaveText(
+      row.map((cell) => cell ?? 'NULL'),
+    );
   }
-  await expect(page.locator('[data-testid="db-mcp-preview-ran"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="db-mcp-preview-view-as-sent"]')).toHaveText('Raw');
 
   await page.click('[data-testid="db-mcp-preview-view-as-sent"]');
   await expect
@@ -68,26 +72,197 @@ test('contract: the held result shows as a table and Send answers by item id', a
     .toEqual({ ...answer, options: null });
 });
 
-test('contract: rows past the third hide behind a count and open on click', async ({
-  relaunch,
-}) => {
+// A result with one long JSON cell, one long plain cell, a NULL and 8 rows.
+const LONG = 'The customer wrote a very long note that no cropped cell can show in full. '.repeat(
+  6,
+);
+// Not round-trippable through JSON.parse: bigint id, trailing zero, exponent.
+const JSON_CELL = '{"id":9007199254740993,"price":1.10,"n":1e2,"tags":["a","b"]}';
+function bigResult() {
+  const columns = [
+    { name: 'id', dataType: 'INTEGER', typeClass: 'number' },
+    { name: 'note', dataType: 'TEXT', typeClass: 'text' },
+    { name: 'meta', dataType: 'JSON', typeClass: 'text' },
+  ];
+  const rows = Array.from({ length: 8 }, (_, i) => [
+    String(i + 1),
+    i === 0 ? LONG : `short ${i}`,
+    i === 1 ? JSON_CELL : i === 2 ? null : '{}',
+  ]);
+  return JSON.stringify({
+    kind: 'tabular',
+    columns,
+    rows,
+    rowCount: 8,
+    returned: 8,
+    truncatedCells: 0,
+  });
+}
+
+async function openBig(relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch']) {
   const item = first();
-  const result = JSON.parse(held().text) as Tabular;
-  const rows = Array.from({ length: 6 }, (_, i) => result.columns.map((c) => `${c.name}${i}`));
-  const text = JSON.stringify({ ...result, rowCount: 6, returned: 6, rows });
   const { window: page } = await relaunch({
     control: [
-      { channel: IPC.dbMcpPendingResponse, response: { ...held(), text } },
+      { channel: IPC.dbMcpPendingResponse, response: { ...held(), text: bigResult() } },
       { channel: IPC.approvalsAnswer, response: answeredOk([item.id]) },
     ],
   });
   await pushApprovals(page, [item]);
-  const shown = page.locator('[data-testid="db-mcp-preview-row"]');
-  await expect(shown).toHaveCount(3);
-  await page.click('[data-testid="db-mcp-preview-more"]');
+  const rows = page.locator('[data-testid="db-mcp-preview-row"]');
+  await expect(rows).toHaveCount(8);
+  return { page, rows };
+}
+
+test('contract: every row shows on open, with no more-rows link', async ({ relaunch }) => {
+  const { page, rows } = await openBig(relaunch);
+  await expect(rows.first()).toBeVisible();
   await expect(page.locator('[data-testid="db-mcp-preview-more"]')).toHaveCount(0);
-  await expect(shown.first()).toBeVisible();
-  expect(await shown.count()).toBeGreaterThanOrEqual(6);
+});
+
+test('contract: a click expands a row in place and a second click collapses it', async ({
+  relaunch,
+}) => {
+  const { rows } = await openBig(relaunch);
+  const first = rows.first();
+  const note = first.locator('td').nth(2);
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
+  expect(
+    await note.locator('span.truncate').evaluate((el) => el.scrollWidth > el.clientWidth),
+  ).toBe(true);
+  const closed = (await first.boundingBox())?.height ?? 0;
+  await note.click({ position: { x: 20, y: 6 } });
+  await expect(first).toHaveAttribute('aria-expanded', 'true');
+  await expect(note).toContainText(LONG.trim());
+  expect(await note.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await expect.poll(async () => (await first.boundingBox())?.height ?? 0).toBeGreaterThan(closed);
+  await note.click({ position: { x: 20, y: 6 } });
+  await expect(first).toHaveAttribute('aria-expanded', 'false');
+  await expect
+    .poll(async () => (await first.boundingBox())?.height ?? 0)
+    .toBeLessThanOrEqual(closed + 1);
+});
+
+test('contract: the row chevron shows on hover and toggles by keyboard', async ({ relaunch }) => {
+  const { page, rows } = await openBig(relaunch);
+  const toggle = rows.first().locator('[data-testid="db-mcp-preview-row-toggle"]');
+  await expect(toggle).toHaveCSS('opacity', '0');
+  await rows.first().hover();
+  await expect(toggle).toHaveCSS('opacity', '1');
+  await page.mouse.move(0, 0);
+  await rows.first().focus();
+  await page.keyboard.press('Tab');
+  await expect(toggle).toBeFocused();
+  await expect(toggle).toHaveCSS('opacity', '1');
+  await page.keyboard.press('Enter');
+  await expect(rows.first()).toHaveAttribute('aria-expanded', 'true');
+  await page.keyboard.press('Enter');
+  await expect(rows.first()).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('contract: the row handle drags, steps by key and resets on double-click', async ({
+  relaunch,
+}) => {
+  const { page, rows } = await openBig(relaunch);
+  const row = rows.nth(3);
+  const handle = row.locator('[data-testid="db-mcp-preview-row-resize"]').first();
+  const height = async () => (await row.boundingBox())?.height ?? 0;
+  const base = await height();
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('no handle');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 90, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(height).toBeGreaterThan(base + 60);
+  const dragged = await height();
+  await handle.focus();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(height).toBeGreaterThan(dragged);
+  await handle.dblclick();
+  await expect.poll(height).toBeLessThanOrEqual(base + 1);
+  // The one handle per row is a resize separator.
+  await expect(handle).toHaveAttribute('role', 'separator');
+});
+
+test('contract: the full value opens in a popover with Copy, shown and copied as held, NULL has no button', async ({
+  relaunch,
+}) => {
+  const { page, rows } = await openBig(relaunch);
+  await installClipboardSpy(page);
+  const jsonRow = rows.nth(1);
+  await jsonRow.locator('td').nth(3).hover();
+  const expand = jsonRow.locator('td').nth(3).locator('[data-testid="db-mcp-preview-expand"]');
+  await expect(expand).toBeVisible();
+  await expand.click();
+  const popover = page.locator('[data-testid="db-mcp-preview-cell"]');
+  await expect(popover).toContainText('meta · row 2');
+  await expect(popover.locator('pre')).toHaveText(JSON_CELL);
+  await popover.locator('[data-testid="db-mcp-preview-cell-copy"]').click();
+  await expect.poll(() => lastClipboardWrite(page)).toBe(JSON_CELL);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  // Enter on the focused expand button opens it too.
+  await rows.first().locator('td').nth(2).hover();
+  await rows.first().locator('td').nth(2).locator('[data-testid="db-mcp-preview-expand"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(popover).toContainText(LONG.trim());
+  await page.keyboard.press('Escape');
+  // A NULL cell carries no expand button, even hovered.
+  await rows.nth(2).locator('td[data-null]').hover();
+  await expect(
+    rows.nth(2).locator('td[data-null] [data-testid="db-mcp-preview-expand"]'),
+  ).toHaveCount(0);
+});
+
+test('contract: the chevron and expand controls are buttons in the Tab order', async ({
+  relaunch,
+}) => {
+  const { page, rows } = await openBig(relaunch);
+  const chevron = rows.first().locator('[data-testid="db-mcp-preview-row-toggle"]');
+  const expand = rows.first().locator('[data-testid="db-mcp-preview-expand"]');
+  await expect(chevron).toHaveJSProperty('tagName', 'BUTTON');
+  await chevron.focus();
+  // Focus in a row mounts its single expand button; the row's resize separator sits between.
+  await expect(expand).toHaveCount(1);
+  await expect(expand).toHaveJSProperty('tagName', 'BUTTON');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(expand).toBeFocused();
+});
+
+test('contract: arrows rove the expand button across cells, focus survives the pointer and the popover', async ({
+  relaunch,
+}) => {
+  const { page, rows } = await openBig(relaunch);
+  const expand = '[data-testid="db-mcp-preview-expand"]';
+  const row = rows.first();
+  const popover = page.locator('[data-testid="db-mcp-preview-cell"]');
+  await row.locator('[data-testid="db-mcp-preview-row-toggle"]').focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(row.locator(expand)).toBeFocused();
+  const col = (el: Locator) => el.evaluate((n) => n.closest('td')?.getAttribute('data-col'));
+  const start = await col(row.locator(expand));
+  await page.keyboard.press('ArrowRight');
+  await expect(row.locator(expand)).toBeFocused();
+  expect(await col(row.locator(expand))).not.toBe(start);
+  await page.keyboard.press('ArrowLeft');
+  await expect(row.locator(expand)).toBeFocused();
+  expect(await col(row.locator(expand))).toBe(start);
+  // Roving reaches a later column's full value.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(popover).toBeVisible();
+  // The pointer moving over other rows must not unmount the opener.
+  await rows.nth(5).hover();
+  await expect(row.locator(expand)).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(row.locator(expand)).toBeFocused();
+  // Pointer over another row, focus stays on the keyboard button.
+  await rows.nth(6).hover();
+  await expect(row.locator(expand)).toBeFocused();
 });
 
 test('contract: Withhold denies the held result', async ({ relaunch }) => {
@@ -101,13 +276,18 @@ test('contract: Withhold denies the held result', async ({ relaunch }) => {
     .toEqual({ ids: [item.id], approve: false, options: null });
 });
 
-test('contract: a write that already ran warns that withholding does not undo it', async ({
+test('contract: a write that already ran is named in the badge, withholding does not undo it', async ({
   relaunch,
 }) => {
   const item = first(true);
   const { window: page } = await relaunch({ control: mocks(item.id) });
   await pushApprovals(page, [item]);
-  await expect(page.locator('[data-testid="db-mcp-preview-ran"]')).toBeVisible();
+  const op = page.locator('[data-testid="approval-operation"]');
+  await expect(op).toHaveText('Write result · already ran');
+  await op.hover();
+  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
+    'Withhold only keeps the result from the agent',
+  );
 });
 
 test('contract: the preview switch sends the settings patch', async ({ relaunch }) => {
@@ -130,4 +310,14 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(args);
   await expect(page.locator('[data-testid="settings-db-mcp-preview"]')).toBeChecked();
+});
+
+test('contract: the statement in Details is syntax highlighted', async ({ relaunch }) => {
+  const item = first();
+  const { window: page } = await relaunch({ control: mocks(item.id) });
+  await pushApprovals(page, [item]);
+  await page.click('[data-testid="approval-details-toggle"]');
+  await expect(
+    page.locator('[data-testid="db-mcp-preview-statement"] [data-colorized] span').first(),
+  ).toBeVisible();
 });

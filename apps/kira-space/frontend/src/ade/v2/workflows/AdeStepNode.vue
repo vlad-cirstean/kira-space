@@ -94,6 +94,8 @@ const menuItems = computed<MenuItem[]>(() => [
     icon: 'trash',
     danger: true,
     disabled: !props.data.canRemove,
+    // The chord deletes the selected step; printed on this row like tab.close on the tab menu.
+    shortcut: 'tree.delete',
     run: () => fireAndForget(confirmRemoveStep(step.value.id), 'adeWorkflows'),
   },
 ]);
@@ -150,7 +152,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
   <div
     class="flex flex-col rounded-kira border bg-elevated text-kira-sm"
     :class="[
-      data.selected ? 'border-info' : 'border-border',
+      data.selected ? 'border-select-edge' : 'border-border',
       step.skip ? 'text-muted-foreground' : '',
     ]"
     :style="{ width: `${data.w}px`, height: `${data.h}px` }"

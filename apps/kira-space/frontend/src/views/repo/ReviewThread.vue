@@ -8,9 +8,11 @@
 import type { ReviewComment, ReviewCommentKind, ReviewCommentState } from '@kira/git-ipc';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Textarea } from '@theme/components/ui/textarea';
+import { TooltipProvider } from '@theme/components/ui/tooltip';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -164,156 +166,168 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
 </script>
 
 <template>
-  <!-- Monaco's view-lines layer otherwise wins text selection inside this zone too. -->
-  <div
-    ref="root"
-    class="box-border h-full w-full overflow-auto bg-elevated text-fg text-kira-md select-text"
-    data-testid="review-thread"
-  >
-    <div ref="content" class="flex flex-col gap-1.5 py-2 px-3">
-      <template v-if="mode === 'view' && current">
-        <div v-if="anchorLabel" class="text-warn italic"><VarText :parts="anchorLabel" /></div>
-        <div class="flex items-center gap-1.5 text-kira-sm text-muted-foreground">
-          <span data-testid="review-thread-kind-chip">{{
-            current.kind === 'question'
-              ? t('common.kind.question.label')
-              : t('git.review.comments.kind.change.label')
-          }}</span>
-          <span data-testid="review-thread-state-chip">{{
-            current.state === 'addressed'
-              ? t('git.review.comments.state.addressed.label')
-              : t('common.action.open.label')
-          }}</span>
-        </div>
-        <div class="whitespace-pre-wrap break-words" data-testid="review-thread-body">
-          {{ current.body }}
-        </div>
-        <div
-          v-if="current.reply"
-          class="whitespace-pre-wrap break-words border-l-2 border-border pl-2 text-muted-foreground"
-          data-testid="review-thread-reply"
-        >
-          {{ current.reply }}
-        </div>
-        <Alert v-if="error" variant="error" data-testid="review-thread-error"
-          ><AlertDescription>{{ error }}</AlertDescription></Alert
-        >
-        <div class="flex flex-wrap justify-end gap-1.5">
-          <Button
-            variant="toolbar"
-            size="kira"
-            :pending="pending"
-            data-testid="review-thread-state"
-            @click="act(() => props.onSetState?.(nextState))"
-          >
-            <CodiconIcon
-              :name="current.state === 'addressed' ? 'issue-reopened' : 'check'"
-              :size="13"
-            />
-            {{
+  <!-- Own createApp mount, so the chord tooltips need their own provider. -->
+  <TooltipProvider>
+    <!-- Monaco's view-lines layer otherwise wins text selection inside this zone too. -->
+    <div
+      ref="root"
+      class="box-border h-full w-full overflow-auto bg-elevated text-fg text-kira-md select-text"
+      data-testid="review-thread"
+    >
+      <div ref="content" class="flex flex-col gap-1.5 py-2 px-3">
+        <template v-if="mode === 'view' && current">
+          <div v-if="anchorLabel" class="text-warn italic"><VarText :parts="anchorLabel" /></div>
+          <div class="flex items-center gap-1.5 text-kira-sm text-muted-foreground">
+            <span data-testid="review-thread-kind-chip">{{
+              current.kind === 'question'
+                ? t('common.kind.question.label')
+                : t('git.review.comments.kind.change.label')
+            }}</span>
+            <span data-testid="review-thread-state-chip">{{
               current.state === 'addressed'
-                ? t('git.review.comments.reopen.label')
-                : t('git.review.comments.markAddressed.label')
-            }}
-          </Button>
-          <Button variant="toolbar" size="kira" data-testid="review-thread-edit" @click="startEdit">
-            <CodiconIcon :name="ICON.edit" :size="13" />
-            {{ t('common.action.edit.label') }}
-          </Button>
-          <Button variant="toolbar" size="kira" @click="emit('close')">
-            <CodiconIcon name="close" :size="13" />
-            {{ t('common.action.close.label') }}
-          </Button>
-          <Button
-            variant="toolbar"
-            data-tone="error"
-            size="kira"
-            :pending="pending"
-            @click="act(() => props.onDelete?.())"
+                ? t('git.review.comments.state.addressed.label')
+                : t('common.action.open.label')
+            }}</span>
+          </div>
+          <div class="whitespace-pre-wrap break-words" data-testid="review-thread-body">
+            {{ current.body }}
+          </div>
+          <div
+            v-if="current.reply"
+            class="whitespace-pre-wrap break-words border-l-2 border-border pl-2 text-muted-foreground"
+            data-testid="review-thread-reply"
           >
-            <CodiconIcon name="trash" :size="13" />
-            {{ t('common.action.delete.label') }}
-          </Button>
-        </div>
-      </template>
-      <template v-else-if="posted">
-        <Alert variant="info" data-testid="review-thread-posted"
-          ><AlertDescription>{{
-            t('git.review.comments.host.posted.status', {
-              short: posted.short,
-              number: posted.number,
-            })
-          }}</AlertDescription></Alert
-        >
-        <div class="flex justify-end">
-          <Button
-            variant="toolbar"
-            size="kira"
-            data-testid="review-thread-posted-close"
-            @click="emit('close')"
+            {{ current.reply }}
+          </div>
+          <Alert v-if="error" variant="error" data-testid="review-thread-error"
+            ><AlertDescription>{{ error }}</AlertDescription></Alert
           >
-            <CodiconIcon name="close" :size="13" />
-            {{ t('common.action.close.label') }}
-          </Button>
-        </div>
-      </template>
-      <template v-else>
-        <SecondaryTabs
-          v-model="kind"
-          variant="choice"
-          :aria-label="t('common.field.kind.label')"
-          :items="KIND_ITEMS"
-          data-testid="review-thread-kind"
-        />
-        <Textarea
-          :aria-label="t('common.comment.label')"
-          ref="input"
-          v-model="draft"
-          :placeholder="t('space.repo.view.comment.placeholder')"
-          data-testid="review-thread-input"
-        />
-        <div
-          v-if="toHost && hostTab"
-          class="text-kira-sm text-muted-foreground"
-          data-testid="review-thread-host-hint"
-        >
-          {{
-            hostTab.blocked ||
-            t('git.review.comments.host.hint', { short: hostTab.short, number: hostTab.number })
-          }}
-        </div>
-        <Alert v-if="error" variant="error" data-testid="review-thread-error"
-          ><AlertDescription>{{ error }}</AlertDescription></Alert
-        >
-        <div class="flex flex-wrap justify-end gap-1.5">
-          <Button
-            variant="dialog"
-            size="kira"
-            data-testid="review-thread-cancel"
-            @click="mode === 'edit' ? cancelEdit() : emit('cancel')"
-            >{{
-              t('common.action.cancel.label')
-            }}</Button
+          <div class="flex flex-wrap justify-end gap-1.5">
+            <Button
+              variant="toolbar"
+              size="kira"
+              :pending="pending"
+              data-testid="review-thread-state"
+              @click="act(() => props.onSetState?.(nextState))"
+            >
+              <CodiconIcon
+                :name="current.state === 'addressed' ? 'issue-reopened' : 'check'"
+                :size="13"
+              />
+              {{
+                current.state === 'addressed'
+                  ? t('git.review.comments.reopen.label')
+                  : t('git.review.comments.markAddressed.label')
+              }}
+            </Button>
+            <Button
+              variant="toolbar"
+              size="kira"
+              data-testid="review-thread-edit"
+              @click="startEdit"
+            >
+              <CodiconIcon :name="ICON.edit" :size="13" />
+              {{ t('common.action.edit.label') }}
+            </Button>
+            <Button variant="toolbar" size="kira" @click="emit('close')">
+              <CodiconIcon name="close" :size="13" />
+              {{ t('common.action.close.label') }}
+            </Button>
+            <Button
+              variant="toolbar"
+              data-tone="error"
+              size="kira"
+              :pending="pending"
+              @click="act(() => props.onDelete?.())"
+            >
+              <CodiconIcon name="trash" :size="13" />
+              {{ t('common.action.delete.label') }}
+            </Button>
+          </div>
+        </template>
+        <template v-else-if="posted">
+          <Alert variant="info" data-testid="review-thread-posted"
+            ><AlertDescription>{{
+              t('git.review.comments.host.posted.status', {
+                short: posted.short,
+                number: posted.number,
+              })
+            }}</AlertDescription></Alert
           >
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            :pending="pending"
-            :disabled="draft.trim() === '' || hostBlocked !== ''"
-            :data-testid="mode === 'edit' ? 'review-thread-save' : 'review-thread-send'"
-            @click="submit"
+          <div class="flex justify-end">
+            <Button
+              variant="toolbar"
+              size="kira"
+              data-testid="review-thread-posted-close"
+              @click="emit('close')"
+            >
+              <CodiconIcon name="close" :size="13" />
+              {{ t('common.action.close.label') }}
+            </Button>
+          </div>
+        </template>
+        <template v-else>
+          <SecondaryTabs
+            v-model="kind"
+            variant="choice"
+            :aria-label="t('common.field.kind.label')"
+            :items="KIND_ITEMS"
+            data-testid="review-thread-kind"
+          />
+          <Textarea
+            :aria-label="t('common.comment.label')"
+            ref="input"
+            v-model="draft"
+            :placeholder="t('space.repo.view.comment.placeholder')"
+            data-testid="review-thread-input"
+          />
+          <div
+            v-if="toHost && hostTab"
+            class="text-kira-sm text-muted-foreground"
+            data-testid="review-thread-host-hint"
           >
-            <CodiconIcon :name="mode === 'edit' ? 'save' : 'comment'" :size="13" />
             {{
-              mode === 'edit'
-                ? t('common.action.save.label')
-                : toHost && hostTab
-                  ? t('git.review.comments.host.send.label', { short: hostTab.short })
-                  : t('common.comment.label')
+              hostTab.blocked ||
+              t('git.review.comments.host.hint', { short: hostTab.short, number: hostTab.number })
             }}
-          </Button>
-        </div>
-      </template>
+          </div>
+          <Alert v-if="error" variant="error" data-testid="review-thread-error"
+            ><AlertDescription>{{ error }}</AlertDescription></Alert
+          >
+          <div class="flex flex-wrap justify-end gap-1.5">
+            <TextTooltip shortcut="form.cancel">
+              <Button
+                variant="dialog"
+                size="kira"
+                data-testid="review-thread-cancel"
+                @click="mode === 'edit' ? cancelEdit() : emit('cancel')"
+                >{{
+                  t('common.action.cancel.label')
+                }}</Button
+              >
+            </TextTooltip>
+            <TextTooltip shortcut="form.submit">
+              <Button
+                variant="dialog-primary"
+                size="kira"
+                :pending="pending"
+                :disabled="draft.trim() === '' || hostBlocked !== ''"
+                :data-testid="mode === 'edit' ? 'review-thread-save' : 'review-thread-send'"
+                @click="submit"
+              >
+                <CodiconIcon :name="mode === 'edit' ? 'save' : 'comment'" :size="13" />
+                {{
+                  mode === 'edit'
+                    ? t('common.action.save.label')
+                    : toHost && hostTab
+                      ? t('git.review.comments.host.send.label', { short: hostTab.short })
+                      : t('common.comment.label')
+                }}
+              </Button>
+            </TextTooltip>
+          </div>
+        </template>
+      </div>
     </div>
-  </div>
+  </TooltipProvider>
 </template>

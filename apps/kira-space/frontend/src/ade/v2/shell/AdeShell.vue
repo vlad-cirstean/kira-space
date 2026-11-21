@@ -32,7 +32,7 @@ const AdeTakeOverDialog = defineAsyncComponent(() => import('../sessions/AdeTake
 const AdeStageDialog = defineAsyncComponent(() => import('../stage/AdeStageDialog.vue'));
 const AdeWorkflowsPage = defineAsyncComponent(() => import('../workflows/AdeWorkflowsPage.vue'));
 
-// Top bar (tabs, capture box, Add) over the active tab; the Plan opens the panel beside it.
+// Top bar (tabs, capture box, Add) over the active tab; the Plan keeps the panel open beside it.
 const ui = useAdeBoardUiStore();
 
 function onView(view: unknown): void {
@@ -181,7 +181,7 @@ onScopeDispose(() => offReviewCode?.());
       <AdeWorkflowsPage v-else-if="ui.view === 'workflows'" />
       <template v-else>
         <AdePlanView />
-        <AdePanel v-if="ui.selectedTaskId" />
+        <AdePanel />
       </template>
     </div>
     <AdeRunDialog />

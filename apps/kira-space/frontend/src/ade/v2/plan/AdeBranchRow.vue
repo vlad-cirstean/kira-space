@@ -11,7 +11,6 @@ import { ICON } from '@theme/icons';
 import { useFocus } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import MenuIconButton from '@workbench/components/MenuIconButton.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -29,6 +28,7 @@ import {
   rowIndent,
   rowMeta,
 } from '../panel/adeRow';
+import { useChangeRequests } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
@@ -43,6 +43,7 @@ import AdeBranchTip from './AdeBranchTip.vue';
 import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import { ATTACH_GLYPH, BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
+import { BRANCH_GRID, GROUND_ROW, GROUND_SELECTED, HOVER_OVERLAY, SLOT } from './taskGrid';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
 import { useSharedRepos } from './useSharedRepos';
 
@@ -258,6 +259,10 @@ const tagProps = computed(() => ({
   tipParts: props.row.tag.tipParts,
   tone: props.row.tag.tone,
 }));
+// The PR glyph already shows a merged change request, so the tag slot stays empty then.
+const crs = useChangeRequests();
+const prMerged = computed(() => crs.data.value?.branches[props.row.id]?.state === 'merged');
+const tagRedundant = computed(() => props.row.tag.kind === 'merged' && prMerged.value);
 const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'));
 </script>
 
@@ -270,7 +275,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
       panel
         ? ADE_ROW
         : ['box-border flex w-full items-center gap-1.5 px-2', twoLine ? 'h-board-row' : 'h-row'],
-      selected ? 'bg-select' : panel ? '' : 'hover:bg-field',
+      panel ? (selected ? 'bg-select' : '') : selected ? GROUND_SELECTED : GROUND_ROW,
     ]"
     :style="panel ? rowIndent(row.depth) : undefined"
     :data-slot="panel ? 'ade-row' : undefined"
@@ -405,7 +410,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           v-if="choice"
           icon="git-compare"
           :label="t('space.ade.board.taskMenu.reviewCode.label')"
-          :kbd="formatShortcut('ade.reviewCode')"
+          shortcut="ade.reviewCode"
           class="shrink-0"
           disabled-trigger
           :pending="reviewCode.pendingFor([row.id])"
@@ -425,20 +430,16 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           class="absolute -top-1 right-0.5 box-border h-4.5 w-2 rounded-bl-kira-sm border-b-2 border-l-2 border-border"
         />
       </span>
-      <div
-        class="grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-1.5 gap-y-0.5"
-      >
+      <div :class="BRANCH_GRID">
         <Badge
           variant="chip"
-          class="max-w-20 truncate"
+          class="max-w-full justify-self-start"
           :class="repoTintOf.class"
           :style="repoTintOf.style"
           data-testid="ade-branch-repo"
-          >{{
-            row.repo
-          }}</Badge
+          ><span class="truncate">{{ row.repo }}</span></Badge
         >
-        <div class="flex h-control min-w-0 items-center gap-1.5">
+        <div class="relative flex h-control min-w-0 items-center gap-1.5">
           <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
             <span class="flex min-w-0 shrink items-center gap-1.5">
               <Badge v-if="row.isReview" data-testid="ade-owner-pill">{{ row.branch.owner }}</Badge>
@@ -450,11 +451,11 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
                 <CodiconIcon name="sparkle" :size="13" />
               </span>
               <span
-                class="truncate font-data text-kira-md font-medium"
+                class="truncate font-data text-kira-md font-normal"
                 :class="
                   row.draft || row.attach?.state === 'detached'
-                    ? 'text-muted-foreground'
-                    : 'text-fg'
+                    ? 'text-subtle'
+                    : 'text-muted-foreground group-hover/row:text-fg group-data-selected/row:text-fg'
                 "
                 data-testid="ade-branch-name"
                 >{{
@@ -506,10 +507,9 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
             ><TruncatedText :text="row.context" /></span
           >
           <span v-else class="flex-1" />
-        </div>
-        <div class="flex items-center gap-1">
           <span
-            class="hidden shrink-0 items-center gap-0.5 group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+            class="hidden group-hover/row:flex group-focus-visible/row:flex group-has-[:focus-visible]/row:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
+            :class="HOVER_OVERLAY"
             data-testid="ade-branch-actions"
           >
             <AdeTaskBranchMenu
@@ -538,7 +538,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-if="choice"
               icon="git-compare"
               :label="t('space.ade.board.taskMenu.reviewCode.label')"
-              :kbd="formatShortcut('ade.reviewCode')"
+              shortcut="ade.reviewCode"
               class="size-5 shrink-0"
               disabled-trigger
               :pending="reviewCode.pendingFor([row.id])"
@@ -549,10 +549,10 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               <VarText :parts="choice.tip" />
             </TooltipIconButton>
           </span>
+        </div>
+        <div class="flex shrink-0 items-center gap-1">
           <AdeOpStatus :task-id="row.branch.taskId" :branch-id="row.id" />
-          <AdeBranchPr :row="row" />
           <AdeAttention v-if="row.attention" :tip="row.attention" :item="row.attentionItem" />
-          <AdeTagIcon v-bind="tagProps" />
           <TooltipIconButton
             v-for="a in split.shown.filter((x) => VARIANT[x.kind] === 'dialog-danger')"
             :key="a.act?.id ?? a.kind"
@@ -571,9 +571,11 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           </TooltipIconButton>
           <slot />
         </div>
+        <span :class="SLOT"><AdeBranchPr :row="row" /></span>
+        <span :class="SLOT"><AdeTagIcon v-if="!tagRedundant" v-bind="tagProps" /></span>
         <AdeBranchTip v-if="twoLine" :row="row" :color="color">
           <div
-            class="col-span-2 col-start-2 flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
+            class="col-start-2 col-end-[-1] flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
             data-testid="ade-branch-line2"
           >
             <AdeBranchProg v-if="row.prog" :prog="row.prog" />

@@ -125,7 +125,7 @@ func EditMenu() []Item {
 func AppMenuHead() []Item {
 	return []Item{
 		{Kind: ItemRole, Role: application.About},
-		{Kind: ItemEmit, Label: i18n.T("backend.menu.checkForUpdates.label", nil), Channel: appevent.ChannelCheckForUpdates},
+		{Kind: ItemEmit, Label: i18n.T("backend.menu.checkForUpdates.label", nil), Accelerator: Shortcuts["app.checkForUpdates"].Accelerator(), Channel: appevent.ChannelCheckForUpdates},
 		{Kind: ItemSeparator},
 	}
 }

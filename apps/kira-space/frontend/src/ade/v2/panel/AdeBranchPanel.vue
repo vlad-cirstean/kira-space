@@ -17,6 +17,7 @@ import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statu
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
@@ -292,6 +293,11 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     ]"
   >
     <template #header>
+      <ColorLine
+        data-testid="ade-task-line"
+        variant="edge"
+        :color="card.review ? 'var(--kira-info)' : card.color"
+      />
       <DetailHeader
         data
         wrap
@@ -312,12 +318,6 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
           </Button>
         </template>
         <template #leading>
-          <span
-            class="box-border size-3 shrink-0 rounded-kira-sm border-2"
-            :class="card.review && 'border-info'"
-            :style="card.review ? undefined : { borderColor: card.color }"
-            data-testid="ade-panel-dot"
-          />
           <TextTooltip :text="row.tag.tip">
             <Badge :variant="TONE_BADGE[THEME_TONE[row.tag.tone]]">{{ chipLabel }}</Badge>
           </TextTooltip>

@@ -320,6 +320,7 @@ onUnmounted(() => {
         :icon="ICON.search"
         :label="t('studio.http.response.find.label')"
         :pressed="findOpen"
+        shortcut="view.find"
         data-testid="http-find-toggle"
         @click="toggleFind"
       />

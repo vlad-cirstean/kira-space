@@ -285,7 +285,7 @@ full step-by-step. All *not yet run*.
     shows an alert naming the install log.
 19. Whether any macOS App Management privacy prompt appeared during the self-replace, in which
     mode, and what the user had to grant (§2.6's own open risk).
-20. A dev build makes no request to `api.github.com` at all (no update item, no dialog) — checked
+20. A dev build makes no request to `github.com` or `api.github.com` at all (no update item, no dialog) — checked
     with Little Snitch or `nettop` during a `bun run dev` session.
 
 ## 5. Off-macOS: what this environment could actually check
@@ -425,8 +425,10 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    PR merges, which the ruleset gates on PR CI, and `tag` refuses any other commit.
 3. `publish` (ubuntu) runs only when `build` passed. It first refuses a tag that moved since
    `tag` resolved it, re-checks the artifact hashes, refuses
-   a tag that already has a published release, creates a draft with both images, verifies each
-   asset (`state`, `size`, `sha256` digest), then publishes with one API call. A failed job leaves
+   a tag that already has a published release, creates a draft with the disk image, builds the
+   release index from the releases listing (`go run ./scripts/releaseindex`, digests are GitHub's own;
+   a line must equal the local size and sha256) and uploads it as `kira-space-releases.txt`
+   (prereleases get none), verifies both assets (`state`, `size`, `sha256` digest), then publishes with one API call. A failed job leaves
    no release and no draft; a failure after the draft exists deletes it.
 4. The release is public at once and `/releases/latest` serves it. The §4 real-hardware checks run
    after publish against the published assets. A failure found there means a fixed next patch tag
@@ -434,8 +436,10 @@ repo the macOS job bills at 10x, about 190 billed minutes in total.
    `/releases/latest` falls back to the previous one and the updater's step target falls back to
    the previous last patch. Installed copies are not downgraded. Never delete a kept
    release, or its assets, by hand: retention (below) keeps each minor's `.0`, first and last release because the
-   updater steps to them. `install-smoke` runs `install.sh` twice: first the latest-release path,
-   then `--tag=<tag>` over it. Each run waits 5s, then retries up to 2 times with 10s and 15s backoff (30s total max) (unauthenticated GitHub API 403s right after publish). Never re-dispatch `release.yml` for a tag retention deleted: `publish`
+   updater steps to them. `install-smoke` runs `install.sh` three times, no retry or delay: the latest-release path,
+   `--tag=<tag>` over it, then (plain tag, patch not 0) a self-update from the minor's first release
+   without `--tag`, which must stage `<tag>`. It then asserts no run logged `using the GitHub API`.
+   Never re-dispatch `release.yml` for a tag retention deleted: `publish`
    refuses only a tag that has a published release, so it would republish an old version.
 
 Recovery:
@@ -479,14 +483,23 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
 - **S8** — `apps/kira-space/main.go` calls no `os.Getenv` at all — true since `KIRA_G1_BLANK` was
   deleted. A precise, low-false-positive invariant for the app's own entry point.
 - **S10** — no reference under `apps/`, `packages/` or `internal/` to `browser_download_url` or
-  `releases/download` — rescoped by P119 to include `internal/` (`appupdate` now lives there).
-  `scripts/` is deliberately excluded: `scripts/install.sh` is the one sanctioned downloader, see
-  below.
+  `releases/download` or `releases/latest/download` — rescoped by P119 to include `internal/`
+  (`appupdate` now lives there). The one allowed hit is `internal/appupdate/checker.go`'s `indexURL`
+  (index metadata, never a binary). `scripts/` is deliberately excluded: `scripts/install.sh` is
+  the one sanctioned downloader, see below.
 - **S11** (P119) — the curl installer and its Go counterpart agree on their one shared contract:
   `scripts/install.sh` exists and passes `sh -n`; its line-2 contract marker
   (`# kira-install-contract: 2`) matches `internal/appupdate/install.go`'s own constant;
   `raw.githubusercontent.com` appears exactly once across `apps/`, `packages/`, `internal/`
-  (`InstallScriptURL`); `install.sh`'s `ASSET` equals `internal/appupdate`'s `macAsset` (P653); `shellcheck` runs against the script when it's on `PATH`.
+  (`InstallScriptURL`); `install.sh`'s `ASSET` equals `internal/appupdate`'s `macAsset` (P653); `install.sh`'s `INDEX_ASSET` equals `internal/appupdate`'s `releaseIndexAsset` and `release.yml` names it (P707); `shellcheck` runs against the script when it's on `PATH`.
+- **S16** (P653, P707) — `scripts/check-install-step.ts` replays `internal/releaseline/testdata/next_step_index.json`
+  (the Go stepping table rendered as release indexes) through `install.sh`'s awk `index_next_step`,
+  and checks the JXA `apiToIndex` fallback renders the same text as `releaseline.FormatIndex`.
+- **S17** (P707) — `scripts/check-install-resolve.ts` runs `resolve_release` and `download_release` against a
+  local fake GitHub (`Bun.serve`; the script's `GH_WEB`, `GH_API`, `CURL_PROTO` globals point at it):
+  latest, `--tag`, stepping, size and sha256 mismatch, malformed or failing index, missing disk
+  image, and the API fallback's 403 and 429 errors. The request log proves the normal path makes no API
+  call. The API-listing case needs `osascript` and runs only on macOS (the release build).
 - **S13** (P332) — Kira Space's two Info plists match `go run ./apps/kira-space/tools/gendoctypes
   --check`: the generated document-type and imported-UTI block equals `internal/filetypes`.
 
@@ -495,9 +508,10 @@ those was an electron-builder differential-update artifact that has no equivalen
 by construction rather than deleted per build.
 
 **P66 (v1.6) added an update-*availability* check; P119 (v1.9) added the install itself, still only
-on an explicit click.** A tagged release build polls `GET https://api.github.com/repos/
-vlad-cirstean/kira-space/releases` (P653; paged, 100 a page; repo-root `internal/appupdate`, no
-`gh` CLI dependency — public metadata needs no per-user credential) and, when `internal/releaseline`
+on an explicit click.** A tagged release build fetches `https://github.com/
+vlad-cirstean/kira-space/releases/latest/download/kira-space-releases.txt` (P707, the release index;
+repo-root `internal/appupdate`, no `gh` CLI dependency — public metadata needs no per-user
+credential, and a web redirect has no 60 requests an hour API limit) and, when `internal/releaseline`
 finds a step, shows a status-bar item (`internal/bridge/update.go`,
 `packages/workbench/src/components/{UpdateAvailableItem,UpdateDialog}.vue`) that opens a modal
 dialog with an **Update** button. Clicking it re-checks availability, then `internal/
@@ -516,12 +530,26 @@ first, and the check skips drafts and prereleases, so a failed run never shows u
 newer, else the first release of the next minor (`X.(Y+1).0`, or its first patch if `.0` was never
 published). A release counts only when it is published, not a prerelease, plain `vX.Y.Z`, and its
 `kira-space-macos-arm64.dmg` is uploaded and non-empty. The app passes the target to `install.sh
---tag=`; without `--tag` the script installs `/releases/latest`, which is the clean-install path.
-Apps up to 0.3.14 pass no `--tag` in self-update mode (`--wait-pid`), so the script steps itself: it lists
-`/releases` (up to 10 pages), reads the installed bundle's `CFBundleShortVersionString` and applies the same
-rule in a JXA function (`nextStep`). It falls back to `/releases/latest` only when no version or step is
-found. `verify-packaging.sh` S16 replays `internal/releaseline/testdata/next_step.json`, the table the Go
-test uses, through that function, so the two cannot drift.
+--tag=`; without `--tag` the script installs the newest release, which is the clean-install path.
+
+**The release index (P707).** Every non-prerelease publish uploads `kira-space-releases.txt`
+(`# kira-release-index 1`, then one `<tag> <asset> <size> sha256:<hex>` line per eligible release,
+built by `internal/releaseline.FormatIndex`). `install.sh` and the app read it from
+`releases/latest/download/`, which is never a draft or prerelease, and download the image from
+`releases/download/<tag>/`; neither calls `api.github.com`, so shared-IP rate limits no longer break
+install or update. Readers reject any malformed line, duplicate, other header or file over 1 MiB.
+The index is a publish-time snapshot: change draft or prerelease flags only by deleting a release,
+never by editing them after publish. `--tag` of a tag not in the index dies with `not a published
+release`. Retention can leave a deleted intermediate listed until the next publish; `--tag` of it dies
+with `not a published release (its disk image is gone, HTTP 404)`. Step targets (a minor's first and last release) are always kept.
+Apps up to 0.3.14 pass no `--tag` in self-update mode (`--wait-pid`), so the script steps itself with
+an awk `index_next_step` over the index and the installed bundle's `CFBundleShortVersionString`,
+falling back to the index's newest release when no version or step is found. S16 holds it to the Go
+table. **Transitional fallback:** while the latest release has no index (HTTP 404: between the
+merge of this change and the v0.3.22 publish, or if that release fails) `install.sh` lists
+`/releases` over the API (up to 10 pages, no retry) and converts it with one JXA function
+(`apiToIndex`); a 403 or 429 there dies naming the rate limit. Drop the fallback, its JXA and S16's
+parity check at the v0.4 minor bump.
 Last patch holds a minor's migrations, so an old install must pass through it.
 
 **Release retention (P653, P656).** `release-retention.yml` deletes releases the updater no longer
@@ -531,7 +559,7 @@ uploaded), the 5 newest releases of the current minor, and the `/releases/latest
 drafts, prereleases and `/releases/latest` are never touched; a deleted release's tag stays. The only
 endpoint it deletes through is `releases/{id}`; the TSV is `release id, tag`; a 404 on delete counts as
 already deleted. Selection is Go (`scripts/releaseretention`, sharing `internal/releaseline` with the
-updater). Triggers: `workflow_run` after a successful `Release`, a daily schedule as fallback (the plan
+updater and the release index). Triggers: `workflow_run` after a successful `Release`, a daily schedule as fallback (the plan
 is idempotent), and `workflow_dispatch` with `dry_run` (default `true`). Unattended runs only delete when the repository variable
 `RELEASE_RETENTION` is `apply`; otherwise they dry-run. Each decision is logged to the job summary.
 

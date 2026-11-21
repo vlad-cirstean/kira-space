@@ -3,6 +3,7 @@ package harness
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 )
 
@@ -42,8 +43,9 @@ type HookReply struct {
 // HookListener is one running listener.
 type HookListener interface {
 	// Compose adds the listener to an interactive command and returns the env it needs. The env
-	// can carry a secret: never return it from a bound method.
-	Compose(terminalID, cwd, command string) (string, []string)
+	// can carry a secret: never return it from a bound method. addDirs are extra dirs the agent may
+	// work in, granted through the settings the listener composes.
+	Compose(terminalID, cwd, command string, addDirs []string) (string, []string)
 	Status() HookStatus
 	Close() error
 }
@@ -53,7 +55,7 @@ type HookListener interface {
 type ConfigMerger interface {
 	// ComposeInto adds Kira's hooks to configFile in place and returns command unchanged with the
 	// env the launch needs. A failure fails the launch: Kira's hooks are always on.
-	ComposeInto(terminalID, cwd, command, configFile string) (string, []string, error)
+	ComposeInto(terminalID, cwd, command, configFile string, addDirs []string) (string, []string, error)
 }
 
 // HookStatus is a listener's state.
@@ -200,18 +202,22 @@ func (h *Hooks) Stop() error {
 
 // Compose returns command unchanged with a nil env for a provider without a running listener. With
 // a configFile and a listener that is a ConfigMerger, Kira's hooks go into that file; otherwise the
-// listener adds its own settings flag.
-func (h *Hooks) Compose(provider, terminalID, cwd, command, configFile string) (string, []string, error) {
+// listener adds its own settings flag. addDirs ride in that settings source; with no listener they
+// are not granted (a command-line grant would bring back the blocking trust dialog).
+func (h *Hooks) Compose(provider, terminalID, cwd, command, configFile string, addDirs []string) (string, []string, error) {
 	h.mu.Lock()
 	l := h.listeners[provider]
 	h.mu.Unlock()
 	if l == nil {
+		if len(addDirs) > 0 {
+			slog.Warn("agent hooks: dirs not granted", "scope", "ade", "provider", provider, "dirs", addDirs)
+		}
 		return command, nil, nil
 	}
 	if m, ok := l.(ConfigMerger); ok && configFile != "" {
-		return m.ComposeInto(terminalID, cwd, command, configFile)
+		return m.ComposeInto(terminalID, cwd, command, configFile, addDirs)
 	}
-	composed, env := l.Compose(terminalID, cwd, command)
+	composed, env := l.Compose(terminalID, cwd, command, addDirs)
 	return composed, env, nil
 }
 

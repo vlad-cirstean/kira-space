@@ -3,9 +3,11 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
+import AdeTaskKey from '../plan/AdeTaskKey.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
 import AdeTaskTitle from '../plan/AdeTaskTitle.vue';
@@ -24,7 +26,11 @@ function openMore(ev: MouseEvent): void {
   if (ev.currentTarget instanceof Element) menu.openAt(ev.currentTarget);
 }
 const facts = computed(() =>
-  [props.card.meta, props.card.task.notes ? t('space.common.notes.label') : '']
+  [
+    props.card.meta,
+    props.card.repos.join(' · '),
+    props.card.task.notes ? t('space.common.notes.label') : '',
+  ]
     .filter(Boolean)
     .join(' · '),
 );
@@ -34,12 +40,9 @@ const facts = computed(() =>
   <!-- biome-ignore lint/a11y/useSemanticElements: the row holds buttons a button cannot. -->
   <div
     :class="
-      cn(
-        rowVariants({ layout: 'tree', selected }),
-        'group/head box-border cursor-grab gap-2 border-l-3 py-1',
-      )
+      cn(rowVariants({ layout: 'tree', selected }), 'group/head box-border cursor-grab gap-2 py-1')
     "
-    :style="{ ...rowIndent(0), borderLeftColor: card.color }"
+    :style="rowIndent(0)"
     role="button"
     tabindex="0"
     :data-selected="selected || undefined"
@@ -54,14 +57,16 @@ const facts = computed(() =>
     <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
-    <span class="flex min-w-0 flex-1 items-center" data-testid="ade-shelf-title">
+    <ColorLine data-testid="ade-task-line" variant="mark" :color="card.color" />
+    <span class="flex min-w-0 flex-1 items-center gap-1.5" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
+      <AdeTaskKey :card="card" />
     </span>
     <AdeEstimateChip :card="card" />
     <AdeTaskStatusMenu :card="card" />
     <span
       v-if="facts"
-      class="max-w-2/5 shrink-0 truncate text-kira-sm text-subtle"
+      class="max-w-1/4 shrink-0 truncate text-kira-sm text-subtle"
       data-testid="ade-shelf-facts"
       >{{
         facts

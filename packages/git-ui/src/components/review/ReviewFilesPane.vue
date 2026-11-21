@@ -27,7 +27,6 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed } from 'vue';
 import { ACTION_ICONS } from '../../icons/index.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
@@ -208,7 +207,7 @@ function onToggleWorkingReviewed(path: string): void {
         <TooltipIconButton
           icon="arrow-up"
           :label="t('git.review.files.prevUnreviewed.tooltip')"
-          :kbd="reviewShortcuts ? formatShortcut('review.previousUnreviewed') : undefined"
+          :shortcut="reviewShortcuts ? 'review.previousUnreviewed' : undefined"
           :disabled="!canStep"
           data-testid="review-prev-unreviewed"
           @click="emit('step', 'previous')"
@@ -216,7 +215,7 @@ function onToggleWorkingReviewed(path: string): void {
         <TooltipIconButton
           icon="arrow-down"
           :label="t('git.review.files.nextUnreviewed.tooltip')"
-          :kbd="reviewShortcuts ? formatShortcut('review.nextUnreviewed') : undefined"
+          :shortcut="reviewShortcuts ? 'review.nextUnreviewed' : undefined"
           :disabled="!canStep"
           data-testid="review-next-unreviewed"
           @click="emit('step', 'next')"

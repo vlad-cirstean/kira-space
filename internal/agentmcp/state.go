@@ -48,6 +48,10 @@ type stateAction struct {
 
 func spaceOnly(ts toolSet) bool { return ts.space }
 
+// The CLI keeps the first schema a conversation loads, and a review round resumes the implementer's
+// Space conversation: a Space state lists review.reply too.
+func reviewOrSpace(ts toolSet) bool { return ts.review || ts.space }
+
 var stateActions = []stateAction{
 	{"repo.declare", []stateField{{"repos", true, kindList}}, `"repos": ["api", "app"]`, llmprompts.HeadlessStateRepoDeclare, spaceOnly},
 	{"branch.request", []stateField{{"repo", true, kindString}, {"branch", true, kindString}, {"base", false, kindString}, {"existing", false, kindBool}},
@@ -64,7 +68,7 @@ var stateActions = []stateAction{
 	{"remote.fetch", []stateField{{"remote", false, kindString}}, `"remote": "origin"`, llmprompts.HeadlessStateRemoteFetch, func(ts toolSet) bool { return ts.sandbox }},
 	{"branch.push", []stateField{{"force", false, kindBool}}, `"force": false`, llmprompts.HeadlessStateBranchPush, func(ts toolSet) bool { return ts.sandbox && ts.push }},
 	{"review.reply", []stateField{{"id", true, kindString}, {"reply", true, kindString}, {"resolved", false, kindBool}},
-		`"id": "c-17", "reply": "Done.", "resolved": true`, llmprompts.HeadlessStateReviewReply, func(ts toolSet) bool { return ts.review }},
+		`"id": "c-17", "reply": "Done.", "resolved": true`, llmprompts.HeadlessStateReviewReply, reviewOrSpace},
 	{"step.finish", []stateField{{"status", true, kindString}, {"reason", false, kindString}, {"conflictedFiles", false, kindList}, {"lastGitError", false, kindString}, {"tried", false, kindString}},
 		`"status": "done"`, llmprompts.HeadlessStateStepFinish, spaceOnly},
 }
@@ -583,7 +587,7 @@ func (s *Server) sandboxState(ctx context.Context, req *mcp.CallToolRequest, d s
 func (s *Server) reviewState(g Grant, d stateCallArgs) Item {
 	id := strings.TrimPrefix(d.str("id"), "#")
 	if g.RunID == "" || g.Review == nil || s.review == nil {
-		return Item{ID: id, Status: StatusInvalid, Message: "review.reply is not available for this session."}
+		return Item{ID: id, Status: StatusInvalid, Message: "review.reply works only in a review round: no comments were sent to you."}
 	}
 	if !slices.Contains(g.Review.CommentIDs, id) {
 		return Item{ID: id, Status: StatusInvalid, Message: fmt.Sprintf("comment %s was not sent to you.", id), Fix: exampleCall("review.reply")}

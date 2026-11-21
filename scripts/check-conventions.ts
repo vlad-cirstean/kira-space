@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N17.
+ * Code convention guard N1-N7 and N8-N19.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -28,6 +28,16 @@
  * discard/force need `dialog-danger`; no `dialog*` variant takes a `text|bg|border-error|ok|warn`
  * class. A justified exception is marked `<!-- conventions-allow N17: reason -->` before the element.
  *
+ * N18 selection stays neutral (P710): the selection and focus tokens are grey, Monaco and xterm read
+ * only grey tokens for selection keys, `::selection` is themed, and no selection variant or
+ * `selected ?` expression picks a blue utility or CSS rule. Blue means primary, info or data.
+ *
+ * N19 every shortcut shows (P712): each `SHORTCUTS` id has a display site (`shortcut` prop or menu item
+ * field, `moduleShortcut`, `ShortcutKbd`, or a Go menu accelerator) or a reason in
+ * `SHORTCUT_NO_CONTROL`; a file that binds an id (`useShortcut`, `shortcutKeydown`, `shortcutFor`,
+ * `registerCommand`) displays it in its directory or is mapped in `SHORTCUT_SHOWN_ELSEWHERE`.
+ * Heuristic: it cannot prove the shown control runs the same handler; the UI spec does.
+ *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
  */
@@ -51,7 +61,9 @@ export type Rule =
   | 'N14'
   | 'N15'
   | 'N16'
-  | 'N17';
+  | 'N17'
+  | 'N18'
+  | 'N19';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -411,6 +423,134 @@ export function menuShortcutHits(
   return hits;
 }
 
+/** N19: ids with no control to carry a hint; each needs a reason. */
+export const SHORTCUT_NO_CONTROL: Readonly<Record<string, string>> = {
+  'menu.open': 'context-menu key: OS convention like right-click, no button runs it',
+  'list.moveUp': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveDown': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveLeft': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveRight': 'keyboard reorder; no control moves an item, drag only',
+  'editor.suggest': 'completion popup opens from typing; no control',
+  'tree.selectAll': 'no Select all control',
+};
+
+/**
+ * N19: a binding file whose chord shows elsewhere. Value is the file that displays it (verified to
+ * hold the display site), or null for a chord with no control in that view (reason in a comment).
+ */
+export const SHORTCUT_SHOWN_ELSEWHERE: Readonly<Record<string, string | null>> = {
+  'apps/kira-space/frontend/src/studio/views/console/ConsoleSlickGrid.vue':
+    'apps/kira-space/frontend/src/studio/views/grid/menu.ts',
+  // Value auto-stages on edit; there is no Save or Submit control.
+  'apps/kira-space/frontend/src/studio/views/shared/celleditor/CellEditorView.vue': null,
+  // Monaco's own find widget answers the chord; no toolbar control runs it.
+  'apps/kira-space/frontend/src/views/repo/RepoDiffView.vue': null,
+  'apps/kira-space/frontend/src/views/repo/useReadonlyFileViewer.ts': null,
+  'packages/git-ui/src/lib/useReviewStepping.ts':
+    'packages/git-ui/src/components/review/ReviewFilesPane.vue',
+  'packages/workbench/src/behaviour/panelSearch.ts':
+    'apps/kira-space/frontend/src/studio/workbench/panels/ProjectPanel.vue',
+};
+
+const SHORTCUT_SOURCE_ROOTS = ['packages/', 'apps/kira-space/frontend/src/'];
+const SHORTCUT_GO_MENUS = ['internal/shell/menu.go', 'apps/kira-space/internal/appshell/menu.go'];
+const REGISTRY_ID = /['"]([a-z]+\.[A-Za-z]+)['"]/g;
+
+/** Registry ids a source shows: `shortcut` prop or item field (also in a ternary), `moduleShortcut`, `<ShortcutKbd>`, or Go `Shortcuts["id"].Accelerator()`. */
+export function displayedShortcutIds(source: string): Set<string> {
+  const ids = new Set<string>();
+  for (const m of source.matchAll(/(?:\bshortcut:|:?\bshortcut=)([^\n]*)/g)) {
+    for (const q of (m[1] ?? '').matchAll(REGISTRY_ID)) ids.add(q[1] ?? '');
+  }
+  for (const m of source.matchAll(/\bmoduleShortcut\(\s*['"]\w+['"],\s*['"]([\w.]+)['"]/g))
+    ids.add(m[1] ?? '');
+  for (const m of source.matchAll(/<ShortcutKbd\s+id="([\w.]+)"/g)) ids.add(m[1] ?? '');
+  for (const m of source.matchAll(/Shortcuts\["([\w.]+)"\]\.Accelerator\(\)/g)) ids.add(m[1] ?? '');
+  return ids;
+}
+
+/** Registry ids a source binds through a literal id list or `registerCommand('id')`. */
+export function boundShortcutIds(source: string): Set<string> {
+  const ids = new Set<string>();
+  for (const m of source.matchAll(/\b(?:useShortcut|shortcutKeydown|shortcutFor)\(/g)) {
+    const rest = source.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 240);
+    const list = /\[([^\]]*)\]/.exec(rest);
+    for (const q of (list?.[1] ?? '').matchAll(REGISTRY_ID)) ids.add(q[1] ?? '');
+  }
+  for (const m of source.matchAll(/\bregisterCommand\(\s*['"]([\w.-]+)['"]/g)) ids.add(m[1] ?? '');
+  return ids;
+}
+
+function unmappedBindingHits(
+  path: string,
+  src: string,
+  scopes: ReadonlyMap<string, string>,
+  shown: ReadonlyMap<string, ReadonlySet<string>>,
+  noControl: Readonly<Record<string, string>>,
+  target: string | null | undefined,
+): Hit[] {
+  if (target === null) return [];
+  const dir = path.slice(0, path.lastIndexOf('/') + 1);
+  const hits: Hit[] = [];
+  for (const id of boundShortcutIds(src)) {
+    if (!scopes.has(id) || scopes.get(id) === 'global' || id in noControl) continue;
+    if ([...shown].some(([p, ids]) => p.startsWith(dir) && ids.has(id))) continue;
+    if (target !== undefined && shown.get(target)?.has(id)) continue;
+    hits.push({
+      rule: 'N19',
+      path,
+      message:
+        target === undefined
+          ? `binds '${id}' but nothing in ${dir} shows it; add a hint or map it in SHORTCUT_SHOWN_ELSEWHERE`
+          : `SHORTCUT_SHOWN_ELSEWHERE maps this file to ${target}, which does not show '${id}'`,
+    });
+  }
+  return hits;
+}
+
+/**
+ * N19. `sources` is every non-spec source (path to text); `scopes` maps id to scope. Half one: every
+ * registry id shows somewhere or has a `noControl` reason. Half two: a bound id shows in its
+ * binding file's directory, or the file is in `elsewhere`.
+ */
+export function shortcutDisplayHits(
+  scopes: ReadonlyMap<string, string>,
+  sources: ReadonlyMap<string, string>,
+  noControl: Readonly<Record<string, string>> = SHORTCUT_NO_CONTROL,
+  elsewhere: Readonly<Record<string, string | null>> = SHORTCUT_SHOWN_ELSEWHERE,
+): Hit[] {
+  const hits: Hit[] = [];
+  const shown = new Map<string, Set<string>>();
+  const everywhere = new Set<string>();
+  for (const [path, src] of sources) {
+    const ids = displayedShortcutIds(src);
+    shown.set(path, ids);
+    for (const id of ids) everywhere.add(id);
+  }
+  for (const id of Object.keys(noControl)) {
+    if (!scopes.has(id)) {
+      hits.push({
+        rule: 'N19',
+        path: SHORTCUTS_PATH,
+        message: `SHORTCUT_NO_CONTROL names unknown id '${id}'`,
+      });
+    }
+  }
+  for (const id of scopes.keys()) {
+    if (everywhere.has(id) || id in noControl) continue;
+    hits.push({
+      rule: 'N19',
+      path: SHORTCUTS_PATH,
+      message: `shortcut '${id}' has no display site (shortcut prop, menu item shortcut, moduleShortcut, ShortcutKbd or Go accelerator); add one or a SHORTCUT_NO_CONTROL reason`,
+    });
+  }
+  for (const [path, src] of sources) {
+    if (!/\.(?:ts|vue)$/.test(path)) continue;
+    hits.push(...unmappedBindingHits(path, src, scopes, shown, noControl, elsewhere[path]));
+  }
+  return hits;
+}
+
 /** N12: a state dir needs 2+ files (one file is `state.ts`); menu builders are `menu.ts`. */
 export function stateAndMenuNameHits(paths: readonly string[]): Hit[] {
   const hits: Hit[] = [];
@@ -486,6 +626,28 @@ function menuHits(allPaths: readonly string[]): Hit[] {
     );
   }
   return hits;
+}
+
+function shortcutHits(allPaths: readonly string[]): Hit[] {
+  const scopes = new Map(
+    [
+      ...readFileSync(join(REPO_ROOT, SHORTCUTS_PATH), 'utf8').matchAll(
+        /'([\w.]+)':\s*\{\s*scope:\s*'(\w+)'/g,
+      ),
+    ].map((m) => [m[1] ?? '', m[2] ?? ''] as const),
+  );
+  const tsPaths = allPaths.filter(
+    (p) =>
+      SHORTCUT_SOURCE_ROOTS.some((r) => p.startsWith(r)) &&
+      !p.includes('/node_modules/') &&
+      !/\.(?:spec|test)\.ts$/.test(p) &&
+      !p.includes('/testing/'),
+  );
+  const sources = readAll([
+    ...tsPaths,
+    ...SHORTCUT_GO_MENUS.filter((p) => existsSync(join(REPO_ROOT, p))),
+  ]);
+  return shortcutDisplayHits(scopes, sources);
 }
 
 function fileHits(path: string, dirs: Set<string>): Hit[] {
@@ -705,6 +867,285 @@ function rawSqlFileHits(): Hit[] {
   return paths.flatMap((p) => rawSqlHits(p, readFileSync(join(REPO_ROOT, p), 'utf8')));
 }
 
+const NEUTRAL_TOKENS = [
+  '--kira-select',
+  '--kira-select-edge',
+  '--kira-select-text',
+  '--kira-focus',
+  '--kira-bg-input',
+] as const;
+// Resolved through var() to a neutral token; checked by name, not hex.
+const NEUTRAL_ALIAS_TARGETS = new Set([
+  '--kira-fg',
+  '--kira-bg-chrome',
+  '--kira-bg',
+  '--kira-bg-elevated',
+  '--kira-select-edge',
+]);
+const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg', '--kira-control-edge'] as const;
+const NEUTRAL_SPREAD = 12;
+const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
+const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
+const TERMINAL_PATH = 'packages/workbench/src/terminal/terminalRenderer.ts';
+const BASE_CSS_PATH = 'packages/theme/src/base.css';
+const TOKENS_CSS_PATH = 'packages/theme/src/tokens.css';
+const MONACO_SELECTION_KEY =
+  /[Ss]election|focusBackground|focusOutline|focusBorder|dropBackground|hoverHighlight|wordHighlight|inputOption\.active|peekView\.border/;
+const MONACO_REQUIRED_KEYS = [
+  'editor.selectionBackground',
+  'editor.inactiveSelectionBackground',
+  'editor.selectionHighlightBackground',
+  'editor.wordHighlightStrongBackground',
+  'editor.hoverHighlightBackground',
+  'editorSuggestWidget.selectedBackground',
+  'list.activeSelectionBackground',
+  'list.focusBackground',
+  'list.inactiveSelectionBackground',
+  'list.inactiveFocusBackground',
+  'list.dropBackground',
+  'peekViewResult.selectionBackground',
+  'inputOption.activeBackground',
+  'list.activeSelectionForeground',
+  'inputOption.activeForeground',
+  'inputOption.activeBorder',
+  'peekView.border',
+  'minimap.selectionHighlight',
+];
+const BLUE_UTILITY =
+  '(?:bg|border|ring|outline|decoration|text|fill|stroke)-(?:focus|primary|info|accent|status-(?:blue|sky|indigo)|conn-(?:blue|indigo|cyan))(?:/\\d+)?(?![\\w-])';
+const SELECTION_VARIANT =
+  '(?:data-\\[(?:selected|highlighted|state=(?:on|active|checked|open))[^\\]]*\\]|data-(?:selected|highlighted)|aria-(?:selected|current|pressed|checked)|group-data-selected/[\\w-]+):';
+const BLUE_BEHIND_VARIANT = new RegExp(`${SELECTION_VARIANT}(?:[\\w-]+:)*${BLUE_UTILITY}`);
+const SELECTED_EXPR = /(?:\bselected|\bisSelected|\w+Selected)\b[^'"`\n]*(?:\?|&&)/;
+const BLUE_LITERAL = new RegExp(`['"\`][^'"\`]*(?<![\\w-])${BLUE_UTILITY}[^'"\`]*['"\`]`);
+// Swatch pickers paint the data colour when checked.
+const N18_CLASS_ALLOW = ['ade/v2/statusColors.ts', 'connColor.ts'];
+// On-state controls paint --kira-on (grey), never --primary, in any state.
+const ON_STATE_FILES = [
+  'packages/theme/src/components/ui/checkbox/Checkbox.vue',
+  'packages/theme/src/components/ui/switch/Switch.vue',
+  'packages/theme/src/components/ui/radio-group/RadioGroupItem.vue',
+  'packages/theme/src/components/ui/progress/Progress.vue',
+];
+const BLUE_ON_STATE =
+  /(?<![\w-])(?:bg|border|text|ring)-(?:primary|accent|info|focus)(?:-foreground)?(?![\w-])/;
+// An `as-child` tooltip trigger overwrites a root's data-state, so on-state fills key on aria-checked.
+const STATE_KEYED_ON = /data-\[state=(?:checked|indeterminate)\]:(?:bg|border)-on(?![\w-])/;
+const N18_CLASS_DIRS = [
+  'apps/kira-space/frontend/src',
+  'apps/kira-space/frontend/mobile',
+  'packages/workbench/src',
+  'packages/git-ui/src',
+  'packages/docker-ui/src',
+  'packages/theme/src',
+];
+const BLUE_REF =
+  /var\(--kira-(?:accent|focus|info|status-blue|status-sky|status-indigo|conn-blue)\)/;
+const SELECTION_SELECTOR = /selected|highlight|::selection|:checked|is-active/;
+
+function hexSpread(hex: string): number | undefined {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) return undefined;
+  const ch = [m[1], m[2], m[3]].map((h) => Number.parseInt(h ?? '0', 16));
+  return Math.max(...ch) - Math.min(...ch);
+}
+
+/** N18: the selection and focus tokens are 6-digit neutral greys. */
+export function neutralTokenHits(tokensCss: string): Hit[] {
+  const hits: Hit[] = [];
+  for (const token of NEUTRAL_TOKENS) {
+    const value = new RegExp(`${token}:\\s*([^;\\s]+)`).exec(tokensCss)?.[1];
+    const spread = value === undefined ? undefined : hexSpread(value);
+    if (value === undefined) {
+      hits.push({ rule: 'N18', path: TOKENS_CSS_PATH, message: `${token} is missing` });
+    } else if (spread === undefined || spread > NEUTRAL_SPREAD) {
+      hits.push({
+        rule: 'N18',
+        path: TOKENS_CSS_PATH,
+        message: `${token} is ${value}, not a neutral 6-digit grey`,
+      });
+    }
+  }
+  for (const token of ALIASED_TOKENS) {
+    const value = new RegExp(`${token}:\\s*([^;]+);`).exec(tokensCss)?.[1]?.trim();
+    const ref = /^var\((--[\w-]+)\)$/.exec(value ?? '')?.[1];
+    if (value === undefined) {
+      hits.push({ rule: 'N18', path: TOKENS_CSS_PATH, message: `${token} is missing` });
+    } else if (!ref || !NEUTRAL_ALIAS_TARGETS.has(ref)) {
+      hits.push({
+        rule: 'N18',
+        path: TOKENS_CSS_PATH,
+        message: `${token} is ${value}, not an alias of a neutral token`,
+      });
+    }
+  }
+  return hits;
+}
+
+/** N18: Monaco and xterm selection keys read grey tokens, `::selection` is themed. */
+export function engineThemeHits(monacoTs: string, terminalTs: string, baseCss: string): Hit[] {
+  const hits: Hit[] = [];
+  const keys = new Map<string, string | undefined>();
+  for (const m of monacoTs.matchAll(/^\s*(?:'([\w.]+)'|(\w+)):\s*(.*)$/gm)) {
+    const key = m[1] ?? m[2] ?? '';
+    keys.set(key, /cssVar\(\s*'(--[\w-]+)'/.exec(m[3] ?? '')?.[1]);
+  }
+  for (const [key, token] of keys) {
+    if (!MONACO_SELECTION_KEY.test(key) || key.startsWith('editor.find')) continue;
+    if (token === undefined || !NEUTRAL_READS.has(token)) {
+      hits.push({
+        rule: 'N18',
+        path: MONACO_THEME_PATH,
+        message: `${key} must read a neutral selection token, not ${token ?? 'a literal'}`,
+      });
+    }
+  }
+  for (const key of MONACO_REQUIRED_KEYS) {
+    if (!keys.has(key)) {
+      hits.push({
+        rule: 'N18',
+        path: MONACO_THEME_PATH,
+        message: `${key} is not set; vs-dark's blue would show`,
+      });
+    }
+  }
+  for (const m of terminalTs.matchAll(/(selection\w*Background):\s*(.*)$/gm)) {
+    const token = /cssVar\(\s*'(--[\w-]+)'/.exec(m[2] ?? '')?.[1];
+    if (token === undefined || !NEUTRAL_READS.has(token)) {
+      hits.push({
+        rule: 'N18',
+        path: TERMINAL_PATH,
+        message: `${m[1]} must read a neutral selection token`,
+      });
+    }
+  }
+  if (!/::selection\s*\{[^}]*var\(--kira-select-text\)/.test(baseCss)) {
+    hits.push({
+      rule: 'N18',
+      path: BASE_CSS_PATH,
+      message: '::selection must use var(--kira-select-text)',
+    });
+  }
+  return hits;
+}
+
+/** N18: no blue utility behind a selection variant or a `selected` conditional. */
+export function selectionClassHits(path: string, source: string): Hit[] {
+  if (!/\.(?:vue|ts)$/.test(path) || path.endsWith('.spec.ts') || path.includes('/testing/')) {
+    return [];
+  }
+  if (N18_CLASS_ALLOW.some((a) => path.endsWith(a))) return [];
+  const hits: Hit[] = [];
+  const onState = ON_STATE_FILES.some((f) => path.endsWith(f));
+  source.split('\n').forEach((line, i) => {
+    const blueOn = onState ? BLUE_ON_STATE.exec(line)?.[0] : undefined;
+    if (blueOn) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-on, border-on, text-on-fg`,
+      });
+    }
+    const stateKeyed =
+      onState && !path.endsWith('Progress.vue') ? STATE_KEYED_ON.exec(line)?.[0] : undefined;
+    if (stateKeyed) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: ${stateKeyed} keys on data-state; use aria-checked or aria-[checked=mixed]`,
+      });
+    }
+    const behind = BLUE_BEHIND_VARIANT.exec(line)?.[0];
+    const picked = SELECTED_EXPR.test(line) ? BLUE_LITERAL.exec(line)?.[0] : undefined;
+    const found = behind ?? picked;
+    if (found) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: blue utility marks selection (${found.trim()}); use select/select-edge`,
+      });
+    }
+  });
+  return hits;
+}
+
+const BLUE_COLOUR_LITERAL = /#[0-9a-f]{6}\b|#[0-9a-f]{3}\b|rgba?\([^)]*\)/gi;
+
+function isBlueLiteral(literal: string): boolean {
+  let r: number;
+  let g: number;
+  let b: number;
+  if (literal.startsWith('#')) {
+    const h =
+      literal.length === 4 ? [...literal.slice(1)].map((c) => c + c).join('') : literal.slice(1);
+    [r, g, b] = [0, 2, 4].map((o) => Number.parseInt(h.slice(o, o + 2), 16)) as [
+      number,
+      number,
+      number,
+    ];
+  } else {
+    const n = (literal.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    if (n.length < 3) return false;
+    [r, g, b] = n as [number, number, number];
+  }
+  const max = Math.max(r, g, b) / 255;
+  const min = Math.min(r, g, b) / 255;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return false;
+  const sat = d / (1 - Math.abs(2 * l - 1));
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  let hue: number;
+  if (max === rn) hue = ((gn - bn) / d) % 6;
+  else if (max === gn) hue = (bn - rn) / d + 2;
+  else hue = (rn - gn) / d + 4;
+  hue = (hue * 60 + 360) % 360;
+  return sat > 0.25 && hue >= 190 && hue <= 260;
+}
+
+/** N18: a selection-named CSS rule never uses a blue token, and no .css but tokens.css holds a blue literal. */
+export function cssSelectionHits(path: string, source: string): Hit[] {
+  if (!path.endsWith('.css')) return [];
+  const hits: Hit[] = [];
+  const bare = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const selector = (m[1] ?? '').trim();
+    if (SELECTION_SELECTOR.test(selector) && BLUE_REF.test(m[2] ?? '')) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `rule '${selector.slice(0, 60)}' uses a blue token for selection`,
+      });
+    }
+  }
+  if (!path.endsWith('/tokens.css')) {
+    for (const lit of bare.match(BLUE_COLOUR_LITERAL) ?? []) {
+      if (isBlueLiteral(lit)) {
+        hits.push({ rule: 'N18', path, message: `blue colour literal ${lit} outside tokens.css` });
+      }
+    }
+  }
+  return hits;
+}
+
+function selectionHits(): Hit[] {
+  const read = (p: string) => readFileSync(join(REPO_ROOT, p), 'utf8');
+  const hits = [
+    ...neutralTokenHits(read(TOKENS_CSS_PATH)),
+    ...engineThemeHits(read(MONACO_THEME_PATH), read(TERMINAL_PATH), read(BASE_CSS_PATH)),
+  ];
+  for (const root of N18_CLASS_DIRS) {
+    for (const path of walk(root)) {
+      if (!/\.(?:vue|ts|css)$/.test(path)) continue;
+      const source = read(path);
+      hits.push(...selectionClassHits(path, source), ...cssSelectionHits(path, source));
+    }
+  }
+  return hits;
+}
+
 function collectHits(): Hit[] {
   const hits: Hit[] = [];
   const dirs = new Set<string>();
@@ -722,7 +1163,9 @@ function collectHits(): Hit[] {
   );
   hits.push(...specHits());
   hits.push(...rawSqlFileHits());
+  hits.push(...selectionHits());
   hits.push(...menuHits(allPaths));
+  hits.push(...shortcutHits(allPaths));
   for (const { path, literal } of EVENT_FILES) {
     hits.push(...eventHits(path, readFileSync(join(REPO_ROOT, path), 'utf8'), literal));
   }
@@ -761,7 +1204,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N17).');
+  console.log('check-conventions: every convention holds (N1-N19).');
   return 0;
 }
 

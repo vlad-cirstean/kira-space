@@ -13,7 +13,6 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@theme/components/ui/field';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { t } from '@theme/i18n';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import AdeLinkStrip from '../links/AdeLinkStrip.vue';
@@ -199,7 +198,7 @@ onBeforeUnmount(() => {
           variant="dialog-primary"
           size="kira-lg"
           :disabled="live || !store.toStepId"
-          :kbd="routed ? formatShortcut('form.submit') : undefined"
+          :shortcut="routed ? 'form.submit' : undefined"
           data-testid="ade-stage-move"
           @click="move"
           >{{

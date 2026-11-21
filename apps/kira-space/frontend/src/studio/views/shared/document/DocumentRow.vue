@@ -52,7 +52,7 @@ function onHeadKeydown(e: KeyboardEvent): void {
         cn(
           rowVariants({ layout: 'tree', selected: expanded }),
           'shrink-0 gap-1.5 px-2',
-          selected && 'ring-1 ring-inset ring-primary',
+          selected && 'ring-1 ring-inset ring-select-edge',
         )
       "
       role="option"

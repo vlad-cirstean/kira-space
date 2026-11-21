@@ -14,7 +14,6 @@ import { Input } from '@theme/components/ui/input';
 import { t } from '@theme/i18n';
 import { useFocusOnMount } from '@workbench/behaviour/focus';
 import SecretInput from '@workbench/components/SecretInput.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { type ComponentPublicInstance, computed, ref, useId, useTemplateRef } from 'vue';
 import { useGitCredentialStore } from '../state/gitCredential';
@@ -110,7 +109,7 @@ function onChord(event: KeyboardEvent): void {
         <Button
           variant="dialog"
           size="kira-lg"
-          :kbd="formatShortcut('prompt.deny')"
+          shortcut="prompt.deny"
           data-testid="git-credential-cancel"
           @click="onCancel"
         >
@@ -119,7 +118,7 @@ function onChord(event: KeyboardEvent): void {
         <Button
           variant="dialog-primary"
           size="kira-lg"
-          :kbd="formatShortcut('form.submit')"
+          shortcut="form.submit"
           data-testid="git-credential-submit"
           @click="onSubmit"
         >

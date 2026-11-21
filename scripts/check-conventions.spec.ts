@@ -3,16 +3,21 @@ import {
   buttonVariantHits,
   codeParityHits,
   componentsTsHit,
+  cssSelectionHits,
+  engineThemeHits,
   eventHits,
   fileNameHit,
   folderHits,
   idRegistryHits,
   menuShortcutHits,
   migrationHits,
+  neutralTokenHits,
   oversizeVueHit,
   piniaHits,
   rawIdHits,
   rawSqlHits,
+  selectionClassHits,
+  shortcutDisplayHits,
   specHelperHits,
   stateAndMenuNameHits,
   testSuffixHit,
@@ -324,5 +329,151 @@ describe('N17 semantic button variant', () => {
         `<Button\n  variant="dialog-primary"\n  :pending="a > b"\n>\n  {{ t('x.approve.label') }}\n</Button>`,
       ),
     ).toHaveLength(1);
+  });
+});
+
+describe('N18 selection stays neutral', () => {
+  const tokens = (select: string, on = 'var(--kira-fg)') =>
+    [
+      `--kira-select: ${select};`,
+      '--kira-select-edge: #71717a;',
+      '--kira-select-text: #45454d;',
+      '--kira-focus: #a1a1aa;',
+      '--kira-bg-input: #27272c;',
+      `--kira-on: ${on};`,
+      '--kira-on-fg: var(--kira-bg-chrome);',
+      '--kira-control-edge: var(--kira-select-edge);',
+    ].join('\n');
+
+  test('a blue selection token fails, the grey passes', () => {
+    expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
+    expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
+    expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain('--kira-on');
+    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(7);
+  });
+
+  test('Monaco keeps every required grey key and ::selection stays themed', () => {
+    const keys = [
+      'editor.selectionBackground',
+      'editor.inactiveSelectionBackground',
+      'editor.selectionHighlightBackground',
+      'editor.wordHighlightStrongBackground',
+      'editor.hoverHighlightBackground',
+      'editorSuggestWidget.selectedBackground',
+      'list.activeSelectionBackground',
+      'list.focusBackground',
+      'list.inactiveSelectionBackground',
+      'list.inactiveFocusBackground',
+      'list.dropBackground',
+      'peekViewResult.selectionBackground',
+      'inputOption.activeBackground',
+      'list.activeSelectionForeground',
+      'inputOption.activeForeground',
+      'inputOption.activeBorder',
+      'peekView.border',
+      'minimap.selectionHighlight',
+    ];
+    const monaco = (skip = '', literal = '') =>
+      keys
+        .filter((k) => k !== skip)
+        .map(
+          (k) =>
+            `      '${k}': ${k === literal ? "'#264f78'" : "cssVar('--kira-select', '#36363c')"},`,
+        )
+        .join('\n');
+    const term = "selectionBackground: cssVar('--kira-select-text'),";
+    const base = '::selection { background-color: var(--kira-select-text); }';
+    expect(engineThemeHits(monaco(), term, base)).toEqual([]);
+    expect(engineThemeHits(monaco('list.dropBackground'), term, base)[0]?.message).toContain(
+      'list.dropBackground',
+    );
+    expect(engineThemeHits(monaco('', 'peekView.border'), term, base)).toHaveLength(1);
+    expect(engineThemeHits(monaco(), "selectionBackground: '#264f78',", base)).toHaveLength(1);
+    expect(engineThemeHits(monaco(), term, '')).toHaveLength(1);
+  });
+
+  test('blue utilities marking selection or on-state fail, grey on-state passes', () => {
+    const hits = (path: string, src: string) => selectionClassHits(path, src);
+    expect(hits('p/X.vue', "selected ? 'border-focus' : 'border-border'")[0]?.rule).toBe('N18');
+    expect(hits('p/X.vue', "x && 'ring-1'; isSelected && 'bg-info/10'")).toHaveLength(1);
+    expect(hits('p/X.vue', "'data-[state=on]:decoration-primary underline'")).toHaveLength(1);
+    expect(hits('p/X.vue', "'aria-selected:bg-accent'")).toHaveLength(1);
+    expect(hits('p/X.vue', "selected ? 'border-select-edge' : 'border-border'")).toEqual([]);
+    expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
+    const checkbox = 'packages/theme/src/components/ui/checkbox/Checkbox.vue';
+    expect(hits(checkbox, "'data-[state=checked]:bg-primary'")[0]?.rule).toBe('N18');
+    expect(hits(checkbox, "'aria-checked:bg-on aria-checked:text-on-fg'")).toEqual([]);
+    expect(hits(checkbox, "'data-[state=checked]:bg-on'")[0]?.message).toContain('aria-checked');
+    expect(
+      hits(
+        'packages/theme/src/components/ui/progress/Progress.vue',
+        'class="bg-primary size-full"',
+      ),
+    ).toHaveLength(1);
+    expect(hits('p/X.spec.ts', "selected ? 'border-focus' : ''")).toEqual([]);
+  });
+
+  test('CSS selection rules and blue literals fail outside tokens.css', () => {
+    expect(
+      cssSelectionHits('p/a.css', '.row.selected { outline: 1px solid var(--kira-accent); }'),
+    ).toHaveLength(1);
+    expect(
+      cssSelectionHits('p/a.css', '.row.inserted { background: var(--kira-accent); }'),
+    ).toEqual([]);
+    expect(cssSelectionHits('p/a.css', '.x { color: #3b6ed1; }')).toHaveLength(1);
+    expect(cssSelectionHits('p/tokens.css', ':root { --a: #3b6ed1; }')).toEqual([]);
+    expect(cssSelectionHits('p/a.css', '.x { color: #36363c; } /* #3b6ed1 */')).toEqual([]);
+  });
+});
+
+describe('N19 every shortcut shows', () => {
+  const scopes = new Map([
+    ['x.y', 'view'],
+    ['x.z', 'view'],
+    ['g.go', 'global'],
+    ['n.one', 'view'],
+  ]);
+  const noControl = { 'n.one': 'no control' };
+  const shows = (...ids: string[]): string => ids.map((id) => `<Btn shortcut="${id}" />`).join('');
+  // Coverage filler: every id shown far from the binding files under test.
+  const far: [string, string] = ['p/far/F.vue', shows('x.y', 'x.z', 'g.go')];
+  const bind = "useShortcut(root, ['x.y'], run)";
+
+  test('an id with no display site fails; a SHORTCUT_NO_CONTROL id passes', () => {
+    const hits = shortcutDisplayHits(scopes, new Map([['p/a/A.vue', shows('x.y')]]), noControl, {});
+    expect(hits.map((h) => h.message)).toEqual([
+      expect.stringContaining("'x.z'"),
+      expect.stringContaining("'g.go'"),
+    ]);
+  });
+  test('prop, ternary, menu field, moduleShortcut, ShortcutKbd and Go accelerators count', () => {
+    const sources = new Map([
+      ['p/a/A.vue', ':shortcut="on ? \'x.y\' : undefined" <ShortcutKbd id="x.z" />'],
+      ['p/a/menu.ts', "{ shortcut: moduleShortcut('api', 'g.go') }"],
+      ['p/a/m.go', 'Accelerator: Shortcuts["n.one"].Accelerator()'],
+    ]);
+    expect(shortcutDisplayHits(scopes, sources, {}, {})).toEqual([]);
+  });
+  test('a bound id with no display in its directory fails; a sibling display passes', () => {
+    const gap = shortcutDisplayHits(scopes, new Map([far, ['p/a/B.vue', bind]]), noControl, {});
+    expect(gap.map((h) => h.path)).toEqual(['p/a/B.vue']);
+    const sibling = new Map([far, ['p/a/B.vue', bind], ['p/a/C.vue', shows('x.y')]]);
+    expect(shortcutDisplayHits(scopes, sibling, noControl, {})).toEqual([]);
+  });
+  test('a mapping passes only when the target shows the id', () => {
+    const mapped = { 'p/a/B.vue': 'p/z/Y.vue' };
+    const good = new Map([far, ['p/a/B.vue', bind], ['p/z/Y.vue', shows('x.y')]]);
+    expect(shortcutDisplayHits(scopes, good, noControl, mapped)).toEqual([]);
+    const bad = new Map([far, ['p/a/B.vue', bind], ['p/z/Y.vue', shows('x.z')]]);
+    expect(shortcutDisplayHits(scopes, bad, noControl, mapped)[0]?.message).toContain(
+      'does not show',
+    );
+  });
+  test('registerCommand ids count as bindings; a null mapping exempts the file', () => {
+    const sources = new Map([far, ['p/a/B.vue', "registerCommand('x.y', run)"]]);
+    expect(shortcutDisplayHits(scopes, sources, noControl, {}).map((h) => h.path)).toEqual([
+      'p/a/B.vue',
+    ]);
+    expect(shortcutDisplayHits(scopes, sources, noControl, { 'p/a/B.vue': null })).toEqual([]);
   });
 });

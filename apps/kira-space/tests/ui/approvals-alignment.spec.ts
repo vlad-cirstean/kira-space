@@ -343,61 +343,59 @@ async function checkItem(page: Page) {
     const kind = (await item.getAttribute('data-kind')) ?? String(n);
     const op = item.locator(t('approval-operation'));
     const approve = dialog.locator(`[data-testid^="approval-approve-"]`);
-    // A1
+    // A1: target row, badge row and body box share the dialog's left edge
     near(itemBox.x, titleX, `${kind} item left vs dialog title`);
     near(await left(op), titleX, `${kind} op left vs dialog title`);
-    near(await left(dialog.locator(t('approval-origin'))), titleX, `${kind} requester left`);
+    near(
+      await left(item.locator(t('approval-target')).locator(':scope > *').first()),
+      titleX,
+      `${kind} target left`,
+    );
     near(await right(approve), itemBox.x + itemBox.width, `${kind} approve right vs item right`);
     approveRights.push(await right(approve));
     const countdown = item.locator(t('approval-countdown'));
     if (await countdown.count())
-      near(await right(countdown), await right(approve), `${kind} countdown right`);
-    // A4: line 1 shares one baseline
+      near(await right(countdown), itemBox.x + itemBox.width, `${kind} countdown right`);
+    // A4: badge row shares one baseline
     const base = await baseline(op);
-    for (const sel of ['approval-target-name', 'approval-target-kind', 'approval-countdown']) {
-      const l = item.locator(t(sel));
-      if (await l.count()) near(await baseline(l), base, `${kind} ${sel} baseline`);
-    }
-    const risks = item.locator(`${t('approval-line')} span.inline-flex`);
-    for (let i = 0; i < (await risks.count()); i++) {
-      near(await baseline(risks.nth(i)), base, `${kind} risk ${i} baseline`);
-    }
-    // A5: band spans the item with the item gap above and below
-    const band = item.locator(t('approval-band'));
-    if (await band.count()) {
-      const bb = await box(band);
-      near(bb.x, itemBox.x, `${kind} band x`);
-      near(bb.width, itemBox.width, `${kind} band width`);
-      const line = await box(item.locator(t('approval-line')));
-      near(bb.y - (line.y + line.height), 8, `${kind} gap above band`);
-      const body = item.locator(t('approval-body'));
-      if (await body.count())
-        near((await box(body)).y - (bb.y + bb.height), 8, `${kind} gap below band`);
+    const facts = item.locator(t('approval-fact'));
+    for (let i = 0; i < (await facts.count()); i++) {
+      near(await baseline(facts.nth(i)), base, `${kind} fact ${i} baseline`);
     }
     // A6: footer centres and gaps
     const deny = dialog.locator(`[data-testid^="approval-deny-"]`);
     const centre = await midY(approve);
     near(await midY(deny), centre, `${kind} deny centre`);
-    near(await midY(dialog.locator(t('approval-origin'))), centre, `${kind} requester centre`);
     near((await left(approve)) - (await right(deny)), 6, `${kind} deny/approve gap`);
     for (const sel of ['db-mcp-approval-review-result', 'proof-review-open']) {
       const l = dialog.locator(t(sel));
       if (await l.count()) near(await midY(l), centre, `${kind} ${sel} centre`);
     }
-    // A2/A3: content indent and details columns
+    // A2: content indent inside the body box (1px edge plus 12px padding)
     const body = item.locator(t('approval-body'));
     if (await body.count()) {
-      near(await left(body.locator(':scope > *').first()), titleX + 12, `${kind} body indent`);
+      near((await box(body)).x, titleX, `${kind} body left`);
+      near(await left(body.locator(':scope > *').first()), titleX + 13, `${kind} body indent`);
     }
-    const dts = item.locator(`${t('approval-details')} > dt`);
-    for (let i = 0; i < (await dts.count()); i++) {
-      const dt = dts.nth(i);
-      near(await left(dt), titleX + 12, `${kind} dt ${i} x`);
-      dtX.push(await left(dt));
-      const dd = dt.locator('xpath=following-sibling::dd[1]');
-      ddX.push(await left(dd));
-      near(await left(dd), titleX + 12 + 84, `${kind} dd ${i} x`);
-      near(await baseline(dt), await baseline(dd), `${kind} dt ${i} baseline`);
+    // A3: details rows share one pair of columns
+    const toggle = item.locator(t('approval-details-toggle'));
+    if (await toggle.count()) {
+      await toggle.click();
+      const dts = item.locator(`${t('approval-details-section')} ${t('approval-details')} > dt`);
+      for (let i = 0; i < (await dts.count()); i++) {
+        const dt = dts.nth(i);
+        near(await left(dt), await left(dts.first()), `${kind} dt ${i} x`);
+        dtX.push(await left(dt));
+        const dd = dt.locator('xpath=following-sibling::dd[1]');
+        ddX.push(await left(dd));
+        near(
+          await left(dd),
+          await left(dts.first().locator('xpath=following-sibling::dd[1]')),
+          `${kind} dd ${i} x`,
+        );
+        near(await baseline(dt), await baseline(dd), `${kind} dt ${i} baseline`);
+      }
+      await toggle.click();
     }
   }
   expect(new Set(approveRights.map(Math.round)).size).toBeLessThanOrEqual(1);
@@ -446,7 +444,7 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     await checkItems(page, items);
 
     const titleX = await left(dialog.locator('[data-slot="dialog-title"]'));
-    const indent = titleX + 12;
+    const indent = titleX + 13;
     const item = (id: string) => dialog.locator(t(`approval-item-${id}`));
 
     // A8: tabs right column
@@ -454,8 +452,10 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
       const tabs = it.locator('[data-slot="secondary-tabs"]');
       near(
         await right(tabs),
-        (await box(it)).x + (await box(it)).width,
-        'tabs right vs item right',
+        (await box(it.locator(t('approval-body')))).x +
+          (await box(it.locator(t('approval-body')))).width -
+          13,
+        'tabs right vs body inner right',
       );
       const first = it.locator('.view-line, [data-testid="db-mcp-preview-column"]').first();
       near(await midY(tabs), await midY(first), 'tabs centre vs first line');
@@ -506,10 +506,9 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     const resp = item('db.response:4');
     near(
       await left(resp.locator(t('db-mcp-preview-column')).first()),
-      indent,
-      'table first column x',
+      indent + 24,
+      'table first column x (after the chevron column)',
     );
-    near(await left(resp.locator(t('db-mcp-preview-more'))), indent, 'table +N more rows x');
     await checkTabs(resp);
     await show(page, byId('proof.review:8'));
     near(
@@ -541,8 +540,10 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     near(await left(scripted.locator(t('api-review-script'))), indent, 'api script x');
     near(
       await right(scripted.locator('[data-slot="secondary-tabs"]')),
-      (await box(scripted)).x + (await box(scripted)).width,
-      'api response tabs right vs item right',
+      (await box(scripted.locator(t('approval-body')))).x +
+        (await box(scripted.locator(t('approval-body')))).width -
+        13,
+      'api response tabs right vs body inner right',
     );
     await checkFlush(scripted);
 
@@ -597,7 +598,7 @@ test.describe('approval dialog alignment (Space)', () => {
     await show(page, liveItem(branch, 300, FIXED_NOW));
 
     const titleX = await left(dialog.locator('[data-slot="dialog-title"]'));
-    const indent = titleX + 12;
+    const indent = titleX + 13;
     // A10: one grid for every row
     const boxes = dialog.locator(`${t(`approval-item-${branch.id}`)} [role="checkbox"]`);
     near(await left(boxes.first()), indent, 'branch checkbox x');

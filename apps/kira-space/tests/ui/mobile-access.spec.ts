@@ -288,6 +288,12 @@ test('contract: the pairing prompt shows the code and origin; approve and deny c
     /^Expires in [01]:\d\d$/,
   );
 
+  for (const id of ['mobile-pairing-approve', 'mobile-pairing-deny']) {
+    await expect(window.locator(`[data-testid="${id}"]`)).toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+  }
   await window.locator('[data-testid="mobile-pairing-approve"]').click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.mobilePairingApprove)?.args)

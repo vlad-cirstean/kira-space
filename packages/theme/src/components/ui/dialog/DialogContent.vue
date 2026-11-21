@@ -2,7 +2,11 @@
 import { SHORTCUTS } from '@shared/domain/shortcuts';
 import DialogOverlay from '@theme/components/ui/dialog/DialogOverlay.vue';
 import DialogResizeHandles from '@theme/components/ui/dialog/DialogResizeHandles.vue';
-import { CONFIRM_DISCARD_KEY, DIALOG_REQUEST_CLOSE_KEY } from '@theme/components/ui/dialog/discard';
+import {
+  CONFIRM_DISCARD_KEY,
+  DIALOG_PROMPT_KEY,
+  DIALOG_REQUEST_CLOSE_KEY,
+} from '@theme/components/ui/dialog/discard';
 import type { DialogSize } from '@theme/components/ui/dialog/resizeSize';
 import { t } from '@theme/i18n';
 import { dialogSurface } from '@theme/lib/frames';
@@ -107,6 +111,7 @@ async function requestClose(): Promise<void> {
   rootContext.onOpenChange(false);
 }
 provide(DIALOG_REQUEST_CLOSE_KEY, requestClose);
+provide(DIALOG_PROMPT_KEY, props.prompt);
 
 function onEscapeKeyDown(event: KeyboardEvent): void {
   if (props.prompt) {
