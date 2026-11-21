@@ -34,7 +34,7 @@ try {
       'sh',
       [
         '-c',
-        '. scripts/install.sh; index_check "$1" && index_next_step "$1" "$2"',
+        '. scripts/install.sh; ASSET=app.dmg; index_check "$1" && index_next_step "$1" "$2"',
         'sh',
         file,
         g.current,
