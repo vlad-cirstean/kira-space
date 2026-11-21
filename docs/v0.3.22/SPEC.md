@@ -10,6 +10,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
+| P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Todo |
 
 ## P707
 
@@ -88,3 +89,11 @@ and the menu item `shortcut` field; add a shared tooltip wrapper for buttons ins
 strings. The plan lists every button, menu and context menu audited and any shortcut still
 missing. Tests: UI spec that a rebind updates the displayed hint; visual baselines re-recorded and
 inspected. Runs after P711.
+
+## P713
+
+Found in P708. `TestAdeReviewStep` fails about half of runs, also at base `605a98ec3`. A resumed
+implementer session makes the model report the state tool has no `review.reply` action, though the
+review grant adds it. Headless runs only. Deliverable: root-cause (is the grant missing on resume,
+or does the resumed session cache the tool list) and fix code or test so it passes repeatedly
+against the real CLI. Also watch `TestAdeBranchRequest` (one 3 min headless timeout in a full run).
