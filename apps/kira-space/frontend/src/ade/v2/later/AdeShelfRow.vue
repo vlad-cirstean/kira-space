@@ -6,6 +6,7 @@ import { cn } from '@theme/lib/utils';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
+import AdeTaskKey from '../plan/AdeTaskKey.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
 import AdeTaskSwatch from '../plan/AdeTaskSwatch.vue';
@@ -25,7 +26,11 @@ function openMore(ev: MouseEvent): void {
   if (ev.currentTarget instanceof Element) menu.openAt(ev.currentTarget);
 }
 const facts = computed(() =>
-  [props.card.meta, props.card.task.notes ? t('space.common.notes.label') : '']
+  [
+    props.card.meta,
+    props.card.repos.join(' · '),
+    props.card.task.notes ? t('space.common.notes.label') : '',
+  ]
     .filter(Boolean)
     .join(' · '),
 );
@@ -53,8 +58,9 @@ const facts = computed(() =>
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
     <AdeTaskSwatch :color="card.color" :parked="card.parked" />
-    <span class="flex min-w-0 flex-1 items-center" data-testid="ade-shelf-title">
+    <span class="flex min-w-0 flex-1 items-center gap-1.5" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
+      <AdeTaskKey :card="card" />
     </span>
     <AdeEstimateChip :card="card" />
     <AdeTaskStatusMenu :card="card" />
