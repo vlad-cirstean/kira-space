@@ -19,6 +19,8 @@
   --kira-select: #36363c; /* selected row, cell, list item, chip, card head (P710: neutral grey) */
   --kira-select-edge: #71717a; /* selection frame, ring, underline, drop target (zinc-500) */
   --kira-select-text: #45454d; /* selected text: ::selection, Monaco, xterm */
+  --kira-on: var(--kira-fg); /* on-state fill (P710) */
+  --kira-on-fg: var(--kira-bg-chrome); /* mark on --kira-on: check, radio dot, switch thumb */
   --kira-scrollbar: var(--kira-border);
   --kira-scrollbar-hover: var(--kira-fg-subtle);
   --kira-scrollbar-active: var(--kira-fg-subtle);

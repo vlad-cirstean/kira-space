@@ -20,14 +20,14 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     v-bind="forwarded"
     :class="
       cn(
-        'peer inline-flex h-3.5 w-6.5 shrink-0 cursor-default items-center rounded-full border border-border bg-field transition-colors disabled:cursor-default disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary',
+        'peer inline-flex h-3.5 w-6.5 shrink-0 cursor-default items-center rounded-full border border-border bg-field transition-colors disabled:cursor-default disabled:opacity-50 data-[state=checked]:border-on data-[state=checked]:bg-on',
         props.class,
       )
     "
   >
     <SwitchThumb
       data-slot="switch-thumb"
-      class="pointer-events-none block size-2.5 rounded-full bg-fg transition-transform data-[state=unchecked]:translate-x-0.5 data-[state=checked]:translate-x-3 data-[state=checked]:bg-primary-foreground"
+      class="pointer-events-none block size-2.5 rounded-full bg-fg transition-transform data-[state=unchecked]:translate-x-0.5 data-[state=checked]:translate-x-3 data-[state=checked]:bg-on-fg"
     />
   </SwitchRoot>
 </template>

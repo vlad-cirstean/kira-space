@@ -717,6 +717,14 @@ const NEUTRAL_TOKENS = [
   '--kira-focus',
   '--kira-bg-input',
 ] as const;
+// Resolved through var() to a neutral token; checked by name, not hex.
+const NEUTRAL_ALIAS_TARGETS = new Set([
+  '--kira-fg',
+  '--kira-bg-chrome',
+  '--kira-bg',
+  '--kira-bg-elevated',
+]);
+const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg'] as const;
 const NEUTRAL_SPREAD = 12;
 const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
 const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
@@ -752,14 +760,17 @@ const SELECTION_VARIANT =
 const BLUE_BEHIND_VARIANT = new RegExp(`${SELECTION_VARIANT}(?:[\\w-]+:)*${BLUE_UTILITY}`);
 const SELECTED_EXPR = /(?:\bselected|\bisSelected|\w+Selected)\b[^'"`\n]*(?:\?|&&)/;
 const BLUE_LITERAL = new RegExp(`['"\`][^'"\`]*(?<![\\w-])${BLUE_UTILITY}[^'"\`]*['"\`]`);
-// On-state controls paint --primary when checked; swatch pickers paint the data colour.
-const N18_CLASS_ALLOW = [
+// Swatch pickers paint the data colour when checked.
+const N18_CLASS_ALLOW = ['ade/v2/statusColors.ts', 'connColor.ts'];
+// On-state controls paint --kira-on (grey), never --primary, in any state.
+const ON_STATE_FILES = [
   'packages/theme/src/components/ui/checkbox/Checkbox.vue',
   'packages/theme/src/components/ui/switch/Switch.vue',
   'packages/theme/src/components/ui/radio-group/RadioGroupItem.vue',
-  'ade/v2/statusColors.ts',
-  'connColor.ts',
+  'packages/theme/src/components/ui/progress/Progress.vue',
 ];
+const BLUE_ON_STATE =
+  /(?<![\w-])(?:bg|border|text|ring)-(?:primary|accent|info|focus)(?:-foreground)?(?![\w-])/;
 const N18_CLASS_DIRS = [
   'apps/kira-space/frontend/src',
   'apps/kira-space/frontend/mobile',
@@ -792,6 +803,19 @@ export function neutralTokenHits(tokensCss: string): Hit[] {
         rule: 'N18',
         path: TOKENS_CSS_PATH,
         message: `${token} is ${value}, not a neutral 6-digit grey`,
+      });
+    }
+  }
+  for (const token of ALIASED_TOKENS) {
+    const value = new RegExp(`${token}:\\s*([^;]+);`).exec(tokensCss)?.[1]?.trim();
+    const ref = /^var\((--[\w-]+)\)$/.exec(value ?? '')?.[1];
+    if (value === undefined) {
+      hits.push({ rule: 'N18', path: TOKENS_CSS_PATH, message: `${token} is missing` });
+    } else if (!ref || !NEUTRAL_ALIAS_TARGETS.has(ref)) {
+      hits.push({
+        rule: 'N18',
+        path: TOKENS_CSS_PATH,
+        message: `${token} is ${value}, not an alias of a neutral token`,
       });
     }
   }
@@ -852,7 +876,16 @@ export function selectionClassHits(path: string, source: string): Hit[] {
   }
   if (N18_CLASS_ALLOW.some((a) => path.endsWith(a))) return [];
   const hits: Hit[] = [];
+  const onState = ON_STATE_FILES.some((f) => path.endsWith(f));
   source.split('\n').forEach((line, i) => {
+    const blueOn = onState ? BLUE_ON_STATE.exec(line)?.[0] : undefined;
+    if (blueOn) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-on, border-on, text-on-fg`,
+      });
+    }
     const behind = BLUE_BEHIND_VARIANT.exec(line)?.[0];
     const picked = SELECTED_EXPR.test(line) ? BLUE_LITERAL.exec(line)?.[0] : undefined;
     const found = behind ?? picked;
