@@ -9,7 +9,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { buttonVariants } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { useDebounceFn, watchDebounced } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import { copyAndAnnounce, readClipboardText } from '@workbench/behaviour/clipboard';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
@@ -69,7 +69,6 @@ import { KiraSlickGrid } from '../shared/slick/kiraSlickGrid';
 import { createScrollVelocityTracker } from '../shared/slick/scrollVelocity';
 import { attachScrollProbes, createHybridSelectionModel } from '../shared/slick/selectionModel';
 import { sqlDialectFor } from '../shared/sqlIdent';
-import { visibleColumnOrder } from './columnFilter';
 import FkPreviewPopover from './FkPreviewPopover.vue';
 import {
   type CellFocusRequest,
@@ -80,7 +79,7 @@ import {
 } from './focusRequest';
 import { buildMaskTagCache, createMaskPreviewTransform } from './maskPreview';
 import { cellMenu, type FkNavContext, headerMenu, rowMenu } from './menu';
-import { flushOpenEdit, registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
+import { registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
 import { applyPastedCells, resolvePasteTarget } from './paste';
 import { usePendingChangesStore } from './pendingChanges';
 import { matchedRows, searchState } from './search';
@@ -360,13 +359,8 @@ function currentOrder(): string[] {
   return p ? displayOrder(p) : [];
 }
 
-// Component-local, not read from the store per call: `currentOrder()` and the built SlickGrid
-// columns must never disagree during the filter's debounce window. Seeded at mount (host remounts
-// per tab); the debounced watch below advances it.
-let appliedColumnFilter = rt()?.columnFilter ?? '';
-
 function displayOrder(p: TabularPage): string[] {
-  return visibleColumnOrder(p, tab()?.state.columnOrder ?? null, appliedColumnFilter);
+  return resolveColumnOrder(p, tab()?.state.columnOrder ?? null);
 }
 
 // Thin, tabId/page/order-bound wrappers over rowValues.ts's own pure functions — every call site
@@ -2312,7 +2306,7 @@ onUnmounted(() => {
   editorCtx.commit = () => {};
 });
 
-// Rebuild core shared by the `pageVersion` watch and the column-filter apply. Returns whether it
+// Rebuild core of the `pageVersion` watch. Returns whether it
 // rebuilt: pageVersion counts every tab's loads and closes, and rebuilding for one that is not
 // ours would destroy an open inline editor and mis-consume a pending focus request.
 function applyPageAndOrder(): boolean {
@@ -2338,19 +2332,6 @@ function applyPageAndOrder(): boolean {
   refreshSearchLayer();
   return true;
 }
-
-function applyColumnFilterNow(): void {
-  const next = rt()?.columnFilter ?? '';
-  if (next === appliedColumnFilter) return;
-  // setColumns destroys an open inline editor: stage it first. Display-column ranges would point
-  // at other columns after the rebuild; clearing also clears rt().selection.
-  flushOpenEdit(props.tabId);
-  selectionModel?.setSelectedRanges([]);
-  appliedColumnFilter = next;
-  applyPageAndOrder();
-}
-
-watchDebounced(() => rt()?.columnFilter ?? '', applyColumnFilterNow, { debounce: TIMING.search });
 
 watch(
   () => pageVersion.n,
@@ -2722,8 +2703,14 @@ watch(
 );
 
 defineExpose({
-  applyColumnFilterNow,
-  /** `pageCol` is a page column index. False when that column is filtered out. */
+  /** Scrolls the grid to the named column. False when the grid does not render it. */
+  revealColumn(name: string): boolean {
+    const idx = currentOrder().indexOf(name);
+    if (!grid || idx === -1) return false;
+    grid.scrollColumnIntoView(idx + 1);
+    return true;
+  },
+  /** `pageCol` is a page column index. False when that column is not rendered. */
   revealPageCell(row: number, pageCol: number): boolean {
     if (!grid) return false;
     const name = getPage(props.tabId)?.columns[pageCol]?.name;

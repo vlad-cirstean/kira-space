@@ -14969,15 +14969,6 @@
       "columnCount": {
         "status": "{count} column | {count} columns"
       },
-      "columnFilter": {
-        "field": {
-          "aria": "Filter columns by name",
-          "placeholder": "Column name"
-        },
-        "noMatch": {
-          "status": "No match"
-        }
-      },
       "columns": {
         "footerClient": {
           "hint": "Applied after fetch."
@@ -14988,8 +14979,22 @@
         "loading": {
           "loading": "Loading columns…"
         },
+        "noMatch": {
+          "status": "No match"
+        },
         "primaryKey": {
           "tooltip": "Primary key, always shown"
+        },
+        "reveal": {
+          "aria": "Scroll to {column}",
+          "tooltip": "Scroll to column"
+        },
+        "revealHidden": {
+          "tooltip": "Not shown in the grid"
+        },
+        "search": {
+          "aria": "Search columns by name",
+          "placeholder": "Column name"
         },
         "shown": {
           "tooltip": "Showing {shown} of {total} columns"

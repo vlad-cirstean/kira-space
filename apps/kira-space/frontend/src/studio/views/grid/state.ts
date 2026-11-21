@@ -51,10 +51,6 @@ interface DataViewRuntime extends PagedViewRuntime {
   /** Unapplied filter-row text; `null` shows the committed value. Survives a tab switch (P375). */
   whereDraft: string | null;
   orderByDraft: string | null;
-  /** Display-only column-name filter text (never in `tab.state`, never sent to the backend).
-   *  Single source of truth: the field binds to it; survives a tab switch. P660 restores it by
-   *  covering this runtime field. */
-  columnFilter: string;
 }
 
 function defaultRuntime(): DataViewRuntime {
@@ -68,7 +64,6 @@ function defaultRuntime(): DataViewRuntime {
     settledWidths: null,
     whereDraft: null,
     orderByDraft: null,
-    columnFilter: '',
   };
 }
 
@@ -304,10 +299,6 @@ export const useGridViewStore = defineStore('gridView', () => {
     if (draft.orderBy !== undefined) rt.orderByDraft = draft.orderBy;
   }
 
-  function setColumnFilter(tabId: string, text: string): void {
-    ensureRuntime(tabId).columnFilter = text;
-  }
-
   /** Shown page is stale: connection gone, or read under another connection session. */
   function isStale(tabId: string): boolean {
     return useStaleDataStore().isTabStale(tabId, useTabsStore().findDataTab(tabId)?.connectionId);
@@ -319,7 +310,6 @@ export const useGridViewStore = defineStore('gridView', () => {
     settledWidthsFor,
     setSettledWidths,
     setFilterDraft,
-    setColumnFilter,
     load,
     reload,
     reloadAfterMutation,
