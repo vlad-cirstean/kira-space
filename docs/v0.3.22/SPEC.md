@@ -7,6 +7,10 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Todo |
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
 | P709 | Task list: aligned rows, calmer design | Done |
+| P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
+| P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
+| P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
+| P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Todo |
 
 ## P707
 
@@ -114,3 +118,52 @@ above to directly under the bar (`AdeTaskLine variant="under"`, overlay on the b
 height unchanged). The task panel and branch panel heads keep their top edge: it is the pane's top
 edge under the app bar (a card-style top edge), with the title row below it. Specs and the four
 `files-*` baselines updated; after shots `screenshots/p709-iter3/after2/`.
+
+## P710
+
+Every selected thing is blue today: a selected task, a selected grid cell or row in Studio, a
+selected list item, menu item or tab. Looks dated. Deliverable: one neutral grey highlight
+across the whole app. Find the global token(s) behind selection and hover (theme tokens in
+`packages/theme`, Tailwind `select`/`field`/accent utilities, AG/slick grid and Monaco/xterm
+selection colours, shadcn-vue `accent`), change them to a grey that reads on the black ground
+in every surface (list rows, cards, menus, trees, grids, cells, tabs, dialogs, command palette,
+mobile app where it shares tokens), and fix every hardcoded blue that stands in for selection.
+Keep real blue where it means something other than selection (links, info, open PR, primary
+actions): the plan lists each remaining blue use and why it stays. Focus rings keep a visible,
+accessible contrast. Tests: visual baselines re-recorded with each changed baseline inspected;
+a guard or lint so a hardcoded selection blue cannot return. Runs after P709 (shares the
+selected-card styles).
+
+## P711
+
+The command palette lists actions that are already one click away (toggle project or operations
+panel, open settings, check for updates, new request, new connection, and similar). They add
+noise. Deliverable: audit every palette command in `packages/workbench/src/shortcuts/`,
+`apps/kira-space/frontend/src/shortcuts/appCommands.ts` and
+`apps/kira-space/frontend/src/studio/shortcuts/studioCommands.ts`. Any command with a visible
+button, menu or panel control gets removed from the palette. Each removed action keeps a keyboard
+shortcut (add one where missing, through the shortcut registry in `@shared/domain/shortcuts`,
+rebindable like the others). Module-contextual actions (new request, new connection, new file,
+and similar) share one shortcut whose effect follows the focused or selected module; the plan
+lists each action, its module mapping and conflicts with existing bindings. The palette itself
+stays, with only what has no other entry point. Tests: UI spec per new shortcut (same scenario as
+the click path), a guard for shortcut conflicts, flow test where the action has a backend half.
+
+## P712
+
+Shortcuts exist but are not shown. Deliverable: every action that has a keyboard shortcut shows
+it. Buttons show it in the tooltip, context-menu items show it right-aligned, menu-bar items show
+it right-aligned. One source of truth: the shortcut registry, formatted per platform (macOS
+symbols, other platforms text), reflecting user rebinds. Reuse the existing `DropdownMenuShortcut`
+and the menu item `shortcut` field; add a shared tooltip wrapper for buttons instead of per-button
+strings. The plan lists every button, menu and context menu audited and any shortcut still
+missing. Tests: UI spec that a rebind updates the displayed hint; visual baselines re-recorded and
+inspected. Runs after P711.
+
+## P713
+
+Found in P708. `TestAdeReviewStep` fails about half of runs, also at base `605a98ec3`. A resumed
+implementer session makes the model report the state tool has no `review.reply` action, though the
+review grant adds it. Headless runs only. Deliverable: root-cause (is the grant missing on resume,
+or does the resumed session cache the tool list) and fix code or test so it passes repeatedly
+against the real CLI. Also watch `TestAdeBranchRequest` (one 3 min headless timeout in a full run).
