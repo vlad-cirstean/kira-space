@@ -19,7 +19,7 @@ function newScript(kind: 'script' | 'smart'): void {
 
 /** Per module, the visible "+" or import control each chord stands for. A module or action absent
  *  here does nothing. Handlers resolve their stores at call time, never at import. */
-export const MODULE_ACTIONS: {
+const MODULE_ACTIONS: {
   [M in MappedModule]: Record<(typeof MODULE_SHORTCUTS)[M][number], () => void>;
 } = {
   studio: {
