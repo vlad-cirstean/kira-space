@@ -61,7 +61,7 @@ test('contract: the card names what the transform may keep', async ({ relaunch }
   await pushApprovals(page, [it]);
   const c = card(page, it);
   await expect(c.locator('[data-testid="api-approval-may-keep"]')).toHaveText(
-    'This script may keep: ids',
+    /This script may keep:\s*idsPlain/,
   );
   await expect(c.locator('[data-testid="api-approval-kept-writes"]')).toHaveText('May keep: ids');
 });

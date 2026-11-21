@@ -453,6 +453,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   keptList: 'KeptVarsService.List',
   keptValue: 'KeptVarsService.Value',
   keptReveal: 'KeptVarsService.Reveal',
+  keptRevealStaged: 'KeptVarsService.RevealStaged',
   keptClear: 'KeptVarsService.Clear',
   keptClearAll: 'KeptVarsService.ClearAll',
   maskReviewColumns: 'MaskRulesService.ReviewColumns',

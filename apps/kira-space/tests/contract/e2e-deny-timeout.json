@@ -260,6 +260,7 @@
           "mayKeep": [
             {
               "name": "w",
+              "secret": false,
               "sites": [
                 {
                   "field": "script",
@@ -358,6 +359,7 @@
           "mayKeep": [
             {
               "name": "w",
+              "secret": false,
               "sites": [
                 {
                   "field": "script",

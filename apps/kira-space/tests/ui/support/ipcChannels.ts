@@ -504,6 +504,7 @@ export const IPC = {
   keptList: 'kira:kept:list',
   keptValue: 'kira:kept:value',
   keptReveal: 'kira:kept:reveal',
+  keptRevealStaged: 'kira:kept:revealStaged',
   keptClear: 'kira:kept:clear',
   keptClearAll: 'kira:kept:clearAll',
   // P439: the Kubernetes module's bound surface; log batches are events, no entry.
