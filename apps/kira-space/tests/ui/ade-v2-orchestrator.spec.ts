@@ -90,6 +90,7 @@ test('task.create approval shows title, parent, workflow, repos and brief', asyn
   ]);
   const dialog = page.locator(t('approvals-dialog'));
   await expect(dialog).toBeVisible();
+  await dialog.locator(t('approval-details-toggle')).click();
   await expect(dialog.locator(t('approval-origin'))).toContainText('Ship login');
   await expect(dialog.locator(t('approval-target-name'))).toHaveText('API login');
   const body = dialog.locator(t(`approval-item-${it.id}`));

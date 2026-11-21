@@ -53,9 +53,6 @@ test('contract: five cards show one at a time in arrival order and the typed-val
   await pushApprovals(page, [...items].reverse());
   for (const [i, it] of items.entries()) {
     const left = items.slice(i);
-    await expect(dialog(page).locator('[data-testid="approvals-count"]')).toHaveText(
-      String(left.length),
-    );
     if (left.length > 1) {
       await expect(dialog(page).locator('[data-testid="approvals-position"]')).toHaveText(
         `1 of ${left.length}`,
@@ -94,7 +91,7 @@ test('contract: Deny all sends every id and never a typed value', async ({ relau
   const logs: string[] = [];
   page.on('console', (m) => logs.push(m.text()));
   await pushApprovals(page, items);
-  await expect(dialog(page).locator('[data-testid="approvals-count"]')).toHaveText('5');
+  await expect(dialog(page).locator('[data-testid="approvals-position"]')).toHaveText('1 of 5');
   await page.click('[data-testid="approvals-deny-all"]');
   await expect
     .poll(() => {

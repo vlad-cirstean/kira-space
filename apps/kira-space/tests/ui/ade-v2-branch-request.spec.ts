@@ -39,6 +39,7 @@ async function openRequest(relaunch: Parameters<typeof openPlan>[0]) {
 test('contract: the dialog shows the request origin and its branch', async ({ relaunch }) => {
   const { page } = await openRequest(relaunch);
   const dialog = page.locator(t('approvals-dialog'));
+  await dialog.locator(t('approval-details-toggle')).click();
   await expect(dialog.locator(t('approval-origin'))).toContainText('Session');
   const [row] = payload().items;
   if (!row) throw new Error('item has no row');

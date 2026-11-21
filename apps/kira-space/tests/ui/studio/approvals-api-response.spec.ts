@@ -49,7 +49,8 @@ test('contract: an unscripted response shows its raw view and Send answers by id
   await expect(body.locator('[data-testid="api-review-raw-status"]')).toHaveClass(/text-ok/);
   await expect(page.locator('[data-testid="api-review-view-raw"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="api-review-script"]')).toHaveCount(0);
-  await expect(page.locator('[data-testid="api-review-sent"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="approval-operation"]')).not.toContainText('already ran');
+  await page.click('[data-testid="approval-details-toggle"]');
   await expect(page.locator('[data-testid="api-review-request"]')).toContainText('GET');
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
@@ -80,7 +81,7 @@ test('contract: a scripted response shows the result, the raw response and the s
 test('contract: a write response says the request was already sent', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: mocks('scriptedWrite') });
   await pushApprovals(page, [liveItem(item('scriptedWrite'))]);
-  await expect(page.locator('[data-testid="api-review-sent"]')).toBeVisible();
+  await expect(page.locator('[data-testid="approval-operation"]')).toContainText('already ran');
 });
 
 test('contract: a failed script shows the failure beside the raw response', async ({

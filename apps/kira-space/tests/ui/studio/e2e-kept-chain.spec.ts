@@ -61,6 +61,7 @@ test('contract: a script rewrites the body and the card shows the result the req
   await expect(c.locator('[data-testid="api-approval-body-text"]')).toContainText(
     '"id": 9007199254740993',
   );
+  await c.locator('[data-testid="approval-details-toggle"]').click();
   await expect(c.locator('[data-testid="api-approval-script-changed"]')).toBeVisible();
 });
 

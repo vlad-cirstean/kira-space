@@ -32,10 +32,9 @@ test('contract: both scripts show highlighted next to the prepared request', asy
   await pushApprovals(page, [liveItem(it)]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
 
-  await expect(card.locator('[data-testid="api-approval-prepare"]')).toHaveText('Built by script');
-  await expect(card.locator('[data-testid="api-approval-transform"]')).toHaveText(
-    'Agent gets script result',
-  );
+  await expect(
+    card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs 2 scripts' }),
+  ).toBeVisible();
   const prepare = card.locator('[data-testid="api-approval-script-prepare"]');
   const transform = card.locator('[data-testid="api-approval-script-transform"]');
   await expect.poll(() => editorText(prepare)).toBe(payload.script.prepare.source);
@@ -54,6 +53,7 @@ test('contract: both scripts show highlighted next to the prepared request', asy
   await expect
     .poll(() => editorText(card.locator('[data-testid="api-approval-body-text"]')))
     .toContain('"items"');
+  await card.locator('[data-testid="approval-details-toggle"]').click();
   await expect(card.locator('[data-testid="api-approval-script-changed"]')).toContainText(
     'body, contentType',
   );

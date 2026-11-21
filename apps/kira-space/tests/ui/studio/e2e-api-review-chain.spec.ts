@@ -49,7 +49,7 @@ test('contract: the review says the write was sent and lists what the script kee
     ],
   });
   await pushApprovals(page, [liveItem(it)]);
-  await expect(page.locator('[data-testid="api-review-sent"]')).toBeVisible();
+  await expect(page.locator('[data-testid="approval-operation"]')).toContainText('already ran');
   const keep = page.locator('[data-testid="api-review-keep"]');
   await expect(keep).toContainText('Will keep');
   await expect(keep.locator('[data-testid="api-review-keep-domains"]')).toContainText('List of 2');

@@ -21,7 +21,6 @@ test('build db prompt: approvals', async ({ relaunch, consoleErrors }) => {
     control: storyBoard(seedApprovals([write])),
   });
   const dialog = win.locator(t('approvals-dialog'));
-  await expect(dialog.locator(t('approvals-count'))).toHaveText('1');
   await expect(dialog.locator(`[data-testid="approval-item-${write.id}"]`)).toContainText(
     STORY.connection,
   );

@@ -43,9 +43,9 @@ test('contract: the card shows the script next to the statement that runs', asyn
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = cardOf(page, it);
-  await expect(card.locator('[data-testid="db-approval-transform"]')).toHaveText(
-    'Agent gets script result',
-  );
+  await expect(
+    card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs a script' }),
+  ).toBeVisible();
   await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-approval-may-keep"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toBeVisible();
