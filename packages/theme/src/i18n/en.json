@@ -3065,9 +3065,6 @@
       "cancel": {
         "label": "Cancel"
       },
-      "checkForUpdates": {
-        "label": "Check for updates"
-      },
       "checkOut": {
         "label": "Check out"
       },
@@ -3199,9 +3196,6 @@
       },
       "openInNewTab": {
         "label": "Open in new tab"
-      },
-      "openSettings": {
-        "label": "Open settings"
       },
       "openTerminal": {
         "label": "Open terminal"
@@ -12814,26 +12808,8 @@
     },
     "shortcuts": {
       "palette": {
-        "closeTab": {
-          "label": "Close current tab"
-        },
         "empty": "No commands match",
-        "nextTab": {
-          "label": "Go to next tab"
-        },
-        "placeholder": "Search commands",
-        "previousTab": {
-          "label": "Go to previous tab"
-        },
-        "searchPanel": {
-          "label": "Search panel"
-        },
-        "toggleOperationsPanel": {
-          "label": "Show or hide operations"
-        },
-        "toggleProjectPanel": {
-          "label": "Show or hide repositories"
-        }
+        "placeholder": "Search commands"
       }
     },
     "statusBar": {
@@ -17562,20 +17538,8 @@
     },
     "shortcuts": {
       "palette": {
-        "explainQuery": {
-          "label": "Explain query"
-        },
-        "filterColumns": {
-          "label": "Filter grid columns"
-        },
-        "formatQuery": {
-          "label": "Format query"
-        },
         "generateData": {
           "label": "Generate data…"
-        },
-        "runStatement": {
-          "label": "Run statement"
         }
       }
     },

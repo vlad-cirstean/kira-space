@@ -69,10 +69,6 @@ function onNewCollection(): void {
   void collectionsStore.createCollection();
 }
 
-function onImport(): void {
-  void collectionsStore.importPostman();
-}
-
 // The palette's Variables… entry — opens the tab for
 // whichever collection is currently selected in the tree (a collection row directly, or a
 // folder/request's own collection). A no-op with nothing selected, the same "view-scoped, no-op
@@ -111,15 +107,13 @@ function onImportCurl(): void {
   importCurlStore.openImportCurlDialog();
 }
 
-// D15: the palette's Import collection…, Variables…, Environments…, (P6) Dynamic values… and
-// (P7) Import from curl… entries. Registered by the panel rather than a view, since the panel is
+// D15: the palette's Variables…, (P6) Dynamic values… and (P7) Import from curl… entries — the three
+// with no visible control. Registered by the panel rather than a view, since the panel is
 // mounted for the whole of Api mode — none is tab-scoped.
 let unregisterCommands: Array<() => void> = [];
 onMounted(() => {
   unregisterCommands = [
-    registerCommand('api.import', onImport),
     registerCommand('api.variables', onVariablesCommand),
-    registerCommand('api.environments', onEnvironments),
     registerCommand('api.dynamicValues', onDynamicValues),
     registerCommand('api.importCurl', onImportCurl),
   ];

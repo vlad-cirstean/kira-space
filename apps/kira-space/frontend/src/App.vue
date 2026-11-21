@@ -101,7 +101,6 @@ useAgentMessageDefaults(() => settingsStore.agent.provider, control);
 const modeStore = useModeStore();
 const keepAwakeStore = useKeepAwakeStore();
 const paletteStore = usePaletteStore();
-providePaletteCommands(appPaletteCommands());
 const appUpdateStore = useAppUpdateStore();
 provide(appUpdateStoreKey, appUpdateStore);
 // P246: one dialog per routed popup kind; PromptHost shows the one the router targeted here.
@@ -138,6 +137,7 @@ const mainWindow = (): boolean =>
   !openedFilesWindow.active &&
   !configSyncWindow.active &&
   !proofWindow.active;
+providePaletteCommands(appPaletteCommands(mainWindow));
 const panelLabel = computed(() =>
   CONNECTION_PANEL_MODES.has(modeStore.active)
     ? t('common.module.connections.label')

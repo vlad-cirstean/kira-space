@@ -37,11 +37,6 @@ async function openLogs(page: Page): Promise<void> {
   await activePanel(page).locator('[data-testid="kube-detail-tab-logs"]').click();
 }
 
-async function runPaletteCommand(page: Page, id: string): Promise<void> {
-  await emitWailsEvent(page, IPC.commandPalette, null);
-  await page.locator(`[data-testid="command-palette-item"][data-command-id="${id}"]`).click();
-}
-
 test('contract: a cluster opens on its pods; the sidebar has no kind rows', async ({
   relaunch,
 }) => {
@@ -154,7 +149,7 @@ test('contract: each pod tab keeps its own log stream', async ({ relaunch }) => 
   await expect(logLines(page)).toContainText('from web-1');
   expect(kube.calls('LogsOpen')).toHaveLength(2);
 
-  await runPaletteCommand(page, 'tab-close');
+  await emitWailsEvent(page, IPC.tabClose, null);
   await expect
     .poll(() => kube.calls('LogsClose').map((c) => c.args.streamId))
     .toEqual([first.streamId]);
@@ -266,7 +261,7 @@ test('the close tab command closes the active Kubernetes tab', async ({ relaunch
   await openPermanent(page, 'web-2');
   await expect(tabs(page)).toHaveCount(2);
 
-  await runPaletteCommand(page, 'tab-close');
+  await emitWailsEvent(page, IPC.tabClose, null);
   await expect(tabs(page)).toHaveCount(1);
   await expect(tabChip(page, 'web-1')).toHaveAttribute('data-active', 'true');
 });
