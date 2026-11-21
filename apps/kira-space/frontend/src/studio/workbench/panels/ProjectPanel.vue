@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
@@ -7,7 +8,6 @@ import { ICON } from '@theme/icons';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, useTemplateRef } from 'vue';
 import CredentialsUpdateDialog from '../../project/CredentialsUpdateDialog.vue';
 import FiltersDialog from '../../project/FiltersDialog.vue';
@@ -57,7 +57,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
-          :kbd="formatShortcut('panel.find')"
+          shortcut="panel.find"
           data-testid="toggle-search"
           @click="toggleSearch"
         />
@@ -68,6 +68,7 @@ const { showSearch, toggleSearch } = usePanelHeaderSearch(rootEl, {
         <TooltipIconButton
           :icon="ICON.add"
           :label="t('studio.project.connectionDialog.newConnection.title')"
+          :shortcut="moduleShortcut('studio', 'app.new')"
           data-testid="add-connection"
           @click="connectionDialogStore.openNew"
         />

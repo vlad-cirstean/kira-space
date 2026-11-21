@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
+import ShortcutKbd from '@theme/components/ShortcutKbd.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -11,7 +12,7 @@ import { tryOnScopeDispose, useEventListener, useWindowFocus } from '@vueuse/cor
 import { useFocusOnMount } from '@workbench/behaviour/focus';
 import { errorText } from '@workbench/bridge/codedError';
 import { windowKey } from '@workbench/bridge/rpc';
-import { formatShortcut, shortcutFor } from '@workbench/shortcuts/keys';
+import { shortcutFor } from '@workbench/shortcuts/keys';
 import { type ComponentPublicInstance, computed, ref, useTemplateRef, watch } from 'vue';
 import { localIso } from '../ade/v2/localDay';
 import { control } from '../bridge/control';
@@ -145,7 +146,7 @@ useFocusOnMount(titleInput);
             ><Kbd>{{ t('common.key.enter.label') }}</Kbd> {{ t('common.later.label') }}</span
           >
           <span data-testid="capture-hint-today"
-            ><Kbd>{{ formatShortcut('form.submit') }}</Kbd>
+            ><ShortcutKbd id="form.submit" />
             {{ t('space.common.day.today.label') }}</span
           >
         </template>

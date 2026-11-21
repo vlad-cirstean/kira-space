@@ -1,5 +1,5 @@
 import type { AppMode } from '@shared/domain/mode';
-import type { ShortcutId } from '@shared/domain/shortcuts';
+import type { MappedModule, MODULE_SHORTCUTS, ModuleAction } from '@shared/domain/moduleShortcuts';
 import { useNewScriptRequestStore } from '@workbench/automations/newScriptRequest';
 import { useAdeAddUiStore } from '../ade/v2/state/adeAddUi';
 import { useLayoutStore } from '../state/layout';
@@ -11,12 +11,6 @@ import { openApiRequestTab, openGrpcRequestTab } from '../studio/api/tabs';
 import { useConnectionDialogStore } from '../studio/state/connectionDialogs';
 import { useDatagripImportStore } from '../studio/state/datagripImport';
 
-/** The global chords whose effect follows the active module. */
-export type ModuleAction = Extract<
-  ShortcutId,
-  'app.new' | 'app.newAlternate' | 'app.import' | 'api.environments'
->;
-
 function newScript(kind: 'script' | 'smart'): void {
   const layout = useLayoutStore();
   if (!layout.panel.project.visible) layout.toggleProjectPanel();
@@ -25,7 +19,9 @@ function newScript(kind: 'script' | 'smart'): void {
 
 /** Per module, the visible "+" or import control each chord stands for. A module or action absent
  *  here does nothing. Handlers resolve their stores at call time, never at import. */
-export const MODULE_ACTIONS: Partial<Record<AppMode, Partial<Record<ModuleAction, () => void>>>> = {
+const MODULE_ACTIONS: {
+  [M in MappedModule]: Record<(typeof MODULE_SHORTCUTS)[M][number], () => void>;
+} = {
   studio: {
     'app.new': () => useConnectionDialogStore().openNew(),
     'app.import': () => void useDatagripImportStore().pickAndScanDataGripProject(),
@@ -51,5 +47,7 @@ export const MODULE_ACTIONS: Partial<Record<AppMode, Partial<Record<ModuleAction
 };
 
 export function runModuleAction(action: ModuleAction): void {
-  MODULE_ACTIONS[useModeStore().active]?.[action]?.();
+  const handlers: Partial<Record<AppMode, Partial<Record<ModuleAction, () => void>>>> =
+    MODULE_ACTIONS;
+  handlers[useModeStore().active]?.[action]?.();
 }

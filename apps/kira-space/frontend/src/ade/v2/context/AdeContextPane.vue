@@ -72,6 +72,7 @@ useShortcut(root, ['form.save'], () => void saveNow());
           @submit="saveNow"
         />
         <SaveBar
+          shortcut="form.save"
           :dirty="dirty"
           :saving="saving"
           :can-save="dirty"

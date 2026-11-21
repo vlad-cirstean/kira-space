@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
-import { Button } from '@theme/components/ui/button';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { tabChipVariants } from '@theme/components/ui/tabs';
 import { colorMarkClass } from '@theme/connColor';
 import { t } from '@theme/i18n';
@@ -307,18 +307,19 @@ if (moveTab) {
             /></TextTooltip
           >
         </button>
-        <Button
+        <!-- tab.close closes the active tab, so only the active tab's button prints it. -->
+        <TooltipIconButton
           v-if="host.tabs.closeTab"
+          icon="close"
+          :label="t('common.tab.close.tooltip', { title: titleFor(tab) })"
           variant="toolbar"
           size="title"
           class="tab-close size-4 p-0"
           :class="tab.active ? 'opacity-100' : rowActions"
-          :aria-label="t('common.tab.close.tooltip', { title: titleFor(tab) })"
+          :shortcut="tab.active ? 'tab.close' : undefined"
           data-testid="tab-close"
           @click="onClose($event, tab)"
-        >
-          <CodiconIcon name="close" :size="13" />
-        </Button>
+        />
       </div>
     </div>
     <!-- A third fixed child, after the scrolling tab row, mirroring the pinned tab's own

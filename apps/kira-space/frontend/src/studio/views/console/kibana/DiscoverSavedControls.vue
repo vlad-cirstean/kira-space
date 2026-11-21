@@ -17,7 +17,6 @@ import { toCodedError } from '@workbench/bridge/codedError';
 import MenuItems from '@workbench/components/MenuItems.vue';
 import TextPromptDialog from '@workbench/prompt/TextPromptDialog.vue';
 import { useTextPrompt } from '@workbench/prompt/useTextPrompt';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef } from 'vue';
 import { control } from '../../../bridge/control';
@@ -154,7 +153,6 @@ const moreItems = computed<MenuItem[]>(() => [
 
 const menuOpen = ref(false);
 const menuTrigger = useTemplateRef<{ $el: HTMLElement }>('menuTrigger');
-const saveChord = formatShortcut('form.save');
 </script>
 
 <template>
@@ -174,7 +172,7 @@ const saveChord = formatShortcut('form.save');
       />
     </span>
     <div class="flex items-center">
-      <TextTooltip :text="t('studio.kibana.saved.save.tooltip')" :kbd="saveChord">
+      <TextTooltip :text="t('studio.kibana.saved.save.tooltip')" shortcut="form.save">
         <Button
           variant="toolbar"
           size="kira"

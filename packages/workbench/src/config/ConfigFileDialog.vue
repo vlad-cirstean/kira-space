@@ -218,6 +218,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void props.draft.save
           size="kira-lg"
           :disabled="!draft.canSave.value"
           :pending="draft.saving.value"
+          shortcut="form.submit"
           :data-testid="`${testidPrefix}-save`"
           @click="draft.saveNow"
         >

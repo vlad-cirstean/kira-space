@@ -172,6 +172,7 @@ async function onDeleteMessage(): Promise<void> {
         :icon="ICON.refresh"
         :label="t('common.action.refresh.label')"
         disabled-trigger
+        shortcut="view.refresh"
         data-testid="stream-refresh"
         :disabled="isBatch"
         @click="emit('refresh')"
@@ -329,6 +330,7 @@ async function onDeleteMessage(): Promise<void> {
         :icon="ICON.search"
         :label="t('studio.common.searchPage.label')"
         :pressed="!!rt?.searchOpen"
+        shortcut="view.find"
         data-testid="stream-search-toggle"
         @click="streamViewStore.toggleSearchOpen(tab.id)"
       />

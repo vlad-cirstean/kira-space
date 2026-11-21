@@ -19,9 +19,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import VarText from '@theme/components/VarText.vue';
 import { colorMarkClass } from '@theme/connColor';
+import { formatShortcut } from '@theme/shortcutText';
 import type { TextPart } from '@theme/varText';
 import { useId } from 'vue';
-import { formatShortcut } from '../shortcuts/keys';
 import type { MenuItem, MenuRadioOption } from '../state/contextMenu';
 import MenuHint from './MenuHint.vue';
 import MenuRowLabel from './MenuRowLabel.vue';
@@ -200,9 +200,14 @@ async function onItemClick(item: MenuItem): Promise<void> {
             :test-id="`${tidOf(item)}-reason`"
             :hint="item.hint"
           />
-          <DropdownMenuShortcut v-if="item.shortcut" :data-testid="`${tidOf(item)}-shortcut`">{{
-            formatShortcut(item.shortcut)
-          }}</DropdownMenuShortcut>
+          <DropdownMenuShortcut
+            v-if="item.shortcut"
+            :data-testid="`${tidOf(item)}-shortcut`"
+            :data-shortcut="item.shortcut"
+            >{{
+              formatShortcut(item.shortcut)
+            }}</DropdownMenuShortcut
+          >
         </DropdownMenuItem>
       </TooltipTrigger>
       <TooltipContent v-if="item.hint"><VarText :parts="hintParts(item.hint)" /></TooltipContent>

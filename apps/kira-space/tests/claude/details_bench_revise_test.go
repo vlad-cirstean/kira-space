@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -42,7 +43,66 @@ func benchFlow(id string) spikeFlow {
 			return f
 		}
 	}
+	if id == "F5" || id == "F6" {
+		return withFinish(flowByIDs(spikeFlows1b, id))
+	}
 	return flowByIDs(spikeFlows1b, id)
+}
+
+// benchFinishClause ends the F5 and F6 prompts of both arms: every real step, v0.3.13 included, ends with a
+// finish call, so the baseline arm finishes too (P714).
+const benchFinishClause = "Before your final reply, finish the step."
+
+// withFinish makes a flow end like a real step: the clause goes before the folder line, the oracle also
+// needs a finish with status done on both arms.
+func withFinish(f spikeFlow) spikeFlow {
+	base, oracle := f.prompt, f.oracle
+	f.prompt = func(r *spikeRun) string {
+		tail := r.folderLine()
+		return strings.TrimSuffix(base(r), tail) + " " + benchFinishClause + tail
+	}
+	f.oracle = func(r *spikeRun, result string) (bool, string) {
+		if ok, why := oracle(r, result); !ok {
+			return ok, why
+		}
+		if len(r.finishes) == 0 || r.finishes[len(r.finishes)-1].Status != "done" {
+			return false, "finish done not called"
+		}
+		return true, ""
+	}
+	return f
+}
+
+func TestDetailsBenchFinishFlows(t *testing.T) {
+	for _, id := range []string{"F5", "F6"} {
+		for _, arm := range []string{"T", "R"} {
+			r := &spikeRun{t: t, flow: id, arm: arm, taskDir: t.TempDir(), lib: loadSpikeLib(t)}
+			if p := benchFlow(id).prompt(r); !strings.HasSuffix(strings.TrimSuffix(p, r.folderLine()), benchFinishClause) {
+				t.Fatalf("%s %s prompt lacks the finish clause before the folder line", id, arm)
+			}
+		}
+	}
+	for _, id := range []string{"F1", "F4"} {
+		r := &spikeRun{t: t, flow: id, arm: "T", taskDir: t.TempDir(), lib: loadSpikeLib(t)}
+		if strings.Contains(benchFlow(id).prompt(r), benchFinishClause) {
+			t.Fatalf("%s prompt carries the F5/F6 finish clause", id)
+		}
+	}
+	pass := withFinish(spikeFlow{prompt: func(*spikeRun) string { return "x" }, oracle: func(*spikeRun, string) (bool, string) { return true, "" }})
+	for _, arm := range []string{"T", "R"} {
+		r := &spikeRun{t: t, arm: arm}
+		if ok, _ := pass.oracle(r, ""); ok {
+			t.Fatalf("%s: oracle accepted a run with no finish", arm)
+		}
+		r.finishes = []agentmcp.Finish{{Status: "failed"}}
+		if ok, _ := pass.oracle(r, ""); ok {
+			t.Fatalf("%s: oracle accepted a failed finish", arm)
+		}
+		r.finishes = []agentmcp.Finish{{Status: "done"}}
+		if ok, why := pass.oracle(r, ""); !ok {
+			t.Fatalf("%s: oracle refused a done finish: %s", arm, why)
+		}
+	}
 }
 
 const f1bSeedLine = "seeds 400 orders across three days"

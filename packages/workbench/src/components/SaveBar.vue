@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ShortcutId } from '@shared/domain/shortcuts';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -12,6 +14,8 @@ const props = withDefaults(
     canSave?: boolean;
     testidPrefix: string;
     saveLabel?: string;
+    /** The chord that saves this form; shown in the Save tooltip. */
+    shortcut: ShortcutId;
   }>(),
   { canSave: undefined, saveLabel: undefined },
 );
@@ -34,15 +38,17 @@ const discardOff = computed(() => !props.dirty || props.saving);
     >
       {{ t('common.action.discard.label') }}
     </Button>
-    <Button
-      variant="dialog-primary"
-      size="kira-lg"
-      :disabled="!(props.canSave ?? dirty)"
-      :pending="saving"
-      :data-testid="`${props.testidPrefix}-save`"
-      @click="emit('save')"
-    >
-      {{ props.saveLabel ?? t('common.action.save.label') }}
-    </Button>
+    <TextTooltip :shortcut="props.shortcut">
+      <Button
+        variant="dialog-primary"
+        size="kira-lg"
+        :disabled="!(props.canSave ?? dirty)"
+        :pending="saving"
+        :data-testid="`${props.testidPrefix}-save`"
+        @click="emit('save')"
+      >
+        {{ props.saveLabel ?? t('common.action.save.label') }}
+      </Button>
+    </TextTooltip>
   </div>
 </template>

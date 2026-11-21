@@ -20,7 +20,6 @@ import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import SortableList from '@workbench/components/SortableList.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -397,7 +396,7 @@ const listScrollEl = useTemplateRef<HTMLElement>('listScrollEl');
 useKeptScroll('automations:list', listScrollEl);
 useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
   e.preventDefault();
-  contextMenuStore.openContextMenu(e, newScriptItems(createScript));
+  contextMenuStore.openContextMenu(e, newScriptItems(createScript, { root: true }));
 });
 </script>
 
@@ -413,14 +412,14 @@ useEventListener(bodyEl, 'contextmenu', (e: MouseEvent) => {
               showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
             "
             :pressed="showSearch"
-            :kbd="formatShortcut('panel.find')"
+            shortcut="panel.find"
             data-testid="toggle-search"
             @click="toggleSearch"
           />
           <MenuIconButton
             :label="t('automations.panel.add.tooltip')"
             :aria-label="t('automations.script.new.label')"
-            :items="() => newScriptItems(createScript)"
+            :items="() => newScriptItems(createScript, { root: true })"
             data-testid="automations-add"
           />
         </template>

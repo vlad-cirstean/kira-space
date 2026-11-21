@@ -1,15 +1,17 @@
 <script setup lang="ts">
+import type { ShortcutId } from '@shared/domain/shortcuts';
 import type { CodiconSize } from '@theme/CodiconIcon.vue';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import ShortcutKbd from '@theme/components/ShortcutKbd.vue';
 import type { ButtonVariants } from '@theme/components/ui/button';
 import { Button } from '@theme/components/ui/button';
-import { Kbd } from '@theme/components/ui/kbd';
 import {
   Tooltip,
   TooltipContent,
   TooltipDisabledTrigger,
   TooltipTrigger,
 } from '@theme/components/ui/tooltip';
+import { ariaKeyShortcuts } from '@theme/shortcutText';
 import { computed, useTemplateRef } from 'vue';
 
 // 152 call sites across 52 files repeated this exact
@@ -38,8 +40,8 @@ withDefaults(
     pressed?: boolean;
     /** Colours the icon for a state: `ok` (done, on), `warn` or `error`. */
     tone?: 'ok' | 'warn' | 'error' | 'info';
-    /** Shortcut text (callers format it), shown as a `Kbd` after the label. */
-    kbd?: string;
+    /** Registry chord this button runs: a `ShortcutKbd` after the label, `aria-keyshortcuts` on the button. */
+    shortcut?: ShortcutId;
     /** `data-testid` of the tooltip body. */
     contentTestid?: string;
   }>(),
@@ -52,7 +54,7 @@ withDefaults(
     outline: undefined,
     pressed: undefined,
     tone: undefined,
-    kbd: undefined,
+    shortcut: undefined,
     contentTestid: undefined,
   },
 );
@@ -82,6 +84,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
           :size="size"
           :aria-label="ariaLabel ?? label"
           :aria-pressed="pressed"
+          :aria-keyshortcuts="shortcut && ariaKeyShortcuts(shortcut)"
           :data-tone="tone"
           v-bind="$attrs"
         >
@@ -97,6 +100,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
         :size="size"
         :aria-label="ariaLabel ?? label"
         :aria-pressed="pressed"
+        :aria-keyshortcuts="shortcut && ariaKeyShortcuts(shortcut)"
         :data-tone="tone"
         v-bind="$attrs"
       >
@@ -105,7 +109,7 @@ defineExpose({ $el: computed(() => buttonRef.value?.$el) });
       </Button>
     </TooltipTrigger>
     <TooltipContent :data-testid="contentTestid"
-      ><slot>{{ label }}</slot><Kbd v-if="kbd">{{ kbd }}</Kbd></TooltipContent
+      ><slot>{{ label }}</slot><ShortcutKbd v-if="shortcut" :id="shortcut" /></TooltipContent
     >
   </Tooltip>
 </template>

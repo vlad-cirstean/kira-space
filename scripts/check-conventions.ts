@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Code convention guard N1-N7 and N8-N18.
+ * Code convention guard N1-N7 and N8-N19.
  *
  * N1 file names (.ts camelCase, .vue PascalCase), N2 no `.test.ts`, N3 no util/utils/helpers
  * folder, N4 Pinia id = export name without `use`/`create` and `Store`, N5 event names
@@ -32,6 +32,12 @@
  * only grey tokens for selection keys, `::selection` is themed, and no selection variant or
  * `selected ?` expression picks a blue utility or CSS rule. Blue means primary, info or data.
  *
+ * N19 every shortcut shows (P712): each `SHORTCUTS` id has a display site (`shortcut` prop or menu item
+ * field, `moduleShortcut`, `ShortcutKbd`, or a Go menu accelerator) or a reason in
+ * `SHORTCUT_NO_CONTROL`; a file that binds an id (`useShortcut`, `shortcutKeydown`, `shortcutFor`,
+ * `registerCommand`) displays it in its directory or is mapped in `SHORTCUT_SHOWN_ELSEWHERE`.
+ * Heuristic: it cannot prove the shown control runs the same handler; the UI spec does.
+ *
  * No pending list: every hit fails. N6 also fails on any retired-code registry (`Legacy` in Go,
  * `LEGACY_ERROR_CODES` in TS).
  */
@@ -56,7 +62,8 @@ export type Rule =
   | 'N15'
   | 'N16'
   | 'N17'
-  | 'N18';
+  | 'N18'
+  | 'N19';
 export interface Hit {
   rule: Rule;
   path: string;
@@ -416,6 +423,134 @@ export function menuShortcutHits(
   return hits;
 }
 
+/** N19: ids with no control to carry a hint; each needs a reason. */
+export const SHORTCUT_NO_CONTROL: Readonly<Record<string, string>> = {
+  'menu.open': 'context-menu key: OS convention like right-click, no button runs it',
+  'list.moveUp': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveDown': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveLeft': 'keyboard reorder; no control moves an item, drag only',
+  'list.moveRight': 'keyboard reorder; no control moves an item, drag only',
+  'editor.suggest': 'completion popup opens from typing; no control',
+  'tree.selectAll': 'no Select all control',
+};
+
+/**
+ * N19: a binding file whose chord shows elsewhere. Value is the file that displays it (verified to
+ * hold the display site), or null for a chord with no control in that view (reason in a comment).
+ */
+export const SHORTCUT_SHOWN_ELSEWHERE: Readonly<Record<string, string | null>> = {
+  'apps/kira-space/frontend/src/studio/views/console/ConsoleSlickGrid.vue':
+    'apps/kira-space/frontend/src/studio/views/grid/menu.ts',
+  // Value auto-stages on edit; there is no Save or Submit control.
+  'apps/kira-space/frontend/src/studio/views/shared/celleditor/CellEditorView.vue': null,
+  // Monaco's own find widget answers the chord; no toolbar control runs it.
+  'apps/kira-space/frontend/src/views/repo/RepoDiffView.vue': null,
+  'apps/kira-space/frontend/src/views/repo/useReadonlyFileViewer.ts': null,
+  'packages/git-ui/src/lib/useReviewStepping.ts':
+    'packages/git-ui/src/components/review/ReviewFilesPane.vue',
+  'packages/workbench/src/behaviour/panelSearch.ts':
+    'apps/kira-space/frontend/src/studio/workbench/panels/ProjectPanel.vue',
+};
+
+const SHORTCUT_SOURCE_ROOTS = ['packages/', 'apps/kira-space/frontend/src/'];
+const SHORTCUT_GO_MENUS = ['internal/shell/menu.go', 'apps/kira-space/internal/appshell/menu.go'];
+const REGISTRY_ID = /['"]([a-z]+\.[A-Za-z]+)['"]/g;
+
+/** Registry ids a source shows: `shortcut` prop or item field (also in a ternary), `moduleShortcut`, `<ShortcutKbd>`, or Go `Shortcuts["id"].Accelerator()`. */
+export function displayedShortcutIds(source: string): Set<string> {
+  const ids = new Set<string>();
+  for (const m of source.matchAll(/(?:\bshortcut:|:?\bshortcut=)([^\n]*)/g)) {
+    for (const q of (m[1] ?? '').matchAll(REGISTRY_ID)) ids.add(q[1] ?? '');
+  }
+  for (const m of source.matchAll(/\bmoduleShortcut\(\s*['"]\w+['"],\s*['"]([\w.]+)['"]/g))
+    ids.add(m[1] ?? '');
+  for (const m of source.matchAll(/<ShortcutKbd\s+id="([\w.]+)"/g)) ids.add(m[1] ?? '');
+  for (const m of source.matchAll(/Shortcuts\["([\w.]+)"\]\.Accelerator\(\)/g)) ids.add(m[1] ?? '');
+  return ids;
+}
+
+/** Registry ids a source binds through a literal id list or `registerCommand('id')`. */
+export function boundShortcutIds(source: string): Set<string> {
+  const ids = new Set<string>();
+  for (const m of source.matchAll(/\b(?:useShortcut|shortcutKeydown|shortcutFor)\(/g)) {
+    const rest = source.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 240);
+    const list = /\[([^\]]*)\]/.exec(rest);
+    for (const q of (list?.[1] ?? '').matchAll(REGISTRY_ID)) ids.add(q[1] ?? '');
+  }
+  for (const m of source.matchAll(/\bregisterCommand\(\s*['"]([\w.-]+)['"]/g)) ids.add(m[1] ?? '');
+  return ids;
+}
+
+function unmappedBindingHits(
+  path: string,
+  src: string,
+  scopes: ReadonlyMap<string, string>,
+  shown: ReadonlyMap<string, ReadonlySet<string>>,
+  noControl: Readonly<Record<string, string>>,
+  target: string | null | undefined,
+): Hit[] {
+  if (target === null) return [];
+  const dir = path.slice(0, path.lastIndexOf('/') + 1);
+  const hits: Hit[] = [];
+  for (const id of boundShortcutIds(src)) {
+    if (!scopes.has(id) || scopes.get(id) === 'global' || id in noControl) continue;
+    if ([...shown].some(([p, ids]) => p.startsWith(dir) && ids.has(id))) continue;
+    if (target !== undefined && shown.get(target)?.has(id)) continue;
+    hits.push({
+      rule: 'N19',
+      path,
+      message:
+        target === undefined
+          ? `binds '${id}' but nothing in ${dir} shows it; add a hint or map it in SHORTCUT_SHOWN_ELSEWHERE`
+          : `SHORTCUT_SHOWN_ELSEWHERE maps this file to ${target}, which does not show '${id}'`,
+    });
+  }
+  return hits;
+}
+
+/**
+ * N19. `sources` is every non-spec source (path to text); `scopes` maps id to scope. Half one: every
+ * registry id shows somewhere or has a `noControl` reason. Half two: a bound id shows in its
+ * binding file's directory, or the file is in `elsewhere`.
+ */
+export function shortcutDisplayHits(
+  scopes: ReadonlyMap<string, string>,
+  sources: ReadonlyMap<string, string>,
+  noControl: Readonly<Record<string, string>> = SHORTCUT_NO_CONTROL,
+  elsewhere: Readonly<Record<string, string | null>> = SHORTCUT_SHOWN_ELSEWHERE,
+): Hit[] {
+  const hits: Hit[] = [];
+  const shown = new Map<string, Set<string>>();
+  const everywhere = new Set<string>();
+  for (const [path, src] of sources) {
+    const ids = displayedShortcutIds(src);
+    shown.set(path, ids);
+    for (const id of ids) everywhere.add(id);
+  }
+  for (const id of Object.keys(noControl)) {
+    if (!scopes.has(id)) {
+      hits.push({
+        rule: 'N19',
+        path: SHORTCUTS_PATH,
+        message: `SHORTCUT_NO_CONTROL names unknown id '${id}'`,
+      });
+    }
+  }
+  for (const id of scopes.keys()) {
+    if (everywhere.has(id) || id in noControl) continue;
+    hits.push({
+      rule: 'N19',
+      path: SHORTCUTS_PATH,
+      message: `shortcut '${id}' has no display site (shortcut prop, menu item shortcut, moduleShortcut, ShortcutKbd or Go accelerator); add one or a SHORTCUT_NO_CONTROL reason`,
+    });
+  }
+  for (const [path, src] of sources) {
+    if (!/\.(?:ts|vue)$/.test(path)) continue;
+    hits.push(...unmappedBindingHits(path, src, scopes, shown, noControl, elsewhere[path]));
+  }
+  return hits;
+}
+
 /** N12: a state dir needs 2+ files (one file is `state.ts`); menu builders are `menu.ts`. */
 export function stateAndMenuNameHits(paths: readonly string[]): Hit[] {
   const hits: Hit[] = [];
@@ -491,6 +626,28 @@ function menuHits(allPaths: readonly string[]): Hit[] {
     );
   }
   return hits;
+}
+
+function shortcutHits(allPaths: readonly string[]): Hit[] {
+  const scopes = new Map(
+    [
+      ...readFileSync(join(REPO_ROOT, SHORTCUTS_PATH), 'utf8').matchAll(
+        /'([\w.]+)':\s*\{\s*scope:\s*'(\w+)'/g,
+      ),
+    ].map((m) => [m[1] ?? '', m[2] ?? ''] as const),
+  );
+  const tsPaths = allPaths.filter(
+    (p) =>
+      SHORTCUT_SOURCE_ROOTS.some((r) => p.startsWith(r)) &&
+      !p.includes('/node_modules/') &&
+      !/\.(?:spec|test)\.ts$/.test(p) &&
+      !p.includes('/testing/'),
+  );
+  const sources = readAll([
+    ...tsPaths,
+    ...SHORTCUT_GO_MENUS.filter((p) => existsSync(join(REPO_ROOT, p))),
+  ]);
+  return shortcutDisplayHits(scopes, sources);
 }
 
 function fileHits(path: string, dirs: Set<string>): Hit[] {
@@ -723,8 +880,9 @@ const NEUTRAL_ALIAS_TARGETS = new Set([
   '--kira-bg-chrome',
   '--kira-bg',
   '--kira-bg-elevated',
+  '--kira-select-edge',
 ]);
-const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg'] as const;
+const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg', '--kira-control-edge'] as const;
 const NEUTRAL_SPREAD = 12;
 const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
 const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
@@ -771,6 +929,8 @@ const ON_STATE_FILES = [
 ];
 const BLUE_ON_STATE =
   /(?<![\w-])(?:bg|border|text|ring)-(?:primary|accent|info|focus)(?:-foreground)?(?![\w-])/;
+// An `as-child` tooltip trigger overwrites a root's data-state, so on-state fills key on aria-checked.
+const STATE_KEYED_ON = /data-\[state=(?:checked|indeterminate)\]:(?:bg|border)-on(?![\w-])/;
 const N18_CLASS_DIRS = [
   'apps/kira-space/frontend/src',
   'apps/kira-space/frontend/mobile',
@@ -886,6 +1046,15 @@ export function selectionClassHits(path: string, source: string): Hit[] {
         message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-on, border-on, text-on-fg`,
       });
     }
+    const stateKeyed =
+      onState && !path.endsWith('Progress.vue') ? STATE_KEYED_ON.exec(line)?.[0] : undefined;
+    if (stateKeyed) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: ${stateKeyed} keys on data-state; use aria-checked or aria-[checked=mixed]`,
+      });
+    }
     const behind = BLUE_BEHIND_VARIANT.exec(line)?.[0];
     const picked = SELECTED_EXPR.test(line) ? BLUE_LITERAL.exec(line)?.[0] : undefined;
     const found = behind ?? picked;
@@ -996,6 +1165,7 @@ function collectHits(): Hit[] {
   hits.push(...rawSqlFileHits());
   hits.push(...selectionHits());
   hits.push(...menuHits(allPaths));
+  hits.push(...shortcutHits(allPaths));
   for (const { path, literal } of EVENT_FILES) {
     hits.push(...eventHits(path, readFileSync(join(REPO_ROOT, path), 'utf8'), literal));
   }
@@ -1034,7 +1204,7 @@ function main(): number {
     );
     return 1;
   }
-  console.log('check-conventions: every convention holds (N1-N18).');
+  console.log('check-conventions: every convention holds (N1-N19).');
   return 0;
 }
 

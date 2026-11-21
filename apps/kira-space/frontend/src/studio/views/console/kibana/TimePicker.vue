@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { KibanaTimePreset, KibanaTimeSelection } from '@shared/domain/kibana';
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { Field, FieldLabel } from '@theme/components/ui/field';
 import { Input } from '@theme/components/ui/input';
@@ -141,15 +142,17 @@ const isActive = (preset: KibanaTimePreset): boolean =>
         </div>
       </PopoverContent>
     </Popover>
-    <Button
-      variant="toolbar"
-      size="kira"
-      :disabled="disabled"
-      :aria-label="t('studio.kibana.time.refresh.aria')"
-      data-testid="kibana-time-refresh"
-      @click="emit('refresh')"
-    >
-      <CodiconIcon name="refresh" :size="13" />
-    </Button>
+    <TextTooltip :text="t('studio.kibana.time.refresh.aria')" shortcut="view.refresh">
+      <Button
+        variant="toolbar"
+        size="kira"
+        :disabled="disabled"
+        :aria-label="t('studio.kibana.time.refresh.aria')"
+        data-testid="kibana-time-refresh"
+        @click="emit('refresh')"
+      >
+        <CodiconIcon name="refresh" :size="13" />
+      </Button>
+    </TextTooltip>
   </div>
 </template>

@@ -11,9 +11,9 @@ Code review at chapter end: 2 rounds (user request).
 | P709 | Task list: aligned rows, calmer design | Done |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Done |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
-| P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
+| P712 | Show every shortcut: button tooltips, context menus, menu bar | Done |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
-| P714 | Real `claude` details bench gate: F5 and F6 fail at base | Todo |
+| P714 | Real `claude` details bench gate: F5 and F6 fail at base | Done |
 | P715 | Approval prompt dialogs (database, API) redesign; data review rows resizable | Todo |
 
 ## P707
@@ -200,7 +200,13 @@ focus utility in the four on-state primitives. Visual run with `--update-snapsho
 default tolerance had kept 20+ stale blue-selection baselines, so every baseline was re-recorded and
 the 37 changed were inspected (blue selection and checkbox to grey; the rest sub-threshold fills). Two
 carry unrelated drift now recorded: `branch-panel-details` (Open PR badge info tone) and
-`approvals-toast` (primary Show button tint); git HEAD ring and check now render in `info`. After
+`approvals-toast` (primary Show button tint); git HEAD ring and check now render in `info`. Fix: the
+environment radio sat under a tooltip trigger whose `data-state` (closed) replaced the radio's own,
+so `data-[state=checked]:bg-on` never applied and the checked radio rendered dark. Checkbox, radio and
+switch fills now key on `aria-checked`. Unchecked edge is new `--kira-control-edge` (#71717a, 3.1:1 on
+field), progress track tints it, toggle on is `bg-select` with `select-edge` border. Checked every state
+(off, on, indeterminate, hover, focus, disabled) on chrome, field, dialog and menu grounds as 2x crops;
+sheets in `screenshots/p710/onstate2/`. 25 more baselines re-recorded and inspected. After
 shots `screenshots/p710/onstate/`. Before and after shots (13 pairs, gitignored):
 `screenshots/p710/{before,after}/`.
 
@@ -256,6 +262,40 @@ strings. The plan lists every button, menu and context menu audited and any shor
 missing. Tests: UI spec that each shown hint matches the registry; visual baselines re-recorded and
 inspected. Runs after P711.
 
+Result: chord text has one source, `packages/theme/src/shortcutText.ts` (`formatShortcut`,
+`ariaKeyShortcuts`, `IS_MAC`), rendered only by `ShortcutKbd`. TooltipIconButton, TextTooltip,
+Button and SearchField take `shortcut: ShortcutId` (chip after the label, `aria-keyshortcuts`;
+SearchField chip shows while empty). 28 `kbd` callers converted. Context menus use the menu item
+`shortcut` field via `MenuItems`; module controls use `moduleShortcut(mode, action)` over
+`MODULE_SHORTCUTS` (`MODULE_ACTIONS` typed from it). Done: title bar, new-window, tab close (now a
+TooltipIconButton), SaveBar, view toolbars (data, console, filter, key-value, definition, stream,
+document, kibana, HTTP, gRPC, git toolbar), module New/Import/Environments in every module and
+menu, repo row Open/Rename/Remove, workflow step Remove, tree delete items, review comment
+controls. Dialog header X shows Esc, or Shift+Esc for a prompt; commit buttons keep the inline chip
+and gain `form.submit` where missing (config file Save, run script, review submit, connection
+Save). Native menu bar already carried accelerators: `TestBuildTemplateShowsEveryGlobalChord`.
+Guard N19 (`check-conventions.ts`, 5 spec cases) fails on a bound registry chord with no display
+site. Deliberately no chip: ADE task, branch and step review buttons (chord resolves from the
+focused element or selection, no-op in the later view, step block targets a run branch); automations
+group-menu New script and git worktree rows (no matching chord action). Deviation found by the
+suite: the auto-focused dialog X opened its tooltip and took the first Esc (copy-coverage-git,
+module-actions); DialogHeader now ignores focus events on the X (tooltip on hover only).
+Tests: `ui/shortcut-hints.spec.ts` 20 cases (Mac UA and Linux UA via userAgent override; table of
+expected chips written out by hand); Go appshell/shell, bun check-conventions, typecheck and lint
+via the hook on each commit; UI: module-actions, copy-coverage(-git), consistency (dialogs),
+tooltips, tree, data-view, window-chrome, repo-workspace, panel-find, automations-scripts. Visual:
+3 new baselines (title bar tooltip, repo row menu, console Run tooltip). Re-recorded after
+inspection: `data-grid` (column filter chip), `connection-privacy-tab`, `connection-privacy-empty`
+(Save chip), `git-graph`, `git-graph-detail` (HEAD node halo, stale since the P710 focus-token
+retarget, not this phase). `proof-window` and `ade-task-files` failed once under load, passed
+alone.
+Follow-up, not fixed: in the git module the native View > Refresh and Find menu items may swallow
+F5 and Cmd+F on macOS before the module sees them. Only a real macOS build shows it.
+Manual macOS checklist: menu bar items show accelerators right-aligned; tooltips show the chip
+after the label on hover and on Tab focus; context-menu chips right-aligned in a native WKWebView;
+each shown chord fires its action with focus in Monaco, a grid and a dialog input; dialog X
+tooltip does not eat Esc.
+
 ## P713
 
 Found in P708. `TestAdeReviewStep` fails about half of runs, also at base `605a98ec3`. A resumed
@@ -298,6 +338,37 @@ and hits the guard at 18 of 24 runs. Deliverable: root-cause with the P713 Resul
 starting point (real regression in the details tool/prompt path, stale thresholds or baseline, or
 sample noise at 2 reps), then fix the code or recalibrate the gate with evidence; the plan states
 the budget and rep count needed for a trustworthy verdict and what only a paid run proves.
+
+Result (not closed; gate still fails). Diagnosis from transcripts (`KIRA_SPIKE_DUMP`): harness
+artifact first, then product prompt waste, then inherent ceremony. (a) Arm R's prompt never named
+the draft while the stub refused a draft-less ok finish: one refused `step.finish` in F5 and F6.
+Fixed (`benchDraftPath`, `TestDetailsBenchArmRServes`). (b) The fragment's "before an ok finish"
+primed status `ok`, refused by `state` in 12 of 12 R runs; fixed ("before you finish", goldens, ADE
+real `claude` row passes). (c) Residual: README read, draft write, `step.finish`, `ToolSearch`.
+Verdict round after (a) only, 24 of 24 runs, 3 reps, 1.89 USD, all pass: cost R/T F4 0.93, F5 1.34,
+F6 1.52, F1 1.31; context R/T F4 0.90, F5 0.98, F6 1.06, F1 0.99. After (b), R only, 1 rep (T from
+the round): cost F5 1.18, F6 1.37, F1 1.29, context F5 0.96, F6 1.05, F1 1.00. Gate not met on F6
+(cost, context), F1 and, at 3 reps, F5 (cost). Total spend about 2.8 USD. Open: T on F5 and F6
+never finishes while every Kira step does; plan Open question 1 (A: give T the v0.3.13 finish
+instruction, B: record as Known open item, C: recalibrate). Plan: `plans/P714.md`.
+
+Option A (user choice): arm T on F5 and F6 now finishes like a real step, both arms' prompts carry
+the finish clause and both oracles need a done finish (`TestDetailsBenchFinishFlows`). Round of F5
+and F6, 3 reps, 12 of 12 pass, 0.93 USD, final prompt: F5 passes (cost R/T 1.09, context 0.97); F6
+fails (cost 1.36, context 1.05 against 1.0). Total phase spend about 3.73 USD. Not closed: F6
+residual is README read, draft write and a `state.yaml` read after the draft write (2 of 3 runs, the
+"read fileErrors after each edit" line, a watcher-contract decision); F1 cost 1.29 to 1.31 is
+unchanged and not covered by A.
+
+Recalibration (user choice, free): cost bounds F1 1.35, F6 1.40 (F4, F5 stay 1.2); context F6 1.08
+(F5 stays 1.0, F1 to F4 1.05). All recorded ratios fit (F6 1.36/1.05, F1 1.29-1.31 cost). Still
+open: F1's recorded failed-call mean (R 0.33 vs T 0.00, one failed Bash) fails the unchanged
+failed-call rule and F1 was not rerun after the last prompt fix, so the row stays Todo pending a
+clean F1 round (about 0.4 USD) or a decision on that rule.
+
+F1 round at the final tree (user approved, 3 reps, both arms, 6 of 6 pass, 0.4142 USD): cost R/T
+0.0690/0.0561 = 1.23 (bound 1.35), context 40952/41348 = 0.99 (bound 1.05), failed calls 0.00 vs
+0.00. Gate passes on F4, F5, F6, F1. Done. Total phase spend about 4.14 USD.
 
 ## P715
 

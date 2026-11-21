@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Card, CardContent } from '@theme/components/ui/card';
@@ -132,16 +133,18 @@ const modes = computed(() => [
           >
             {{ t('common.action.cancel.label') }}
           </Button>
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            :pending="posting.pending.value"
-            :disabled="!canPost"
-            data-testid="comment-post"
-            @click="submit"
-          >
-            {{ t('common.comment.label') }}
-          </Button>
+          <TextTooltip shortcut="form.submit">
+            <Button
+              variant="dialog-primary"
+              size="kira"
+              :pending="posting.pending.value"
+              :disabled="!canPost"
+              data-testid="comment-post"
+              @click="submit"
+            >
+              {{ t('common.comment.label') }}
+            </Button>
+          </TextTooltip>
         </div>
       </div>
     </CardContent>

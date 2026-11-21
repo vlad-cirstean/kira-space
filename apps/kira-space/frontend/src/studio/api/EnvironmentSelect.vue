@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import PickerTrigger from '@theme/components/PickerTrigger.vue';
 import {
   DropdownMenu,
@@ -68,6 +69,7 @@ const menuItems = computed<MenuItem[]>(() => [
     testId: 'api-environment-manage',
     label: t('studio.api.environments.manage.label'),
     icon: 'settings-gear',
+    shortcut: moduleShortcut('api', 'api.environments'),
     run: () => variablesStore.openEnvironments(),
   },
 ]);

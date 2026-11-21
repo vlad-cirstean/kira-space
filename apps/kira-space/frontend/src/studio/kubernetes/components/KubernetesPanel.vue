@@ -7,7 +7,6 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useTemplateRef } from 'vue';
 import { useKubernetesUiStore } from '../state';
 import ClusterList from './ClusterList.vue';
@@ -39,7 +38,7 @@ const refresh = useAsyncAction(() => qc.invalidateQueries({ queryKey: ['kubernet
             showSearch ? t('common.action.hideSearch.label') : t('common.action.search.label')
           "
           :pressed="showSearch"
-          :kbd="formatShortcut('panel.find')"
+          shortcut="panel.find"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

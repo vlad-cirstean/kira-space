@@ -33,7 +33,6 @@ function review(): void {
   emit('hide');
 }
 
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 
 const onChord = shortcutKeydown(['form.submit'], () => review());
@@ -56,7 +55,7 @@ const onChord = shortcutKeydown(['form.submit'], () => review());
         </template>
         <Button
           variant="dialog-primary"
-          :kbd="formatShortcut('form.submit')"
+          shortcut="form.submit"
           size="kira-lg"
           data-testid="masking-review-open"
           @click="review"

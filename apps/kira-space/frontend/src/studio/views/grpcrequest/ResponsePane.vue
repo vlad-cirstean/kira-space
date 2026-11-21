@@ -314,6 +314,7 @@ onUnmounted(() => {
         :icon="ICON.search"
         :label="t('studio.grpc.response.find.label')"
         :pressed="findOpen"
+        shortcut="view.find"
         data-testid="grpc-find-toggle"
         @click="toggleFind"
       />

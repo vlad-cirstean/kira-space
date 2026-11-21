@@ -5,8 +5,8 @@ import type { SwitchRootEmits, SwitchRootProps } from 'reka-ui';
 import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from 'reka-ui';
 import type { HTMLAttributes } from 'vue';
 
-// reka-ui emits `data-state="checked"|"unchecked"` (never a bare `data-checked`), so the variants
-// below target `data-[state=...]`.
+// Root variants key on `aria-checked`: an `as-child` tooltip trigger overwrites the root's
+// `data-state` with its own open/closed state. The thumb owns its `data-state`, so it keeps it.
 const props = defineProps<SwitchRootProps & { class?: HTMLAttributes['class'] }>();
 const emits = defineEmits<SwitchRootEmits>();
 
@@ -20,7 +20,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     v-bind="forwarded"
     :class="
       cn(
-        'peer inline-flex h-3.5 w-6.5 shrink-0 cursor-default items-center rounded-full border border-border bg-field transition-colors disabled:cursor-default disabled:opacity-50 data-[state=checked]:border-on data-[state=checked]:bg-on',
+        'peer inline-flex h-3.5 w-6.5 shrink-0 cursor-default items-center rounded-full border border-control-edge bg-field transition-colors disabled:cursor-default disabled:opacity-50 aria-checked:border-on aria-checked:bg-on',
         props.class,
       )
     "

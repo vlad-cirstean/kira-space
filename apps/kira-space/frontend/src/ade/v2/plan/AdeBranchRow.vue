@@ -11,7 +11,6 @@ import { ICON } from '@theme/icons';
 import { useFocus } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import MenuIconButton from '@workbench/components/MenuIconButton.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -411,7 +410,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           v-if="choice"
           icon="git-compare"
           :label="t('space.ade.board.taskMenu.reviewCode.label')"
-          :kbd="formatShortcut('ade.reviewCode')"
+          shortcut="ade.reviewCode"
           class="shrink-0"
           disabled-trigger
           :pending="reviewCode.pendingFor([row.id])"
@@ -539,7 +538,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
               v-if="choice"
               icon="git-compare"
               :label="t('space.ade.board.taskMenu.reviewCode.label')"
-              :kbd="formatShortcut('ade.reviewCode')"
+              shortcut="ade.reviewCode"
               class="size-5 shrink-0"
               disabled-trigger
               :pending="reviewCode.pendingFor([row.id])"

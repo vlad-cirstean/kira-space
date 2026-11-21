@@ -21,7 +21,6 @@
 import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, ref, watch } from 'vue';
 import { ASYNC_FAILURES, type AsyncFailure } from '../state/asyncFailures.ts';
 import type { GraphViewState } from '../state/graphView.ts';
@@ -33,7 +32,6 @@ const props = defineProps<{
   reportError: (err: unknown, failure: AsyncFailure) => void;
 }>();
 
-const REFRESH_CHORD = formatShortcut('view.refresh');
 const hasPendingChange = ref(false);
 
 watch(
@@ -76,7 +74,7 @@ defineExpose({ refresh: doRefresh });
       hasPendingChange ? t('git.toolbar.refreshPending.hint') : t('common.action.refresh.label')
     "
     :aria-label="t('common.action.refresh.label')"
-    :kbd="hasPendingChange ? undefined : REFRESH_CHORD"
+    :shortcut="hasPendingChange ? undefined : 'view.refresh'"
     class="relative"
     :pending="isRefreshing"
     :disabled="blockedByLoad"

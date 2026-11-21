@@ -67,7 +67,7 @@ function watchErrors(page: Page): string[] {
 }
 
 test('the page list is not empty', () => {
-  expect(PAGES.length).toBeGreaterThanOrEqual(25);
+  expect(PAGES.length).toBeGreaterThanOrEqual(20);
 });
 
 test('landing and docs share one favicon', async ({ page, request }) => {

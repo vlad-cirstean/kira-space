@@ -10,7 +10,6 @@ import { useAsyncAction } from '@workbench/behaviour/asyncAction';
 import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, useTemplateRef } from 'vue';
 import {
   useContainers,
@@ -98,7 +97,7 @@ const refresh = useAsyncAction(() => qc.invalidateQueries({ queryKey: ['docker']
           "
           :pressed="showSearch"
           :disabled="!ok"
-          :kbd="formatShortcut('panel.find')"
+          shortcut="panel.find"
           data-testid="toggle-search"
           @click="toggleSearch"
         />

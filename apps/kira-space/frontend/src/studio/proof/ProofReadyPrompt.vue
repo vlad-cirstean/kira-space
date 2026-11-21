@@ -13,7 +13,6 @@ import {
 import { toast } from '@theme/components/ui/sonner';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed } from 'vue';
 import { control } from '../bridge/control';
@@ -57,7 +56,7 @@ const onChord = shortcutKeydown(['form.submit'], () => openWindow());
         </template>
         <Button
           variant="dialog-primary"
-          :kbd="formatShortcut('form.submit')"
+          shortcut="form.submit"
           size="kira-lg"
           data-testid="proof-ready-open"
           @click="openWindow()"

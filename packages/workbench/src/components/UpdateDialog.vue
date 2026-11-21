@@ -12,7 +12,6 @@ import {
 } from '@theme/components/ui/dialog';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
-import { formatShortcut } from '../shortcuts/keys';
 import { shortcutKeydown } from '../shortcuts/useShortcut';
 import type { AppUpdateStore } from '../state/createAppUpdateStore';
 
@@ -158,7 +157,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
           <Button
             variant="dialog-primary"
             size="kira-lg"
-            :kbd="formatShortcut('form.submit')"
+            shortcut="form.submit"
             data-testid="update-dialog-retry"
             @click="store.checkForUpdates()"
           >
@@ -169,7 +168,7 @@ const onChord = shortcutKeydown(['form.submit'], () => {
           <Button
             variant="dialog-primary"
             size="kira-lg"
-            :kbd="formatShortcut('form.submit')"
+            shortcut="form.submit"
             data-testid="update-dialog-install"
             @click="store.install()"
           >
