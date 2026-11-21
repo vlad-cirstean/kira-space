@@ -310,3 +310,11 @@ the round): cost F5 1.18, F6 1.37, F1 1.29, context F5 0.96, F6 1.05, F1 1.00. G
 (cost, context), F1 and, at 3 reps, F5 (cost). Total spend about 2.8 USD. Open: T on F5 and F6
 never finishes while every Kira step does; plan Open question 1 (A: give T the v0.3.13 finish
 instruction, B: record as Known open item, C: recalibrate). Plan: `plans/P714.md`.
+
+Option A (user choice): arm T on F5 and F6 now finishes like a real step, both arms' prompts carry
+the finish clause and both oracles need a done finish (`TestDetailsBenchFinishFlows`). Round of F5
+and F6, 3 reps, 12 of 12 pass, 0.93 USD, final prompt: F5 passes (cost R/T 1.09, context 0.97); F6
+fails (cost 1.36, context 1.05 against 1.0). Total phase spend about 3.73 USD. Not closed: F6
+residual is README read, draft write and a `state.yaml` read after the draft write (2 of 3 runs, the
+"read fileErrors after each edit" line, a watcher-contract decision); F1 cost 1.29 to 1.31 is
+unchanged and not covered by A.
