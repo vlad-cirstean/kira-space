@@ -45,6 +45,11 @@ explicit chain id), what the old `ChainSteps` code gives and what is reused, and
 step's result is still available after review (retention, secrets masked, memory cap, what "go back"
 shows once the result was released to the agent).
 
+Result review (user: "review results should work for all MCP tools that handle data: DB, API, kube").
+The design shows result review under both models, uniform across DB, API and kube: under A the review
+of a result that a script kept or transformed, under B the review inside each step's prompt and in the
+back view.
+
 P717 (kube) depends on this phase: it follows the model the user picks, so it ships no panel from the
 old `ChainSteps` UI.
 
@@ -64,7 +69,7 @@ approves, then implementation.
 
 Tests. Flow test: script keeps a plain and a secret value, follow-up request reads both, secret
 absent from AI-facing output. UI spec: same scenario, preview of plain and secret, fingerprint prompt
-on secret reveal, old chain panel gone from DB and API cards; under B also step forward and back. Prompt text changes: run the matching row of
+on secret reveal, old chain panel gone from DB and API cards; under B also step forward and back; result review in the same scenario for DB, API and kube. Prompt text changes: run the matching row of
 `docs/DEV_ENVIRONMENT.md` "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses
 kept variables unprompted.
 
@@ -87,6 +92,16 @@ until the response is final). Switch: `scriptsOn` in `jsscript.go` (Studio MCP s
 `KubeReadBody.vue`, kind def in `frontend/src/studio/approvals/kinds.ts`; API and DB cards show
 scripts with `JsScriptBlock.vue` and kept reads with `KeptVariablesPanel.vue`.
 
+Result review today (read in code): DB and API let the user review a result before the AI gets it.
+`ReviewResultOption.vue` is the `footerAction` of `db.query`, `db.exemption` and `api.request` in
+`kinds.ts`: a "Review result" checkbox, shown checked and disabled when connection or environment
+settings already turn review on (`reviewOffered`, `reviewResult` in the payload). The server runs the
+call, holds the result (`reviewResponse` in `internal/dbmcp/tools.go`, size and wait limits, withheld
+on timeout) and queues a second item rendered by `DbResponseBody.vue` / `ApiResponseBody.vue` with
+`ResultReview.vue` (Send to AI / Withhold, table or text view, staged kept values). Kube has none:
+`kube_tools.go` and `KubeReadBody.vue` offer no review. An earlier planner called kube result review
+its own phase; the user overrides that.
+
 Chaining rework (P716): kube follows the model the user picks in P716. Scripts and
 kept variables; no panel from the old chain steps UI in the kube card. Kube tool descriptions and
 `DbmcpInstructions` tell the AI it can store a result in a kept variable and read it in a follow-up
@@ -94,7 +109,14 @@ request (see P716 "Agent awareness").
 
 Scope. (1) Kube read tools take the same `script` argument and kept-variable chaining as API and DB,
 reusing `jsscript.go`, `kept_script.go` and the same refusal texts, caps and switch; no second
-script mechanism. (2) Kube approval card gets P715's redesign (verdict row, connection line, kind
+script mechanism. (2) Result review for all five kube tools, same UX and component as DB and API: "Review result"
+checkbox in the prompt footer (`ReviewResultOption`, settings-driven default on), result dialog with
+Send to AI / Withhold, data table or text view, logs view for `kube_pod_logs`, secret masking info
+as in DB and API. `kube_tools.go` has no masking today; the plan states what kube masks (for example
+Secret data in `kube_describe`) and how review shows it. With a
+`script`, review shows what the AI would receive (the transformed result, raw view alongside, as in API
+`api-review-raw`). Reuse `ResultReview.vue`, the held-result path and its limits; no kube-only
+mechanism. (3) Kube approval card gets P715's redesign (verdict row, connection line, kind
 badges, highlighted statement and scripts, collapsed Details, stock buttons with shortcut chips).
 Reference `plans/P715.md` on `stream/p715` (v0.3.22), do not re-derive it; its plan covers DB and API
 only, so P717 maps each element to the kube card. Starts after P715 lands on `chapter/v0.3.22` and
@@ -105,11 +127,14 @@ user approves, then implementation.
 
 Tests. Flow test (`internal/flows/dbmcpflow/kube_test.go` or sibling): kube read with transform,
 kept chain into an API or DB call and back, refusal paths (scripts off, `kept.set` in prepare,
-secret read). UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): same scenario, card
-shows scripts, kept reads and verdict row. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
+secret read). Kube result review, flow: each of the five tools held for review, Send releases the
+result, Withhold and timeout withhold it, transformed result is what review shows and the AI gets,
+masking as the plan defines. UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): same scenario, card
+shows scripts, kept reads and verdict row; kube result review spec: tick Review result, result dialog
+with table, text and logs views, Send to AI and Withhold, same result as the flow test. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
 "Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses kept variables unprompted.
 
-Open questions. Chaining model per P716 (A or B). Prepare stage for kube: DB has none because the statement must be what the user
+Open questions. Chaining model per P716 (A or B). Kube result review is decided: yes. Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
 
