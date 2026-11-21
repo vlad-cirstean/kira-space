@@ -176,6 +176,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], () => void submit());
           size="kira-lg"
           :pending="pending"
           :disabled="!canSubmit"
+          shortcut="form.submit"
           data-testid="ade-review-submit"
           @click="submit"
         >

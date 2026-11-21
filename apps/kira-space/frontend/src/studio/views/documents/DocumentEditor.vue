@@ -35,7 +35,9 @@ useShortcut(rootEl, ['form.save'], () => {
         :show-compact="false"
       />
       <span class="flex-1 min-w-0"></span>
-      <TextTooltip :text="saveDisabledReason"
+      <TextTooltip
+        :text="saveDisabledReason"
+        :shortcut="saveDisabledReason ? undefined : 'form.save'"
         ><TooltipDisabledTrigger>
           <Button
             variant="dialog-primary"

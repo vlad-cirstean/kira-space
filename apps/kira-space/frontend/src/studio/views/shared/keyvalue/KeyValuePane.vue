@@ -163,6 +163,7 @@ onUnmounted(() => {
           <TooltipIconButton
             :icon="ICON.refresh"
             :label="t('common.action.refresh.label')"
+            shortcut="view.refresh"
             data-testid="keyvalue-refresh"
             @click="onRefresh"
           />

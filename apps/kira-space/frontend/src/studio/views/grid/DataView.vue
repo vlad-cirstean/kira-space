@@ -286,6 +286,7 @@ function onCloseSearch(): void {
           :icon="ICON.refresh"
           :label="t('common.action.refresh.label')"
           disabled-trigger
+          shortcut="view.refresh"
           data-testid="toolbar-refresh"
           :disabled="!!rt?.opId"
           @click="onRefresh"

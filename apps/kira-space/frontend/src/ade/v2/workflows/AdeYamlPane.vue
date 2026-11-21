@@ -112,6 +112,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-1.5" ref="root" :data-testid="`${testidPrefix}-pane`">
     <SaveBar
+      shortcut="form.save"
       :dirty="dirty"
       :saving="guard.saving.value"
       testid-prefix="ade-wf"

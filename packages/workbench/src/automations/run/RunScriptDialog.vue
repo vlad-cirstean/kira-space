@@ -255,6 +255,7 @@ const onSubmitKey = shortcutKeydown(['form.submit'], run);
           variant="dialog-primary"
           size="kira-lg"
           :disabled="!canRun"
+          shortcut="form.submit"
           data-testid="run-start"
           @click="run"
         >

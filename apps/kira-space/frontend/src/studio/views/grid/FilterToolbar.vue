@@ -258,6 +258,7 @@ function applyFromHistory(where: string | null, orderBy: SortSpec | null): void 
       :placeholder="t('studio.grid.columnFilter.field.placeholder')"
       :aria-label="t('studio.grid.columnFilter.field.aria')"
       :aria-invalid="columnFilterStatus?.noMatch ? 'true' : undefined"
+      shortcut="data.filterColumns"
       data-testid="column-filter-input"
     />
     <span
