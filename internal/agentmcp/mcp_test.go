@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -662,5 +663,21 @@ func TestNoProofTool(t *testing.T) {
 			}
 		}
 		_ = s.Close()
+	}
+}
+
+// The CLI replays the first state schema a conversation loaded on --resume, so a review round
+// (resuming the implementer's Space conversation) may not list an action its Space state lacks.
+func TestReviewRoundStateIsSubsetOfSpaceState(t *testing.T) {
+	for _, c := range []struct {
+		name          string
+		sandbox, push bool
+	}{{"none", false, false}, {"read only", true, false}, {"push", true, true}} {
+		space := actionNames(stateActionsOf(toolSet{space: true, sandbox: c.sandbox, push: c.push}))
+		for _, n := range actionNames(stateActionsOf(toolSet{review: true, sandbox: c.sandbox, push: c.push})) {
+			if !slices.Contains(space, n) {
+				t.Errorf("%s: round action %q missing from the Space state %v", c.name, n, space)
+			}
+		}
 	}
 }
