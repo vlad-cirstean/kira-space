@@ -222,4 +222,7 @@ a finish with `failed` after the expected refusal. Prompt now names the Write to
 Details bench (free check passes; paid round capped at its 1.50 USD guard, 18 of 24 runs, 1.49 USD):
 all runs pass; context R/T F4 0.90, F5 0.98, F6 1.06, F1 0.99; cost R/T F4 0.97, F5 1.28, F6 1.43,
 F1 1.12. The gate marks F5 and F6 fail (2 reps each); the Space schema grew by one enum value and one
-line, about 20 tokens, which cannot explain the gap; no pre-change round was run to compare.
+line, about 20 tokens. Baseline round at the parent of the fix (same guard, 18 of 24 runs, 1.44 USD):
+all pass; context R/T F4 0.90, F5 0.97, F6 1.06, F1 1.01; cost R/T F4 0.87, F5 1.39, F6 1.48, F1 1.28.
+The gate fails F5 and F6 there too (F1 on cost, inconclusive): pre-existing, not caused by P713;
+post-fix ratios are the same or lower. Budgets and thresholds unchanged.
