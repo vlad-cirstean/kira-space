@@ -13,6 +13,7 @@ import { ICON } from '@theme/icons';
 import { cn } from '@theme/lib/utils';
 import { computed, ref, watch } from 'vue';
 import InlineValueInput from './InlineValueInput.vue';
+import SecretCellInput from './SecretCellInput.vue';
 import { cellKey, useVariablesMatrixStore } from './state/variablesMatrix';
 
 // One cell of the Variables tab: this file's value for this name. A plain value, a secret (masked,
@@ -120,13 +121,19 @@ const surface = computed(() =>
     @click="kind === 'secret' ? undefined : begin()"
   >
     <div class="flex min-w-0 items-center gap-1">
-      <InlineValueInput
-        v-if="editing"
-        :value="isSecret ? '' : plain"
-        :type="isSecret ? 'password' : 'text'"
+      <SecretCellInput
+        v-if="editing && isSecret"
+        :set="secretSet"
         :label="t('studio.api.variables.cell.input.aria', { name, owner: ownerName })"
-        :placeholder="isSecret ? t('studio.api.variables.cell.secretInput.placeholder') : undefined"
-        :allow-empty="!isSecret"
+        :placeholder="t('studio.api.variables.cell.secretInput.placeholder')"
+        @commit="commit"
+        @cancel="cancel"
+      />
+      <InlineValueInput
+        v-else-if="editing"
+        :value="plain"
+        :label="t('studio.api.variables.cell.input.aria', { name, owner: ownerName })"
+        allow-empty
         data-testid="matrix-cell-input"
         @commit="commit"
         @cancel="cancel"

@@ -3,6 +3,7 @@ import { joinSentences, t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import MenuIconButton from '@workbench/components/MenuIconButton.vue';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
+import { computed } from 'vue';
 import { variableColumnMenu } from './menu';
 import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import type { MatrixOwner } from './state/matrixModel';
@@ -29,9 +30,22 @@ async function remove(): Promise<void> {
   if (confirmed) await variablesStore.deleteEnvironment(props.owner.id);
 }
 
+// Environment order is the saved order of the columns: move swaps with the neighbour.
+const ids = computed(() => variablesStore.environments.map((e) => e.id));
+const index = computed(() => ids.value.indexOf(props.owner.id));
+function move(by: -1 | 1): void {
+  const next = [...ids.value];
+  const to = index.value + by;
+  if (index.value < 0 || to < 0 || to >= next.length) return;
+  [next[index.value], next[to]] = [next[to] as string, next[index.value] as string];
+  void variablesStore.reorderEnvironments(next);
+}
+
 function items() {
   return variableColumnMenu(
     {
+      moveLeft: () => move(-1),
+      moveRight: () => move(1),
       rename: () => dialog.open(props.owner.file, 'environment'),
       agentAccess: () => dialog.open(props.owner.file, 'agent'),
       dotenv: () => dialog.open(props.owner.file, 'variables'),
@@ -40,6 +54,7 @@ function items() {
       remove: () => void remove(),
     },
     props.owner.scope === 'environment',
+    { first: index.value <= 0, last: index.value === ids.value.length - 1 },
   );
 }
 </script>

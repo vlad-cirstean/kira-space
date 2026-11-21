@@ -402,6 +402,8 @@ export function variableRowMenu(
 }
 
 export interface VariableColumnMenuActions {
+  moveLeft(): void;
+  moveRight(): void;
   rename(): void;
   agentAccess(): void;
   dotenv(): void;
@@ -414,6 +416,7 @@ export interface VariableColumnMenuActions {
 export function variableColumnMenu(
   actions: VariableColumnMenuActions,
   environment: boolean,
+  position: { first: boolean; last: boolean } = { first: true, last: true },
 ): MenuItem[] {
   const file: MenuItem[] = [
     {
@@ -448,6 +451,23 @@ export function variableColumnMenu(
       run: actions.agentAccess,
     },
     ...file,
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'move-left',
+      label: t('studio.api.variables.column.moveLeft.label'),
+      icon: 'arrow-left',
+      disabled: position.first,
+      run: actions.moveLeft,
+    },
+    {
+      type: 'item',
+      id: 'move-right',
+      label: t('studio.api.variables.column.moveRight.label'),
+      icon: 'arrow-right',
+      disabled: position.last,
+      run: actions.moveRight,
+    },
     { type: 'separator' },
     {
       type: 'item',

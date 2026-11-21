@@ -13241,6 +13241,12 @@
           "makeActive": {
             "tooltip": "Make this the active environment"
           },
+          "moveLeft": {
+            "label": "Move left"
+          },
+          "moveRight": {
+            "label": "Move right"
+          },
           "rename": {
             "label": "Rename or recolor…"
           },
