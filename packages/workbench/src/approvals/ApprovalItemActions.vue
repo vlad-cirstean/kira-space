@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
-import TruncatedText from '@theme/components/TruncatedText.vue';
 import { Button } from '@theme/components/ui/button';
 import {
   Tooltip,
@@ -41,16 +40,15 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
 
 <template>
   <div class="flex w-full items-center gap-3" data-testid="approval-footer">
-    <div class="min-w-0 flex-1 text-kira-sm text-subtle" data-testid="approval-origin">
-      <TruncatedText :text="requester.value" />
-    </div>
-    <component
-      :is="def?.footerAction"
-      v-if="def?.footerAction"
-      :item="item"
-      @options="(v: unknown) => store.setOption(item.id, v)"
-    />
-    <div class="flex shrink-0 items-center gap-1.5">
+    <slot name="start" />
+    <div class="ml-auto flex shrink-0 items-center gap-1.5">
+      <component
+        :is="def?.footerAction"
+        v-if="def?.footerAction"
+        :item="item"
+        class="mr-2"
+        @options="(v: unknown) => store.setOption(item.id, v)"
+      />
       <Button
         variant="dialog-deny"
         size="kira-lg"

@@ -8,7 +8,7 @@ import { computed, ref } from 'vue';
 
 // A name/value list in the data font, values exactly as sent. Over three rows the rest hides behind "+N more".
 const props = defineProps<{
-  rows: { name: string; value: string; secret?: boolean }[];
+  rows: { name: string; value: string }[];
   testid: string;
   rowTestid?: (name: string) => string;
   /** Marks parts of a row's name or value: the ranges to mark, or none. */
@@ -49,7 +49,6 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
             :mark-class="markClass"
           />
           <template v-else>{{ row.value }}</template>
-          <span v-if="row.secret" class="text-subtle">{{ t('common.secret.label') }}</span>
         </dd>
       </div>
     </KeyValueList>

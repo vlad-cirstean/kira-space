@@ -53,7 +53,7 @@ const items = computed<SecondaryTabItem[]>(() => [
   },
   {
     value: 'asSent',
-    label: t('studio.dbMcp.approval.asSent.option'),
+    label: t('common.raw.label'),
     testid: 'db-mcp-approval-view-as-sent',
   },
 ]);

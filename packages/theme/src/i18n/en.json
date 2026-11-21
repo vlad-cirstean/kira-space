@@ -14235,17 +14235,49 @@
             "hint": "The agent receives only what the transform script returns, not the response.",
             "label": "Transform script"
           },
-          "send": {}
+          "send": {},
+          "sends": {
+            "status": "Sends: {names}"
+          }
         },
-        "asSent": {
-          "option": "As sent"
+        "chain": {
+          "current": {
+            "label": "This step"
+          },
+          "earlier": {
+            "label": "Earlier step"
+          },
+          "kept": {
+            "status": "Kept {names}"
+          },
+          "keptByScript": {
+            "status": "Kept {names} (by script)"
+          },
+          "prepare": {
+            "label": "Prepare"
+          },
+          "transform": {
+            "label": "Transform"
+          }
         },
         "detail": {
+          "connectionReadOnly": {
+            "body": "Set read-only: Kira refuses every write on it."
+          },
+          "declared": {
+            "label": "Declared"
+          },
           "env": {
             "label": "Env"
           },
+          "looksLike": {
+            "label": "Looks like"
+          },
           "options": {
             "label": "Options"
+          },
+          "paramsBound": {
+            "status": "{count} bound"
           },
           "statement": {
             "label": "Statement"
@@ -14271,6 +14303,20 @@
           },
           "deny": {
             "label": "Keep the limit"
+          },
+          "limitHit": {
+            "status": "Estimated {measured} rows, over the {max} row limit (explain ran before asking)"
+          },
+          "reason": {
+            "status": "Agent’s reason: {reason}"
+          }
+        },
+        "fact": {
+          "checkedByKira": {
+            "status": "Checked by Kira"
+          },
+          "scripts": {
+            "status": "Runs a script | Runs {count} scripts"
           }
         },
         "formatted": {
@@ -14282,6 +14328,14 @@
           },
           "maskedRead": {
             "label": "Masked read"
+          }
+        },
+        "plan": {
+          "rowsOver": {
+            "status": "Estimated ~{rows} rows, over the {limit} row limit"
+          },
+          "rowsUnder": {
+            "status": "Estimated ~{rows} rows, under the {limit} row limit"
           }
         },
         "query": {
@@ -14296,6 +14350,20 @@
             "label": "Result script"
           }
         },
+        "readOnly": {
+          "app": {
+            "hint": "This engine has no read-only session, so Kira checks each command before it runs. Read-only is checked by Kira, not the database."
+          },
+          "connection": {
+            "hint": "The connection is also set read-only: Kira refuses every write on it."
+          },
+          "none": {
+            "hint": "This connection type has no write path, so the agent can only read."
+          },
+          "session": {
+            "hint": "The read runs in a read-only session, so the database engine refuses any write."
+          }
+        },
         "reviewResultOn": {
           "body": "This connection reviews {mode} results."
         },
@@ -14303,29 +14371,11 @@
           "label": "Review result"
         },
         "risk": {
-          "alreadyRan": {
-            "status": "Already ran"
-          },
           "bodyTruncated": {
             "status": "Body truncated"
           },
-          "builtByScript": {
-            "status": "Built by script"
-          },
-          "credentialSent": {
-            "status": "Credential sent"
-          },
-          "requestSent": {
-            "status": "Request already sent"
-          },
-          "rows": {
-            "status": "~{rows} rows"
-          },
           "scriptFailed": {
             "status": "Script failed"
-          },
-          "scriptResult": {
-            "status": "Agent gets script result"
           },
           "timeout": {
             "status": "Timeout {measured} / {max}"
@@ -14346,17 +14396,46 @@
           "unclassified": {
             "label": "Unclassified"
           }
+        },
+        "verdict": {
+          "apiWriteResult": {
+            "hint": "The request was already sent. Withhold only keeps the response from the agent."
+          },
+          "dbWriteResult": {
+            "hint": "The statement already ran. Withhold only keeps the result from the agent."
+          },
+          "readResult": {
+            "label": "Read result"
+          },
+          "schemaChange": {
+            "label": "Schema change"
+          },
+          "writeResult": {
+            "label": "Write result · already ran"
+          }
         }
       },
       "preview": {
+        "cellChars": {
+          "status": "{count} chars"
+        },
+        "cellShow": {
+          "tooltip": "Show full value"
+        },
         "masked": {
           "hint": "A masking rule applies to this column."
         },
-        "moreRows": {
-          "label": "{count} more row | {count} more rows"
-        },
         "redisType": {
           "status": "Type {type}"
+        },
+        "rowCollapse": {
+          "tooltip": "Collapse the row"
+        },
+        "rowExpand": {
+          "hint": "Show every value in full. Drag its bottom edge to set a height."
+        },
+        "rowResize": {
+          "aria": "Resize row"
         },
         "send": {
           "label": "Send to AI"
@@ -18162,6 +18241,9 @@
       }
     },
     "approvals": {
+      "askedBy": {
+        "label": "Asked by"
+      },
       "denyAll": {
         "label": "Deny all ({count})"
       },

@@ -120,9 +120,11 @@ U41 packages/theme/src/wrapSelection.ts # modifier-free typing guard on beforein
 U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps Shift+Enter to meta-Enter bytes, not an app shortcut
 U62 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host owns terminal focus: Terminal.focus(), not DOM focus
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
+U11 apps/kira-space/frontend/src/studio/approvals/RequestLine.vue # method and host weight in a code line, not a heading
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
+U36 packages/workbench/src/approvals/ApprovalItemCard.vue # outlined focus box: Card draws no border, and the box must read as one frame around the request
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
@@ -344,7 +346,7 @@ U158@@v@@@@FieldDescription as an empty state (use InlineState kind empty)@@<Fie
 U159@@v@@@@untoned chip Badge (use the default Badge)@@<Badge\b(?=(?&t)\svariant="chip")(?!(?&t)\s:?(?:class|style)=)(?&t)>
 U160@@v@@@@hand required asterisk (use FieldLabel required)@@class="text-error"(?&t)?>\s*\*
 U161@@v@@@@default-size form control in a bar (use size="kira")@@<(ViewToolbar|PanelHeader|PopoverBar)\b(?&t)>(?:(?!</\2\s*>)[\s\S])*?<(?:NativeSelect|Input)\b(?!(?&t)\ssize=)(?&t)
-U162@@v@@ViewHead.vue|ApprovalItemCard.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
+U162@@v@@ViewHead.vue@@hand view head band (use ViewHead)@@colorMarkClass\('band'
 U163@@v@@@@relative time as bare template text (use RelativeTime)@@\{\{\s*formatRelative\(
 U164@@v@@VirtualList.vue@@hand virtual listbox (use VirtualList)@@(?s)\A(?=.*useVirtualRows\()(?=.*useListNavigation\b[<(])(?=.*role="listbox")
 U165@@vt@@logTail.ts@@log tail constants outside logTail.ts (use LOG_TAILS, LOG_MAX_LINES)@@\b(?:LOG_)?(?:MAX_LINES|TAILS)\s*=\s*[\[\d]

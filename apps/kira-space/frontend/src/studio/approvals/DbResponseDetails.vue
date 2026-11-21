@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
+import { connectionKindSchema } from '@shared/domain/connection';
 import { dbResponsePayloadSchema } from '@shared/domain/dbmcp';
-import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import { formatBytes } from '@workbench/behaviour/format';
+import OpLogCodeBlock from '@workbench/components/OpLogCodeBlock.vue';
 import { computed } from 'vue';
+import { consoleLanguageFor } from '../views/console/format';
 
 const props = defineProps<{ item: ApprovalItem }>();
 const payload = computed(() => dbResponsePayloadSchema.parse(props.item.payload));
+const language = computed(() =>
+  consoleLanguageFor(connectionKindSchema.safeParse(props.item.target.kind).data),
+);
 </script>
 
 <template>
   <ApprovalDetails>
     <dt>{{ t('studio.dbMcp.approval.detail.statement.label') }}</dt>
     <dd data-testid="db-mcp-preview-statement">
-      <TruncatedText class="font-data" :text="payload.statement" />
+      <OpLogCodeBlock unboxed :text="payload.statement" :language="language" />
     </dd>
     <template v-if="payload.scripted">
       <dt>{{ t('common.agentGets.label') }}</dt>

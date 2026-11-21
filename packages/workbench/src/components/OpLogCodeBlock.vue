@@ -8,7 +8,13 @@ import { paintOverlayHtml } from '../editor/paintSpans';
 
 // A read-only, wrapped, scrollable text block. With a `language` it is syntax-coloured through
 // Monaco's `colorize` (no editor instance); plain text until that resolves.
-const props = defineProps<{ text: string; language?: EditorLanguageId | null; tone?: 'error' }>();
+const props = defineProps<{
+  text: string;
+  language?: EditorLanguageId | null;
+  tone?: 'error';
+  /** No fill, padding or height cap: an inline value inside a framed card. */
+  unboxed?: boolean;
+}>();
 
 const html = ref<string | null>(null);
 let generation = 0;
@@ -37,6 +43,7 @@ watch(
 const klass = computed(() =>
   cn(
     'm-0 max-h-[calc(12*1lh)] overflow-auto rounded-kira-sm bg-bg px-1.5 py-1 font-data break-all whitespace-pre-wrap select-text',
+    props.unboxed && 'max-h-none bg-transparent p-0 text-kira-md',
     props.tone === 'error' && 'text-error',
   ),
 );
@@ -44,6 +51,6 @@ const klass = computed(() =>
 
 <template>
   <!-- v-html is paintOverlayHtml output only: escaped text in static class names. -->
-  <pre v-if="html !== null" :class="klass" v-html="html"></pre>
+  <pre v-if="html !== null" :class="klass" data-colorized v-html="html"></pre>
   <pre v-else :class="klass">{{ text }}</pre>
 </template>

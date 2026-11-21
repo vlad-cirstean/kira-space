@@ -4,10 +4,10 @@ import { useQuery } from '@tanstack/vue-query';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import TooltipDetails from '@theme/components/TooltipDetails.vue';
-import TruncatedText from '@theme/components/TruncatedText.vue';
-import { Button } from '@theme/components/ui/button';
-import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsible';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { FieldError } from '@theme/components/ui/field';
+import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
+import { ResizeHandle } from '@theme/components/ui/resizable';
 import {
   Table,
   TableBody,
@@ -18,7 +18,9 @@ import {
 } from '@theme/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { type MessageKey, t } from '@theme/i18n';
+import { useResizeObserver } from '@vueuse/core';
 import { useVirtualRows } from '@workbench/behaviour/virtualRows';
+import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed, ref } from 'vue';
@@ -28,7 +30,7 @@ import { usePendingResponse } from './pendingResponse';
 import TabbedContent from './TabbedContent.vue';
 
 // The held run_query result of a response-stage approval: the table is a view of the exact bytes
-// the AI client receives on Send. Those bytes are shown on the As sent tab, and nothing here
+// the AI client receives on Send. Those bytes are shown on the Raw tab, and nothing here
 // re-renders or re-masks them. `field` picks the held text: the exact result, or with a script the raw
 // result it read.
 const props = withDefaults(
@@ -115,18 +117,14 @@ const items = computed<SecondaryTabItem[]>(() => [
   },
   {
     value: 'asSent',
-    label: t('studio.dbMcp.approval.asSent.option'),
+    label: t('common.raw.label'),
     testid: 'db-mcp-preview-view-as-sent',
   },
 ]);
-// Never hide the bytes: an unparseable non-error result falls back to As sent alone.
+// Never hide the bytes: an unparseable non-error result falls back to Raw alone.
 const showTable = computed(() => view.value === 'table' && grid.value !== null);
 const unreadable = computed(() => response.data.value && !isError.value && parsed.value === null);
 
-// The rows below the first few hide behind "+N more rows"; open shows all of them, virtualized.
-const PLAIN_ROWS = 3;
-const open = ref(false);
-const hiddenRows = computed(() => Math.max(0, (grid.value?.rows.length ?? 0) - PLAIN_ROWS));
 // What sits under the table: truncation, shortened cells, Redis type and TTL, the engine's note.
 const footnote = computed(() => {
   const r = parsed.value;
@@ -147,21 +145,87 @@ const footnote = computed(() => {
 });
 
 const { single: rowHeight } = useRowHeight();
+// Heights a row's drag handle set; other rows keep the single height, or their natural one while expanded.
+const heights = ref<Record<number, number>>({});
+// A click on a row expands it in place: every cell wraps and nothing is cropped. The natural height
+// is measured once rendered, so the virtualizer keeps known heights.
+const expanded = ref<Record<number, number>>({});
+const heightOf = (r: number): number => heights.value[r] ?? expanded.value[r] ?? rowHeight.value;
+const isOpenRow = (r: number): boolean => r in expanded.value || r in heights.value;
+function toggleRow(r: number): void {
+  if (isOpenRow(r)) {
+    const { [r]: _a, ...restE } = expanded.value;
+    const { [r]: _b, ...restH } = heights.value;
+    expanded.value = restE;
+    heights.value = restH;
+    return;
+  }
+  expanded.value = { ...expanded.value, [r]: rowHeight.value };
+}
+function setHeight(r: number, h: number): void {
+  heights.value = { ...heights.value, [r]: h };
+}
+function resetHeight(r: number): void {
+  const { [r]: _, ...rest } = heights.value;
+  heights.value = rest;
+}
+const rowHeights = computed(() =>
+  Object.keys(heights.value).length || Object.keys(expanded.value).length
+    ? Array.from({ length: grid.value?.rows.length ?? 0 }, (_, r) => heightOf(r))
+    : undefined,
+);
+// One popover for the whole table, anchored on the cell that asked for it.
+const cellOpen = ref(false);
+const cellAnchor = ref<HTMLElement | null>(null);
+const cellValue = ref('');
+const cellLabel = ref('');
+function showCell(e: MouseEvent, r: number, c: number): void {
+  const cell = grid.value?.rows[r]?.[c];
+  if (cell === null || cell === undefined) return;
+  cellAnchor.value = (e.currentTarget as HTMLElement).closest('td');
+  cellLabel.value = t('studio.cellEditor.target.label', {
+    target: grid.value?.columns[c]?.label ?? '',
+    row: r + 1,
+  });
+  try {
+    const value: unknown = JSON.parse(cell);
+    cellValue.value =
+      typeof value === 'object' && value !== null ? JSON.stringify(value, null, 2) : cell;
+  } catch {
+    cellValue.value = cell;
+  }
+  cellOpen.value = true;
+}
 const scrollRef = ref<HTMLElement | null>(null);
 const {
   virtualItems: virtualRows,
   totalSize,
   onScroll,
 } = useVirtualRows({
-  count: () => (open.value ? (grid.value?.rows.length ?? 0) : 0),
+  count: () => grid.value?.rows.length ?? 0,
   rowHeight: () => rowHeight.value,
+  rowHeights: () => rowHeights.value,
   scrollElement: scrollRef,
   overscan: 8,
 });
-const shownRows = computed(() =>
-  open.value
-    ? virtualRows.value.map((vr) => vr.index)
-    : Array.from({ length: Math.min(PLAIN_ROWS, grid.value?.rows.length ?? 0) }, (_, i) => i),
+const shownRows = computed(() => virtualRows.value.map((vr) => vr.index));
+// An expanded row's natural height: re-read whenever the table resizes (a row opens, the width wraps).
+useResizeObserver(
+  () => scrollRef.value?.querySelector('table') ?? null,
+  () => {
+    const next = { ...expanded.value };
+    let changed = false;
+    for (const tr of scrollRef.value?.querySelectorAll<HTMLElement>('tr[data-expanded]') ?? []) {
+      const r = Number(tr.dataset.row);
+      if (r in heights.value || !(r in next)) continue;
+      const h = Math.max(rowHeight.value, tr.offsetHeight);
+      if (next[r] !== h) {
+        next[r] = h;
+        changed = true;
+      }
+    }
+    if (changed) expanded.value = next;
+  },
 );
 const padTop = computed(() => virtualRows.value[0]?.start ?? 0);
 const padBottom = computed(() => {
@@ -188,24 +252,19 @@ const padBottom = computed(() => {
           <span v-if="unreadable" class="text-kira-sm text-subtle">{{
             t('studio.dbMcp.preview.unreadable.hint')
           }}</span>
-          <Collapsible
+          <div
             v-if="showTable && grid"
-            v-model:open="open"
             class="flex flex-col gap-1.5"
             data-testid="db-mcp-preview-table"
           >
-            <div
-              ref="scrollRef"
-              :class="open ? 'max-h-72 overflow-auto' : 'overflow-hidden'"
-              @scroll.passive="onScroll"
-            >
+            <div ref="scrollRef" class="max-h-72 overflow-auto" @scroll.passive="onScroll">
               <Table class="w-auto">
                 <TableHeader class="static bg-transparent">
                   <TableRow>
+                    <TableHead class="w-5 px-0" aria-hidden="true" />
                     <TableHead
                       v-for="(col, c) in grid.columns"
                       :key="c"
-                      class="first:pl-0"
                       data-testid="db-mcp-preview-column"
                     >
                       <Tooltip :disabled="!col.title && !col.masked">
@@ -237,19 +296,87 @@ const padBottom = computed(() => {
                     class="border-0 hover:bg-transparent"
                     :style="{ height: `${padTop}px` }"
                   >
-                    <TableCell :colspan="grid.columns.length" class="p-0" />
+                    <TableCell :colspan="grid.columns.length + 1" class="p-0" />
                   </TableRow>
-                  <TableRow v-for="r in shownRows" :key="r" data-testid="db-mcp-preview-row">
+                  <TableRow
+                    v-for="r in shownRows"
+                    :key="r"
+                    class="group/row relative"
+                    :style="heights[r] ? { height: `${heights[r]}px` } : undefined"
+                    tabindex="0"
+                    :aria-expanded="isOpenRow(r)"
+                    :data-row="r"
+                    :data-expanded="isOpenRow(r) ? '' : undefined"
+                    data-testid="db-mcp-preview-row"
+                    @click="toggleRow(r)"
+                    @keydown.enter.self.prevent="toggleRow(r)"
+                    @keydown.space.self.prevent="toggleRow(r)"
+                  >
+                    <TableCell class="w-6 px-0 align-top">
+                      <TooltipIconButton
+                        :icon="isOpenRow(r) ? 'chevron-down' : 'chevron-right'"
+                        :icon-size="12"
+                        variant="toolbar"
+                        size="title"
+                        class="group-hover/row:opacity-100 focus-visible:opacity-100"
+                        :class="isOpenRow(r) ? 'opacity-100' : 'opacity-0'"
+                        :aria-expanded="isOpenRow(r)"
+                        :label="
+                          t(
+                            isOpenRow(r)
+                              ? 'studio.dbMcp.preview.rowCollapse.tooltip'
+                              : 'studio.dbMcp.preview.rowExpand.hint',
+                          )
+                        "
+                        data-testid="db-mcp-preview-row-toggle"
+                        @click.stop="toggleRow(r)"
+                      />
+                    </TableCell>
                     <TableCell
                       v-for="(cell, c) in grid.rows[r]"
                       :key="c"
-                      class="max-w-80 truncate font-data first:pl-0"
+                      class="group/cell relative max-w-80 align-top font-data"
                       :data-null="cell === null ? '' : undefined"
                     >
                       <span v-if="cell === null" class="italic text-muted-foreground">{{
                         t('studio.common.nullValue.label')
                       }}</span>
-                      <TruncatedText v-else :text="cell" />
+                      <div
+                        v-else-if="heights[r]"
+                        class="overflow-hidden break-words whitespace-pre-wrap"
+                        :style="{ maxHeight: `${heights[r] - 8}px` }"
+                      >
+                        {{ cell }}
+                      </div>
+                      <div v-else-if="r in expanded" class="break-words whitespace-pre-wrap pr-4">
+                        {{ cell }}
+                      </div>
+                      <span v-else class="block truncate pr-4">{{ cell }}</span>
+                      <TooltipIconButton
+                        v-if="cell !== null"
+                        icon="screen-full"
+                        :icon-size="12"
+                        variant="toolbar"
+                        size="title"
+                        class="absolute top-0.5 right-0.5 bg-elevated opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100"
+                        :label="t('studio.dbMcp.preview.cellShow.tooltip')"
+                        data-testid="db-mcp-preview-expand"
+                        @click.stop="(e: MouseEvent) => showCell(e, r, c)"
+                      />
+                      <ResizeHandle
+                        axis="y"
+                        :size="heightOf(r)"
+                        :min="rowHeight"
+                        :max="480"
+                        :label="t('studio.dbMcp.preview.rowResize.aria')"
+                        class="absolute inset-x-0 -bottom-px z-1"
+                        :tabindex="c === 0 ? 0 : -1"
+                        data-testid="db-mcp-preview-row-resize"
+                        @live="(h: number) => setHeight(r, h)"
+                        @commit="(h: number) => setHeight(r, h)"
+                        @click.stop
+                        @dblclick.stop="resetHeight(r)"
+                      />
                     </TableCell>
                   </TableRow>
                   <TableRow
@@ -258,22 +385,39 @@ const padBottom = computed(() => {
                     class="border-0 hover:bg-transparent"
                     :style="{ height: `${padBottom}px` }"
                   >
-                    <TableCell :colspan="grid.columns.length" class="p-0" />
+                    <TableCell :colspan="grid.columns.length + 1" class="p-0" />
                   </TableRow>
                 </TableBody>
               </Table>
             </div>
-            <CollapsibleTrigger v-if="hiddenRows > 0 && !open" as-child>
-              <Button
-                variant="link-meta"
-                size="inline"
-                class="self-start"
-                data-testid="db-mcp-preview-more"
+            <Popover v-model:open="cellOpen">
+              <PopoverAnchor :reference="cellAnchor ?? undefined" />
+              <PopoverContent
+                align="start"
+                class="w-120 max-w-[80vw]"
+                data-testid="db-mcp-preview-cell"
               >
-                {{ t('studio.dbMcp.preview.moreRows.label', { count: hiddenRows }) }}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible>
+                <div
+                  class="flex items-center justify-between gap-2 text-kira-sm text-muted-foreground"
+                >
+                  <span>{{ cellLabel }}</span>
+                  <span class="flex items-center gap-1">
+                    {{ t('studio.dbMcp.preview.cellChars.status', { count: cellValue.length }) }}
+                    <CopyIconButton
+                      :text="cellValue"
+                      :label="t('common.action.copy.label')"
+                      variant="toolbar"
+                      size="title"
+                      data-testid="db-mcp-preview-cell-copy"
+                    />
+                  </span>
+                </div>
+                <pre
+                  class="m-0 max-h-80 overflow-auto font-data text-kira-md break-words whitespace-pre-wrap"
+                >{{ cellValue }}</pre>
+              </PopoverContent>
+            </Popover>
+          </div>
           <FlushEditor v-else :doc="text" language="json" data-testid="db-mcp-preview-raw" />
           <span
             v-if="footnote"

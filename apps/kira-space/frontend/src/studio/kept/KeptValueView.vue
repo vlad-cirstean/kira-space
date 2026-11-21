@@ -5,6 +5,7 @@ import { FieldError } from '@theme/components/ui/field';
 import ValueRevealButton from '@theme/components/ValueRevealButton.vue';
 import { t } from '@theme/i18n';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
+import OpLogCodeBlock from '@workbench/components/OpLogCodeBlock.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed, ref } from 'vue';
 import FlushEditor from '../approvals/FlushEditor.vue';
@@ -45,6 +46,13 @@ const cut = computed(() => props.entry.previewTruncated || lines.value.length > 
 const preview = computed(() => {
   const all = props.entry.previewTruncated ? props.entry.preview.split('\n') : lines.value;
   return all.slice(0, PREVIEW_LINES).join('\n') + (cut.value ? '…' : '');
+});
+
+// A whole JSON object or array preview is syntax-coloured; a string or cut preview stays plain.
+const previewIsJson = computed(() => {
+  if (props.entry.previewTruncated || cut.value) return false;
+  const p = parsed(props.entry.preview);
+  return p.ok && typeof p.value === 'object' && p.value !== null;
 });
 
 const open = ref(false);
@@ -98,10 +106,12 @@ async function valueText(): Promise<string> {
     }}</FieldError>
     <template v-if="!entry.secret">
       <div class="flex min-w-0 items-start gap-1">
-        <div
-          class="min-w-0 flex-1 whitespace-pre-wrap break-all font-data text-kira-md"
+        <OpLogCodeBlock
+          unboxed
+          class="min-w-0 flex-1"
+          :text="preview"
+          :language="previewIsJson ? 'json' : null"
           data-testid="kept-value-preview"
-          v-text="preview"
         />
         <CopyIconButton
           v-if="!staged || !entry.previewTruncated"

@@ -11,19 +11,42 @@ export interface ApprovalRisk {
   attrs?: Record<string, string>;
 }
 
+/** The verdict badge row: what the request does, and the facts that bound it. */
+export interface ApprovalVerdict {
+  label: string;
+  tone: 'ok' | 'warn' | 'error' | 'neutral';
+  /** The kind's own hue, one per kind, so Explain, Read, Write, Schema change and Delete differ. */
+  hue?: 'explain' | 'read' | 'write' | 'schema' | 'delete';
+  icon: string;
+  /** A small lock inside the kind badge: the action is read-only (wording in `tooltip`). */
+  lock?: boolean;
+  tooltip?: string;
+  facts?: {
+    text: string;
+    tone: 'ok' | 'warn' | 'neutral' | 'caution';
+    icon: string;
+    tooltip?: string;
+  }[];
+}
+
 /**
- * What an app supplies for one approval kind. The card draws line 1 from `operation`, the target,
- * `where` and `risks`; `content` is the body under it, `details` the label/value rows, `footerAction`
- * a control beside Deny and Approve. Every component takes `{ item }`; `content` and `footerAction`
- * may emit `options`.
+ * What an app supplies for one approval kind. The card draws the target row from the target and
+ * `where`, the badge row from `verdict` (`operation` when absent), `content` in a framed box,
+ * `risks` as a warnings list under it, and `details` (label/value rows) behind Details.
+ * `footerAction` is a control beside Deny and Approve. Every component takes `{ item }`;
+ * `content` and `footerAction` may emit `options`.
  */
 export interface ApprovalKindDef {
   content: Component;
-  /** The operation word on line 1. */
+  /** The operation word: the badge when `verdict` is absent. */
   operation: (item: ApprovalItem) => string;
+  /** The badge row: kind badge and facts. */
+  verdict?: (item: ApprovalItem) => ApprovalVerdict;
+  /** A mark beside the target name (the engine icon); takes `{ item }`. */
+  targetIcon?: Component;
   where?: (item: ApprovalItem) => string;
   risks?: (item: ApprovalItem) => ApprovalRisk[];
-  /** The footer's left text; the origin (client, folder, task, step, source) when absent. */
+  /** The "Asked by" row of Details; the origin (client, folder, task, step, source) when absent. */
   requester?: (item: ApprovalItem) => string;
   details?: Component;
   footerAction?: Component;
