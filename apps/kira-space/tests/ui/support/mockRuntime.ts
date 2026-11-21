@@ -591,6 +591,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   [IPC.tabsCapabilities]: JSON.stringify({ dragOut: false }),
   [IPC.tabsTargets]: '[]',
   [IPC.tabsInbound]: '[]',
+  [IPC.tabsCloseEmptyWindow]: 'false',
   // Boot drains Finder-opened files; none by default.
   [IPC.openedFilesIsFilesWindow]: 'false',
   [IPC.configSyncIsReviewWindow]: 'false',

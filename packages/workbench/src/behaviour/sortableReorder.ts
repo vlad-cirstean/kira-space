@@ -91,6 +91,8 @@ export function useSortableReorder(
   let last = { x: 0, y: 0 };
   const canLeave = (id: string | null | undefined) =>
     !!id && !!options.onDropOutside && (options.canDropOutside?.(id) ?? true);
+  let draggedId: string | null = null;
+  const tearing = () => canLeave(draggedId);
   const idOf = (el: HTMLElement) => options.itemId?.(el) ?? el.dataset.tabId ?? null;
 
   const sortable = useDraggable(
@@ -115,9 +117,9 @@ export function useSortableReorder(
       onStart: (evt) => {
         dragging.value = true;
         dragCancelled = false;
+        draggedId = idOf(evt.item);
         last = { x: grab.x, y: grab.y };
-        if (!canLeave(idOf(evt.item))) return;
-        // Belt and braces for out-of-window delivery; the document listeners below work without it.
+        // Keeps pointermove/pointerup flowing once the pointer leaves the viewport, so a drag always ends.
         try {
           evt.item.setPointerCapture(grab.pointerId);
         } catch {
@@ -128,6 +130,10 @@ export function useSortableReorder(
         const wasOutside = outside.value;
         dragging.value = false;
         outside.value = false;
+        // Sortable swallows the click after a fallback drag; a release outside the viewport makes
+        // none, so spend it here or the next real click is eaten.
+        if (isOutside(last.x, last.y))
+          document.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
         const id = idOf(evt.item);
         if (dragCancelled || !wasOutside || !id || !canLeave(id)) return;
         rowIds.value = [...ids()];
@@ -168,7 +174,7 @@ export function useSortableReorder(
   useEventListener(document, 'pointermove', (e: PointerEvent) => {
     if (!dragging.value) return;
     last = { x: e.clientX, y: e.clientY };
-    outside.value = !!options.onDropOutside && isOutside(e.clientX, e.clientY);
+    outside.value = tearing() && isOutside(e.clientX, e.clientY);
   });
   // The release itself may land past the last move; its coordinates win.
   useEventListener(
@@ -177,7 +183,7 @@ export function useSortableReorder(
     (e: PointerEvent) => {
       if (!dragging.value) return;
       last = { x: e.clientX, y: e.clientY };
-      outside.value = !!options.onDropOutside && isOutside(e.clientX, e.clientY);
+      outside.value = tearing() && isOutside(e.clientX, e.clientY);
     },
     { capture: true },
   );
