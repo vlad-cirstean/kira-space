@@ -17,13 +17,28 @@
         "task": ""
       },
       "payload": {
+        "changed": [],
         "context": "kind-dev",
         "namespace": "default",
         "operation": "list",
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 200,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "server": "<kube>",
-        "statement": "kubectl get pods -n default --context kind-dev"
+        "statement": "kubectl get pods -n default --context kind-dev",
+        "tool": "kube_list_resources"
       },
       "reason": "permission",
       "target": {

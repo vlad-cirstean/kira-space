@@ -34,8 +34,8 @@ type keptRun struct {
 
 	mu           sync.Mutex
 	prepareReads bool
-	staged map[string]json.RawMessage
-	order  []string
+	staged       map[string]json.RawMessage
+	order        []string
 	// secretNames are the staged names a kept.setSecret call wrote: secret whatever the script read.
 	secretNames map[string]bool
 	// secretRead taints every value the run stages: it may have copied a secret.

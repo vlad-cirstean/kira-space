@@ -133,6 +133,13 @@ type kubePayload struct {
 	// cluster's settings already do.
 	ReviewOffered bool `json:"reviewOffered"`
 	ReviewResult  bool `json:"reviewResult"`
+	// Tool, Request, Changed, Kept and Script exist on a list, describe or logs read; Changed names the args
+	// the prepare script set.
+	Tool    string              `json:"tool"`
+	Request *kubeRequestPayload `json:"request"`
+	Changed []string            `json:"changed"`
+	Kept    []agentapi.KeptUse  `json:"kept,omitempty"`
+	Script  *apiScriptPayload   `json:"script"`
 }
 
 // kubeResponsePayload is the held result of a kube read, minus the result itself: the text is fetched
@@ -147,6 +154,9 @@ type kubeResponsePayload struct {
 	Bytes     int    `json:"bytes"`
 	// Requested says the approver asked for this review rather than a cluster or app setting.
 	Requested bool `json:"requested"`
+	// Scripted says a script produced the held text from the raw result; RawBytes sizes that raw result.
+	Scripted bool `json:"scripted"`
+	RawBytes int  `json:"rawBytes"`
 }
 
 type valuePayload struct {
@@ -188,10 +198,19 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		c := r.Cluster
 		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
 		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
-		it.Payload = mustJSON(kubePayload{
+		p := kubePayload{
 			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
-			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
-		})
+			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn, Tool: c.Tool, Changed: []string{}, Kept: r.Kept,
+			Script: apiScriptPayloadOf(c.Script),
+		}
+		if c.Operation != kubeDiscover {
+			req := kubeRequestPayloadOf(c.Request)
+			p.Request = &req
+		}
+		if c.Script != nil {
+			p.Changed = append(p.Changed, c.Script.Changed...)
+		}
+		it.Payload = mustJSON(p)
 	case approvals.KindKubeResponse:
 		c := r.Cluster
 		held := r.Response
@@ -204,6 +223,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Payload = mustJSON(kubeResponsePayload{
 			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
 			IsError: held.IsError, Bytes: len(held.Text), Requested: held.Requested,
+			Scripted: held.Script != nil, RawBytes: len(held.Raw),
 		})
 	case approvals.KindScriptRun:
 		sc := r.Script

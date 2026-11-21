@@ -314,7 +314,8 @@ type ApprovalRequest struct {
 	// APIReview is set for the api.response subject: what the item shows beside the held response.
 	APIReview *apiReviewMeta
 	// Params are the kept names bound to the statement's placeholders, Placeholders how each shows on the card
-	// and Kept the entries as they stood when the statement was checked. Set on a db.query or db.exemption item.
+	// and Kept the entries as they stood when the statement was checked. Set on a db.query, db.exemption or
+	// kube.read item.
 	Params       []string
 	Placeholders []string
 	Kept         []agentapi.KeptUse
@@ -759,6 +760,11 @@ type ApprovalCluster struct {
 	Namespace string // "" means all namespaces, or none for discovery
 	// Operation is the permission group: discover, list, describe or logs.
 	Operation string
+	// Tool is the MCP tool name; Request the final args of a list, describe or logs read (after prepare).
+	Tool    string
+	Request kubeRequest
+	// Script is the scripts of the read, shown beside the statement; nil without one.
+	Script *apiScripts
 }
 
 // ApprovalValue is one param or env entry of a script request. A secret's Value is always "".

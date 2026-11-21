@@ -22,7 +22,9 @@
         "isError": false,
         "namespace": "default",
         "operation": "describe",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "server": "<kube>",
         "statement": "kubectl describe pods web-1 -n default --context kind-dev"
       },
@@ -59,7 +61,9 @@
         "isError": false,
         "namespace": "default",
         "operation": "describe",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "server": "<kube>",
         "statement": "kubectl describe secrets db-creds -n default --context kind-dev"
       },
@@ -96,7 +100,9 @@
         "isError": false,
         "namespace": "default",
         "operation": "list",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "server": "<kube>",
         "statement": "kubectl get pods -n default --context kind-dev"
       },
@@ -133,7 +139,9 @@
         "isError": false,
         "namespace": "default",
         "operation": "logs",
+        "rawBytes": 0,
         "requested": false,
+        "scripted": false,
         "server": "<kube>",
         "statement": "kubectl logs web-1 -n default -c app --tail 2 --context kind-dev"
       },
@@ -165,13 +173,28 @@
         "task": ""
       },
       "payload": {
+        "changed": [],
         "context": "kind-dev",
         "namespace": "default",
         "operation": "list",
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 200,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "reviewOffered": true,
         "reviewResult": false,
+        "script": null,
         "server": "<kube>",
-        "statement": "kubectl get pods -n default --context kind-dev"
+        "statement": "kubectl get pods -n default --context kind-dev",
+        "tool": "kube_list_resources"
       },
       "reason": "permission",
       "target": {
@@ -201,13 +224,28 @@
         "task": ""
       },
       "payload": {
+        "changed": [],
         "context": "kind-dev",
         "namespace": "default",
         "operation": "list",
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 200,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "reviewOffered": true,
         "reviewResult": true,
+        "script": null,
         "server": "<kube>",
-        "statement": "kubectl get pods -n default --context kind-dev"
+        "statement": "kubectl get pods -n default --context kind-dev",
+        "tool": "kube_list_resources"
       },
       "reason": "permission",
       "target": {

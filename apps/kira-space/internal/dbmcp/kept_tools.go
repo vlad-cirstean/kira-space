@@ -69,7 +69,7 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	}
 	return jsonResult(map[string]any{
 		"variables": out,
-		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
+		"note":      "Use a name as {{kept.name}} in api_request, list it in params of run_query, or kept.get it in the prepare script of a kube read. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
 	})
 }
 
@@ -109,6 +109,11 @@ func (e *keptGoneError) Error() string {
 // queryText is the wording for run_query, where a statement ran or did not.
 func (e *keptGoneError) queryText() string {
 	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
+}
+
+// kubeText is the wording for a kube read, where nothing was read.
+func (e *keptGoneError) kubeText() string {
+	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was read. Produce it again, then repeat the read.", e.name, e.why())
 }
 
 // watchKept cancels the returned context when a kept variable of the plan leaves the store, so a card never
