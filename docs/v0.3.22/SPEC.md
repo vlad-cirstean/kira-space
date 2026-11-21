@@ -188,10 +188,10 @@ the click path), a guard for shortcut conflicts, flow test where the action has 
 Shortcuts exist but are not shown. Deliverable: every action that has a keyboard shortcut shows
 it. Buttons show it in the tooltip, context-menu items show it right-aligned, menu-bar items show
 it right-aligned. One source of truth: the shortcut registry, formatted per platform (macOS
-symbols, other platforms text), reflecting user rebinds. Reuse the existing `DropdownMenuShortcut`
+symbols, other platforms text). No user rebinding exists; none is added here. Reuse the existing `DropdownMenuShortcut`
 and the menu item `shortcut` field; add a shared tooltip wrapper for buttons instead of per-button
 strings. The plan lists every button, menu and context menu audited and any shortcut still
-missing. Tests: UI spec that a rebind updates the displayed hint; visual baselines re-recorded and
+missing. Tests: UI spec that each shown hint matches the registry; visual baselines re-recorded and
 inspected. Runs after P711.
 
 ## P713
