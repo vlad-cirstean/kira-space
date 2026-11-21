@@ -116,8 +116,16 @@ fi
 # the invariant still holds for every line of app code: only scripts/install.sh, run by the user's
 # own explicit Update click (never silently), is a sanctioned downloader. scripts/ is deliberately
 # excluded from this scan for exactly that reason.
-if grep -rnE 'browser_download_url|releases/download' apps/ packages/ internal/ >/dev/null 2>&1; then
-  fail "release asset download present" "apps/, packages/ or internal/ references a release asset download outside scripts/install.sh"
+# The one allowed hit is the release index URL in internal/appupdate/checker.go (metadata, never a
+# binary).
+DOWNLOAD_HITS="$(grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/ 2>/dev/null \
+  | grep -v '/node_modules/' | grep -v '/bindings/' || true)"
+case "$DOWNLOAD_HITS" in
+  internal/appupdate/checker.go:*indexURL*) ;;
+  *) fail "release asset download present" "apps/, packages/ or internal/ references a release download outside scripts/install.sh and checker.go's indexURL: $DOWNLOAD_HITS" ;;
+esac
+if [ "$(printf '%s\n' "$DOWNLOAD_HITS" | grep -c . || true)" -ne 1 ]; then
+  fail "release asset download present" "expected exactly one release download reference (checker.go's indexURL); got: $DOWNLOAD_HITS"
 fi
 
 # --- S11: the curl installer and the Go installer agree on their one shared contract --------
@@ -142,6 +150,15 @@ SCRIPT_ASSET="$(sed -n 's/^  ASSET="\([^"]*\)".*/\1/p' scripts/install.sh 2>/dev
 GO_ASSET="$(sed -n 's/^const macAsset = "\([^"]*\)".*/\1/p' internal/appupdate/version.go 2>/dev/null | head -1)"
 if [ -z "$SCRIPT_ASSET" ] || [ "$SCRIPT_ASSET" != "$GO_ASSET" ]; then
   fail "installer asset name out of sync" "scripts/install.sh ASSET ('$SCRIPT_ASSET') != internal/appupdate/version.go macAsset ('$GO_ASSET')"
+fi
+
+SCRIPT_INDEX_ASSET="$(sed -n 's/^  INDEX_ASSET="\([^"]*\)".*/\1/p' scripts/install.sh 2>/dev/null | head -1)"
+GO_INDEX_ASSET="$(sed -n 's/^const releaseIndexAsset = "\([^"]*\)".*/\1/p' internal/appupdate/version.go 2>/dev/null | head -1)"
+if [ -z "$SCRIPT_INDEX_ASSET" ] || [ "$SCRIPT_INDEX_ASSET" != "$GO_INDEX_ASSET" ]; then
+  fail "release index name out of sync" "scripts/install.sh INDEX_ASSET ('$SCRIPT_INDEX_ASSET') != internal/appupdate/version.go releaseIndexAsset ('$GO_INDEX_ASSET')"
+fi
+if ! grep -qF "$GO_INDEX_ASSET" .github/workflows/release.yml 2>/dev/null; then
+  fail "release index name out of sync" ".github/workflows/release.yml does not name '$GO_INDEX_ASSET'"
 fi
 
 INSTALL_URL_HITS="$(grep -rn 'raw.githubusercontent.com' apps/ packages/ internal/ \

@@ -1,8 +1,9 @@
 // Package appupdate is the whole update-availability check plus the detached self-update
 // installer (install.go), used by Kira Space — a repo-root package,
 // so it imports nothing under either app's own internal/ (Go's internal/ visibility rule enforces
-// this at compile time). The check itself is a paginated plain net/http listing of GitHub's public
-// releases endpoint, stepped one minor at a time by internal/releaseline, self-contained and dependency-free (no githost/github, no httpclient,
+// this at compile time). The check itself is one plain net/http GET of the release index asset on
+// the latest GitHub release (not the rate-limited REST API), stepped one minor at a time by
+// internal/releaseline, self-contained and dependency-free (no githost/github, no httpclient,
 // no Wails import — drivable from a plain httptest server, matching the same self-contained shape
 // internal/httpclient states as its own contract).
 //
@@ -16,15 +17,12 @@ package appupdate
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -41,20 +39,11 @@ const (
 	// RepoURL is the one source of the GitHub repository URL for the app.
 	RepoURL = "https://github.com/" + repoOwner + "/" + repoName
 
-	releasesURL = "https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases"
+	// indexURL is metadata, never a binary: the index asset of the latest release (a web redirect,
+	// no API rate limit). S10 in scripts/verify-packaging.sh allows exactly this download URL.
+	indexURL = RepoURL + "/releases/latest/download/" + releaseIndexAsset
 
-	requestTimeout = 10 * time.Second // per page; githost/github's own apiTimeout, same reasoning
-	perPage        = 100
-	// maxPages bounds a listing at 1,000 releases; more is an error (fail closed), never a
-	// truncated list that could drop an old install's own minor and cause a jump.
-	maxPages = 10
-	// maxPageBytes: release bodies carry notes, so a full page is far larger than a latest body.
-	maxPageBytes = 8 << 20
-
-	// apiVersionHeader restates apps/kira-space/internal/githost/github/api.go's own unexported constant of the same name — GitHub's
-	// REST API version pin, so a future GitHub-side default-version bump can never silently reshape
-	// the decoded fields here.
-	apiVersionHeader = "2022-11-28"
+	requestTimeout = 10 * time.Second // githost/github's own apiTimeout, same reasoning
 )
 
 // okInterval/failureInterval mirror githost/github/discovery.go's own okTTL/notOKTTL split: a good
@@ -78,7 +67,7 @@ type Checker struct {
 	running   string
 	userAgent string
 	asset     string
-	fetch     func(ctx context.Context, userAgent string) ([]releaseline.Release, error) // seam; the real one lists over HTTP
+	fetch     func(ctx context.Context, userAgent string) ([]releaseline.Release, error) // seam; the real one reads the index over HTTP
 	now       func() time.Time
 
 	group singleflight.Group
@@ -90,12 +79,11 @@ type Checker struct {
 }
 
 // CheckerOptions overrides the production wiring; a zero field takes the production value.
-// Tests point ReleasesURL at an httptest server.
+// Tests point IndexURL at an httptest server.
 type CheckerOptions struct {
 	AppName, Version string
-	ReleasesURL      string
+	IndexURL         string
 	Asset            string
-	PerPage          int
 }
 
 // NewChecker builds a Checker over the real network fetch, parameterized only by appName (the
@@ -106,23 +94,20 @@ func NewChecker(appName, runningVersion string) *Checker {
 	return NewCheckerFrom(CheckerOptions{AppName: appName, Version: runningVersion})
 }
 
-// NewCheckerFrom is NewChecker with overridable endpoint, asset name and page size.
+// NewCheckerFrom is NewChecker with overridable index URL and asset name.
 func NewCheckerFrom(o CheckerOptions) *Checker {
-	if o.ReleasesURL == "" {
-		o.ReleasesURL = releasesURL
+	if o.IndexURL == "" {
+		o.IndexURL = indexURL
 	}
 	if o.Asset == "" {
 		o.Asset = platformAsset()
-	}
-	if o.PerPage <= 0 {
-		o.PerPage = perPage
 	}
 	return &Checker{
 		running:   o.Version,
 		userAgent: o.AppName + "/" + o.Version,
 		asset:     o.Asset,
 		fetch: func(ctx context.Context, userAgent string) ([]releaseline.Release, error) {
-			return listReleases(ctx, o.ReleasesURL, o.PerPage, userAgent)
+			return fetchIndex(ctx, o.IndexURL, userAgent)
 		},
 		now: time.Now,
 	}
@@ -159,7 +144,7 @@ func (c *Checker) Check(ctx context.Context) (Result, error) {
 
 var statusErrRe = regexp.MustCompile(`unexpected status (\d+)$`)
 
-// errRateLimited: GitHub's unauthenticated limit (60 requests/hour/IP) is spent.
+// errRateLimited: GitHub answered 429, or 403 with an empty rate-limit budget.
 var errRateLimited = errors.New("appupdate: rate limited")
 
 // FailureCause maps a failed check to a short, URL-free reason for the user.
@@ -227,7 +212,7 @@ func (c *Checker) refresh(ctx context.Context) (Result, error) {
 	return c.result, nil
 }
 
-// buildResult turns the full release listing into this package's Result via the stepping rule.
+// buildResult turns the release index into this package's Result via the stepping rule.
 func buildResult(running, asset string, rels []releaseline.Release) Result {
 	step := releaseline.NextStep(running, rels, asset)
 	return Result{
@@ -248,37 +233,18 @@ var httpClient = &http.Client{
 	},
 }
 
-// listReleases pages through the releases endpoint until a short page. Any failing page fails the
-// whole listing: a partial list must never drive a decision. Only the decoded subset of
-// releaseline.Release is read, never a download URL.
-func listReleases(ctx context.Context, baseURL string, size int, userAgent string) ([]releaseline.Release, error) {
-	var all []releaseline.Release
-	for page := 1; page <= maxPages; page++ {
-		rels, err := fetchPage(ctx, baseURL, size, page, userAgent)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, rels...)
-		if len(rels) < size {
-			return all, nil
-		}
-	}
-	return nil, fmt.Errorf("appupdate: more than %d releases", maxPages*size)
-}
-
-// fetchPage is one releases GET. Any status other than 200 is an error; 429, or 403 with an empty
-// rate-limit budget, is errRateLimited.
-func fetchPage(ctx context.Context, baseURL string, size, page int, userAgent string) ([]releaseline.Release, error) {
+// fetchIndex is one GET of the release index. Any status other than 200 is an error; 429, or 403
+// with an empty rate-limit budget, is errRateLimited. A malformed index fails the whole check: a
+// partial list must never drive a decision. Only the decoded subset of releaseline.Release is read,
+// never a download URL.
+func fetchIndex(ctx context.Context, url, userAgent string) ([]releaseline.Release, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 
-	url := baseURL + "?per_page=" + strconv.Itoa(size) + "&page=" + strconv.Itoa(page)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", apiVersionHeader)
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := httpClient.Do(req)
@@ -294,10 +260,5 @@ func fetchPage(ctx context.Context, baseURL string, size, page int, userAgent st
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("appupdate: unexpected status %d", resp.StatusCode)
 	}
-
-	var rels []releaseline.Release
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxPageBytes)).Decode(&rels); err != nil {
-		return nil, err
-	}
-	return rels, nil
+	return releaseline.ParseIndex(resp.Body)
 }
