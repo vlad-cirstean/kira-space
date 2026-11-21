@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { TooltipProvider } from '@theme/components/ui/tooltip';
 import { provideApprovalKinds } from '@workbench/approvals/registry';
 import ConfirmDialog from '@workbench/components/ConfirmDialog.vue';
 import { storeToRefs } from 'pinia';
@@ -21,6 +22,8 @@ watch(phase, (p, prev) => {
 </script>
 
 <template>
-  <RouterView />
-  <ConfirmDialog touch />
+  <TooltipProvider>
+    <RouterView />
+    <ConfirmDialog touch />
+  </TooltipProvider>
 </template>
