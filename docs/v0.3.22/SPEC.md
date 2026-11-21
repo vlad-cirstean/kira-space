@@ -218,7 +218,7 @@ every run, green after). Schema budgets unchanged (run 474 of 500, push 512 of 5
 redirect into the worktree was refused outside the working folders (run stalled before the rename), and
 a finish with `failed` after the expected refusal. Prompt now names the Write tool, `git -C` and a
 `done` finish; failing runs dump the run log tail. 5 of 5 with the final prompt (before: 4 of
-20 failed: three 3 min stalls, one failed finish; only the last stall had its log). No `testTimeout` change. Flow test item skipped: the fake agent records no `tools/list`.
+20 failed: two 3 min stalls, two failed finishes at about 99 s; two had their log). No `testTimeout` change. Flow test item skipped: the fake agent records no `tools/list`.
 Details bench (free check passes; paid round capped at its 1.50 USD guard, 18 of 24 runs, 1.49 USD):
 all runs pass; context R/T F4 0.90, F5 0.98, F6 1.06, F1 0.99; cost R/T F4 0.97, F5 1.28, F6 1.43,
 F1 1.12. The gate marks F5 and F6 fail (2 reps each); the Space schema grew by one enum value and one
