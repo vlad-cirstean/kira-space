@@ -18,6 +18,7 @@
       "name": "base",
       "ownerId": "<id:1>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": "<http>"
     }

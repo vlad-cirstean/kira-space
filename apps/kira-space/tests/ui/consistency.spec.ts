@@ -64,8 +64,8 @@ const DIFF_SNAP: ControlSnapshot = {
   },
 };
 
-// The palette lists only commands with no other entry point: the three API ones, in API mode.
-test('the menu command palette event lists the three API-only commands in API mode', async ({
+// The palette lists only commands with no other entry point: the two API ones, in API mode.
+test('the menu command palette event lists the two API-only commands in API mode', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
@@ -75,10 +75,10 @@ test('the menu command palette event lists the three API-only commands in API mo
   await emitWailsEvent(page, IPC.commandPalette, undefined);
   await expect(page.locator(t('command-palette-input'))).toBeVisible();
   const items = page.locator(t('command-palette-item'));
-  await expect(items).toHaveCount(3);
+  await expect(items).toHaveCount(2);
   await expect
     .poll(() => items.evaluateAll((els) => els.map((e) => e.getAttribute('data-command-id'))))
-    .toEqual(['api.variables', 'api.dynamicValues', 'api.importCurl']);
+    .toEqual(['api.dynamicValues', 'api.importCurl']);
 });
 
 test('the command palette is empty outside API mode', async ({ relaunch }) => {

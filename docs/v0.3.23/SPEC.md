@@ -13,7 +13,9 @@ before implementation starts.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P716 | Rework MCP chaining for DB, API and kube: kept variables, no chain UI | Todo |
+| P716 Part 1 | Remove the chain steps panel from DB and API prompts | Done |
+| P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
+| P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
 | P717 | Result review for every MCP tool that returns data | Todo |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
@@ -78,6 +80,14 @@ kept variables unprompted.
 
 Open questions. A or B (user decides after the plan's comparison). Under B: how steps are linked, and
 whether "go back" shows a released result.
+
+User chose model A (no chain UI; kept variables; agent makes the follow-up request) as the baseline and may rework it after seeing screenshots at chapter end. Plan: `plans/P716-design.md`. Parts keep the number P716: Part 1 removes the panel, Part 2 adds secret and plain kept variables with preview and reveal, Part 3 tells the agent.
+
+Result, Part 1. Done. `ChainSteps.vue`, its three call sites (`DbQueryBody`, `DbExemptionBody`, `ApiRequestBody`), the `studio.dbMcp.approval.chain.*` strings, the chain asserts in `e2e-kept-chain.spec.ts`, the visual case 'script card with its chain' and its baseline are gone. The kept-variables panel stays. `e2e-kept-chain` and `e2e-db-script-chain` specs assert the old `approval-chain` element no longer renders.
+
+Result, Part 2. Done. Transform scripts keep with `kept.set(name, v)` (plain) or `kept.setSecret(name, v)` (secret); names are plan-time literals, `prepare` scripts cannot keep. A `setSecret` value is masked in the script output and the agent sees only name, type, size, `secret` flag and expiry. API-made secrets bind to the request origin; a use against another origin is refused with `the secret kept as "x" belongs to <origin> and is not sent to <origin>`. DB-kept secrets bind to no origin. The held-result review lists "Will keep" with Secret/Plain badges: plain values preview, secrets show dots and reveal through `KeptVarsService.RevealStaged` behind the local-auth prompt (confirmation fallback). Cards badge the kinds the script may keep, Settings shows the kind per entry. Tests: flow `TestE2EKeptSecret` and `TestDbMcpQueryScriptKeepSecret` (contract `e2e-kept-secret`), UI spec `e2e-kept-secret.spec.ts` (4 tests), visual `approvals-kept-secret.spec.ts` (3 baselines).
+
+Result, Part 3. Done. `DbmcpInstructions`, `run_query` and `api_request` script args and `list_kept_variables` now name `kept.set` (plain, user previews) and `kept.setSecret` (secret, fingerprint reveal), the `secret` flag in the kept summary, that API-made secrets go only to their host, and that a one-time value is never kept so no later call reads it (the sentence P719 deferred). Text stays generic for kube; kube adopts scripts in P718. `budget.tsv` raised for the five touched entries. `TestDbMcpKeptChainThroughClaude` now gives the task only (read ids, fetch bodies by those ids, ids never through the model); the model chose `kept.set` and bound the name in `params` on its own. `bun run test:claude:db -count=1`: 12 pass, none skipped.
 
 ## P717
 
@@ -247,6 +257,34 @@ and inspected.
 
 Open questions. Settled in the plan with the user: inline editing in the variables tab vs dialog;
 where agent access settings live after the redesign.
+
+Result. One Variables tab (⌥⌘E) replaces the Environments tab, the variable-set tab and the request
+overview: a grid with a row per name and a column per file (collection default, then each
+environment), edited in place. Backend: `ApiConfigService.EditVariables` (set, unset, rename, lock,
+unlock, describe, share, move), `ApiVariable.secretSet`, import `secretsUnset`, duplicate copies
+sealed values. Frontend: `VariablesView`, `VariablesMatrix`, `VariableCell`, `SecretCellInput`
+(P516 eye), `EnvironmentColumnMenu`, `RequestVariablesPanel` (quick fix of a missing name), narrow
+mode below 760 px. Legacy `variables` and `environments` tabs reopen as the Variables tab (drop at
+v0.4.0). Flow: `apiflow.TestApiVariablesMatrix` writes contract `api-variables-matrix`; UI:
+`api-variables-matrix.spec.ts` replays it; visual `studio/variables.spec.ts` (grid, narrow, request
+popover). Other UI specs moved to the grid; specs of removed UI (typed secret in the dialog, drag
+reorder, overview list) deleted or rewritten.
+
+Defaults used for the plan's open questions 1 to 8: as written in `plans/P720.md`.
+
+Deviations. Rename and colour reuse the dialog's Environment section. No separate
+`VariableRowMenu.vue`: the row menu lives in `menu.ts`. Narrow mode picker also offers the collection
+column. A lock click on a mixed row makes it uniform. With no collection or environment the empty
+state offers New environment and New collection; with an environment the grid shows even when empty.
+`form.submit` and `form.cancel` are native Enter and Escape, not registry shortcuts. Share with
+agents on a secret with no detectable host opens Agent access. Inline fields trim values. The
+new-environment input commits on blur when non-blank. Environment reorder is Move left and Move right
+in the column menu; drag is gone. Rename shows an info alert with Find usages, not a toast. The
+history popover ignores focus-outside so it survives the menu's focus restore. The dialog's bulk
+editor is the only dotenv editor.
+
+Unverified. Wails bindings not regenerated (`wails3` missing here, bindings gitignored; typecheck
+passes). Real `claude` tests not run: no Claude integration code changed.
 
 ## P721
 

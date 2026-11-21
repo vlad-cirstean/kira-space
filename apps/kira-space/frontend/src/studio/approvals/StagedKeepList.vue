@@ -6,8 +6,9 @@ import KeptNameMark from '../kept/KeptNameMark.vue';
 import KeptValueView from '../kept/KeptValueView.vue';
 import { keptTypeLabel } from '../kept/keptFormat';
 
-// The values a script keeps once its held result is sent: not stored yet, previews only.
-defineProps<{ keep: readonly KeptStaged[]; testid: string }>();
+// The values a script keeps once its held result is sent: not stored yet. A plain value shows its
+// preview; a secret shows dots and Reveal, which reads it from the held result behind the OS gate.
+defineProps<{ keep: readonly KeptStaged[]; testid: string; requestId: string }>();
 </script>
 
 <template>
@@ -15,7 +16,7 @@ defineProps<{ keep: readonly KeptStaged[]; testid: string }>();
     <SectionHeading flush :label="t('studio.kept.willKeep.label')" />
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
       <li v-for="k in keep" :key="k.name" :data-testid="`${testid}-${k.name}`">
-        <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" />
+        <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" :secret="k.secret" />
         <p
           v-if="k.blocked"
           class="m-0 text-kira-sm text-warn"
@@ -23,7 +24,12 @@ defineProps<{ keep: readonly KeptStaged[]; testid: string }>();
         >
           {{ t('studio.kept.willKeep.blocked.status') }}
         </p>
-        <KeptValueView v-else :entry="{ ...k, id: '' }" staged />
+        <KeptValueView
+          v-else
+          :entry="{ ...k, id: '' }"
+          staged
+          :staged-reveal="{ requestId, name: k.name }"
+        />
       </li>
     </ul>
   </section>

@@ -22,6 +22,8 @@ export interface ApiVariable {
   isSecret: boolean;
   sortOrder: number;
   description: string;
+  /** A secret row whose sealed value exists; always false for a plain row. */
+  secretSet: boolean;
 }
 
 // The active environment is app-global, a column on the row itself rather than a layout leaf

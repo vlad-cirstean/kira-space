@@ -8,7 +8,7 @@ import { collectionRow } from './support/apiRows';
 import { acceptConfirm, cancelConfirm } from './support/dialogs';
 import { dragRow, settleFrames } from './support/tree';
 
-// Rename, move, delete and duplicate on the Api tree and the environments tab, each an edit of a
+// Rename, move, delete and duplicate on the Api tree and the Variables tab, each an edit of a
 // collection or environment file. The Go half is apiflow TestApiLifecycle; contract api-lifecycle
 // fixes the call shapes, the trees and the answers.
 
@@ -278,27 +278,25 @@ test('environments: Duplicate adds the copy, Delete asks first and removes the f
   });
   await openHttpMode(page);
   await page.click('[data-testid="api-environments"]');
-  const rows = page.locator('[data-testid="environment-row"]');
-  await expect(rows).toHaveCount(1);
+  const column = (id: string) => page.locator(`[data-testid="matrix-col-${id}"]`);
+  await expect(column(production)).toBeVisible();
+  await expect(column(copy.id)).toHaveCount(0);
 
-  await rows.first().locator('[data-testid="environment-duplicate"]').click();
+  await page.click(`[data-testid="matrix-col-menu-${production}"]`);
+  await menuItem(page, 'duplicate').click();
   await expect.poll(() => calls(control, IPC.variablesDuplicateEnvironment)).toHaveLength(1);
   expect(calls(control, IPC.variablesDuplicateEnvironment)[0].args).toEqual({ id: production });
-  await expect(rows).toHaveCount(2);
+  await expect(column(copy.id)).toBeVisible();
 
-  await page
-    .locator(`[data-testid="environment-row"][data-id="${production}"]`)
-    .locator('[data-testid="environment-remove"]')
-    .click();
+  await page.click(`[data-testid="matrix-col-menu-${production}"]`);
+  await menuItem(page, 'delete').click();
   await cancelConfirm(page);
   expect(calls(control, IPC.variablesDeleteEnvironment)).toHaveLength(0);
 
-  await page
-    .locator(`[data-testid="environment-row"][data-id="${production}"]`)
-    .locator('[data-testid="environment-remove"]')
-    .click();
+  await page.click(`[data-testid="matrix-col-menu-${production}"]`);
+  await menuItem(page, 'delete').click();
   await acceptConfirm(page);
   await expect.poll(() => calls(control, IPC.variablesDeleteEnvironment)).toHaveLength(1);
   expect(calls(control, IPC.variablesDeleteEnvironment)[0].args).toEqual({ id: production });
-  await expect(rows).toHaveCount(1);
+  await expect(column(production)).toHaveCount(0);
 });

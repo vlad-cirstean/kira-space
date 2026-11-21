@@ -7,6 +7,7 @@
           "folders": 0,
           "name": "Multi",
           "requests": 2,
+          "secretsUnset": [],
           "warnings": [
             {
               "count": 4,
@@ -46,6 +47,7 @@
         "environment": {
           "environmentId": "<id:2>",
           "name": "Staging",
+          "secretsUnset": [],
           "variables": 6,
           "warnings": [
             {
@@ -78,6 +80,7 @@
         "environment": {
           "environmentId": "<id:3>",
           "name": "Wrapped",
+          "secretsUnset": [],
           "variables": 3,
           "warnings": [
             {
@@ -132,6 +135,7 @@
       "name": "host",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": "https://staging.example.test"
     },
@@ -142,6 +146,7 @@
       "name": "token",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": true,
       "sortOrder": 0,
       "value": ""
     },
@@ -152,6 +157,7 @@
       "name": "retries",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": "3"
     },
@@ -162,6 +168,7 @@
       "name": "implicit",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": "on"
     },
@@ -172,6 +179,7 @@
       "name": "config",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": "{\"retry\":[1,2]}"
     },
@@ -182,6 +190,7 @@
       "name": "blank",
       "ownerId": "<masked>",
       "scope": "environment",
+      "secretSet": false,
       "sortOrder": 0,
       "value": ""
     }

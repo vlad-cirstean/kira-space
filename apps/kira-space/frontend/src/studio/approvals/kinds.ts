@@ -362,6 +362,10 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   ];
 }
 
+// A name the script may keep, marked when a kept.setSecret call writes it.
+const mayKeepName = (m: { name: string; secret: boolean }): string =>
+  m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
+
 // The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
 function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
   if (!script) return [];
@@ -369,7 +373,7 @@ function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
   if (script.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {
-        names: script.mayKeep.map((m) => m.name).join(', '),
+        names: script.mayKeep.map(mayKeepName).join(', '),
       }),
       tone: 'neutral',
       testid: 'db-approval-kept-writes',
@@ -418,7 +422,7 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   if (p.script?.transform?.mayKeep.length) {
     out.push({
       text: t('studio.kept.risk.keeps.status', {
-        names: p.script.transform.mayKeep.map((m) => m.name).join(', '),
+        names: p.script.transform.mayKeep.map(mayKeepName).join(', '),
       }),
       tone: 'neutral',
       testid: 'api-approval-kept-writes',

@@ -15,6 +15,7 @@ import type {
   ApiConfigView,
   ApiFileDetail,
   ApiFormResult,
+  ApiVariableEdit,
 } from '@shared/domain/apiConfig';
 import type { ImportResult } from '@shared/domain/collections';
 import type { PaletteColor } from '@shared/domain/color';
@@ -274,6 +275,9 @@ export const apiControl = {
     unwrap(ApiConfigService.DeleteSecret({ name })).then((r) => trust<ApiConfigView>(r)),
   apiConfigAgentAccess: (): Promise<ApiAgentEnvironment[]> =>
     unwrap(ApiConfigService.AgentAccess()).then((r) => trust<ApiAgentEnvironment[]>(r ?? [])),
+  // One batch of variable edits across the files it names; a secret value is sealed in the same call.
+  apiConfigEditVariables: (edits: ApiVariableEdit[]): Promise<ApiConfigView> =>
+    unwrap(ApiConfigService.EditVariables({ edits })).then((r) => trust<ApiConfigView>(r)),
   apiConfigFile: (file: string): Promise<ApiFileDetail> =>
     unwrap(ApiConfigService.File({ file })).then((r) => trust<ApiFileDetail>(r)),
   apiConfigSaveFile: (file: string, text: string, baseHash: string): Promise<ApiFileDetail> =>

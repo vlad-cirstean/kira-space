@@ -87,6 +87,7 @@ func (s *Server) reviewAPI(ctx context.Context, plan agentapi.Planned, sc *apiSc
 	held.Bytes = len(held.Text)
 	if sc.hasTransform() && o.Failure == "" {
 		held.Keep = sc.kept.stagedViews()
+		held.staged = sc.kept
 	}
 	if sc.hasTransform() {
 		raw, merr := json.Marshal(o.Raw)

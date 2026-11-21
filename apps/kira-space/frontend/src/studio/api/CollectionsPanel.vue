@@ -14,16 +14,14 @@ import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import ApiConfigProblems from './ApiConfigProblems.vue';
 import CollectionsTree from './CollectionsTree.vue';
 import ImportReportStrip from './ImportReportStrip.vue';
-import { useCollectionSelectionStore } from './state/collectionSelection';
 import { useCollectionsStore } from './state/collections';
 import { useImportCurlStore } from './state/curl';
 import { useDynamicValuesStore } from './state/dynamicValues';
 import { useVariablesStore } from './state/variables';
-import { openApiRequestTab, openVariableSetTab } from './tabs';
+import { openApiRequestTab } from './tabs';
 
 const dynamicValuesStore = useDynamicValuesStore();
 const collectionsStore = useCollectionsStore();
-const selection = useCollectionSelectionStore();
 const importCurlStore = useImportCurlStore();
 const variablesStore = useVariablesStore();
 
@@ -69,34 +67,11 @@ function onNewCollection(): void {
   void collectionsStore.createCollection();
 }
 
-// The palette's Variables… entry — opens the tab for
-// whichever collection is currently selected in the tree (a collection row directly, or a
-// folder/request's own collection). A no-op with nothing selected, the same "view-scoped, no-op
-// elsewhere" shape view.run/api.save already have.
-function onVariablesCommand(): void {
-  const selected = selection.focusKey;
-  if (!selected) return;
-  if (selected.startsWith('c:')) {
-    const id = selected.slice(2);
-    const collection = collectionsStore.collectionRecord(id);
-    if (collection) openVariableSetTab('collection', id, collection.name);
-    return;
-  }
-  if (selected.startsWith('i:')) {
-    const item = collectionsStore.itemRecord(selected.slice(2));
-    const collection = item ? collectionsStore.collectionRecord(item.collectionId) : undefined;
-    if (item && collection) {
-      openVariableSetTab('collection', item.collectionId, collection.name);
-    }
-  }
-}
-
 function onEnvironments(): void {
   variablesStore.openEnvironments();
 }
 
-// P6 D11: the palette's own "Dynamic values…" entry — not scoped to any selection, unlike
-// Variables… above.
+// P6 D11: the palette's own "Dynamic values…" entry, not scoped to any selection.
 function onDynamicValues(): void {
   dynamicValuesStore.openDynamicValuesDialog();
 }
@@ -107,13 +82,12 @@ function onImportCurl(): void {
   importCurlStore.openImportCurlDialog();
 }
 
-// D15: the palette's Variables…, (P6) Dynamic values… and (P7) Import from curl… entries — the three
+// D15: the palette's (P6) Dynamic values… and (P7) Import from curl… entries, the two
 // with no visible control. Registered by the panel rather than a view, since the panel is
 // mounted for the whole of Api mode — none is tab-scoped.
 let unregisterCommands: Array<() => void> = [];
 onMounted(() => {
   unregisterCommands = [
-    registerCommand('api.variables', onVariablesCommand),
     registerCommand('api.dynamicValues', onDynamicValues),
     registerCommand('api.importCurl', onImportCurl),
   ];

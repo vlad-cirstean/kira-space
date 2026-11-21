@@ -4,7 +4,6 @@ import type {
   ApiEnvironmentFileModel,
   ApiFileVariable,
 } from '@shared/domain/apiConfig';
-import { Toggle } from '@theme/components/ui/toggle';
 import { t } from '@theme/i18n';
 import ConfigFileDialog from '@workbench/config/ConfigFileDialog.vue';
 import ConfigFormProblemAlert from '@workbench/config/ConfigFormProblemAlert.vue';
@@ -12,17 +11,14 @@ import { configName } from '@workbench/config/configName';
 import { useConfigFormDraft } from '@workbench/config/useConfigFormDraft';
 import { computed, ref, watch } from 'vue';
 import ApiAgentAccessForm from './ApiAgentAccessForm.vue';
-import ApiVariablesTable from './ApiVariablesTable.vue';
 import BulkVariablesEditor from './BulkVariablesEditor.vue';
 import EnvironmentFields from './EnvironmentFields.vue';
-import { useApiConfig, useSetApiSecret } from './state/apiConfig';
 import { useApiFile, useApiForm, useSaveApiFile } from './state/apiFileQueries';
 import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
+import UnusedSecrets from './UnusedSecrets.vue';
 import {
   cleanVariable,
   FILE_FIELDS,
-  fileStem,
-  secretNameOf,
   VARIABLES_SECTION_POINTERS,
   type VariablesSection,
 } from './variablesForm';
@@ -30,41 +26,17 @@ import {
 // One collection or environment file's variables as a form and as YAML over one draft. An
 // environment file also edits its name, description and colour; a collection file edits `variables`
 // only. Save sends the hash of the text the draft was edited from; a file changed elsewhere is refused
-// with Reload and Overwrite. A typed secret goes through the write-only call after the file is written.
+// with Reload and Overwrite. Values are edited in the Variables tab; this dialog is the file's own
+// form, its `.env` view and its YAML.
 type FileModel = ApiEnvironmentFileModel | ApiCollectionFileModel;
 
 const dialogStore = useApiVariablesDialogStore();
-const config = useApiConfig();
 const query = useApiFile(() => dialogStore.file);
 const save = useSaveApiFile();
-const setSecret = useSetApiSecret();
 const applyForm = useApiForm(() => dialogStore.file ?? '');
 
 const detail = computed(() => query.data.value);
 const isEnvironment = computed(() => detail.value?.kind === 'environment');
-const stem = computed(() => fileStem(detail.value?.file ?? ''));
-const storageAvailable = computed(() => config.data.value?.storage.available ?? false);
-const savedSecrets = computed(
-  () => new Set((config.data.value?.secrets ?? []).filter((s) => s.set).map((s) => s.name)),
-);
-
-const typed = ref<Record<string, string>>({});
-
-async function flushSecrets(): Promise<void> {
-  const referenced = new Set(
-    (draft.model.value?.variables ?? []).map((v) => secretNameOf(v.secret)),
-  );
-  for (const [name, value] of Object.entries(typed.value)) {
-    if (!value || !referenced.has(name)) continue;
-    try {
-      await setSecret.mutateAsync({ name, value });
-    } finally {
-      setSecret.reset();
-    }
-    typed.value = { ...typed.value, [name]: '' };
-  }
-}
-
 const draft = useConfigFormDraft<FileModel>({
   file: () => (detail.value ? { text: detail.value.text, hash: detail.value.hash } : undefined),
   form: applyForm,
@@ -74,19 +46,12 @@ const draft = useConfigFormDraft<FileModel>({
     return fresh ? { text: fresh.text, hash: fresh.hash } : undefined;
   },
   fields: FILE_FIELDS,
-  secrets: { pending: () => hasTyped.value, flush: flushSecrets },
 });
 
 const section = ref<VariablesSection>('variables');
-const bulk = ref(false);
-watch(section, (s) => {
-  if (s !== 'variables') bulk.value = false;
-});
 watch(
   () => [dialogStore.file, detail.value?.kind] as const,
   () => {
-    typed.value = {};
-    bulk.value = false;
     section.value =
       dialogStore.tab === 'yaml' || (isEnvironment.value && dialogStore.tab !== 'variables')
         ? dialogStore.tab
@@ -115,11 +80,10 @@ const variablesProblem = computed(() =>
 const variables = computed<ApiFileVariable[]>({
   get: () => model.value?.variables ?? [],
   set: (v) => {
-    if (draft.model.value) draft.model.value.variables = v.map(cleanVariable);
+    if (draft.model.value)
+      draft.model.value.variables = v.filter((x) => x.name !== '').map(cleanVariable);
   },
 });
-
-const hasTyped = computed(() => Object.values(typed.value).some((v) => v !== ''));
 
 function close(): void {
   dialogStore.close();
@@ -167,32 +131,9 @@ function close(): void {
           :problem="variablesProblem"
           testid="api-variables-error"
         />
-        <div class="flex justify-end px-1.5">
-          <Toggle v-model="bulk" size="kira" data-testid="api-variables-bulk-toggle">
-            {{ t('studio.api.variablesDialog.bulk.toggle.label') }}
-          </Toggle>
-        </div>
-        <BulkVariablesEditor
-          v-if="bulk"
-          :variables="variables"
-          @update:variables="(v) => (variables = v)"
-        />
-        <ApiVariablesTable
-          v-else
-          v-model="variables"
-          v-model:typed="typed"
-          :stem="stem"
-          :saved-secrets="savedSecrets"
-          :storage-available="storageAvailable"
-        />
-        <div
-          v-if="variables.length === 0 && !bulk"
-          class="px-1.5 text-kira-sm text-subtle"
-          data-testid="api-variables-empty"
-        >
-          {{ t('studio.api.config.variables.empty') }}
-        </div>
+        <BulkVariablesEditor :variables="variables" @update:variables="(v) => (variables = v)" />
       </div>
     </template>
+    <template #yaml-after><UnusedSecrets /></template>
   </ConfigFileDialog>
 </template>

@@ -40,7 +40,7 @@ func TestE2EKeptChain(t *testing.T) {
 		pending := callToolAsync(a, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": chainKeep}))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
-		if res.IsError || !strings.HasPrefix(text(res), `{"result":2,"kept":[{"name":"ids","type":"array","items":2,`) || strings.Contains(text(res), bigID) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"result":2,"kept":[{"name":"ids","type":"array","items":2,"secret":false,`) || strings.Contains(text(res), bigID) {
 			t.Fatalf("result = %q, want the total and a summary without the ids", text(res))
 		}
 		f.app.Contract(t, keptChainKey, "result#step1", expiresIn.ReplaceAllString(text(res), `"expiresInSeconds":0`))

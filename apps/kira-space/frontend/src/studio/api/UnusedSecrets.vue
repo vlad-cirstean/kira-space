@@ -7,17 +7,21 @@ import ConfigSecretsSection, {
 import { computed } from 'vue';
 import { useApiConfig, useDeleteApiSecret, useSetApiSecret } from './state/apiConfig';
 
-// The credentials the files reference; the shared section owns the list and dialogs.
+// Saved secrets no file references any more, listed so they can be deleted; the shared section owns
+// the list and dialogs.
 const config = useApiConfig();
 const setSecret = useSetApiSecret();
 const deleteSecret = useDeleteApiSecret();
 
-const secrets = computed<ConfigSecretRow[]>(() => config.data.value?.secrets ?? []);
+const secrets = computed<ConfigSecretRow[]>(() =>
+  (config.data.value?.secrets ?? []).filter((s) => !s.referenced),
+);
 const storage = computed(() => config.data.value?.storage ?? null);
 </script>
 
 <template>
   <ConfigSecretsSection
+    v-if="secrets.length > 0"
     :secrets="secrets"
     :storage="storage"
     :set-secret="
@@ -31,7 +35,7 @@ const storage = computed(() => config.data.value?.storage ?? null);
     testid-prefix="api-secret"
   >
     <template #title
-      ><SectionHeading flush :label="t('studio.api.config.secrets.title')" /></template
+      ><SectionHeading flush :label="t('studio.api.variables.unusedSecrets.title')" /></template
     >
   </ConfigSecretsSection>
 </template>

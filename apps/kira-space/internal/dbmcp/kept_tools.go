@@ -69,7 +69,7 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	}
 	return jsonResult(map[string]any{
 		"variables": out,
-		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. Values are held by Kira and never shown to you.",
+		"note":      "Use a name as {{kept.name}} in api_request, or list it in params of run_query. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
 	})
 }
 

@@ -158,6 +158,7 @@ func (o *queryScriptOutcome) heldOf(rv queryResolution, res *mcp.CallToolResult,
 	held.Script = &HeldScript{Source: rv.script.Transform, Hash: jsengine.SourceHash(rv.script.Transform)}
 	if o.Failure == "" {
 		held.Keep = rv.script.kept.stagedViews()
+		held.staged = rv.script.kept
 	}
 	held.Bytes = len(held.Text) + len(held.Raw) + len(held.Script.Source)
 	return held
@@ -199,7 +200,7 @@ func (s *Server) deliverQuery(ctx context.Context, args runQueryArgs, rv queryRe
 		}
 	}
 	if o != nil && o.Failure == "" && ctx.Err() == nil {
-		if saved, failed := rv.script.kept.commit(s.keptSourceOfQuery(ctx, args, rv)); len(saved)+len(failed) > 0 {
+		if saved, failed := rv.script.kept.commit(s.keptSourceOfQuery(ctx, args, rv), ""); len(saved)+len(failed) > 0 {
 			return o.agentResult(saved, failed)
 		}
 	}
