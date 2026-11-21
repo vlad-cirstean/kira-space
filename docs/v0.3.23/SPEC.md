@@ -20,6 +20,7 @@ before implementation starts.
 | P720 | API module variables and environments: UX redesign | Todo |
 | P721 | Remove development, debugging and validation leftovers | Todo |
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
+| P723 | Remove the PR flake rerun workflow | Todo |
 
 ## P716
 
@@ -308,3 +309,44 @@ user on macOS, Windows and Linux: tear off, re-attach to another window, drop on
 the last tab, new-window button icon, tooltip and shortcut.
 
 Spike (`plans/P722-spike.md`): drag-back is feasible via frontend pointer-up coordinates plus Go hit-test of live windows; not feasible on Linux Wayland (window positions report 0,0). The planner starts from that file.
+
+## P723
+
+User: "Remove the flake restarter. I think it s uselesss as you re already monitoring prs for ci
+failures".
+
+Today. `.github/workflows/pr-rerun-flaky.yml` (P330, P365) is a `workflow_run` job on `PR`
+completion. It runs `gh run rerun --failed` on a failed run, or a cancelled run whose jobs hit their
+timeout, up to 3 attempts, only for the PR's open head and newest run. The session already watches PR
+CI (CLAUDE.md "PR CI") and root-causes each failure, so the blind rerun adds nothing.
+
+Scope. Delete the workflow file. Update every reference found by grep (docs/history and docs/history-runs
+stay, read-only):
+
+- `docs/PACKAGING.md` §7 status line (about line 358): drop `pr-rerun-flaky.yml` from the workflow list.
+- `docs/PACKAGING.md` §7 "Chapter PR to release (P330)" step 3 (about lines 389 to 391): drop the
+  `pr-rerun-flaky.yml` sentences (rerun while `run_attempt < 3`, cancelled-run timeout rule, P365).
+  Renumber steps 4 and 5 and any reference to them.
+- Re-grep before editing: `pr-rerun`, `flake rerun`, `run_attempt`, `rerun` over `.github/`, `scripts/`,
+  `docs/` (not history), `CLAUDE.md`, `README.md`.
+
+Checked, no change needed. `pr.yml` (only `scripts/retry.sh` install retries and the
+cancel-in-progress group), `pr-auto-merge.yml`, `release-on-merge.yml` (its `workflow_run` of `PR`
+waits for green, independent), `release.yml`, `release-retention.yml`, `pages.yml` and `cache-warm.yml`
+name no rerun workflow. No guard or lint script lists workflows (`scripts/verify-packaging.sh` greps
+only `release.yml`). `docs/ARCHITECTURE.md` and `docs/DEV_ENVIRONMENT.md` have no reference.
+`scripts/retry.sh` stays: it retries install steps, not CI runs.
+
+Standing rule kept. CLAUDE.md "PR CI" already says to root-cause and fix every failing check, never
+skip, disable or quarantine a test to get green; no edit. Doc wording check in the plan: no remaining
+text may imply CI reruns failed jobs to green.
+
+Constraint. `workflow_run` workflows execute from the default branch, so the removal takes effect only
+once this chapter's PR merges to `main`. Until then the old workflow keeps rerunning failed PR runs,
+this chapter's included. Note it in the Result.
+
+Deliverable. One plan `plans/P723.md`, one Sonnet pass. No UI tests, no new tests.
+
+Verify. Final grep finds no `pr-rerun-flaky` or flake-rerun reference outside `docs/history/`;
+lint (`bun run lint` as in `docs/DEV_ENVIRONMENT.md`) and the repo's workflow and guard checks
+(`scripts/verify-packaging.sh`, pre-commit hook) pass.
