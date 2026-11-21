@@ -44,6 +44,11 @@ textarea,
   user-select: text;
 }
 
+/* P710: text selection is neutral grey, not the system accent. */
+::selection {
+  background-color: var(--kira-select-text);
+}
+
 /* Touch devices (mobile, iPad) keep native overlay scrollbars. */
 @media (pointer: fine) {
   /* P391: thumb hidden until the pointer is inside its scroller. WebKit repaints the thumb only

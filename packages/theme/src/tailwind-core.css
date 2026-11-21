@@ -32,6 +32,7 @@
   --color-resize-hover: var(--kira-resize-hover);
   --color-resize-active: var(--kira-resize-active);
   --color-select: var(--kira-select);
+  --color-select-edge: var(--kira-select-edge);
   --color-error: var(--kira-error);
   --color-scrim: var(--kira-scrim);
   --color-warn: var(--kira-warn);
