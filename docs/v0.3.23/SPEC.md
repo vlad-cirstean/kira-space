@@ -326,6 +326,29 @@ tests of touched packages.
 
 Open questions. Per live-consumer item, listed in the findings file for the user.
 
+**Result.** Unconditional part implemented per `plans/P721.md`, four commits.
+
+- C1: dropped 5 dead exports in `studio/api/variablesForm.ts`, 1 in `state/tabDomain.ts`; un-exported
+  `apiAgentAccessKey`, `ReviewColumn`, `KubeMcpReview`.
+- C2: removed the `*proto*` case in `scripts/hook-scope.sh` (staging
+  `studio/workers/parse/protocol.ts` now yields `mobile tests unit web`, no `proto`), three stale
+  `.gitignore` entries, dead `packages/db-fixtures` paths in the S3 and SQS seed comments.
+- C3: deleted `tests/claude/details_bench_freeze_test.go` plus `benchRoles` (its only consumer),
+  `testdata/smoke/`, the mongo and sqlite benchmark files.
+- C4: removed DEV_ENVIRONMENT "Comment sweep (P320)"; fixed README test layout and ARCHITECTURE
+  Playwright project list (ten projects, perf in its own config).
+
+Verified. `lint:dead` (knip) clean with bindings generated, `lint`, `typecheck`, `lint:claude`,
+`go mod tidy -diff` (both modules) clean; `go vet` and `go test` of mongo and sqlite adapters pass;
+free bench tests (`TestDetailsBenchFrozenServes`, `ArmRServes`, `ReviseServes`, `Bounds`) ran and
+passed, not skipped. Hook ran normally on every commit, no `--no-verify`. `bun run build` not run:
+under 6 GB disk free; left to CI.
+
+Open, user decides (default keep, nothing removed): A1a TS perf and heap probes, A1b Go RAM and perf
+probes plus `cmd/g1measure` and `AppProcessSet`, A1c `pprofserve` (`KIRA_PPROF`), A1d untested
+`__kiraGridTuning` overrides, A2 P643 spike code in `tests/claude`, A3 rename `KIRA_SPIKE_DUMP`
+(only if A2 lands). Details in `plans/P721.md`.
+
 ## P722
 
 User: "Remove the text from the new window button. And also allow tabs in the studio, api and runs
