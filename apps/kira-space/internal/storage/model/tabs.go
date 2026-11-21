@@ -61,6 +61,26 @@ var RenderableTabKinds = func() map[string]bool {
 	return kinds
 }()
 
+// AutomationsWorkspaceID is the workspace id the Runs module's terminals carry (automationsModule.ts).
+const AutomationsWorkspaceID = "automations"
+
+// IsSessionTabKind reports whether kind never persists across restarts (P722: moves write no row).
+func IsSessionTabKind(kind string) bool {
+	return kind == "terminal" || kind == "script-run"
+}
+
+// IsMovableTab reports whether a tab may move between windows (P722): Studio and API kinds,
+// Runs script runs and Runs terminals. Repository kinds and repo terminals stay put.
+func IsMovableTab(rec TabRecord) bool {
+	switch {
+	case dbTabKinds[rec.Kind], rec.Kind == "script-run":
+		return true
+	case rec.Kind == "terminal":
+		return rec.WorkspaceID != nil && *rec.WorkspaceID == AutomationsWorkspaceID
+	}
+	return false
+}
+
 // IsRenderableTabKind reports whether kind is one of the renderable tab kinds.
 func IsRenderableTabKind(kind string) bool {
 	return RenderableTabKinds[kind]
