@@ -48,3 +48,21 @@ func TestBuildTemplateGlobalChordItems(t *testing.T) {
 		}
 	}
 }
+
+// The native menu bar is where a global chord shows (macOS draws the accelerator right-aligned).
+// A global id that loses its item stops showing anywhere.
+func TestBuildTemplateShowsEveryGlobalChord(t *testing.T) {
+	count := map[string]int{}
+	for _, s := range BuildTemplate("Kira Space", false) {
+		for _, it := range s.Items {
+			if it.Accelerator != "" {
+				count[it.Accelerator]++
+			}
+		}
+	}
+	for id, chord := range shell.Shortcuts {
+		if n := count[chord.Accelerator()]; n != 1 {
+			t.Errorf("%s accelerator %q appears on %d menu items, want 1", id, chord.Accelerator(), n)
+		}
+	}
+}
