@@ -16,6 +16,30 @@ before implementation starts.
 | P718 | API module variables and environments: UX redesign | Todo |
 | P719 | Remove development, debugging and validation leftovers | Todo |
 
+## Chaining rework (user decision)
+
+Applies across P716 and P717; first design question of the chapter. Rework MCP chaining for all MCP
+tools that support chaining (DB, API, kube): no chain UI in the approval prompt (no "Earlier / This
+step" chain steps, no chain panel). Simpler model: a script stores a result in a kept variable and
+the agent makes a follow-up request that reads it. Kept variables are secret or plain; the user can
+preview both. Secrets are revealed behind the same local-auth fingerprint prompt the app uses for
+other secrets (`apps/kira-space/internal/localauth`, credential-reveal flow, spec
+`apps/kira-space/tests/ui/studio/credential-reveal.spec.ts`). P715 (v0.3.22) still ships the
+existing chain steps; this chapter removes them. P716 must not ship chain steps.
+
+Agent awareness (user: "The AI should be aware of the chaining capability by storing those variables
+and secrets"). Agent-facing text in `internal/llmprompts/registry.go` (checkprompts rules: terse,
+within budget) tells the AI: a script can store a result in a kept variable, plain or secret, and a
+follow-up request reads it; DB, API and kube support this; `list_kept_variables` shows what is
+stored (names, kinds, source, expiry, never secret values); secret values are never shown to it.
+Today (read in `registry.go`): the connect-time `DbmcpInstructions` (sent through `ServerOptions`
+Instructions, `server.go`) never mentions kept variables or chaining; only the `run_query`,
+`api_request` and `list_kept_variables` tool descriptions do, and no kube tool description does.
+So the agent learns it per tool, not at connect time: the plan adds it to the instructions and kube.
+
+Open question. Scope of removing the existing chain steps UI from the DB and API prompts, and whether
+it is its own phase. Not decided: no phase added, no renumbering until the user decides.
+
 ## P716
 
 User: "Add js script chaining for kube mcp as well. Make sure the prompt dialogs are like for db and
@@ -32,6 +56,11 @@ until the response is final). Switch: `scriptsOn` in `jsscript.go` (Studio MCP s
 `KubeReadBody.vue`, kind def in `frontend/src/studio/approvals/kinds.ts`; API and DB cards show
 scripts with `JsScriptBlock.vue` and kept reads with `KeptVariablesPanel.vue`.
 
+Chaining rework (see "Chaining rework (user decision)"): kube follows the simpler model. Scripts and
+kept variables only; no chain steps, no chain panel in the kube card. Kube tool descriptions and
+`DbmcpInstructions` tell the AI it can store a result in a kept variable and read it in a follow-up
+request (see "Agent awareness").
+
 Scope. (1) Kube read tools take the same `script` argument and kept-variable chaining as API and DB,
 reusing `jsscript.go`, `kept_script.go` and the same refusal texts, caps and switch; no second
 script mechanism. (2) Kube approval card gets P715's redesign (verdict row, connection line, kind
@@ -46,9 +75,11 @@ user approves, then implementation.
 Tests. Flow test (`internal/flows/dbmcpflow/kube_test.go` or sibling): kube read with transform,
 kept chain into an API or DB call and back, refusal paths (scripts off, `kept.set` in prepare,
 secret read). UI spec (`tests/ui/studio/kubernetes-mcp.spec.ts` or sibling): same scenario, card
-shows scripts, kept reads and verdict row. Visual baseline for the kube card.
+shows scripts, kept reads and verdict row. Visual baseline for the kube card. Prompt text changes: run the matching row of `docs/DEV_ENVIRONMENT.md`
+"Real `claude` tests" (`bun run test:claude:db`); the agent finds and uses kept variables unprompted.
 
-Open questions. Prepare stage for kube: DB has none because the statement must be what the user
+Open questions. Scope of removing the existing chain steps UI from the DB and API prompts (P715
+ships it), and whether that is its own phase; user decides. Prepare stage for kube: DB has none because the statement must be what the user
 approves; kube args are structured, so does a prepare that rewrites namespace, selector or name fit,
 or transform only like DB? Do scripts run under approval `allow` with no card, as for API?
 
@@ -65,6 +96,10 @@ default 60 min (`internal/storage/model/settings.go`), range 5 to 240
 (`internal/storage/model/dbsettings.go`), store cap `MaxTTL` 240 min, fallback `DefaultTTL` 1 h
 (`internal/keptvars/entry.go`). So the user's "30 min" is 60 min by default.
 
+Chaining rework (see "Chaining rework (user decision)"): one-time inputs fit the same model. No
+chain UI for them; a one-time value is never kept, so no follow-up request can read it. The `inputs`
+text in `api_request` and `DbmcpInstructions` says so (see "Agent awareness").
+
 Scope. A typed value can be marked one-time: used for this one request only, never `Put` in the kept
 store, wiped after send, never in op log, approval payload, result or anything given to the AI. A
 script that reads a one-time value cannot keep anything derived from it. Plan states how one-time
@@ -76,9 +111,10 @@ P715's design), user approves, then implementation.
 Tests. Flow test (`internal/flows/dbmcpflow/`, next to `e2e_user_value_test.go`): one-time value
 reaches the request, store stays empty, next request asks again, value absent from result and op
 log, derived `kept.set` refused. UI spec (next to `tests/ui/studio/approvals-api-input.spec.ts`):
-same scenario from the card.
+same scenario from the card. If prompt text changes, run the `bun run test:claude:db` row too.
 
-Open questions. Who picks one-time: user per input in the card (toggle), agent per input declaration,
+Open questions. Scope of removing the existing chain steps UI from the DB and API prompts, and
+whether that is its own phase; user decides (same question as in P716). Who picks one-time: user per input in the card (toggle), agent per input declaration,
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
