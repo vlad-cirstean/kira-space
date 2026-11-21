@@ -150,7 +150,7 @@ const tip = (r: StepNodeData['step']['results'][number]): string => {
   <div
     class="flex flex-col rounded-kira border bg-elevated text-kira-sm"
     :class="[
-      data.selected ? 'border-info' : 'border-border',
+      data.selected ? 'border-select-edge' : 'border-border',
       step.skip ? 'text-muted-foreground' : '',
     ]"
     :style="{ width: `${data.w}px`, height: `${data.h}px` }"

@@ -42,7 +42,7 @@ const KEYS: { id: string; label: MessageKey; icon?: string; seq: () => string }[
   <div class="flex gap-1 overflow-x-auto px-2 py-1 scrollbar-none" data-testid="term-keybar">
     <Button
       size="touch"
-      :variant="ctrl ? 'dialog-primary' : 'dialog'"
+      variant="dialog"
       class="shrink-0"
       :aria-pressed="ctrl"
       data-testid="term-key-ctrl"

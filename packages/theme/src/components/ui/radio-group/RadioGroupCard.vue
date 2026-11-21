@@ -27,7 +27,7 @@ const descriptionId = useId();
       cn(
         'flex w-full min-w-0 flex-col items-start gap-0.5 rounded-kira border border-border bg-bg px-2.5 py-2 text-left text-kira-md text-fg transition-colors',
         'not-data-[disabled]:not-data-[state=checked]:hover:bg-field',
-        'data-[state=checked]:border-focus data-[state=checked]:bg-select',
+        'data-[state=checked]:border-select-edge data-[state=checked]:bg-select',
         'data-[disabled]:cursor-default data-[disabled]:opacity-50',
         props.class,
       )
