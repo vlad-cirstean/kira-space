@@ -9,6 +9,8 @@ import TabbedContent from './TabbedContent.vue';
 const props = defineProps<{
   views: readonly SecondaryTabItem[];
   label: string;
+  /** Height of a view's first line when it is not a code line, by view value (a table's row height). */
+  firstLines?: Readonly<Record<string, number>>;
 }>();
 
 const view = ref(props.views[0]?.value ?? '');
@@ -24,7 +26,13 @@ const active = computed(() => (props.views.some((v) => v.value === view.value) ?
 
 <template>
   <div class="flex flex-col gap-2">
-    <TabbedContent v-model="view" :tabs="views.length > 1" :items="views" :label="label">
+    <TabbedContent
+      v-model="view"
+      :tabs="views.length > 1"
+      :first-line="firstLines?.[active || (views[0]?.value ?? '')]"
+      :items="views"
+      :label="label"
+    >
       <slot :name="`view-${active || views[0]?.value}`" />
     </TabbedContent>
     <slot name="script" />

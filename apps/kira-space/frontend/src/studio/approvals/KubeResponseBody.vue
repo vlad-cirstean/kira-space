@@ -9,6 +9,7 @@ import {
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
 import QueryState from '@workbench/components/QueryState.vue';
+import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
 import FlushEditor from './FlushEditor.vue';
@@ -26,6 +27,9 @@ const payload = computed(() => kubeResponsePayloadSchema.parse(props.item.payloa
 // The item id is "kube.response:<requestId>"; the held result is fetched by request id.
 const requestId = computed(() => props.item.id.slice(props.item.kind.length + 1));
 const response = usePendingResponse(() => requestId.value);
+
+const { single: rowHeight } = useRowHeight();
+const firstLines = computed(() => ({ table: rowHeight.value, log: rowHeight.value }));
 
 const text = computed(() => response.data.value?.text ?? '');
 const failed = computed(() => payload.value.isError);
@@ -85,6 +89,7 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
       <ResultReview
         v-else
         :views="views"
+        :first-lines="firstLines"
         :label="t('studio.dbMcp.approval.query.responseViews.aria')"
       >
         <template #view-table>
