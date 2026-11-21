@@ -13,14 +13,17 @@ import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
 import FlushEditor from './FlushEditor.vue';
+import JsScriptBlock from './JsScriptBlock.vue';
 import { usePendingResponse } from './pendingResponse';
 import ResultReview from './ResultReview.vue';
 import ReviewLog from './ReviewLog.vue';
 import ReviewTable from './ReviewTable.vue';
+import StagedKeepList from './StagedKeepList.vue';
 
 // The held kube_list_resources, kube_describe or kube_pod_logs result: the operation's own view first
-// (table, manifest, log lines), then the JSON the agent gets on Send. Every byte shown comes from the
-// pending-response query, never from the item payload.
+// (table, manifest, log lines), then the JSON the agent gets on Send. With a script, "Agent gets" comes first
+// and the operation's views show the result the script read, then the script and the values it keeps. Every
+// byte shown comes from the pending-response query, never from the item payload.
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => kubeResponsePayloadSchema.parse(props.item.payload));
@@ -31,16 +34,24 @@ const response = usePendingResponse(() => requestId.value);
 const { single: rowHeight } = useRowHeight();
 const firstLines = computed(() => ({ table: rowHeight.value, log: rowHeight.value }));
 
+const scripted = computed(() => payload.value.scripted);
+// What the agent gets on Send; with a script, the result the script read is a view of its own.
 const text = computed(() => response.data.value?.text ?? '');
-const failed = computed(() => payload.value.isError);
-const json = computed(() => (failed.value ? null : indentJson(text.value)));
+const script = computed(() => response.data.value?.script ?? null);
+const keep = computed(() => response.data.value?.keep ?? []);
+const read = computed(() => (scripted.value ? (response.data.value?.raw ?? '') : text.value));
+// A failed script still leaves the tool's own result to show.
+const failed = computed(() => payload.value.isError && !scripted.value);
+const json = computed(() => (failed.value ? null : indentJson(read.value)));
+const agentFailed = computed(() => payload.value.isError);
+const agentJson = computed(() => (agentFailed.value ? null : indentJson(text.value)));
 
 function parse<T>(schema: {
   safeParse: (v: unknown) => { success: true; data: T } | { success: false };
 }): T | null {
-  if (failed.value || !text.value) return null;
+  if (failed.value || !read.value) return null;
   try {
-    const r = schema.safeParse(JSON.parse(text.value));
+    const r = schema.safeParse(JSON.parse(read.value));
     return r.success ? r.data : null;
   } catch {
     return null;
@@ -65,6 +76,9 @@ const first = computed(() => {
   return null;
 });
 const views = computed(() => [
+  ...(scripted.value
+    ? [{ value: 'result', label: t('common.agentGets.label'), testid: 'kube-review-view-result' }]
+    : []),
   ...(first.value ? [{ ...first.value, testid: `kube-review-view-${first.value.value}` }] : []),
   { value: 'json', label: t('common.copyFormat.json.label'), testid: 'kube-review-view-json' },
 ]);
@@ -92,6 +106,22 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
         :first-lines="firstLines"
         :label="t('studio.dbMcp.approval.query.responseViews.aria')"
       >
+        <template #view-result>
+          <FieldError
+            v-if="agentFailed"
+            class="whitespace-pre-wrap"
+            data-testid="kube-review-result"
+            >{{
+              text
+            }}</FieldError
+          >
+          <FlushEditor
+            v-else
+            :doc="agentJson ?? text"
+            language="json"
+            data-testid="kube-review-result"
+          />
+        </template>
         <template #view-table>
           <ReviewTable
             v-if="list"
@@ -112,7 +142,23 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
           <ReviewLog v-if="logs" :lines="logs.lines" testid="kube-review-log" />
         </template>
         <template #view-json>
-          <FlushEditor :doc="json ?? text" language="json" data-testid="kube-review-json" />
+          <FlushEditor :doc="json ?? read" language="json" data-testid="kube-review-json" />
+        </template>
+        <template #script>
+          <JsScriptBlock
+            v-if="script"
+            :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
+            :source="script.source"
+            testid="kube-review-script"
+          />
+        </template>
+        <template #after>
+          <StagedKeepList
+            v-if="keep.length"
+            :keep="keep"
+            :request-id="requestId"
+            testid="kube-review-keep"
+          />
         </template>
         <template #mask>
           <span v-if="secretNote" class="text-kira-sm text-subtle" data-testid="kube-review-mask">{{

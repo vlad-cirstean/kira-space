@@ -25,8 +25,9 @@ const sites = computed(() => [
   ...props.script.mayKeep.flatMap((m) => m.sites),
 ]);
 const marked = computed(() => props.kept.length > 0 || props.script.mayKeep.length > 0);
+// Only a read in the transform counts: a read in prepare is marked in the prepare block.
 const readsInScript = computed(() =>
-  props.kept.some((u) => u.sites.some((s) => s.field === 'script')),
+  props.kept.some((u) => u.sites.some((s) => s.field === 'script' && s.part === 'transform')),
 );
 </script>
 

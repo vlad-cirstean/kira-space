@@ -18,6 +18,7 @@ import { joinSentences, type MessageKey, t } from '@theme/i18n';
 import type { ApprovalKinds, ApprovalRisk, ApprovalVerdict } from '@workbench/approvals/registry';
 import { formatCount, formatDuration } from '@workbench/behaviour/format';
 import { type FunctionalComponent, h, markRaw } from 'vue';
+import ClusterIcon from '../kubernetes/components/ClusterIcon.vue';
 import EngineIcon from '../theme/EngineIcon.vue';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ApiRequestDetails from './ApiRequestDetails.vue';
@@ -30,6 +31,7 @@ import DbQueryDetails from './DbQueryDetails.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import DbResponseDetails from './DbResponseDetails.vue';
 import KubeReadBody from './KubeReadBody.vue';
+import KubeReadDetails from './KubeReadDetails.vue';
 import KubeResponseBody from './KubeResponseBody.vue';
 import ProofOpenWindow from './ProofOpenWindow.vue';
 import ProofReviewBody from './ProofReviewBody.vue';
@@ -368,20 +370,26 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
 const mayKeepName = (m: { name: string; secret: boolean }): string =>
   m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
 
-// The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
-function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
-  if (!script) return [];
-  const out: ApprovalRisk[] = [];
-  if (script.mayKeep.length) {
-    out.push({
+// The tag naming what a transform script may keep; none when it keeps nothing.
+function mayKeepRisks(
+  script: { mayKeep: readonly { name: string; secret: boolean }[] } | null | undefined,
+  testid: string,
+): ApprovalRisk[] {
+  if (!script?.mayKeep.length) return [];
+  return [
+    {
       text: t('studio.kept.risk.keeps.status', {
         names: script.mayKeep.map(mayKeepName).join(', '),
       }),
       tone: 'neutral',
-      testid: 'db-approval-kept-writes',
-    });
-  }
-  return out;
+      testid,
+    },
+  ];
+}
+
+// The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
+function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
+  return mayKeepRisks(script, 'db-approval-kept-writes');
 }
 
 // The tags for the kept variables a request uses; the testids carry the surface's prefix.
@@ -421,15 +429,7 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       'api-approval',
     ),
   );
-  if (p.script?.transform?.mayKeep.length) {
-    out.push({
-      text: t('studio.kept.risk.keeps.status', {
-        names: p.script.transform.mayKeep.map(mayKeepName).join(', '),
-      }),
-      tone: 'neutral',
-      testid: 'api-approval-kept-writes',
-    });
-  }
+  out.push(...mayKeepRisks(p.script?.transform, 'api-approval-kept-writes'));
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),
@@ -456,6 +456,58 @@ function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
       text: t('studio.dbMcp.approval.risk.scriptFailed.status'),
       tone: 'warn',
       testid: 'api-review-script-failed',
+    });
+  }
+  return out;
+}
+
+const KubeTargetIcon: FunctionalComponent = () => h(ClusterIcon, { size: 16 });
+
+// Every cluster read is a GET: one Read badge, a lock for the guarantee, and a fact for the scripts.
+function kubeVerdict(item: ApprovalItem): ApprovalVerdict {
+  const p = kubeReadPayloadSchema.parse(item.payload);
+  const scripts = [
+    p.script?.prepare && t('studio.dbMcp.approval.kube.scriptPrepare.hint'),
+    p.script?.transform && t('studio.dbMcp.approval.kube.scriptTransform.hint'),
+  ].filter((x): x is string => !!x);
+  return {
+    label: t('studio.project.connectionDialog.mcp.read.label'),
+    tone: 'ok',
+    hue: 'read',
+    icon: 'eye',
+    lock: true,
+    tooltip: t('studio.dbMcp.approval.kube.readOnly.hint'),
+    facts: scripts.length
+      ? [
+          {
+            text: t('studio.dbMcp.approval.fact.scripts.status', { count: scripts.length }),
+            tone: 'warn',
+            icon: 'code',
+            tooltip: scripts.join('\n'),
+          },
+        ]
+      : [],
+  };
+}
+
+function kubeRisks(item: ApprovalItem): ApprovalRisk[] {
+  const p = kubeReadPayloadSchema.parse(item.payload);
+  const out = [
+    ...keptRisks(p.kept, item.expiresAt, 'kube-approval'),
+    ...mayKeepRisks(p.script?.transform, 'kube-approval-kept-writes'),
+  ];
+  if (p.operation === 'logs') {
+    out.push({
+      text: t('studio.dbMcp.approval.kube.logsUnmasked.status'),
+      tone: 'neutral',
+      testid: 'kube-approval-logs-unmasked',
+    });
+  }
+  if (p.operation === 'describe' && p.request?.kind === 'v1/secrets') {
+    out.push({
+      text: t('studio.dbMcp.approval.kube.secretBytes.status'),
+      tone: 'neutral',
+      testid: 'kube-approval-secret-bytes',
     });
   }
   return out;
@@ -531,6 +583,11 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'kube.read': {
       content: markRaw(KubeReadBody),
+      details: markRaw(KubeReadDetails),
+      monaco: true,
+      targetIcon: markRaw(KubeTargetIcon),
+      verdict: kubeVerdict,
+      risks: kubeRisks,
       footerAction: markRaw(ReviewResultOption),
       operation: (item) =>
         t(KUBE_OPERATION_LABEL[kubeReadPayloadSchema.parse(item.payload).operation]),

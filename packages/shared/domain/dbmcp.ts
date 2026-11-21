@@ -208,6 +208,19 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 
+// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
+const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
+  prepare: z
+    .object({
+      source: z.string(),
+      hash: z.string(),
+      changed: z.array(z.string()),
+      input: z.string(),
+      inputTruncated: z.boolean(),
+    })
+    .nullable(),
+  transform: transformViewSchema.nullable(),
+});
 export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   context: z.string(),
   server: z.string(),
@@ -216,6 +229,30 @@ export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   statement: z.string(),
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
+  // list, describe and logs reads: the tool, the final args (after the prepare script), the args the script
+  // set, the kept variables the scripts read and the scripts themselves (P718).
+  tool: z.string().default(''),
+  request: /*#__PURE__*/ z
+    .object({
+      kind: z.string(),
+      name: z.string(),
+      namespace: z.string(),
+      labelSelector: z.string(),
+      pod: z.string(),
+      container: z.string(),
+      previous: z.boolean(),
+      timestamps: z.boolean(),
+      tail: z.number(),
+      maxRows: z.number(),
+    })
+    .nullish()
+    .transform((v) => v ?? null),
+  changed: z.array(z.string()).default([]),
+  kept: z
+    .array(keptUseSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
 });
 export type KubeReadPayload = z.infer<typeof kubeReadPayloadSchema>;
 
@@ -230,6 +267,9 @@ export const kubeResponsePayloadSchema = /*#__PURE__*/ z.object({
   isError: z.boolean(),
   bytes: z.number(),
   requested: z.boolean().default(false),
+  // A script produced the held text from the raw result of rawBytes.
+  scripted: z.boolean().default(false),
+  rawBytes: z.number().default(0),
 });
 export type KubeResponsePayload = z.infer<typeof kubeResponsePayloadSchema>;
 
@@ -276,19 +316,6 @@ export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
 // api.request item payload (dbmcp apiPayload). Values are as the agent sent them: a credential stays
 // {{name}}, and a secret variable's value is "••••".
 const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string() });
-// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
-const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
-  prepare: z
-    .object({
-      source: z.string(),
-      hash: z.string(),
-      changed: z.array(z.string()),
-      input: z.string(),
-      inputTruncated: z.boolean(),
-    })
-    .nullable(),
-  transform: transformViewSchema.nullable(),
-});
 // A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
 export const apiInputSchema = /*#__PURE__*/ z.object({
   name: z.string(),

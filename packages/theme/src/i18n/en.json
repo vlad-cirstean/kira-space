@@ -14440,17 +14440,47 @@
           "option": "Formatted"
         },
         "kube": {
+          "changedByScript": {
+            "tooltip": "Set by the prepare script"
+          },
           "logsTruncated": {
             "status": "Older lines were cut off at the size limit"
+          },
+          "logsUnmasked": {
+            "status": "Kira masks nothing in logs"
           },
           "manifestTruncated": {
             "status": "Manifest cut off at the size limit"
           },
+          "previous": {
+            "label": "Previous container"
+          },
+          "readOnly": {
+            "hint": "Read-only: Kira sends only GET requests to the cluster API."
+          },
           "reviewResultOn": {
             "body": "Already on by this cluster’s settings or Kira’s."
           },
+          "rows": {
+            "status": "Up to {count} rows"
+          },
+          "scriptPrepare": {
+            "hint": "A script the agent sent built this read from its args."
+          },
+          "scriptTransform": {
+            "hint": "The agent receives only what the transform script returns, not the result."
+          },
+          "secretBytes": {
+            "status": "Secret values reach the agent as byte counts only"
+          },
           "secretRedacted": {
             "hint": "Secret values are redacted by Kira."
+          },
+          "server": {
+            "label": "Server"
+          },
+          "tail": {
+            "status": "Last {tail} lines"
           }
         },
         "op": {
