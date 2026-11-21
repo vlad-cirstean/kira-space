@@ -188,7 +188,16 @@ updated `automationsSmart.ts`, `control-sizing.spec.ts`, `resize-handle-color.sp
 every other baseline unchanged because no selection shows in it): `workflow-graph`,
 `workflow-graph-manual`, `workflow-graph-script`, `workflow-graph-review` (selected step node and
 choice chips blue to grey, checkbox stays blue), `git-graph`, `git-graph-detail` (HEAD ring and halo
-`info`, near identical; selected row grey). Before and after shots (13 pairs, gitignored):
+`info`, near identical; selected row grey). Follow-up: on-state controls grey too. New `--kira-on` (alias `--kira-fg`, #d4d4d8) and `--kira-on-fg`
+(alias `--kira-bg-chrome`): checkbox, switch track and thumb, radio and progress fill use them;
+checked vs off `bg-field` is 10:1, mark on fill 11:1. Toggles and segmented groups were already grey.
+Blue stays: `dialog-primary` buttons, link text, info, data. N18 now fails any primary, accent, info or
+focus utility in the four on-state primitives. Visual run with `--update-snapshots=all`: Playwright's
+default tolerance had kept 20+ stale blue-selection baselines, so every baseline was re-recorded and
+the 37 changed were inspected (blue selection and checkbox to grey; the rest sub-threshold fills). Two
+carry unrelated drift now recorded: `branch-panel-details` (Open PR badge info tone) and
+`approvals-toast` (primary Show button tint); git HEAD ring and check now render in `info`. After
+shots `screenshots/p710/onstate/`. Before and after shots (13 pairs, gitignored):
 `screenshots/p710/{before,after}/`.
 
 ## P711

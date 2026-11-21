@@ -9,6 +9,7 @@ import {
 } from '../screenshots/studio/support/acme';
 import { expect, studioTest, test } from './fixtures';
 import { gutterCell } from './studio/support/grid';
+import { openSettings } from './studio/support/settings';
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
 import { openPlan } from './support/adeV2';
 import { IPC } from './support/ipcChannels';
@@ -19,6 +20,8 @@ const SELECT = 'rgb(54, 54, 60)';
 const EDGE = 'rgb(113, 113, 122)';
 const HOVER = 'rgb(39, 39, 44)';
 const TEXT = 'rgb(69, 69, 77)';
+const ON = 'rgb(212, 212, 216)';
+const ON_FG = 'rgb(19, 19, 21)';
 
 const head = (id: string) =>
   `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`;
@@ -92,5 +95,29 @@ studioTest(
       'background-color',
       HOVER,
     );
+  },
+);
+
+studioTest(
+  'checked switches and checkboxes fill light grey with a chrome mark',
+  async ({ relaunch }) => {
+    const { window: page } = await relaunch({
+      control: [{ channel: IPC.connectionsList, response: [] }],
+    });
+    await openSettings(page);
+    const on = page
+      .locator(
+        '[data-slot="dialog-content"] [data-slot="switch"][data-state="checked"], [data-slot="dialog-content"] [data-slot="checkbox"][data-state="checked"]',
+      )
+      .first();
+    await expect(on).toBeVisible();
+    await expect(on).toHaveCSS('background-color', ON);
+    await expect(on).toHaveCSS('border-top-color', ON);
+    const mark = on.locator('[data-slot="switch-thumb"], [data-slot="checkbox-indicator"]').first();
+    const color = await mark.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return el.getAttribute('data-slot') === 'switch-thumb' ? cs.backgroundColor : cs.color;
+    });
+    expect(color).toBe(ON_FG);
   },
 );

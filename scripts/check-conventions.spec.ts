@@ -332,19 +332,22 @@ describe('N17 semantic button variant', () => {
 });
 
 describe('N18 selection stays neutral', () => {
-  const tokens = (select: string) =>
+  const tokens = (select: string, on = 'var(--kira-fg)') =>
     [
       `--kira-select: ${select};`,
       '--kira-select-edge: #71717a;',
       '--kira-select-text: #45454d;',
       '--kira-focus: #a1a1aa;',
       '--kira-bg-input: #27272c;',
+      `--kira-on: ${on};`,
+      '--kira-on-fg: var(--kira-bg-chrome);',
     ].join('\n');
 
   test('a blue selection token fails, the grey passes', () => {
     expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
     expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
-    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(4);
+    expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain('--kira-on');
+    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(6);
   });
 
   test('Monaco keeps every required grey key and ::selection stays themed', () => {
@@ -387,7 +390,7 @@ describe('N18 selection stays neutral', () => {
     expect(engineThemeHits(monaco(), term, '')).toHaveLength(1);
   });
 
-  test('blue utilities marking selection fail, on-state controls pass', () => {
+  test('blue utilities marking selection or on-state fail, grey on-state passes', () => {
     const hits = (path: string, src: string) => selectionClassHits(path, src);
     expect(hits('p/X.vue', "selected ? 'border-focus' : 'border-border'")[0]?.rule).toBe('N18');
     expect(hits('p/X.vue', "x && 'ring-1'; isSelected && 'bg-info/10'")).toHaveLength(1);
@@ -395,12 +398,15 @@ describe('N18 selection stays neutral', () => {
     expect(hits('p/X.vue', "'aria-selected:bg-accent'")).toHaveLength(1);
     expect(hits('p/X.vue', "selected ? 'border-select-edge' : 'border-border'")).toEqual([]);
     expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
+    const checkbox = 'packages/theme/src/components/ui/checkbox/Checkbox.vue';
+    expect(hits(checkbox, "'data-[state=checked]:bg-primary'")[0]?.rule).toBe('N18');
+    expect(hits(checkbox, "'data-[state=checked]:bg-on text-on-fg'")).toEqual([]);
     expect(
       hits(
-        'packages/theme/src/components/ui/checkbox/Checkbox.vue',
-        "'data-[state=checked]:bg-primary'",
+        'packages/theme/src/components/ui/progress/Progress.vue',
+        'class="bg-primary size-full"',
       ),
-    ).toEqual([]);
+    ).toHaveLength(1);
     expect(hits('p/X.spec.ts', "selected ? 'border-focus' : ''")).toEqual([]);
   });
 
