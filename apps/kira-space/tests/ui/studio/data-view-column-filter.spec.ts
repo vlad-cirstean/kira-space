@@ -162,9 +162,9 @@ test('contract: column filter narrows grid columns, display-only', async ({
   expect(wideReads.length).toBeLessThanOrEqual(wideReadsBefore + 1);
 
   // 8. the ⇧⌘F chord focuses the field
-  await page.locator('[data-testid="view-head"]').click();
+  await page.locator('[data-testid="grid-cell"]').first().click();
   await expect(filter).not.toBeFocused();
-  await page.keyboard.press('ControlOrMeta+Shift+F');
+  await page.keyboard.press('Meta+Shift+F');
   await expect(filter).toBeFocused();
 
   // 9. a search match in a hidden column clears the filter and reveals the cell

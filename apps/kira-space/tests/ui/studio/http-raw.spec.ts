@@ -194,7 +194,7 @@ test('Http raw — the editor', async ({ relaunch }) => {
   await page.fill('[data-testid="http-url"]', 'https://{{base_url}}/v2/orders');
 
   // The ⇧⌘E chord, from inside the request view, does what the toolbar button does.
-  await page.locator('[data-testid="http-url"]').press('ControlOrMeta+Shift+E');
+  await page.locator('[data-testid="http-url"]').press('Meta+Shift+E');
   const dialog = page.locator('[data-testid="edit-raw-dialog"]');
   await expect(dialog).toBeVisible();
 

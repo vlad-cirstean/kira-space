@@ -195,7 +195,7 @@ test('copy as curl with no secrets never reveals or sends anything', async ({ re
   await openHttpRequestView(page);
   await page.fill('[data-testid="http-url"]', 'https://{{host}}/v1/x');
   // The ⇧⌘C chord, from inside the request view, does what the toolbar button does.
-  await page.locator('[data-testid="http-url"]').press('ControlOrMeta+Shift+C');
+  await page.locator('[data-testid="http-url"]').press('Meta+Shift+C');
   await expect(page.locator('[data-testid="copy-as-curl-dialog"]')).toBeVisible();
 
   const command = page.locator('[data-testid="copy-as-curl-command"]');

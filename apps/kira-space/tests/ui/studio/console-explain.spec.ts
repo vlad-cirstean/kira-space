@@ -167,7 +167,7 @@ test('Query console — Explain produces a plan result set', async ({ relaunch }
 
   await typeInto(view, page, JOIN_SQL);
   // The ⇧⌘X chord, with focus in the editor, does what the Explain button does.
-  await page.keyboard.press('ControlOrMeta+Shift+X');
+  await page.keyboard.press('Meta+Shift+X');
 
   const resultTab = view.locator('[data-testid="console-result-tab"]');
   await expect(resultTab).toHaveCount(1);
