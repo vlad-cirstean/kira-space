@@ -141,6 +141,8 @@ export interface EnvironmentImportReport {
   environmentId: string;
   name: string;
   variables: number;
+  /** Names of the secret variables that arrived with no value. */
+  secretsUnset: string[];
   warnings: ImportWarning[];
 }
 
@@ -163,5 +165,7 @@ export interface ImportReport {
   name: string;
   folders: number;
   requests: number;
+  /** Names of the secret variables that arrived with no value; a collection import seals none. */
+  secretsUnset: string[];
   warnings: ImportWarning[];
 }

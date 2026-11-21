@@ -20,6 +20,7 @@ function variable(overrides: Partial<ApiVariable>): ApiVariable {
     name: 'token',
     value: 'value',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
     description: '',
     ...overrides,

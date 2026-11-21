@@ -2,7 +2,13 @@ import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
-import { collectionRow, variableRow } from './support/apiRows';
+import {
+  collectionRow,
+  matrixCell,
+  matrixRow,
+  openVariableHistory,
+  openVariablesTab,
+} from './support/apiRows';
 
 // revealedValues (state/variables.ts) is shared between the Variables
 // tab and the Copy-as-curl dialog's own revealSecretValues loop (curl.ts), but only
@@ -10,7 +16,7 @@ import { collectionRow, variableRow } from './support/apiRows';
 // revealedSecretValues map. A secret revealed via Copy-as-curl left a stale entry that the
 // Variables tab trusted in place of its own re-auth gate, showing the secret with no reveal call
 // — no re-auth — at all. Separately,
-// revealedHistoryValues (VariableRow.vue's own per-row history popover) leaked across rows for the
+// revealedHistoryValues (the Variables grid's own per-row history popover) leaked across rows for the
 // same reason: switching from one row's popover to another's unmounts the first via `v-if` without
 // ever firing its own `@close`.
 //
@@ -69,6 +75,7 @@ test('a secret revealed via Copy as curl does not skip re-auth in the later-open
     name: 'apiKey',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 0,
   };
 
@@ -111,14 +118,11 @@ test('a secret revealed via Copy as curl does not skip re-auth in the later-open
 
   // Open the Variables tab for the same variable and reveal it — this must run its own real reveal
   // call, not silently trust the stale entry left by Copy as curl.
-  await collectionRow(page, 'col-1').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
+  await openVariablesTab(page);
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 
-  await variableRow(page, 'var-apikey').locator('[data-testid="variable-reveal"]').click();
-  await expect(
-    variableRow(page, 'var-apikey').locator('[data-testid="variable-value"]'),
-  ).toHaveText('s3cr3t-key');
+  await page.click('[data-testid="matrix-reveal-apiKey-col-1"]');
+  await expect(matrixCell(page, 'apiKey', 'col-1')).toContainText('s3cr3t-key');
 
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(2);
 });
@@ -133,6 +137,7 @@ test("switching the history popover to a different row clears the previous row's
     name: 'tokenA',
     value: 'current-a',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const VAR_B = {
@@ -142,6 +147,7 @@ test("switching the history popover to a different row clears the previous row's
     name: 'tokenB',
     value: 'current-b',
     isSecret: false,
+    secretSet: false,
     sortOrder: 1,
   };
   const HIST_A = {
@@ -177,12 +183,11 @@ test("switching the history popover to a different row clears the previous row's
   const { window: page, control } = await relaunch({ control: CONTROL });
 
   await openHttpMode(page);
-  await collectionRow(page, 'col-1').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
+  await openVariablesTab(page);
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 
   // Reveal row A's one history entry.
-  await variableRow(page, 'var-a').locator('[data-testid="variable-history"]').click();
+  await openVariableHistory(page, 'tokenA');
   await expect(page.locator('[data-testid="variable-history-entry"]')).toBeVisible();
   await page.click('[data-testid="variable-history-reveal"]');
   await expect(page.locator('[data-testid="variable-history-value"]')).toHaveText('old-a-secret');
@@ -195,19 +200,16 @@ test("switching the history popover to a different row clears the previous row's
   await expect(page.locator('[data-testid="variable-history-value"]')).toHaveText('old-a-secret');
   expect(control.log().filter((e) => e.channel === IPC.variablesRevealHistory)).toHaveLength(1);
 
-  // Switch straight to row B's popover — row A's own is unmounted by `v-if`, with no `@close`.
-  // reka Popover's dismissable layer treats a pointer click outside as close-this-one-first, not
-  // reach-the-target — a keyboard `focus()` + Enter dispatches a real `click` event straight at
-  // row B's own button instead, bypassing that outside-pointer-down handling entirely.
-  await variableRow(page, 'var-b').locator('[data-testid="variable-history"]').focus();
-  await page.keyboard.press('Enter');
+  // Switch to row B's popover: row A's own is replaced, not closed on its own.
+  await page.keyboard.press('Escape');
+  await openVariableHistory(page, 'tokenB');
   await expect(page.locator('[data-testid="variable-history-entry"]')).toBeVisible();
   await expect(page.locator('[data-testid="variable-history-masked"]')).toBeVisible();
 
   // Reopening row A must show its entry masked again — the earlier reveal must not have survived
   // the switch away and back.
-  await variableRow(page, 'var-a').locator('[data-testid="variable-history"]').focus();
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
+  await openVariableHistory(page, 'tokenA');
   await expect(page.locator('[data-testid="variable-history-masked"]')).toBeVisible();
   await expect(page.locator('[data-testid="variable-history-value"]')).toHaveCount(0);
 });
@@ -223,6 +225,7 @@ test('the variables filter matches a secret’s name, never its plaintext', asyn
     name: 'apiKey',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 0,
   };
   const PLAIN_VAR = {
@@ -232,6 +235,7 @@ test('the variables filter matches a secret’s name, never its plaintext', asyn
     name: 'region',
     value: 'us-east-1',
     isSecret: false,
+    secretSet: false,
     sortOrder: 1,
   };
   // The mock backend's own record of what this secret decrypts to — never sent to the renderer
@@ -250,11 +254,10 @@ test('the variables filter matches a secret’s name, never its plaintext', asyn
   const { window: page } = await relaunch({ control: CONTROL });
 
   await openHttpMode(page);
-  await collectionRow(page, 'col-1').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
+  await openVariablesTab(page);
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 
-  const realRows = page.locator('[data-testid="variable-row"]');
+  const realRows = page.locator('[data-testid^="matrix-row-"][data-lock]');
   await expect(realRows).toHaveCount(2);
 
   // Typing the secret's own plaintext into the filter matches nothing — not the secret row (whose
@@ -265,7 +268,7 @@ test('the variables filter matches a secret’s name, never its plaintext', asyn
   // The variable's own *name* matches, as a name filter should.
   await page.fill('[data-testid="variables-filter"]', 'apiKey');
   await expect(realRows).toHaveCount(1);
-  await expect(variableRow(page, 'var-apikey')).toBeVisible();
+  await expect(matrixRow(page, 'apiKey')).toBeVisible();
 
   // Clearing the filter restores every row.
   await page.fill('[data-testid="variables-filter"]', '');

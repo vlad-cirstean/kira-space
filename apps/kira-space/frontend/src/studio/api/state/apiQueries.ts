@@ -15,7 +15,7 @@
 //   - Imperative code after an `await` (a mutation continuing on, send(), the reconcilers below)
 //     reads `queryClient.getQueryData(key)` or awaits a `load*()` reader — never the observer ref.
 
-import type { ApiAgentEnvironment, ApiConfigView } from '@shared/domain/apiConfig';
+import type { ApiAgentEnvironment, ApiConfigView, ApiVariableEdit } from '@shared/domain/apiConfig';
 import type {
   CollectionItemSummary,
   CollectionSummary,
@@ -26,11 +26,11 @@ import { grpcSavedRequestSchema, httpSavedRequestSchema } from '@shared/domain/c
 import type { ApiEnvironment, ApiVariable, VariableScope } from '@shared/domain/variables';
 import type { ApiDataChange } from '@shared/protocol/events';
 import type { QueryKey } from '@tanstack/vue-query';
-import { useQuery } from '@tanstack/vue-query';
+import { useMutation, useQueries, useQuery } from '@tanstack/vue-query';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { KEEP_WHILE_OPEN, queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
-import { toValue } from 'vue';
+import { computed, toValue } from 'vue';
 import { control } from '../../bridge/control';
 
 // ---- keys ----
@@ -44,7 +44,7 @@ export function apiSavedGrpcRequestKey(itemId: string) {
 }
 export const apiEnvironmentsKey = ['apiEnvironments'] as const;
 export const apiConfigKey = ['apiConfig'] as const;
-const apiAgentAccessKey = ['apiAgentAccess'] as const;
+export const apiAgentAccessKey = ['apiAgentAccess'] as const;
 export function apiVariablesKey(scope: VariableScope, ownerId: string) {
   return ['apiVariables', scope, ownerId] as const;
 }
@@ -316,6 +316,61 @@ export function useSavedGrpcRequest(itemId: MaybeRefOrGetter<string | null>) {
       ...apiSavedGrpcRequestQueryOptions(toValue(itemId) ?? ''),
       enabled: !!toValue(itemId),
     }),
+    queryClient,
+  );
+}
+
+/** The Variables tab's data: the collection default's rows and each environment's, by owner id. One
+ *  query per owner, so an edit refetches only the file it touched. */
+export function useVariableMatrix(
+  collectionId: MaybeRefOrGetter<string>,
+  environmentIds: MaybeRefOrGetter<readonly string[]>,
+) {
+  const results = useQueries(
+    {
+      queries: computed(() => [
+        {
+          ...apiVariablesQueryOptions('collection', toValue(collectionId)),
+          enabled: toValue(collectionId) !== '',
+        },
+        ...toValue(environmentIds).map((id) => apiVariablesQueryOptions('environment', id)),
+      ]),
+    },
+    queryClient,
+  );
+  const collection = computed<ApiVariable[]>(
+    () => (results.value[0]?.data as ApiVariable[] | undefined) ?? [],
+  );
+  const environments = computed<Record<string, ApiVariable[]>>(() =>
+    Object.fromEntries(
+      toValue(environmentIds).map((id, i) => [
+        id,
+        (results.value[i + 1]?.data as ApiVariable[] | undefined) ?? [],
+      ]),
+    ),
+  );
+  return { collection, environments };
+}
+
+/** One call for any number of cell, row and column edits. Refetches the files it touched; the
+ *  secret values it carried are never kept in the mutation cache. */
+export function useEditVariables() {
+  return useMutation(
+    {
+      mutationKey: ['apiConfig', 'editVariables'],
+      mutationFn: (edits: ApiVariableEdit[]) => control.apiConfigEditVariables(edits),
+      gcTime: 0,
+      onSuccess: async (view: ApiConfigView, edits: ApiVariableEdit[]) => {
+        queryClient.setQueryData(apiConfigKey, view);
+        const owners = new Map(edits.map((e) => [`${e.scope}:${e.ownerId}`, e]));
+        await Promise.all([
+          ...[...owners.values()].map((e) =>
+            refreshApiQuery(apiVariablesKey(e.scope as VariableScope, e.ownerId)),
+          ),
+          refreshApiQuery(apiAgentAccessKey),
+        ]);
+      },
+    },
     queryClient,
   );
 }

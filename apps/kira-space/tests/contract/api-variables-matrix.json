@@ -1,0 +1,515 @@
+{
+  "CollectionsService.Import": {
+    "files": [
+      {
+        "collection": null,
+        "environment": {
+          "environmentId": "<id:5>",
+          "name": "Production",
+          "secretsUnset": [
+            "token",
+            "client_secret"
+          ],
+          "variables": 4,
+          "warnings": [
+            {
+              "count": 2,
+              "detail": "2 variables were imported without a value. Postman exports only shared values; fill them in here.",
+              "kind": "empty_values"
+            }
+          ]
+        },
+        "error": null,
+        "fileName": "prod.json",
+        "kind": "environment",
+        "path": "<tmp>/prod.json"
+      }
+    ]
+  },
+  "EditVariables#copySecret": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging-copy.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging copy",
+        "path": "<space>/config/api/staging-copy.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging-copy.token",
+        "referenced": true,
+        "set": true
+      },
+      {
+        "name": "staging.token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#describeShare": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging-copy.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging copy",
+        "path": "<space>/config/api/staging-copy.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging-copy.token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#lock": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging.token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#rename": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#set": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#setSecret": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging.token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#unlock": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging-copy.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging copy",
+        "path": "<space>/config/api/staging-copy.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging-copy.token",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "EditVariables#unset": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
+  "args:ApiConfigService.EditVariables#copySecret": {
+    "edits": [
+      {
+        "name": "token",
+        "op": "set",
+        "ownerId": "<id:4>",
+        "scope": "environment",
+        "secretValue": "copy-only-3"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#describeShare": {
+    "edits": [
+      {
+        "description": "API root",
+        "name": "host",
+        "op": "describe",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      },
+      {
+        "agent": true,
+        "name": "host",
+        "op": "share",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#lock": {
+    "edits": [
+      {
+        "name": "token",
+        "op": "lock",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#rename": {
+    "edits": [
+      {
+        "name": "base_url",
+        "newName": "host",
+        "op": "rename",
+        "ownerId": "<id:2>",
+        "scope": "collection"
+      },
+      {
+        "name": "base_url",
+        "newName": "host",
+        "op": "rename",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      },
+      {
+        "name": "base_url",
+        "newName": "host",
+        "op": "rename",
+        "ownerId": "<id:3>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#set": {
+    "edits": [
+      {
+        "name": "page_size",
+        "op": "set",
+        "ownerId": "<id:1>",
+        "scope": "environment",
+        "value": "100"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#setSecret": {
+    "edits": [
+      {
+        "name": "token",
+        "op": "set",
+        "ownerId": "<id:1>",
+        "scope": "environment",
+        "secretValue": "sealed-token-2"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#unlock": {
+    "edits": [
+      {
+        "confirmed": true,
+        "name": "token",
+        "op": "unlock",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#unset": {
+    "edits": [
+      {
+        "name": "page_size",
+        "op": "unset",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:CollectionsService.Import": {
+    "paths": [
+      "<tmp>/prod.json"
+    ]
+  }
+}

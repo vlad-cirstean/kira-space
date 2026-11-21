@@ -363,13 +363,14 @@ func apiFilesErr(err error) error {
 			map[string]string{"line": strconv.Itoa(broken.Line)})
 	case errors.As(err, &invalid):
 		return ipcerr.BadRequest(invalid.Problem.Message)
-	case errors.Is(err, apifiles.ErrNotFound), errors.Is(err, apifiles.ErrItemGone):
+	case errors.Is(err, apifiles.ErrNotFound), errors.Is(err, apifiles.ErrItemGone), errors.Is(err, apifiles.ErrVariableGone):
 		return ipcerr.T(ipcerr.CodeNotFound, "backend.studio.apiFiles.notFound.body", nil)
 	case errors.Is(err, apifiles.ErrInvalidMove):
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidMove.body", nil)
 	case errors.Is(err, apifiles.ErrInvalidOrder):
 		return ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.collection.invalidOrder.body", nil)
-	case errors.Is(err, apifiles.ErrNotFolder), errors.Is(err, apifiles.ErrProtocol), errors.Is(err, configfs.ErrInvalid):
+	case errors.Is(err, apifiles.ErrNotFolder), errors.Is(err, apifiles.ErrProtocol), errors.Is(err, configfs.ErrInvalid),
+		errors.Is(err, apifiles.ErrVariableKind), errors.Is(err, apifiles.ErrUnconfirmed), errors.Is(err, apifiles.ErrEditInvalid):
 		return ipcerr.BadRequest(err.Error())
 	case errors.Is(err, configfs.ErrConflict):
 		return ipcerr.T(ipcerr.CodeConflict, "backend.studio.apiFiles.changed.body", nil)
@@ -390,10 +391,12 @@ type ImportWarning struct {
 
 // ImportReport is what Import answers with — part of the feature, not decoration.
 type ImportReport struct {
-	CollectionID string          `json:"collectionId"`
-	Name         string          `json:"name"`
-	Folders      int             `json:"folders"`
-	Requests     int             `json:"requests"`
+	CollectionID string `json:"collectionId"`
+	Name         string `json:"name"`
+	Folders      int    `json:"folders"`
+	Requests     int    `json:"requests"`
+	// SecretsUnset names the secret variables that arrived with no value: a collection import seals none.
+	SecretsUnset []string        `json:"secretsUnset"`
 	Warnings     []ImportWarning `json:"warnings"`
 }
 
@@ -448,10 +451,12 @@ type CollectionsImportArgs struct {
 
 // EnvironmentImportReport is what one imported environment file answers with.
 type EnvironmentImportReport struct {
-	EnvironmentID string          `json:"environmentId"`
-	Name          string          `json:"name"`
-	Variables     int             `json:"variables"`
-	Warnings      []ImportWarning `json:"warnings"`
+	EnvironmentID string `json:"environmentId"`
+	Name          string `json:"name"`
+	Variables     int    `json:"variables"`
+	// SecretsUnset names the secret variables that arrived with no value.
+	SecretsUnset []string        `json:"secretsUnset"`
+	Warnings     []ImportWarning `json:"warnings"`
 }
 
 // ImportFileResult is one picked file's outcome. Kind is "collection" or "environment", "" when the
@@ -560,7 +565,10 @@ func (s *CollectionsService) importEnvironment(env *postman.Environment) (*Envir
 	}
 	report := &EnvironmentImportReport{
 		EnvironmentID: id, Name: env.Name, Variables: len(env.Variables),
-		Warnings: []ImportWarning{},
+		SecretsUnset: []string{}, Warnings: []ImportWarning{},
+	}
+	if unset, err := s.Files.UnsetSecrets(stem + apifiles.EnvironmentExt); err == nil {
+		report.SecretsUnset = unset
 	}
 	for _, w := range []struct {
 		kind  string
@@ -595,7 +603,10 @@ func (s *CollectionsService) importCollection(tree *postman.Tree) (importedFile,
 	report := &ImportReport{
 		CollectionID: id, Name: name,
 		Folders: tree.Report.Folders, Requests: tree.Report.Requests,
-		Warnings: []ImportWarning{},
+		SecretsUnset: []string{}, Warnings: []ImportWarning{},
+	}
+	if unset, err := s.Files.UnsetSecrets(stem + apifiles.CollectionExt); err == nil {
+		report.SecretsUnset = unset
 	}
 	for _, kind := range importWarningKinds {
 		count := tree.Report.Warnings[kind]

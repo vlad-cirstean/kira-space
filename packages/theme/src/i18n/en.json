@@ -12831,9 +12831,6 @@
         "autoApproveReads": {
           "label": "Auto-approve read requests from agents"
         },
-        "autoReads": {
-          "status": "Reads auto-approved"
-        },
         "available": {
           "aria": "Make {name} available to agents"
         },
@@ -12848,12 +12845,6 @@
         "intro": {
           "body": "Choose which variables an agent can reference by name in a request. A secret also needs the hosts it may be sent to."
         },
-        "none": {
-          "hint": "No variables are available to agents."
-        },
-        "overview": {
-          "body": "Variables that AI agents can use in API requests through the Studio MCP server. Agents see names, never values."
-        },
         "reviewIntro": {
           "body": "Hold an agent’s API response for your review before the agent gets it. Inherit follows Kira’s Studio MCP setting."
         },
@@ -12865,8 +12856,7 @@
         },
         "reviewWrite": {
           "label": "Writes"
-        },
-        "tab": {}
+        }
       },
       "collections": {
         "copyName": {
@@ -12985,17 +12975,11 @@
         }
       },
       "config": {
-        "invalid": {
-          "status": "Has errors"
-        },
         "lastGood": {
           "hint": "This has an error. The app uses the last good version."
         },
         "problems": {
           "aria": "Config problems"
-        },
-        "secrets": {
-          "title": "API secrets"
         },
         "skipped": {
           "hint": "The rest of the collection is loaded. An item that loaded before keeps its last good version. Fix the items to load them.",
@@ -13077,23 +13061,14 @@
           "body": "“{name}” and its variables will be deleted.",
           "title": "Delete environment?"
         },
-        "editVariables": {
-          "label": "Edit variables"
-        },
-        "grip": {
-          "aria": "Drag to reorder environment"
-        },
         "manage": {
-          "label": "Manage environments"
+          "label": "Variables and environments"
         },
         "new": {
           "label": "New environment"
         },
         "none": {
           "option": "No environment"
-        },
-        "reorderBlocked": {
-          "hint": "Clear the filter to reorder."
         }
       },
       "hover": {
@@ -13136,8 +13111,14 @@
         "folders": {
           "label": "{count} folder | {count} folders"
         },
+        "openVariables": {
+          "label": "Open variables"
+        },
         "requests": {
           "label": "{count} request | {count} requests"
+        },
+        "secretsUnset": {
+          "description": "{count} secrets need a value: {names}."
         },
         "summary": {
           "description": "Imported “{name}”: {requests}, {folders}."
@@ -13217,9 +13198,170 @@
       "variableHistory": {
         "empty": "No previous values"
       },
-      "variableSet": {
-        "orphan": {
-          "empty": "This variable set no longer exists"
+      "variables": {
+        "actions": {
+          "aria": "Actions for {name}"
+        },
+        "cell": {
+          "clear": {
+            "label": "Clear value"
+          },
+          "inherited": {
+            "tooltip": "Uses the default from {collection}. Type to override it in {environment}"
+          },
+          "input": {
+            "aria": "Value of {name} in {owner}"
+          },
+          "overridden": {
+            "tooltip": "Every environment overrides this default"
+          },
+          "replace": {
+            "label": "Replace secret value"
+          },
+          "secretInput": {
+            "placeholder": "New secret value"
+          },
+          "setDefault": {
+            "placeholder": "Set a default"
+          },
+          "shared": {
+            "tooltip": "Shared with agents"
+          }
+        },
+        "column": {
+          "agent": {
+            "label": "Agent access…"
+          },
+          "broken": {
+            "tooltip": "The file has a problem. Its values are read-only until it is fixed"
+          },
+          "default": {
+            "tooltip": "Default for every environment"
+          },
+          "makeActive": {
+            "tooltip": "Make this the active environment"
+          },
+          "moveLeft": {
+            "label": "Move left"
+          },
+          "moveRight": {
+            "label": "Move right"
+          },
+          "rename": {
+            "label": "Rename or recolor…"
+          },
+          "yaml": {
+            "label": "Edit YAML…"
+          }
+        },
+        "delete": {
+          "confirm": {
+            "body": "Delete {name} from every file that holds it. Requests that use it stop resolving.",
+            "title": "Delete variable"
+          }
+        },
+        "empty": {
+          "description": "Variables hold the values your requests share, such as a base URL or a token. Add defaults for the collection, then override them per environment.",
+          "title": "No variables yet"
+        },
+        "footer": {
+          "counts": {
+            "status": "{variables} variables, {environments} environments"
+          },
+          "missing": {
+            "status": "{count} values missing"
+          },
+          "saved": {
+            "hint": "Edits save to the files as you make them."
+          }
+        },
+        "grid": {
+          "aria": "Variables by environment"
+        },
+        "new": {
+          "value": {
+            "aria": "Value for the new variable in {name}",
+            "placeholder": "Value in {name}"
+          }
+        },
+        "rename": {
+          "findUsages": {
+            "label": "Find usages"
+          },
+          "notice": {
+            "description": "Renamed {from} to {to}. Requests that still use the old name stop resolving."
+          }
+        },
+        "request": {
+          "all": {
+            "label": "All variables"
+          },
+          "edit": {
+            "hint": "Click a value to edit it in its file."
+          },
+          "empty": {
+            "description": "No variables used in this request."
+          },
+          "fix": {
+            "aria": "New value for {name}",
+            "label": "Add to {name}"
+          },
+          "fromCollection": {
+            "tooltip": "Default from {name}"
+          },
+          "fromEnvironment": {
+            "tooltip": "Value from {name}"
+          },
+          "overrides": {
+            "tooltip": "Overrides the default from {collection}"
+          },
+          "resolvedWith": {
+            "label": "Resolved with"
+          },
+          "target": {
+            "aria": "Choose where to add the value"
+          },
+          "targetDefault": {
+            "option": "{name} (default)"
+          },
+          "title": {
+            "label": "Variables in this request"
+          }
+        },
+        "row": {
+          "copyReference": {
+            "label": "Copy reference"
+          },
+          "describe": {
+            "label": "Edit description…"
+          },
+          "description": {
+            "aria": "Description of {name}"
+          },
+          "lock": {
+            "label": "Make secret"
+          },
+          "lockMixed": {
+            "label": "Make secret in every file"
+          },
+          "name": {
+            "aria": "Name of {name}"
+          },
+          "share": {
+            "label": "Share with agents"
+          },
+          "unlock": {
+            "label": "Make plain"
+          }
+        },
+        "unlock": {
+          "confirm": {
+            "body": "{name} stops being a secret and its value is written to the file in plain text.",
+            "title": "Make variable plain"
+          }
+        },
+        "unusedSecrets": {
+          "title": "Unused secrets"
         }
       },
       "variablesDialog": {
@@ -13235,45 +13377,13 @@
             "label": "Edit as dotenv text"
           }
         },
-        "description": {
-          "aria": "Variable description"
-        },
-        "duplicate": {
-          "status": "Duplicate name"
-        },
-        "editEnvironment": {
-          "label": "Edit environment"
-        },
         "file": {
           "aria": "Variables YAML"
-        },
-        "name": {
-          "aria": "Variable name"
-        },
-        "secret": {
-          "value": {
-            "aria": "Secret value of {name}"
-          }
         },
         "tabs": {
           "aria": "Variables sections"
         },
-        "title": "Variables of {name}",
-        "value": {
-          "aria": "Variable value"
-        }
-      },
-      "variablesOverview": {
-        "editCollection": {
-          "label": "Edit collection variables"
-        },
-        "editEnvironment": {
-          "label": "Edit environment variables"
-        },
-        "empty": "No variables in scope",
-        "shadowed": {
-          "hint": "Shadowed by an environment variable of the same name."
-        }
+        "title": "Variables of {name}"
       }
     },
     "beautify": {

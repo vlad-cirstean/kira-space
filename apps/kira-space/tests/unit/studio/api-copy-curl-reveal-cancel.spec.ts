@@ -39,6 +39,7 @@ test('close during a pending reveal stops the loop and leaves no plaintext behin
     name,
     value: '',
     isSecret: true,
+    secretSet: false,
     sortOrder: 0,
     description: '',
   });

@@ -2,6 +2,7 @@ import { newUuid } from '@shared/ids';
 import { createTabsStore } from '@workbench/state/createTabsStore';
 import { control } from '../bridge/control';
 import { studioTabsExtension, studioTabsHooks } from '../studio/state/studioTabs';
+import { restoreLegacyVariableTabs } from '../studio/state/tabKinds';
 import { useOpenedFilesWindowStore } from './openedFilesWindow';
 import {
   defaultRepoGraphTabState,
@@ -50,7 +51,10 @@ export interface OpenTabResult {
 export const useTabsStore = createTabsStore({
   kinds: TAB_KINDS,
   workspaceKeyOf,
-  control,
+  control: {
+    ...control,
+    tabsList: async () => restoreLegacyVariableTabs(await control.tabsList()),
+  },
   // No explicit workspaceId: a database or API kind opens in its module, anything else in the one
   // shared unscoped slot.
   fallbackWorkspaceKey: (kind) =>

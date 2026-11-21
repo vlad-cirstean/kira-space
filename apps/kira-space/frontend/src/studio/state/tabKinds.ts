@@ -14,6 +14,7 @@ import {
 import { tabTitle } from '@shared/domain/tabs';
 import { pathTail } from '@shared/domain/tree';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { parseStateWith, type TabKindRegistry } from '@workbench/tabs/types';
 import { useLayoutStore } from '../../state/layout';
@@ -54,9 +55,6 @@ import {
   type StudioTabKind,
   streamTabStateSchema,
   type TabRecord,
-  type VariableSetTabRecord,
-  type VariableSetTabState,
-  variableSetTabStateSchema,
 } from '../../state/tabDomain';
 import { useTabsStore } from '../../state/tabs';
 import { useApiTabCloseStore } from '../api/state/tabClose';
@@ -329,43 +327,16 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     menuExtras: incognitoMenuExtras,
     parseState: parseStateWith(grpcRequestTabStateSchema),
   },
-  'variable-set': {
-    mode: STUDIO_TAB_KIND_MODE['variable-set'],
-    // D16: the owner's last-known name, falling back to a generic title before the list has
-    // loaded after a restore (mirrors HttpRequestTabState's own `name` field's own convention).
-    title: (tab) => (tab as VariableSetTabRecord).state.name || t('common.module.variables.label'),
-    // D16: collection scope keeps the variable symbol; environment scope reads as a settings
-    // surface — distinguishable at a glance in a strip holding both.
-    icon: (tab) =>
-      (tab as VariableSetTabRecord).state.scope === 'environment'
-        ? 'settings-gear'
-        : 'symbol-variable',
-    // No connection, so no rail — same as the two request kinds.
-    railColor: () => undefined,
-    // Never reached through a generic "new tab of this kind" affordance — a variable-set tab is
-    // always opened contextually (openVariableSetTab) with a real scope/ownerId. This placeholder
-    // only satisfies TabKindDef's own required member.
-    defaultState: (): VariableSetTabState => ({ scope: 'collection', ownerId: '', name: '' }),
-    // A variable set has no variant-to-try story — "duplicate" returns the same target's own
-    // state, which is exactly what makes openTab's `reuse: true` correct rather than a bug (F8).
-    duplicateState: (tab: VariableSetTabRecord): VariableSetTabState => ({ ...tab.state }),
-    // The rows/error runtime lives in api/state/variables.ts, freed by its own
-    // registerTabRuntimeCleanup — not by this hook (mirrors http-request's own D2 reasoning).
-    dropResources: noDrop,
-    // No project-panel reveal for a variable set (mirrors grpc-request's own reasoning).
-    menuExtras: () => [],
-    parseState: parseStateWith(variableSetTabStateSchema),
-  },
-  // P28 D16(c): the environment list. No state of its own, one fixed `path`, so openTab's
+  // The Variables tab (kind `environments`). No state of its own, one fixed `path`, so openTab's
   // `reuse: true` gives exactly one of these however many times the action is invoked.
   environments: {
     mode: STUDIO_TAB_KIND_MODE.environments,
-    title: () => t('studio.api.common.environments.label'),
-    icon: () => 'server-environment',
+    title: () => t('common.module.variables.label'),
+    icon: () => ICON.variables,
     railColor: () => undefined,
     defaultState: (): EnvironmentsTabState => ({}),
     // Nothing to vary, so a duplicate is the same tab — which is what makes `reuse: true` correct
-    // rather than a bug, the same reasoning 'variable-set' above records.
+    // rather than a bug.
     duplicateState: (): EnvironmentsTabState => ({}),
     // The environment list lives in api/state/variables.ts and is shared with every other Api
     // surface — this tab owns none of it, so closing it frees nothing.
@@ -374,3 +345,23 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
     parseState: parseStateWith(environmentsTabStateSchema),
   },
 };
+
+// Restore only: a saved `variable-set` row (one collection's or environment's variables, before the
+// Variables tab held them all) comes back as the one Variables tab. Drop at v0.4.0 (minor bump
+// rule): no install then holds such a row.
+export function restoreLegacyVariableTabs<T extends { kind: string; path: string; state: unknown }>(
+  rows: readonly T[],
+): T[] {
+  const out: T[] = [];
+  let seen = rows.some((r) => r.kind === 'environments');
+  for (const row of rows) {
+    if (row.kind !== 'variable-set') {
+      out.push(row);
+      continue;
+    }
+    if (seen) continue;
+    seen = true;
+    out.push({ ...row, kind: 'environments', path: 'environments', state: {} } as T);
+  }
+  return out;
+}

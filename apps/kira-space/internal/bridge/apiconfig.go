@@ -76,6 +76,37 @@ func (s *ApiConfigService) DeleteSecret(args ApiSecretNameArgs) (apifiles.View, 
 	return s.View()
 }
 
+// maxVariableEdits bounds one EditVariables call.
+const maxVariableEdits = 500
+
+// ApiEditVariablesArgs is one batch of variable edits, applied together.
+type ApiEditVariablesArgs struct {
+	Edits []apifiles.VariableEdit `json:"edits"`
+}
+
+// EditVariables applies variable edits to the collection and environment files they name, in place
+// (comments and key order stay), and seals secret values in the same call. A file with a problem is
+// refused and nothing is written.
+func (s *ApiConfigService) EditVariables(args ApiEditVariablesArgs) (apifiles.View, error) {
+	if len(args.Edits) == 0 || len(args.Edits) > maxVariableEdits {
+		return apifiles.View{}, ipcerr.BadRequest("edits: between 1 and 500 edits")
+	}
+	for _, e := range args.Edits {
+		if e.OwnerID == "" {
+			return apifiles.View{}, ipcerr.Required("ownerId")
+		}
+		for _, v := range []*string{e.Value, e.SecretValue, e.Description} {
+			if v != nil && (len(*v) > maxApiSecretBytes || strings.ContainsRune(*v, 0)) {
+				return apifiles.View{}, ipcerr.BadRequest(i18n.T("backend.core.agentSettings.secretValue.body", nil))
+			}
+		}
+	}
+	if err := s.Files.EditVariables(args.Edits); err != nil {
+		return apifiles.View{}, apiFilesErr(err)
+	}
+	return s.View()
+}
+
 // ApiFileArgs names one collection or environment file.
 type ApiFileArgs struct {
 	File string `json:"file"`

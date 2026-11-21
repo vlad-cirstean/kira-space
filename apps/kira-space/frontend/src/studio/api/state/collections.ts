@@ -24,14 +24,12 @@ import { control } from '../../bridge/control';
 import { guardedSavedWrite } from '../../state/guardedSavedWrite';
 import { type Placement, topmost } from '../collectionDrop';
 import {
-  closeVariableSetTabsForOwner,
   openCollectionGrpcRequestTab,
   openCollectionRequestTab,
   patchGrpcRequestTabState,
   patchHttpRequestTabState,
   remapRequestTabItems,
   syncRequestTabNames,
-  syncVariableSetTabNames,
 } from '../tabs';
 import {
   type ApiCollectionsTree,
@@ -150,7 +148,6 @@ export const useCollectionsStore = defineStore('collections', () => {
   // A rename made in another window reaches this one only as a tree refresh: bound tabs follow it
   // here, or Save in this window would write the old name back.
   watch(items, (list) => syncRequestTabNames(list));
-  watch(collections, (list) => syncVariableSetTabNames('collection', list));
   /** P108 F10's successor for the read side: a failed initial/refetch List used to reject into a
    *  void'd promise with nothing shown — this surfaces it the same way the error surface does for a
    *  mutation's own failure (rendered in ImportReportStrip.vue). */
@@ -531,9 +528,6 @@ export const useCollectionsStore = defineStore('collections', () => {
       for (const id of itemIds) {
         queryClient.setQueryData(apiSavedRequestKey(id), null);
         queryClient.setQueryData(apiSavedGrpcRequestKey(id), null);
-      }
-      for (const row of top) {
-        if (row.kind === 'collection') closeVariableSetTabsForOwner('collection', row.id);
       }
     });
   }

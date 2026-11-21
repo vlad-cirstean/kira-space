@@ -40,6 +40,7 @@ import { useSettingsStore } from '../../../state/settings';
 import type { HttpRequestTabRecord } from '../../../state/tabDomain';
 import EnvironmentSelect from '../../api/EnvironmentSelect.vue';
 import MethodSelect from '../../api/MethodSelect.vue';
+import RequestVariablesPanel from '../../api/RequestVariablesPanel.vue';
 import { useSavedRequest, useVariableRows } from '../../api/state/apiQueries';
 import { useCollectionsStore } from '../../api/state/collections';
 import { applyCurlToTab, useCopyAsCurlStore } from '../../api/state/curl';
@@ -48,7 +49,6 @@ import { useSaveRequestDialogStore } from '../../api/state/saveRequestDialog';
 import { variableSupport } from '../../api/state/variableCompletion';
 import { mergeVariableRows } from '../../api/state/variables';
 import { patchHttpRequestTabState } from '../../api/tabs';
-import VariablesOverviewPanel from '../../api/VariablesOverviewPanel.vue';
 import ResponseFindBar from '../shared/ResponseFindBar.vue';
 import { unresolvedOf, unresolvedTooltipOf } from '../shared/request/unresolved';
 import { useRequestChrome } from '../shared/request/useRequestChrome';
@@ -330,9 +330,15 @@ onUnmounted(() => {
         /></TextTooltip
       >
       <TextTooltip v-if="unresolvedRefs.length > 0" :text="unresolvedTooltip"
-        ><Badge variant="warn" data-testid="http-unresolved-chip">{{
-          t('common.unresolved.label', { count: unresolvedRefs.length })
-        }}</Badge></TextTooltip
+        ><Button
+          variant="toolbar"
+          size="kira"
+          data-tone="warn"
+          data-testid="http-unresolved-chip"
+          @click="overviewOpen = true"
+          ><CodiconIcon :name="ICON.warning" :size="13" />
+          {{ t('common.unresolved.label', { count: unresolvedRefs.length }) }}</Button
+        ></TextTooltip
       >
       <TextTooltip v-if="incognito" :text="t('studio.api.common.incognitoChip.tooltip')"
         ><Badge data-testid="http-incognito-chip">{{
@@ -498,11 +504,12 @@ onUnmounted(() => {
           />
           <PopoverAnchor :reference="overviewAnchorRef ?? undefined" />
         </div>
-        <VariablesOverviewPanel
+        <RequestVariablesPanel
           v-if="overviewOpen"
           :collection-id="collectionId"
           :environment-id="envId"
-          :can-edit="!incognito"
+          :refs="resolvedTab.refs"
+          :readonly="incognito"
           @close="overviewOpen = false"
         />
       </Popover>

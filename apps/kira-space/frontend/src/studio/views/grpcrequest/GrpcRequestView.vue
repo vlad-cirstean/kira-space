@@ -28,6 +28,7 @@ import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import type { GrpcRequestTabRecord } from '../../../state/tabDomain';
 import EnvironmentSelect from '../../api/EnvironmentSelect.vue';
+import RequestVariablesPanel from '../../api/RequestVariablesPanel.vue';
 import { useSavedGrpcRequest, useVariableRows } from '../../api/state/apiQueries';
 import { useCollectionsStore } from '../../api/state/collections';
 import { useSaveRequestDialogStore } from '../../api/state/saveRequestDialog';
@@ -38,7 +39,6 @@ import {
 } from '../../api/state/variableCompletion';
 import { mergeVariableRows } from '../../api/state/variables';
 import { patchGrpcRequestTabState } from '../../api/tabs';
-import VariablesOverviewPanel from '../../api/VariablesOverviewPanel.vue';
 import { beautifyJson } from '../../beautify';
 import MonacoHost from '../../editor/MonacoHost.vue';
 import { INLINE_CHARS } from '../../workers/parse/client';
@@ -161,13 +161,14 @@ const variables = computed(() =>
   variableSupport(colRows.data.value ?? [], envRows.data.value ?? []),
 );
 
-const unresolvedRefs = computed(() => {
+const requestRefs = computed(() => {
   const { values, secretNames } = mergeVariableRows(
     colRows.data.value ?? [],
     envRows.data.value ?? [],
   );
-  return unresolvedOf(resolveGrpcTabState(props.tab.state, values, secretNames).refs);
+  return resolveGrpcTabState(props.tab.state, values, secretNames).refs;
 });
+const unresolvedRefs = computed(() => unresolvedOf(requestRefs.value));
 const saveTooltip = computed(() => {
   if (incognito.value) return t('studio.api.common.save.incognito.tooltip');
   if (unresolved.value) return t('studio.api.common.save.checking.tooltip');
@@ -290,9 +291,15 @@ onUnmounted(() => {
         /></TextTooltip
       >
       <TextTooltip v-if="unresolvedRefs.length > 0" :text="unresolvedTooltip"
-        ><Badge variant="warn" data-testid="grpc-unresolved-chip">{{
-          t('common.unresolved.label', { count: unresolvedRefs.length })
-        }}</Badge></TextTooltip
+        ><Button
+          variant="toolbar"
+          size="kira"
+          data-tone="warn"
+          data-testid="grpc-unresolved-chip"
+          @click="overviewOpen = true"
+          ><CodiconIcon :name="ICON.warning" :size="13" />
+          {{ t('common.unresolved.label', { count: unresolvedRefs.length }) }}</Button
+        ></TextTooltip
       >
       <TextTooltip v-if="incognito" :text="t('studio.api.common.incognitoChip.tooltip')"
         ><Badge data-testid="grpc-incognito-chip">{{
@@ -461,11 +468,12 @@ onUnmounted(() => {
           />
           <PopoverAnchor :reference="overviewAnchorRef ?? undefined" />
         </div>
-        <VariablesOverviewPanel
+        <RequestVariablesPanel
           v-if="overviewOpen"
           :collection-id="collectionId"
           :environment-id="envId"
-          :can-edit="!incognito"
+          :refs="requestRefs"
+          :readonly="incognito"
           @close="overviewOpen = false"
         />
       </Popover>
