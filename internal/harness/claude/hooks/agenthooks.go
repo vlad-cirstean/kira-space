@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -87,7 +88,7 @@ func New(opts harness.HookOptions) (*Server, error) {
 		_ = ln.Close()
 		return nil, err
 	}
-	hooksDoc, err := buildHooksDocument(quotedShim, nil)
+	hooksDoc, err := buildHooksDocument(quotedShim, nil, nil)
 	if err != nil {
 		_ = ln.Close()
 		return nil, err
@@ -135,18 +136,21 @@ func (s *Server) Status() harness.HookStatus {
 var MCPToolTimeoutEnv = "MCP_TOOL_TIMEOUT=" + strconv.FormatInt(harness.MCPCallTimeout.Milliseconds(), 10)
 
 // Compose returns command with " --settings '<hooks.json>'" appended and the hook env vars a
-// launch's shell needs (Env). With the statusline option on, the settings file is per terminal. The
+// launch's shell needs (Env). With the statusline option on or addDirs set, the settings file is per
+// terminal; addDirs become permissions.additionalDirectories there (a `--add-dir` flag would stop at
+// the CLI's trust dialog). The
 // env carries KIRA_AGENT_HOOK_TOKEN in plain text: never return it from a bound method. Which
 // launches get hooks at all (an agent launch, never a plain shell or script) is the host's call, made
 // before this is reached.
-func (s *Server) Compose(terminalID, _, command string) (string, []string) {
+func (s *Server) Compose(terminalID, _, command string, addDirs []string) (string, []string) {
 	env := s.Env(terminalID)
-	if s.statusLine != nil && s.statusLine() {
-		quoted, err := s.composeStatusLine(terminalID)
+	statusLine := s.statusLine != nil && s.statusLine()
+	if statusLine || len(addDirs) > 0 {
+		quoted, err := s.composeTerminalSettings(terminalID, addDirs, statusLine)
 		if err == nil {
 			return command + " --settings " + quoted, env
 		}
-		slog.Warn("agent hooks: statusline settings", "scope", "ade", "err", err)
+		slog.Warn("agent hooks: terminal settings; statusline and dirs not applied", "scope", "ade", "dirs", addDirs, "err", err)
 	}
 	return command + " --settings " + s.quotedHooksPath, env
 }
@@ -156,7 +160,7 @@ func (s *Server) Compose(terminalID, _, command string) (string, []string) {
 // With the statusline option on, the file's own statusLine becomes the user statusline the wrapper
 // runs. It returns command unchanged: the file is already a --settings flag. A read or write error
 // fails the launch, since Kira's hooks are always on.
-func (s *Server) ComposeInto(terminalID, _, command, configFile string) (string, []string, error) {
+func (s *Server) ComposeInto(terminalID, _, command, configFile string, addDirs []string) (string, []string, error) {
 	raw, err := os.ReadFile(configFile)
 	if err != nil {
 		return "", nil, fmt.Errorf("claude hooks: read settings: %w", err)
@@ -180,6 +184,11 @@ func (s *Server) ComposeInto(terminalID, _, command, configFile string) (string,
 	}
 	if doc["hooks"], err = json.Marshal(userHooks); err != nil {
 		return "", nil, fmt.Errorf("claude hooks: encode hooks: %w", err)
+	}
+	if len(addDirs) > 0 {
+		if doc["permissions"], err = withAdditionalDirectories(doc["permissions"], addDirs); err != nil {
+			return "", nil, err
+		}
 	}
 	env := s.Env(terminalID)
 	if s.statusLine != nil && s.statusLine() {
@@ -233,4 +242,35 @@ func (s *Server) Close() error {
 		err = rmErr
 	}
 	return err
+}
+
+// withAdditionalDirectories unions dirs into the settings permissions object's additionalDirectories
+// (existing entries first, no duplicates) and leaves its other keys as they are.
+func withAdditionalDirectories(raw json.RawMessage, dirs []string) (json.RawMessage, error) {
+	perms := map[string]json.RawMessage{}
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &perms); err != nil {
+			return nil, fmt.Errorf("claude hooks: decode settings permissions: %w", err)
+		}
+	}
+	var have []string
+	if cur, ok := perms["additionalDirectories"]; ok {
+		if err := json.Unmarshal(cur, &have); err != nil {
+			return nil, fmt.Errorf("claude hooks: decode additionalDirectories: %w", err)
+		}
+	}
+	for _, d := range dirs {
+		if !slices.Contains(have, d) {
+			have = append(have, d)
+		}
+	}
+	var err error
+	if perms["additionalDirectories"], err = json.Marshal(have); err != nil {
+		return nil, fmt.Errorf("claude hooks: encode additionalDirectories: %w", err)
+	}
+	out, err := json.Marshal(perms)
+	if err != nil {
+		return nil, fmt.Errorf("claude hooks: encode permissions: %w", err)
+	}
+	return out, nil
 }

@@ -304,7 +304,7 @@ func TestAdeRestoreRunResumeOnly(t *testing.T) {
 // TestAdeRestoreSessionContinue restores an idle TUI session after a restart with Continue: the
 // terminal resumes the same Claude conversation and submits the continue line as a new turn.
 func TestAdeRestoreSessionContinue(t *testing.T) {
-	f := newAdeFixture(t, nil)
+	f := newAdeFixture(t, allowShell)
 	f.saveWorkflow(t, "flow", manualStepYAML)
 	task := f.createTask(t, "flow")
 	launch, err := f.W.AdeTask.LaunchStep(ctx, adewire.LaunchStepArgs{TaskID: task.ID})

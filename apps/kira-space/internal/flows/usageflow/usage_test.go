@@ -55,7 +55,7 @@ func TestUserStatusLineFromAppSettings(t *testing.T) {
 
 	cfg := filepath.Join(app.Work, "app-settings.json")
 	writeFile(t, cfg, `{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"echo mine"}]}]},"statusLine":{"type":"command","command":"printf APP","padding":2}}`)
-	command, env, err := app.W.AgentHooks.Compose("claude", "tab-app", "", "claude", cfg)
+	command, env, err := app.W.AgentHooks.Compose("claude", "tab-app", "", "claude", cfg, nil)
 	if err != nil || command != "claude" {
 		t.Fatalf("Compose into app settings = %q, %v, want the command unchanged", command, err)
 	}
@@ -98,7 +98,7 @@ func TestStatusLineThrottle(t *testing.T) {
 func TestUsageOffNoInjection(t *testing.T) {
 	app := newApp(t)
 	setUsage(t, app, false)
-	command, env, _ := app.W.AgentHooks.Compose("claude", "tab-1", "", "claude", "")
+	command, env, _ := app.W.AgentHooks.Compose("claude", "tab-1", "", "claude", "", nil)
 	if len(env) == 0 || !strings.Contains(command, app.W.AgentHooks.Status("claude").SettingsPath) {
 		t.Fatalf("command = %q, want the plain hooks file", command)
 	}

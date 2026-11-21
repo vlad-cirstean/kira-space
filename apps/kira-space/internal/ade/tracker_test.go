@@ -418,6 +418,11 @@ func TestTracker_TaskSessionComposeResumeAndStopped(t *testing.T) {
 	var mu sync.Mutex
 	var stopped []string
 	tr.deps.OnStopped = func(id string) { mu.Lock(); stopped = append(stopped, id); mu.Unlock() }
+	var hookDirs []string
+	tr.SetHooks(func(_, _, _, command, _ string, addDirs []string) (string, []string, error) {
+		hookDirs = addDirs
+		return command, nil, nil
+	})
 	cwd := t.TempDir()
 
 	res, err := tr.Prepare(PrepareArgs{
@@ -431,8 +436,11 @@ func TestTracker_TaskSessionComposeResumeAndStopped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := tr.deps.AgentBin + " --resume 'claude-9' '--add-dir' '/x y' -- 'go on'"; composed != want {
+	if want := tr.deps.AgentBin + " --resume 'claude-9' -- 'go on'"; composed != want {
 		t.Fatalf("composed = %q, want %q", composed, want)
+	}
+	if len(hookDirs) != 1 || hookDirs[0] != "/x y" {
+		t.Fatalf("hooks got dirs %v, want [/x y]", hookDirs)
 	}
 	rec, err := store.Get(res.RecordID)
 	if err != nil || rec == nil {
