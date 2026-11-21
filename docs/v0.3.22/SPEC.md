@@ -4,7 +4,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 
 | # | Phase | Status |
 |---|-------|--------|
-| P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Todo |
+| P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Done |
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
 | P709 | Task list: aligned rows, calmer design | Todo |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
@@ -26,6 +26,20 @@ only where nothing else carries the data, with a clear error naming the rate lim
 answers 403. Remove the release workflow's smoke sleep and retry loop added in v0.3.20 once the
 installer itself is robust. Tests: `scripts/verify-packaging.sh` cases against a local fake
 GitHub; plan states what only a real release run proves.
+
+Result: release index asset `kira-space-releases.txt` (tag, size, sha256 of every eligible release),
+built at publish by `scripts/releaseindex` over `internal/releaseline.FormatIndex` and served from
+`releases/latest/download/`. `install.sh` and the app checker read it, download from
+`releases/download/<tag>/`, and never call `api.github.com` on a normal path. The API stays only as a
+transitional fallback while the latest release has no index (HTTP 404), JXA `apiToIndex`, 403/429
+dies naming the rate limit; dropped at the v0.4 bump. Stepping is an awk `index_next_step` (S16,
+golden `next_step_index.json`); S17 drives `resolve_release` and `download_release` against a local
+fake GitHub (11 cases here, the API-listing case runs on macOS only). Release workflow uploads and
+verifies both assets; smoke lost its sleep and retries and gained a stepping run and a no-API
+assertion. Proven only by a real release run: the redirects answer from a shared macOS runner without
+403/429 right after publish, the publish job's `gh api` listing and upload, BWK awk and macOS curl
+(`--proto-redir`, `--max-filesize`) behavior, the JXA fallback against real GitHub, the in-app checker
+against the real index.
 
 ## P708
 
