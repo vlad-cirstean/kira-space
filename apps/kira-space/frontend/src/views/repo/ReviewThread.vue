@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import type { ReviewComment, ReviewCommentKind, ReviewCommentState } from '@kira/git-ipc';
+import CodiconIcon from '@theme/CodiconIcon.vue';
+import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 // One review thread's body over Monaco, mounted into the overlay widget of a thread by
 // reviewDecorations.ts via createApp/unmount, never routed through the workbench's own tab system
 // (editor-surface furniture, not a view). 'view' renders an existing ReviewComment; 'compose' is
 // the add-comment form; 'edit' reuses that form for an existing comment. Transport calls stay in
 // reviewDecorations.ts: the actions below are async callbacks that reject on failure, and this
 // component shows the error inline.
-import type { ReviewComment, ReviewCommentKind, ReviewCommentState } from '@kira/git-ipc';
-import CodiconIcon from '@theme/CodiconIcon.vue';
-import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Button } from '@theme/components/ui/button';
 import { Textarea } from '@theme/components/ui/textarea';
@@ -286,32 +287,36 @@ useShortcut(root, ['form.submit', 'form.cancel'], (id) => {
           ><AlertDescription>{{ error }}</AlertDescription></Alert
         >
         <div class="flex flex-wrap justify-end gap-1.5">
-          <Button
-            variant="dialog"
-            size="kira"
-            data-testid="review-thread-cancel"
-            @click="mode === 'edit' ? cancelEdit() : emit('cancel')"
-            >{{
-              t('common.action.cancel.label')
-            }}</Button
-          >
-          <Button
-            variant="dialog-primary"
-            size="kira"
-            :pending="pending"
-            :disabled="draft.trim() === '' || hostBlocked !== ''"
-            :data-testid="mode === 'edit' ? 'review-thread-save' : 'review-thread-send'"
-            @click="submit"
-          >
-            <CodiconIcon :name="mode === 'edit' ? 'save' : 'comment'" :size="13" />
-            {{
-              mode === 'edit'
-                ? t('common.action.save.label')
-                : toHost && hostTab
-                  ? t('git.review.comments.host.send.label', { short: hostTab.short })
-                  : t('common.comment.label')
-            }}
-          </Button>
+          <TextTooltip shortcut="form.cancel">
+            <Button
+              variant="dialog"
+              size="kira"
+              data-testid="review-thread-cancel"
+              @click="mode === 'edit' ? cancelEdit() : emit('cancel')"
+              >{{
+                t('common.action.cancel.label')
+              }}</Button
+            >
+          </TextTooltip>
+          <TextTooltip shortcut="form.submit">
+            <Button
+              variant="dialog-primary"
+              size="kira"
+              :pending="pending"
+              :disabled="draft.trim() === '' || hostBlocked !== ''"
+              :data-testid="mode === 'edit' ? 'review-thread-save' : 'review-thread-send'"
+              @click="submit"
+            >
+              <CodiconIcon :name="mode === 'edit' ? 'save' : 'comment'" :size="13" />
+              {{
+                mode === 'edit'
+                  ? t('common.action.save.label')
+                  : toHost && hostTab
+                    ? t('git.review.comments.host.send.label', { short: hostTab.short })
+                    : t('common.comment.label')
+              }}
+            </Button>
+          </TextTooltip>
         </div>
       </template>
     </div>

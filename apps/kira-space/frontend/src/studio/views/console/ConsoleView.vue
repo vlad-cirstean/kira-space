@@ -239,7 +239,7 @@ let unregisterCommands: Array<() => void> = [];
 onMounted(() => {
   unregisterCommands = [
     registerCommand('view.run', runStatement),
-    registerCommand('view.run-all', runAll),
+    registerCommand('view.runAll', runAll),
     registerCommand('view.format', onFormat),
     registerCommand('view.find', onToggleSearch),
   ];
@@ -287,7 +287,7 @@ onUnmounted(() => {
           @click="onStop"
         />
       </div>
-      <TextTooltip :text="t('studio.console.run.tooltip')">
+      <TextTooltip shortcut="view.run" :text="t('studio.console.run.tooltip')">
         <TooltipDisabledTrigger>
           <Button
             variant="dialog-primary"
@@ -301,7 +301,7 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
-      <TextTooltip :text="t('studio.console.runAll.tooltip')">
+      <TextTooltip shortcut="view.runAll" :text="t('studio.console.runAll.tooltip')">
         <TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -315,7 +315,10 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger>
       </TextTooltip>
-      <TextTooltip v-if="canFormat" :text="t('studio.console.format.tooltip')"
+      <TextTooltip
+        shortcut="view.format"
+        v-if="canFormat"
+        :text="t('studio.console.format.tooltip')"
         ><TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -329,7 +332,7 @@ onUnmounted(() => {
           </Button>
         </TooltipDisabledTrigger></TextTooltip
       >
-      <TextTooltip v-if="dialect" :text="explainTooltip"
+      <TextTooltip shortcut="view.explain" v-if="dialect" :text="explainTooltip"
         ><TooltipDisabledTrigger>
           <Button
             variant="toolbar"
@@ -384,6 +387,7 @@ onUnmounted(() => {
         icon="search"
         :label="t('studio.console.findInResult.label')"
         :pressed="!!rt?.searchOpen"
+        shortcut="view.find"
         data-testid="console-search"
         @click="onToggleSearch"
       />

@@ -11,7 +11,7 @@ Code review at chapter end: 2 rounds (user request).
 | P709 | Task list: aligned rows, calmer design | Done |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Done |
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
-| P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
+| P712 | Show every shortcut: button tooltips, context menus, menu bar | Done |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
 | P714 | Real `claude` details bench gate: F5 and F6 fail at base | Todo |
 | P715 | Approval prompt dialogs (database, API) redesign; data review rows resizable | Todo |
@@ -255,6 +255,40 @@ and the menu item `shortcut` field; add a shared tooltip wrapper for buttons ins
 strings. The plan lists every button, menu and context menu audited and any shortcut still
 missing. Tests: UI spec that each shown hint matches the registry; visual baselines re-recorded and
 inspected. Runs after P711.
+
+Result: chord text has one source, `packages/theme/src/shortcutText.ts` (`formatShortcut`,
+`ariaKeyShortcuts`, `IS_MAC`), rendered only by `ShortcutKbd`. TooltipIconButton, TextTooltip,
+Button and SearchField take `shortcut: ShortcutId` (chip after the label, `aria-keyshortcuts`;
+SearchField chip shows while empty). 28 `kbd` callers converted. Context menus use the menu item
+`shortcut` field via `MenuItems`; module controls use `moduleShortcut(mode, action)` over
+`MODULE_SHORTCUTS` (`MODULE_ACTIONS` typed from it). Done: title bar, new-window, tab close (now a
+TooltipIconButton), SaveBar, view toolbars (data, console, filter, key-value, definition, stream,
+document, kibana, HTTP, gRPC, git toolbar), module New/Import/Environments in every module and
+menu, repo row Open/Rename/Remove, workflow step Remove, tree delete items, review comment
+controls. Dialog header X shows Esc, or Shift+Esc for a prompt; commit buttons keep the inline chip
+and gain `form.submit` where missing (config file Save, run script, review submit, connection
+Save). Native menu bar already carried accelerators: `TestBuildTemplateShowsEveryGlobalChord`.
+Guard N19 (`check-conventions.ts`, 5 spec cases) fails on a bound registry chord with no display
+site. Deliberately no chip: ADE task, branch and step review buttons (chord resolves from the
+focused element or selection, no-op in the later view, step block targets a run branch); automations
+group-menu New script and git worktree rows (no matching chord action). Deviation found by the
+suite: the auto-focused dialog X opened its tooltip and took the first Esc (copy-coverage-git,
+module-actions); DialogHeader now ignores focus events on the X (tooltip on hover only).
+Tests: `ui/shortcut-hints.spec.ts` 20 cases (Mac UA and Linux UA via userAgent override; table of
+expected chips written out by hand); Go appshell/shell, bun check-conventions, typecheck and lint
+via the hook on each commit; UI: module-actions, copy-coverage(-git), consistency (dialogs),
+tooltips, tree, data-view, window-chrome, repo-workspace, panel-find, automations-scripts. Visual:
+3 new baselines (title bar tooltip, repo row menu, console Run tooltip). Re-recorded after
+inspection: `data-grid` (column filter chip), `connection-privacy-tab`, `connection-privacy-empty`
+(Save chip), `git-graph`, `git-graph-detail` (HEAD node halo, stale since the P710 focus-token
+retarget, not this phase). `proof-window` and `ade-task-files` failed once under load, passed
+alone.
+Follow-up, not fixed: in the git module the native View > Refresh and Find menu items may swallow
+F5 and Cmd+F on macOS before the module sees them. Only a real macOS build shows it.
+Manual macOS checklist: menu bar items show accelerators right-aligned; tooltips show the chip
+after the label on hover and on Tab focus; context-menu chips right-aligned in a native WKWebView;
+each shown chord fires its action with focus in Monaco, a grid and a dialog input; dialog X
+tooltip does not eat Esc.
 
 ## P713
 

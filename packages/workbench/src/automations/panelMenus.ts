@@ -1,3 +1,4 @@
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import type { CustomScript, ScriptKind } from '@shared/domain/scripts';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
@@ -27,7 +28,7 @@ export interface GroupMenuActions {
 
 export function groupMenu(actions: GroupMenuActions): MenuItem[] {
   return [
-    ...newScriptItems(actions.create),
+    ...newScriptItems(actions.create, { root: false }),
     {
       type: 'item',
       id: 'rename',
@@ -44,18 +45,24 @@ export function groupMenu(actions: GroupMenuActions): MenuItem[] {
       label: t('common.action.delete.label'),
       icon: 'trash',
       danger: true,
+      shortcut: 'tree.delete',
       run: () => actions.remove(),
     },
   ];
 }
 
-export function newScriptItems(create: (kind: ScriptKind) => void): MenuItem[] {
+/** `root`: the item creates outside any collection, which is what the module chords do. */
+export function newScriptItems(
+  create: (kind: ScriptKind) => void,
+  { root }: { root: boolean },
+): MenuItem[] {
   return [
     {
       type: 'item',
       id: 'new-script',
       label: t('automations.script.new.label'),
       icon: 'add',
+      shortcut: root ? moduleShortcut('automations', 'app.new') : undefined,
       run: () => create('script'),
     },
     {
@@ -63,6 +70,7 @@ export function newScriptItems(create: (kind: ScriptKind) => void): MenuItem[] {
       id: 'new-smart-script',
       label: t('automations.script.newSmart.label'),
       icon: 'sparkle',
+      shortcut: root ? moduleShortcut('automations', 'app.newAlternate') : undefined,
       run: () => create('smart'),
     },
   ];
@@ -121,6 +129,7 @@ export function scriptMenu(script: CustomScript, actions: ScriptMenuActions): Me
       label: t('common.action.remove.label'),
       icon: ICON.remove,
       danger: true,
+      shortcut: 'tree.delete',
       run: () => actions.remove(script),
     },
   ];

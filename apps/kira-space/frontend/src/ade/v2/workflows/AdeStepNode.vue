@@ -94,6 +94,8 @@ const menuItems = computed<MenuItem[]>(() => [
     icon: 'trash',
     danger: true,
     disabled: !props.data.canRemove,
+    // The chord deletes the selected step; printed on this row like tab.close on the tab menu.
+    shortcut: 'tree.delete',
     run: () => fireAndForget(confirmRemoveStep(step.value.id), 'adeWorkflows'),
   },
 ]);

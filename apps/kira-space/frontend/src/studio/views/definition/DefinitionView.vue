@@ -274,6 +274,7 @@ const breadcrumb = computed(() => {
           :label="t('common.action.refresh.label')"
           disabled-trigger
           :disabled="loading"
+          shortcut="view.refresh"
           data-testid="definition-refresh"
           @click="onRefresh"
         />
@@ -299,6 +300,7 @@ const breadcrumb = computed(() => {
         "
         :aria-label="t('common.action.search.label')"
         :data-active="searchOpen"
+        shortcut="view.find"
         data-testid="definition-search-toggle"
         @click="toggleSearch"
       />

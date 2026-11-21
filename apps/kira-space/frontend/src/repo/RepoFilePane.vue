@@ -134,6 +134,7 @@ useShortcut(root, ['form.save'], () => void draft.saveNow());
         @submit="draft.saveNow"
       />
       <SaveBar
+        shortcut="form.save"
         :dirty="draft.dirty.value"
         :saving="draft.saving.value"
         :can-save="draft.canSave.value"

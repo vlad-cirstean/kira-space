@@ -1,6 +1,5 @@
 import type { ShortcutId } from '@shared/domain/shortcuts';
 import type { Ref } from 'vue';
-import { formatShortcut } from '../shortcuts/keys';
 import { useShortcut } from '../shortcuts/useShortcut';
 
 const TREE_IDS = [
@@ -21,7 +20,7 @@ export type TreeShortcutActions = Partial<Record<TreeShortcutId, (key: string) =
 /**
  * Binds the `tree.*` chords once for a list or tree built on `useListNavigation`. The row the
  * chord applies to is the focused row, else the roving stop. Chords typed in a text field are
- * left alone. `hints` holds the printed chord of each supported action, for menus and tooltips.
+ * left alone.
  */
 export function useTreeShortcuts(
   nav: {
@@ -29,7 +28,7 @@ export function useTreeShortcuts(
     activeKey: Ref<string | null>;
   },
   actions: TreeShortcutActions,
-): { hints: Partial<Record<TreeShortcutId, string>> } {
+): void {
   const supported = TREE_IDS.filter((id) => actions[id] !== undefined);
   useShortcut(
     nav.container as Ref<HTMLElement>,
@@ -41,7 +40,4 @@ export function useTreeShortcuts(
     },
     { ignoreTextFields: true },
   );
-  return {
-    hints: Object.fromEntries(supported.map((id) => [id, formatShortcut(id)])),
-  };
 }

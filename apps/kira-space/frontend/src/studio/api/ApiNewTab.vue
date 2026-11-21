@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import TabStripNewButton from '@workbench/components/TabStripNewButton.vue';
@@ -15,6 +16,7 @@ function menuItems(): MenuItem[] {
       id: 'new-request',
       label: t('studio.api.common.newRequest.label'),
       icon: ICON.add,
+      shortcut: moduleShortcut('api', 'app.new'),
       run: () => {
         openApiRequestTab();
       },
@@ -24,6 +26,7 @@ function menuItems(): MenuItem[] {
       id: 'new-grpc-request',
       label: t('shared.grpc.newRequest.title'),
       icon: 'symbol-interface',
+      shortcut: moduleShortcut('api', 'app.newAlternate'),
       run: () => {
         openGrpcRequestTab();
       },

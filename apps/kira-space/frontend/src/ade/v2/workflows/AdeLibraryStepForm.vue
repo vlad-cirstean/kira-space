@@ -81,6 +81,7 @@ onBeforeUnmount(() => {
     data-testid="ade-step-form"
   >
     <SaveBar
+      shortcut="form.save"
       :dirty="draft.dirty"
       :saving="guard.saving.value"
       testid-prefix="ade-wf"

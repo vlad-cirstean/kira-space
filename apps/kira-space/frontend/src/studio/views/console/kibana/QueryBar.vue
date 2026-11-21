@@ -2,6 +2,7 @@
 import { type KibanaLanguage, kibanaLanguageSchema } from '@shared/domain/kibana';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import { Button } from '@theme/components/ui/button';
 import { InputGroup } from '@theme/components/ui/input-group';
 import { t } from '@theme/i18n';
@@ -102,18 +103,19 @@ defineExpose({ insertText: (text: string) => editorHost.value?.insertText(text) 
       <CodiconIcon name="debug-stop" :size="13" />
       {{ t('common.action.stop.label') }}
     </Button>
-    <Button
-      v-else
-      variant="dialog-primary"
-      size="kira"
-      data-testid="kibana-run"
-      :disabled="!canRun"
-      :pending="starting"
-      @click="emit('run')"
-    >
-      <CodiconIcon name="play" :size="13" />
-      {{ t('common.action.run.label') }}
-    </Button>
+    <TextTooltip v-else :text="t('common.action.run.label')" shortcut="view.run">
+      <Button
+        variant="dialog-primary"
+        size="kira"
+        data-testid="kibana-run"
+        :disabled="!canRun"
+        :pending="starting"
+        @click="emit('run')"
+      >
+        <CodiconIcon name="play" :size="13" />
+        {{ t('common.action.run.label') }}
+      </Button>
+    </TextTooltip>
   </div>
 </template>
 

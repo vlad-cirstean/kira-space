@@ -9,7 +9,6 @@ import {
   TooltipTrigger,
 } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, watch } from 'vue';
 import { logWarn } from '../bridge/log';
@@ -56,7 +55,7 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
         variant="dialog-deny"
         size="kira-lg"
         :pending="busy"
-        :kbd="formatShortcut('prompt.deny')"
+        shortcut="prompt.deny"
         :data-testid="`approval-deny-${item.id}`"
         @click="answer([item.id], false)"
       >
@@ -70,7 +69,7 @@ watch(unreadable, (v) => v && store.markBroken(props.item.id), { immediate: true
               size="kira-lg"
               :pending="busy"
               :disabled="blank !== null"
-              :kbd="formatShortcut('form.submit')"
+              shortcut="form.submit"
               :data-testid="`approval-approve-${item.id}`"
               @click="answer([item.id], true)"
             >

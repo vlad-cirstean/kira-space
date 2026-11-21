@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import type { ScriptKind, ScriptParam } from '@shared/domain/scripts';
+import ShortcutKbd from '@theme/components/ShortcutKbd.vue';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@theme/components/ui/field';
-import { Kbd } from '@theme/components/ui/kbd';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
 import CatalogText from '@theme/i18n/CatalogText.vue';
 import AutocompleteField from '@workbench/components/AutocompleteField.vue';
 import { braceToken, envToken } from '@workbench/editor/fieldCompletion';
 import { computed } from 'vue';
-import { formatShortcut } from '../../shortcuts/keys';
 import { scriptCandidates, scriptHighlights, scriptHover, usesParts } from '../scriptVars';
 
 // The prompt (smart) or command: a multiline AutocompleteField that suggests the declared
@@ -22,8 +21,6 @@ const props = defineProps<{
   errorId?: string;
 }>();
 const body = defineModel<string>({ required: true });
-// Same chord as view.run: the dialog's save key.
-const saveChord = formatShortcut('view.run');
 
 const isSmart = computed(() => props.kind === 'smart');
 const src = computed(() => ({
@@ -73,12 +70,12 @@ const used = computed(() => parts.value.length > 1);
     >
     <FieldDescription v-else-if="isSmart" data-testid="script-dialog-uses">
       <CatalogText k="automations.script.insertHint.hint" :params="{ token: '{name}' }">
-        <template #chord><Kbd>{{ saveChord }}</Kbd></template>
+        <template #chord><ShortcutKbd id="form.submit" /></template>
       </CatalogText>
     </FieldDescription>
     <FieldDescription v-else>
       <CatalogText k="automations.script.shellHint.hint">
-        <template #chord><Kbd>{{ saveChord }}</Kbd></template>
+        <template #chord><ShortcutKbd id="form.submit" /></template>
       </CatalogText>
     </FieldDescription>
   </Field>

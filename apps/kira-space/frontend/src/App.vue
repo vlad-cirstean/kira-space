@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AppMode } from '@shared/domain/mode';
+import type { ModuleAction } from '@shared/domain/moduleShortcuts';
 // P104 §6.1: every converted call site reaches timing (delayDuration/skipDelayDuration) through
 // this one provider.
 import { TooltipProvider } from '@theme/components/ui/tooltip';
@@ -48,7 +49,7 @@ import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
 import SessionRestoreHost from './restore/SessionRestoreHost.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
-import { type ModuleAction, runModuleAction } from './shortcuts/moduleActions';
+import { runModuleAction } from './shortcuts/moduleActions';
 import { useAppUpdateStore } from './state/appUpdate';
 import { useConfigSyncWindowStore } from './state/configSyncWindow';
 import { useKeepAwakeStore } from './state/keepAwake';
@@ -198,7 +199,7 @@ onMounted(() => {
     }),
     studioControl.onViewRefresh(() => runCommand('view.refresh')),
     studioControl.onViewRun(() => runCommand('view.run')),
-    studioControl.onViewRunAll(() => runCommand('view.run-all')),
+    studioControl.onViewRunAll(() => runCommand('view.runAll')),
     studioControl.onViewFormat(() => runCommand('view.format')),
   ];
 });

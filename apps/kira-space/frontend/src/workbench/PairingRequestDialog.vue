@@ -11,7 +11,6 @@ import {
 import { formatElapsed } from '@theme/format';
 import { t } from '@theme/i18n';
 import { usePendingDecision } from '@workbench/behaviour/pendingDecision';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 
 // Shared shell for a pairing prompt PromptHost mounts. Renders nothing while `requestId` is absent;
@@ -59,7 +58,7 @@ const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
         </template>
         <Button
           ref="denyButton"
-          :kbd="formatShortcut('prompt.deny')"
+          shortcut="prompt.deny"
           variant="dialog-deny"
           size="kira-lg"
           :data-testid="`${testidPrefix}-deny`"
@@ -69,7 +68,7 @@ const onChord = shortcutKeydown(['form.submit', 'prompt.deny'], (id) =>
         </Button>
         <Button
           variant="dialog-approve"
-          :kbd="formatShortcut('form.submit')"
+          shortcut="form.submit"
           size="kira-lg"
           :data-testid="`${testidPrefix}-approve`"
           @click="emit('approve')"

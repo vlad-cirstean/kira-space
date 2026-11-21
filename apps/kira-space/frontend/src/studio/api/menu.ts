@@ -1,3 +1,4 @@
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { type CollectionChoice, moveToCollectionMenu } from '@workbench/lib/collectionMenu';
@@ -232,6 +233,7 @@ export function backgroundMenu(actions: CollectionMenuActions): MenuItem[] {
       id: 'import-collection',
       label: t('studio.api.common.importCollection.label'),
       icon: 'cloud-download',
+      shortcut: moduleShortcut('api', 'app.import'),
       run: () => actions.importPostman(),
     },
     {
@@ -247,6 +249,7 @@ export function backgroundMenu(actions: CollectionMenuActions): MenuItem[] {
       id: 'environments',
       label: t('studio.api.common.environments.label'),
       icon: ICON.environments,
+      shortcut: moduleShortcut('api', 'api.environments'),
       run: () => actions.environments(),
     },
     {

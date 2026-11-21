@@ -14,7 +14,6 @@ import { t } from '@theme/i18n';
 import { plainText } from '@theme/varText';
 import { formatPercent } from '@workbench/behaviour/format';
 import MenuItems from '@workbench/components/MenuItems.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import type { MenuItem } from '@workbench/state/contextMenu';
@@ -215,7 +214,7 @@ const boxClass = computed(() => {
                   v-if="choices.length"
                   icon="git-compare"
                   :label="t('space.ade.board.taskMenu.reviewCode.label')"
-                  :kbd="formatShortcut('ade.reviewCode')"
+                  shortcut="ade.reviewCode"
                   class="size-4.5 shrink-0"
                   disabled-trigger
                   :pending="reviewCode.pendingFor(choices.map((c) => c.branchId))"
