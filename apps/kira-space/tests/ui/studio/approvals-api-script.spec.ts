@@ -118,3 +118,34 @@ test('contract: long scripts scroll the body and wrap their sources', async ({ r
   await expect(page.locator('[data-testid="approval-details-toggle"]')).toBeInViewport();
   await expect(page.locator('[data-testid="approval-origin"]')).toBeInViewport();
 });
+
+test('contract: a kept read in prepare only shows no transform reads note', async ({
+  relaunch,
+}) => {
+  const it = item();
+  const payload = it.payload as unknown as Record<string, unknown>;
+  const site = { field: 'script', index: 0, part: 'prepare', from: 0, to: 4 };
+  const read = {
+    id: 'kv_1',
+    name: 'pod',
+    type: 'string',
+    items: 0,
+    bytes: 5,
+    secret: false,
+    source: { kind: 'script', mcp: 'kube', tool: 'kube_list_resources', request: '', client: '' },
+    createdAt: new Date(Date.now() - 60_000).toISOString(),
+    expiresAt: new Date(Date.now() + 59 * 60_000).toISOString(),
+    preview: '"web-1"',
+    previewTruncated: false,
+    pending: false,
+    sites: [site],
+  };
+  const scoped = liveItem({ ...it, payload: { ...payload, kept: [read] } } as ApprovalItem);
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [scoped]);
+  const card = page.locator(`[data-testid="approval-item-${scoped.id}"]`);
+  await expect(card.locator('[data-testid="api-approval-script-transform"]')).toBeVisible();
+  await expect(
+    card.locator('[data-testid="api-approval-script-transform-script-reads"]'),
+  ).toHaveCount(0);
+});

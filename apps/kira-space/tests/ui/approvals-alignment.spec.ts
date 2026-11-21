@@ -226,6 +226,19 @@ function studioItems(): ApprovalItem[] {
         operation: 'list',
         statement: 'pods -l app=checkout',
         reviewOffered: true,
+        tool: 'kube_list_resources',
+        request: {
+          kind: 'v1/pods',
+          name: '',
+          namespace: 'payments',
+          labelSelector: 'app=checkout',
+          pod: '',
+          container: '',
+          previous: false,
+          timestamps: false,
+          tail: 0,
+          maxRows: 200,
+        },
       },
       0,
     ),
@@ -543,7 +556,7 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     near((await box(q1.locator('.view-line').first())).y, (await box(stmt)).y, 'first line top');
 
     await show(page, byId('kube.read:6'));
-    near(await left(item('kube.read:6').locator(t('db-mcp-approval-kube'))), indent, 'kube code x');
+    near(await left(item('kube.read:6').locator(t('kube-approval-line'))), indent, 'kube code x');
     await show(page, byId('script.run:7'));
     near(
       await left(item('script.run:7').locator(t('db-mcp-approval-script-command'))),
