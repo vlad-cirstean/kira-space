@@ -765,7 +765,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows, counts and pages with `browse_table`; use `run_query` only for joins, grouped aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values. Kept variables: a script keeps a result with `kept.set` (plain) or `kept.setSecret` (secret, such as a token); you never see the value. When one result feeds the next call, keep it and make that call yourself with {{kept.name}} or `params`. A one-time value is never kept, so no later call can read it.",
+	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows, counts and pages with `browse_table`; use `run_query` only for joins, grouped aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only, and their reads take scripts too; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values. Kept variables: a script keeps a result with `kept.set` (plain) or `kept.setSecret` (secret, such as a token); you never see the value. When one result feeds the next call, keep it and make that call yourself with {{kept.name}}, `params` or, in a kube read, a prepare script's `kept.get`. A one-time value is never kept, so no later call can read it.",
 }, NoVars{})
 
 // DbmcpToolListConnections describes the list_connections tool.
@@ -973,6 +973,15 @@ var DbmcpToolKubeReview = define(Entry{
 	Default:    "The user may hold the result for review before you get it (reviewResults in kube_list_clusters). A withheld result is an error with no data; the read ran, so do not rerun it to get the data.",
 }, NoVars{})
 
+// DbmcpToolKubeScripts is added to the description of kube_list_resources, kube_describe and kube_pod_logs while scripts are on.
+var DbmcpToolKubeScripts = define(Entry{
+	ID: "dbmcp.tool.kube.scripts", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
+	TitleKey:   "llmPrompts.entry.dbmcpToolKubeScripts.title",
+	PurposeKey: "llmPrompts.entry.dbmcpToolKubeScripts.description",
+	UsedByKey:  "llmPrompts.entry.dbmcpToolKubeScripts.usedBy.body",
+	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each part is a function body that ends with return. The user sees both. script.prepare runs before approval on the global request (your args without clusterId) and returns args that replace yours; it cannot change clusterId or the tool. script.transform runs after the read on the global result (what the tool returns) and request; you receive only {kind: \"script\", output: <its return value>, input: {operation, rowCount, truncated}}, never the data unless it returns it. Result input up to 8 MiB, output up to 4 MiB. Kept: kept.get(\"name\") reads a plain kept value; in transform kept.set(\"name\", value) keeps a plain value the user can preview and kept.setSecret(\"name\", value) a secret the user reveals only behind their fingerprint (1 MiB, 16 per run), for a later kube read, api_request or run_query. Names are literal strings. Kept values are stored only once the result is sent; you get kept: [{name, type, items, secret, expiresInSeconds}], never a value. Secret kept values and values the user typed cannot be read here.",
+}, NoVars{})
+
 // DbmcpToolKubeDiscover describes the kube_discover tool.
 var DbmcpToolKubeDiscover = define(Entry{
 	ID: "dbmcp.tool.kube_discover", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_discover",
@@ -993,6 +1002,9 @@ var (
 	_ = arg(DbmcpToolKubeListResources.id, "namespace", studioApp, NextCall, `Namespace to list. Omit for all namespaces.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "labelSelector", studioApp, NextCall, `Label selector, such as app=web,tier!=db. Omit for none.`, NoVars{})
 	_ = arg(DbmcpToolKubeListResources.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 2000})
+	_ = arg(DbmcpToolKubeListResources.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolKubeListResources.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (kind, namespace, labelSelector, maxRows). Return an object with any of these args to replace yours.`, NoVars{})
+	_ = arg(DbmcpToolKubeListResources.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (columns, rows [{name, namespace, cells}], rowCount, truncated) and request (the final args).`, NoVars{})
 )
 
 // DbmcpToolKubeDescribe describes the kube_describe tool.
@@ -1006,6 +1018,9 @@ var (
 	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "name", studioApp, NextCall, `Object name.`, NoVars{})
 	_ = arg(DbmcpToolKubeDescribe.id, "namespace", studioApp, NextCall, `Object namespace. Omit for a cluster-scoped kind.`, NoVars{})
+	_ = arg(DbmcpToolKubeDescribe.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolKubeDescribe.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (kind, namespace, name). Return an object with any of these args to replace yours.`, NoVars{})
+	_ = arg(DbmcpToolKubeDescribe.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (kind, apiVersion, name, namespace, uid, created, labels, annotations, owners, conditions, containers, events, manifest, manifestTruncated) and request (the final args).`, NoVars{})
 )
 
 // DbmcpToolKubePodLogs describes the kube_pod_logs tool.
@@ -1022,4 +1037,7 @@ var (
 	_ = arg(DbmcpToolKubePodLogs.id, "previous", studioApp, NextCall, `Read the previous container instance's log. Default false.`, NoVars{})
 	_ = arg(DbmcpToolKubePodLogs.id, "timestamps", studioApp, NextCall, `Prefix each line with its timestamp. Default false.`, NoVars{})
 	_ = arg(DbmcpToolKubePodLogs.id, "tail", studioApp, NextCall, `Lines from the end, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 5000})
+	_ = arg(DbmcpToolKubePodLogs.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolKubePodLogs.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (namespace, pod, container, previous, timestamps, tail). Return an object with any of these args to replace yours.`, NoVars{})
+	_ = arg(DbmcpToolKubePodLogs.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (lines [{ts, text}], truncated) and request (the final args).`, NoVars{})
 )

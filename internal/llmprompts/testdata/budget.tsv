@@ -41,7 +41,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	314
 restore.continue.line	44
-dbmcp.instructions	1460
+dbmcp.instructions	1542
 dbmcp.tool.list_connections	653
 dbmcp.tool.list_scripts	130
 dbmcp.tool.run_script	337
@@ -169,3 +169,13 @@ headless.tool.state.action.remote.fetch	58
 headless.tool.state.action.branch.push	56
 headless.tool.state.action.review.reply	83
 headless.tool.state.action.step.finish	170
+dbmcp.tool.kube.scripts	1173
+dbmcp.tool.kube_list_resources.arg.script	79
+dbmcp.tool.kube_list_resources.arg.script.prepare	145
+dbmcp.tool.kube_list_resources.arg.script.transform	138
+dbmcp.tool.kube_describe.arg.script	79
+dbmcp.tool.kube_describe.arg.script.prepare	127
+dbmcp.tool.kube_describe.arg.script.transform	214
+dbmcp.tool.kube_pod_logs.arg.script	79
+dbmcp.tool.kube_pod_logs.arg.script.prepare	159
+dbmcp.tool.kube_pod_logs.arg.script.transform	106
