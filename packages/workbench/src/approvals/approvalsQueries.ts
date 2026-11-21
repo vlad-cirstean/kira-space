@@ -63,7 +63,15 @@ function answerOptions(
     const hasTyped = typed !== undefined && Object.keys(typed).length > 0;
     if (!(id in store.options) && !hasTyped) continue;
     const base = (store.options[id] ?? {}) as Record<string, unknown>;
-    out[id] = hasTyped ? { ...base, inputs: typed } : store.options[id];
+    if (!hasTyped) {
+      out[id] = store.options[id];
+      continue;
+    }
+    // A mode for every typed value; one the card never set is "once" (the safe side).
+    const modes = Object.fromEntries(
+      Object.keys(typed).map((name) => [name, store.inputModes[id]?.[name] ?? 'once']),
+    );
+    out[id] = { ...base, inputs: typed, inputModes: modes };
   }
   return out;
 }

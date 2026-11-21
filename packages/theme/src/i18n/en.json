@@ -14204,6 +14204,9 @@
             "label": "Don’t send"
           },
           "headers": {},
+          "input": {
+            "label": "Sends the value you type for {name} (host: {host})"
+          },
           "noEnvironment": {},
           "query": {},
           "redirectsOffTimeout": {
@@ -15587,12 +15590,19 @@
         "label": "Expiry"
       },
       "input": {
-        "hint": "Kira keeps these values for you and never shows them to the agent. A value goes only to {origin}.",
+        "choice": {
+          "label": "How long Kira holds the value"
+        },
+        "keep": {
+          "label": "Keep {minutes} min",
+          "tooltip": "Later requests to {origin} reuse it without asking, until it expires or you clear it"
+        },
+        "once": {
+          "label": "Use once",
+          "tooltip": "Sent with this request, then wiped. The next request asks again"
+        },
         "replace": {
           "label": "Enter a new value: {label}"
-        },
-        "title": {
-          "label": "Values you supply"
         }
       },
       "keptAt": {
@@ -15621,10 +15631,6 @@
       "risk": {
         "expiring": {
           "status": "Expires before you answer"
-        },
-        "input": {
-          "status": "Needs a value from you",
-          "tooltip": "The agent asked for a value only you can give. Kira keeps it and never shows it to the agent"
         },
         "keeps": {
           "status": "May keep: {names}"
@@ -15681,6 +15687,9 @@
         "label": "Used in"
       },
       "willKeep": {
+        "blocked": {
+          "status": "Not kept. The script read a value you gave for this request only"
+        },
         "label": "Will keep"
       }
     },
