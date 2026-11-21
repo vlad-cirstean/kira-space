@@ -108,7 +108,9 @@ test('contract: the exemption dialog shows the estimate over the limit', async (
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveText('~5,000 rows');
+  await expect(card.locator('[data-testid="db-mcp-exemption-limit"]')).toContainText(
+    'Estimated 5,000 rows, over the',
+  );
 });
 
 test('settings: Advanced explains the estimate and who acts on it', async ({ relaunch }) => {
