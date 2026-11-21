@@ -531,6 +531,5 @@ test('collections — after a restart the tree and the active environment come b
   await page.click('[data-testid="api-environments"]');
   const active = envs.find((e) => e.isActive);
   expect(active).toBeDefined();
-  const activeRow = page.locator(`[data-testid="environment-row"][data-id="${active?.id}"]`);
-  await expect(activeRow.locator('[role="radio"]')).toBeChecked();
+  await expect(page.locator(`[data-testid="matrix-activate-${active?.id}"]`)).toBeChecked();
 });

@@ -11,7 +11,7 @@ import { acceptConfirm } from './support/dialogs';
 
 // The Variables tab: a grid of names by files. Each test performs one step of the backend scenario
 // and asserts the UI sends the exact EditVariables args the Go flow test applied.
-// Backend half: apiflow.TestVariablesMatrix writes the api-variables-matrix contract.
+// Backend half: apiflow.TestApiVariablesMatrix writes the api-variables-matrix contract.
 
 const KEY = 'api-variables-matrix';
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -198,8 +198,11 @@ test('describe and share an environment variable with agents', async ({ relaunch
   await input.fill('API root');
   await input.press('Enter');
   await page.click('[data-testid="matrix-row-menu-host"]');
-  await page.click('[data-testid="menu-item-share"]');
-  await page.click(`[data-testid="menu-item-share-${STAGING}"]`);
+  // Keyboard: the submenu sits at the window edge, a mouse path to it crosses closing siblings.
+  await page.locator('[data-testid="menu-item-share"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator(`[data-testid="menu-item-share-${STAGING}"]`)).toBeFocused();
+  await page.keyboard.press('Enter');
   const sent = edits(control) as { edits: unknown[] }[];
   await expect.poll(() => edits(control)).toHaveLength(2);
   const want = args('describeShare') as { edits: unknown[] };

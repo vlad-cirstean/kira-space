@@ -185,6 +185,23 @@ test('a collection file edits its dotenv text from the default column menu', asy
         { channel: IPC.collectionsList, response: COLLECTIONS },
         { channel: IPC.variablesListEnvironments, response: [] },
         {
+          channel: IPC.variablesList,
+          args: { scope: 'collection', ownerId: 'col-1' },
+          response: [
+            {
+              id: 'var-1',
+              scope: 'collection',
+              ownerId: 'col-1',
+              name: 'host',
+              value: 'api.example.com',
+              isSecret: false,
+              secretSet: false,
+              sortOrder: 0,
+              description: '',
+            },
+          ],
+        },
+        {
           channel: IPC.apiConfigFile,
           args: { file: file('collection').file },
           response: file('collection'),
