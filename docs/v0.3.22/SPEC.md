@@ -297,3 +297,16 @@ and hits the guard at 18 of 24 runs. Deliverable: root-cause with the P713 Resul
 starting point (real regression in the details tool/prompt path, stale thresholds or baseline, or
 sample noise at 2 reps), then fix the code or recalibrate the gate with evidence; the plan states
 the budget and rep count needed for a trustworthy verdict and what only a paid run proves.
+
+Result (not closed; gate still fails). Diagnosis from transcripts (`KIRA_SPIKE_DUMP`): harness
+artifact first, then product prompt waste, then inherent ceremony. (a) Arm R's prompt never named
+the draft while the stub refused a draft-less ok finish: one refused `step.finish` in F5 and F6.
+Fixed (`benchDraftPath`, `TestDetailsBenchArmRServes`). (b) The fragment's "before an ok finish"
+primed status `ok`, refused by `state` in 12 of 12 R runs; fixed ("before you finish", goldens, ADE
+real `claude` row passes). (c) Residual: README read, draft write, `step.finish`, `ToolSearch`.
+Verdict round after (a) only, 24 of 24 runs, 3 reps, 1.89 USD, all pass: cost R/T F4 0.93, F5 1.34,
+F6 1.52, F1 1.31; context R/T F4 0.90, F5 0.98, F6 1.06, F1 0.99. After (b), R only, 1 rep (T from
+the round): cost F5 1.18, F6 1.37, F1 1.29, context F5 0.96, F6 1.05, F1 1.00. Gate not met on F6
+(cost, context), F1 and, at 3 reps, F5 (cost). Total spend about 2.8 USD. Open: T on F5 and F6
+never finishes while every Kira step does; plan Open question 1 (A: give T the v0.3.13 finish
+instruction, B: record as Known open item, C: recalibrate). Plan: `plans/P714.md`.
