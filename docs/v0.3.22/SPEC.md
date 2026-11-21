@@ -13,7 +13,7 @@ Code review at chapter end: 2 rounds (user request).
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
-| P714 | Real `claude` details bench gate: F5 and F6 fail at base | Todo |
+| P714 | Real `claude` details bench gate: F5 and F6 fail at base | Done |
 
 ## P707
 
@@ -324,3 +324,7 @@ Recalibration (user choice, free): cost bounds F1 1.35, F6 1.40 (F4, F5 stay 1.2
 open: F1's recorded failed-call mean (R 0.33 vs T 0.00, one failed Bash) fails the unchanged
 failed-call rule and F1 was not rerun after the last prompt fix, so the row stays Todo pending a
 clean F1 round (about 0.4 USD) or a decision on that rule.
+
+F1 round at the final tree (user approved, 3 reps, both arms, 6 of 6 pass, 0.4142 USD): cost R/T
+0.0690/0.0561 = 1.23 (bound 1.35), context 40952/41348 = 0.99 (bound 1.05), failed calls 0.00 vs
+0.00. Gate passes on F4, F5, F6, F1. Done. Total phase spend about 4.14 USD.
