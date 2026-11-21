@@ -15,7 +15,7 @@ before implementation starts.
 |---|-------|--------|
 | P716 Part 1 | Remove the chain steps panel from DB and API prompts | Done |
 | P716 Part 2 | Secret and plain kept variables, preview and fingerprint reveal | Done |
-| P716 Part 3 | Agent awareness of kept variables, real `claude` test | Todo |
+| P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
 | P717 | Result review for every MCP tool that returns data | Todo |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Todo |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
@@ -86,6 +86,8 @@ User chose model A (no chain UI; kept variables; agent makes the follow-up reque
 Result, Part 1. Done. `ChainSteps.vue`, its three call sites (`DbQueryBody`, `DbExemptionBody`, `ApiRequestBody`), the `studio.dbMcp.approval.chain.*` strings, the chain asserts in `e2e-kept-chain.spec.ts`, the visual case 'script card with its chain' and its baseline are gone. The kept-variables panel stays. `e2e-kept-chain` and `e2e-db-script-chain` specs assert the old `approval-chain` element no longer renders.
 
 Result, Part 2. Done. Transform scripts keep with `kept.set(name, v)` (plain) or `kept.setSecret(name, v)` (secret); names are plan-time literals, `prepare` scripts cannot keep. A `setSecret` value is masked in the script output and the agent sees only name, type, size, `secret` flag and expiry. API-made secrets bind to the request origin; a use against another origin is refused with `the secret kept as "x" belongs to <origin> and is not sent to <origin>`. DB-kept secrets bind to no origin. The held-result review lists "Will keep" with Secret/Plain badges: plain values preview, secrets show dots and reveal through `KeptVarsService.RevealStaged` behind the local-auth prompt (confirmation fallback). Cards badge the kinds the script may keep, Settings shows the kind per entry. Tests: flow `TestE2EKeptSecret` and `TestDbMcpQueryScriptKeepSecret` (contract `e2e-kept-secret`), UI spec `e2e-kept-secret.spec.ts` (4 tests), visual `approvals-kept-secret.spec.ts` (3 baselines).
+
+Result, Part 3. Done. `DbmcpInstructions`, `run_query` and `api_request` script args and `list_kept_variables` now name `kept.set` (plain, user previews) and `kept.setSecret` (secret, fingerprint reveal), the `secret` flag in the kept summary, that API-made secrets go only to their host, and that a one-time value is never kept so no later call reads it (the sentence P719 deferred). Text stays generic for kube; kube adopts scripts in P718. `budget.tsv` raised for the five touched entries. `TestDbMcpKeptChainThroughClaude` now gives the task only (read ids, fetch bodies by those ids, ids never through the model); the model chose `kept.set` and bound the name in `params` on its own. `bun run test:claude:db -count=1`: 12 pass, none skipped.
 
 ## P717
 
