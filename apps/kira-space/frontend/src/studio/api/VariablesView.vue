@@ -54,10 +54,15 @@ function dismissError(): void {
 }
 
 const hasOwners = computed(() => model.owners.value.length > 0);
-// The empty state gives way to the grid as soon as Add variable is chosen.
+// The empty state gives way to the grid as soon as Add variable is chosen or an environment exists:
+// its column menu is how an empty environment is renamed, shared or deleted.
 const startedAdding = ref(false);
 const isEmpty = computed(
-  () => model.allNames.value.length === 0 && matrix.filter.trim() === '' && !startedAdding.value,
+  () =>
+    model.allNames.value.length === 0 &&
+    model.envOwners.value.length === 0 &&
+    matrix.filter.trim() === '' &&
+    !startedAdding.value,
 );
 
 // ---- toolbar pickers ----

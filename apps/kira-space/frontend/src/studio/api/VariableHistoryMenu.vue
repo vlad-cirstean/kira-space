@@ -47,7 +47,13 @@ function onEye(entry: ApiVariableHistoryEntry): void {
 </script>
 
 <template>
-  <PopoverContent align="start" flush class="w-80" data-testid="variable-history">
+  <PopoverContent
+    align="start"
+    flush
+    class="w-80"
+    data-testid="variable-history"
+    @focus-outside.prevent
+  >
     <PopoverList class="max-h-80 overflow-auto">
       <InlineState
         v-if="variableSetStore.entries.length === 0"
