@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Kira Studio — SQS demo seed. Runs *inside* the kira-sqs (LocalStack) container (docker exec -i
-# ... < this file), using the `awslocal` CLI the localstack image ships on PATH. Mirrors
-# packages/db-fixtures/fixtures/0006_sqs_seed.ts's shape (same queue/message counts) without an AWS SDK
-# dependency.
+# ... < this file), using the `awslocal` CLI the localstack image ships on PATH. Seeds
+# queues and messages through the CLI, so no AWS SDK dependency.
 set -euo pipefail
 
 create_queue() {
