@@ -1,12 +1,12 @@
 # v0.3.23
 
 Chapter v0.3.23, branch `chapter/v0.3.23`, tag `v0.3.23`. First phase `P716` (highest phase: `P715`,
-in open chapter v0.3.22's `SPEC.md`).
+in `docs/history/07-v0.3.15.md`, chapter v0.3.22).
 
 Code review at chapter end: 2 rounds (user request).
 
-Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
-before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
+Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`). v0.3.22's PR merged as #55 (`c7534c9f0`). Rebase
+onto `main` before this chapter's PR opens.
 
 P716 to P720 are design phases: plan proposes the design with screenshots, user approves it
 before implementation starts.
@@ -21,6 +21,7 @@ before implementation starts.
 | P721 | Remove development, debugging and validation leftovers | Todo |
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
+| P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 
 ## P716
 
@@ -204,6 +205,20 @@ Open questions. Who picks one-time: user per input in the card (toggle), agent p
 or both? Does "variables in the api mcp" also mean API module `{{name}}` environment variables, or
 only `inputs`?
 
+Result. Done. Each typed value on the API card gets a compact Use once / Keep N min choice; the agent's
+`reuse` hint seeds it, the user decides. A one-time value lives in an in-memory overlay
+(`agentapi.Input.Once`), never `Store.Put`, is masked in the echo, and its bytes are zeroed after the
+send and on every exit; Go strings from masking and JSON decoding stay in process memory until GC
+(documented in ARCHITECTURE). A script that read one cannot `commit` anything derived
+(`errDerivedOnce`); the card shows "Not kept". Only `inputs` are in scope; module `{{name}}` variables
+are P720. Card redesign after review: P715 prompt unchanged, then one row per value still needed, one
+badge "Sends: <names>", no extra headings, hints or warnings. Flow `e2e-user-value-once` and UI spec
+`approvals-api-input-once` share one contract; visual shot `approvals-api-input-once`. Run:
+`dbmcpflow`, `apiflow`, `agentapi`, `dbmcp`, `keptvars`, `llmprompts` pass; 3 UI specs (16 tests) pass;
+`bun run test:claude:db` passes (`TestDbMcpKeptChainThroughClaude` among 12). One full-package
+`dbmcpflow` run under load failed `TestE2EHeldWritesAPI` (`rawBytes` 747 vs 748, then a withhold
+timeout); three isolated reruns and a second full run passed.
+
 ## P720
 
 User: "The api module variables and env handling editing etc is horrible, come with a more intuitive
@@ -357,3 +372,59 @@ step, steps renumbered to 4. `scripts/retry.sh` kept. Grep finds no leftover ref
 `docs/history/` and `docs/v0.3.23/`. `workflow_run` workflows run from the default branch, so the
 removal takes effect only once this chapter's PR merges to `main`; until then the old workflow still
 reruns failed PR runs. Pushing a workflow change needs a token with the `workflow` scope.
+
+## P724
+
+Cause. Release run 44942506459 (tag `v0.3.22`, commit `c7534c9f0`) failed in `build (macOS)`, step
+"Verify packaging", so `publish` was skipped and v0.3.22 has no release. `scripts/verify-packaging.sh`
+S10 runs `grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/` and
+requires exactly one hit, `internal/appupdate/checker.go`'s `indexURL`. After `bun run package` the
+Go binary embeds that constant, so grep also reports `Binary file apps/kira-space/bin/Kira Space
+matches` and the same for `Kira Space.app/Contents/MacOS/Kira Space`: 3 hits, `verify-packaging:
+FAILED`. Local and PR CI runs have no built binary, so the check passed there.
+
+v0.3.21 (run 44840061445, commit `03d33b5ca`). Not the same failure. Its "Verify packaging" passed:
+S10 then required zero hits (`releases/download` only) and the checker used the API, so no source or
+binary carried the string. `build` and `publish` succeeded and v0.3.21 is published. The run reads
+`failure` only because `install smoke (macOS)`, which runs after publish, got HTTP 403 from the GitHub
+API on all three install attempts (rate limit; P707 moved `install.sh` to the release index in
+v0.3.22). P707 (v0.3.22) added `indexURL` and the exactly-one rule, which no pre-release run could
+exercise against a binary.
+
+Fix. Scan source only. One helper in `verify-packaging.sh` greps text files (`grep -I`) with build and
+vendor dirs excluded (`bin`, `dist`, `dist-mobile`, `node_modules`, `bindings`); S10 and S2 (same
+latent shape: scans `apps/` incl. `bin/` and `frontend/dist`) use it. Invariant stays: exactly one
+release-download reference in source, `checker.go`'s `indexURL`. New S18 self-test runs the same scan
+and S10 verdict against a tiny temp fixture holding fake binaries and a `dist` bundle that carry the
+URL, so a missing build can no longer hide the bug. `checks (macOS)` in `pr.yml` gains
+`bun run verify:packaging`, so S18 runs under macOS grep in PR CI before any release.
+
+Verify. No macOS build: `bun run verify:packaging` passes on Linux with S18; a simulated release tree
+(dummy `bin/Kira Space` and `.app` binaries carrying the URL) reproduces the CI failure with the old
+script and passes with the new one; removing `-I` or the `bin` exclusion makes S18 fail. macOS grep is
+proven by `checks (macOS)` on this chapter's PR.
+
+Post-merge. Re-dispatching `release.yml -f tag=v0.3.22` cannot succeed: `build` checks out the tag's
+commit `c7534c9f0`, which carries the old S10. Moving the tag to a fixed `main` commit would make
+v0.3.22 ship v0.3.23's code. v0.3.22's changes ship in v0.3.23, whose release builds with the fix.
+`docs/PACKAGING.md` §7 "Recovery" covers this case ("Real failure: delete the tag ...; the fix ships
+as the next chapter"). The orchestrating session reports it; the user decides whether to delete the
+`v0.3.22` tag (`git push --delete origin v0.3.22`) or leave it unreleased. No re-dispatch unless the
+user asks.
+
+Deliverable. One plan `plans/P724.md`, one Sonnet pass. No UI tests.
+
+Result. Commits on `stream/p724`: `cdfb3275a` fix (helper `source_grep`, `s10_verdict`, S2 and S10 on
+them, S18, header comment), `41b99f034` ci (`bun run verify:packaging` in `checks (macOS)`, comment),
+docs commit (`PACKAGING.md` S2/S10/S18 bullets, §5 list, CI job row). Hooks passed unbypassed.
+
+Verify. `bun run verify:packaging` on Linux: `all checks passed`, S18 silent. Simulated release tree
+(text dummies carrying the URL in `bin/Kira Space` and the `.app` binary): old script prints both S10
+failures and `FAILED`; new script has no S10 failure (only my incomplete dummy `.app` tripped A7
+`Assets.car missing`). Mutation, local only, restored: dropping `--exclude-dir=bin` makes S10 fail on
+the dummies; dropping `--exclude-dir=dist` makes `S10 scan self-test — build output counted:
+...frontend/dist/assets/index.js` fail. Not reproducible on Linux: dropping `-I`. GNU grep 3.11 sends
+`binary file matches` to stderr (the script discards it), so the 3-hit failure appears only with
+macOS grep; binary dummies passed with the old script on Linux and removing `-I` left S18 green. The
+`-I` guard is proven only by `checks (macOS)` on this chapter's PR and v0.3.23's release. Dummies
+and temporary `bun install`/bindings copy removed.

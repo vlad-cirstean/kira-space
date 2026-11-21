@@ -304,7 +304,7 @@ frameworks. On Linux that leaves two doors, and neither was opened here:
 Consequently `scripts/verify-packaging.sh` degrades honestly off macOS: with no bundle it prints one
 "skipped A1/A3/A5/N2" note and one "skipped A4/N3" note and passes on the static checks alone,
 and even with a bundle it would skip A1/A3/A5/N2 for want of `codesign`/`PlistBuddy`. **A green
-`verify:packaging` on Linux proves only the static checks (S1/S2/S5/S6/S7/S8/S10/S11/S13), not that
+`verify:packaging` on Linux proves only the static checks (S1/S2/S5/S6/S7/S8/S10/S11/S13/S18), not that
 any bundle is correct.** The static checks run over committed files, so they mean something even without a bundle. A1/A3/A5/N2
 need the real `.app`.
 
@@ -365,7 +365,7 @@ only through a PR). Only the four aggregates (`ui (Linux)`, `go (Linux)`, `test-
 
 | Job | Runner | What it does |
 |---|---|---|
-| `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages |
+| `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages; `bun run verify:packaging` (S18 runs the source-only scan under macOS grep) |
 | `checks (Linux)` | `ubuntu-latest` | lint, typecheck, frontend builds, `lint:dead`, `verify:packaging` and the bun unit tests |
 | `ui (Linux, shard N/8)` | `ubuntu-latest` | Playwright `ui` project in 8 shards, fail-fast off |
 | `ui (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every shard passed. The required-check name for ui |
@@ -459,7 +459,8 @@ re-asserting the absence of the silent kind:
 
 - **S1** — no `electron-updater`/`update-electron-app` dependency in `package.json`.
 - **S2** — no updater code in `apps/` or `packages/` (there has been no `src/` since P3's
-  restructure and P58f's `src/engine/` deletion).
+  restructure and P58f's `src/engine/` deletion). Source only (P724): text files, with `bin`,
+  `dist`, `dist-mobile`, `node_modules` and `bindings` excluded, same as S10.
 - **S5** — `package.json`'s `package`/`package` scripts still run
   `wails3 task darwin:package:dmg` (P10 moved this from the plain `.app`-only task, so the shipped
   `.dmg` always has something to upload); this check fails loudly if either packaging entry point
@@ -484,12 +485,20 @@ P29 added three more static checks, guarding §2.1/§2.2's own findings against 
   `releases/download` or `releases/latest/download` — rescoped by P119 to include `internal/`
   (`appupdate` now lives there). The one allowed hit is `internal/appupdate/checker.go`'s `indexURL`
   (index metadata, never a binary). `scripts/` is deliberately excluded: `scripts/install.sh` is
-  the one sanctioned downloader, see below.
+  the one sanctioned downloader, see below. The scan reads source only (P724): `grep -I` skips
+  binaries and `bin`, `dist`, `dist-mobile`, `node_modules`, `bindings` are excluded. After
+  `bun run package` the Go binaries in `bin/` embed that `indexURL`; counting them failed v0.3.22's
+  release run, which no local or PR run could show (no binary there). S18 covers it.
 - **S11** (P119) — the curl installer and its Go counterpart agree on their one shared contract:
   `scripts/install.sh` exists and passes `sh -n`; its line-2 contract marker
   (`# kira-install-contract: 2`) matches `internal/appupdate/install.go`'s own constant;
   `raw.githubusercontent.com` appears exactly once across `apps/`, `packages/`, `internal/`
   (`InstallScriptURL`); `install.sh`'s `ASSET` equals `internal/appupdate`'s `macAsset` (P653); `install.sh`'s `INDEX_ASSET` equals `internal/appupdate`'s `releaseIndexAsset` and `release.yml` names it (P707); `shellcheck` runs against the script when it's on `PATH`.
+- **S18** (P724) — self-test of the S10 scan. Builds a tiny `mktemp -d` fixture: `checker.go` with the
+  `indexURL` line, fake binaries under `bin/` and a `.app`, plus `dist`, `dist-mobile`,
+  `node_modules` and `bindings` files, all carrying a release-download URL. The S10 scan and verdict
+  must pass on it, then fail once a `.ts` source file under `apps/` adds a reference. Runs in every
+  `verify:packaging`, including the `checks (macOS)` PR job, so the scan is proven before a release.
 - **S16** (P653, P707) — `scripts/check-install-step.ts` replays `internal/releaseline/testdata/next_step_index.json`
   (the Go stepping table rendered as release indexes) through `install.sh`'s awk `index_next_step`,
   and checks the JXA `apiToIndex` fallback renders the same text as `releaseline.FormatIndex`.

@@ -39,6 +39,10 @@ type keptRun struct {
 	// secretRead taints every value the run stages: it may have copied a secret.
 	secretRead  bool
 	secretForms []string
+	// once are the values the user typed for this request only, read before the store; onceRead is set when a
+	// script read one, so nothing the run derives may be kept.
+	once     map[string]keptvars.Entry
+	onceRead bool
 	// sourceExpiry is the earliest expiry among the secret or bound values read.
 	sourceExpiry time.Time
 	// boundOrigin is the origin of the bound (user or user-derived) values the run read; mixedOrigins is set
@@ -111,7 +115,7 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 			return
 		}
 	}
-	e, ok := k.store.Get(k.scope, name)
+	e, ok := k.lookup(name)
 	if !ok {
 		return
 	}
@@ -125,12 +129,22 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 	k.uses = append(k.uses, u)
 }
 
-// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced):
-// a use made at plan time holds the old entry id, or none for a value that did not exist yet.
-func (k *keptRun) rebind(names []string) {
+// lookup reads a name from the one-time overlay, then the store.
+func (k *keptRun) lookup(name string) (keptvars.Entry, bool) {
+	if e, ok := k.once[name]; ok {
+		return e, true
+	}
+	return k.store.Get(k.scope, name)
+}
+
+// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced) or
+// the overlay got one-time values: a use made at plan time holds the old entry id, or none for a value that
+// did not exist yet.
+func (k *keptRun) rebind(names []string, once map[string]keptvars.Entry) {
 	if k == nil {
 		return
 	}
+	k.once = once
 	for _, name := range names {
 		var sites []agentapi.KeptSite
 		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
@@ -197,7 +211,7 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			return nil, errors.New("this kept variable is not listed in this script: call kept.get with a literal name")
 		}
 		planned := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name })
-		e, ok := k.store.Get(k.scope, name)
+		e, ok := k.lookup(name)
 		if planned < 0 || !ok || e.ID != k.uses[planned].ID {
 			return nil, fmt.Errorf("no kept variable %q (it may have expired, been cleared or been replaced since approval)", name)
 		}
@@ -211,6 +225,7 @@ func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 			k.noteBound(e.Origin, e.ExpiresAt)
 		}
 		k.mu.Lock()
+		k.onceRead = k.onceRead || k.once[name].ID == e.ID && e.ID != ""
 		k.prepareReads = k.prepareReads || stage == stagePrepare
 		k.mu.Unlock()
 		return e.Value, nil
@@ -301,7 +316,7 @@ func (k *keptRun) stagedViews() []HeldKeep {
 	for _, name := range k.order {
 		v := k.staged[name]
 		typ, items, size, _ := keptvars.Describe(v)
-		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretRead}
+		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretRead, Blocked: k.onceRead}
 		if !k.secretRead {
 			h.Preview, h.PreviewTruncated = keptvars.Preview(v, keptvars.PreviewBytes)
 		}
@@ -317,6 +332,9 @@ type keptSummary struct {
 	Items            int    `json:"items"`
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
+
+// errDerivedOnce is the refusal text for a value derived from a one-time user value.
+const errDerivedOnce = "the script read a value the user gave for this request only, so nothing derived from it can be kept"
 
 // errMixedOrigins is the refusal text for values derived from user values bound to different origins.
 const errMixedOrigins = "the script read user values supplied for different origins, so its values cannot be bound to one origin"
@@ -337,6 +355,10 @@ func (k *keptRun) commit(src keptvars.Source) ([]keptSummary, []keptFailure) {
 	var saved []keptSummary
 	var failed []keptFailure
 	for _, name := range k.order {
+		if k.onceRead {
+			failed = append(failed, keptFailure{Name: name, Error: errDerivedOnce})
+			continue
+		}
 		if k.mixedOrigins {
 			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})
 			continue

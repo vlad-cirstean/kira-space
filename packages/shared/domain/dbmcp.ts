@@ -256,6 +256,9 @@ export const apiInputSchema = /*#__PURE__*/ z.object({
   state: z.enum(['needed', 'stored']),
   origin: z.string(),
   keptId: z.string().optional(),
+  // The choice the card starts on (the agent's reuse hint) and what "keep" holds the value for.
+  mode: z.enum(['once', 'keep']).default('once'),
+  keepMinutes: z.number().default(60),
 });
 export type ApiInput = z.infer<typeof apiInputSchema>;
 

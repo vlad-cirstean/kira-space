@@ -21,7 +21,7 @@ func keyArgs(envID, url string) map[string]any {
 }
 
 func inputAnswer(itemID, value string) approvals.AnswerArgs {
-	opts, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": value}})
+	opts, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": value}, "inputModes": map[string]string{"apikey": "keep"}})
 	return approvals.AnswerArgs{IDs: []string{itemID}, Approve: true, Options: map[string]json.RawMessage{itemID: opts}}
 }
 
@@ -136,7 +136,7 @@ func TestUserInputDenied(t *testing.T) {
 
 	pending := callToolAsync(sess, "api_request", keyArgs(envID, "{{base_url}}/echo"))
 	req := f.pending(t)
-	opts, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": typedSecret}})
+	opts, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": typedSecret}, "inputModes": map[string]string{"apikey": "keep"}})
 	if _, err := f.app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{
 		IDs: []string{req.Item.ID}, Approve: false, Options: map[string]json.RawMessage{req.Item.ID: opts},
 	}); err != nil {
