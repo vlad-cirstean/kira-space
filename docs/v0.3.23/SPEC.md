@@ -3,6 +3,8 @@
 Chapter v0.3.23, branch `chapter/v0.3.23`, tag `v0.3.23`. First phase `P716` (highest phase: `P715`,
 in open chapter v0.3.22's `SPEC.md`).
 
+Code review at chapter end: 2 rounds (user request).
+
 Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
 before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
 
