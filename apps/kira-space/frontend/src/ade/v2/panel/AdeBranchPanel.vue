@@ -17,6 +17,7 @@ import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statu
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
@@ -28,7 +29,6 @@ import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
 import { type RebaseAct, rebaseActs } from '../board/rebaseActions';
 import { baseNameOf } from '../board/reviewCode';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { type CardModel, type PlanModel, usePlanModel } from '../plan/usePlanModel';
 import { prStateLabel } from '../pr/prGlyph';
 import { useChangeRequests, useRetrySetup } from '../queries';
@@ -293,7 +293,11 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     ]"
   >
     <template #header>
-      <AdeTaskLine variant="edge" :color="card.review ? 'var(--kira-info)' : card.color" />
+      <ColorLine
+        data-testid="ade-task-line"
+        variant="edge"
+        :color="card.review ? 'var(--kira-info)' : card.color"
+      />
       <DetailHeader
         data
         wrap

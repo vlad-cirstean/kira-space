@@ -7,6 +7,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
@@ -14,7 +15,6 @@ import { computed } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { taskTitle } from '../board/labels';
 import { taskColor } from '../palette';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { useAdeReviewWindowStore } from '../state/adeReviewWindow';
 import type { ReviewWindowTarget } from '../wire';
 import AdeReviewActions from './AdeReviewActions.vue';
@@ -121,7 +121,7 @@ const headHint = computed(() => {
         @click="store.toggleAgentPanel()"
       />
     </div>
-    <AdeTaskLine
+    <ColorLine
       v-if="task"
       variant="under"
       :color="taskColor(task.color)"

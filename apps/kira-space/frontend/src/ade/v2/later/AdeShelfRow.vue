@@ -3,11 +3,11 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { rowIndent, rowMeta, rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import RelativeTime from '@workbench/components/RelativeTime.vue';
 import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
 import AdeTaskKey from '../plan/AdeTaskKey.vue';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
 import AdeTaskTitle from '../plan/AdeTaskTitle.vue';
@@ -57,7 +57,7 @@ const facts = computed(() =>
     <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
-    <AdeTaskLine variant="mark" :color="card.color" />
+    <ColorLine data-testid="ade-task-line" variant="mark" :color="card.color" />
     <span class="flex min-w-0 flex-1 items-center gap-1.5" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
       <AdeTaskKey :card="card" />

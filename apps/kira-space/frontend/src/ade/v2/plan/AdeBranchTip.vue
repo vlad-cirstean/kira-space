@@ -5,11 +5,11 @@ import { Separator } from '@theme/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import VarText from '@theme/components/VarText.vue';
 import { t } from '@theme/i18n';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
 import { tagLabel } from '../board/actions';
-import AdeTaskLine from './AdeTaskLine.vue';
 import type { BranchRowModel } from './usePlanModel';
 import { usePlanModel } from './usePlanModel';
 
@@ -42,7 +42,7 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
     </TooltipTrigger>
     <TooltipContent variant="surface" side="bottom" align="start" data-testid="ade-branch-tip">
       <div class="flex items-center gap-1.5">
-        <AdeTaskLine v-if="color" variant="mark" :color="color" />
+        <ColorLine data-testid="ade-task-line" v-if="color" variant="mark" :color="color" />
         <span class="min-w-0 font-data font-medium wrap-anywhere">{{ row.name }}</span>
       </div>
       <span v-if="row.context" class="block text-kira-sm text-muted-foreground">{{
@@ -68,7 +68,12 @@ const staleClass = (tone: string): string => (tone === 'stale' ? 'text-tone-ambe
         <template v-if="row.base">
           <dt>{{ t('space.common.base.label') }}</dt>
           <dd class="flex items-center gap-1">
-            <AdeTaskLine v-if="row.base.color" variant="mark" :color="row.base.color" />
+            <ColorLine
+              data-testid="ade-task-line"
+              v-if="row.base.color"
+              variant="mark"
+              :color="row.base.color"
+            />
             <VarText :parts="row.base.tip" />
           </dd>
         </template>

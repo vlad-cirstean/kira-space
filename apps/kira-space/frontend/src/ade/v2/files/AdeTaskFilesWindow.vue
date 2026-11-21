@@ -2,12 +2,12 @@
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
 import { paneFrame, windowBody } from '@theme/lib/frames';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { computed } from 'vue';
 import { taskTitle } from '../board/labels';
 import { taskColor } from '../palette';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { useBoard } from '../queries';
 import { useAdeFilesWindowStore } from '../state/adeFilesWindow';
 import AdeTaskFiles from './AdeTaskFiles.vue';
@@ -34,7 +34,7 @@ const title = computed(() => {
           t('common.module.files.label')
         }}</span>
       </div>
-      <AdeTaskLine
+      <ColorLine
         v-if="task"
         variant="under"
         :color="taskColor(task.color)"

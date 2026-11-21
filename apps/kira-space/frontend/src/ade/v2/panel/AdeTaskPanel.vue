@@ -11,6 +11,7 @@ import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { errorText } from '@workbench/bridge/codedError';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
@@ -18,7 +19,6 @@ import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
 import { taskPatch } from '../board/panelFacts';
 import { taskReviewTip } from '../board/reviewCode';
 import AdeDetailsTab from '../details/AdeDetailsTab.vue';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import type { CardModel, PlanModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
 import { useOpenFilesWindow, useUpdateTask } from '../queries';
@@ -153,7 +153,7 @@ const label = computed(() =>
       />
     </template>
     <template #header>
-      <AdeTaskLine variant="edge" :color="card.color" />
+      <ColorLine data-testid="ade-task-line" variant="edge" :color="card.color" />
       <DetailHeader @contextmenu="taskMenu.open">
         <template #leading>
           <Badge v-if="card.parked" variant="default">{{ label }}</Badge>

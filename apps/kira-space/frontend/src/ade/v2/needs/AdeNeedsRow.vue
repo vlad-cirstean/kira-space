@@ -4,11 +4,11 @@ import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { TONE_BADGE } from '@theme/lib/statusTone';
 import { formatRelative } from '@workbench/behaviour/format';
+import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed, ref } from 'vue';
 import type { Tone } from '../board/actions';
 import { type NeedsItem, needsActionLabel, needsKindLabel } from '../board/needsYou';
 import AdeRunLog from '../panel/AdeRunLog.vue';
-import AdeTaskLine from '../plan/AdeTaskLine.vue';
 import { THEME_TONE } from '../tones';
 import { useNeedsAction } from './useNeedsAction';
 
@@ -91,7 +91,7 @@ const ROW_BG_CLASS: Record<Tone, string> = {
           }}</span
         >
         <span class="flex items-center gap-1 truncate text-kira-sm text-subtle">
-          <AdeTaskLine variant="mark" :color="taskColor" />
+          <ColorLine data-testid="ade-task-line" variant="mark" :color="taskColor" />
           {{ taskTitle }}
         </span>
       </div>
