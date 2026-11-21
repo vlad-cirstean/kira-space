@@ -64,7 +64,12 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
           />
         </template>
         <template #after>
-          <StagedKeepList v-if="keep.length" :keep="keep" testid="db-review-keep" />
+          <StagedKeepList
+            v-if="keep.length"
+            :keep="keep"
+            :request-id="requestId"
+            testid="db-review-keep"
+          />
         </template>
         <template #script>
           <JsScriptBlock

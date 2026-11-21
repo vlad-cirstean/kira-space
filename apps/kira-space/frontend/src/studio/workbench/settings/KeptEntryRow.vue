@@ -25,6 +25,13 @@ const expiry = useKeptExpiry(() => props.entry.expiresAt);
       <div class="flex min-w-0 items-baseline gap-1.5">
         <span class="font-data text-kira-md" data-testid="kept-entry-name">{{ entry.name }}</span>
         <span class="shrink-0 text-muted-foreground text-kira-sm">{{ keptTypeLabel(entry) }}</span>
+        <Badge
+          :variant="entry.secret ? 'warn' : 'info'"
+          :data-testid="entry.secret ? 'kept-entry-secret' : 'kept-entry-plain'"
+          >{{
+            t(entry.secret ? 'common.secret.label' : 'studio.kept.kind.plain.label')
+          }}</Badge
+        >
         <span class="shrink-0 text-muted-foreground text-kira-sm">{{ entry.scopeLabel }}</span>
       </div>
       <TooltipIconButton

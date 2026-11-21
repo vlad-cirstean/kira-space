@@ -131,7 +131,13 @@ const transformViewSchema = /*#__PURE__*/ z.object({
   hash: z.string(),
   // Kept variables the script may write (P678), with their calls in the source.
   mayKeep: z
-    .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+    .array(
+      z.object({
+        name: z.string(),
+        secret: z.boolean().default(false),
+        sites: z.array(keptSiteSchema),
+      }),
+    )
     .nullish()
     .transform((v) => v ?? []),
 });

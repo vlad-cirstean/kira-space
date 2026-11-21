@@ -15588,6 +15588,11 @@
       "keptAt": {
         "label": "Kept"
       },
+      "kind": {
+        "plain": {
+          "label": "Plain"
+        }
+      },
       "manage": {
         "label": "Manage kept variables"
       },
@@ -15606,7 +15611,7 @@
         }
       },
       "reveal": {
-        "body": "Show a value you supplied to an agent request."
+        "body": "Show a secret value kept for an agent request."
       },
       "risk": {
         "expiring": {
@@ -15614,6 +15619,9 @@
         },
         "keeps": {
           "status": "May keep: {names}"
+        },
+        "secretName": {
+          "label": "{name} (secret)"
         },
         "source": {
           "label": "{name}, kept by {request}"

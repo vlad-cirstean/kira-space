@@ -21,7 +21,7 @@ const expiry = useKeptExpiry(() => props.use.expiresAt);
 <template>
   <KeyValueList columns="fixed" density="compact">
     <dt>{{ t('common.field.name.label') }}</dt>
-    <dd><KeptNameMark :name="use.name" :type="keptTypeLabel(use)" /></dd>
+    <dd><KeptNameMark :name="use.name" :type="keptTypeLabel(use)" :secret="use.secret" /></dd>
     <dt>{{ t('common.field.value.label') }}</dt>
     <dd><KeptValueView :entry="use" /></dd>
     <dt>{{ t('studio.kept.source.label') }}</dt>
