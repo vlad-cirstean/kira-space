@@ -39,10 +39,16 @@ function withVars(text: string, from: number, kind: UrlTokenKind): UrlToken[] {
     .map((s) => ({ kind: s.isReference ? 'var' : kind, text: s.text, from: from + s.from }));
 }
 
-// Last ':' of the authority that is not inside a reference.
+// Last ':' of the authority after any userinfo that is not inside a reference.
 function portAt(authority: string): number {
   const at = authority.lastIndexOf(':');
-  if (at < 0 || authority.indexOf('}}', at) >= 0 || authority.indexOf(']', at) >= 0) return -1;
+  if (
+    at < 0 ||
+    at < authority.lastIndexOf('@') ||
+    authority.indexOf('}}', at) >= 0 ||
+    authority.indexOf(']', at) >= 0
+  )
+    return -1;
   return at;
 }
 

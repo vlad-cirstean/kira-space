@@ -13,9 +13,9 @@ export type ConfirmDiscard = (prompt: DiscardPrompt) => Promise<boolean>;
 
 export const CONFIRM_DISCARD_KEY: InjectionKey<ConfirmDiscard> = Symbol('confirmDiscard');
 
-/** Provided by `DialogContent` to `DialogHeader`: close through the dirty guard. */
 /** Provided by `DialogContent`: whether it is a prompt (the X then shows the prompt hide chord). */
 export const DIALOG_PROMPT_KEY: InjectionKey<boolean> = Symbol('dialogPrompt');
 
+/** Provided by `DialogContent` to `DialogHeader`: close through the dirty guard. */
 export const DIALOG_REQUEST_CLOSE_KEY: InjectionKey<() => Promise<void>> =
   Symbol('dialogRequestClose');
