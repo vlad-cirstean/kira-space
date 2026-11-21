@@ -153,7 +153,7 @@ const ruleClass = computed(() => {
         v-for="h in history"
         :key="h.key"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-2 px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-1.5 border border-l-3 border-transparent px-2 font-normal data-[selected]:bg-select"
         :data-selected="ui.selectedTaskId === h.key || undefined"
         :data-task-id="h.key"
         data-testid="ade-history-row"
@@ -162,12 +162,13 @@ const ruleClass = computed(() => {
         <CodiconIcon
           :name="h.merged ? 'check' : 'archive'"
           :size="13"
-          class="shrink-0 text-muted-foreground"
+          class="mx-[5.5px] shrink-0 text-muted-foreground"
         />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ h.title }}</span>
-        <span class="shrink-0 whitespace-nowrap text-kira-sm text-muted-foreground">{{
+        <span class="min-w-20 shrink-0 whitespace-nowrap text-kira-sm text-muted-foreground">{{
           h.meta
         }}</span>
+        <span class="w-control shrink-0" aria-hidden="true" />
       </Button>
       <div v-if="overdue" class="flex items-center gap-2 text-kira-sm text-tone-amber">
         <span>{{ overdueNote }}</span>
@@ -217,16 +218,17 @@ const ruleClass = computed(() => {
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-2 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-1.5 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
         :style="{ borderLeftColor: s.color }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
         @click="emit('select', s.taskId)"
       >
-        <CodiconIcon name="indent" :size="13" class="shrink-0 text-subtle" />
-        <span class="shrink-0 whitespace-nowrap text-kira-sm text-subtle">{{ s.note }}</span>
-        <span class="min-w-0 truncate font-medium text-fg">{{ s.title }}</span>
+        <CodiconIcon name="indent" :size="13" class="mx-[5.5px] shrink-0 text-subtle" />
+        <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ s.title }}</span>
+        <span class="w-20 shrink-0 truncate text-left text-kira-sm text-subtle">{{ s.note }}</span>
+        <span class="w-control shrink-0" aria-hidden="true" />
       </Button>
     </div>
   </div>

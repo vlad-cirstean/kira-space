@@ -412,7 +412,7 @@ useKeptScroll('ade:plan', scrollEl, { ready: () => model.value !== null });
             @current="scrollToDay(0)"
           />
         </div>
-        <div class="px-3 pb-4 pt-3">
+        <div class="max-w-4xl px-3 pb-4 pt-3">
           <div v-if="planError" class="mb-2">
             <Alert variant="error" data-testid="ade-plan-error">
               <AlertDescription>{{ planError }}</AlertDescription>
