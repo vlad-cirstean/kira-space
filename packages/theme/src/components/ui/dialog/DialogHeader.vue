@@ -27,8 +27,25 @@ const requestClose = inject(DIALOG_REQUEST_CLOSE_KEY, null);
 // Esc closes a dialog, Shift+Esc a prompt; the X runs the same close.
 const isPrompt = inject(DIALOG_PROMPT_KEY, false);
 // Dialog focus lands on the X; a focus-opened tooltip would take the first Esc meant for the dialog.
+// Only that programmatic focus is swallowed: Tab focus (a Tab keydown just before) shows the chord.
 const closeEl = useTemplateRef<HTMLElement>('closeEl');
-useEventListener(closeEl, 'focus', (e) => e.stopPropagation(), { capture: true });
+let tabbing = false;
+useEventListener(
+  document,
+  'keydown',
+  (e) => {
+    tabbing = e.key === 'Tab';
+  },
+  { capture: true },
+);
+useEventListener(
+  closeEl,
+  'focus',
+  (e) => {
+    if (!tabbing) e.stopPropagation();
+  },
+  { capture: true },
+);
 </script>
 
 <template>

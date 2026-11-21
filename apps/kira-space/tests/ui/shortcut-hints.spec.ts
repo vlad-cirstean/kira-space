@@ -349,6 +349,21 @@ for (const platform of PLATFORMS) {
       },
     );
 
+    studioTest('dialog X: open focus shows no chord, Tab focus does', async ({ relaunch }) => {
+      const { window: page } = await relaunch({ control: DB_CONTROL, ...launch });
+      await page.click('[data-testid="add-connection"]');
+      const dialog = page.locator('[data-testid="new-connection-dialog"]');
+      const close = dialog.locator('[data-dialog-dismiss]');
+      await expect(close).toBeFocused();
+      await expect(page.locator(TIP)).toHaveCount(0);
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      await expect(close).toBeFocused();
+      await expect(page.locator(TIP).locator(chip('form.cancel')).first()).toHaveText(
+        expected('form.cancel'),
+      );
+    });
+
     // Chips sit in one right-aligned column at the menu item's inner right edge.
     async function expectRightAligned(page: Page): Promise<void> {
       const menu = page.locator('[data-testid="context-menu"]');
