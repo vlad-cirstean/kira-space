@@ -103,3 +103,14 @@ Baselines re-recorded: `plan-branches-stacked`, `-review`, `plan-day-bars`, `pla
 `consistency` + `panel-resize` ui run (845) green after fixes; full `visual` run green after
 re-record. Shots (uncommitted, gitignored): `screenshots/p709-iter3/{before,after}/`, before =
 `22a7d1cab`.
+
+Iteration 3 follow-up: (1) No dashed rendering for parked tasks anywhere: `AdeTaskLine` has no
+parked variant, the card no longer uses `border-dashed` (iteration 2's dashed card edge is gone
+too), U105 no longer allows the gradient in `AdeTaskLine`, the parked-dashed specs are replaced by
+"every card edge is solid" plus a `notMerging` tag check. A parked card says so with the existing
+`notMerging` tag glyph (circle-slash, tooltip "Not merging") on line 2, and its panel shows the
+"Not merging" badge; no new mark was needed. (2) The review and Files title-bar line moved from
+above to directly under the bar (`AdeTaskLine variant="under"`, overlay on the bar's bottom 3px, bar
+height unchanged). The task panel and branch panel heads keep their top edge: it is the pane's top
+edge under the app bar (a card-style top edge), with the title row below it. Specs and the four
+`files-*` baselines updated; after shots `screenshots/p709-iter3/after2/`.
