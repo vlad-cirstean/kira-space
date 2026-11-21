@@ -251,6 +251,7 @@ type streamMsg struct {
 	Subtype      string  `json:"subtype"`
 	SessionID    string  `json:"session_id"`
 	IsError      bool    `json:"is_error"`
+	Result       string  `json:"result"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
 	Message      struct {
 		Content json.RawMessage `json:"content"`

@@ -245,5 +245,14 @@
       "enabled": true,
       "review": "inherit"
     }
+  },
+  "args:KubernetesService.SetMcp:review": {
+    "clusterId": "<masked>",
+    "mcp": {
+      "approval": "allow",
+      "description": "dev cluster, safe to read",
+      "enabled": true,
+      "review": "review"
+    }
   }
 }

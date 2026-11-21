@@ -29,10 +29,10 @@ type kubeFixture struct {
 	sess *mcp.ClientSession
 }
 
-func newKubeFixture(t *testing.T) *kubeFixture {
+func newKubeFixture(t *testing.T, opts ...flowharness.Opt) *kubeFixture {
 	t.Helper()
 	fake := flowharness.NewKubeFake(t)
-	f := newFixture(t)
+	f := newFixture(t, opts...)
 	k := &kubeFixture{fixture: f, fake: fake, cfg: filepath.Join(f.app.Home, "kubeconfig"), ids: map[string]string{}}
 	fake.WriteKubeconfig(t, k.cfg, flowharness.KubeconfigOpts{BinDir: f.app.BinDir})
 	t.Setenv("KUBECONFIG", k.cfg)
@@ -189,6 +189,17 @@ func TestKubeMcp(t *testing.T) {
 			if c.Mcp != want {
 				t.Fatalf("%s mcp after restart = %+v, want %+v", c.Context, c.Mcp, want)
 			}
+		}
+		// The dialog's review choice rides the same call.
+		reviewed := kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
+			Description: "dev cluster, safe to read", Enabled: true, Approval: "allow", Review: "review",
+		}}
+		if got, err := k.app.W.Kubernetes.SetMcp(reviewed); err != nil || got != reviewed.Mcp {
+			t.Fatalf("SetMcp review = %+v (%v), want the stored settings", got, err)
+		}
+		k.contract(t, "args:KubernetesService.SetMcp:review", reviewed)
+		if _, err := k.app.W.Kubernetes.SetMcp(args); err != nil {
+			t.Fatal(err)
 		}
 		k.sess.Close()
 		if k.sess, err = k.connect(t, k.token(t)); err != nil {

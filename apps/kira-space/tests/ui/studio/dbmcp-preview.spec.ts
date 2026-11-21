@@ -312,6 +312,29 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
   await expect(page.locator('[data-testid="settings-db-mcp-preview"]')).toBeChecked();
 });
 
+test('contract: the Kubernetes review switch sends the settings patch', async ({ relaunch }) => {
+  const args = contract<unknown>('kube-review', 'args:SettingsService.Set#on');
+  const { window: page, control } = await relaunch({
+    control: [
+      {
+        channel: IPC.settingsSet,
+        response: {
+          ...defaultSettings,
+          dbMcp: { ...defaultSettings.dbMcp, kubeReviewResponses: true },
+        },
+      },
+    ],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Studio MCP"]');
+  await expect(page.locator('[data-testid="settings-kube-mcp-preview"]')).not.toBeChecked();
+  await page.click('[data-testid="settings-kube-mcp-preview"]');
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual(args);
+  await expect(page.locator('[data-testid="settings-kube-mcp-preview"]')).toBeChecked();
+});
+
 test('contract: the statement in Details is syntax highlighted', async ({ relaunch }) => {
   const item = first();
   const { window: page } = await relaunch({ control: mocks(item.id) });
