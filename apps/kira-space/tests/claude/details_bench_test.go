@@ -88,6 +88,10 @@ var benchArmSetups = map[string]func(*testing.T, benchBaseline) func(*testing.T,
 	"R": benchSetupR,
 }
 
+// benchDraftPath is the stage's draft, relative to the task folder: the path arm R's prompt names
+// (as Kira does on a continuing route) and the stub's refusal repeats.
+const benchDraftPath = "handovers/draft-implement.md"
+
 // benchSpaceR backs arm R's server: step.finish reads the stage's draft in the task folder as
 // the board does (the ade package is not importable from this module); branch.request answers once the
 // branch's setup is done, as the board does after the user approves.
@@ -104,7 +108,7 @@ func (s *benchSpaceR) body() string {
 func (s *benchSpaceR) SubmitForFinish(_ context.Context, _ agentmcp.SpaceCall, _ string, ok bool) (agentmcp.SubmitFinish, error) {
 	body := s.body()
 	if body == "" && ok {
-		return agentmcp.SubmitFinish{Refuse: "write handovers/draft-implement.md, then call state step.finish"}, nil
+		return agentmcp.SubmitFinish{Refuse: "write " + benchDraftPath + ", then call state step.finish"}, nil
 	}
 	return agentmcp.SubmitFinish{Summary: body}, nil
 }
@@ -169,7 +173,7 @@ func benchSetupR(*testing.T, benchBaseline) func(*testing.T, *spikeRun, spikeFlo
 		if fl.id == "F5" { // Kira rewrites state.yaml when setup ends
 			time.AfterFunc(time.Until(r.ready), func() { _ = os.WriteFile(statePath, []byte(stateYAML(true)), 0o644) })
 		}
-		space := &benchSpaceR{spikeSpace: r.space, draft: filepath.Join(r.taskDir, "handovers", "draft-implement.md")}
+		space := &benchSpaceR{spikeSpace: r.space, draft: filepath.Join(r.taskDir, filepath.FromSlash(benchDraftPath))}
 		if fl.id == "F1b" { // the task already holds the handover draft to revise
 			writeFile(t, space.draft, r.lib.latest().body)
 		}
@@ -811,6 +815,12 @@ func TestDetailsBenchArmRServes(t *testing.T) {
 				t.Fatalf("%s %s: error %s", flow, tool, raw)
 			}
 			return string(raw)
+		}
+		if !strings.Contains(r.folderLine(), benchDraftPath) {
+			t.Fatalf("%s: arm R prompt does not name %s", flow, benchDraftPath)
+		}
+		if out := call("state", map[string]any{"action": "step.finish", "args": map[string]any{"status": "done"}}); !strings.Contains(out, benchDraftPath) || len(r.finishes) != 0 {
+			t.Fatalf("%s: draft-less ok finish = %s, finishes %v, want a refusal naming %s", flow, out, r.finishes, benchDraftPath)
 		}
 		switch flow {
 		case "F5":

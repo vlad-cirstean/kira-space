@@ -123,6 +123,9 @@ func (r *spikeRun) reasonClause(reason string) string {
 func (r *spikeRun) folderLine() string {
 	if r.arm == "R" { // the files fragment Kira appends to a step prompt
 		v := llmprompts.FilesVars{Folder: r.taskDir}
+		if r.flow != "F2" && r.flow != "F3" && r.flow != "F3b" { // fixture task sits mid-route, so Kira names the draft; proof flows run a real board
+			v.Draft = benchDraftPath
+		}
 		if p, ok := providers.New().Get("claude"); ok {
 			if l, ok := p.(harness.ToolLoader); ok {
 				tools := []harness.MCPTool{agentmcp.State}
