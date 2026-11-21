@@ -458,9 +458,9 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 }) => {
   const { window: page } = await openPlan(relaunch);
   const marked = page.locator('[data-testid="ade-card"][aria-current="true"]');
-  const focusColor = await page.evaluate(() => {
+  const selectColor = await page.evaluate(() => {
     const span = document.createElement('span');
-    span.style.color = 'var(--kira-focus)';
+    span.style.color = 'var(--kira-select-edge)';
     document.body.appendChild(span);
     const color = getComputedStyle(span).color;
     span.remove();
@@ -471,7 +471,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   await expect(card(page, 'T_search')).toHaveAttribute('aria-current', 'true');
   await expect(marked).toHaveCount(1);
   expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(
-    focusColor,
+    selectColor,
   );
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
@@ -513,6 +513,14 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     span.remove();
     return color;
   });
+  const selectColor = await page.evaluate(() => {
+    const span = document.createElement('span');
+    span.style.color = 'var(--kira-select-edge)';
+    document.body.appendChild(span);
+    const color = getComputedStyle(span).color;
+    span.remove();
+    return color;
+  });
   const task = page.locator('[data-testid="ade-task"]').first();
   const cardEl = task.locator('[data-testid="ade-card"]');
   const head = task.locator('[data-testid="ade-card-head"]');
@@ -548,7 +556,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     await page.mouse.up();
     await expectQuiet();
   }
-  expect(await cardEl.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(focusColor);
+  expect(await cardEl.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(selectColor);
 
   await page.keyboard.press('Tab');
   await head.focus();
