@@ -19,6 +19,7 @@ jobs:
   # Only the work that genuinely needs macOS: cgo-aware go vet/build (catches darwin build-tag
   # breaks) and the darwin&&cgo-only test packages (secrets, metrics, localauth, imageclip, datagrip,
   # and the file-watch seam: fswatch, configfs, gitclient, the ade folder watch, the adeflow task watch).
+  # Also `verify:packaging` (P724): its S18 self-test runs the source-only scan under macOS grep.
   checks:
     name: checks (macOS)
     runs-on: macos-26
@@ -31,6 +32,7 @@ jobs:
           go-cache: macos
       - name: Build frontend bundle (main.go's `//go:embed all:frontend/dist` needs this directory to exist before Go can compile the root package)
         run: bun run build
+      - run: bun run verify:packaging
       - name: Cache golangci-lint binary (keyed on the install script, which pins the version, and go.mod, which pins the toolchain it's built against)
         uses: actions/cache@v6
         with:
