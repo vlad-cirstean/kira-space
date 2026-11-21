@@ -95,7 +95,14 @@ test('each branch row has one tag; kinds map to glyphs and urgent ones are solid
   await page.locator(t('ade-load-all')).click();
   const rows = page.locator(t('ade-branch-row'));
   const n = await rows.count();
-  for (let i = 0; i < n; i++) await expect(rows.nth(i).locator(t('ade-tag'))).toHaveCount(1);
+  for (let i = 0; i < n; i++) {
+    // The PR glyph of a merged change request already says merged: its row's tag slot is empty.
+    const prMerged = await rows
+      .nth(i)
+      .locator(`${t('ade-branch-pr')}[data-pr-state="merged"]`)
+      .count();
+    await expect(rows.nth(i).locator(t('ade-tag'))).toHaveCount(prMerged ? 0 : 1);
+  }
   const tags = await page.locator(`${t('ade-branch-row')} ${t('ade-tag')}`).evaluateAll((els) =>
     els.map((e) => ({
       kind: e.getAttribute('data-kind') ?? '',

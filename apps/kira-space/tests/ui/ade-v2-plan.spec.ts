@@ -83,7 +83,13 @@ test('weekend bands carry the hatched pattern; workdays do not', async ({ relaun
 });
 
 test('branch status tags keep their tones', async ({ relaunch }) => {
-  const { window: page } = await openPlan(relaunch);
+  // No change requests: a merged PR's glyph would replace the merged tag.
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskChangeRequests,
+      response: { ...adeFixture<object>('change-requests'), branches: {} },
+    },
+  ]);
   await page.locator('[data-testid="ade-load-all"]').click();
   const tags = await page
     .locator('[data-testid="ade-branch-row"] [data-testid="ade-tag"]')

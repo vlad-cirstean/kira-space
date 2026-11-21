@@ -29,6 +29,7 @@ import {
   rowIndent,
   rowMeta,
 } from '../panel/adeRow';
+import { useChangeRequests } from '../queries';
 import { useReviewCode } from '../review/useReviewCode';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import { useAdeDialogsStore } from '../state/adeDialogs';
@@ -260,6 +261,10 @@ const tagProps = computed(() => ({
   tipParts: props.row.tag.tipParts,
   tone: props.row.tag.tone,
 }));
+// The PR glyph already shows a merged change request, so the tag slot stays empty then.
+const crs = useChangeRequests();
+const prMerged = computed(() => crs.data.value?.branches[props.row.id]?.state === 'merged');
+const tagRedundant = computed(() => props.row.tag.kind === 'merged' && prMerged.value);
 const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'));
 </script>
 
@@ -570,7 +575,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
           <slot />
         </div>
         <span :class="SLOT"><AdeBranchPr :row="row" /></span>
-        <span :class="SLOT"><AdeTagIcon v-bind="tagProps" /></span>
+        <span :class="SLOT"><AdeTagIcon v-if="!tagRedundant" v-bind="tagProps" /></span>
         <AdeBranchTip v-if="twoLine" :row="row" :color="color">
           <div
             class="col-start-2 col-end-[-1] flex h-4.5 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap"
