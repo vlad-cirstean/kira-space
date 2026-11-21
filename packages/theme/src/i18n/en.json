@@ -9636,9 +9636,8 @@
             "label": "Assigned {assigned}, worktree has {checkedOut}"
           }
         },
-        "empty": {
-          "emptyHint": "Select a task to see its details."
-        },
+        "empty": "No tasks yet",
+        "emptyHint": "Type one in the capture box above, or use the plus button.",
         "files": {
           "tooltip": "Open files in a window"
         },

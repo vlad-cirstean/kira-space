@@ -48,11 +48,13 @@ const row = computed(() => card.value?.rows.find((r) => r.id === ui.selectedBran
     </template>
     <AdeArchivedPanel v-else-if="archivedId" :task-id="archivedId" />
     <EmptyState
-      v-else
+      v-else-if="model"
       fill
       icon="tasklist"
-      :title="t('space.ade.panel.empty.emptyHint')"
+      :title="t('space.ade.panel.empty')"
+      :description="t('space.ade.panel.emptyHint')"
       data-testid="ade-panel-empty"
     />
+    <EmptyState v-else fill loading :title="t('space.ade.plan.view.loading.loading')" />
   </AdePanelPane>
 </template>
