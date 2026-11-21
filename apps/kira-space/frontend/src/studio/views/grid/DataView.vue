@@ -14,8 +14,9 @@ import { errorText } from '@workbench/bridge/codedError';
 import ViewHead from '@workbench/components/ViewHead.vue';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
+import { useShortcut } from '@workbench/shortcuts/useShortcut';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
 import { confirmOverwrite } from '../../state/confirmOverwrite';
 import { useConnectionsStore } from '../../state/connections';
@@ -177,7 +178,7 @@ function onStop(): void {
   gridViewStore.stop(props.tab.id);
 }
 
-// P15 D1/D11: the palette's own gate, since the palette entry has no disabled-button affordance
+// P15 D1/D11: the shortcut's own gate, since it has no disabled-button affordance
 // to lean on — shares canGenerateDataFor with DataToolbar.vue's own button (P12 round 1 F16) so
 // the two can't drift apart the way this file's own predicate once did.
 function onGenerateData(): void {
@@ -191,6 +192,17 @@ function onGenerateData(): void {
     return;
   fakeDataStore.openGenerateDataDialog(props.tab.id);
 }
+
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
+useShortcut(
+  rootEl,
+  ['data.generate', 'data.filterColumns'],
+  (id) => {
+    if (id === 'data.generate') onGenerateData();
+    else filterToolbarRef.value?.focusColumnFilter();
+  },
+  { capture: true },
+);
 
 let unregisterCommands: Array<() => void> = [];
 
@@ -208,8 +220,6 @@ onMounted(() => {
     // button had) — the keyboard-shortcut/command-palette path needs the
     // same reconnect-or-refresh semantics as the visible button, not a second, unguarded one.
     registerCommand('view.refresh', () => onRefresh()),
-    registerCommand('data.generate', onGenerateData),
-    registerCommand('data.filterColumns', () => filterToolbarRef.value?.focusColumnFilter()),
   ];
 });
 
@@ -237,7 +247,7 @@ function onCloseSearch(): void {
 </script>
 
 <template>
-  <div class="h-full flex flex-col min-h-0">
+  <div ref="rootEl" class="h-full flex flex-col min-h-0">
     <ViewHead
       testid="view-head"
       dot-testid="conn-dot"

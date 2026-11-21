@@ -3,7 +3,6 @@ import { DATA_OP } from '@shared/protocol/dataOps';
 import type { ControlSnapshot, PortSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
-import { emitWailsEvent } from '../support/mockRuntime';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { cellText, headerCell, headerNames } from './support/grid';
@@ -162,11 +161,10 @@ test('contract: column filter narrows grid columns, display-only', async ({
   // at most the remount re-read after the tab switch, never one per keystroke
   expect(wideReads.length).toBeLessThanOrEqual(wideReadsBefore + 1);
 
-  // 8. palette command focuses the field
-  await emitWailsEvent(page, IPC.commandPalette, null);
-  await page
-    .locator('[data-testid="command-palette-item"][data-command-id="data.filterColumns"]')
-    .click();
+  // 8. the ⇧⌘F chord focuses the field
+  await page.locator('[data-testid="grid-cell"]').first().click();
+  await expect(filter).not.toBeFocused();
+  await page.keyboard.press('Meta+Shift+F');
   await expect(filter).toBeFocused();
 
   // 9. a search match in a hidden column clears the filter and reveals the cell

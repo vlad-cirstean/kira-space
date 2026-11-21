@@ -1,5 +1,6 @@
 import { t } from '@theme/i18n';
 import { type RevealRequest, requestReveal } from '../views/repo/reveal';
+import { useCodeReposStore } from './coderepos';
 import {
   asRepoDiffTab,
   asRepoFileTab,
@@ -319,6 +320,17 @@ export function openRepoTerminalTab(
 ): OpenTabResult {
   useWorkspaceStore().openRepoWorkspace(codeRepoId);
   return openTerminalTab({ workspaceId: repoWorkspaceKey(codeRepoId), cwd, codeRepoId, launch });
+}
+
+// The tab-strip "+" and the New shortcut: a terminal at the active repository's own root, nothing in
+// General. Not the pinned repo-graph tab's `path` (that holds the workspace key, not a filesystem
+// path); the repo's real root lives on its codeRepoRecord.
+export function openActiveRepoTerminal(): void {
+  const repoId = useWorkspaceStore().active;
+  if (repoId === GENERAL_WORKSPACE) return;
+  const record = useCodeReposStore().records.find((r) => r.id === repoId);
+  if (!record) return;
+  openRepoTerminalTab(repoId, record.root);
 }
 
 // Creates repoId's own pinned graph tab if it has none, and activates it only when the

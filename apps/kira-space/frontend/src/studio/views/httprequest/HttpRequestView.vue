@@ -279,15 +279,22 @@ const requestPane = useLiveSize(
 
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 useShortcut(rootEl, ['form.save'], onSave);
+// Capture: the body editor (Monaco) must not claim these first.
+useShortcut(
+  rootEl,
+  ['api.copyAsCurl', 'api.editRaw'],
+  (id) => {
+    if (id === 'api.copyAsCurl') void onCopyAsCurl();
+    else onEditRaw();
+  },
+  { capture: true },
+);
 
 let unregisterCommands: Array<() => void> = [];
 onMounted(() => {
   unregisterCommands = [
     registerCommand('view.run', onSend),
     registerCommand('view.refresh', onSend),
-    registerCommand('api.save', onSave),
-    registerCommand('api.copyAsCurl', onCopyAsCurl),
-    registerCommand('api.editRaw', onEditRaw),
   ];
 });
 onUnmounted(() => {

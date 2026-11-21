@@ -8,7 +8,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Done |
 | P709 | Task list: aligned rows, calmer design | Done |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Done |
-| P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
+| P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Todo |
 
@@ -205,6 +205,32 @@ and similar) share one shortcut whose effect follows the focused or selected mod
 lists each action, its module mapping and conflicts with existing bindings. The palette itself
 stays, with only what has no other entry point. Tests: UI spec per new shortcut (same scenario as
 the click path), a guard for shortcut conflicts, flow test where the action has a backend half.
+
+Result: palette 27 to 3 commands (`api.variables`, `api.dynamicValues`, `api.importCurl`), listed
+in main-window API mode only; every other mode shows the empty copy (`CommandPalette.vue` now
+renders it with no search, `CommandEmpty` needs one). 24 removed: 14 already had a chord, 10 gain
+one. Registry: 9 new ids (`app.newAlternate` ⌥⌘N, `app.import` ⌘O, `app.checkForUpdates` ⇧⌘U,
+`api.environments` ⌥⌘E global; `api.copyAsCurl` ⇧⌘C, `api.editRaw` ⇧⌘E, `view.explain` ⇧⌘X,
+`data.generate` ⇧⌘I, `data.filterColumns` ⇧⌘F view), `app.newConnection` renamed `app.new`.
+New, New Alternate, Import and Environments are Go menu accelerators plus 4 channels; module
+dispatch in `shortcuts/moduleActions.ts` (`MODULE_ACTIONS`). Automations goes through
+`useNewScriptRequestStore` (field `requested`, not `pending`: lint U51). Guard in
+`shortcutsConflicts.spec.ts`: adds `accel.go`/TS parity and reserved-chord checks. Go
+`TestBuildTemplateGlobalChordItems` replaces the Review Code test. `module-actions.spec.ts`: 11
+cases. Chord specs appended to the click specs; palette specs rewritten. Dead i18n keys deleted.
+Backend flow coverage unchanged: `apiflow` `TestPostmanImportSendExport`, `appflow`
+`TestDataGripScan`, `TestUpdateCheckFailsClosed`, `httpflow` `TestCurlReplayMatchesSend`.
+Deviations: UI specs press `Meta+Shift+<key>` (test UA is Mac; `ControlOrMeta` resolves by host
+OS). View chords act only with focus inside the view, so the specs click a grid cell or the URL
+field first. Copy-as-curl chord is not run with focus in the body editor. Tests run: Go
+`internal/shell`, `appshell`, theme i18n; `bun test` shortcuts and automations; typecheck and lint
+via the hook on every commit; UI: module-actions, consistency, panel-find, http-curl, http-raw,
+console-explain, fake-data, data-view-column-filter, kubernetes-tabs, copy-coverage, copy-wording,
+dialog-surface, connections, automations-scripts, all green.
+Only a real macOS build proves: ⌘N, ⌥⌘N, ⌘O, ⇧⌘U, ⌥⌘E fire from the menu with focus in Monaco, a
+grid, a terminal and a dialog input; ⌥⌘N works despite Option composing; the menu shows the new
+items and accelerators; the view chords work in WKWebView with Monaco focused. Manual checklist
+for the user. Open questions answered: palette kept as is, no rebind UI (no user rebinding exists).
 
 ## P712
 

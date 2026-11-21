@@ -287,6 +287,10 @@ const spaceControl = {
   onCommandPalette: (cb: () => void): (() => void) => on(CHANNEL.commandPalette, cb),
   onViewFind: (cb: () => void): (() => void) => on(CHANNEL.viewFind, cb),
   onReviewCode: (cb: () => void): (() => void) => on(CHANNEL.reviewCode, cb),
+  onNew: (cb: () => void): (() => void) => on(CHANNEL.new, cb),
+  onNewAlternate: (cb: () => void): (() => void) => on(CHANNEL.newAlternate, cb),
+  onImport: (cb: () => void): (() => void) => on(CHANNEL.import, cb),
+  onApiEnvironments: (cb: () => void): (() => void) => on(CHANNEL.apiEnvironments, cb),
 
   gitHostOpenChangeRequestUrl: (url: string): Promise<void> =>
     unwrap(GitHostService.OpenChangeRequestURL({ url })),

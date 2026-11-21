@@ -23,9 +23,10 @@ import SortableList from '@workbench/components/SortableList.vue';
 import { formatShortcut } from '@workbench/shortcuts/keys';
 import { useConfirmDialogStore } from '@workbench/state/confirmDialog';
 import { type MenuItem, useContextMenuStore } from '@workbench/state/contextMenu';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { useTaskAction } from '../behaviour/asyncAction';
 import { useAutomationsModule } from './module';
+import { useNewScriptRequestStore } from './newScriptRequest';
 import { groupMenu, newScriptItems, type ScriptMenuActions, scriptMenu } from './panelMenus';
 import RunFileDialog from './RunFileDialog.vue';
 import RunsRestoreBanner from './restore/RunsRestoreBanner.vue';
@@ -218,6 +219,18 @@ async function createScript(kind: ScriptKind, collection = ''): Promise<void> {
     fileDialog.value = runFileName(created.id);
   });
 }
+
+// A New / New Alternate shortcut lands here: take the request whether this panel was mounted or
+// just mounted for it.
+const newScriptRequest = useNewScriptRequestStore();
+watch(
+  () => newScriptRequest.requested,
+  () => {
+    const kind = newScriptRequest.take();
+    if (kind) void createScript(kind);
+  },
+  { immediate: true },
+);
 
 interface NavItem {
   key: string;

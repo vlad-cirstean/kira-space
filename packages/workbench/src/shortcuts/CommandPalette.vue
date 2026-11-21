@@ -52,7 +52,16 @@ function onOpenChange(open: boolean): void {
       @keydown="wrapSelectionOnType"
     />
     <CommandList class="max-h-72">
-      <CommandEmpty class="text-subtle" data-testid="command-palette-empty">{{
+      <!-- CommandEmpty shows only for a search with no match; an app with no command at all (the
+           palette lists only what has no other entry point) needs the copy without a search. -->
+      <p
+        v-if="paletteStore.commands.length === 0"
+        class="py-4 text-center text-kira-md text-subtle"
+        data-testid="command-palette-empty"
+      >
+        {{ emptyLabel }}
+      </p>
+      <CommandEmpty v-else class="text-subtle" data-testid="command-palette-empty">{{
         emptyLabel
       }}</CommandEmpty>
       <CommandItem
