@@ -328,6 +328,10 @@ func cutLines(s string, max int) (string, bool) {
 // addKubeTools registers the five read-only kube tools next to the database tools.
 func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
 	desc := func(e llmprompts.Prompt[llmprompts.NoVars]) string { return e.Text(src, llmprompts.NoVars{}) }
+	// The three tools that return cluster data carry the review notice.
+	reviewed := func(e llmprompts.Prompt[llmprompts.NoVars]) string {
+		return desc(e) + " " + desc(llmprompts.DbmcpToolKubeReview)
+	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "kube_list_clusters", Description: desc(llmprompts.DbmcpToolKubeListClusters),
 	}, withPanicRecovery(s, "kube_list_clusters", s.kubeListClusters))
@@ -336,16 +340,16 @@ func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeClusterArgs](src, llmprompts.DbmcpToolKubeDiscover.ID(), nil), "clusterId"),
 	}, withPanicRecovery(s, "kube_discover", s.kubeDiscoverTool))
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_list_resources", Description: desc(llmprompts.DbmcpToolKubeListResources),
+		Name: "kube_list_resources", Description: reviewed(llmprompts.DbmcpToolKubeListResources),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeListArgs](src, llmprompts.DbmcpToolKubeListResources.ID(),
 			map[string]any{"maxRows": llmprompts.LimitVars{Default: kubeListDefaultRows, Max: kubeListMaxRows}}), "clusterId", "kind"),
 	}, withPanicRecovery(s, "kube_list_resources", s.kubeListResources))
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_describe", Description: desc(llmprompts.DbmcpToolKubeDescribe),
+		Name: "kube_describe", Description: reviewed(llmprompts.DbmcpToolKubeDescribe),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeDescribeArgs](src, llmprompts.DbmcpToolKubeDescribe.ID(), nil), "clusterId", "kind", "name"),
 	}, withPanicRecovery(s, "kube_describe", s.kubeDescribeTool))
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_pod_logs", Description: desc(llmprompts.DbmcpToolKubePodLogs),
+		Name: "kube_pod_logs", Description: reviewed(llmprompts.DbmcpToolKubePodLogs),
 		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubePodLogsArgs](src, llmprompts.DbmcpToolKubePodLogs.ID(),
 			map[string]any{"tail": llmprompts.LimitVars{Default: kubeLogsDefaultTail, Max: kubeLogsMaxTail}}), "clusterId", "namespace", "pod"),
 	}, withPanicRecovery(s, "kube_pod_logs", s.kubePodLogs))
