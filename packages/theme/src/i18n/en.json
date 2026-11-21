@@ -14327,6 +14327,9 @@
           "input": {
             "label": "Sends the value you type for {name} (host: {host})"
           },
+          "masked": {
+            "status": "Secrets masked: {names}"
+          },
           "noEnvironment": {},
           "query": {},
           "redirectsOffTimeout": {
@@ -14527,6 +14530,9 @@
         },
         "masked": {
           "hint": "A masking rule applies to this column."
+        },
+        "maskedColumns": {
+          "status": "Masked columns: {names}"
         },
         "redisType": {
           "status": "Type {type}"

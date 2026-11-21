@@ -324,6 +324,8 @@ export const apiResponsePayloadSchema = /*#__PURE__*/ z.object({
   rawBytes: z.number(),
   class: z.enum(['read', 'write']),
   reason: z.string(),
+  // Secret variables the request masker hid in the held text, by name.
+  masked: z.array(z.string()).default([]),
 });
 export type ApiResponsePayload = z.infer<typeof apiResponsePayloadSchema>;
 

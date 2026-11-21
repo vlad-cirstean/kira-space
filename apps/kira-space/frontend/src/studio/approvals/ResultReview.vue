@@ -1,40 +1,34 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
+import { computed, ref, watch } from 'vue';
 import TabbedContent from './TabbedContent.vue';
 
-// One review of a held result, whatever the MCP: with a script, the result the agent gets and the raw
-// response the script read are two views, then the script itself. Without one, the raw view alone.
+// One review of a held result, whatever the MCP: the views are tabs in one right-hand column, one slot
+// `view-<value>` each; a single view shows without tabs. Under them: the script that produced the result,
+// the masking note, then what the approval keeps.
 const props = defineProps<{
-  scripted: boolean;
-  /** Test id prefix: `${testid}-view-result`, `${testid}-view-raw`. */
-  testid: string;
-  rawLabel: string;
-  resultLabel: string;
-  viewsLabel: string;
+  views: readonly SecondaryTabItem[];
+  label: string;
 }>();
 
-const view = ref<'result' | 'raw'>('result');
-const items = computed(() => [
-  { value: 'result', label: props.resultLabel, testid: `${props.testid}-view-result` },
-  { value: 'raw', label: props.rawLabel, testid: `${props.testid}-view-raw` },
-]);
+const view = ref(props.views[0]?.value ?? '');
+// A view that disappears (the query reloads, the item changes) falls back to the first.
+watch(
+  () => props.views,
+  (v) => {
+    if (!v.some((x) => x.value === view.value)) view.value = v[0]?.value ?? '';
+  },
+);
+const active = computed(() => (props.views.some((v) => v.value === view.value) ? view.value : ''));
 </script>
 
 <template>
   <div class="flex flex-col gap-2">
-    <TabbedContent
-      v-if="scripted"
-      :model-value="view"
-      :tabs="true"
-      :items="items"
-      :label="viewsLabel"
-      @update:model-value="(v) => (view = v === 'raw' ? 'raw' : 'result')"
-    >
-      <slot v-if="view === 'result'" name="result" />
-      <slot v-else name="raw" />
+    <TabbedContent v-model="view" :tabs="views.length > 1" :items="views" :label="label">
+      <slot :name="`view-${active || views[0]?.value}`" />
     </TabbedContent>
-    <slot v-else name="raw" />
-    <slot v-if="scripted" name="script" />
+    <slot name="script" />
+    <slot name="mask" />
     <slot name="after" />
   </div>
 </template>
