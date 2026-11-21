@@ -2,6 +2,8 @@
 
 Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (highest history phase: `P706`).
 
+Code review at chapter end: 2 rounds (user request).
+
 | # | Phase | Status |
 |---|-------|--------|
 | P707 | Installer: no GitHub API rate limit, shared by first install and self-update | Done |
