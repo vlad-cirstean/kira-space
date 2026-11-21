@@ -880,8 +880,9 @@ const NEUTRAL_ALIAS_TARGETS = new Set([
   '--kira-bg-chrome',
   '--kira-bg',
   '--kira-bg-elevated',
+  '--kira-select-edge',
 ]);
-const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg'] as const;
+const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg', '--kira-control-edge'] as const;
 const NEUTRAL_SPREAD = 12;
 const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
 const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
@@ -928,6 +929,8 @@ const ON_STATE_FILES = [
 ];
 const BLUE_ON_STATE =
   /(?<![\w-])(?:bg|border|text|ring)-(?:primary|accent|info|focus)(?:-foreground)?(?![\w-])/;
+// An `as-child` tooltip trigger overwrites a root's data-state, so on-state fills key on aria-checked.
+const STATE_KEYED_ON = /data-\[state=(?:checked|indeterminate)\]:(?:bg|border)-on(?![\w-])/;
 const N18_CLASS_DIRS = [
   'apps/kira-space/frontend/src',
   'apps/kira-space/frontend/mobile',
@@ -1041,6 +1044,15 @@ export function selectionClassHits(path: string, source: string): Hit[] {
         rule: 'N18',
         path,
         message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-on, border-on, text-on-fg`,
+      });
+    }
+    const stateKeyed =
+      onState && !path.endsWith('Progress.vue') ? STATE_KEYED_ON.exec(line)?.[0] : undefined;
+    if (stateKeyed) {
+      hits.push({
+        rule: 'N18',
+        path,
+        message: `line ${i + 1}: ${stateKeyed} keys on data-state; use aria-checked or aria-[checked=mixed]`,
       });
     }
     const behind = BLUE_BEHIND_VARIANT.exec(line)?.[0];

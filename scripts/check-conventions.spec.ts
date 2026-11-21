@@ -342,13 +342,14 @@ describe('N18 selection stays neutral', () => {
       '--kira-bg-input: #27272c;',
       `--kira-on: ${on};`,
       '--kira-on-fg: var(--kira-bg-chrome);',
+      '--kira-control-edge: var(--kira-select-edge);',
     ].join('\n');
 
   test('a blue selection token fails, the grey passes', () => {
     expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
     expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
     expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain('--kira-on');
-    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(6);
+    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(7);
   });
 
   test('Monaco keeps every required grey key and ::selection stays themed', () => {
@@ -401,7 +402,8 @@ describe('N18 selection stays neutral', () => {
     expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
     const checkbox = 'packages/theme/src/components/ui/checkbox/Checkbox.vue';
     expect(hits(checkbox, "'data-[state=checked]:bg-primary'")[0]?.rule).toBe('N18');
-    expect(hits(checkbox, "'data-[state=checked]:bg-on text-on-fg'")).toEqual([]);
+    expect(hits(checkbox, "'aria-checked:bg-on aria-checked:text-on-fg'")).toEqual([]);
+    expect(hits(checkbox, "'data-[state=checked]:bg-on'")[0]?.message).toContain('aria-checked');
     expect(
       hits(
         'packages/theme/src/components/ui/progress/Progress.vue',

@@ -200,7 +200,13 @@ focus utility in the four on-state primitives. Visual run with `--update-snapsho
 default tolerance had kept 20+ stale blue-selection baselines, so every baseline was re-recorded and
 the 37 changed were inspected (blue selection and checkbox to grey; the rest sub-threshold fills). Two
 carry unrelated drift now recorded: `branch-panel-details` (Open PR badge info tone) and
-`approvals-toast` (primary Show button tint); git HEAD ring and check now render in `info`. After
+`approvals-toast` (primary Show button tint); git HEAD ring and check now render in `info`. Fix: the
+environment radio sat under a tooltip trigger whose `data-state` (closed) replaced the radio's own,
+so `data-[state=checked]:bg-on` never applied and the checked radio rendered dark. Checkbox, radio and
+switch fills now key on `aria-checked`. Unchecked edge is new `--kira-control-edge` (#71717a, 3.1:1 on
+field), progress track tints it, toggle on is `bg-select` with `select-edge` border. Checked every state
+(off, on, indeterminate, hover, focus, disabled) on chrome, field, dialog and menu grounds as 2x crops;
+sheets in `screenshots/p710/onstate2/`. 25 more baselines re-recorded and inspected. After
 shots `screenshots/p710/onstate/`. Before and after shots (13 pairs, gitignored):
 `screenshots/p710/{before,after}/`.
 

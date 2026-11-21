@@ -1,4 +1,6 @@
 import type { Page } from '@playwright/test';
+import type { ApprovalItem } from '@shared/domain/approvals';
+import { liveItem } from '@workbench/testing/ui/approvals';
 import type { ControlSnapshot } from '../ipc/support/types';
 import {
   ACME,
@@ -8,10 +10,13 @@ import {
   SUMMARY,
 } from '../screenshots/studio/support/acme';
 import { expect, studioTest, test } from './fixtures';
+import { openHttpMode } from './studio/support/apiMode';
 import { gutterCell } from './studio/support/grid';
 import { openSettings } from './studio/support/settings';
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
-import { openPlan } from './support/adeV2';
+import { FIXED_NOW, openPlan } from './support/adeV2';
+import { seedApprovals } from './support/approvals';
+import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
 // P710: selection is one neutral grey (--kira-select #36363c, edge #71717a, text #45454d), hover
@@ -22,6 +27,7 @@ const HOVER = 'rgb(39, 39, 44)';
 const TEXT = 'rgb(69, 69, 77)';
 const ON = 'rgb(212, 212, 216)';
 const ON_FG = 'rgb(19, 19, 21)';
+const FIELD = 'rgb(39, 39, 44)';
 
 const head = (id: string) =>
   `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`;
@@ -121,3 +127,68 @@ studioTest(
     expect(color).toBe(ON_FG);
   },
 );
+
+// The environment radio sits under an `as-child` tooltip trigger that overwrites its `data-state`
+// with open/closed; the fill must key on aria-checked or the checked radio loses it.
+test('environment radios: checked is light filled with a chrome dot, unchecked has a grey edge', async ({
+  relaunch,
+}) => {
+  const env = (id: string, name: string, sortOrder: number, isActive: boolean) => ({
+    id,
+    name,
+    sortOrder,
+    isActive,
+    color: 'none',
+    description: '',
+    file: `${name.toLowerCase()}.environment.yaml`,
+  });
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.connectionsList, response: [] },
+      { channel: IPC.collectionsList, response: { collections: [], items: [] } },
+      {
+        channel: IPC.variablesListEnvironments,
+        response: [env('e1', 'Staging', 0, true), env('e2', 'Production', 1, false)],
+      },
+      { channel: IPC.apiConfigView, response: { files: [], secrets: [] } },
+    ],
+  });
+  await openHttpMode(page);
+  await page.click('[data-testid="api-environments"]');
+  const radios = page.locator('[data-testid="environment-active"]');
+  const checked = radios.nth(0);
+  await expect(checked).toHaveAttribute('aria-checked', 'true');
+  await expect(checked).toHaveCSS('background-color', ON);
+  await expect(checked).toHaveCSS('border-top-color', ON);
+  await expect(checked.locator('span span')).toHaveCSS('background-color', ON_FG);
+  const unchecked = radios.nth(1);
+  await expect(unchecked).toHaveAttribute('aria-checked', 'false');
+  await expect(unchecked).toHaveCSS('background-color', FIELD);
+  await expect(unchecked).toHaveCSS('border-top-color', EDGE);
+});
+
+test('an unchecked switch keeps a visible grey edge on the field fill', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.connectionsList, response: [] }],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Advanced"]');
+  const off = page
+    .locator('[data-testid="settings-dialog"] [data-slot="switch"][aria-checked="false"]:visible')
+    .first();
+  await expect(off).toBeVisible();
+  await expect(off).toHaveCSS('background-color', FIELD);
+  await expect(off).toHaveCSS('border-top-color', EDGE);
+});
+
+test('an unchecked checkbox keeps a visible grey edge on the field fill', async ({ relaunch }) => {
+  const [it] = contract<ApprovalItem[]>('ade-branch-adopt', 'ApprovalsService.List#adopt');
+  if (!it) throw new Error('contract has no item');
+  const { window: page } = await openPlan(relaunch, seedApprovals([liveItem(it, 1800, FIXED_NOW)]));
+  const box = page.locator('[data-testid="approvals-dialog"]').getByRole('checkbox').first();
+  await expect(box).toHaveAttribute('aria-checked', 'true');
+  await box.click();
+  await expect(box).toHaveAttribute('aria-checked', 'false');
+  await expect(box).toHaveCSS('background-color', FIELD);
+  await expect(box).toHaveCSS('border-top-color', EDGE);
+});
