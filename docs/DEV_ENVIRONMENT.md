@@ -418,7 +418,10 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
 - **An interactive `claude` runs here** (P237, 2.1.295). Under a temp `HOME` it needs `.claude.json`
   `{"hasCompletedOnboarding":true,"theme":"dark","projects":{"<cwd>":{"hasTrustDialogAccepted":true}}}`.
   Without `projects[cwd]` it stops at the folder-trust dialog. Auth comes from env, so a temp `HOME`
-  still signs in. Hooks fire in the TUI as in `claude -p`. See "Real `claude` tests".
+  still signs in. Hooks fire in the TUI as in `claude -p`. See "Real `claude` tests". A TUI `--add-dir`
+  path outside trusted `projects` opens a blocking "Adding a new directory" dialog, so no SessionStart
+  (CLI 2.1.330). Kira passes extra dirs as `permissions.additionalDirectories` instead. The suite seeds
+  only cwd trust, on purpose: seeding add-dir trust would hide a regression.
 - The server build's `EmitTo` broadcasts to every page (`internal/shell/emitto_server.go`, P231). Payloads without
   a window key reach all pages: close-flush request, `AdeTaskOpenSession`, `ChannelMobileOpenLaunch`. With two pages
   in `e2e-real`, closing one window flushes all; focusing an ADE session opens it in all. Use one page per such test.
@@ -541,6 +544,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 - Agent config import and export (P454): `internal/agentport/**` or `internal/harness/claude/mcpinstall/**` changed: `bun run test:claude -count=1 -run 'TestAgentPortClaude|TestRealClaudeSettingsUntouched'`, plus Studio `TestDbMcpInstallRegisters` (shared `register`). No model call; real `claude mcp add-json`, `mcp list` and a temp `HOME`.
 - P444 (CLI 2.1.316): `TestSmartScriptRun/user_MCP_server_loads_through_claude` (hermetic off) runs real `claude mcp list` plus one haiku run, a few cents. Studio `app_MCP_server_loads_through_claude` is the hermetic case.
 - Hermetic launches (P455): `internal/harness/**`, `internal/agentcfg/servers.go`, `apps/*/internal/ade/launches.go`, `internal/scriptruns/**`: `bun run test:claude -run 'TestHermeticSession|TestAgentSettingsClaude|TestRealClaudeSettingsUntouched|TestSmartScriptRun|TestTerminalAgentHooks' -count=1` and `bun run test:claude:db -run TestSmartScriptRun -count=1`. `TestHermeticSession` runs two haiku steps (hermetic, control with hermetic off), a few cents.
+- Claude CLI upgrade: a TUI test stuck with `saw []` ("no SessionStart hook event") means a new start dialog blocks the TUI. Dump the PTY output (`appevent.ChannelTerminal` events) to see it.
 - Spend, measured on 2026-10-09 (CLI 2.1.295, haiku): `claude -p` results of the Space suite 0.014 USD, TUI sessions (about 4 at 1 to 2 haiku prompts) an estimated 0.02 USD, Studio suite under 0.01 USD. Space suite about 75 s, Studio about 12 s. The Space run prints its measured `claude -p` spend. P279 (CLI 2.1.296): resume rows 0.0067 USD per run of the three (about 55 s), whole Space ADE and smart set 0.020 USD (about 156 s).
 - `scripts/docshistory` (re-renders existing chapter blocks in `docs/history/` from recorded runs in `docs/history-runs`, P299; refuses a chapter with no
   block, never closes one). Defaults (also `doc`): `--runs docs/history-runs`, `--out -`. `repoint` skips `scripts/docshistory/` and both `testdata/` roots
