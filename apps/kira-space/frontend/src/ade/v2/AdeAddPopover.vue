@@ -170,11 +170,11 @@ async function pick(value: string): Promise<void> {
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <TextTooltip
-        :text="t('space.ade.add.trigger.label')"
-        :shortcut="moduleShortcut('ade', 'app.new')"
-      >
+    <TextTooltip
+      :text="t('space.ade.add.trigger.label')"
+      :shortcut="moduleShortcut('ade', 'app.new')"
+    >
+      <PopoverTrigger as-child>
         <Button
           variant="toolbar"
           size="kira"
@@ -184,8 +184,8 @@ async function pick(value: string): Promise<void> {
           <CodiconIcon name="add" :size="13" />
           {{ t('space.ade.add.trigger.label') }}
         </Button>
-      </TextTooltip>
-    </PopoverTrigger>
+      </PopoverTrigger>
+    </TextTooltip>
     <PopoverContent align="end" flush class="w-120" data-testid="ade-add-popover">
       <PopoverBar>
         <SecondaryTabs v-model="tab" :items="tabItems" class="w-full" />
