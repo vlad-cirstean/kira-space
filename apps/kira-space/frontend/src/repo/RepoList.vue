@@ -152,6 +152,7 @@ function recordMenuItems(
       id: 'rename',
       label: t('common.action.rename.label'),
       icon: 'edit',
+      shortcut: 'tree.rename',
       run: handlers.rename,
     },
   ];
@@ -170,6 +171,7 @@ function recordMenuItems(
     label: t('common.action.remove.label'),
     icon: 'trash',
     danger: true,
+    shortcut: 'tree.delete',
     run: handlers.remove,
   });
   return items;
@@ -186,6 +188,7 @@ function repoMenuItems(repo: RepoSummary): MenuItem[] {
       id: 'open',
       label: t('common.action.open.label'),
       icon: 'folder-opened',
+      shortcut: 'tree.open',
       run: () => onRowClick(repo.id),
     },
     {
