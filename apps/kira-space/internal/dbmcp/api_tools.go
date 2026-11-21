@@ -332,11 +332,17 @@ func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
 	}, withPanicRecovery(s, "api_request", s.apiRequest))
 }
 
+// pinScriptObject pins script to an object (the generated schema is a nullable object) and returns it.
+func pinScriptObject(sch *jsonschema.Schema) *jsonschema.Schema {
+	script := sch.Properties["script"]
+	script.Type, script.Types = "object", nil
+	return script
+}
+
 // fixScriptSchema pins script to an object and makes script.input any JSON: the generated schemas are a
 // nullable object and a byte array.
 func fixScriptSchema(sch *jsonschema.Schema) {
-	script := sch.Properties["script"]
-	script.Type, script.Types = "object", nil
+	script := pinScriptObject(sch)
 	input := script.Properties["input"]
 	script.Properties["input"] = &jsonschema.Schema{Description: input.Description}
 }

@@ -23,9 +23,9 @@ const (
 	// queryScriptOutputBytes caps what the script returns to the agent.
 	queryScriptOutputBytes = 4 << 20
 	queryScriptNothingRan  = "Nothing ran."
-	// queryKeptNotAllowed: secret values and values the user typed belong to api_request; a SQL path would need
-	// its own origin rule and result mask.
-	queryKeptNotAllowed = "kept variable %q is secret or was typed by the user; those are used in api_request only, never in run_query. " + queryScriptNothingRan
+	// keptReadNotAllowed: secret values and values the user typed belong to api_request; a SQL or cluster path
+	// would need its own origin rule and result mask. Args: name, tool, what did not happen.
+	keptReadNotAllowed = "kept variable %q is secret or was typed by the user; those are used in api_request only, never in %s. %s"
 )
 
 // openQueryScript validates run_query's script argument, syntax-checks it and snapshots the kept variables it
@@ -57,7 +57,7 @@ func (s *Server) openQueryScript(ctx context.Context, source string) (*apiScript
 				return nil, unknownKeptText(st.Name) + ". " + queryScriptNothingRan
 			}
 			if u := k.uses[i]; u.Secret || u.Bound() {
-				return nil, fmt.Sprintf(queryKeptNotAllowed, st.Name)
+				return nil, fmt.Sprintf(keptReadNotAllowed, st.Name, "run_query", queryScriptNothingRan)
 			}
 		}
 	}
