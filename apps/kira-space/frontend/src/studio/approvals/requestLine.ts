@@ -19,7 +19,7 @@ export interface UrlToken {
   from: number;
 }
 
-export interface QueryPairTokens {
+interface QueryPairTokens {
   lead: UrlToken[];
   value: UrlToken[];
   valueText: string;
