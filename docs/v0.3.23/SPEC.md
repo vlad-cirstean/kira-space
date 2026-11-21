@@ -1,12 +1,12 @@
 # v0.3.23
 
 Chapter v0.3.23, branch `chapter/v0.3.23`, tag `v0.3.23`. First phase `P716` (highest phase: `P715`,
-in open chapter v0.3.22's `SPEC.md`).
+in `docs/history/07-v0.3.15.md`, chapter v0.3.22).
 
 Code review at chapter end: 2 rounds (user request).
 
-Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`), whose PR is not open yet. Rebase onto `main`
-before this chapter's PR opens. PR is held until v0.3.22's PR merges (CLAUDE.md "PR CI").
+Branched from `chapter/v0.3.22` (HEAD `5a64b72c3`). v0.3.22's PR merged as #55 (`c7534c9f0`). Rebase
+onto `main` before this chapter's PR opens.
 
 P716 to P720 are design phases: plan proposes the design with screenshots, user approves it
 before implementation starts.
@@ -413,3 +413,18 @@ as the next chapter"). The orchestrating session reports it; the user decides wh
 user asks.
 
 Deliverable. One plan `plans/P724.md`, one Sonnet pass. No UI tests.
+
+Result. Commits on `stream/p724`: `cdfb3275a` fix (helper `source_grep`, `s10_verdict`, S2 and S10 on
+them, S18, header comment), `41b99f034` ci (`bun run verify:packaging` in `checks (macOS)`, comment),
+docs commit (`PACKAGING.md` S2/S10/S18 bullets, §5 list, CI job row). Hooks passed unbypassed.
+
+Verify. `bun run verify:packaging` on Linux: `all checks passed`, S18 silent. Simulated release tree
+(text dummies carrying the URL in `bin/Kira Space` and the `.app` binary): old script prints both S10
+failures and `FAILED`; new script has no S10 failure (only my incomplete dummy `.app` tripped A7
+`Assets.car missing`). Mutation, local only, restored: dropping `--exclude-dir=bin` makes S10 fail on
+the dummies; dropping `--exclude-dir=dist` makes `S10 scan self-test — build output counted:
+...frontend/dist/assets/index.js` fail. Not reproducible on Linux: dropping `-I`. GNU grep 3.11 sends
+`binary file matches` to stderr (the script discards it), so the 3-hit failure appears only with
+macOS grep; binary dummies passed with the old script on Linux and removing `-I` left S18 green. The
+`-I` guard is proven only by `checks (macOS)` on this chapter's PR and v0.3.23's release. Dummies
+and temporary `bun install`/bindings copy removed.
