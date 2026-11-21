@@ -64,16 +64,16 @@ type Session struct {
 	shell string
 	// cwd and agent are set once, from OpenParams, in newSession — Registry.AgentSessions' own
 	// read of them (P86 §8.2).
-	cwd    string
-	agent  bool
+	cwd   string
+	agent bool
 	// windowKey is the owning window, guarded by Registry.mu: Reown moves it (P722).
 	windowKey string
-	cmd    *exec.Cmd
-	ptmx   *os.File
-	onData func([]byte)
-	onExit func(code int, err error)
-	onEnd  func(code int, cause CloseCause)
-	cause  CloseCause
+	cmd       *exec.Cmd
+	ptmx      *os.File
+	onData    func([]byte)
+	onExit    func(code int, err error)
+	onEnd     func(code int, cause CloseCause)
+	cause     CloseCause
 	// unregister removes this session from its Registry — called exactly once, from the reader
 	// goroutine, whether the exit was requested (Close) or spontaneous (the shell exiting on its
 	// own, e.g. `exit`/Ctrl-D).

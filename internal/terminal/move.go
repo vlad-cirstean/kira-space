@@ -49,11 +49,15 @@ func (r *Registry) out(id string) *outputCoalescer {
 func (r *Registry) Reown(id, from, to string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, ok := r.byWindow[from][id]; !ok {
-		return false
-	}
 	sess := r.sessions[id]
 	if sess == nil {
+		// The session ended while held: its recorded exit still moves with the pump.
+		if c := r.outs[id]; c != nil && c.reownEnded(from, to) {
+			return true
+		}
+		return false
+	}
+	if _, ok := r.byWindow[from][id]; !ok {
 		return false
 	}
 	delete(r.byWindow[from], id)

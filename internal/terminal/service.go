@@ -293,6 +293,21 @@ func (c *outputCoalescer) reown(to string) {
 	c.windowKey = to
 }
 
+// reownEnded retargets a held pump whose session already ended and whose owner is from.
+func (c *outputCoalescer) reownEnded(from, to string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	owner := c.pending
+	if owner == "" {
+		owner = c.windowKey
+	}
+	if !c.held || c.final == nil || owner != from {
+		return false
+	}
+	c.pending = to
+	return true
+}
+
 // adopt ends the hold in window key and hands over the buffer and any recorded exit.
 func (c *outputCoalescer) adopt(key string) (AdoptResult, error) {
 	c.mu.Lock()
