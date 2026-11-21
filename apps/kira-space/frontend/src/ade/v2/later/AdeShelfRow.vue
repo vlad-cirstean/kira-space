@@ -8,6 +8,7 @@ import { computed } from 'vue';
 import AdeEstimateChip from '../plan/AdeEstimateChip.vue';
 import AdeTaskSessions from '../plan/AdeTaskSessions.vue';
 import AdeTaskStatusMenu from '../plan/AdeTaskStatusMenu.vue';
+import AdeTaskSwatch from '../plan/AdeTaskSwatch.vue';
 import AdeTaskTitle from '../plan/AdeTaskTitle.vue';
 import type { CardModel } from '../plan/usePlanModel';
 import { useTaskMenu } from '../plan/useTaskMenu';
@@ -34,12 +35,9 @@ const facts = computed(() =>
   <!-- biome-ignore lint/a11y/useSemanticElements: the row holds buttons a button cannot. -->
   <div
     :class="
-      cn(
-        rowVariants({ layout: 'tree', selected }),
-        'group/head box-border cursor-grab gap-2 border-l-3 py-1',
-      )
+      cn(rowVariants({ layout: 'tree', selected }), 'group/head box-border cursor-grab gap-2 py-1')
     "
-    :style="{ ...rowIndent(0), borderLeftColor: card.color }"
+    :style="rowIndent(0)"
     role="button"
     tabindex="0"
     :data-selected="selected || undefined"
@@ -54,6 +52,7 @@ const facts = computed(() =>
     <span class="inline-flex min-w-4.5 shrink-0 justify-center" data-testid="ade-row-lead">
       <AdeTaskSessions v-if="card.sessions" :task-id="card.task.id" :sessions="card.sessions" />
     </span>
+    <AdeTaskSwatch :color="card.color" :parked="card.parked" />
     <span class="flex min-w-0 flex-1 items-center" data-testid="ade-shelf-title">
       <AdeTaskTitle :card="card" />
     </span>

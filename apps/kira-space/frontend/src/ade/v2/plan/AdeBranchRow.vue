@@ -42,6 +42,7 @@ import AdeBranchProg from './AdeBranchProg.vue';
 import AdeBranchTip from './AdeBranchTip.vue';
 import AdeOpStatus from './AdeOpStatus.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
+import AdeTaskSwatch from './AdeTaskSwatch.vue';
 import { ATTACH_GLYPH, BRANCH_ACTION_ICON, BRANCH_TAG_GLYPH, rowActionSplit } from './glyphs';
 import { BRANCH_GRID, GROUND_ROW, GROUND_SELECTED, HOVER_OVERLAY, SLOT } from './taskGrid';
 import { type BranchRowModel, usePlanModel } from './usePlanModel';
@@ -438,6 +439,7 @@ const baseVariant = computed(() => (props.row.base?.pending ? 'warn' : 'default'
         <div class="relative flex h-control min-w-0 items-center gap-1.5">
           <AdeBranchTip v-model:open="tipOpen" :row="row" :color="color">
             <span class="flex min-w-0 shrink items-center gap-1.5">
+              <AdeTaskSwatch v-if="taskRow && color" :color="color" />
               <Badge v-if="row.isReview" data-testid="ade-owner-pill">{{ row.branch.owner }}</Badge>
               <span
                 v-if="row.branch.origin === 'agent'"

@@ -8,6 +8,8 @@ import { useDraggable } from 'vue-draggable-plus';
 import type { TimelineBand } from '../board/timeline';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
+import AdeTaskSwatch from './AdeTaskSwatch.vue';
+import { TASK_SWATCH_GAP } from './taskGrid';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
 // One day of the timeline: left day bar, date heading, history rows, overdue and overflow strips, the day's cards and
@@ -153,7 +155,7 @@ const ruleClass = computed(() => {
         v-for="h in history"
         :key="h.key"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-1.5 border border-l-3 border-transparent px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-1.5 border border-transparent px-2 font-normal data-[selected]:bg-select"
         :data-selected="ui.selectedTaskId === h.key || undefined"
         :data-task-id="h.key"
         data-testid="ade-history-row"
@@ -164,6 +166,7 @@ const ruleClass = computed(() => {
           :size="13"
           class="mx-[5.5px] shrink-0 text-muted-foreground"
         />
+        <span :class="TASK_SWATCH_GAP" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ h.title }}</span>
         <span class="min-w-20 shrink-0 whitespace-nowrap text-kira-sm text-muted-foreground">{{
           h.meta
@@ -218,14 +221,14 @@ const ruleClass = computed(() => {
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-1.5 border border-l-3 border-border px-2 font-normal data-[selected]:bg-select"
-        :style="{ borderLeftColor: s.color }"
+        class="h-row w-auto justify-start gap-1.5 border border-border px-2 font-normal data-[selected]:bg-select"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
         @click="emit('select', s.taskId)"
       >
         <CodiconIcon name="indent" :size="13" class="mx-[5.5px] shrink-0 text-subtle" />
+        <AdeTaskSwatch :color="s.color" />
         <span class="min-w-0 flex-1 truncate text-left font-medium text-fg">{{ s.title }}</span>
         <span class="w-28 shrink-0 truncate text-left text-kira-sm text-subtle">{{ s.note }}</span>
         <span class="w-control shrink-0" aria-hidden="true" />

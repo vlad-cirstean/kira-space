@@ -41,6 +41,7 @@ import AdeTaskAddMenu from './AdeTaskAddMenu.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
 import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
+import AdeTaskSwatch from './AdeTaskSwatch.vue';
 import AdeTaskTitle from './AdeTaskTitle.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import {
@@ -52,7 +53,6 @@ import {
   TASK_LEAD,
   TASK_STATUS_CELL,
   TASK_STEP_CELL,
-  TASK_SWATCH,
   TASK_SWATCH_GAP,
 } from './taskGrid';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
@@ -173,12 +173,7 @@ const boxClass = computed(() => {
         </span>
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
-            <span
-              :class="[TASK_SWATCH, card.parked ? 'border-2' : '']"
-              :style="card.parked ? { borderColor: card.color } : { background: card.color }"
-              data-testid="ade-task-swatch"
-              aria-hidden="true"
-            />
+            <AdeTaskSwatch :color="card.color" :parked="card.parked" />
             <span class="relative flex min-w-0 flex-1 items-center">
               <AdeTaskTitle :card="card" />
               <span
