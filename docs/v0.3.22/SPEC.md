@@ -8,6 +8,8 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P708 | Real `claude` TUI tests: fix the "no SessionStart hook event" failures | Todo |
 | P709 | Task list: aligned rows, calmer design | Todo |
 | P710 | Selection highlight: neutral grey everywhere, not blue | Todo |
+| P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Todo |
+| P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 
 ## P707
 
@@ -60,3 +62,29 @@ actions): the plan lists each remaining blue use and why it stays. Focus rings k
 accessible contrast. Tests: visual baselines re-recorded with each changed baseline inspected;
 a guard or lint so a hardcoded selection blue cannot return. Runs after P709 (shares the
 selected-card styles).
+
+## P711
+
+The command palette lists actions that are already one click away (toggle project or operations
+panel, open settings, check for updates, new request, new connection, and similar). They add
+noise. Deliverable: audit every palette command in `packages/workbench/src/shortcuts/`,
+`apps/kira-space/frontend/src/shortcuts/appCommands.ts` and
+`apps/kira-space/frontend/src/studio/shortcuts/studioCommands.ts`. Any command with a visible
+button, menu or panel control gets removed from the palette. Each removed action keeps a keyboard
+shortcut (add one where missing, through the shortcut registry in `@shared/domain/shortcuts`,
+rebindable like the others). Module-contextual actions (new request, new connection, new file,
+and similar) share one shortcut whose effect follows the focused or selected module; the plan
+lists each action, its module mapping and conflicts with existing bindings. The palette itself
+stays, with only what has no other entry point. Tests: UI spec per new shortcut (same scenario as
+the click path), a guard for shortcut conflicts, flow test where the action has a backend half.
+
+## P712
+
+Shortcuts exist but are not shown. Deliverable: every action that has a keyboard shortcut shows
+it. Buttons show it in the tooltip, context-menu items show it right-aligned, menu-bar items show
+it right-aligned. One source of truth: the shortcut registry, formatted per platform (macOS
+symbols, other platforms text), reflecting user rebinds. Reuse the existing `DropdownMenuShortcut`
+and the menu item `shortcut` field; add a shared tooltip wrapper for buttons instead of per-button
+strings. The plan lists every button, menu and context menu audited and any shortcut still
+missing. Tests: UI spec that a rebind updates the displayed hint; visual baselines re-recorded and
+inspected. Runs after P711.
