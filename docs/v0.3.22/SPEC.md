@@ -11,6 +11,7 @@ Chapter v0.3.22, branch `chapter/v0.3.22`, tag `v0.3.22`. First phase `P707` (hi
 | P711 | Command palette: drop commands already one click away, give each a keyboard shortcut | Done |
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
+| P714 | Real `claude` details bench gate: F5 and F6 fail at base | Todo |
 
 ## P707
 
@@ -284,3 +285,13 @@ line, about 20 tokens. Baseline round at the parent of the fix (same guard, 18 o
 all pass; context R/T F4 0.90, F5 0.97, F6 1.06, F1 1.01; cost R/T F4 0.87, F5 1.39, F6 1.48, F1 1.28.
 The gate fails F5 and F6 there too (F1 on cost, inconclusive): pre-existing, not caused by P713;
 post-fix ratios are the same or lower. Budgets and thresholds unchanged.
+
+## P714
+
+Found in P713. The paid details-bench round (DEV_ENVIRONMENT "Real `claude` tests") fails its
+gate on F5 and F6 (context R/T 0.97-1.06, cost R/T 1.28-1.48 on 2 reps each), also at the commit
+before the P713 fix, so it predates it. F1 cost is inconclusive. One round costs about 1.5 USD
+and hits the guard at 18 of 24 runs. Deliverable: root-cause with the P713 Result numbers as the
+starting point (real regression in the details tool/prompt path, stale thresholds or baseline, or
+sample noise at 2 reps), then fix the code or recalibrate the gate with evidence; the plan states
+the budget and rep count needed for a trustworthy verdict and what only a paid run proves.
