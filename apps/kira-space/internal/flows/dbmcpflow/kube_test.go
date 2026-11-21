@@ -29,10 +29,10 @@ type kubeFixture struct {
 	sess *mcp.ClientSession
 }
 
-func newKubeFixture(t *testing.T) *kubeFixture {
+func newKubeFixture(t *testing.T, opts ...flowharness.Opt) *kubeFixture {
 	t.Helper()
 	fake := flowharness.NewKubeFake(t)
-	f := newFixture(t)
+	f := newFixture(t, opts...)
 	k := &kubeFixture{fixture: f, fake: fake, cfg: filepath.Join(f.app.Home, "kubeconfig"), ids: map[string]string{}}
 	fake.WriteKubeconfig(t, k.cfg, flowharness.KubeconfigOpts{BinDir: f.app.BinDir})
 	t.Setenv("KUBECONFIG", k.cfg)
@@ -76,7 +76,7 @@ func (k *kubeFixture) setMcp(t *testing.T, ctxName string, m kubernetes.McpSetti
 }
 
 func on(approval string) kubernetes.McpSettings {
-	return kubernetes.McpSettings{Enabled: true, Approval: approval}
+	return kubernetes.McpSettings{Enabled: true, Approval: approval, Review: "inherit"}
 }
 
 func (k *kubeFixture) call(t *testing.T, name string, args map[string]any) *mcp.CallToolResult {
@@ -129,7 +129,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, c := range res.Clusters {
-			if c.Mcp != (kubernetes.McpSettings{Approval: "prompt"}) {
+			if c.Mcp != (kubernetes.McpSettings{Approval: "prompt", Review: "inherit"}) {
 				t.Fatalf("%s mcp = %+v, want off, ask and no description", c.Context, c.Mcp)
 			}
 		}
@@ -139,6 +139,7 @@ func TestKubeMcp(t *testing.T) {
 			{Enabled: true, Approval: "bogus"},
 			{Enabled: true, Approval: "deny"},
 			{Enabled: true, Approval: ""},
+			{Enabled: true, Approval: "allow", Review: "bogus"},
 			{Enabled: true, Approval: "allow", Description: strings.Repeat("é", 1001)},
 		} {
 			_, err := k.app.W.Kubernetes.SetMcp(kubernetes.SetMcpArgs{ClusterID: dev, Mcp: bad})
@@ -161,7 +162,7 @@ func TestKubeMcp(t *testing.T) {
 
 		// The cluster dialog: description and approval.
 		args := kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
-			Description: "dev cluster, safe to read", Enabled: true, Approval: "allow",
+			Description: "dev cluster, safe to read", Enabled: true, Approval: "allow", Review: "inherit",
 		}}
 		got, err := k.app.W.Kubernetes.SetMcp(args)
 		if err != nil || got != args.Mcp {
@@ -181,13 +182,24 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, c := range again.Clusters {
-			want := kubernetes.McpSettings{Approval: "prompt"}
+			want := kubernetes.McpSettings{Approval: "prompt", Review: "inherit"}
 			if c.ID == dev {
 				want = args.Mcp
 			}
 			if c.Mcp != want {
 				t.Fatalf("%s mcp after restart = %+v, want %+v", c.Context, c.Mcp, want)
 			}
+		}
+		// The dialog's review choice rides the same call.
+		reviewed := kubernetes.SetMcpArgs{ClusterID: dev, Mcp: kubernetes.McpSettings{
+			Description: "dev cluster, safe to read", Enabled: true, Approval: "allow", Review: "review",
+		}}
+		if got, err := k.app.W.Kubernetes.SetMcp(reviewed); err != nil || got != reviewed.Mcp {
+			t.Fatalf("SetMcp review = %+v (%v), want the stored settings", got, err)
+		}
+		k.contract(t, "args:KubernetesService.SetMcp:review", reviewed)
+		if _, err := k.app.W.Kubernetes.SetMcp(args); err != nil {
+			t.Fatal(err)
 		}
 		k.sess.Close()
 		if k.sess, err = k.connect(t, k.token(t)); err != nil {
@@ -238,7 +250,7 @@ func TestKubeMcp(t *testing.T) {
 		}
 
 		requests := len(k.fake.Requests(""))
-		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "allow"})
+		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "allow", Review: "inherit"})
 		if out := text(k.call(t, "kube_list_clusters", nil)); out != "[]" {
 			t.Fatalf("kube_list_clusters with every cluster off = %q, want []", out)
 		}
@@ -326,7 +338,7 @@ func TestKubeMcp(t *testing.T) {
 
 		turnedOff := k.callAsync("kube_list_resources", k.listPods("default", nil))
 		req = k.pending(t)
-		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "prompt"})
+		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "prompt", Review: "inherit"})
 		k.answerItems(t, true, req.Item.ID)
 		out = <-turnedOff
 		if out.err != nil {
@@ -383,7 +395,7 @@ func TestKubeMcp(t *testing.T) {
 		reqC := k.pending(t)
 		k.answerItems(t, false, reqC.Item.ID)
 		<-c
-		k.setMcp(t, "bad-token", kubernetes.McpSettings{Enabled: false, Approval: "prompt"})
+		k.setMcp(t, "bad-token", kubernetes.McpSettings{Enabled: false, Approval: "prompt", Review: "inherit"})
 	})
 
 	t.Run("secrets-stay-masked-in-lists", func(t *testing.T) {

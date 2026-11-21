@@ -13,9 +13,16 @@ import { computed, ref } from 'vue';
 const props = defineProps<{ item: ApprovalItem }>();
 const emit = defineEmits<{ options: [value: { reviewResult: boolean }] }>();
 
-// db.query, db.exemption and api.request carry the same two review fields; the db kinds add a mode.
+// db.query, db.exemption, api.request and kube.read carry the same two review fields; the db kinds add a mode.
 const payload = computed(() => reviewOptionPayloadSchema.parse(props.item.payload));
-const isApi = computed(() => props.item.kind === 'api.request');
+const family = computed(() =>
+  props.item.kind === 'api.request' ? 'api' : props.item.kind === 'kube.read' ? 'kube' : 'db',
+);
+const TESTID = {
+  api: 'api-approval-review-result',
+  kube: 'kube-approval-review-result',
+  db: 'db-mcp-approval-review-result',
+} as const;
 const ticked = ref(false);
 function onTick(v: boolean): void {
   ticked.value = v;
@@ -30,16 +37,18 @@ function onTick(v: boolean): void {
         <Checkbox
           :model-value="payload.reviewResult || ticked"
           :disabled="payload.reviewResult"
-          :data-testid="isApi ? 'api-approval-review-result' : 'db-mcp-approval-review-result'"
+          :data-testid="TESTID[family]"
           @update:model-value="(v) => onTick(v === true)"
         />
         {{ t('studio.dbMcp.approval.reviewResultShort.label') }}
       </Label>
     </TooltipTrigger>
     <TooltipContent>{{
-      isApi
+      family === 'api'
         ? t('studio.dbMcp.approval.api.reviewResultOn.body')
-        : t('studio.dbMcp.approval.reviewResultOn.body', { mode: payload.mode })
+        : family === 'kube'
+          ? t('studio.dbMcp.approval.kube.reviewResultOn.body')
+          : t('studio.dbMcp.approval.reviewResultOn.body', { mode: payload.mode })
     }}</TooltipContent>
   </Tooltip>
 </template>

@@ -27,6 +27,18 @@ const text = computed(() => response.data.value?.text ?? '');
 const script = computed(() => response.data.value?.script ?? null);
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
+const views = computed(() => [
+  {
+    value: 'result',
+    label: t('common.agentGets.label'),
+    testid: 'db-review-view-result',
+  },
+  {
+    value: 'raw',
+    label: t('studio.dbMcp.approval.query.responseRaw.label'),
+    testid: 'db-review-view-raw',
+  },
+]);
 const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 </script>
 
@@ -38,21 +50,15 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
       :connection-id="payload.connectionId"
     />
     <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
-      <ResultReview
-        testid="db-review"
-        :scripted="true"
-        :raw-label="t('studio.dbMcp.approval.query.responseRaw.label')"
-        :result-label="t('common.agentGets.label')"
-        :views-label="t('studio.dbMcp.approval.query.responseViews.aria')"
-      >
-        <template #raw>
+      <ResultReview :views="views" :label="t('studio.dbMcp.approval.query.responseViews.aria')">
+        <template #view-raw>
           <PendingResponse
             :request-id="requestId"
             :connection-id="payload.connectionId"
             field="raw"
           />
         </template>
-        <template #result>
+        <template #view-result>
           <FieldError v-if="failed" class="whitespace-pre-wrap" data-testid="db-review-result">{{
             text
           }}</FieldError>

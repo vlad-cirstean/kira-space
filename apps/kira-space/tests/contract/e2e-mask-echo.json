@@ -26,6 +26,7 @@
         },
         "host": "127.0.0.1",
         "isError": false,
+        "masked": [],
         "method": "GET",
         "rawBytes": 517,
         "reason": "setting",

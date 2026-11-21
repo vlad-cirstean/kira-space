@@ -322,6 +322,8 @@ const mcpDescriptionMax = 1000
 
 func validApproval(a string) bool { return a == "prompt" || a == "allow" }
 
+func validReview(r string) bool { return r == "inherit" || r == "review" || r == "send" }
+
 // SetMcp validates and stores a cluster's MCP settings and returns what is stored.
 func (s *Service) SetMcp(_ context.Context, args SetMcpArgs) (McpSettings, error) {
 	if args.ClusterID == "" {
@@ -330,6 +332,12 @@ func (s *Service) SetMcp(_ context.Context, args SetMcpArgs) (McpSettings, error
 	m := args.Mcp
 	if !validApproval(m.Approval) {
 		return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.badMcpMode.error", map[string]string{"mode": m.Approval})
+	}
+	if m.Review == "" {
+		m.Review = "inherit"
+	}
+	if !validReview(m.Review) {
+		return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.badMcpReview.error", map[string]string{"review": m.Review})
 	}
 	if utf8.RuneCountInString(m.Description) > mcpDescriptionMax {
 		return McpSettings{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.kubernetes.mcpDescriptionTooLong.error", map[string]string{"max": strconv.Itoa(mcpDescriptionMax)})

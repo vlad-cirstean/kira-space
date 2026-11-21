@@ -1173,6 +1173,7 @@ var KubeClusters = struct {
 	MCPDescription string
 	MCPEnabled     string
 	MCPApproval    string
+	MCPReview      string
 }{
 	Table:          "kube_clusters",
 	ID:             "id",
@@ -1184,6 +1185,7 @@ var KubeClusters = struct {
 	MCPDescription: "mcp_description",
 	MCPEnabled:     "mcp_enabled",
 	MCPApproval:    "mcp_approval",
+	MCPReview:      "mcp_review",
 }
 
 // MobileDevices names table mobile_devices.

@@ -129,6 +129,24 @@ type kubePayload struct {
 	Namespace string `json:"namespace"`
 	Operation string `json:"operation"`
 	Statement string `json:"statement"`
+	// ReviewOffered shows "review the result" on a list, describe or logs card; ReviewResult says the
+	// cluster's settings already do.
+	ReviewOffered bool `json:"reviewOffered"`
+	ReviewResult  bool `json:"reviewResult"`
+}
+
+// kubeResponsePayload is the held result of a kube read, minus the result itself: the text is fetched
+// by request id.
+type kubeResponsePayload struct {
+	Context   string `json:"context"`
+	Server    string `json:"server"`
+	Namespace string `json:"namespace"`
+	Operation string `json:"operation"`
+	Statement string `json:"statement"`
+	IsError   bool   `json:"isError"`
+	Bytes     int    `json:"bytes"`
+	// Requested says the approver asked for this review rather than a cluster or app setting.
+	Requested bool `json:"requested"`
 }
 
 type valuePayload struct {
@@ -170,7 +188,23 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		c := r.Cluster
 		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
 		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
-		it.Payload = mustJSON(kubePayload{Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement})
+		it.Payload = mustJSON(kubePayload{
+			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
+			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
+		})
+	case approvals.KindKubeResponse:
+		c := r.Cluster
+		held := r.Response
+		if held == nil {
+			held = &ApprovalResponse{}
+		}
+		it.Reason = "preview"
+		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
+		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
+		it.Payload = mustJSON(kubeResponsePayload{
+			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
+			IsError: held.IsError, Bytes: len(held.Text), Requested: held.Requested,
+		})
 	case approvals.KindScriptRun:
 		sc := r.Script
 		if sc == nil {

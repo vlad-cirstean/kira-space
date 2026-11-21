@@ -2937,6 +2937,9 @@
         "badMcpMode": {
           "error": "Unknown MCP approval mode: {mode}"
         },
+        "badMcpReview": {
+          "error": "Unknown MCP review setting: {review}"
+        },
         "badSelector": {
           "error": "Invalid label selector: {message}"
         },
@@ -7044,6 +7047,10 @@
       },
       "menu": {
         "label": "MCP settings…"
+      },
+      "review": {
+        "hint": "Holds a list, describe or logs result until you send it on. Inherit follows the app-wide setting.",
+        "label": "Hold results for review"
       }
     },
     "namespace": {
@@ -7292,6 +7299,13 @@
         "title": "API request scripts notice",
         "usedBy": {
           "body": "Added to the api_request tool description while agent scripts are on in the Studio MCP settings."
+        }
+      },
+      "dbmcpToolKubeReview": {
+        "description": "Tells the agent that the user may hold a cluster list, describe or logs result for review and what a withheld result means.",
+        "title": "Kubernetes result review notice",
+        "usedBy": {
+          "body": "Added to the kube_list_resources, kube_describe and kube_pod_logs tool descriptions."
         }
       },
       "dbmcpToolRunQueryScripts": {
@@ -14317,6 +14331,9 @@
           "input": {
             "label": "Sends the value you type for {name} (host: {host})"
           },
+          "masked": {
+            "status": "Secrets masked: {names}"
+          },
           "noEnvironment": {},
           "query": {},
           "redirectsOffTimeout": {
@@ -14414,6 +14431,20 @@
         },
         "formatted": {
           "option": "Formatted"
+        },
+        "kube": {
+          "logsTruncated": {
+            "status": "Older lines were cut off at the size limit"
+          },
+          "manifestTruncated": {
+            "status": "Manifest cut off at the size limit"
+          },
+          "reviewResultOn": {
+            "body": "Already on by this cluster’s settings or Kira’s."
+          },
+          "secretRedacted": {
+            "hint": "Secret values are redacted by Kira."
+          }
         },
         "op": {
           "liftLimit": {
@@ -14517,6 +14548,9 @@
         },
         "masked": {
           "hint": "A masking rule applies to this column."
+        },
+        "maskedColumns": {
+          "status": "Masked columns: {names}"
         },
         "redisType": {
           "status": "Type {type}"
@@ -17620,6 +17654,10 @@
           "toggle": {
             "aria": "Expose cluster {name} to agents"
           }
+        },
+        "kubePreview": {
+          "description": "Holds each list, describe and logs result until you send it on. A cluster’s MCP dialog can override this.",
+          "label": "Review cluster results before the AI gets them"
         },
         "masked": {
           "status": "{count} masked column | {count} masked columns"

@@ -225,6 +225,7 @@ function studioItems(): ApprovalItem[] {
         namespace: 'payments',
         operation: 'list',
         statement: 'pods -l app=checkout',
+        reviewOffered: true,
       },
       0,
     ),
@@ -263,6 +264,7 @@ function studioItems(): ApprovalItem[] {
     ),
     apiResponse('9', false),
     apiResponse('10', true),
+    kubeResponse('11'),
   ];
 }
 
@@ -306,6 +308,35 @@ function apiResponse(id: string, scripted: boolean): ApprovalItem {
   );
 }
 
+const KUBE_RESULT = JSON.stringify({
+  columns: ['Name', 'Ready', 'Status'],
+  rows: [
+    { name: 'checkout-1', namespace: 'payments', cells: ['checkout-1', '1/1', 'Running'] },
+    { name: 'checkout-2', namespace: 'payments', cells: ['checkout-2', '1/1', 'Running'] },
+  ],
+  rowCount: 2,
+  truncated: false,
+});
+
+function kubeResponse(id: string): ApprovalItem {
+  return mk(
+    `kube.response:${id}`,
+    'kube.response',
+    { name: 'prod-eu', kind: 'kubernetes', location: 'k8s.prod.acme:6443 · payments' },
+    { class: 'read', tone: 'neutral' },
+    {
+      context: 'prod-eu',
+      server: 'k8s.prod.acme:6443',
+      namespace: 'payments',
+      operation: 'list',
+      statement: 'pods -l app=checkout',
+      isError: false,
+      bytes: KUBE_RESULT.length,
+      requested: false,
+    },
+  );
+}
+
 // The dialog shows one item at a time; pushing a list of one shows that item alone.
 async function show(page: Page, item: ApprovalItem) {
   await pushApprovals(page, [item]);
@@ -314,6 +345,8 @@ async function show(page: Page, item: ApprovalItem) {
   await expect(dialog.locator('section[data-kind]')).toHaveCount(1);
   if (item.kind === 'db.response')
     await expect(page.locator(t('db-mcp-preview-row')).first()).toBeVisible();
+  if (item.kind === 'kube.response')
+    await expect(page.locator(t('kube-review-row')).first()).toBeVisible();
   if (item.kind === 'api.response')
     await expect(
       page.locator(t('api-review-raw-status')).or(page.locator(t('api-review-result'))),
@@ -367,7 +400,11 @@ async function checkItem(page: Page) {
     const centre = await midY(approve);
     near(await midY(deny), centre, `${kind} deny centre`);
     near((await left(approve)) - (await right(deny)), 6, `${kind} deny/approve gap`);
-    for (const sel of ['db-mcp-approval-review-result', 'proof-review-open']) {
+    for (const sel of [
+      'db-mcp-approval-review-result',
+      'kube-approval-review-result',
+      'proof-review-open',
+    ]) {
       const l = dialog.locator(t(sel));
       if (await l.count()) near(await midY(l), centre, `${kind} ${sel} centre`);
     }
@@ -430,6 +467,11 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
           args: { requestId: '4' },
           response: { requestId: '4', text: RESULT, isError: false },
         },
+        {
+          channel: IPC.dbMcpPendingResponse,
+          args: { requestId: '11' },
+          response: { requestId: '11', text: KUBE_RESULT, isError: false },
+        },
       ],
     });
     const byId = (id: string) => {
@@ -457,10 +499,16 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
           13,
         'tabs right vs body inner right',
       );
-      const first = it.locator('.view-line, [data-testid="db-mcp-preview-column"]').first();
+      const first = it
+        .locator(
+          '.view-line, [data-testid="db-mcp-preview-column"], [data-testid="kube-review-column"]',
+        )
+        .first();
       near(await midY(tabs), await midY(first), 'tabs centre vs first line');
       const content = it
-        .locator('[data-testid="db-mcp-approval-statement"], [data-testid="db-mcp-preview-table"]')
+        .locator(
+          '[data-testid="db-mcp-approval-statement"], [data-testid="db-mcp-preview-table"], [data-testid="kube-review-table"]',
+        )
         .first();
       expect(await left(tabs)).toBeGreaterThanOrEqual((await right(content)) - TOL);
     }
@@ -510,6 +558,13 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
       'table first column x (after the chevron column)',
     );
     await checkTabs(resp);
+    await show(page, byId('kube.response:11'));
+    await checkTabs(item('kube.response:11'));
+    near(
+      await left(item('kube.response:11').locator(t('kube-review-column')).first()),
+      indent + 24,
+      'kube table first column x (after the chevron column)',
+    );
     await show(page, byId('proof.review:8'));
     near(
       await left(item('proof.review:8').locator('ol li > span').first()),

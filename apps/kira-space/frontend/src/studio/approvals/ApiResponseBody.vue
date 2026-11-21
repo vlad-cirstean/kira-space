@@ -29,6 +29,20 @@ const script = computed(() => response.data.value?.script ?? null);
 // Values the script keeps once this result is sent (P678): not stored yet, previews only.
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
+// Without a script the raw response is what the agent gets: one view.
+const views = computed(() => {
+  const raw = {
+    value: 'raw',
+    label: t('studio.dbMcp.approval.api.responseRaw.label'),
+    testid: 'api-review-view-raw',
+  };
+  return payload.value.scripted
+    ? [
+        { value: 'result', label: t('common.agentGets.label'), testid: 'api-review-view-result' },
+        raw,
+      ]
+    : [raw];
+});
 const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 // Never hide bytes: an unparseable response falls back to its verbatim text.
 const parsedRaw = computed(() => {
@@ -45,14 +59,8 @@ const parsedRaw = computed(() => {
 <template>
   <div data-testid="api-review-body">
     <QueryState :query="response" variant="inline" :is-empty="() => false">
-      <ResultReview
-        testid="api-review"
-        :scripted="payload.scripted"
-        :raw-label="t('studio.dbMcp.approval.api.responseRaw.label')"
-        :result-label="t('common.agentGets.label')"
-        :views-label="t('studio.dbMcp.approval.api.responseViews.aria')"
-      >
-        <template #raw>
+      <ResultReview :views="views" :label="t('studio.dbMcp.approval.api.responseViews.aria')">
+        <template #view-raw>
           <ApiResponseView
             v-if="parsedRaw"
             :response="parsedRaw"
@@ -61,7 +69,7 @@ const parsedRaw = computed(() => {
           />
           <ApprovalCode v-else data-testid="api-review-raw">{{ raw || text }}</ApprovalCode>
         </template>
-        <template #result>
+        <template #view-result>
           <FieldError v-if="failed" class="whitespace-pre-wrap" data-testid="api-review-result">{{
             text
           }}</FieldError>
@@ -72,6 +80,16 @@ const parsedRaw = computed(() => {
             data-testid="api-review-result"
           />
           <ApprovalCode v-else data-testid="api-review-result">{{ text }}</ApprovalCode>
+        </template>
+        <template #mask>
+          <span
+            v-if="payload.masked.length"
+            class="text-kira-sm text-subtle"
+            data-testid="api-review-mask"
+            >{{
+              t('studio.dbMcp.approval.api.masked.status', { names: payload.masked.join(', ') })
+            }}</span
+          >
         </template>
         <template #after>
           <StagedKeepList

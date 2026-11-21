@@ -406,6 +406,8 @@ type apiResponsePayload struct {
 	RawBytes    int            `json:"rawBytes"`
 	Class       string         `json:"class"`
 	Reason      string         `json:"reason"`
+	// Masked names the secret variables the request masker hid in the held text; never a value.
+	Masked []string `json:"masked"`
 }
 
 func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
@@ -422,7 +424,7 @@ func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
 	out := apiResponsePayload{
 		Method: p.Method, URL: p.URL, Host: p.Host, Status: meta.Status, StatusText: meta.StatusText,
 		IsError: held.IsError, Scripted: held.Script != nil, Bytes: len(held.Text), RawBytes: len(held.Raw),
-		Class: "write", Reason: meta.Reason,
+		Class: "write", Reason: meta.Reason, Masked: maskedNames(p),
 	}
 	if meta.Read {
 		out.Class = "read"
@@ -431,6 +433,16 @@ func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
 		out.Environment = &apiEnvPayload{ID: p.Env.ID, Name: p.Env.Name, Color: p.Env.Color}
 	}
 	return out
+}
+
+// maskedNames lists the plan's secret variable names, sorted and unique.
+func maskedNames(p *agentapi.Planned) []string {
+	out := make([]string, 0, len(p.Credentials))
+	for _, c := range p.Credentials {
+		out = append(out, c.Name)
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds

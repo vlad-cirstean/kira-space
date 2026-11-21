@@ -437,15 +437,11 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 // holdResponse raises the response-stage item for held and waits for the answer. A non-empty string is the
 // refusal text; "" means the user sent the result.
 func (s *Server) holdResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, held ApprovalResponse) string {
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	return s.holdResult(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
-		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
-	})
-	if outcome == ApprovalApproved {
-		return s.recheckHeld(ctx, rv, args, rendered)
-	}
-	return heldRefusal(outcome, rv, held.Bytes)
+		Target: targetOf(rv.summary, args.Path), Origin: originFrom(ctx),
+	}, held, dbHeldCall(rv), func() string { return s.recheckHeld(ctx, rv, args, rendered) })
 }
 
 // recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
@@ -474,44 +470,9 @@ func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, args runQu
 	return ""
 }
 
-// heldRefusal is the app-authored text of a result the user did not send. It never carries data. The
-// statement has run, so every text says so.
-func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
-	name := rv.summary.Name
-	switch outcome {
-	case ApprovalDenied:
-		return ranSuffix(fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name), rv)
-	case ApprovalTooLarge:
-		msg := fmt.Sprintf("the query on %q ran, but its result is %.1f MB, over the %d MB review limit, so it was withheld unseen.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
-		if rv.class == adapters.ClassRead {
-			return msg + " Ask for fewer rows or columns."
-		}
-		return ranSuffix(msg, rv)
-	case ApprovalHeldFull:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but too many results are waiting for the user's review, so its result was withheld. Do not rerun it.", name), rv)
-	case ApprovalTimedOut:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld.", name, approvalWindow()), rv)
-	case ApprovalAbandoned:
-		return ranSuffix(fmt.Sprintf("the Studio MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
-	case ApprovalQueueFull:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
-	default:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was not approved.", name), rv)
-	}
-}
-
 // ranSuffix tells the agent a non-read statement's changes stay and it must not rerun, so it does not repeat a
 // committed write.
-func ranSuffix(msg string, rv queryResolution) string {
-	if rv.class == adapters.ClassRead {
-		return msg
-	}
-	msg += " Its changes stay."
-	if !strings.Contains(msg, "not rerun") {
-		msg += " Do not rerun it."
-	}
-	return msg
-}
+func ranSuffix(msg string, rv queryResolution) string { return dbHeldCall(rv).suffix(msg) }
 
 // resultText is the concatenated TextContent of res — the bytes the client receives.
 func resultText(res *mcp.CallToolResult) string {

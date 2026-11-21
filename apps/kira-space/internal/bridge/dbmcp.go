@@ -130,28 +130,29 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 // pool its Sessions.
 func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 	return dbmcp.Config{
-		Home:             config.KiraSpaceHome(),
-		Conns:            s.Deps.Connections,
-		Tree:             s.Deps.Tree,
-		Query:            s.Deps.Router,
-		Approvals:        s.Approvals,
-		Kube:             s.Kube,
-		Ops:              s.Deps.Router,
-		Runs:             s.Runs,
-		Scripts:          s.Scripts,
-		API:              s.API,
-		APISettings:      s.apiSettings,
-		Kept:             s.Kept,
-		JS:               s.JS,
-		ScriptOps:        s.ScriptOps,
-		MaskRules:        s.Deps.MaskRules,
-		ColumnReview:     s.Deps.MaskReview,
-		ExplainThreshold: s.explainThreshold,
-		PreviewResponses: s.previewResponses,
-		Logger:           slog.Default(),
-		Prompts:          s.Deps.Prompts,
-		Limits:           s.Limits,
-		Port:             port,
+		Home:                config.KiraSpaceHome(),
+		Conns:               s.Deps.Connections,
+		Tree:                s.Deps.Tree,
+		Query:               s.Deps.Router,
+		Approvals:           s.Approvals,
+		Kube:                s.Kube,
+		Ops:                 s.Deps.Router,
+		Runs:                s.Runs,
+		Scripts:             s.Scripts,
+		API:                 s.API,
+		APISettings:         s.apiSettings,
+		Kept:                s.Kept,
+		JS:                  s.JS,
+		ScriptOps:           s.ScriptOps,
+		MaskRules:           s.Deps.MaskRules,
+		ColumnReview:        s.Deps.MaskReview,
+		ExplainThreshold:    s.explainThreshold,
+		PreviewResponses:    s.previewResponses,
+		KubeReviewResponses: s.kubeReviewResponses,
+		Logger:              slog.Default(),
+		Prompts:             s.Deps.Prompts,
+		Limits:              s.Limits,
+		Port:                port,
 	}
 }
 
@@ -282,6 +283,17 @@ func (s *DbMcpService) previewResponses() bool {
 		return true
 	}
 	return settings.DbMcp.PreviewResponses
+}
+
+// kubeReviewResponses is dbmcp.Config.KubeReviewResponses' real backend, read fresh on every call. A read
+// failure fails closed (true), like previewResponses.
+func (s *DbMcpService) kubeReviewResponses() bool {
+	settings, err := s.Deps.Repos.Settings.GetAll()
+	if err != nil {
+		slog.Warn("db mcp: read kube review setting, holding results for review", "scope", "dbmcp", "err", err)
+		return true
+	}
+	return settings.DbMcp.KubeReviewResponses
 }
 
 // startIfEnabled is main.go's own boot-time call: a failure (a bind conflict) is logged, never

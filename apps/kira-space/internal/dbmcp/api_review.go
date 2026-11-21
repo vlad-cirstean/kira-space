@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
@@ -92,73 +91,30 @@ func (s *Server) reviewAPI(ctx context.Context, plan agentapi.Planned, sc *apiSc
 	if sc.hasTransform() {
 		raw, merr := json.Marshal(o.Raw)
 		if merr != nil {
-			return apiSentSuffix(fmt.Sprintf("the %s request was sent, but its response could not be prepared for review and was withheld.", apiReq(plan)), read)
+			return apiHeldCall(plan).suffix(fmt.Sprintf("the %s request was sent, but its response could not be prepared for review and was withheld.", apiReq(plan)))
 		}
 		held.Raw = string(raw)
 		held.Script = &HeldScript{Source: sc.Transform, Hash: jsengine.SourceHash(sc.Transform)}
 		held.Bytes += len(held.Raw) + len(held.Script.Source)
 	}
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	return s.holdResult(ctx, ApprovalRequest{
 		ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown, Statement: plan.Method + " " + plan.URL,
 		Reason: ApprovalReasonPermission, Origin: originFrom(ctx), Subject: approvals.KindAPIResponse,
-		Stage: ApprovalStageResponse, API: &plan, Response: &held,
-		APIReview: &apiReviewMeta{Status: o.Raw.Status, StatusText: o.Raw.StatusText, Read: read, Reason: rv.Reason},
-	})
-	if outcome == ApprovalApproved {
-		return s.recheckAPIHeld(plan, sc, read)
-	}
-	return apiHeldRefusal(outcome, plan, read, held.Bytes)
+		API: &plan, APIReview: &apiReviewMeta{Status: o.Raw.Status, StatusText: o.Raw.StatusText, Read: read, Reason: rv.Reason},
+	}, held, apiHeldCall(plan), func() string { return s.recheckAPIHeld(plan, sc) })
 }
 
 // recheckAPIHeld returns why an approved response must still be withheld, "" when it may go. The held text
 // was masked by the request's own masker at send time, and no user setting changes what that masker covers,
 // so only the tools switch and, for a scripted request, the scripts switch are re-read.
-func (s *Server) recheckAPIHeld(plan agentapi.Planned, sc *apiScripts, read bool) string {
+func (s *Server) recheckAPIHeld(plan agentapi.Planned, sc *apiScripts) string {
 	switch {
 	case !s.apiEnabled():
-		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiRequestsOff), read)
+		return apiHeldCall(plan).suffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiRequestsOff))
 	case sc != nil && !s.scriptsOn():
-		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiScriptsOff), read)
+		return apiHeldCall(plan).suffix(fmt.Sprintf("the %s request was sent, but %s while its response was in review, so it was withheld.", apiReq(plan), apiScriptsOff))
 	}
 	return ""
 }
 
 func apiReq(p agentapi.Planned) string { return p.Method + " " + p.Host }
-
-// apiHeldRefusal is the app-authored text of a response the user did not send. It never carries response
-// data, not even the status.
-func apiHeldRefusal(outcome ApprovalOutcome, plan agentapi.Planned, read bool, size int) string {
-	req := apiReq(plan)
-	switch outcome {
-	case ApprovalDenied:
-		return apiSentSuffix(fmt.Sprintf("the user withheld the response to %s; the request was sent, but you get no response. Do not resend it to get the response another way.", req), read)
-	case ApprovalTooLarge:
-		msg := fmt.Sprintf("the %s request was sent, but its response is %.1f MB, over the %d MB review limit, so it was withheld unseen.", req, float64(size)/(1<<20), maxHeldResultBytes>>20)
-		if read {
-			return msg + " Ask for less: narrow the request or reduce the response with a transform script."
-		}
-		return apiSentSuffix(msg, read)
-	case ApprovalHeldFull:
-		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but too many results are waiting for the user's review, so its response was withheld. Do not resend it.", req), read)
-	case ApprovalTimedOut:
-		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but its response got no review within %s and was withheld.", req, approvalWindow()), read)
-	case ApprovalAbandoned:
-		return apiSentSuffix(fmt.Sprintf("the Studio MCP server stopped before the response to %s was reviewed; the request was sent and its response was withheld.", req), read)
-	case ApprovalQueueFull:
-		return apiSentSuffix(fmt.Sprintf("the %s request was sent, but too many requests are waiting for approval, so its response was withheld. Do not resend it.", req), read)
-	}
-	return apiSentSuffix(fmt.Sprintf("the %s request was sent, but its response was not approved.", req), read)
-}
-
-// apiSentSuffix tells the agent a write's effects stay and it must not resend, so it does not repeat a
-// committed write. A read gets neither.
-func apiSentSuffix(msg string, read bool) string {
-	if read {
-		return msg
-	}
-	msg += " Its effects stay."
-	if !strings.Contains(msg, "not resend") {
-		msg += " Do not resend it."
-	}
-	return msg
-}
