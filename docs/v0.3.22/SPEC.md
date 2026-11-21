@@ -14,6 +14,7 @@ Code review at chapter end: 2 rounds (user request).
 | P712 | Show every shortcut: button tooltips, context menus, menu bar | Todo |
 | P713 | Real `claude` `TestAdeReviewStep`: resumed implementer lacks `review.reply` | Done |
 | P714 | Real `claude` details bench gate: F5 and F6 fail at base | Todo |
+| P715 | Approval prompt dialogs (database, API) redesign; data review rows resizable | Todo |
 
 ## P707
 
@@ -297,3 +298,19 @@ and hits the guard at 18 of 24 runs. Deliverable: root-cause with the P713 Resul
 starting point (real regression in the details tool/prompt path, stale thresholds or baseline, or
 sample noise at 2 reps), then fix the code or recalibrate the gate with evidence; the plan states
 the budget and rep count needed for a trustworthy verdict and what only a paid run proves.
+
+## P715
+
+Two user complaints, one phase. (1) The approval prompt dialogs for database and API agent
+operations are cluttered: roughly five things stacked one after another, and the facts that
+matter most (read vs write operation, read-only or not) do not stand out. Deliverable: audit
+every field these dialogs show (`apps/kira-space/frontend/src/studio/approvals/`, the toast and
+the dialog), rank by what a user needs to decide, and redesign: one clear verdict row for
+operation kind and read-only state, the statement or request as the focus, secondary detail
+collapsed, actions unambiguous. The plan proposes the design with screenshots (before from the
+real frontend, proposal as a prototype) and the user approves it before implementation starts.
+(2) The data review view (result and proof review, `ResultReview.vue`, `ProofReviewBody.vue`)
+crops cell values and rows cannot be resized, so full values are unreadable. Deliverable: resize
+a row (drag handle) and view the full value of a cell (for example expand row or cell popover),
+reusing the grid's existing row-resize behaviour if one exists. Tests: UI specs for both; visual
+baselines re-recorded and inspected.
