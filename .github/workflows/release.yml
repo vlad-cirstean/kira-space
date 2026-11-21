@@ -22,7 +22,9 @@ concurrency:
 # P330 graph: `tag` resolves the tag to a commit (seconds); build (macOS) then runs at that commit;
 # publish waits for it. The adapter matrix and db-compat gate every PR instead (P614). After
 # publish, install-smoke runs the published installer on a clean macOS runner. publish
-# creates a draft, verifies both assets, then publishes in one API call, so a failed job leaves no
+# creates a draft, uploads the disk image and the release index (kira-space-releases.txt, which
+# install.sh and the app read instead of the rate-limited GitHub REST API), verifies both assets,
+# then publishes in one API call, so a failed job leaves no
 # release and no half-uploaded one is ever visible. No job here saves a cache: cache-warm.yml owns
 # main's caches, and every job here restores them.
 # P331: `tag` refuses an already-published release and a non-prerelease tag off main before any
@@ -162,6 +164,14 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TAG: ${{ needs.tag.outputs.tag }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.tag.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
       # A rerun of failed jobs reuses `tag`'s outputs; a tag moved since then would get the old build.
       - name: Refuse a tag that moved after this run resolved it
         env:
@@ -217,7 +227,9 @@ jobs:
 
           This is the only supported install method. These builds aren't signed by Apple; a disk
           image downloaded through a browser is blocked by Gatekeeper, while the installer's own
-          download is not. The disk images attached below are what the installer downloads.
+          download is not. The disk image attached below is what the installer downloads;
+          `kira-space-releases.txt` is the list of releases (tag, size, sha256) that the installer
+          and the app read.
 
           ## Updating from inside the app
 
@@ -226,7 +238,7 @@ jobs:
           that click. Installer log: `~/Library/Logs/<app name>/install.log`.
           EOF
 
-      - name: Create the draft release with both disk images
+      - name: Create the draft release with the disk image
         run: |
           set -eu
           PRE=""
@@ -241,15 +253,52 @@ jobs:
           test -n "$ID"
           echo "RELEASE_ID=$ID" >> "$GITHUB_ENV"
 
-      - name: Verify the uploaded assets
+      # GitHub computes the digest a moment after upload; the index copies it, so wait for it.
+      - name: Wait for the disk image digest
         run: |
           set -eu
-          want_names="kira-space-macos-arm64.dmg"
-          # install.sh checks each asset's size and sha256 digest; wait for the digest to appear.
           n=0
           while :; do
             gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" > assets.json
             if jq -e 'length == 1 and all(.[]; .state == "uploaded" and .digest != null)' assets.json >/dev/null; then
+              break
+            fi
+            n=$((n + 1))
+            if [ "$n" -ge 12 ]; then
+              echo "disk image not uploaded with a digest after 60s:" >&2
+              cat assets.json >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      # The index lists every published release plus this draft, so it is built from the API here,
+      # once, with the token. Readers (install.sh, the app) never call the API. Prereleases get none:
+      # they are never `latest`, the only release the index is read from.
+      - name: Build and upload the release index
+        run: |
+          set -eu
+          case "$TAG" in *-*) echo "prerelease $TAG: no release index"; exit 0 ;; esac
+          gh api --paginate --slurp "repos/$GH_REPO/releases?per_page=100" > releases.json
+          go run ./scripts/releaseindex -asset kira-space-macos-arm64.dmg -publish "$TAG" \
+            < releases.json > kira-space-releases.txt
+          want="$TAG kira-space-macos-arm64.dmg $(wc -c < kira-space-macos-arm64.dmg | tr -d ' ') sha256:$(sha256sum kira-space-macos-arm64.dmg | awk '{print $1}')"
+          grep -qxF "$want" kira-space-releases.txt \
+            || { echo "index has no line '$want':" >&2; cat kira-space-releases.txt >&2; exit 1; }
+          cat kira-space-releases.txt
+          gh release upload "$TAG" kira-space-releases.txt
+
+      - name: Verify the uploaded assets
+        run: |
+          set -eu
+          want_names="kira-space-macos-arm64.dmg"
+          case "$TAG" in *-*) ;; *) want_names="$want_names kira-space-releases.txt" ;; esac
+          want_count="$(printf '%s\n' $want_names | wc -l | tr -d ' ')"
+          # install.sh checks each asset's size and sha256 digest; wait for the digests to appear.
+          n=0
+          while :; do
+            gh api "repos/$GH_REPO/releases/$RELEASE_ID/assets" > assets.json
+            if jq -e --argjson c "$want_count" 'length == $c and all(.[]; .state == "uploaded" and .digest != null)' assets.json >/dev/null; then
               break
             fi
             n=$((n + 1))
@@ -260,7 +309,9 @@ jobs:
             fi
             sleep 5
           done
-          test "$(jq -r '[.[].name] | sort | join(" ")' assets.json)" = "$want_names"
+          # want_names is already in sorted order.
+          jq -e --arg w "$want_names" '[.[].name] | sort | join(" ") == $w' assets.json >/dev/null \
+            || { echo "unexpected assets: $(jq -r '[.[].name] | join(" ")' assets.json)" >&2; exit 1; }
           for f in $want_names; do
             size="$(wc -c < "$f" | tr -d ' ')"
             sum="$(sha256sum "$f" | awk '{print $1}')"
@@ -296,34 +347,59 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.tag.outputs.sha }}
-      # Latest-release path first, then the --tag path over it (also the replace-older-copy path).
-      # The installer opens the app, and refuses to run while it is open, so quit it between runs.
+      # Latest-release path, then --tag over it (also the replace-older-copy path), then stepping from
+      # the minor's first release the way an old app's self-update does. The installer reads the
+      # release index and downloads from github.com, never the REST API, so no retry or delay is
+      # needed. The installer opens the app, and refuses to run while it is open, so quit it
+      # between runs.
       - name: Install
         env:
           TAG: ${{ needs.tag.outputs.tag }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -eu
+          LOGS="$HOME/Library/Logs/Kira Space"
           check() {
             test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "/Applications/Kira Space.app/Contents/Info.plist")" = com.kirathecat.kira-space
             codesign --verify --deep --strict "/Applications/Kira Space.app"
             pkill -x "Kira Space" || true; sleep 3
           }
-          # Installer stays unauthenticated like real users, so the GitHub API can 403 (shared-IP rate
-          # limit, release not yet visible) right after publish. Delay 5s, then 2 retries (10s, 15s).
-          install() {
-            n=1
-            while :; do
-              echo "install attempt $n: sh scripts/install.sh $*"
-              rc=0
-              sh scripts/install.sh "$@" || rc=$?
-              if [ "$rc" -eq 0 ]; then return 0; fi
-              if [ "$n" -ge 3 ]; then return "$rc"; fi
-              sleep $((n * 5 + 5)); n=$((n + 1))
-            done
+          version() {
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/Kira Space.app/Contents/Info.plist"
           }
-          sleep 5
-          install
+          sh scripts/install.sh
+          test "$(version)" = "${TAG#v}"
           check
-          install --tag="$TAG"
+          sh scripts/install.sh --tag="$TAG"
           check
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "/Applications/Kira Space.app/Contents/Info.plist")" = "${TAG#v}"
+          # Stepping needs an older release in the tag's minor: skip prereleases and patch 0.
+          case "$TAG" in
+            *-* | *.0) ;;
+            *)
+              curl -fsSL "https://github.com/$GH_REPO/releases/latest/download/kira-space-releases.txt" > index.txt
+              FIRST="$(awk -v line="$(printf '%s' "$TAG" | cut -d. -f1,2)" '
+                NR > 1 {
+                  split($1, p, ".")
+                  if (p[1] "." p[2] == line && (m == "" || p[3] + 0 < m + 0)) m = p[3] + 0
+                }
+                END { if (m != "") print line "." m }' index.txt)"
+              if [ -n "$FIRST" ] && [ "$FIRST" != "$TAG" ]; then
+                sh scripts/install.sh --tag="$FIRST"
+                check
+                sleep 1 &
+                sh scripts/install.sh --wait-pid=$! --notify-fd=3 3>staged.txt 2>self-update.log \
+                  || { cat self-update.log >&2; exit 1; }
+                cat self-update.log >&2
+                grep -qx "staged $TAG" staged.txt
+                test "$(version)" = "${TAG#v}"
+                check
+              else
+                echo "no older release in $TAG's minor; stepping not exercised"
+              fi
+              ;;
+          esac
+          # No run may have fallen back to the REST API.
+          if grep -q 'using the GitHub API' "$LOGS/install.log" self-update.log 2>/dev/null; then
+            echo "an install run fell back to the GitHub API" >&2
+            exit 1
+          fi

@@ -43,3 +43,8 @@ func platformAsset() string {
 	}
 	return ""
 }
+
+// releaseIndexAsset is the release asset listing every eligible release with size and sha256
+// (releaseline.FormatIndex). scripts/install.sh's INDEX_ASSET and .github/workflows/release.yml
+// must name it too; S11 in scripts/verify-packaging.sh checks.
+const releaseIndexAsset = "kira-space-releases.txt"

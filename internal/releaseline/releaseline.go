@@ -2,6 +2,10 @@
 // updater (internal/appupdate) and the release retention tool (scripts/releaseretention).
 // Leaf package: stdlib and x/mod/semver only.
 //
+// index.go holds the release index (kira-space-releases.txt): the one published list of eligible
+// releases with size and sha256, read by scripts/install.sh and the app so neither calls the
+// GitHub REST API.
+//
 // A line is a major.minor pair (v0.3). Lines order by semver. Pre-1.0 needs no special case:
 // 0.3.14 is line v0.3, and v0.9 is followed by v1.0.
 package releaseline
@@ -15,10 +19,11 @@ import (
 
 // Asset is the subset of a GitHub release asset this package reads.
 type Asset struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	State string `json:"state"`
-	Size  int64  `json:"size"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	State  string `json:"state"`
+	Size   int64  `json:"size"`
+	Digest string `json:"digest"` // "sha256:<hex>", computed by GitHub
 }
 
 // Release is the subset of a GitHub release object this package reads.

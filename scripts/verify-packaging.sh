@@ -8,7 +8,7 @@
 # P119 adds a real one, but only on an explicit Update click, through scripts/install.sh — ad-hoc
 # signed, correct bundle identity) reasserted against the Wails bundle's own layout.
 #
-# Static checks (S1, S2, S5) always run — S3/S4 were electron-builder.yml checks removed in the
+# Static checks (S1, S2, S5, S16, S17) always run — S3/S4 were electron-builder.yml checks removed in the
 # P57 rewrite; the numbering was never closed up, and check IDs stay as-is since docs/PACKAGING.md
 # cross-references them. Artifact checks (A1, A3, A5, A6, A7, N2 over the .app; A4, N3 over the .dmg P10
 # ships) run only when that artifact exists; otherwise they print "skipped" and pass.
@@ -116,8 +116,16 @@ fi
 # the invariant still holds for every line of app code: only scripts/install.sh, run by the user's
 # own explicit Update click (never silently), is a sanctioned downloader. scripts/ is deliberately
 # excluded from this scan for exactly that reason.
-if grep -rnE 'browser_download_url|releases/download' apps/ packages/ internal/ >/dev/null 2>&1; then
-  fail "release asset download present" "apps/, packages/ or internal/ references a release asset download outside scripts/install.sh"
+# The one allowed hit is the release index URL in internal/appupdate/checker.go (metadata, never a
+# binary).
+DOWNLOAD_HITS="$(grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/ 2>/dev/null \
+  | grep -v '/node_modules/' | grep -v '/bindings/' || true)"
+case "$DOWNLOAD_HITS" in
+  internal/appupdate/checker.go:*indexURL*) ;;
+  *) fail "release asset download present" "apps/, packages/ or internal/ references a release download outside scripts/install.sh and checker.go's indexURL: $DOWNLOAD_HITS" ;;
+esac
+if [ "$(printf '%s\n' "$DOWNLOAD_HITS" | grep -c . || true)" -ne 1 ]; then
+  fail "release asset download present" "expected exactly one release download reference (checker.go's indexURL); got: $DOWNLOAD_HITS"
 fi
 
 # --- S11: the curl installer and the Go installer agree on their one shared contract --------
@@ -144,6 +152,15 @@ if [ -z "$SCRIPT_ASSET" ] || [ "$SCRIPT_ASSET" != "$GO_ASSET" ]; then
   fail "installer asset name out of sync" "scripts/install.sh ASSET ('$SCRIPT_ASSET') != internal/appupdate/version.go macAsset ('$GO_ASSET')"
 fi
 
+SCRIPT_INDEX_ASSET="$(sed -n 's/^  INDEX_ASSET="\([^"]*\)".*/\1/p' scripts/install.sh 2>/dev/null | head -1)"
+GO_INDEX_ASSET="$(sed -n 's/^const releaseIndexAsset = "\([^"]*\)".*/\1/p' internal/appupdate/version.go 2>/dev/null | head -1)"
+if [ -z "$SCRIPT_INDEX_ASSET" ] || [ "$SCRIPT_INDEX_ASSET" != "$GO_INDEX_ASSET" ]; then
+  fail "release index name out of sync" "scripts/install.sh INDEX_ASSET ('$SCRIPT_INDEX_ASSET') != internal/appupdate/version.go releaseIndexAsset ('$GO_INDEX_ASSET')"
+fi
+if ! grep -qF "$GO_INDEX_ASSET" .github/workflows/release.yml 2>/dev/null; then
+  fail "release index name out of sync" ".github/workflows/release.yml does not name '$GO_INDEX_ASSET'"
+fi
+
 INSTALL_URL_HITS="$(grep -rn 'raw.githubusercontent.com' apps/ packages/ internal/ \
   --include=*.go --include=*.ts --include=*.vue 2>/dev/null || true)"
 INSTALL_URL_COUNT="$(printf '%s\n' "$INSTALL_URL_HITS" | grep -c . || true)"
@@ -158,10 +175,20 @@ if [ "${INSTALL_URL_COUNT:-0}" -ne 1 ]; then
 fi
 
 # --- S16: install.sh's stepping rule is the updater's (P653) ------------------------------------
-# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in a JXA twin of
-# releaseline.NextStep. Replay the Go table (internal/releaseline/testdata/next_step.json) through it.
+# Apps up to 0.3.14 run install.sh with no --tag, so the script steps minors itself in an awk twin of
+# releaseline.NextStep (index_next_step). Replay the Go table, rendered as release indexes
+# (internal/releaseline/testdata/next_step_index.json), through it; the JXA apiToIndex fallback must
+# also render the same index text as releaseline.FormatIndex.
 if ! bun scripts/check-install-step.ts; then
-  fail "installer stepping drifted" "scripts/install.sh's nextStep disagrees with internal/releaseline's NextStep table"
+  fail "installer stepping drifted" "scripts/install.sh's index_next_step or apiToIndex disagrees with internal/releaseline's table"
+fi
+
+# --- S17: install.sh resolves releases from the index, not the API (P707) -----------------------
+# Runs resolve_release and download_release against a local fake GitHub: tag, --tag, stepping, hash
+# and size checks, index and download failures, and the API fallback's rate-limit errors. The request
+# log proves the normal path makes no API call.
+if ! bun scripts/check-install-resolve.ts; then
+  fail "installer resolve drifted" "scripts/install.sh no longer resolves and verifies releases as scripts/check-install-resolve.ts expects"
 fi
 
 # --- S13: Kira Space's document types match the file-type vocabulary (P332) --------------------
