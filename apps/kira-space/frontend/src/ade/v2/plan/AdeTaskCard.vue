@@ -39,6 +39,7 @@ import AdeStepMenu from './AdeStepMenu.vue';
 import AdeTagIcon from './AdeTagIcon.vue';
 import AdeTaskAddMenu from './AdeTaskAddMenu.vue';
 import AdeTaskChildren from './AdeTaskChildren.vue';
+import AdeTaskKey from './AdeTaskKey.vue';
 import AdeTaskSessions from './AdeTaskSessions.vue';
 import AdeTaskStatusMenu from './AdeTaskStatusMenu.vue';
 import AdeTaskSwatch from './AdeTaskSwatch.vue';
@@ -53,7 +54,7 @@ import {
   TASK_LEAD,
   TASK_STATUS_CELL,
   TASK_STEP_CELL,
-  TASK_SWATCH_GAP,
+  TASK_TIME_CELL,
 } from './taskGrid';
 import { type BranchRowModel, type CardModel, usePlanModel } from './usePlanModel';
 import { useTaskMenu } from './useTaskMenu';
@@ -174,8 +175,9 @@ const boxClass = computed(() => {
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
             <AdeTaskSwatch :color="card.color" :parked="card.parked" />
-            <span class="relative flex min-w-0 flex-1 items-center">
+            <span class="relative flex min-w-0 flex-1 items-center gap-1.5">
               <AdeTaskTitle :card="card" />
+              <AdeTaskKey :card="card" />
               <span
                 class="hidden group-hover/head:flex group-focus-visible/head:flex group-has-[:focus-visible]/head:flex has-[[data-state=open]]:flex has-[[data-pinned]]:flex"
                 :class="HOVER_OVERLAY"
@@ -227,16 +229,15 @@ const boxClass = computed(() => {
                 </TooltipIconButton>
               </span>
             </span>
-            <span :class="TASK_STATUS_CELL"><AdeTaskStatusMenu :card="card" /></span>
             <span :class="TASK_ACTION_CELL"><AdeTaskActionButton :card="card" icon /></span>
           </div>
           <div class="flex h-4.5 min-w-0 items-center gap-1.5">
-            <span :class="TASK_SWATCH_GAP" aria-hidden="true" />
+            <span :class="TASK_STATUS_CELL"><AdeTaskStatusMenu :card="card" /></span>
             <span :class="TASK_STEP_CELL"
               ><template v-if="p.hasWorkflow && !card.parked">
                 <TextTooltip :text="p.workflowTip">
                   <span
-                    class="inline-flex w-10 shrink-0 items-center gap-0.5"
+                    class="inline-flex w-8 shrink-0 items-center gap-0.5 @lg:w-10"
                     data-testid="ade-step-segs"
                   >
                     <span
@@ -302,10 +303,9 @@ const boxClass = computed(() => {
                 {{ t('space.ade.taskTab.branchRequest.label') }}
               </Button>
             </span>
-            <span :class="TASK_STATUS_CELL"
+            <span :class="TASK_TIME_CELL"
               ><AdeEstimateChip v-if="!card.review" :card="card" /></span
             >
-            <span class="w-control shrink-0" aria-hidden="true" />
           </div>
         </div>
       </div>
