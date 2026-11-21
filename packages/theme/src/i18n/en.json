@@ -14243,26 +14243,6 @@
             "status": "Sends: {names}"
           }
         },
-        "chain": {
-          "current": {
-            "label": "This step"
-          },
-          "earlier": {
-            "label": "Earlier step"
-          },
-          "kept": {
-            "status": "Kept {names}"
-          },
-          "keptByScript": {
-            "status": "Kept {names} (by script)"
-          },
-          "prepare": {
-            "label": "Prepare"
-          },
-          "transform": {
-            "label": "Transform"
-          }
-        },
         "detail": {
           "connectionReadOnly": {
             "body": "Set read-only: Kira refuses every write on it."

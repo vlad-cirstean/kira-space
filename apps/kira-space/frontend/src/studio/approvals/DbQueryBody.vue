@@ -4,7 +4,6 @@ import { dbQueryPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
 import ApprovalStatement from './ApprovalStatement.vue';
-import ChainSteps from './ChainSteps.vue';
 import DbParamsList from './DbParamsList.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 import TransformScriptBlock from './TransformScriptBlock.vue';
@@ -16,11 +15,6 @@ const payload = computed(() => dbQueryPayloadSchema.parse(props.item.payload));
 
 <template>
   <div class="flex flex-col gap-1">
-    <ChainSteps
-      :kept="payload.kept"
-      :current="payload.statement.split('\n')[0] ?? ''"
-      :scripts="payload.script ? ['transform'] : []"
-    />
     <KeptVariablesPanel
       v-if="payload.kept.length"
       :uses="payload.kept"
