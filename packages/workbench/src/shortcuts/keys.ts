@@ -1,9 +1,5 @@
-import { type Binding, type Chord, SHORTCUTS, type ShortcutId } from '@shared/domain/shortcuts';
-
-// Menus build synchronously and AppInfo (bridge/control.ts's appInfo()) is fetched async, so a UA
-// sniff beats plumbing a platform bridge through for one boolean that never changes for the
-// process's lifetime.
-const isMac = navigator.userAgent.includes('Mac');
+import type { ShortcutId } from '@shared/domain/shortcuts';
+import { IS_MAC as isMac, resolveChord } from '@theme/shortcutText';
 
 /** 'Cmd' on mac, 'Ctrl' elsewhere: copy like "Cmd-click". */
 export function primaryModifierName(): 'Cmd' | 'Ctrl' {
@@ -13,48 +9,6 @@ export function primaryModifierName(): 'Cmd' | 'Ctrl' {
 /** The platform's primary modifier: Cmd on mac, Ctrl elsewhere. */
 export function isPrimaryModifier(e: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>): boolean {
   return isMac ? e.metaKey : e.ctrlKey;
-}
-
-function resolveChord(id: ShortcutId): Chord {
-  const binding: Binding = SHORTCUTS[id];
-  return isMac ? (binding.mac ?? binding.chord) : binding.chord;
-}
-
-const MAC_KEY_GLYPH: Record<string, string> = {
-  Return: '⏎',
-  Backspace: '⌫',
-  Delete: '⌦',
-  Tab: '⇥',
-  Escape: '⎋',
-};
-
-const KEY_DISPLAY: Record<string, string> = {
-  Return: 'Enter',
-  Escape: 'Esc',
-  ArrowUp: 'Up',
-  ArrowDown: 'Down',
-  ArrowLeft: 'Left',
-  ArrowRight: 'Right',
-};
-
-/** 'Ctrl+C' / '⌘C', matching VS Code's own display order and glyphs. */
-export function formatShortcut(id: ShortcutId): string {
-  const chord = resolveChord(id);
-  if (isMac) {
-    const mods = [
-      chord.ctrl ? '⌃' : '',
-      chord.alt ? '⌥' : '',
-      chord.shift ? '⇧' : '',
-      chord.cmdOrCtrl ? '⌘' : '',
-    ].join('');
-    return `${mods}${MAC_KEY_GLYPH[chord.key] ?? chord.key}`;
-  }
-  const mods = [
-    chord.cmdOrCtrl || chord.ctrl ? 'Ctrl' : '',
-    chord.shift ? 'Shift' : '',
-    chord.alt ? 'Alt' : '',
-  ].filter(Boolean);
-  return [...mods, KEY_DISPLAY[chord.key] ?? chord.key].join('+');
 }
 
 const DOM_KEY: Record<string, string> = { Return: 'Enter', Space: ' ' };

@@ -5,7 +5,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 
 defineProps<{ editing: boolean; dirty: boolean; saving: boolean; locked: boolean }>();
 defineEmits<{ edit: []; save: []; done: [] }>();
@@ -27,7 +26,7 @@ defineEmits<{ edit: []; save: []; done: [] }>();
       <Badge v-if="dirty" variant="warn" data-testid="repo-file-modified">
         {{ t('common.state.unsavedChanges.status') }}
       </Badge>
-      <TextTooltip :text="t('common.action.save.label')" :kbd="formatShortcut('form.save')">
+      <TextTooltip :text="t('common.action.save.label')" shortcut="form.save">
         <Button
           variant="toolbar"
           size="kira"

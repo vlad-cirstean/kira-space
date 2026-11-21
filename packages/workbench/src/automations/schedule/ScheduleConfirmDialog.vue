@@ -20,7 +20,6 @@ import type { TextPart } from '@theme/varText';
 import { refDebounced } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import QueryState from '@workbench/components/QueryState.vue';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { computed, ref, watch } from 'vue';
 import { useMutationAction } from '../../behaviour/asyncAction';
@@ -235,7 +234,7 @@ function onChord(event: KeyboardEvent): void {
           :pending="decline.isPending.value"
           v-if="runId"
           data-testid="schedule-confirm-decline"
-          :kbd="formatShortcut('prompt.deny')"
+          shortcut="prompt.deny"
           @click="declineOrClose"
         >
           {{ t('common.action.notNow.label') }}
@@ -245,7 +244,7 @@ function onChord(event: KeyboardEvent): void {
           size="kira-lg"
           :disabled="!canRun"
           :pending="accept.isPending.value"
-          :kbd="formatShortcut('form.submit')"
+          shortcut="form.submit"
           data-testid="schedule-confirm-run"
           @click="run"
         >

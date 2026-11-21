@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { moduleShortcut } from '@shared/domain/moduleShortcuts';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
@@ -9,7 +10,6 @@ import { usePanelHeaderSearch } from '@workbench/behaviour/panelSearch';
 import PanelBar from '@workbench/components/PanelBar.vue';
 import PanelHeader from '@workbench/components/PanelHeader.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
-import { formatShortcut } from '@workbench/shortcuts/keys';
 import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
 import ApiConfigProblems from './ApiConfigProblems.vue';
 import CollectionsTree from './CollectionsTree.vue';
@@ -136,13 +136,14 @@ onUnmounted(() => {
           "
           :aria-label="t('common.action.search.label')"
           :pressed="showSearch"
-          :kbd="formatShortcut('panel.find')"
+          shortcut="panel.find"
           data-testid="toggle-search"
           @click="toggleSearch"
         />
         <TooltipIconButton
           :icon="ICON.add"
           :label="t('studio.api.common.newRequest.label')"
+          :shortcut="moduleShortcut('api', 'app.new')"
           data-testid="new-request"
           @click="openApiRequestTab"
         />
@@ -161,6 +162,7 @@ onUnmounted(() => {
         <TooltipIconButton
           :icon="ICON.environments"
           :label="t('studio.api.common.environments.label')"
+          :shortcut="moduleShortcut('api', 'api.environments')"
           data-testid="api-environments"
           @click="onEnvironments"
         />
