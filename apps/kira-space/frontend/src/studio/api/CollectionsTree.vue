@@ -25,19 +25,17 @@ import {
   zoneFor,
 } from './collectionDrop';
 import { backgroundMenu, type CollectionMenuActions, menuForRow, menuForSelection } from './menu';
-import { useApiVariablesDialogStore } from './state/apiVariablesDialog';
 import { collectionKey } from './state/collectionKeys';
 import { useCollectionSelectionStore } from './state/collectionSelection';
 import { type CollectionRowVm, useCollectionsStore } from './state/collections';
 import { useImportCurlStore } from './state/curl';
 import { useDynamicValuesStore } from './state/dynamicValues';
 import { useVariablesStore } from './state/variables';
-import { hasOpenRequestTab, openVariableSetTab } from './tabs';
+import { hasOpenRequestTab } from './tabs';
 
 const confirmDialogStore = useConfirmDialogStore();
 const contextMenuStore = useContextMenuStore();
 const dynamicValuesStore = useDynamicValuesStore();
-const variablesDialogStore = useApiVariablesDialogStore();
 const collectionsStore = useCollectionsStore();
 const selection = useCollectionSelectionStore();
 const importCurlStore = useImportCurlStore();
@@ -105,11 +103,6 @@ async function onOpen(row: CollectionRowVm): Promise<void> {
   await collectionsStore.openRequestRow(row);
 }
 
-/** The config file that holds `row`: its collection's. */
-function fileOf(row: CollectionRowVm): string {
-  return collectionsStore.collectionRecord(row.collectionId)?.file ?? '';
-}
-
 // The menu is a description (menu.ts) and this is the one place that knows how to perform any of
 // it — so the actions are injected rather than imported there, which also keeps that module free
 // of both the store's mutation half and the tab-opening path.
@@ -139,11 +132,7 @@ const actions: CollectionMenuActions = {
   importPostman: () => void collectionsStore.importPostman(),
   importCurl: () => importCurlStore.openImportCurlDialog(),
   exportCollection: (row) => void collectionsStore.exportCollection(row.id, row.name),
-  variables: (row) => openVariableSetTab('collection', row.id, row.name),
-  editVariables: (row) => {
-    const file = fileOf(row);
-    if (file) variablesDialogStore.open(file);
-  },
+  variables: (row) => variablesStore.openEnvironments(row.id),
   environments: () => variablesStore.openEnvironments(),
   dynamicValues: () => dynamicValuesStore.openDynamicValuesDialog(),
 };

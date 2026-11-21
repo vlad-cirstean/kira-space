@@ -33,12 +33,9 @@ export interface CollectionMenuActions {
    *  dialog, always into a fresh tab (never row-scoped, unlike importPostman above). */
   importCurl(): void;
   exportCollection(row: CollectionRowVm): void;
-  /** The collection row's own "Variables…" item — opens (or activates) the variable-set tab
-   *  scoped to it. */
+  /** The collection row's own "Variables" item: the Variables tab on its default column. */
   variables(row: CollectionRowVm): void;
-  /** The collection row's own "Edit variables" item — the variables file dialog. */
-  editVariables(row: CollectionRowVm): void;
-  /** The background menu's own "Environments…" item. */
+  /** The background menu's own "Variables" item. */
   environments(): void;
   /** The background menu's own "Dynamic values…" item — opens the read-only reference
    *  dialog. Not row-scoped, same as environments() above. */
@@ -174,9 +171,8 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
   ];
 
   if (row.kind === 'collection') {
-    // Variables… and Export are both collection-level actions: a collection is the unit of
-    // export, and the only scope-owning row this menu ever sees (an environment's own variables
-    // open through the environments tab instead).
+    // Variables and Export are both collection-level actions: a collection is the unit of export
+    // and owns the default column of the Variables tab.
     items.push(
       { type: 'separator' },
       {
@@ -185,13 +181,6 @@ export function menuForRow(row: CollectionRowVm, actions: CollectionMenuActions)
         label: t('common.module.variables.label'),
         icon: ICON.variables,
         run: () => actions.variables(row),
-      },
-      {
-        type: 'item',
-        id: 'edit-variables',
-        label: t('studio.api.environments.editVariables.label'),
-        icon: 'edit',
-        run: () => actions.editVariables(row),
       },
       {
         type: 'item',
@@ -247,8 +236,8 @@ export function backgroundMenu(actions: CollectionMenuActions): MenuItem[] {
     {
       type: 'item',
       id: 'environments',
-      label: t('studio.api.common.environments.label'),
-      icon: ICON.environments,
+      label: t('common.module.variables.label'),
+      icon: ICON.variables,
       shortcut: moduleShortcut('api', 'api.environments'),
       run: () => actions.environments(),
     },
@@ -258,6 +247,222 @@ export function backgroundMenu(actions: CollectionMenuActions): MenuItem[] {
       label: t('studio.api.dynamicValues.title'),
       icon: ICON.variables,
       run: () => actions.dynamicValues(),
+    },
+  ];
+}
+
+// ---- the Variables tab's menus ----
+// Built here, run by VariablesMatrix.vue: the printed chord and the keydown it binds reach the same
+// item (runMenuShortcut).
+
+export interface VariableCellMenuActions {
+  edit(): void;
+  copy(): void;
+  paste(): void;
+  clear(): void;
+  history(): void;
+}
+
+/** One cell. `canCopy` is false for a secret (its value is not in the renderer). */
+export function variableCellMenu(
+  actions: VariableCellMenuActions,
+  state: { editable: boolean; canCopy: boolean; canClear: boolean; canHistory: boolean },
+): MenuItem[] {
+  return [
+    {
+      type: 'item',
+      id: 'edit',
+      label: t('common.action.edit.label'),
+      icon: ICON.edit,
+      disabled: !state.editable,
+      shortcut: 'grid.edit',
+      run: actions.edit,
+    },
+    {
+      type: 'item',
+      id: 'copy',
+      label: t('common.action.copy.label'),
+      icon: ICON.copy,
+      disabled: !state.canCopy,
+      shortcut: 'grid.copy',
+      run: actions.copy,
+    },
+    {
+      type: 'item',
+      id: 'paste',
+      label: t('common.action.paste.label'),
+      icon: 'clippy',
+      disabled: !state.editable,
+      shortcut: 'grid.paste',
+      run: actions.paste,
+    },
+    {
+      type: 'item',
+      id: 'clear',
+      label: t('studio.api.variables.cell.clear.label'),
+      icon: 'discard',
+      disabled: !state.editable || !state.canClear,
+      run: actions.clear,
+    },
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'history',
+      label: t('common.module.history.label'),
+      icon: ICON.history,
+      disabled: !state.canHistory,
+      run: actions.history,
+    },
+  ];
+}
+
+export interface VariableRowMenuActions {
+  rename(): void;
+  describe(): void;
+  copyReference(): void;
+  /** Shares or unshares the variable in one environment. */
+  share(environmentId: string, on: boolean): void;
+  history(): void;
+  remove(): void;
+}
+
+export function variableRowMenu(
+  actions: VariableRowMenuActions,
+  state: {
+    editable: boolean;
+    canHistory: boolean;
+    environments: readonly { id: string; name: string; shared: boolean }[];
+  },
+): MenuItem[] {
+  const items: MenuItem[] = [
+    {
+      type: 'item',
+      id: 'rename',
+      label: t('common.action.rename.label'),
+      icon: ICON.rename,
+      disabled: !state.editable,
+      shortcut: 'grid.rename',
+      run: actions.rename,
+    },
+    {
+      type: 'item',
+      id: 'describe',
+      label: t('studio.api.variables.row.describe.label'),
+      icon: 'note',
+      disabled: !state.editable,
+      run: actions.describe,
+    },
+    {
+      type: 'item',
+      id: 'copy-reference',
+      label: t('studio.api.variables.row.copyReference.label'),
+      icon: ICON.copy,
+      run: actions.copyReference,
+    },
+  ];
+  if (state.environments.length > 0) {
+    items.push({
+      type: 'submenu',
+      id: 'share',
+      label: t('studio.api.variables.row.share.label'),
+      icon: 'hubot',
+      items: state.environments.map(
+        (env): MenuItem => ({
+          type: 'checkbox',
+          id: `share-${env.id}`,
+          label: env.name,
+          checked: env.shared,
+          run: () => actions.share(env.id, !env.shared),
+        }),
+      ),
+    });
+  }
+  items.push(
+    {
+      type: 'item',
+      id: 'history',
+      label: t('common.module.history.label'),
+      icon: ICON.history,
+      disabled: !state.canHistory,
+      run: actions.history,
+    },
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'delete',
+      label: t('common.action.delete.label'),
+      icon: ICON.delete,
+      danger: true,
+      disabled: !state.editable,
+      shortcut: 'grid.deleteRows',
+      run: actions.remove,
+    },
+  );
+  return items;
+}
+
+export interface VariableColumnMenuActions {
+  rename(): void;
+  agentAccess(): void;
+  dotenv(): void;
+  yaml(): void;
+  duplicate(): void;
+  remove(): void;
+}
+
+/** An environment column's menu; the collection's default column passes `environment: false`. */
+export function variableColumnMenu(
+  actions: VariableColumnMenuActions,
+  environment: boolean,
+): MenuItem[] {
+  const file: MenuItem[] = [
+    {
+      type: 'item',
+      id: 'dotenv',
+      label: t('studio.api.variablesDialog.bulk.toggle.label'),
+      icon: 'list-flat',
+      run: actions.dotenv,
+    },
+    {
+      type: 'item',
+      id: 'yaml',
+      label: t('studio.api.variables.column.yaml.label'),
+      icon: 'file-code',
+      run: actions.yaml,
+    },
+  ];
+  if (!environment) return file;
+  return [
+    {
+      type: 'item',
+      id: 'rename',
+      label: t('studio.api.variables.column.rename.label'),
+      icon: ICON.rename,
+      run: actions.rename,
+    },
+    {
+      type: 'item',
+      id: 'agent',
+      label: t('studio.api.variables.column.agent.label'),
+      icon: 'hubot',
+      run: actions.agentAccess,
+    },
+    ...file,
+    { type: 'separator' },
+    {
+      type: 'item',
+      id: 'duplicate',
+      label: t('common.action.duplicate.label'),
+      icon: ICON.duplicate,
+      run: actions.duplicate,
+    },
+    {
+      type: 'item',
+      id: 'delete',
+      label: t('common.action.delete.label'),
+      icon: ICON.delete,
+      danger: true,
+      run: actions.remove,
     },
   ];
 }

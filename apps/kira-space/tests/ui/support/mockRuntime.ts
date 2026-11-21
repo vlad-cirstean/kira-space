@@ -409,6 +409,7 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   apiConfigView: 'ApiConfigService.View',
   apiConfigSetSecret: 'ApiConfigService.SetSecret',
   apiConfigDeleteSecret: 'ApiConfigService.DeleteSecret',
+  apiConfigEditVariables: 'ApiConfigService.EditVariables',
   apiConfigFile: 'ApiConfigService.File',
   apiConfigSaveFile: 'ApiConfigService.SaveFile',
   apiConfigForm: 'ApiConfigService.Form',
