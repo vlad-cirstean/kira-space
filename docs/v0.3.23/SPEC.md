@@ -17,6 +17,7 @@ before implementation starts.
 | P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
 | P720 | API module variables and environments: UX redesign | Todo |
 | P721 | Remove development, debugging and validation leftovers | Todo |
+| P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 
 ## P716
 
@@ -256,3 +257,50 @@ Tests. No new tests. Verify: build, typecheck, lint, `lint:dead` (knip), `go mod
 tests of touched packages.
 
 Open questions. Per live-consumer item, listed in the findings file for the user.
+
+## P722
+
+User: "Remove the text from the new window button. And also allow tabs in the studio, api and runs
+to be dragged out of the window to create a new window. Like it can be done in apps like chrome. And
+you can drag them back to attach them to another window and will attach there."
+
+Design-first phase: Opus planner audits, then decides the design; user approves before
+implementation.
+
+Audited facts.
+
+- New-window button: find where the text label lives (`menu.go` "New Window ⇧⌘N", `OpenNewWindow` in
+  `internal/shell/openwindow.go`, the frontend button). Goal: icon-only with tooltip, keep
+  `aria-label`, shortcut still shown per N19.
+- Tabs are owned per window in the DB: `internal/appstorage/tabs.go` (`ErrTabOwnedElsewhere`), bridge
+  tabs Save/List per `windowKey`, `createTabsStore` in
+  `packages/workbench/src/state/createTabsStore.ts`, `studioTabsHooks`. A window hydrates tabs only
+  on boot.
+
+Constraints.
+
+- A move is one backend call that re-keys the tab record atomically between windows, plus a live
+  notify to the target window (it must add the tab without a reload).
+- Non-persistable tabs (terminal, script-run) and in-memory page stores (`dropResources`) do not
+  survive a move. Plan decides how runs and terminals re-attach (backend session keeps running) or
+  restricts the move to persistable tabs.
+- Tab ids stay unique across windows. Order and active selection are settled in both windows.
+
+Open questions.
+
+- Drag out: tab `dragend` outside the window opens a new window at the cursor via
+  `OpenNewWindowKeyed`, tab pre-registered for that key.
+- Drag into another window: HTML5 DnD does not cross separate native webviews reliably. Candidate is
+  backend-mediated drag: frontend reports drag start and end, Go resolves the window under the global
+  cursor. Needs cursor position per platform (macOS, Windows, Linux). Prove with a spike before the
+  design is approved.
+- Tear out of a window's only tab: close the source window or keep it empty?
+- Incognito tabs: movable or pinned to their window?
+
+Scope. Studio, api and runs tabs. Same tab strip behavior for all three.
+
+Tests. Split per CLAUDE.md. Flow test: re-key plus open-window backend path (atomic move, ownership
+error, new window pre-registered). UI spec: in-page drag handling (drag-out signal, drop target,
+order and active tab). Playwright cannot drive native cross-window drag. Manual checklist for the
+user on macOS, Windows and Linux: tear off, re-attach to another window, drop on desktop, tear off
+the last tab, new-window button icon, tooltip and shortcut.
