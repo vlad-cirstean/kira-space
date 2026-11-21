@@ -21,6 +21,7 @@ before implementation starts.
 | P721 | Remove development, debugging and validation leftovers | Todo |
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
+| P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 
 ## P716
 
@@ -357,3 +358,44 @@ step, steps renumbered to 4. `scripts/retry.sh` kept. Grep finds no leftover ref
 `docs/history/` and `docs/v0.3.23/`. `workflow_run` workflows run from the default branch, so the
 removal takes effect only once this chapter's PR merges to `main`; until then the old workflow still
 reruns failed PR runs. Pushing a workflow change needs a token with the `workflow` scope.
+
+## P724
+
+Cause. Release run 44942506459 (tag `v0.3.22`, commit `c7534c9f0`) failed in `build (macOS)`, step
+"Verify packaging", so `publish` was skipped and v0.3.22 has no release. `scripts/verify-packaging.sh`
+S10 runs `grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/` and
+requires exactly one hit, `internal/appupdate/checker.go`'s `indexURL`. After `bun run package` the
+Go binary embeds that constant, so grep also reports `Binary file apps/kira-space/bin/Kira Space
+matches` and the same for `Kira Space.app/Contents/MacOS/Kira Space`: 3 hits, `verify-packaging:
+FAILED`. Local and PR CI runs have no built binary, so the check passed there.
+
+v0.3.21 (run 44840061445, commit `03d33b5ca`). Not the same failure. Its "Verify packaging" passed:
+S10 then required zero hits (`releases/download` only) and the checker used the API, so no source or
+binary carried the string. `build` and `publish` succeeded and v0.3.21 is published. The run reads
+`failure` only because `install smoke (macOS)`, which runs after publish, got HTTP 403 from the GitHub
+API on all three install attempts (rate limit; P707 moved `install.sh` to the release index in
+v0.3.22). P707 (v0.3.22) added `indexURL` and the exactly-one rule, which no pre-release run could
+exercise against a binary.
+
+Fix. Scan source only. One helper in `verify-packaging.sh` greps text files (`grep -I`) with build and
+vendor dirs excluded (`bin`, `dist`, `dist-mobile`, `node_modules`, `bindings`); S10 and S2 (same
+latent shape: scans `apps/` incl. `bin/` and `frontend/dist`) use it. Invariant stays: exactly one
+release-download reference in source, `checker.go`'s `indexURL`. New S18 self-test runs the same scan
+and S10 verdict against a tiny temp fixture holding fake binaries and a `dist` bundle that carry the
+URL, so a missing build can no longer hide the bug. `checks (macOS)` in `pr.yml` gains
+`bun run verify:packaging`, so S18 runs under macOS grep in PR CI before any release.
+
+Verify. No macOS build: `bun run verify:packaging` passes on Linux with S18; a simulated release tree
+(dummy `bin/Kira Space` and `.app` binaries carrying the URL) reproduces the CI failure with the old
+script and passes with the new one; removing `-I` or the `bin` exclusion makes S18 fail. macOS grep is
+proven by `checks (macOS)` on this chapter's PR.
+
+Post-merge. Re-dispatching `release.yml -f tag=v0.3.22` cannot succeed: `build` checks out the tag's
+commit `c7534c9f0`, which carries the old S10, and `tag` refuses moving the tag to a commit not on
+`main` that is not the tag's. v0.3.22's changes ship in v0.3.23, whose release builds with the fix.
+`docs/PACKAGING.md` §7 "Recovery" covers this case ("Real failure: delete the tag ...; the fix ships
+as the next chapter"). The orchestrating session reports it; the user decides whether to delete the
+`v0.3.22` tag (`git push --delete origin v0.3.22`) or leave it unreleased. No re-dispatch unless the
+user asks.
+
+Deliverable. One plan `plans/P724.md`, one Sonnet pass. No UI tests.
