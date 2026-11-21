@@ -56,7 +56,10 @@ reviewTest('a review window boots three panes for its branch', async ({ relaunch
     page.locator(t('ade-review-task-colour')).boundingBox(),
   ]);
   expect(lineBox?.height).toBe(3);
-  expect(Math.abs((lineBox?.y ?? 0) - (barBox?.y ?? 99))).toBeLessThanOrEqual(1);
+  // The line sits directly under the title bar, above the content.
+  expect(
+    Math.abs((lineBox?.y ?? 0) + 3 - ((barBox?.y ?? 0) + (barBox?.height ?? 99))),
+  ).toBeLessThanOrEqual(1);
   await expect(page.getByText('Review · ')).toHaveCount(0);
 });
 

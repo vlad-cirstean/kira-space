@@ -196,8 +196,11 @@ test('a task card wears its colour as a 3px top edge, on the plan ground', async
     expect(c.marks).toBe(0);
     expect(c.swatches).toBe(0);
   }
-  expect(cards.find((c) => c.id === 'T_deps')?.topStyle).toBe('dashed');
-  expect(cards.find((c) => c.id === 'T_bill')?.topStyle).toBe('solid');
+  // Parked is no line style: the same solid edge, and the card says so with its tag glyph.
+  for (const c of cards) expect(c.topStyle).toBe('solid');
+  await expect(
+    page.locator(`${card('T_deps')} ${t('ade-tag')}[data-kind="notMerging"]`),
+  ).toHaveCount(1);
   const before = cards.find((c) => c.id === 'T_bill');
   await page.locator(head('T_bill')).click();
   await expect(page.locator(card('T_bill'))).toHaveAttribute('aria-current', 'true');
