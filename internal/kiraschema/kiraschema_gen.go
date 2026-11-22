@@ -420,6 +420,19 @@ var AdeTaskBranches = struct {
 	Adopted:         "adopted",
 }
 
+// AdeTaskFoundLinkDismissals names table ade_task_found_link_dismissals.
+var AdeTaskFoundLinkDismissals = struct {
+	Table     string
+	TaskID    string
+	URL       string
+	CreatedAt string
+}{
+	Table:     "ade_task_found_link_dismissals",
+	TaskID:    "task_id",
+	URL:       "url",
+	CreatedAt: "created_at",
+}
+
 // AdeTaskHandovers names table ade_task_handovers.
 var AdeTaskHandovers = struct {
 	Table        string

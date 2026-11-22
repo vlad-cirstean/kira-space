@@ -202,6 +202,13 @@ CREATE TABLE "ade_task_branches" (
   review_comments TEXT CHECK (review_comments IS NULL OR json_valid(review_comments))
 , adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1))) STRICT;
 
+CREATE TABLE ade_task_found_link_dismissals (
+  task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
+  url TEXT NOT NULL CHECK (url <> ''),
+  created_at INTEGER NOT NULL CHECK (created_at >= 0),
+  PRIMARY KEY (task_id, url)
+) STRICT;
+
 CREATE TABLE "ade_task_handovers" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,

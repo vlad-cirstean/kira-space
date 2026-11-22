@@ -1,7 +1,7 @@
 # Task o-1: Epic
 Kira applies your edits on save; read state.yaml fileErrors after each edit.
 Read-only, Kira rewrites: README.md, task.yaml, state.yaml (step, repos, setup, leases, runs, children). State changes: call state.
-Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml. proofs/<slug>/proof.md (format below).
+Write: handovers/draft-<step>.md (your stage's handover, Markdown, <=16 KiB). links.yaml (list a related link's url there to make it a main link). proofs/<slug>/proof.md (format below).
 Another agent's notes, handovers, proofs and links: editing an older one or deleting any waits for the user's approval; Kira asks.
 Write a proof for any checkable result before finishing.
 New proof: slug a-z0-9-; write images and big data into proofs/<slug>/ first, then proof.md last. Example:

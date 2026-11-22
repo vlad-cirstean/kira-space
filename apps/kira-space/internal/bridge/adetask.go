@@ -1111,6 +1111,18 @@ func (s *AdeTaskService) RemoveArtifact(ctx context.Context, args adewire.Remove
 	return adeTaskError(s.Engine.RemoveArtifact(ctx, args))
 }
 
+// DismissFoundLink hides a link found in the task's notes and handovers. Main links are never hidden by it.
+func (s *AdeTaskService) DismissFoundLink(ctx context.Context, args adewire.DismissFoundLinkArgs) error {
+	ctx = adeUserCtx(ctx)
+	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
+		return err
+	}
+	if err := validateLinkText(args.URL); err != nil {
+		return err
+	}
+	return adeTaskError(s.Engine.DismissFoundLink(ctx, args))
+}
+
 func (s *AdeTaskService) SetTaskStep(ctx context.Context, args adewire.SetTaskStepArgs) (adewire.Task, error) {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeTaskID(args.TaskID, "taskId"); err != nil {
