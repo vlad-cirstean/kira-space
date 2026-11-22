@@ -336,7 +336,6 @@ const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string
 // A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
 export const apiInputSchema = /*#__PURE__*/ z.object({
   name: z.string(),
-  label: z.string(),
   state: z.enum(['needed', 'stored']),
   origin: z.string(),
   keptId: z.string().optional(),

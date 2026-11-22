@@ -436,14 +436,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
 function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiResponsePayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.reason === 'userValue') {
-    out.push({
-      text: t('studio.kept.risk.userValue.status'),
-      tone: 'warn',
-      testid: 'api-review-user-value',
-      tooltip: t('studio.kept.risk.userValue.tooltip'),
-    });
-  }
   if (p.isError) {
     out.push({
       text: t('studio.dbMcp.approval.risk.scriptFailed.status'),
@@ -620,7 +612,7 @@ export function studioApprovalKinds(): ApprovalKinds {
         apiRequestPayloadSchema
           .parse(item.payload)
           .inputs.filter((i) => i.state === 'needed')
-          .map((i) => ({ name: i.name, label: i.label })),
+          .map((i) => ({ name: i.name, label: i.name })),
       labels: () => ({
         approve: t('common.action.send.label'),
         deny: t('studio.dbMcp.approval.api.dontSend.label'),

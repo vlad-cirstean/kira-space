@@ -49,7 +49,9 @@ const fieldId = (name: string): string => `api-input-${props.itemId}-${name}`;
       class="col-span-full grid grid-cols-subgrid items-center"
       :data-testid="`api-approval-input-${i.name}`"
     >
-      <FieldLabel :for="fieldId(i.name)" class="max-w-48 break-words">{{ i.label }}</FieldLabel>
+      <FieldLabel :for="fieldId(i.name)" class="max-w-48 break-words font-data">{{
+        i.name
+      }}</FieldLabel>
       <SecretInput
         :id="fieldId(i.name)"
         class="min-w-0"
@@ -65,7 +67,7 @@ const fieldId = (name: string): string => `api-input-${props.itemId}-${name}`;
       :key="i.name"
       meta
       :class="STORED_ROW"
-      :label="t('studio.kept.input.replace.label', { label: i.label })"
+      :label="t('studio.kept.input.replace.label', { label: i.name })"
       :data-testid="`api-approval-input-replace-${i.name}`"
     >
       <span aria-hidden="true" />
@@ -73,7 +75,7 @@ const fieldId = (name: string): string => `api-input-${props.itemId}-${name}`;
         :id="fieldId(i.name)"
         class="min-w-0"
         :model-value="typed(i.name)"
-        :aria-label="i.label"
+        :aria-label="i.name"
         :data-testid="`api-input-${i.name}`"
         @update:model-value="(v: string) => onType(i.name, v)"
       />

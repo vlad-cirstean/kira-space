@@ -2,7 +2,7 @@ import type { KeptSite, KeptUse } from '@shared/domain/kept';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { indentJson } from '../beautify';
 
-// One mark colour for every kept variable; the name inside the token says which.
+// One mark colour for every saved variable; the name inside the token says which.
 export const KEPT_MARK_CLASS = 'bg-kept-mark';
 // The same tint inside Monaco, where a class name is all a decoration takes (edDecorations.css).
 const KEPT_EDITOR_CLASS = 'kira-ed-kept';
@@ -16,9 +16,9 @@ interface KeptRef extends KeptRange {
   name: string;
 }
 
-const KEPT_PREFIX = 'kept.';
+const KEPT_PREFIXES = ['plain.', 'secret.'] as const;
 
-/** `{{kept.<name>}}` spans of a text, same grammar as internal/keptvars RefSpans: `{{` to the next
+/** `{{plain.<name>}}` and `{{secret.<name>}}` spans of a text, same grammar as internal/keptvars RefSpans: `{{` to the next
  *  `}}`, optional `| transform`, offsets in UTF-16 units. */
 export function keptRefs(text: string): KeptRef[] {
   const out: KeptRef[] = [];
@@ -30,14 +30,15 @@ export function keptRefs(text: string): KeptRef[] {
     if (end < 0) break;
     i = end + 2;
     const inner = text.slice(open + 2, end).trim();
-    if (!inner.startsWith(KEPT_PREFIX)) continue;
-    const name = inner.slice(KEPT_PREFIX.length).split('|')[0]?.trim() ?? '';
+    const prefix = KEPT_PREFIXES.find((p) => inner.startsWith(p));
+    if (!prefix) continue;
+    const name = inner.slice(prefix.length).split('|')[0]?.trim() ?? '';
     out.push({ name, from: open, to: end + 2 });
   }
   return out;
 }
 
-/** The ranges of one field's text where the request reads a kept variable. */
+/** The ranges of one field's text where the request reads a saved variable. */
 export function keptRanges(
   uses: readonly KeptUse[],
   field: KeptSite['field'],

@@ -101,13 +101,13 @@ func forms(text string) []string {
 // QueryEscape, PathEscape, base64 std and raw-URL. A masker of any secret uses it, so every secret kind shares one rule.
 func Spellings(text string) []string { return forms(text) }
 
-// SecretPairs is the replacer argument list that maps each secret entry's forms to {{kept.<name>}},
+// SecretPairs is the replacer argument list that maps each secret entry's forms to {{secret.<name>}},
 // longest form first so a value that is a prefix of another cannot shadow it.
 func SecretPairs(entries []Entry) []string {
 	type pair struct{ old, new string }
 	var ps []pair
 	for _, e := range entries {
-		ref := "{{kept." + e.Name + "}}"
+		ref := "{{secret." + e.Name + "}}"
 		for _, t := range SecretTexts(e) {
 			for _, f := range forms(t) {
 				ps = append(ps, pair{f, ref})
@@ -122,7 +122,7 @@ func SecretPairs(entries []Entry) []string {
 	return out
 }
 
-// SecretReplacer maps every form of the entries' values to {{kept.<name>}}; nil without entries.
+// SecretReplacer maps every form of the entries' values to {{secret.<name>}}; nil without entries.
 func SecretReplacer(entries []Entry) *strings.Replacer {
 	pairs := SecretPairs(entries)
 	if len(pairs) == 0 {

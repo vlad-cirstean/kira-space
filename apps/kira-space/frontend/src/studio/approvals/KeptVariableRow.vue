@@ -39,7 +39,7 @@ const clear = useClearKept();
     <KeptValueView :entry="use" />
     <FieldDescription class="flex flex-wrap items-center gap-x-1">
       <span data-testid="kept-age"
-        >{{ t('studio.kept.keptAt.label') }} <RelativeTime :at="use.createdAt" /></span
+        >{{ t('studio.filterHistory.saved.title') }} <RelativeTime :at="use.createdAt" /></span
       >
       <span aria-hidden="true">·</span>
       <span data-testid="kept-expiry">{{ expiry }}</span>

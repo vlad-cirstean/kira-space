@@ -44,7 +44,7 @@
      independently (P31 D20/D21). Values are the expressions already in use, so no colour changes. */
   --kira-search-match: color-mix(in srgb, var(--kira-warn) 25%, transparent);
   --kira-search-match-current: var(--kira-warn);
-  /* P678: tint behind a {{kept.name}} reference in an approval card, so one colour marks every kept variable. */
+  /* P678: tint behind a {{plain.name}} reference in an approval card, so one colour marks every kept variable. */
   --kira-kept-mark: color-mix(in srgb, var(--kira-info) 20%, transparent);
   /* P19 D17: "a filter/sort/projection is applied right now". Deliberately NOT --kira-accent:
      that token means primary action / on-state control everywhere else, and the three filter

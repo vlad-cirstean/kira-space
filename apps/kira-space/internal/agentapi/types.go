@@ -40,7 +40,7 @@ type Input struct {
 	// ScriptBodyBytes is the masked body cap for a response a transform script reads (0: no transform,
 	// MaxResponseBytes applies). Bounded to MaxScriptBodyBytes; not part of sameRequest.
 	ScriptBodyBytes int
-	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
+	// Inputs are the values the agent asks the user for; each is used as {{secret.<name>}}.
 	Inputs []InputDecl
 	// Staged are the values a prepare script saved in this run, by name: {{plain.x}} and {{secret.x}} in the
 	// request send them. Their entry ids start with "staged:".
@@ -213,6 +213,6 @@ type Service struct {
 	Globals func() (Globals, error)
 	// Access is the user's API access rules, read fresh per plan; nil means no rules.
 	Access func() (apiaccess.Policy, error)
-	// Kept resolves {{kept.<name>}} references; nil refuses them all.
+	// Kept resolves {{plain.<name>}} and {{secret.<name>}} references; nil refuses them all.
 	Kept KeptReader
 }

@@ -2,21 +2,29 @@ package keptvars
 
 import "strings"
 
-// RefSpan is one {{kept.<name>}} span in a text. From and To are byte offsets of the whole span.
+// RefSpan is one {{plain.<name>}} or {{secret.<name>}} span in a text. From and To are byte offsets of the
+// whole span.
 type RefSpan struct {
 	Name string
-	// Pipeline is true when the span carries a transform: {{kept.name | x}}.
+	// Secret is true for {{secret.name}}: the kind the request wrote, which must match the saved value's.
+	Secret bool
+	// Pipeline is true when the span carries a transform: {{plain.name | x}}.
 	Pipeline bool
 	From, To int
 }
 
-const refPrefix = "kept."
+const (
+	plainPrefix  = KindPlain + "."
+	secretPrefix = KindSecret + "."
+)
 
-// IsKeptName reports whether a reference name (as apivars.Names returns it) is in the kept namespace.
-func IsKeptName(name string) bool { return strings.HasPrefix(name, refPrefix) }
+// IsKeptName reports whether a reference name (as apivars.Names returns it) is in the saved-variable namespace.
+func IsKeptName(name string) bool {
+	return strings.HasPrefix(name, plainPrefix) || strings.HasPrefix(name, secretPrefix)
+}
 
-// RefSpans lists the kept references of text with the same grammar as the other {{name}} references:
-// from `{{` to the next `}}`, no nesting.
+// RefSpans lists the saved-variable references of text with the same grammar as the other {{name}}
+// references: from `{{` to the next `}}`, no nesting.
 func RefSpans(text string) []RefSpan {
 	var out []RefSpan
 	i := 0
@@ -36,8 +44,13 @@ func RefSpans(text string) []RefSpan {
 		if !IsKeptName(inner) {
 			continue
 		}
-		name, _, pipeline := strings.Cut(inner[len(refPrefix):], "|")
-		out = append(out, RefSpan{Name: strings.TrimSpace(name), Pipeline: pipeline, From: open, To: end + 2})
+		secret := strings.HasPrefix(inner, secretPrefix)
+		prefix := plainPrefix
+		if secret {
+			prefix = secretPrefix
+		}
+		name, _, pipeline := strings.Cut(inner[len(prefix):], "|")
+		out = append(out, RefSpan{Name: strings.TrimSpace(name), Secret: secret, Pipeline: pipeline, From: open, To: end + 2})
 	}
 	return out
 }

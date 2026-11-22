@@ -28,7 +28,7 @@ func KeptRetention(settings *repos.SettingsRepo) func() time.Duration {
 	return func() time.Duration {
 		all, err := settings.GetAll()
 		if err != nil {
-			warn.Do(func() { slog.Warn("kept variables: read retention, using one hour", "scope", "keptvars", "err", err) })
+			warn.Do(func() { slog.Warn("saved variables: read retention, using one hour", "scope", "keptvars", "err", err) })
 			return keptvars.DefaultTTL
 		}
 		return time.Duration(all.DbMcp.KeptRetentionMinutes) * time.Minute
@@ -147,10 +147,10 @@ func (s *KeptVarsService) Value(args KeptValueArgs) (KeptValue, error) {
 	}
 	e, ok := s.Store.ByID(args.ID)
 	if !ok {
-		return KeptValue{}, ipcerr.NotFoundNamed("kept variable")
+		return KeptValue{}, ipcerr.NotFoundNamed("saved variable")
 	}
 	if e.Secret {
-		return KeptValue{}, ipcerr.Contract("a secret kept variable is not shown here")
+		return KeptValue{}, ipcerr.Contract("a secret saved variable is not shown here")
 	}
 	return KeptValue{JSON: string(e.Value), Type: e.Type}, nil
 }
@@ -180,10 +180,10 @@ func (s *KeptVarsService) Reveal(args KeptRevealArgs) (KeptReveal, error) {
 	res, err := s.reveal(args.Confirmed, func() (*string, error) {
 		e, ok := s.Store.ByID(args.ID)
 		if !ok {
-			return nil, ipcerr.NotFoundNamed("kept variable")
+			return nil, ipcerr.NotFoundNamed("saved variable")
 		}
 		if !e.Secret {
-			return nil, ipcerr.Contract("this kept variable is not secret; it is shown in the list")
+			return nil, ipcerr.Contract("this saved variable is not secret; it is shown in the list")
 		}
 		text := keptvars.SecretText(e)
 		clear(e.Value)

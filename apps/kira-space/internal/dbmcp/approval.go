@@ -108,7 +108,6 @@ type approvalResolution struct {
 // without it; a stored one may be sent to replace what Kira holds.
 type ApprovalInput struct {
 	Name   string
-	Label  string
 	Needed bool
 }
 
@@ -476,7 +475,7 @@ func checkAnswer(req ApprovalRequest, choice ApprovalChoice, typed map[string]st
 	for _, in := range req.Inputs {
 		if _, ok := supplied[in.Name]; in.Needed && !ok {
 			supplied.Wipe()
-			return nil, ipcerr.Contract("enter %s to send", in.Label)
+			return nil, ipcerr.Contract("enter %s to send", in.Name)
 		}
 	}
 	return supplied, nil

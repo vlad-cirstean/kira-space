@@ -69,14 +69,14 @@ func (s *Server) listKeptVariables(ctx context.Context, _ *mcp.CallToolRequest, 
 	}
 	return jsonResult(map[string]any{
 		"variables": out,
-		"note":      "Use a name as {{kept.name}} in api_request, list it in params of run_query, or kira.getValue it in the prepare script of a kube read. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
+		"note":      "Use a plain name as {{plain.name}} and a secret as {{secret.name}} in api_request, list a plain one in params of run_query, or read it as plain.name in a script. A secret is not shown to you or the user without a fingerprint. Values are held by Kira and never shown to you.",
 	})
 }
 
 func (s *Server) addKeptTools(srv *mcp.Server, src llmprompts.Source) {
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "list_kept_variables", Description: llmprompts.DbmcpToolListKept.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_kept_variables", s.listKeptVariables))
+		Name: "list_saved_variables", Description: llmprompts.DbmcpToolListKept.Text(src, llmprompts.NoVars{}),
+	}, withPanicRecovery(s, "list_saved_variables", s.listKeptVariables))
 }
 
 // keptGoneError ends an approval wait: a kept variable the request uses left the store.
@@ -101,19 +101,19 @@ func (e *keptGoneError) why() string {
 
 func (e *keptGoneError) Error() string {
 	if e.user {
-		return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Repeat the request with the same inputs; the user will be asked again.", e.name, e.why())
+		return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was sent. Repeat the request with the same inputs; the user will be asked again.", e.name, e.why())
 	}
-	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
+	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
 }
 
 // queryText is the wording for run_query, where a statement ran or did not.
 func (e *keptGoneError) queryText() string {
-	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
+	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
 }
 
 // kubeText is the wording for a kube read, where nothing was read.
 func (e *keptGoneError) kubeText() string {
-	return fmt.Sprintf("kept variable %q %s while waiting for approval; nothing was read. Produce it again, then repeat the read.", e.name, e.why())
+	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was read. Produce it again, then repeat the read.", e.name, e.why())
 }
 
 // watchKept cancels the returned context when a kept variable of the plan leaves the store, so a card never

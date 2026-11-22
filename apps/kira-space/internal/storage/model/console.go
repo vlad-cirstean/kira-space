@@ -30,7 +30,7 @@ type ConsoleRequest struct {
 // BindParam is one value bound to a statement placeholder as a server-side parameter, never
 // spliced into the SQL text.
 type BindParam struct {
-	// Label names the value in the op log and in errors ("{{kept.ids}}"); never a value.
+	// Label names the value in the op log and in errors ("{{plain.ids}}"); never a value.
 	Label string
 	// Name is the placeholder name on ClickHouse ({name:Type}); empty for positional kinds.
 	Name string

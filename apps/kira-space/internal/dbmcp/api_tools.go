@@ -72,7 +72,7 @@ type apiRequestArgs struct {
 	// Script is set by an agent that attaches JavaScript to the request.
 	Script *apiScriptArgs `json:"script,omitempty"`
 	// Inputs are values only the user has; the user types them in the approval.
-	Inputs []apiInput `json:"inputs,omitempty"`
+	Inputs []string `json:"inputs,omitempty"`
 }
 
 func pairs(in []apiPair) []agentapi.NameValue {

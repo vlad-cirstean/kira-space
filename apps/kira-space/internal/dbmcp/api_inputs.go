@@ -13,16 +13,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// apiInput is a value the agent asks the user for in api_request.
-type apiInput struct {
-	Name  string `json:"name"`
-	Label string `json:"label"`
-}
-
-func inputDecls(in []apiInput) []agentapi.InputDecl {
+func inputDecls(in []string) []agentapi.InputDecl {
 	out := make([]agentapi.InputDecl, len(in))
-	for i, d := range in {
-		out[i] = agentapi.InputDecl(d)
+	for i, name := range in {
+		out[i] = agentapi.InputDecl{Name: name}
 	}
 	return out
 }
@@ -30,7 +24,6 @@ func inputDecls(in []apiInput) []agentapi.InputDecl {
 // apiInputPayload is a declared input as the card shows it. Never a value.
 type apiInputPayload struct {
 	Name   string `json:"name"`
-	Label  string `json:"label"`
 	State  string `json:"state"`
 	Origin string `json:"origin"`
 	KeptID string `json:"keptId,omitempty"`
@@ -42,7 +35,7 @@ func apiInputsPayload(p *agentapi.Planned, keepMinutes int) []apiInputPayload {
 	out := make([]apiInputPayload, len(p.Inputs))
 	for i, in := range p.Inputs {
 		out[i] = apiInputPayload{
-			Name: in.Name, Label: in.Label, State: string(in.State), Origin: in.Origin, KeptID: in.KeptID,
+			Name: in.Name, State: string(in.State), Origin: in.Origin, KeptID: in.KeptID,
 			KeepMinutes: keepMinutes,
 		}
 	}
@@ -60,7 +53,7 @@ func (s *Server) keepMinutes() int {
 func approvalInputsOf(p agentapi.Planned) []ApprovalInput {
 	out := make([]ApprovalInput, len(p.Inputs))
 	for i, in := range p.Inputs {
-		out[i] = ApprovalInput{Name: in.Name, Label: in.Label, Needed: in.State == agentapi.InputNeeded}
+		out[i] = ApprovalInput{Name: in.Name, Needed: in.State == agentapi.InputNeeded}
 	}
 	return out
 }
@@ -77,7 +70,7 @@ func noValueKept(p agentapi.Planned) string {
 	if len(names) == 0 {
 		return ""
 	}
-	return "; no value was kept for " + strings.Join(names, ", ")
+	return "; no value was saved for " + strings.Join(names, ", ")
 }
 
 // withNoValueKept appends the no-value note to a refusal result.
@@ -99,7 +92,7 @@ type inputKeepError struct {
 }
 
 func (e *inputKeepError) Error() string {
-	return fmt.Sprintf("the value for %q could not be kept (%s); nothing was sent", e.name, e.err)
+	return fmt.Sprintf("the value for %q could not be saved (%s); nothing was sent", e.name, e.err)
 }
 
 // keepInputs settles the values the user typed: each is stored under its kept name, bound to the request's

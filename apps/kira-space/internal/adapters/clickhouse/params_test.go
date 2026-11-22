@@ -18,7 +18,7 @@ func TestBoundParamsEncoding(t *testing.T) {
 		{`null`, paramNull},
 	}
 	for _, c := range cases {
-		got, err := boundParams([]model.BindParam{{Name: "p", Label: "{{kept.p}}", Value: json.RawMessage(c.raw)}})
+		got, err := boundParams([]model.BindParam{{Name: "p", Label: "{{plain.p}}", Value: json.RawMessage(c.raw)}})
 		if err != nil || got["p"] != c.want {
 			t.Errorf("boundParams(%s) = %q, %v; want %q", c.raw, got["p"], err, c.want)
 		}

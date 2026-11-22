@@ -63,19 +63,19 @@ type keptChangedError struct {
 
 func (e *keptChangedError) Error() string {
 	if e.gone {
-		return fmt.Sprintf("no kept variable %q (it may have expired or been cleared); nothing ran. Call list_kept_variables, produce it again, then repeat the query.", e.name)
+		return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); nothing ran. Call list_saved_variables, produce it again, then repeat the query.", e.name)
 	}
-	return fmt.Sprintf("kept variable %q changed after the statement was checked; nothing ran. Produce it again, then repeat the query.", e.name)
+	return fmt.Sprintf("saved variable %q changed after the statement was checked; nothing ran. Produce it again, then repeat the query.", e.name)
 }
 
 // noParamsText is the refusal for params on a kind that has no bind parameters. It needs the kind only, so
 // run_query raises it before it connects.
 func noParamsText(summary model.ConnectionSummary) string {
-	return fmt.Sprintf("connection %q (%s) takes no params; kept variables bind into SQL statements only (postgres, mysql, mariadb, sqlite, clickhouse)", summary.Name, summary.Kind)
+	return fmt.Sprintf("connection %q (%s) takes no params; saved variables bind into SQL statements only (postgres, mysql, mariadb, sqlite, clickhouse)", summary.Name, summary.Kind)
 }
 
 func unknownKeptText(name string) string {
-	return fmt.Sprintf("no kept variable %q (it may have expired or been cleared); call list_kept_variables", name)
+	return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); call list_saved_variables", name)
 }
 
 // resolveParams checks params against the statement and snapshots the kept variables they name. It runs
@@ -98,7 +98,7 @@ func (s *Server) resolveParams(ctx context.Context, args runQueryArgs, rv *query
 	}
 	distinct := distinctNames(args.Params)
 	if len(distinct) > maxParamDistinct {
-		return refuse("params uses %d different kept variables; the most is %d", len(distinct), maxParamDistinct)
+		return refuse("params uses %d different saved variables; the most is %d", len(distinct), maxParamDistinct)
 	}
 	if adapters.SecondStatement(args.SQL, dialect) {
 		return refuse("params need exactly one statement; this one has a second after a ;")
@@ -127,7 +127,7 @@ func (s *Server) resolveParams(ctx context.Context, args runQueryArgs, rv *query
 			return refuse("%s", unknownKeptText(name))
 		}
 		if e.Secret {
-			return refuse("kept variable %q is secret; secrets bind into api_request only, never into SQL", name)
+			return refuse("saved variable %q is secret; secrets bind into api_request only, never into SQL", name)
 		}
 		if _, derr := adapters.DecodeParam(name, e.Value); derr != nil {
 			return refuse("%s", derr.Error())
@@ -146,7 +146,7 @@ func (s *Server) resolveParams(ctx context.Context, args runQueryArgs, rv *query
 	kp := &keptParams{names: slices.Clone(args.Params), placeholders: make([]string, len(args.Params))}
 	siteOf := map[string][]agentapi.KeptSite{}
 	for i, name := range args.Params {
-		kp.binds = append(kp.binds, model.BindParam{Label: "{{kept." + name + "}}", Name: braceName(style, name)})
+		kp.binds = append(kp.binds, model.BindParam{Label: "{{plain." + name + "}}", Name: braceName(style, name)})
 		kp.placeholders[i] = positions[i].display
 		for _, ps := range positions[i].sites {
 			siteOf[name] = append(siteOf[name], agentapi.KeptSite{
@@ -250,7 +250,7 @@ func matchBraces(statement string, params []string, sites []adapters.Placeholder
 	for _, st := range sites {
 		i := slices.Index(params, st.Name)
 		if i < 0 {
-			return fmt.Sprintf("placeholder %s names no entry of params; the placeholder name must be a kept variable name", siteText(statement, st))
+			return fmt.Sprintf("placeholder %s names no entry of params; the placeholder name must be a saved variable name", siteText(statement, st))
 		}
 		if pos[i].display == "" {
 			pos[i].display = siteText(statement, st)

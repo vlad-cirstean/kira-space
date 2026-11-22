@@ -15766,31 +15766,28 @@
     "kept": {
       "chip": {
         "keeps": {
-          "status": "Keeps: {names}"
+          "status": "Saves: {names}"
         },
         "uses": {
           "status": "Uses: {names}"
         }
       },
       "clear": {
-        "tooltip": "Delete this kept value. A request that reads it stops"
+        "tooltip": "Delete this saved value. A request that reads it stops"
       },
       "drop": {
-        "tooltip": "Do not keep this value. The agent is told you chose not to"
+        "tooltip": "Do not save this value. The agent is told you chose not to"
       },
       "expiresAt": {
         "status": "Expires at {time}"
       },
       "input": {
         "keptFor": {
-          "label": "Kept for {minutes} min"
+          "label": "Saved for {minutes} min"
         },
         "replace": {
           "label": "Enter a new value: {label}"
         }
-      },
-      "keptAt": {
-        "label": "Kept"
       },
       "kind": {
         "plain": {
@@ -15798,7 +15795,7 @@
         }
       },
       "manage": {
-        "label": "Manage kept variables"
+        "label": "Manage saved variables"
       },
       "mayKeep": {
         "label": "This script may keep:"
@@ -15808,14 +15805,14 @@
       },
       "panel": {
         "query": {
-          "label": "Kept variables this query uses"
+          "label": "Saved variables this query uses"
         },
         "title": {
-          "label": "Kept variables this request uses"
+          "label": "Saved variables this request uses"
         }
       },
       "reveal": {
-        "body": "Show a secret value kept for an agent request."
+        "body": "Show a secret value saved for an agent request."
       },
       "risk": {
         "expiring": {
@@ -15825,11 +15822,7 @@
           "label": "{name} (secret)"
         },
         "source": {
-          "label": "{name}, kept by {request}"
-        },
-        "userValue": {
-          "status": "Reads a secret value",
-          "tooltip": "A script reads a secret kept value, such as one you supplied. Check what it returns before you send, because it goes to the agent"
+          "label": "{name}, saved by {request}"
         }
       },
       "scriptReads": {
@@ -15870,7 +15863,7 @@
         "label": "Used in"
       },
       "willKeep": {
-        "label": "Will keep"
+        "label": "Will save"
       }
     },
     "keyValue": {
@@ -17762,17 +17755,17 @@
           "aria": "Clear {name}"
         },
         "clearAll": {
-          "body": "Every kept variable is removed now. Agents can use one again only after they keep it anew.",
-          "title": "Clear all kept variables"
+          "body": "Every saved variable is removed now. Agents can use one again only after they save it anew.",
+          "title": "Clear all saved variables"
         },
         "empty": {
-          "empty": "No kept variables. Values agents keep appear here for up to {minutes} minutes"
+          "empty": "No saved variables. Values agents save appear here for up to {minutes} minutes"
         },
         "legend": {
-          "label": "Kept variables"
+          "label": "Saved variables"
         },
         "retention": {
-          "description": "How long a kept variable lives. New values only; existing values keep their expiry.",
+          "description": "How long a saved variable lives. New values only; existing values keep their expiry.",
           "error": "Enter minutes from {min} to {max}.",
           "label": "Retention in minutes"
         }

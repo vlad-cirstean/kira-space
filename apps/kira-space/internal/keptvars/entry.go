@@ -80,18 +80,18 @@ type Entry struct {
 
 // Errors carry fixed text and never a value.
 var (
-	ErrName      = errors.New("a kept variable name starts with a letter and has at most 40 letters, digits or underscores")
-	ErrTooLarge  = errors.New("a kept value is larger than 1 MiB or nested deeper than 64 levels")
-	ErrScopeFull = errors.New("too many kept variables (64 per session); ask the user to clear some in the Kept variables view")
-	ErrStoreFull = errors.New("Kira holds too many kept variables; ask the user to clear some in the Kept variables view")
-	ErrNameTaken = errors.New("a kept variable of that name was supplied by the user and cannot be replaced")
-	ErrClosed    = errors.New("the kept variable store is closed")
-	errBadValue  = errors.New("a kept value must be valid JSON")
-	errBadScope  = errors.New("a kept variable needs a scope")
+	ErrName      = errors.New("a saved variable name starts with a letter and has at most 40 letters, digits or underscores")
+	ErrTooLarge  = errors.New("a saved value is larger than 1 MiB or nested deeper than 64 levels")
+	ErrScopeFull = errors.New("too many saved variables (64 per session); ask the user to clear some in the Saved variables view")
+	ErrStoreFull = errors.New("Kira holds too many saved variables; ask the user to clear some in the Saved variables view")
+	ErrNameTaken = errors.New("a saved variable of that name was supplied by the user and cannot be replaced")
+	ErrClosed    = errors.New("the saved variable store is closed")
+	errBadValue  = errors.New("a saved value must be valid JSON")
+	errBadScope  = errors.New("a saved variable needs a scope")
 	nameRE       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,39}$`)
 )
 
-// ValidName checks a variable name: usable as a JS identifier and inside a {{kept.<name>}} span.
+// ValidName checks a variable name: usable as a JS identifier and inside a {{plain.<name>}} or {{secret.<name>}} span.
 func ValidName(name string) error {
 	if !nameRE.MatchString(name) {
 		return ErrName
