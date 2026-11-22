@@ -45,7 +45,7 @@ test('contract: the result view shows what the agent gets, the script and the va
     .toBe(squash(held().script?.source ?? ''));
   const keep = page.locator('[data-testid="db-review-keep"]');
   await expect(keep.locator('[data-testid="db-review-keep-ids"]')).toContainText(
-    /List of 2\s*Plain\s*\[\s*1,\s*2\s*\]/,
+    /ids\s*Plain\s*\[\s*1,\s*2\s*\]/,
   );
 });
 
