@@ -38,7 +38,6 @@
           {
             "keepMinutes": 60,
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -204,7 +203,6 @@
           {
             "keepMinutes": 60,
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -285,6 +283,125 @@
       }
     }
   ],
+  "ApprovalsService.List#retention": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Api-Key",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [
+          {
+            "keepMinutes": 5,
+            "label": "API key",
+            "name": "apikey",
+            "origin": "http://127.0.0.1:<port>",
+            "state": "needed"
+          }
+        ],
+        "kept": [
+          {
+            "bytes": 0,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "",
+            "items": 0,
+            "name": "apikey",
+            "pending": true,
+            "preview": "",
+            "previewTruncated": false,
+            "secret": true,
+            "sites": [
+              {
+                "field": "url",
+                "from": 40,
+                "index": 0,
+                "part": "",
+                "to": 55
+              },
+              {
+                "field": "header",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              },
+              {
+                "field": "query",
+                "from": 0,
+                "index": 0,
+                "part": "value",
+                "to": 15
+              }
+            ],
+            "source": {
+              "client": "",
+              "kind": "user",
+              "mcp": "",
+              "request": "",
+              "tool": ""
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "k",
+            "value": "{{kept.apikey}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo/retention?k={{kept.apikey}}",
+        "variables": [
+          {
+            "name": "base_url",
+            "secret": false,
+            "value": "http://127.0.0.1:<port>"
+          }
+        ]
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
   "ApprovalsService.List#stored": [
     {
       "createdAt": 0,
@@ -325,7 +442,6 @@
             "keepMinutes": 60,
             "keptId": "kv_apikey",
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "stored"
@@ -449,7 +565,7 @@
     ],
     "options": null
   },
-  "args:ApprovalsService.Answer#typed": {
+  "args:ApprovalsService.Answer#staleModes": {
     "approve": true,
     "ids": [
       "api.request:<id:1>"
@@ -457,8 +573,21 @@
     "options": {
       "api.request:<id:1>": {
         "inputModes": {
-          "apikey": "keep"
+          "apikey": "once"
         },
+        "inputs": {
+          "apikey": "e2e-typed-secret-7Q9"
+        }
+      }
+    }
+  },
+  "args:ApprovalsService.Answer#typed": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": {
+      "api.request:<id:1>": {
         "inputs": {
           "apikey": "e2e-typed-secret-7Q9"
         }
@@ -476,6 +605,13 @@
     "ids": [
       "kv_apikey"
     ]
+  },
+  "args:SettingsService.Set#retention": {
+    "patch": {
+      "dbMcp": {
+        "keptRetentionMinutes": 5
+      }
+    }
   },
   "result#otherOrigin": "the value kept as \"apikey\" was supplied for http://127.0.0.1:<port>; choose another input name for http://localhost:<port>"
 }

@@ -49,7 +49,6 @@
     "isError": false,
     "keep": [
       {
-        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",

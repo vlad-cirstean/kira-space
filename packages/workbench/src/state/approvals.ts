@@ -15,8 +15,6 @@ export const useApprovalsStore = defineStore('approvals', () => {
   // Values the person typed for an item's declared inputs (item id, then input name). Never persisted
   // and never in TanStack: sent with Approve only, dropped once the item settles.
   const inputs = ref<Record<string, Record<string, string>>>({});
-  // How long each typed value is held (item id, then input name): once or keep. Set by the card.
-  const inputModes = ref<Record<string, Record<string, 'once' | 'keep'>>>({});
 
   function minimise(): void {
     minimised.value = true;
@@ -40,15 +38,9 @@ export const useApprovalsStore = defineStore('approvals', () => {
     };
   }
 
-  function setInputMode(id: string, name: string, mode: 'once' | 'keep'): void {
-    inputModes.value = { ...inputModes.value, [id]: { ...inputModes.value[id], [name]: mode } };
-  }
-
   function clearInputs(id: string): void {
     const { [id]: _gone, ...rest } = inputs.value;
     inputs.value = rest;
-    const { [id]: _modes, ...modeRest } = inputModes.value;
-    inputModes.value = modeRest;
   }
 
   function markBroken(id: string): void {
@@ -90,9 +82,6 @@ export const useApprovalsStore = defineStore('approvals', () => {
     inputs.value = Object.fromEntries(
       Object.entries(inputs.value).filter(([k]) => live.includes(k)),
     );
-    inputModes.value = Object.fromEntries(
-      Object.entries(inputModes.value).filter(([k]) => live.includes(k)),
-    );
     broken.value = broken.value.filter((b) => live.includes(b));
     if (focusId.value && !live.includes(focusId.value)) focusId.value = null;
     if (live.length === 0) minimised.value = false;
@@ -105,13 +94,11 @@ export const useApprovalsStore = defineStore('approvals', () => {
     errors,
     options,
     inputs,
-    inputModes,
     broken,
     minimise,
     open,
     setOption,
     setInput,
-    setInputMode,
     clearInputs,
     markBroken,
     isBroken,

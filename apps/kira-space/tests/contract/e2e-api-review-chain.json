@@ -199,7 +199,6 @@
     "isError": false,
     "keep": [
       {
-        "blocked": false,
         "bytes": 19,
         "items": 2,
         "name": "domains",

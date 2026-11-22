@@ -23,29 +23,27 @@ async function allNear(ls: Locator, measure: (l: Locator) => Promise<number>, wh
   for (let i = 1; i < n; i++) near(await measure(ls.nth(i)), first, `${what} ${i}`);
 }
 
-const ONCE = 'e2e-user-value-once';
+const USER_VALUE = 'e2e-user-value';
 const KUBE = 'e2e-kube-script';
-const once = (key: string) =>
-  contract<ApprovalItem[]>(ONCE, `ApprovalsService.List#${key}`)[0] as ApprovalItem;
+const userValue = (key: string) =>
+  contract<ApprovalItem[]>(USER_VALUE, `ApprovalsService.List#${key}`)[0] as ApprovalItem;
 
 interface Input {
   name: string;
   label: string;
-  mode: string;
   keepMinutes: number;
   origin: string;
   state: string;
 }
-const INPUT_SPECS: Pick<Input, 'name' | 'label' | 'keepMinutes' | 'mode'>[] = [
-  { name: 'pin', label: 'PIN', keepMinutes: 5, mode: 'once' },
-  { name: 'otp', label: 'One-time code', keepMinutes: 60, mode: 'once' },
+const INPUT_SPECS: Pick<Input, 'name' | 'label' | 'keepMinutes'>[] = [
+  { name: 'pin', label: 'PIN', keepMinutes: 5 },
+  { name: 'otp', label: 'One-time code', keepMinutes: 60 },
   {
     name: 'partner_key',
     label: 'Partner API key for the staging tenant',
     keepMinutes: 5,
-    mode: 'keep',
   },
-  { name: 'key', label: 'Key', keepMinutes: 60, mode: 'once' },
+  { name: 'key', label: 'Key', keepMinutes: 60 },
 ];
 function inputsOf(count: number, state = 'needed'): Input[] {
   return INPUT_SPECS.slice(0, count).map((s) => ({
@@ -69,8 +67,8 @@ async function boxIds(c: Locator): Promise<string[]> {
 }
 
 for (const count of [1, 2, 3, 4]) {
-  test(`value rows align: ${count} row(s), mixed labels and keep minutes`, async ({ relaunch }) => {
-    const it = withInputs(once('mixed'), inputsOf(count));
+  test(`value rows align: ${count} row(s), mixed label lengths`, async ({ relaunch }) => {
+    const it = withInputs(userValue('needed'), inputsOf(count));
     const { window: page } = await relaunch({ control: [] });
     await pushApprovals(page, [it]);
     const panel = card(page, it).locator(t('api-approval-inputs'));
@@ -79,37 +77,27 @@ for (const count of [1, 2, 3, 4]) {
     await expect(rows).toHaveCount(count);
     await allNear(panel.locator('[data-testid^="api-input-"][id]'), left, 'field left');
     await allNear(panel.locator('[data-testid^="api-input-"][id]'), right, 'field right');
-    await allNear(panel.locator('[data-slot="secondary-tabs"]'), left, 'choice left');
     await allNear(panel.locator('label'), left, 'label left');
     const labels = panel.locator('label');
     const fields = panel.locator('[data-testid^="api-input-"][id]');
     for (let i = 0; i < count; i++) {
       expect(await right(labels.nth(i))).toBeLessThanOrEqual((await left(fields.nth(i))) + TOL);
     }
-    if (count === 1) {
-      const field = fields.first();
-      const choice = panel.locator('[data-slot="secondary-tabs"]').first();
-      expect(await left(field)).toBeGreaterThan(await right(labels.first()));
-      near(
-        (await right(field.locator('xpath=..'))) + 8,
-        await left(choice),
-        'field right + gap vs choice left',
-      );
-    }
+    if (count === 1)
+      expect(await left(fields.first())).toBeGreaterThan(await right(labels.first()));
   });
 }
 
-test('an opened stored row puts its field and choice in the same columns', async ({ relaunch }) => {
+test('an opened stored row puts its field in the same column', async ({ relaunch }) => {
   const needed = inputsOf(2);
   const stored: Input = {
     name: 'saved',
     label: 'Saved token for the production account',
     keepMinutes: 5,
-    mode: 'keep',
     origin: 'http://127.0.0.1:1',
     state: 'stored',
   };
-  const it = withInputs(once('mixed'), [needed[0] as Input, stored]);
+  const it = withInputs(userValue('needed'), [needed[0] as Input, stored]);
   const { window: page } = await relaunch({ control: [] });
   await pushApprovals(page, [it]);
   const c = card(page, it);
@@ -125,12 +113,6 @@ test('an opened stored row puts its field and choice in the same columns', async
   const storedField = c.locator(t('api-input-saved'));
   near(await left(storedField), await left(needField), 'stored field left');
   near(await right(storedField), await right(needField), 'stored field right');
-  const tabs = (l: Locator) => l.locator('[data-slot="secondary-tabs"]');
-  near(
-    await left(tabs(content)),
-    await left(tabs(c.locator(t(`api-approval-input-${needed[0]?.name}`)))),
-    'stored choice left',
-  );
 });
 
 test('API card: kept, request, values, prepare, transform boxes in order, 8px apart', async ({
@@ -175,7 +157,7 @@ test('API card: kept, request, values, prepare, transform boxes in order, 8px ap
 });
 
 test('API card with no kept, values or script has the request box only', async ({ relaunch }) => {
-  const it = liveItem(once('once'));
+  const it = liveItem(userValue('needed'));
   const payload = structuredClone(it.payload) as { kept: unknown[]; inputs: unknown[] };
   payload.kept = [];
   payload.inputs = [];

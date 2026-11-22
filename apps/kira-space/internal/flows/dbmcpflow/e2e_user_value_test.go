@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
 // Backend half of tests/ui/studio/e2e-user-value.spec.ts (contract e2e-user-value): a value the user types
-// into a card is reused by later requests and scripts, masked in every answer and shown nowhere afterwards.
+// into a card is always kept for the retention time, reused by later requests and scripts, masked in every answer and shown nowhere afterwards.
 
 const (
 	userValueKey = "e2e-user-value"
@@ -162,6 +164,43 @@ func TestE2EUserValue(t *testing.T) {
 		}
 		if _, ok := f.keptValue(t, "apikey"); ok || len(srv.Requests()) != sent {
 			t.Fatalf("kept %v, sent %d, want nothing stored or sent", ok, len(srv.Requests())-sent)
+		}
+	})
+
+	t.Run("retention sets the kept time, a stale input mode is a contract error", func(t *testing.T) {
+		f.setDbMcp(t, userValueKey, "retention", &model.DbMcpPatch{KeptRetentionMinutes: ptr(5)})
+		pending := callToolAsync(sess, "api_request", withInput("/echo/retention"))
+		req := f.pending(t)
+		var card struct {
+			Inputs []struct{ KeepMinutes int }
+		}
+		if err := json.Unmarshal(req.Item.Payload, &card); err != nil || len(card.Inputs) != 1 || card.Inputs[0].KeepMinutes != 5 {
+			t.Fatalf("payload inputs = %s (%v), want keepMinutes 5", req.Item.Payload, err)
+		}
+		f.app.Contract(t, userValueKey, "ApprovalsService.List#retention", []approvals.Item{req.Item}, opts...)
+		stale, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": e2eTyped}, "inputModes": map[string]string{"apikey": "once"}})
+		staleArgs := approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true, Options: map[string]json.RawMessage{req.Item.ID: stale}}
+		if res, err := f.app.W.ApprovalsSvc.Answer(staleArgs); err == nil && (len(res) != 1 || res[0].Error == "") {
+			t.Fatalf("answer with inputModes = %+v, want a contract error", res)
+		}
+		if n := f.queueLen(t); n != 1 {
+			t.Fatalf("queue %d after the refused answer, want the item pending", n)
+		}
+		f.answerWith(t, true, req.Item.ID, map[string]string{req.Item.ID: string(inputAnswer(req.Item.ID, e2eTyped).Options[req.Item.ID])})
+		remember(text(wait(t, pending)))
+		e, ok := f.keptValue(t, "apikey")
+		if !ok || e.ExpiresAt.Sub(e.CreatedAt) != 5*time.Minute {
+			t.Fatalf("stored %v (ok=%v), want a 5 minute lifetime", e.ExpiresAt.Sub(e.CreatedAt), ok)
+		}
+	})
+
+	t.Run("a transform keeps a value derived from the typed one", func(t *testing.T) {
+		args := apiArgs(envID, "GET", "{{base_url}}/echo")
+		args["script"] = map[string]any{"transform": `kira.storeValue("derived", kira.getValue("apikey").length); return 1`}
+		h := f.startHeldAfterCard(t, sess, args)
+		remember(text(f.finish(t, h, true)))
+		if _, ok := f.keptValue(t, "derived"); !ok {
+			t.Fatal("the derived value was not kept")
 		}
 	})
 

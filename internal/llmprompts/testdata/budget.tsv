@@ -74,7 +74,6 @@ dbmcp.tool.list_kept_variables	352
 dbmcp.tool.api_request.arg.inputs	263
 dbmcp.tool.api_request.arg.inputs.name	33
 dbmcp.tool.api_request.arg.inputs.label	58
-dbmcp.tool.api_request.arg.inputs.reuse	88
 dbmcp.tool.api_request.arg.script	82
 dbmcp.tool.api_request.arg.script.prepare	279
 dbmcp.tool.api_request.arg.script.input	49

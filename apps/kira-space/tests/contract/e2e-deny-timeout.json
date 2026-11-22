@@ -43,7 +43,6 @@
           {
             "keepMinutes": 60,
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -428,7 +427,6 @@
     "isError": false,
     "keep": [
       {
-        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",
@@ -450,7 +448,6 @@
     "isError": false,
     "keep": [
       {
-        "blocked": false,
         "bytes": 5,
         "items": 2,
         "name": "w",

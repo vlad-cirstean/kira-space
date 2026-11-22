@@ -135,8 +135,6 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		return errResult(apiRequestsOff)
 	}
 	in := a.input(keptScope(ctx))
-	// A one-time value lives in in.Once from the answer until the request ends; zero it on every exit.
-	defer func() { wipeOnce(in.Once) }()
 	var sc *apiScripts
 	if a.Script != nil {
 		var refusal string
@@ -191,8 +189,6 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if fresh, perr := s.cfg.API.Plan(in); perr == nil {
 		plan.Env = fresh.Env
 	}
-	// The send and the transform are over: zero the one-time values before any response review waits.
-	wipeOnce(in.Once)
 	return s.deliverAPI(ctx, plan, sc, o, ap.requested)
 }
 
@@ -208,8 +204,7 @@ func (s *Server) recheckAPISwitches(sc *apiScripts) string {
 	return ""
 }
 
-// settleInputs stores what the user chose to keep and overlays what they typed for one request (in.Once), then
-// plans again so the plan binds the entries' ids (a needed input had none, a replaced one has a new id) and
+// settleInputs stores what the user typed, then plans again so the plan binds the entries' ids (a needed input had none, a replaced one has a new id) and
 // the scripts read the fresh entries. The refusal is non-empty when a value could not be kept or the request
 // no longer plans.
 func (s *Server) settleInputs(ctx context.Context, in *agentapi.Input, plan agentapi.Planned, sc *apiScripts, supplied SuppliedInputs) ([]agentapi.InputStatus, agentapi.Planned, string) {
@@ -217,11 +212,10 @@ func (s *Server) settleInputs(ctx context.Context, in *agentapi.Input, plan agen
 		supplied.Wipe()
 		return nil, plan, ""
 	}
-	statuses, once, err := s.keepInputs(ctx, plan, supplied)
+	statuses, err := s.keepInputs(ctx, plan, supplied)
 	if err != nil {
 		return nil, plan, err.Error()
 	}
-	in.Once = once
 	next, err := s.cfg.API.Plan(*in)
 	if err != nil {
 		return nil, plan, err.Error()
@@ -231,7 +225,7 @@ func (s *Server) settleInputs(ctx context.Context, in *agentapi.Input, plan agen
 		names[i] = u.Name
 	}
 	if sc != nil {
-		sc.kept.rebind(names, once)
+		sc.kept.rebind(names)
 	}
 	s.fillReused(ctx, statuses)
 	return statuses, next, ""

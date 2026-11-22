@@ -16,7 +16,7 @@ const SC = 'e2e-user-value';
 type Answer = {
   ids: string[];
   approve: boolean;
-  options: Record<string, { inputs: Record<string, string>; inputModes: Record<string, string> }>;
+  options: Record<string, { inputs: Record<string, string> }>;
 };
 const item = (key: string) =>
   contract<ApprovalItem[]>(SC, `ApprovalsService.List#${key}`)[0] as ApprovalItem;
@@ -39,8 +39,11 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
   await field.fill(VALUE());
-  // The recorded answer keeps the value: the card starts on "Use once".
-  await page.click('[data-testid="api-input-apikey-keep"]');
+  // No choice control: every typed value is kept.
+  await expect(page.locator('[data-testid="api-input-apikey-once"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
+    'Kept for 60 min',
+  );
   await expect(approve).toBeEnabled();
   await approve.click();
   await expect
@@ -49,6 +52,19 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   // The typed value clears when the answer settles, which is after the IPC call leaves.
   await expect(field).toHaveValue('');
   await expectNoLeak(page, VALUE(), logs);
+});
+
+test('contract: the Kept for line shows the retention and opens the variables settings', async ({
+  relaunch,
+}) => {
+  const it = item('retention');
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [liveItem(it)]);
+  const line = page.locator('[data-testid="api-approval-inputs-kept-for"]');
+  await expect(line).toHaveText('Kept for 5 min');
+  await line.click();
+  await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="settings-section-Studio MCP variables"]')).toBeVisible();
 });
 
 test('contract: Don’t send never carries the value', async ({ relaunch }) => {

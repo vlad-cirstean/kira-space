@@ -318,7 +318,6 @@
     "isError": false,
     "keep": [
       {
-        "blocked": false,
         "bytes": 7,
         "items": 0,
         "name": "pod",
@@ -328,7 +327,6 @@
         "type": "string"
       },
       {
-        "blocked": false,
         "bytes": 16,
         "items": 0,
         "name": "token",

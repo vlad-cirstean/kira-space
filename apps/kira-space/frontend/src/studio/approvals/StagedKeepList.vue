@@ -17,15 +17,7 @@ defineProps<{ keep: readonly KeptStaged[]; testid: string; requestId: string }>(
     <ul class="m-0 flex list-none flex-col gap-2 p-0">
       <li v-for="k in keep" :key="k.name" :data-testid="`${testid}-${k.name}`">
         <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" :secret="k.secret" />
-        <p
-          v-if="k.blocked"
-          class="m-0 text-kira-sm text-warn"
-          :data-testid="`${testid}-${k.name}-blocked`"
-        >
-          {{ t('studio.kept.willKeep.blocked.status') }}
-        </p>
         <KeptValueView
-          v-else
           :entry="{ ...k, id: '' }"
           staged
           :staged-reveal="{ requestId, name: k.name }"

@@ -12,7 +12,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 )
 
 // NameValue is one header, query or form entry.
@@ -44,9 +43,6 @@ type Input struct {
 	Inputs []InputDecl
 	// ScriptReads names the kept variables the request's scripts read by literal kira.getValue.
 	ScriptReads []string
-	// Once holds the values the user typed for this request only, by input name. They are read before the store
-	// and never written to it; the caller wipes their bytes once the request ends.
-	Once map[string]keptvars.Entry `json:"-"`
 }
 
 // MaxScriptBodyBytes bounds ScriptBodyBytes.
@@ -157,8 +153,7 @@ type Result struct {
 	Mask func(string) string `json:"-"`
 }
 
-// InputStatus is what became of a declared input: supplied, reused, replaced or once (used for this request only,
-// ExpiresInSeconds 0).
+// InputStatus is what became of a declared input: supplied, reused or replaced.
 type InputStatus struct {
 	Name             string `json:"name"`
 	Status           string `json:"status"`

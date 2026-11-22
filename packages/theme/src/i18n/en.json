@@ -137,11 +137,9 @@
           "label": "Short, the agent waits for the result"
         }
       },
-      "smart": {},
       "tabs": {
         "aria": "Run settings"
-      },
-      "yaml": {}
+      }
     },
     "ops": {
       "openRun": {
@@ -3460,7 +3458,6 @@
         "hint": "Secret storage is not available, so values can’t be saved."
       },
       "title": "Secrets",
-      "unset": {},
       "unused": {
         "status": "Not referenced"
       }
@@ -11052,8 +11049,7 @@
           },
           "mode": {
             "aria": "Editor mode"
-          },
-          "yaml": {}
+          }
         },
         "field": {
           "runsOn": {
@@ -11429,8 +11425,7 @@
           },
           "session": {
             "label": "Interactive {product} session"
-          },
-          "smart": {}
+          }
         },
         "tabs": {
           "aria": "Workflows sections",
@@ -14340,15 +14335,12 @@
           "dontSend": {
             "label": "Don’t send"
           },
-          "headers": {},
           "input": {
             "label": "Sends the value you type for {name} (host: {host})"
           },
           "masked": {
             "status": "Secrets masked: {names}"
           },
-          "noEnvironment": {},
-          "query": {},
           "redirectsOffTimeout": {
             "status": "Redirects off · {seconds} s"
           },
@@ -14378,7 +14370,6 @@
             "hint": "The agent receives only what the transform script returns, not the response.",
             "label": "Transform script"
           },
-          "send": {},
           "sends": {
             "status": "Sends: {names}"
           }
@@ -15762,16 +15753,8 @@
         "label": "Expiry"
       },
       "input": {
-        "choice": {
-          "label": "How long Kira holds the value"
-        },
-        "keep": {
-          "label": "Keep {minutes} min",
-          "tooltip": "Later requests to {origin} reuse it without asking, until it expires or you clear it"
-        },
-        "once": {
-          "label": "Use once",
-          "tooltip": "Sent with this request, then wiped. The next request asks again"
+        "keptFor": {
+          "label": "Kept for {minutes} min"
         },
         "replace": {
           "label": "Enter a new value: {label}"
@@ -15867,9 +15850,6 @@
         "label": "Used in"
       },
       "willKeep": {
-        "blocked": {
-          "status": "Not kept. The script read a value you gave for this request only"
-        },
         "label": "Will keep"
       }
     },
@@ -16060,7 +16040,6 @@
         "add": {
           "label": "Add filter"
         },
-        "between": {},
         "clause": {
           "label": "{field} is {value}"
         },
@@ -16085,10 +16064,6 @@
         "from": {
           "aria": "Range start"
         },
-        "is": {},
-        "isNot": {},
-        "isNotOneOf": {},
-        "isOneOf": {},
         "negate": {
           "tooltip": "Invert filter"
         },

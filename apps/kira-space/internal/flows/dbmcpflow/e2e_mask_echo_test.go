@@ -40,7 +40,7 @@ func TestE2EMaskEcho(t *testing.T) {
 	typed := func(t *testing.T, name, value string) {
 		t.Helper()
 		req := f.pending(t)
-		o, _ := json.Marshal(map[string]any{"inputs": map[string]string{name: value}, "inputModes": map[string]string{name: "keep"}})
+		o, _ := json.Marshal(map[string]any{"inputs": map[string]string{name: value}})
 		f.answerWith(t, true, req.Item.ID, map[string]string{req.Item.ID: string(o)})
 	}
 	// echoed decodes the six forms the server answered, from an api_request result or a transform's result.

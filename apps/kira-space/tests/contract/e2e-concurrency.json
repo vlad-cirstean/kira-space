@@ -229,7 +229,6 @@
           {
             "keepMinutes": 60,
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -577,7 +576,6 @@
           {
             "keepMinutes": 60,
             "label": "API key",
-            "mode": "once",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"

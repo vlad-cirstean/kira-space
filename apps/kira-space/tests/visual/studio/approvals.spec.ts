@@ -32,19 +32,34 @@ test('approvals dialog and toast', async ({ relaunch }) => {
   });
 });
 
-// P719: API request with several values still needed, each with its own Use once / Keep choice.
+// P728: API request with one value still needed and one stored, and the Kept for line.
 
-test('api approval with one-time value rows', async ({ relaunch }) => {
-  const [item] = contract<ApprovalItem[]>('e2e-user-value-once', 'ApprovalsService.List#mixed');
+test('api approval with a needed and a stored value row', async ({ relaunch }) => {
+  const [stored] = contract<ApprovalItem[]>('e2e-user-value', 'ApprovalsService.List#stored');
+  const base = withTimes(stored as ApprovalItem);
+  const payload = structuredClone(base.payload) as { inputs: Record<string, unknown>[] };
+  payload.inputs = [
+    {
+      name: 'otp',
+      label: 'One-time code',
+      state: 'needed',
+      origin: 'http://127.0.0.1:1',
+      keepMinutes: 60,
+    },
+    ...payload.inputs,
+  ];
   const { window: page } = await relaunch({ control: [] });
   await page.setViewportSize({ width: 1400, height: 900 });
-  await pushApprovals(page, [liveItem(item as ApprovalItem, 600, Date.now())]);
+  await pushApprovals(page, [liveItem({ ...base, payload }, 600, Date.now())]);
   const dialog = page.locator('[data-testid="approvals-dialog"]');
   await expect(dialog).toBeVisible();
   await expect(page.locator('[data-testid="api-input-otp"]')).toBeVisible();
   await settleFonts(page);
-  await expect(dialog).toHaveScreenshot('approvals-api-input-once.png', {
-    mask: [page.locator('[data-testid="approval-countdown"]')],
+  await expect(dialog).toHaveScreenshot('approvals-api-input.png', {
+    mask: [
+      page.locator('[data-testid="approval-countdown"]'),
+      page.locator('[data-testid="kept-expiry"]'),
+    ],
   });
 });
 

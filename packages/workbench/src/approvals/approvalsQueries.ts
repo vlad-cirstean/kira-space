@@ -67,11 +67,7 @@ function answerOptions(
       out[id] = store.options[id];
       continue;
     }
-    // A mode for every typed value; one the card never set is "once" (the safe side).
-    const modes = Object.fromEntries(
-      Object.keys(typed).map((name) => [name, store.inputModes[id]?.[name] ?? 'once']),
-    );
-    out[id] = { ...base, inputs: typed, inputModes: modes };
+    out[id] = { ...base, inputs: typed };
   }
   return out;
 }

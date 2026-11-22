@@ -7,7 +7,7 @@ import { IPC } from '../support/ipcChannels';
 
 // Contracts approvals-api-input and approvals-api-input-stored. Backend half: dbmcpflow
 // TestUserInputSupplied. An api_request that declares an input parks with a field for it: Send waits
-// until it is filled, the typed value rides the approve answer only, and nothing keeps it afterwards.
+// until it is filled, the typed value rides the approve answer only, and the page keeps no copy.
 // A value Kira already holds shows as supplied by the user and may be replaced.
 
 const TYPED = 'typed-secret-value-42';
@@ -36,16 +36,15 @@ test('contract: the card asks for the value, marks it and holds Send until it is
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const c = card(page, it);
-  // One row: label, masked field, the choice. No heading, hint or warning repeats it.
+  // One row: label, masked field. No heading, hint or warning repeats it.
   const row = c.locator('[data-testid="api-approval-input-apikey"]');
   await expect(row).toContainText('API key');
   await expect(c.locator('[data-testid="api-approval-inputs"]')).not.toContainText(
     'Values you supply',
   );
   await expect(c.getByText('Needs a value from you')).toHaveCount(0);
-  await expect(c.locator('[data-testid="api-input-apikey-once"]')).toHaveAttribute(
-    'data-state',
-    'on',
+  await expect(c.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
+    'Kept for 60 min',
   );
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
@@ -78,7 +77,6 @@ test('contract: Send carries the typed value with the answer; the page keeps no 
   page.on('console', (m) => logs.push(m.text()));
   await pushApprovals(page, [liveItem(it)]);
   await page.locator('[data-testid="api-input-apikey"]').fill(TYPED);
-  await page.click('[data-testid="api-input-apikey-keep"]');
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
@@ -122,6 +120,6 @@ test('contract: a held value shows as supplied by you, Send needs no typing, a n
     .toEqual({
       ids: [it.id],
       approve: true,
-      options: { [it.id]: { inputs: { apikey: TYPED }, inputModes: { apikey: 'once' } } },
+      options: { [it.id]: { inputs: { apikey: TYPED } } },
     });
 });

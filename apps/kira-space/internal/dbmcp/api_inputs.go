@@ -17,8 +17,6 @@ import (
 type apiInput struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`
-	// Reuse: the agent plans more requests with this value, so the card suggests keeping it.
-	Reuse bool `json:"reuse,omitempty"`
 }
 
 func inputDecls(in []apiInput) []agentapi.InputDecl {
@@ -53,22 +51,16 @@ type apiInputPayload struct {
 	State  string `json:"state"`
 	Origin string `json:"origin"`
 	KeptID string `json:"keptId,omitempty"`
-	// Mode is the choice the card starts on: "keep" when the agent asked for reuse, else "once".
-	Mode string `json:"mode"`
-	// KeepMinutes is how long "keep" holds the value.
+	// KeepMinutes is how long a typed value is kept.
 	KeepMinutes int `json:"keepMinutes"`
 }
 
 func apiInputsPayload(p *agentapi.Planned, keepMinutes int) []apiInputPayload {
 	out := make([]apiInputPayload, len(p.Inputs))
 	for i, in := range p.Inputs {
-		mode := "once"
-		if in.Reuse {
-			mode = "keep"
-		}
 		out[i] = apiInputPayload{
 			Name: in.Name, Label: in.Label, State: string(in.State), Origin: in.Origin, KeptID: in.KeptID,
-			Mode: mode, KeepMinutes: keepMinutes,
+			KeepMinutes: keepMinutes,
 		}
 	}
 	return out
@@ -127,21 +119,19 @@ func (e *inputKeepError) Error() string {
 	return fmt.Sprintf("the value for %q could not be kept (%s); nothing was sent", e.name, e.err)
 }
 
-// keepInputs settles the values the user typed. A "keep" value is stored under its kept name, bound to the
-// request's origin. A "once" value goes into the returned overlay only and never reaches the store; a stored
-// value it replaces is cleared. It returns the status of every declared input. Called after approval with
-// the item's watch already stopped, so replacing a stored value cancels other waiting items but not this one.
-// The caller wipes the overlay.
-func (s *Server) keepInputs(ctx context.Context, plan agentapi.Planned, supplied SuppliedInputs) ([]agentapi.InputStatus, map[string]keptvars.Entry, error) {
+// keepInputs settles the values the user typed: each is stored under its kept name, bound to the request's
+// origin, and replaces a stored one. It returns the status of every declared input. Called after approval
+// with the item's watch already stopped, so replacing a stored value cancels other waiting items but not
+// this one.
+func (s *Server) keepInputs(ctx context.Context, plan agentapi.Planned, supplied SuppliedInputs) ([]agentapi.InputStatus, error) {
 	defer supplied.Wipe()
 	if len(plan.Inputs) == 0 {
-		return nil, nil, nil
+		return nil, nil
 	}
 	src := keptSourceOf(ctx, plan)
 	src.Kind = keptvars.SourceUser
 	scope := keptScope(ctx)
 	statuses := make([]agentapi.InputStatus, 0, len(plan.Inputs))
-	var once map[string]keptvars.Entry
 	for _, in := range plan.Inputs {
 		st := agentapi.InputStatus{Name: in.Name, Status: "reused"}
 		typed, ok := supplied.Take(in.Name)
@@ -149,34 +139,19 @@ func (s *Server) keepInputs(ctx context.Context, plan agentapi.Planned, supplied
 			statuses = append(statuses, st)
 			continue
 		}
-		raw, err := jsonString(typed.Value)
-		clear(typed.Value)
+		raw, err := jsonString(typed)
+		clear(typed)
 		if err != nil {
-			wipeOnce(once)
-			return nil, nil, &inputKeepError{name: in.Name, err: err}
-		}
-		if typed.Once {
-			if in.State == agentapi.InputStored && s.cfg.Kept != nil {
-				s.cfg.Kept.Clear(in.KeptID)
-			}
-			if once == nil {
-				once = map[string]keptvars.Entry{}
-			}
-			once[in.Name] = agentapi.OnceEntry(in.Name, plan.Origin, raw)
-			st.Status = "once"
-			statuses = append(statuses, st)
-			continue
+			return nil, &inputKeepError{name: in.Name, err: err}
 		}
 		if s.cfg.Kept == nil {
 			clear(raw)
-			wipeOnce(once)
-			return nil, nil, &inputKeepError{name: in.Name, err: keptvars.ErrClosed}
+			return nil, &inputKeepError{name: in.Name, err: keptvars.ErrClosed}
 		}
 		m, perr := s.cfg.Kept.Put(keptvars.Put{Scope: scope, Name: in.Name, Value: raw, Secret: true, Source: src, Origin: plan.Origin})
 		clear(raw)
 		if perr != nil {
-			wipeOnce(once)
-			return nil, nil, &inputKeepError{name: in.Name, err: perr}
+			return nil, &inputKeepError{name: in.Name, err: perr}
 		}
 		st.Status = "supplied"
 		if in.State == agentapi.InputStored {
@@ -185,15 +160,7 @@ func (s *Server) keepInputs(ctx context.Context, plan agentapi.Planned, supplied
 		st.ExpiresInSeconds = secondsLeft(m.ExpiresAt)
 		statuses = append(statuses, st)
 	}
-	return statuses, once, nil
-}
-
-// wipeOnce zeroes the one-time values of a request. The resolver's copies share these slices.
-func wipeOnce(once map[string]keptvars.Entry) {
-	for name, e := range once {
-		clear(e.Value)
-		delete(once, name)
-	}
+	return statuses, nil
 }
 
 func secondsLeft(at time.Time) int { return max(int(math.Ceil(time.Until(at).Seconds())), 0) }
@@ -204,7 +171,7 @@ func (s *Server) fillReused(ctx context.Context, statuses []agentapi.InputStatus
 		return
 	}
 	for i, st := range statuses {
-		if st.ExpiresInSeconds > 0 || st.Status == "once" {
+		if st.ExpiresInSeconds > 0 {
 			continue
 		}
 		if e, ok := s.cfg.Kept.Get(keptScope(ctx), st.Name); ok {
