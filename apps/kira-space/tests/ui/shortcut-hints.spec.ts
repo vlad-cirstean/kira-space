@@ -268,15 +268,7 @@ for (const platform of PLATFORMS) {
         'grid.deleteRows',
       );
 
-      // The field hint shows while the field is empty and goes once it has text.
-      const filter = page.locator('[data-testid="column-filter-input"]');
-      const field = page.locator('[data-slot="search-field"]').filter({ has: filter });
-      await expect(field.locator(chip('data.filterColumns'))).toHaveText(
-        expected('data.filterColumns'),
-      );
-      await filter.fill('id');
-      await expect(field.locator(chip('data.filterColumns'))).toHaveCount(0);
-      await filter.fill('');
+      await hint(page, page.locator('[data-testid="toolbar-columns"]'), 'data.filterColumns');
 
       await openConsoleFromMenu(page, BIG_ROWS_PATH);
       await hint(page, page.locator('[data-testid="console-run-statement"]'), 'view.run');

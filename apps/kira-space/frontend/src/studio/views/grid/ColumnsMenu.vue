@@ -215,6 +215,7 @@ onBeforeUnmount(() => {
           <TextTooltip v-if="pkNames.has(name)" :text="t('studio.grid.columns.primaryKey.tooltip')"
             ><Checkbox
               :model-value="selected.has(name)"
+              :aria-label="name"
               disabled
               data-testid="columns-menu-item"
               @update:model-value="toggle(name)"
@@ -223,6 +224,7 @@ onBeforeUnmount(() => {
           <Checkbox
             v-else
             :model-value="selected.has(name)"
+            :aria-label="name"
             data-testid="columns-menu-item"
             @update:model-value="toggle(name)"
           />
