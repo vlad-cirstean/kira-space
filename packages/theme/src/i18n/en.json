@@ -8970,6 +8970,9 @@
           },
           "misc": {
             "label": "Misc"
+          },
+          "related": {
+            "label": "Related"
           }
         },
         "link": {
@@ -9268,11 +9271,38 @@
         "empty": {
           "hint": "Paste a link or press +."
         },
+        "found": {
+          "child": {
+            "label": "Note from {task}"
+          },
+          "draft": {
+            "label": "Draft handover of {step}"
+          },
+          "handover": {
+            "label": "Handover {from} to {to}"
+          },
+          "note": {
+            "label": "Note of {date}"
+          },
+          "pill": {
+            "aria": "Found in notes"
+          },
+          "promote": {
+            "tooltip": "Add to links"
+          },
+          "title": "Found in",
+          "tooltip": "Found in: {sources}"
+        },
         "kind": {
           "aria": "Link kind"
         },
         "pill": {
           "hint": "Enter opens the link. {modifier}+Enter opens it in the browser. Space shows its details."
+        },
+        "source": {
+          "notes": {
+            "label": "Notes and handovers"
+          }
         }
       },
       "mainTab": {

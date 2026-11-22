@@ -307,6 +307,7 @@ export const IPC = {
   adeTaskAddLink: 'kira:adetask:addLink',
   adeTaskEditLink: 'kira:adetask:editLink',
   adeTaskRemoveArtifact: 'kira:adetask:removeArtifact',
+  adeTaskDismissFoundLink: 'kira:adetask:dismissFoundLink',
   adeTaskDetailsDiskChanges: 'kira:adetask:detailsDiskChanges',
   adeTaskDetailsAcceptDisk: 'kira:adetask:detailsAcceptDisk',
   adeTaskDetailsDiscardDisk: 'kira:adetask:detailsDiscardDisk',

@@ -125,6 +125,25 @@ type linkClass struct {
 	Title  string // the given title, else "" (the caller names the row)
 }
 
+// localLinkKind applies the rules that need no ctx and no network: tracker ref, Jira-host key, code
+// host issue or change request. classifyLink and the notes source share it.
+func (b *TaskBoard) localLinkKind(task model.AdeTask, raw string, u *url.URL) (linkClass, bool) {
+	if _, ref, ok := b.deps.Trackers.ParseRef(raw); ok {
+		return linkClass{Kind: model.AdeArtifactIssue, Ref: ref.Key, Origin: linkOriginTracker}, true
+	}
+	if task.JiraURL != "" {
+		if ju, ok := httpURL(task.JiraURL); ok && ju.Host == u.Host {
+			if key := jiraKeyInURLRe.FindString(u.Path + "?" + u.RawQuery); key != "" {
+				return linkClass{Kind: model.AdeArtifactIssue, Ref: key, Origin: linkOriginTracker}, true
+			}
+		}
+	}
+	if l := b.hostLink(raw); l != nil {
+		return linkClass{Kind: l.Kind, Ref: l.Ref, Origin: linkOriginHost}, true
+	}
+	return linkClass{}, false
+}
+
 // classifyLink applies the recognition rules, first match wins. It returns linkErrNotLink for words
 // that are no issue key.
 func (b *TaskBoard) classifyLink(ctx context.Context, task model.AdeTask, p parsedLink) (linkClass, string) {
@@ -136,21 +155,9 @@ func (b *TaskBoard) classifyLink(ctx context.Context, task model.AdeTask, p pars
 	}
 	c := linkClass{Kind: model.AdeArtifactLink, URL: p.URL, Title: p.Title}
 	u, _ := httpURL(p.URL)
-	if _, ref, ok := b.deps.Trackers.ParseRef(p.URL); ok {
-		c.Kind, c.Ref, c.Origin = model.AdeArtifactIssue, ref.Key, linkOriginTracker
-		return c, ""
-	}
-	if task.JiraURL != "" {
-		if ju, ok := httpURL(task.JiraURL); ok && ju.Host == u.Host {
-			if key := jiraKeyInURLRe.FindString(u.Path + "?" + u.RawQuery); key != "" {
-				c.Kind, c.Ref, c.Origin = model.AdeArtifactIssue, key, linkOriginTracker
-				return c, ""
-			}
-		}
-	}
-	if l := b.hostLink(p.URL); l != nil {
-		c.Kind, c.Ref, c.Origin = l.Kind, l.Ref, linkOriginHost
-		return c, ""
+	if lc, ok := b.localLinkKind(task, p.URL, u); ok {
+		lc.URL, lc.Title = p.URL, p.Title
+		return lc, ""
 	}
 	if reg := b.hostRegistry(); reg != nil {
 		if _, _, bl, ok := reg.ParseBranchLink(ctx, p.URL); ok && bl.Number == 0 && !bl.Issue && bl.TreePath != "" {

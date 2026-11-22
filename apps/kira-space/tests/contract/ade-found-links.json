@@ -1,0 +1,287 @@
+{
+  "AdeTaskService.Artifacts#dismissed": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Spec",
+        "url": "https://docs.google.com/document/d/d0/edit"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Design",
+        "url": "https://docs.google.com/document/d/f1/edit"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "handed",
+            "toStep": "Ship"
+          },
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "ex.test/a",
+        "url": "https://ex.test/a"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "status": "",
+        "title": "B",
+        "url": "https://ex.test/b"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.Artifacts#initial": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api!21",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "api!21",
+        "url": "https://forge.test/acme/api/-/merge_requests/21"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Spec",
+        "url": "https://docs.google.com/document/d/d0/edit"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "Design",
+        "url": "https://docs.google.com/document/d/f1/edit"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "handed",
+            "toStep": "Ship"
+          },
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "ex.test/a",
+        "url": "https://ex.test/a"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "handed",
+            "toStep": "Ship"
+          }
+        ],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "ex.test/b",
+        "url": "https://ex.test/b"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.Artifacts#promoted": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api!21",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "api!21",
+        "url": "https://forge.test/acme/api/-/merge_requests/21"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Spec",
+        "url": "https://docs.google.com/document/d/d0/edit"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "doc",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Design",
+        "url": "https://docs.google.com/document/d/f1/edit"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "handed",
+            "toStep": "Ship"
+          },
+          {
+            "createdAt": 0,
+            "fromStep": "Work",
+            "fromTask": "",
+            "handoverId": "<masked>",
+            "state": "note",
+            "toStep": ""
+          }
+        ],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "ex.test/a",
+        "url": "https://ex.test/a"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "agent",
+        "status": "",
+        "title": "B",
+        "url": "https://ex.test/b"
+      }
+    ],
+    "gaps": []
+  },
+  "args:AdeTaskService.AddLink": {
+    "taskId": "<masked>",
+    "text": "Design https://docs.google.com/document/d/f1/edit"
+  },
+  "args:AdeTaskService.DismissFoundLink": {
+    "taskId": "<masked>",
+    "url": "https://forge.test/acme/api/-/merge_requests/21"
+  }
+}

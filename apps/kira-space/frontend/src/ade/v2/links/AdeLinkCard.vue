@@ -20,12 +20,15 @@ import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import { THEME_TONE } from '../tones';
 import type { Artifact, Task } from '../wire';
 import AdeLinkEdit from './AdeLinkEdit.vue';
+import { foundSourceLabel } from './foundTooltip';
 import { KINDS, type LinkItem } from './linkGroups';
 import { sourceLabel } from './sourceLabel';
 import type { TaskLinks } from './useTaskLinks';
 
 // The open card of one pill: full title, url, status, repo, source, kind toggles, open, session, edit and
-// remove. Edit mode shows the kind toggles and the actions that change the link; detected links never edit.
+// remove. Edit mode shows the kind toggles and the actions that change the link; detected and found links
+// never edit. A found link lists where it appears and can be added to the links (any mode but view) or
+// dismissed (edit only).
 const props = defineProps<{
   task: Task;
   item: LinkItem;
@@ -36,7 +39,8 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] }>();
 
-const canEdit = () => props.mode === 'edit' && props.item.origin !== 'detected';
+const canEdit = () =>
+  props.mode === 'edit' && props.item.origin !== 'detected' && props.item.origin !== 'found';
 const kindItems = KINDS.map((k) => ({
   value: k,
   label: artifactKindLabel(k),
@@ -116,6 +120,14 @@ function openTitle(e: MouseEvent): void {
         @open="emit('openSession', $event)"
       />
     </div>
+    <div v-if="item.origin === 'found'" class="text-kira-sm" data-testid="ade-links-card-found">
+      <div class="text-muted-foreground">{{ t('space.ade.links.found.title') }}</div>
+      <ul class="m-0 list-none p-0">
+        <li v-for="(f, i) in item.foundIn" :key="`${f.handoverId}:${i}`" class="min-w-0 truncate">
+          {{ foundSourceLabel(f) }}
+        </li>
+      </ul>
+    </div>
     <AdeTaskIssueLine
       v-if="item.origin === 'jira'"
       :task-id="task.id"
@@ -143,6 +155,24 @@ function openTitle(e: MouseEvent): void {
         class="shrink-0"
         data-testid="ade-links-card-copy"
       />
+      <template v-if="item.origin === 'found'">
+        <TooltipIconButton
+          v-if="mode !== 'view'"
+          icon="add"
+          :label="t('space.ade.links.found.promote.tooltip')"
+          class="shrink-0"
+          data-testid="ade-links-card-promote"
+          @click="links.promote(item)"
+        />
+        <TooltipIconButton
+          v-if="mode === 'edit'"
+          icon="eye-closed"
+          :label="t('common.action.dismiss.label')"
+          class="shrink-0"
+          data-testid="ade-links-card-dismiss"
+          @click="links.dismiss(item)"
+        />
+      </template>
       <template v-if="canEdit()">
         <TooltipIconButton
           icon="edit"

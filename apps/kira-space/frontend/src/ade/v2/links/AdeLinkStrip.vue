@@ -21,7 +21,7 @@ import AdeLinkPill from './AdeLinkPill.vue';
 import { CATEGORY_ICON, CATEGORY_LABEL, type LinkItem } from './linkGroups';
 import { useTaskLinks } from './useTaskLinks';
 
-// The task's links as one strip: a line per non-empty category (Issues, Change requests, Misc) of 18px
+// The task's links as one strip: a line per non-empty category (Issues, Change requests, Misc, Related) of 18px
 // pills. A pill click opens the link in the app (host view) where it can, else in the browser;
 // the primary modifier plus click opens it in the browser. Right-click, Space or Alt+Down open its card; the `+` opens the add popover. `edit` changes links (Details), `add` only
 // adds (handoff dialogs), `view` is read-only. Pills share one tab stop; arrows move between them.
@@ -48,7 +48,8 @@ const hintId = useId();
 const modifier = primaryModifierName();
 
 const canAdd = () => props.mode !== 'view';
-const canEdit = (item: LinkItem) => props.mode === 'edit' && item.origin !== 'detected';
+const canEdit = (item: LinkItem) =>
+  props.mode === 'edit' && item.origin !== 'detected' && item.origin !== 'found';
 
 function openCard(item: LinkItem): void {
   setOpen(item.key, true);

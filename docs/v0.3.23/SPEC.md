@@ -30,7 +30,7 @@ before implementation starts.
 | P728 | Approval prompts and scripts rework | Done |
 | P729 | Removals, Variables tab and kube result views | Done |
 | P730 | Switch, checkbox and radio on-state style | Todo |
-| P731 | Auto-extracted task links from notes and handovers | Todo |
+| P731 | Auto-extracted task links from notes and handovers | Done |
 
 ## P716
 
@@ -795,4 +795,4 @@ Scope (user request).
 
 Deliverable. Plan `plans/P731.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Found links derive on read in `notesSource` (`ade/foundlinks.go`, source `notes`), never stored, so an edit or delete of a note or handover takes its links along. Extractor `ade/linkextract.go` (unit-tested): skips code, keeps http(s) only, drops userinfo and loopback. `localLinkKind` is shared with `classifyLink`. A third merge pass keeps found links from replacing or demoting any main link. Promotion is an explicit add: user card action "Add to links" (`AddLink`) or the agent listing the URL in `links.yaml`; removing that row brings the link back. Only the user dismisses (`DismissFoundLink`, table `ade_task_found_link_dismissals`, migration 0106 stayed free). Limits 200 rows, 50 per row, 100 links, 5 sources. UI: Related line after Misc, dashed pill with note icon whose tooltip names the sources, card with "Found in" list and promote and dismiss buttons (dismiss edit mode only, none in view mode). README line tells agents how to promote. Tests on contract `ade-found-links`: flow `TestFoundLinks`, UI `ade-v2-found-links.spec.ts`, unit `linkextract_test.go` and `ade-v2-link-groups.spec.ts`. New visual baseline `ade-links-related-visual-linux.png` (existing ones unchanged). Runs: `go test ./apps/kira-space/internal/{ade,storage,taskfiles,bridge}/...` and `internal/agentmcp` pass; `go test -p 1 ./apps/kira-space/internal/flows/adeflow/` pass (407 s); UI `ade-v2-found-links`, `ade-v2-details-links`, `ade-v2-links-strip`, `ade-v2-artifacts` and visual `ade-links` pass; real `claude` ADE row (18 results) and `TestDetailsBenchFrozenServes` pass, none skipped (auth probe returned `ok`). Unverified: `-race` (the disk filled while building race objects, so the Go runs are without it), golangci-lint (not loadable here), PR CI.
