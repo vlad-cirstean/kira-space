@@ -164,6 +164,22 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       });
     }
 
+    // Resolvers of waitExited, run when the tab's exit event lands.
+    const exitWaiters = new Map<string, (() => void)[]>();
+
+    function waitExited(tabId: string, ms: number): Promise<void> {
+      let done: (() => void) | undefined;
+      const exited = new Promise<void>((resolve) => {
+        done = resolve;
+        exitWaiters.set(tabId, [...(exitWaiters.get(tabId) ?? []), resolve]);
+      });
+      return Promise.race([exited, promiseTimeout(ms)]).finally(() => {
+        const rest = (exitWaiters.get(tabId) ?? []).filter((w) => w !== done);
+        if (rest.length > 0) exitWaiters.set(tabId, rest);
+        else exitWaiters.delete(tabId);
+      });
+    }
+
     function appendToDrain(tabId: string, bytes: Uint8Array, bounded = true): void {
       let drain = drainByTabId.get(tabId);
       if (!drain) {
@@ -203,6 +219,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         sess.status = event.error ? 'failed' : 'exited';
         sess.exitCode = event.exitCode ?? null;
         sess.error = event.error || null;
+        for (const done of exitWaiters.get(event.terminalId) ?? []) done();
       } else if (sess.status === 'starting') {
         sess.status = 'running';
       }
@@ -347,6 +364,8 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       sinks.delete(tabId);
       drainByTabId.delete(tabId);
       routedEnd.delete(tabId);
+      for (const done of exitWaiters.get(tabId) ?? []) done();
+      exitWaiters.delete(tabId);
       adopting.delete(tabId);
       snapshots.delete(tabId);
       writer.drop(tabId);
@@ -378,11 +397,15 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         const held = await control.terminalHold(tabId);
         live = held.live;
         if (live) await waitRouted(tabId, held.end, TIMING.terminalMoveSettle);
+        // Not live: the shell exited after this window last saw it running. Its exit event is on
+        // the way; the target must adopt the recorded exit, not try to adopt a dead session.
+        else await waitExited(tabId, TIMING.terminalMoveSettle);
       }
       const renderer = await loadTerminalRenderer();
       const shot = await renderer.serializeTerminal(tabId, opts?.maxBytes);
       const size = lastSize.get(tabId) ?? { cols: 80, rows: 24 };
-      const status = live || sess.status === 'running' ? 'running' : sess.status;
+      // A terminal Go reports not live is never sent as running, even if no exit event arrived.
+      const status = live ? 'running' : sess.status === 'running' ? 'exited' : sess.status;
       return {
         live,
         payload: {
@@ -414,6 +437,8 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         deliver(encoder.encode(`\r\n\x1b[2m${notice}\x1b[0m\r\n`));
       }
       if (result.data) deliver(base64ToBytes(result.data));
+      // Live events only note ends this window saw; an idle terminal's next move waits for none.
+      noteRouted(tabId, Math.max(routedEnd.get(tabId) ?? 0, result.end));
       for (const chunk of adopting.get(tabId) ?? []) {
         if (chunk.end > result.end) deliver(chunk.bytes);
       }

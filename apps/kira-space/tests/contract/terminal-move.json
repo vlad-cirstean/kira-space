@@ -13,6 +13,10 @@
     "end": 0,
     "live": true
   },
+  "TerminalService.Hold:exited": {
+    "end": 0,
+    "live": false
+  },
   "args:TabsService.Move:terminal": {
     "drop": null,
     "newWindow": false,

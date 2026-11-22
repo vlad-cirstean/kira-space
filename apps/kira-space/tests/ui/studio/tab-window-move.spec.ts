@@ -29,6 +29,7 @@ const inbound = contract<{ incognito: boolean; focus: boolean; tab: Record<strin
   'TabsService.Inbound',
 );
 const hold = contract<{ end: number; live: boolean }>(TERM, 'TerminalService.Hold');
+const holdExited = contract<{ end: number; live: boolean }>(TERM, 'TerminalService.Hold:exited');
 const adopt = contract<Record<string, unknown>>(TERM, 'TerminalService.Adopt');
 
 const TARGETS = [
@@ -276,6 +277,36 @@ test('a live Runs terminal leaves with its screen and is never closed', async ({
   expect(move.tabs[0].terminal.snapshot).toContain('hello-moved');
   expect(move.tabs[0].terminal.status).toBe('running');
   expect(calls(control, IPC.terminalClose)).toHaveLength(0);
+});
+
+test('a Runs terminal that exited before the hold leaves as exited, with its code', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await relaunch({
+    control: termMove([
+      { channel: IPC.terminalHold, response: holdExited },
+      { channel: IPC.tabsMove, response: moved },
+    ]),
+  });
+  const id = await openRunsTerminal(page);
+  await emitWailsEvent(page, IPC.terminal, {
+    terminalId: id,
+    data: b64('a1\r\n'),
+    end: 4,
+    exited: false,
+  });
+  await expect(page.locator('.xterm-rows')).toContainText('a1');
+
+  await dragTabOut(page, tabLocator(page, id), { x: -60, y: 200 });
+  await expect.poll(() => calls(control, IPC.terminalHold)).toHaveLength(1);
+  // The exit event the source saw reaches it while the move waits for it.
+  await emitWailsEvent(page, IPC.terminal, { terminalId: id, end: 4, exited: true, exitCode: 3 });
+  await expect(tabLocator(page, id)).toHaveCount(0);
+
+  const [move] = sentMoves(control);
+  expect(move.tabs[0].terminal.status).toBe('exited');
+  expect(move.tabs[0].terminal.exitCode).toBe(3);
+  expect(calls(control, IPC.terminalRelease)).toHaveLength(0);
 });
 
 test('a refused Runs terminal move releases the hold and keeps the tab', async ({ relaunch }) => {

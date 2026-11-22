@@ -226,6 +226,28 @@ func TestTerminalMoveCases(t *testing.T) {
 		}
 	})
 
+	// A shell that exited before the move began: Hold reports not live, so the source window sends the
+	// exit it saw, never a running terminal for the target to adopt.
+	t.Run("exit before hold", func(t *testing.T) {
+		started(t, "t8")
+		typeLine(t, app, "t8", "die")
+		deadline := time.Now().Add(wait)
+		for {
+			if _, ok := reg.WindowOf("t8"); !ok {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("script did not exit")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		h, err := term.Hold(terminal.HoldArgs{TerminalID: "t8"})
+		if err != nil || h.Live {
+			t.Fatalf("Hold after exit = %+v, %v, want not live", h, err)
+		}
+		app.Contract(t, termMoveScenario, "TerminalService.Hold:exited", h)
+	})
+
 	t.Run("release", func(t *testing.T) {
 		started(t, "t4")
 		hold(t, "t4")
