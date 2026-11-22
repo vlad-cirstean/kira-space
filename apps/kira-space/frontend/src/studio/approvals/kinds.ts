@@ -15,9 +15,15 @@ import {
 import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
 import { joinSentences, type MessageKey, t } from '@theme/i18n';
-import type { ApprovalKinds, ApprovalRisk, ApprovalVerdict } from '@workbench/approvals/registry';
+import type {
+  ApprovalKinds,
+  ApprovalRisk,
+  ApprovalVerdict,
+  ApprovalWherePart,
+} from '@workbench/approvals/registry';
 import { formatCount, formatDuration } from '@workbench/behaviour/format';
 import { type FunctionalComponent, h, markRaw } from 'vue';
+import { z } from 'zod';
 import ClusterIcon from '../kubernetes/components/ClusterIcon.vue';
 import EngineIcon from '../theme/EngineIcon.vue';
 import ApiRequestBody from './ApiRequestBody.vue';
@@ -262,11 +268,18 @@ function dbOperation(item: ApprovalItem): string {
   return key ? t(key) : item.operation.class;
 }
 
-// "PostgreSQL · db.internal · shop / public": the connection's kind label, then its location.
-function connectionWhere(item: ApprovalItem): string {
+const dbLocationSchema = z.object({ host: z.string().default(''), path: z.string().default('') });
+
+// The connection's host (data font), then its database or path as a chip.
+function connectionWhere(item: ApprovalItem): ApprovalWherePart[] {
   const kind = connectionKindSchema.safeParse(item.target.kind).data;
+  const loc = dbLocationSchema.parse(item.payload);
+  const parts: ApprovalWherePart[] = [];
   // The engine icon names a known kind; text only for an unknown one.
-  return [kind ? '' : item.target.kind, item.target.location].filter(Boolean).join(' · ');
+  if (!kind && item.target.kind) parts.push({ text: item.target.kind, label: 'kind' });
+  if (loc.host) parts.push({ text: loc.host, label: 'host', data: true });
+  if (loc.path) parts.push({ text: loc.path, label: 'database', chip: true, data: true });
+  return parts;
 }
 
 // The plan's estimate over its threshold, then its issues: two tags, the rest as "+N more".
@@ -513,17 +526,30 @@ function kubeRisks(item: ApprovalItem): ApprovalRisk[] {
   return out;
 }
 
-// The location already ends in the namespace when one is set.
+// The cluster's API server (data font), then the namespace as a chip ("All namespaces" without one).
 function kubeWhere(
   schema: typeof kubeReadPayloadSchema | typeof kubeResponsePayloadSchema,
-): (item: ApprovalItem) => string {
-  return (item) =>
-    [
-      item.target.location,
-      schema.parse(item.payload).namespace ? '' : t('kubernetes.namespace.all.option'),
-    ]
-      .filter(Boolean)
-      .join(' · ');
+): (item: ApprovalItem) => ApprovalWherePart[] {
+  return (item) => {
+    const p = schema.parse(item.payload);
+    return [
+      ...(p.server ? [{ text: p.server, label: 'server', data: true }] : []),
+      {
+        text: p.namespace || t('kubernetes.namespace.all.option'),
+        label: 'namespace',
+        chip: true,
+      },
+    ];
+  };
+}
+
+// The environment as a chip with its colour dot; muted text when the request has none.
+function environmentWhere(
+  environment: { name: string; color: string } | null | undefined,
+): ApprovalWherePart[] {
+  if (!environment)
+    return [{ text: t('studio.api.environments.none.option'), label: 'environment' }];
+  return [{ text: environment.name, label: 'environment', chip: true, color: environment.color }];
 }
 
 // P520: Studio's approval kinds (internal/approvals Kind* constants). Each maps a subject to its
@@ -595,7 +621,6 @@ export function studioApprovalKinds(): ApprovalKinds {
       footerAction: markRaw(ReviewResultOption),
       operation: (item) =>
         t(KUBE_OPERATION_LABEL[kubeReadPayloadSchema.parse(item.payload).operation]),
-      // The location already ends in the namespace when one is set.
       where: kubeWhere(kubeReadPayloadSchema),
     },
     'kube.response': {
@@ -614,8 +639,7 @@ export function studioApprovalKinds(): ApprovalKinds {
       content: markRaw(ScriptRunBody),
       details: markRaw(ScriptRunDetails),
       operation: () => t('common.run.untitled.title'),
-      where: (item) => item.target.location,
-      whereData: true,
+      where: (item) => [{ text: item.target.location, label: 'folder', data: true }],
     },
     'api.request': {
       content: markRaw(ApiRequestBody),
@@ -625,9 +649,7 @@ export function studioApprovalKinds(): ApprovalKinds {
       footerAction: markRaw(ReviewResultOption),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
       verdict: apiVerdict,
-      where: (item) =>
-        apiRequestPayloadSchema.parse(item.payload).environment?.name ??
-        t('studio.api.environments.none.option'),
+      where: (item) => environmentWhere(apiRequestPayloadSchema.parse(item.payload).environment),
       targetData: true,
       risks: apiRisks,
       requiredInputs: (item) =>
@@ -651,9 +673,7 @@ export function studioApprovalKinds(): ApprovalKinds {
           apiResponsePayloadSchema.parse(item.payload).class === 'read',
           'studio.dbMcp.approval.verdict.apiWriteResult.hint',
         ),
-      where: (item) =>
-        apiResponsePayloadSchema.parse(item.payload).environment?.name ??
-        t('studio.api.environments.none.option'),
+      where: (item) => environmentWhere(apiResponsePayloadSchema.parse(item.payload).environment),
       targetData: true,
       risks: apiResponseRisks,
       labels: () => ({
@@ -666,10 +686,14 @@ export function studioApprovalKinds(): ApprovalKinds {
       details: markRaw(ProofReviewDetails),
       footerAction: markRaw(ProofOpenWindow),
       operation: () => t('common.action.edit.label'),
-      where: (item) =>
-        t('studio.proof.approval.rev.label', {
-          n: proofReviewPayloadSchema.parse(item.payload).revision,
-        }),
+      where: (item) => [
+        {
+          text: t('studio.proof.approval.rev.label', {
+            n: proofReviewPayloadSchema.parse(item.payload).revision,
+          }),
+          label: 'revision',
+        },
+      ],
       requester: () => '',
       labels: () => ({
         approve: t('studio.proof.change.accept.label'),

@@ -2,6 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
 import { t } from '@theme/i18n';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import { computed } from 'vue';
 
@@ -12,7 +13,8 @@ const payload = computed(() => proofReviewPayloadSchema.parse(props.item.payload
 
 <template>
   <ApprovalDetails v-if="payload.reason">
-    <dt>{{ t('common.field.reason.label') }}</dt>
-    <dd class="whitespace-pre-wrap">{{ payload.reason }}</dd>
+    <ApprovalDetailItem :label="t('common.field.reason.label')">
+      <span class="whitespace-pre-wrap">{{ payload.reason }}</span>
+    </ApprovalDetailItem>
   </ApprovalDetails>
 </template>

@@ -14341,11 +14341,11 @@
           "masked": {
             "status": "Secrets masked: {names}"
           },
-          "redirectsOffTimeout": {
-            "status": "Redirects off · {seconds} s"
+          "redirectsOff": {
+            "status": "Redirects off"
           },
-          "redirectsOnTimeout": {
-            "status": "Redirects on · {seconds} s"
+          "redirectsOn": {
+            "status": "Follows redirects"
           },
           "responseRaw": {
             "label": "Response"
@@ -14372,6 +14372,9 @@
           },
           "sends": {
             "status": "Sends: {names}"
+          },
+          "timeout": {
+            "status": "Timeout {seconds} s"
           }
         },
         "detail": {

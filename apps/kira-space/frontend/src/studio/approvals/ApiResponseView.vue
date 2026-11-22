@@ -37,11 +37,13 @@ const json = computed(() => {
     <ApprovalPairs
       v-if="response.redirects.length"
       :rows="response.redirects.map((r) => ({ name: String(r.status), value: r.url }))"
+      density="approval"
       :testid="`${testid}-redirects`"
     />
     <ApprovalPairs
       v-if="response.headers.length"
       :rows="response.headers"
+      density="approval"
       :testid="`${testid}-headers`"
     />
     <div class="max-h-80 overflow-auto" :data-testid="`${testid}-body`">

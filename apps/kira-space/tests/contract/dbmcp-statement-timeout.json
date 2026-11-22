@@ -19,6 +19,7 @@
       "connectionId": "<id:2>",
       "detected": "read",
       "enforcement": "session",
+      "host": "",
       "limits": [
         {
           "limit": "statement_timeout",
@@ -28,6 +29,7 @@
         }
       ],
       "mode": "read",
+      "path": "/data/mcp.db",
       "plan": null,
       "reason": "the count is needed",
       "reviewOffered": true,

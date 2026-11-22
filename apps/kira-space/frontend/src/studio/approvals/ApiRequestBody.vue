@@ -5,6 +5,7 @@ import HighlightedText from '@theme/components/HighlightedText.vue';
 import { t } from '@theme/i18n';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
@@ -78,6 +79,7 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
             :rows="payload.body.form"
             :highlight="formParts"
             :mark-class="KEPT_MARK_CLASS"
+            density="approval"
             testid="api-approval-form"
           />
           <FlushEditor
@@ -94,26 +96,28 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
           >
         </template>
         <ApprovalDetails v-if="payload.headers.length || payload.variables.length" class="py-1">
-          <template v-if="payload.headers.length">
-            <dt>{{ t('studio.http.pane.headers.label') }}</dt>
-            <dd>
-              <ApprovalPairs
-                :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
-                :highlight="headerParts"
-                :mark-class="KEPT_MARK_CLASS"
-                testid="api-approval-headers"
-              />
-            </dd>
-          </template>
-          <template v-if="payload.variables.length">
-            <dt>{{ t('common.module.variables.label') }}</dt>
-            <dd>
-              <ApprovalPairs
-                :rows="payload.variables.map((v) => ({ name: v.name, value: v.value }))"
-                testid="api-approval-variables"
-              />
-            </dd>
-          </template>
+          <ApprovalDetailItem
+            v-if="payload.headers.length"
+            :label="t('studio.http.pane.headers.label')"
+          >
+            <ApprovalPairs
+              :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
+              :highlight="headerParts"
+              :mark-class="KEPT_MARK_CLASS"
+              density="approval"
+              testid="api-approval-headers"
+            />
+          </ApprovalDetailItem>
+          <ApprovalDetailItem
+            v-if="payload.variables.length"
+            :label="t('common.module.variables.label')"
+          >
+            <ApprovalPairs
+              :rows="payload.variables.map((v) => ({ name: v.name, value: v.value }))"
+              density="approval"
+              testid="api-approval-variables"
+            />
+          </ApprovalDetailItem>
         </ApprovalDetails>
       </div>
     </ApprovalBox>

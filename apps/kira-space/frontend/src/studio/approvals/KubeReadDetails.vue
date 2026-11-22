@@ -2,44 +2,57 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { kubeReadPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
+import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
+import ApprovalValues from '@workbench/approvals/ApprovalValues.vue';
 import { computed } from 'vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
 const p = computed(() => kubeReadPayloadSchema.parse(props.item.payload));
-const options = computed(() => {
+const options = computed((): string[] => {
   const req = p.value.request;
-  if (!req) return '';
+  if (!req) return [];
   if (p.value.operation === 'list') {
-    return t('studio.dbMcp.approval.kube.rows.status', { count: req.maxRows });
+    return [t('studio.dbMcp.approval.kube.rows.status', { count: req.maxRows })];
   }
-  if (p.value.operation !== 'logs') return '';
+  if (p.value.operation !== 'logs') return [];
   return [
     t('studio.dbMcp.approval.kube.tail.status', { tail: req.tail }),
     req.previous && t('studio.dbMcp.approval.kube.previous.label'),
     req.timestamps && t('common.logs.timestamps.label'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].filter((v): v is string => Boolean(v));
 });
 </script>
 
 <template>
   <ApprovalDetails>
-    <dt>{{ t('common.field.command.label') }}</dt>
-    <dd class="break-all font-data" data-testid="kube-approval-detail-command">{{
-      p.statement
-    }}</dd>
-    <dt>{{ t('studio.dbMcp.approval.kube.server.label') }}</dt>
-    <dd class="break-all font-data" data-testid="kube-approval-detail-server">{{ p.server }}</dd>
-    <template v-if="options">
-      <dt>{{ t('studio.dbMcp.approval.detail.options.label') }}</dt>
-      <dd data-testid="kube-approval-detail-options">{{ options }}</dd>
-    </template>
-    <template v-if="p.changed.length">
-      <dt>{{ t('studio.dbMcp.approval.api.scriptChanged.label') }}</dt>
-      <dd data-testid="kube-approval-script-changed">{{ p.changed.join(', ') }}</dd>
-    </template>
+    <ApprovalDetailItem
+      :label="t('common.field.command.label')"
+      testid="kube-approval-detail-command"
+    >
+      <ApprovalCode>{{ p.statement }}</ApprovalCode>
+    </ApprovalDetailItem>
+    <ApprovalDetailItem
+      :label="t('studio.dbMcp.approval.kube.server.label')"
+      testid="kube-approval-detail-server"
+    >
+      <span class="break-all font-data">{{ p.server }}</span>
+    </ApprovalDetailItem>
+    <ApprovalDetailItem
+      v-if="options.length"
+      :label="t('studio.dbMcp.approval.detail.options.label')"
+      testid="kube-approval-detail-options"
+    >
+      <ApprovalValues :values="options" />
+    </ApprovalDetailItem>
+    <ApprovalDetailItem
+      v-if="p.changed.length"
+      :label="t('studio.dbMcp.approval.api.scriptChanged.label')"
+      testid="kube-approval-script-changed"
+    >
+      <ApprovalValues :values="p.changed" data />
+    </ApprovalDetailItem>
   </ApprovalDetails>
 </template>

@@ -146,6 +146,12 @@ export type TransformView = z.infer<typeof transformViewSchema>;
 // Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
 // and the variables as they stood when the statement was checked; the result script, if any (P680).
 // Older items carry none.
+// Where the connection lives, split for the card header (host, then database or path).
+const dbLocationShape = {
+  host: z.string().default(''),
+  path: z.string().default(''),
+};
+
 const dbKeptShape = {
   params: z.array(z.string()).default([]),
   placeholders: z.array(z.string()).default([]),
@@ -167,6 +173,7 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
   ...dbKeptShape,
+  ...dbLocationShape,
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
@@ -190,6 +197,7 @@ export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
   ...dbKeptShape,
+  ...dbLocationShape,
 });
 export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 
@@ -205,6 +213,7 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   // A script produced the held text from the raw result (P680); rawBytes sizes that raw result.
   scripted: z.boolean().default(false),
   rawBytes: z.number().default(0),
+  ...dbLocationShape,
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 

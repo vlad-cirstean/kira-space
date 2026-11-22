@@ -7,17 +7,21 @@ import { t } from '@theme/i18n';
 import { computed, ref } from 'vue';
 
 // A name/value list in the data font, values exactly as sent. Over three rows the rest hides behind "+N more".
-const props = defineProps<{
-  rows: { name: string; value: string }[];
-  testid: string;
-  rowTestid?: (name: string) => string;
-  /** Marks parts of a row's name or value: the ranges to mark, or none. */
-  highlight?: (
-    row: number,
-    part: 'name' | 'value',
-  ) => readonly { text: string; match: boolean }[] | null;
-  markClass?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    rows: { name: string; value: string }[];
+    testid: string;
+    rowTestid?: (name: string) => string;
+    /** Marks parts of a row's name or value: the ranges to mark, or none. */
+    highlight?: (
+      row: number,
+      part: 'name' | 'value',
+    ) => readonly { text: string; match: boolean }[] | null;
+    markClass?: string;
+    density?: 'default' | 'approval';
+  }>(),
+  { density: 'default' },
+);
 
 const VISIBLE = 3;
 const open = ref(false);
@@ -27,7 +31,7 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
 
 <template>
   <Collapsible v-model:open="open" :data-testid="testid">
-    <KeyValueList>
+    <KeyValueList :density="density">
       <div
         v-for="(row, i) in shown"
         :key="`${i}-${row.name}`"
@@ -42,7 +46,7 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
           />
           <template v-else>{{ row.name }}</template>
         </dt>
-        <dd class="break-all font-data">
+        <dd class="font-data">
           <HighlightedText
             v-if="highlight?.(i, 'value')"
             :parts="highlight(i, 'value') ?? []"

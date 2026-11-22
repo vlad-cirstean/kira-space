@@ -38,7 +38,27 @@ func planPayloadOf(p *ApprovalPlan) *planPayload {
 	}
 }
 
+// dbLocation is where a connection lives, split for the card header: the host, then the database or
+// schema path (segments joined with " / ").
+type dbLocation struct {
+	Host string `json:"host"`
+	Path string `json:"path"`
+}
+
+func dbLocationOf(t ApprovalTarget) dbLocation {
+	loc := dbLocation{Host: t.Host, Path: t.Database}
+	if len(t.Path) > 0 {
+		segs := make([]string, len(t.Path))
+		for i, s := range t.Path {
+			segs[i] = s.Name
+		}
+		loc.Path = strings.Join(segs, " / ")
+	}
+	return loc
+}
+
 type queryPayload struct {
+	dbLocation
 	ConnectionID string `json:"connectionId"`
 	Statement    string `json:"statement"`
 	// Mode is the declared mode; Detected is what the statement looks like. Enforcement is set on
@@ -68,6 +88,7 @@ type limitHitPayload struct {
 }
 
 type exemptionPayload struct {
+	dbLocation
 	ConnectionID  string             `json:"connectionId"`
 	Statement     string             `json:"statement"`
 	Mode          string             `json:"mode"`
@@ -94,6 +115,7 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		limits[i] = limitHitPayload(h)
 	}
 	return exemptionPayload{
+		dbLocation: dbLocationOf(r.Target),
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
@@ -110,6 +132,7 @@ func queryScriptView(sc *apiScripts) *apiTransformView {
 }
 
 type responsePayload struct {
+	dbLocation
 	ConnectionID string `json:"connectionId"`
 	Statement    string `json:"statement"`
 	IsError      bool   `json:"isError"`
@@ -253,6 +276,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			held = &ApprovalResponse{}
 		}
 		it.Payload = mustJSON(responsePayload{
+			dbLocation:   dbLocationOf(r.Target),
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
 			IsError: held.IsError, Bytes: len(held.Text), Scripted: held.Script != nil, RawBytes: len(held.Raw),
 			AlreadyRan: r.Class != adapters.ClassRead,
@@ -261,6 +285,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 	default:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(queryPayload{
+			dbLocation:   dbLocationOf(r.Target),
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
@@ -272,18 +297,13 @@ func itemOf(r ApprovalRequest) approvals.Item {
 
 func dbTarget(r ApprovalRequest) (approvals.Target, approvals.Operation) {
 	t := r.Target
+	loc := dbLocationOf(t)
 	parts := make([]string, 0, 2)
-	if t.Host != "" {
-		parts = append(parts, t.Host)
+	if loc.Host != "" {
+		parts = append(parts, loc.Host)
 	}
-	if len(t.Path) > 0 {
-		segs := make([]string, len(t.Path))
-		for i, s := range t.Path {
-			segs[i] = s.Name
-		}
-		parts = append(parts, strings.Join(segs, " / "))
-	} else if t.Database != "" {
-		parts = append(parts, t.Database)
+	if loc.Path != "" {
+		parts = append(parts, loc.Path)
 	}
 	return approvals.Target{
 			Name: r.ConnectionName, Kind: r.Kind, Color: t.Color, ReadOnly: t.ReadOnly, Location: strings.Join(parts, " · "),

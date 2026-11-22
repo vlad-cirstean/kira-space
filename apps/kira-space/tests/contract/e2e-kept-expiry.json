@@ -104,6 +104,7 @@
         "connectionId": "<id:2>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "kept": [
           {
             "bytes": 3,
@@ -145,6 +146,7 @@
         "params": [
           "short"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -267,6 +269,7 @@
         "connectionId": "<id:4>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "kept": [
           {
             "bytes": 5,
@@ -308,6 +311,7 @@
         "params": [
           "ids"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -346,6 +350,7 @@
         "connectionId": "<id:4>",
         "detected": "read",
         "enforcement": "session",
+        "host": "",
         "kept": [
           {
             "bytes": 5,
@@ -377,6 +382,7 @@
           }
         ],
         "mode": "read",
+        "path": "/data/mcp.db",
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,

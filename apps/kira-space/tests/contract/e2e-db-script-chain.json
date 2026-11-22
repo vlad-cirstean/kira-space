@@ -20,6 +20,7 @@
         "connectionId": "<id:2>",
         "detected": "read",
         "enforcement": "session",
+        "host": "",
         "kept": [
           {
             "bytes": 5,
@@ -69,6 +70,7 @@
         "params": [
           "ids"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -114,8 +116,10 @@
         "alreadyRan": false,
         "bytes": 96,
         "connectionId": "<id:2>",
+        "host": "",
         "isError": false,
         "mode": "read",
+        "path": "/data/mcp.db",
         "rawBytes": 217,
         "requested": false,
         "scripted": true,
@@ -152,7 +156,9 @@
         "connectionId": "<id:2>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "mode": "write",
+        "path": "/data/mcp.db",
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,

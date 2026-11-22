@@ -20,6 +20,7 @@
         "connectionId": "<id:2>",
         "detected": "read",
         "enforcement": "session",
+        "host": "",
         "kept": [
           {
             "bytes": 1,
@@ -69,6 +70,7 @@
         "params": [
           "n"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],

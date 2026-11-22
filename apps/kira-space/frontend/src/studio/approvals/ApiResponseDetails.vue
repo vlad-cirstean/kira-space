@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { apiResponsePayloadSchema } from '@shared/domain/dbmcp';
-import TruncatedText from '@theme/components/TruncatedText.vue';
 import { t } from '@theme/i18n';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import { formatBytes } from '@workbench/behaviour/format';
 import { computed } from 'vue';
+import RequestLine from './RequestLine.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
 const payload = computed(() => apiResponsePayloadSchema.parse(props.item.payload));
@@ -13,15 +14,18 @@ const payload = computed(() => apiResponsePayloadSchema.parse(props.item.payload
 
 <template>
   <ApprovalDetails>
-    <dt>{{ t('common.field.request.label') }}</dt>
-    <dd data-testid="api-review-request">
-      <TruncatedText class="font-data" :text="`${payload.method} ${payload.url}`" />
-    </dd>
-    <dt>{{ t('common.agentGets.label') }}</dt>
-    <dd data-testid="api-review-bytes">{{ formatBytes(payload.bytes) }}</dd>
-    <template v-if="payload.scripted">
-      <dt>{{ t('studio.dbMcp.approval.api.responseRaw.label') }}</dt>
-      <dd data-testid="api-review-raw-bytes">{{ formatBytes(payload.rawBytes) }}</dd>
-    </template>
+    <ApprovalDetailItem :label="t('common.field.request.label')" testid="api-review-request">
+      <RequestLine :method="payload.method" :url="payload.url" :kept="[]" />
+    </ApprovalDetailItem>
+    <ApprovalDetailItem :label="t('studio.http.diff.after.label')" testid="api-review-bytes">
+      {{ formatBytes(payload.bytes) }}
+    </ApprovalDetailItem>
+    <ApprovalDetailItem
+      v-if="payload.scripted"
+      :label="t('studio.http.diff.before.label')"
+      testid="api-review-raw-bytes"
+    >
+      {{ formatBytes(payload.rawBytes) }}
+    </ApprovalDetailItem>
   </ApprovalDetails>
 </template>
