@@ -34,7 +34,7 @@ before implementation starts.
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Done |
 | P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Done |
 | P734 | Presentation site: screenshots of approvals, variables and other missing features | Done |
-| P735 | Saved variables polish: uses/sends wording, Settings variables pane, compact request list | Todo |
+| P735 | Saved variables polish: uses/sends wording, Settings variables pane, compact request list | Done |
 
 ## P716
 
@@ -923,4 +923,4 @@ Scope (user feedback, final).
 
 Deliverable. Plan `plans/P735.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Temporary variables end to end. Agent side: prefix `temp` in list section, result fields (`tempSet`, `tempNotSet`, `tempDeleted`), tool texts and errors; prompt budgets held (tool list 3990 of 4000, `instructions.scripts` budget 579 to 580). UI: one-line `TempVarRow` shared by the card, review box and Settings (name with a details tooltip, kind badge, one-line value, time left, x; cut values open whole under the row via `KeptFullValue`). Settings pane in the list pattern (legend row with Clear all as `link-meta`, `Card variant="list"`, retention field). One Sends list: a fact tooltip with one line per name (environment, typed or temporary secret) and its host. Review heading "Will set", line "Available for N min". Site shot `studio-saved-variables` renamed `studio-temp-variables`; the four site shots reshot. Flow tests are the group 1 renames and contract regenerations (ten contracts, each diff skimmed); the Sends tooltip and row layout are UI-only. Fixed on the way: `llmpromptsflow` TestList count (150, stale since the tool-text refactor), big integers rounded in the one-line value, long values overflowing the Settings pane, Monaco token-split count in `approvals-db-script`. Real `claude` DB row passed except one haiku miss (`TestDbMcpBrowsePreferredThroughClaude` used `run_query`), which passed 3 of 3 on rerun. Deviations: `lastSet` string instead of "Set {time}"; three whole-sentence Sends keys; shared `common.temporaryVariables.label` and `common.left.status`; `common.field.text.label` for Text; `ICON.expand` added; name trigger is a button, not a tabindex span; "Show all" shows when the preview was cut and the row is stored; `scopeLabel` dropped from Settings rows; "expire after retention" prompt phrase dropped for budget and `(temp)` replaces `(temporary)`. Groups 2 to 4 share one `en.json` commit (catalog keys land with group 2).
