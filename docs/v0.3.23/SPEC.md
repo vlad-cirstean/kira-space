@@ -31,6 +31,7 @@ before implementation starts.
 | P729 | Removals, Variables tab and kube result views | Done |
 | P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
+| P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Todo |
 
 ## P716
 
@@ -796,3 +797,28 @@ Scope (user request).
 Deliverable. Plan `plans/P731.md`, Opus-authored, then Sonnet implementation.
 
 Result. Done. Found links derive on read in `notesSource` (`ade/foundlinks.go`, source `notes`), never stored, so an edit or delete of a note or handover takes its links along. Extractor `ade/linkextract.go` (unit-tested): skips code, keeps http(s) only, drops userinfo and loopback. `localLinkKind` is shared with `classifyLink`. A third merge pass keeps found links from replacing or demoting any main link. Promotion is an explicit add: user card action "Add to links" (`AddLink`) or the agent listing the URL in `links.yaml`; removing that row brings the link back. Only the user dismisses (`DismissFoundLink`, table `ade_task_found_link_dismissals`, migration 0106 stayed free). Limits 200 rows, 50 per row, 100 links, 5 sources. UI: Related line after Misc, dashed pill with note icon whose tooltip names the sources, card with "Found in" list and promote and dismiss buttons (dismiss edit mode only, none in view mode). README line tells agents how to promote. Tests on contract `ade-found-links`: flow `TestFoundLinks`, UI `ade-v2-found-links.spec.ts`, unit `linkextract_test.go` and `ade-v2-link-groups.spec.ts`. New visual baseline `ade-links-related-visual-linux.png` (existing ones unchanged). Runs: `go test ./apps/kira-space/internal/{ade,storage,taskfiles,bridge}/...` and `internal/agentmcp` pass; `go test -p 1 ./apps/kira-space/internal/flows/adeflow/` pass (407 s); UI `ade-v2-found-links`, `ade-v2-details-links`, `ade-v2-links-strip`, `ade-v2-artifacts` and visual `ade-links` pass; real `claude` ADE row (18 results) and `TestDetailsBenchFrozenServes` pass, none skipped (auth probe returned `ok`). Unverified: `-race` (the disk filled while building race objects, so the Go runs are without it), golangci-lint (not loadable here), PR CI.
+
+## P732
+
+One phase, one sequential implementer (touches the script engine, approval cards and the approvals dialog).
+
+Scope (user decisions, final).
+
+- Script API, hard cut with no alias, for API, SQL and kube scripts:
+  - globals `plain` and `secret` replace `kira.storeValue`, `kira.storeSecret` and `kira.getValue`.
+    `plain.token = x` stores a plain value, `secret.apiKey = x` a secret. Reads: `plain.token`; secrets are never readable.
+  - No Proxy: the object is injected with the current plain values; after the run Kira diffs it (new, changed, deleted keys). `secret` starts empty; every key present afterwards is a write.
+  - A name used as both kinds is refused after the run. Invalid names or non-text values are refused with a clear message. A script that declares its own local `plain` or `secret` is refused clearly.
+  - Templates `{{plain.x}}` and `{{secret.x}}` replace `{{kept.x}}`. The "Kept" wording is retired in code and UI ("Saved for N min").
+  - `api_request` inputs drop the `label` field; the prompt shows the exact variable name.
+- Scripts are shown formatted (display only; the text that runs is unchanged; a small note says the view is formatted) everywhere a script is shown (prepare, transform, query script, prompt and review).
+- Approval card, "script might keep" box is redundant: show what a script keeps highlighted in the script itself (or fold into "Will keep"), less verbose.
+- Prepare script uses the same `plain` and `secret` that are interpolated in the request, so the user sees clearly what happens.
+- Review dialog Request section: must look expandable, sit last but before Details, and show its content like the other sections when expanded.
+- "Enter a new value" input: today it reads as pre-filled but editable. One box that lists every already-set variable instead of one box per variable.
+- Approvals dialog groups several prompts: group by agent session; "Deny all" denies only that session's pending requests; the counter ("1/3") stays on the header line; "Deny all" is a normal button.
+- Flow test plus UI spec pair per CLAUDE.md Tests; refresh visual baselines; run the real `claude` row for the DB/API MCP after changes.
+
+Deliverable. Plan `plans/P732.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
