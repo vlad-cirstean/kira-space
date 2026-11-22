@@ -198,28 +198,37 @@ function apiVerdict(item: ApprovalItem): ApprovalVerdict {
       'api-approval',
     ),
   );
-  // One badge names everything the request sends that the user did not write: shared secrets, then the values
-  // typed on the card (once or kept). The card's rows carry no second list.
-  const sent = [...new Set([...p.credentials.map((c) => c.name), ...p.inputs.map((i) => i.name)])];
-  if (sent.length > 0) {
+  // One badge names every secret the request sends that the user did not write: shared secrets, typed inputs
+  // (needed or stored) and {{secret.x}} temporary secrets, deduped by name. The tooltip says where each goes
+  // and where its value comes from. A temporary secret goes only to the request host (the backend refuses
+  // any other).
+  const sends = new Map<string, { hosts: string; key: Parameters<typeof t>[0] }>();
+  for (const c of p.credentials) {
+    sends.set(c.name, {
+      hosts: c.hosts.join(', '),
+      key: 'studio.dbMcp.approval.api.sendsEnvironment.label',
+    });
+  }
+  for (const i of p.inputs) {
+    if (sends.has(i.name)) continue;
+    sends.set(i.name, {
+      hosts: i.origin.replace(/^https?:\/\//, ''),
+      key:
+        i.state === 'needed'
+          ? 'studio.dbMcp.approval.api.sendsTyped.label'
+          : 'studio.dbMcp.approval.api.sendsTemporary.label',
+    });
+  }
+  for (const u of p.kept) {
+    if (!u.secret || sends.has(u.name)) continue;
+    sends.set(u.name, { hosts: p.host, key: 'studio.dbMcp.approval.api.sendsTemporary.label' });
+  }
+  if (sends.size > 0) {
     facts.push({
-      text: t('studio.dbMcp.approval.api.sends.status', { names: sent.join(', ') }),
+      text: t('studio.dbMcp.approval.api.sends.status', { names: [...sends.keys()].join(', ') }),
       tone: isRead(p.method) ? 'neutral' : 'warn',
       icon: 'key',
-      tooltip: [
-        ...p.credentials.map((c) =>
-          t('studio.dbMcp.approval.api.credential.label', {
-            name: c.name,
-            hosts: c.hosts.join(', '),
-          }),
-        ),
-        ...p.inputs.map((i) =>
-          t('studio.dbMcp.approval.api.input.label', {
-            name: i.name,
-            host: i.origin.replace(/^https?:\/\//, ''),
-          }),
-        ),
-      ].join('\n'),
+      tooltip: [...sends].map(([name, s]) => t(s.key, { name, hosts: s.hosts })).join('\n'),
     });
   }
   if (isRead(p.method)) {
