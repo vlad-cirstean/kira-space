@@ -89,7 +89,7 @@ type ApiEditVariablesArgs struct {
 // refused and nothing is written.
 func (s *ApiConfigService) EditVariables(args ApiEditVariablesArgs) (apifiles.View, error) {
 	if len(args.Edits) == 0 || len(args.Edits) > maxVariableEdits {
-		return apifiles.View{}, ipcerr.BadRequest("edits: between 1 and 500 edits")
+		return apifiles.View{}, ipcerr.Contract("edits: between 1 and %d edits", maxVariableEdits)
 	}
 	for _, e := range args.Edits {
 		if e.OwnerID == "" {
