@@ -47,23 +47,17 @@ func (e *planCheckError) Error() string { return e.msg }
 // Check states of list' expensiveQuery.check.
 const (
 	expensiveCheckPlan = "plan"
-	expensiveCheckOff  = "off"
+	ExpensiveCheckOff  = "off"
 	expensiveCheckNone = "none"
 )
 
-// expensiveCheckOf is list' expensiveQuery.check: none (no row estimate), off (switch off) or plan.
-func expensiveCheckOf(c model.ConnectionSummary) string {
+// ExpensiveCheckOf is the check state of a connection: none (no row estimate), off (switch off) or plan.
+func ExpensiveCheckOf(c model.ConnectionSummary) string {
 	switch {
 	case !queryplan.HasRowEstimate(c.Kind):
 		return expensiveCheckNone
 	case !c.McpAutoExplain:
-		return expensiveCheckOff
+		return ExpensiveCheckOff
 	}
 	return expensiveCheckPlan
-}
-
-// expensiveQueryView is list' expensiveQuery.
-type expensiveQueryView struct {
-	RowsThreshold int    `json:"rowsThreshold"`
-	Check         string `json:"check"`
 }

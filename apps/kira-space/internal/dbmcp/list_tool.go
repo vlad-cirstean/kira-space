@@ -109,7 +109,7 @@ func (s *Server) listedConnectionOf(c model.ConnectionSummary) listedConnection 
 			v.Review = append(v.Review, m.name)
 		}
 	}
-	if expensiveCheckOf(c) == expensiveCheckPlan {
+	if ExpensiveCheckOf(c) == expensiveCheckPlan {
 		v.ExpensiveRows = s.thresholdFor(c)
 	}
 	if t := tablesView(c); !t.All {
