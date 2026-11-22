@@ -55,13 +55,13 @@ func (s *Server) scriptsOn() bool {
 	return s.cfg.JS != nil && s.cfg.ScriptOps != nil && s.apiSettings().Scripts
 }
 
-// scriptErrText is the engine's message; an internal fault gets a static one. An input or variable
+// scriptErrText is the engine's message; an internal fault gets a static one. An input, saved-value or variable
 // refusal is the message alone: it already says what to fix.
 func scriptErrText(e *jsengine.Error) string {
 	switch e.Kind {
 	case jsengine.KindInternal:
 		return "internal error"
-	case jsengine.KindInput, kindVars:
+	case jsengine.KindInput, jsengine.KindSaved, kindVars:
 		return e.Message
 	}
 	return e.Error()

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/dlclark/regexp2/v2"
@@ -128,11 +129,12 @@ func (st *runState) run(prg *goja.Program) (goja.Value, error) {
 	return fn(goja.Undefined())
 }
 
-// readBack reports the own enumerable string keys of each read-back global. A key holding a
-// function, symbol, undefined or an accessor goes to Invalid with its JS type.
+// readBack reports the own enumerable string keys of each read-back global, under the per-value
+// and key caps rather than the result cap. A key holding a function, symbol, undefined or an
+// accessor goes to Invalid with its JS type.
 func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
 	var out map[string]ReadBack
-	budget := st.limits.OutputBytes
+	keys := 0
 	for _, b := range bs {
 		if !b.ReadBack {
 			continue
@@ -155,11 +157,16 @@ func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
 				rb.Invalid[k] = typ
 				continue
 			}
-			text, eerr := st.encode(v, budget)
-			if eerr != nil {
-				return nil, eerr
+			if keys++; keys > ReadBackMaxKeys {
+				return nil, newError(KindSaved, "a script can hold at most %d saved values", ReadBackMaxKeys)
 			}
-			budget -= len(text)
+			text, eerr := st.encode(v, ReadBackValueBytes)
+			if eerr != nil {
+				if strings.HasPrefix(eerr.Message, "result exceeds") {
+					return nil, newError(KindSaved, "%s.%s is over %d bytes; a saved value is capped at %d bytes", b.Name, k, ReadBackValueBytes, ReadBackValueBytes)
+				}
+				return nil, newError(KindSaved, "%s.%s cannot be saved: %s", b.Name, k, strings.TrimPrefix(eerr.Message, "result "))
+			}
 			rb.JSON[k] = json.RawMessage(text)
 		}
 		if out == nil {

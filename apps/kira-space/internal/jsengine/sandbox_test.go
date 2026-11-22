@@ -149,3 +149,30 @@ func TestReadBack(t *testing.T) {
 		t.Fatalf("shadow not refused: %v", e)
 	}
 }
+
+func TestReadBackBudgetIsIndependentOfOutputCap(t *testing.T) {
+	big := `{"ids":"` + strings.Repeat("x", 200<<10) + `"}`
+	b := []Binding{{Name: "plain", Value: []byte(big), ReadBack: true}}
+	lim := small
+	lim.OutputBytes = 1 << 10
+	res, e := exec1(t, Run{Source: `return plain.ids.length`, Bindings: b, Limits: lim})
+	if e != nil {
+		t.Fatalf("a read-only 200 KB value hit the output cap: %v", e)
+	}
+	if string(res.JSON) != "204800" || len(res.ReadBack["plain"].JSON["ids"]) < 200<<10 {
+		t.Fatalf("result %s", res.JSON)
+	}
+	// The cap on the script result still applies to the result alone.
+	if _, e := exec1(t, Run{Source: `return plain.ids`, Bindings: b, Limits: lim}); e == nil || e.Kind != KindOutput {
+		t.Fatalf("result cap: %v", e)
+	}
+	// Several values at the per-value cap fit; one over it names the key and the fixed cap.
+	src := `for (let i = 0; i < 16; i++) plain["k" + i] = "y".repeat(1000000); return 1`
+	if _, e := exec1(t, Run{Source: src, Bindings: []Binding{{Name: "plain", Value: []byte(`{}`), ReadBack: true}}, Limits: Limits{MemoryBytes: 128 << 20, Timeout: 10 * time.Second}}); e != nil {
+		t.Fatalf("16 values of 1 MB: %v", e)
+	}
+	_, e = exec1(t, Run{Source: `plain.big = "z".repeat(1 << 20); return 1`, Bindings: []Binding{{Name: "plain", Value: []byte(`{}`), ReadBack: true}}, Limits: small})
+	if e == nil || e.Kind != KindSaved || !strings.Contains(e.Message, "plain.big") || !strings.Contains(e.Message, "1048576") {
+		t.Fatalf("oversized value: %v", e)
+	}
+}

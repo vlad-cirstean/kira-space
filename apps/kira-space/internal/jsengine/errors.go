@@ -23,6 +23,7 @@ const (
 	KindSource   Kind = "source"
 	KindInput    Kind = "input"
 	KindOutput   Kind = "output"
+	KindSaved    Kind = "saved"
 	KindInternal Kind = "internal"
 )
 
