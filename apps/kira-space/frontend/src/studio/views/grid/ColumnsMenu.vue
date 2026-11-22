@@ -229,21 +229,23 @@ onBeforeUnmount(() => {
             @update:model-value="toggle(name)"
           />
           {{ name }}
-          <TooltipIconButton
-            icon="eye"
-            :label="
-              rendered.has(name)
-                ? t('studio.grid.columns.reveal.tooltip')
-                : t('studio.grid.columns.revealHidden.tooltip')
-            "
-            :aria-label="t('studio.grid.columns.reveal.aria', { column: name })"
-            variant="toolbar"
-            class="ml-auto size-5 text-subtle"
-            :disabled="!rendered.has(name)"
-            disabled-trigger
-            data-testid="columns-menu-reveal"
-            @click.stop.prevent="emit('revealColumn', name)"
-          />
+          <span class="ml-auto flex shrink-0">
+            <TooltipIconButton
+              icon="eye"
+              :label="
+                rendered.has(name)
+                  ? t('studio.grid.columns.reveal.tooltip')
+                  : t('studio.grid.columns.revealHidden.tooltip')
+              "
+              :aria-label="t('studio.grid.columns.reveal.aria', { column: name })"
+              variant="toolbar"
+              class="size-5 text-subtle"
+              :disabled="!rendered.has(name)"
+              :disabled-trigger="!rendered.has(name)"
+              data-testid="columns-menu-reveal"
+              @click.stop.prevent="emit('revealColumn', name)"
+            />
+          </span>
         </Label>
         <InlineState v-if="noMatch" kind="empty" data-testid="columns-menu-no-match">{{
           t('studio.grid.columns.noMatch.status')
