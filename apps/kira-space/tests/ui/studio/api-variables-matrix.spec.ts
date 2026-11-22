@@ -7,7 +7,7 @@ import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import { openHttpMode } from './support/apiMode';
 import { matrixCell, matrixRow, openVariablesTab } from './support/apiRows';
-import { acceptConfirm } from './support/dialogs';
+import { acceptConfirm, cancelConfirm } from './support/dialogs';
 
 // The Variables tab: a grid of names by files. Each test performs one step of the backend scenario
 // and asserts the UI sends the exact EditVariables args the Go flow test applied.
@@ -164,15 +164,10 @@ const UNLOCK_STAGING = {
   staging: [row('environment', STAGING, 'token', { isSecret: true, secretSet: true })],
 };
 
-test('unlock goes through the reveal gate: unconfirmed first, then the in-app confirmation', async ({
+test('unlock asks the danger confirm first, then goes through the reveal gate', async ({
   relaunch,
 }) => {
   const { window: page, control } = await open(relaunch, UNLOCK_STAGING, [
-    {
-      channel: IPC.apiConfigUnlockVariables,
-      args: unlockArgs('unconfirmed'),
-      response: unlockResult('unconfirmed'),
-    },
     {
       channel: IPC.apiConfigUnlockVariables,
       args: unlockArgs('unlock'),
@@ -180,23 +175,30 @@ test('unlock goes through the reveal gate: unconfirmed first, then the in-app co
     },
   ]);
   await page.click('[data-testid="matrix-secret-token"]');
+  expect(unlocks(control)).toEqual([]);
   await acceptConfirm(page);
-  await expect
-    .poll(() => unlocks(control))
-    .toEqual([unlockArgs('unconfirmed'), unlockArgs('unlock')]);
+  await expect.poll(() => unlocks(control)).toEqual([unlockArgs('unlock')]);
   expect(edits(control)).toEqual([]);
+});
+
+test('unlock stops when the confirm is declined', async ({ relaunch }) => {
+  const { window: page, control } = await open(relaunch, UNLOCK_STAGING, []);
+  await page.click('[data-testid="matrix-secret-token"]');
+  await cancelConfirm(page);
+  expect(unlocks(control)).toEqual([]);
 });
 
 test('unlock stops when the OS prompt is declined', async ({ relaunch }) => {
   const { window: page, control } = await open(relaunch, UNLOCK_STAGING, [
     {
       channel: IPC.apiConfigUnlockVariables,
-      args: unlockArgs('unconfirmed'),
+      args: unlockArgs('cancelled'),
       response: unlockResult('cancelled'),
     },
   ]);
   await page.click('[data-testid="matrix-secret-token"]');
-  await expect.poll(() => unlocks(control)).toEqual([unlockArgs('unconfirmed')]);
+  await acceptConfirm(page);
+  await expect.poll(() => unlocks(control)).toEqual([unlockArgs('cancelled')]);
   await expect(page.locator('[data-testid="confirm-dialog"]')).toHaveCount(0);
 });
 

@@ -42,22 +42,18 @@ export const useVariablesMatrixStore = defineStore('variablesMatrix', () => {
     });
   }
 
-  /** Unlocks through the reveal gate: asks once unconfirmed, and when the OS cannot authenticate
-   *  asks the user via `confirm` and sends again confirmed. False when nothing was unlocked. */
+  /** Asks `confirm` first, every time: unlocking writes plain text to the file. A yes goes through
+   *  the reveal gate, which still authenticates where the OS can. False when nothing was unlocked. */
   async function unlock(
     edits: ApiVariableEdit[],
     confirm: () => Promise<boolean>,
   ): Promise<boolean> {
+    if (!(await confirm())) return false;
     let outcome = 'done' as ApiUnlockResult['outcome'];
-    const attempt = (confirmed: boolean) =>
-      surface.run(async () => {
-        outcome = await unlockVariables(edits, confirmed);
-      });
-    if (!(await attempt(false))) return false;
-    if (outcome === 'confirmation-required' && (await confirm())) {
-      if (!(await attempt(true))) return false;
-    }
-    return outcome === 'done';
+    const ran = await surface.run(async () => {
+      outcome = await unlockVariables(edits, true);
+    });
+    return ran && outcome === 'done';
   }
 
   function startEditing(key: string): void {
