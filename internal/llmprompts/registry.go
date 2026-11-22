@@ -774,7 +774,7 @@ var DbmcpInstructionsScripts = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructionsScripts.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructionsScripts.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructionsScripts.usedBy.body",
-	Default:    "A script writes `plain.name = value` (the user can preview it) or `secret.name = value` (never readable, never shown to you); `delete plain.name` removes one; a later script reads `plain.name`. Values save once the result is final; the result lists `saved` and `deleted` names. Scripts: a JavaScript function body ending in `return`, one statement per line, 2-space indent; sandbox with no network, files, timers or `console`; UTC; 2 s, 256 MiB; the user sees it. Names are literal; never declare your own `plain` or `secret`; at most 16 writes per run, 1 MiB each. A script error does not undo a write: never rerun it.",
+	Default:    "A script writes `plain.name = value` (the user can preview it) or `secret.name = value` (never readable, never shown to you); `delete plain.name` removes one; a later script reads `plain.name`. Values save once the result is final; the result lists `saved` and `deleted` names. Scripts: a JavaScript function body ending in `return`; sandbox with no network, files, timers or `console`; UTC; 2 s, 256 MiB; the user sees it. Names are literal; never declare your own `plain` or `secret`; at most 16 writes per run, 1 MiB each. A script error does not undo a write: never rerun it.",
 }, NoVars{})
 
 // DbmcpToolList describes the list tool.
@@ -839,7 +839,7 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `Plan only, mode read.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: the raw plan text too.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "params", studioApp, NextCall, `Saved variable names bound in placeholder order, never values. Syntax: the connection's paramSyntax in list.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it. Global result {columns, rows of text cells or null, rowCount, truncated}; you get {output, input: {rowCount, truncated}}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it; it can save values for params: plain.name = value or secret.name = value. Global result {columns, rows of text cells or null, rowCount, truncated}; you get {output, input: {rowCount, truncated}}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal; the refusal says how.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `From the refusal.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user, at most 300 characters.`, NoVars{})
@@ -903,7 +903,7 @@ var (
 // DbmcpToolKubeRead describes the kube_read tool.
 var DbmcpToolKubeRead = define(Entry{
 	ID: "dbmcp.tool.kube_read", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_read",
-	Default: "Read one Kubernetes cluster. op discover: namespaces and kind keys. list: one kind's objects as kubectl get columns. describe: one object with conditions, events and manifest; secret values become byte counts. logs: last lines of one pod container, no follow.",
+	Default: "Read one Kubernetes cluster. op discover: namespaces and kind keys. list: one kind's objects as kubectl get columns. describe: one object with conditions, events and manifest; secret values become byte counts. logs: last lines of a pod container.",
 }, NoVars{})
 
 var (
@@ -918,7 +918,7 @@ var (
 	_ = arg(DbmcpToolKubeRead.id, "previous", studioApp, NextCall, `logs: the previous instance.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "timestamps", studioApp, NextCall, `logs: prefix timestamps.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "tail", studioApp, NextCall, `logs: 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 200, Max: 5000})
-	_ = arg(DbmcpToolKubeRead.id, "script", studioApp, NextCall, `Optional. At least one of prepare or transform.`, NoVars{})
-	_ = arg(DbmcpToolKubeRead.id, "script.prepare", studioApp, NextCall, `Runs before approval on request (your args); returns args that replace yours, never clusterId or op.`, NoVars{})
-	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on result (what op returns) and request. You get {output, input: {rowCount, truncated}}.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script", studioApp, NextCall, `At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.prepare", studioApp, NextCall, `Runs before approval on global request (your args); returns args that replace yours, never clusterId or op. Reads plain.name, not secret.name.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on globals result (what op returns) and request; can save values for a later read: plain.name = value. You get {output, input: {rowCount, truncated}}.`, NoVars{})
 )

@@ -42,7 +42,7 @@ ade.sendBack.line	63
 run.resume.line	314
 restore.continue.line	44
 dbmcp.instructions	504
-dbmcp.instructions.scripts	619
+dbmcp.instructions.scripts	579
 dbmcp.tool.list	169
 dbmcp.tool.list.arg.what	33
 dbmcp.tool.describe	181
@@ -77,7 +77,7 @@ dbmcp.tool.run_query.arg.maxRows	20
 dbmcp.tool.run_query.arg.explain	21
 dbmcp.tool.run_query.arg.includeRaw	36
 dbmcp.tool.run_query.arg.params	108
-dbmcp.tool.run_query.arg.script	207
+dbmcp.tool.run_query.arg.script	281
 dbmcp.tool.run_query.arg.exemption	49
 dbmcp.tool.run_query.arg.exemption.id	17
 dbmcp.tool.run_query.arg.exemption.reason	50
@@ -114,7 +114,7 @@ dbmcp.tool.api_request.arg.script	47
 dbmcp.tool.api_request.arg.script.prepare	191
 dbmcp.tool.api_request.arg.script.input	21
 dbmcp.tool.api_request.arg.script.transform	231
-dbmcp.tool.kube_read	259
+dbmcp.tool.kube_read	246
 dbmcp.tool.kube_read.arg.clusterId	10
 dbmcp.tool.kube_read.arg.op	13
 dbmcp.tool.kube_read.arg.kind	40
@@ -126,9 +126,9 @@ dbmcp.tool.kube_read.arg.container	32
 dbmcp.tool.kube_read.arg.previous	28
 dbmcp.tool.kube_read.arg.timestamps	24
 dbmcp.tool.kube_read.arg.tail	26
-dbmcp.tool.kube_read.arg.script	47
-dbmcp.tool.kube_read.arg.script.prepare	100
-dbmcp.tool.kube_read.arg.script.transform	93
+dbmcp.tool.kube_read.arg.script	37
+dbmcp.tool.kube_read.arg.script.prepare	142
+dbmcp.tool.kube_read.arg.script.transform	155
 ade.review.comments	389
 ade.review.round.message	686
 ade.review.followup.message	466
