@@ -32,6 +32,7 @@ before implementation starts.
 | P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Todo |
+| P733 | Switch, checkbox and radio: blue tint on-state | Todo |
 
 ## P716
 
@@ -820,5 +821,28 @@ Scope (user decisions, final).
 - Flow test plus UI spec pair per CLAUDE.md Tests; refresh visual baselines; run the real `claude` row for the DB/API MCP after changes.
 
 Deliverable. Plan `plans/P732.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P733
+
+Replaces the P730 neutral on-state. User decision: the white/grey on-state looks bad; go back to blue, keep the
+tint design (fill not solid but a faint tint, border in the full colour).
+
+Scope (user decision, final).
+
+- Switch, checkbox and radio on-state: fill is a tint of the accent over the field fill, border in the full
+  accent, mark and switch knob in the light accent. Mock (authoritative): scratchpad `toggles/mock.html` card
+  "2 Muted tint": accent `#3b6ed1`, light accent `#8fb0f0`, switch fill `color-mix(in srgb, accent 28%, field)`,
+  checkbox and radio fill `color-mix(in srgb, accent 22%, field)`, border accent.
+- Off-state stays as P730 (edge `#3e3e45`, dim knob `#6b6b73`).
+- Progress bar fill: reconsider with the accent (planner proposes; default accent-tinted).
+- Segmented choices, focus ring (`--kira-focus`), selection edge (`--kira-select-edge`) stay untouched. Accent
+  stays an action colour: this phase adds on-state controls only.
+- Planner checks the P730 focus-offset fix, guard N18 and its spec, `selection-colour.spec.ts` and ARCHITECTURE
+  (the accent rule), and updates all to the new tokens. One visual baseline pass.
+- Runs after P732 (shared approval baselines).
+
+Deliverable. Plan `plans/P733.md`, Opus-authored, then Sonnet implementation.
 
 Result. Todo.
