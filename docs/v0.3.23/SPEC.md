@@ -29,7 +29,7 @@ before implementation starts.
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 | P728 | Approval prompts and scripts rework | Done |
 | P729 | Removals, Variables tab and kube result views | Done |
-| P730 | Switch, checkbox and radio on-state style | Todo |
+| P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
 
 ## P716
@@ -768,7 +768,7 @@ Scope (user-approved from visual mock "M2").
 
 Deliverable. Plan `plans/P730.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Six dedicated tokens replace `--kira-on`/`--kira-on-fg` (deleted): `--kira-toggle-on` #33333a, `--kira-toggle-on-edge` #c4c4cc, `--kira-toggle-mark` #f4f4f5, `--kira-toggle-off-edge` #3e3e45, `--kira-toggle-knob` #6b6b73, `--kira-progress-fill` #b4b4bc (`tokens.css`, `tailwind-core.css`); `Switch.vue`, `Checkbox.vue`, `RadioGroupItem.vue`, `Progress.vue` use them, still keyed on `aria-checked`. Off-edge #3e3e45 is 1.4:1 on the field fill (user choice, below the old 3:1 bar); off controls read by the field fill plus the knob. Focus fix: the global 1px ring at offset -1px sits on the 1px edge, and #a1a1aa vs on edge #c4c4cc is 1.48:1, so a checked focused control was near-identical; the three roots add `focus-visible:outline-offset-2`, ring now 2px outside the edge. N18 guard (`scripts/check-conventions.ts`) lists the six tokens as neutral and keys on `bg-toggle-on`/`border-toggle-on-edge`; fixtures updated. `selection-colour.spec.ts` asserts the new colours, adds the off-knob assert and a focused-switch outline test (offset 2px, #a1a1aa); fixed stale env radio testid (now `matrix-activate-*`). `ARCHITECTURE.md` on-state sentence rewritten. Commits: tokens and guard together (`5fe79814f`; the pre-commit hook fails when tokens and guard disagree, so plan commits 1 and 2 could not land apart), N18 fixtures, UI spec, docs, baselines. Checks: `bun test scripts/check-conventions.spec.ts` 44 pass; `selection-colour.spec.ts` 8 pass; hooks green on every commit; full `visual` project 75 pass after update (one unrelated flake in one of three reruns). Baselines regenerated (27): workflow-graph x5, git-repo-settings-dialog, settings-advanced, settings-appearance, approvals-kept-login, approvals-review-resized-row, approvals-api-input, runs-restore-dialog, connection-privacy-review and -tab, docker-restore-dialog, approvals-kube-read-review-option, -review-list and -review-logs, kube-mcp-dialog-review, settings-mcp-review-results, variables-matrix and -narrow. Also stale from earlier phases, not toggles (titlebar "New window" label, toolbar): new-connection-dialog, console, data-grid, schema-dialog, workbench-shell. No baseline shows Progress. Unverified: Progress fill colour (no spec renders it).
 
 ## P731
 
