@@ -866,6 +866,11 @@ Scope (user request).
 - Screenshots come from the existing site screenshot tooling if any (planner finds it; if none, the Playwright
   tooling used for visual baselines with a fixed fixture), not hand-edited images; size and format follow the
   site's existing images; light and dark if the site supports both.
+- Revisions (user, after the first plan): tab tear-off and multi-select and found task links get docs text only,
+  no screenshots and not in the Build page. The phone terminal screen is shown too (scripted terminal replay over
+  the WebSocket). The Files window is shown, with a mention that it can also open files. Extra tools get images
+  too, for example the Kubernetes module (cluster browser, resource list, logs); planner lists the other
+  unshown modules and picks the bigger ones.
 - Advertise the phone app on the site (user request): planner finds what the mobile app is and does today
   (`dist-mobile`, `tsconfig.mobile.json`, mobile docs, ARCHITECTURE, history), how it is installed or reached, and
   which of its screens can be shown; adds a section and screenshots at phone size; factual about shipped
