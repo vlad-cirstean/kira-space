@@ -220,7 +220,7 @@ function studioItems(): ApprovalItem[] {
         operation: 'list',
         statement: 'pods -l app=checkout',
         reviewOffered: true,
-        tool: 'kube_list_resources',
+        tool: 'kube_read',
         request: {
           kind: 'v1/pods',
           name: '',

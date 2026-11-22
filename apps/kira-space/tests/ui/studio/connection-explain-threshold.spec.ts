@@ -8,7 +8,7 @@ import { connectionRow } from './support/tree';
 
 // The per-connection expensive query threshold: its Advanced tab field, the MCP tab line that says
 // where it comes from, and the range error. Backend half: dbmcpflow TestDbMcpConnectionExplainThreshold,
-// whose connection-explain-threshold contract pins the value list_connections reports.
+// whose connection-explain-threshold contract pins the value list reports.
 
 const FILE = 'local.yaml';
 const dlg = '[data-testid="connection-file-dialog"]';
@@ -20,7 +20,7 @@ const view = () =>
 const listed = () =>
   contract<{ name: string; expensiveQuery: { rowsThreshold: number } }[]>(
     'connection-explain-threshold',
-    'list_connections',
+    'list',
   );
 
 async function open(
@@ -111,7 +111,7 @@ test('clickhouse explains its higher counts; sqlite and kafka have no field', as
   await expect(kafka.locator(field)).toHaveCount(0);
 });
 
-test('contract: list_connections reports the override or the app default', async () => {
+test('contract: list reports the override or the app default', async () => {
   const rows = listed();
   const own = rows.find((r) => r.name === 'Own');
   const plain = rows.find((r) => r.name === 'Plain');

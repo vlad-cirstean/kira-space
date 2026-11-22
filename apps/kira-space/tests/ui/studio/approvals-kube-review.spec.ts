@@ -6,7 +6,7 @@ import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 
 // Contract kube-review. Backend half: dbmcpflow TestKubeResponseReview, TestKubeResponseWithhold and
-// TestKubeReadReviewOption. A held kube_list_resources, kube_describe or kube_pod_logs result parks as a
+// TestKubeReadReviewOption. A held kube_read list, describe or logs result parks as a
 // kube.response item; its bytes come from the pending-response query, never the payload.
 
 interface Held {

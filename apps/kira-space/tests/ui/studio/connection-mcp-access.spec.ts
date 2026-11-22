@@ -16,10 +16,7 @@ const list = () => contract<ConnectionSummary[]>('connection-files', 'Connection
 const view = () =>
   contract<ConnectionConfigView>('connection-files', 'ConnectionConfigService.View');
 const rows = () =>
-  contract<{ Name: string; Enforcement: string; Summary: string }[]>(
-    'dbmcp-list-access',
-    'list_connections',
-  );
+  contract<{ Name: string; Enforcement: string; Summary: string }[]>('dbmcp-list-access', 'list');
 
 interface Spec {
   kind: string;

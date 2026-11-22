@@ -54,25 +54,25 @@ func TestKubeMcpThroughClaude(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	listClusters, listResources := "mcp__"+dbServer+"__kube_list_clusters", "mcp__"+dbServer+"__kube_list_resources"
+	listClusters, kubeRead := "mcp__"+dbServer+"__list", "mcp__"+dbServer+"__kube_read"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call kube_list_clusters once. Then call kube_list_resources with the kind v1/pods and the namespace default for the cluster whose context is kind-dev. Reply with the word done.",
-		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", listClusters+","+listResources,
+		"Call list with what clusters once. Then call kube_read with op list and the kind v1/pods and the namespace default for the cluster whose context is kind-dev. Reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", listClusters+","+kubeRead,
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 
 	uses := toolUses(msgs, listClusters)
 	if len(uses) == 0 {
-		t.Fatalf("no kube_list_clusters tool use in the stream:\n%s", tail(out, 1500))
+		t.Fatalf("no list tool use in the stream:\n%s", tail(out, 1500))
 	}
 	text, isErr, ok := toolResult(msgs, uses[0].ID)
 	if !ok || isErr || !strings.Contains(text, dev) || !strings.Contains(text, "real-claude kube fixture") {
-		t.Fatalf("kube_list_clusters result = %q (ok=%v, error=%v), want the cluster with its description", text, ok, isErr)
+		t.Fatalf("list result = %q (ok=%v, error=%v), want the cluster with its description", text, ok, isErr)
 	}
 
-	uses = toolUses(msgs, listResources)
+	uses = kubeReadUses(msgs, kubeRead, "list")
 	if len(uses) == 0 {
-		t.Fatalf("no kube_list_resources tool use in the stream:\n%s", tail(out, 1500))
+		t.Fatalf("no kube_read list use in the stream:\n%s", tail(out, 1500))
 	}
 	// The CLI defers MCP schemas, so a first call can be rejected for wrong arguments; the retry counts.
 	var good bool
@@ -84,7 +84,7 @@ func TestKubeMcpThroughClaude(t *testing.T) {
 		}
 	}
 	if !good {
-		t.Fatalf("kube_list_resources result = %q (ok=%v, error=%v), want the fake pods", text, ok, isErr)
+		t.Fatalf("kube_read list result = %q (ok=%v, error=%v), want the fake pods", text, ok, isErr)
 	}
 	if res := resultMsg(t, msgs); res.IsError {
 		t.Fatalf("claude run ended in error: %+v", res)
@@ -159,17 +159,17 @@ func TestKubeMcpThroughClaudeReviewWithheld(t *testing.T) {
 		}
 	}()
 
-	listClusters, listResources := "mcp__"+dbServer+"__kube_list_clusters", "mcp__"+dbServer+"__kube_list_resources"
+	listClusters, kubeRead := "mcp__"+dbServer+"__list", "mcp__"+dbServer+"__kube_read"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call kube_list_clusters once. Then call kube_list_resources with the kind v1/pods and the namespace default for the cluster whose context is kind-dev. Tell me the name of the first pod, or say the result was withheld if you did not get it.",
-		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", listClusters+","+listResources,
+		"Call list with what clusters once. Then call kube_read with op list and the kind v1/pods and the namespace default for the cluster whose context is kind-dev. Tell me the name of the first pod, or say the result was withheld if you did not get it.",
+		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", listClusters+","+kubeRead,
 		"--output-format", "stream-json", "--verbose")
 	close(stop)
 	wg.Wait()
 	msgs := parseStream(out)
 
 	var held bool
-	for _, u := range toolUses(msgs, listResources) {
+	for _, u := range kubeReadUses(msgs, kubeRead, "list") {
 		text, isErr, ok := toolResult(msgs, u.ID)
 		if ok && isErr && strings.Contains(text, "the user withheld the result") {
 			held = true
@@ -179,7 +179,7 @@ func TestKubeMcpThroughClaudeReviewWithheld(t *testing.T) {
 		}
 	}
 	if !held || withheld == 0 {
-		t.Fatalf("held=%v withheld=%d, want one withheld kube_list_resources result:\n%s", held, withheld, tail(out, 1500))
+		t.Fatalf("held=%v withheld=%d, want one withheld kube_read list result:\n%s", held, withheld, tail(out, 1500))
 	}
 	// The CLI defers MCP schemas, so a first call can be rejected for wrong arguments before it runs; only
 	// a call that reached the cluster counts. The withheld one ran once and the agent did not repeat it.
@@ -197,7 +197,7 @@ func TestKubeMcpThroughClaudeReviewWithheld(t *testing.T) {
 
 // TestKubeMcpKeptChainThroughClaude gives the real claude only the task: read the logs of the crash-looping
 // pod in a namespace. The pod name must not pass through the model, so the agent keeps it with a kube
-// transform and reads it in the prepare script of kube_pod_logs on its own.
+// transform and reads it in the prepare script of kube_read logs on its own.
 func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 	const crashPod, crashLine = "checkout-7d9f6", "panic: cannot reach payments-db:5432"
 	app := newRealApp(t)
@@ -237,23 +237,23 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 	}
 
 	pre := "mcp__" + dbServer + "__"
-	list, logs := pre+"kube_list_resources", pre+"kube_pod_logs"
+	kubeRead := pre + "kube_read"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. In the cluster whose context is kind-dev, read the logs of the crash-looping pod in namespace shop."+
 			" Never write the pod's name yourself: it must not pass through you. Reply with the last log line.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,"+pre+"kube_list_clusters,"+list+","+pre+"kube_describe,"+logs+","+pre+"list_saved_variables",
+		"--allowedTools", "ToolSearch,"+pre+"list,"+kubeRead,
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 
 	var kept, read bool
 	var keptName string
-	for _, u := range toolUses(msgs, list) {
+	for _, u := range kubeReadUses(msgs, kubeRead, "list") {
 		var in struct {
 			Script *struct{ Transform string } `json:"script"`
 		}
 		if err := json.Unmarshal(u.Input, &in); err != nil {
-			t.Fatalf("kube_list_resources input %s: %v", u.Input, err)
+			t.Fatalf("kube_read list input %s: %v", u.Input, err)
 		}
 		if in.Script == nil || !storedName.MatchString(in.Script.Transform) {
 			continue
@@ -261,20 +261,20 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		keptName = storedName.FindStringSubmatch(in.Script.Transform)[1]
 		text, isErr, ok := toolResult(msgs, u.ID)
 		if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
-			t.Fatalf("scripted kube_list_resources result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
+			t.Fatalf("scripted kube_read list result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
 		}
 		kept = true
 	}
-	for _, u := range toolUses(msgs, logs) {
+	for _, u := range kubeReadUses(msgs, kubeRead, "logs") {
 		var in struct {
-			Pod    string                    `json:"pod"`
+			Name   string                    `json:"name"`
 			Script *struct{ Prepare string } `json:"script"`
 		}
 		if err := json.Unmarshal(u.Input, &in); err != nil {
-			t.Fatalf("kube_pod_logs input %s: %v", u.Input, err)
+			t.Fatalf("kube_read logs input %s: %v", u.Input, err)
 		}
 		if strings.Contains(string(u.Input), crashPod) {
-			t.Fatalf("kube_pod_logs input %s carries the pod name, want it kept and read by name", u.Input)
+			t.Fatalf("kube_read logs input %s carries the pod name, want it kept and read by name", u.Input)
 		}
 		text, isErr, ok := toolResult(msgs, u.ID)
 		if in.Script != nil && keptName != "" && strings.Contains(in.Script.Prepare, keptName) && ok && !isErr && strings.Contains(text, crashLine) {
@@ -287,4 +287,18 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 	if r := resultMsg(t, msgs); r.IsError || strings.Contains(r.Result, crashPod) || !strings.Contains(r.Result, "payments-db") {
 		t.Fatalf("final answer = %q (error %v), want the last log line and no pod name", r.Result, r.IsError)
 	}
+}
+
+// kubeReadUses is the kube_read calls of one op.
+func kubeReadUses(msgs []streamMsg, tool, op string) []contentBlock {
+	var out []contentBlock
+	for _, u := range toolUses(msgs, tool) {
+		var in struct {
+			Op string `json:"op"`
+		}
+		if json.Unmarshal(u.Input, &in) == nil && in.Op == op {
+			out = append(out, u)
+		}
+	}
+	return out
 }
