@@ -20,13 +20,15 @@ before implementation starts.
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Done |
 | P719 | API MCP: one-time variable values typed in the approval prompt | Done |
 | P720 | API module variables and environments: UX redesign | Done |
-| P721 | Remove development, debugging and validation leftovers | Todo |
+| P721 | Remove development, debugging and validation leftovers | Done |
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Done |
 | P723 | Remove the PR flake rerun workflow | Done |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Done |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
+| P728 | Approval prompts and scripts rework | Todo |
+| P729 | Review dialogs, Variables tab and removals | Todo |
 
 ## P716
 
@@ -347,10 +349,13 @@ free bench tests (`TestDetailsBenchFrozenServes`, `ArmRServes`, `ReviseServes`, 
 passed, not skipped. Hook ran normally on every commit, no `--no-verify`. `bun run build` not run:
 under 6 GB disk free; left to CI.
 
-Open, user decides (default keep, nothing removed): A1a TS perf and heap probes, A1b Go RAM and perf
-probes plus `cmd/g1measure` and `AppProcessSet`, A1c `pprofserve` (`KIRA_PPROF`), A1d untested
-`__kiraGridTuning` overrides, A2 P643 spike code in `tests/claude`, A3 rename `KIRA_SPIKE_DUMP`
-(only if A2 lands). Details in `plans/P721.md`.
+User decisions on the gated items:
+
+- Keep A1a (TS perf and heap probes) and A1b (Go probes, `cmd/g1measure`): kept for future
+  measuring. ARCHITECTURE Known open item about WebKit memory stays unchanged.
+- Remove A1c (`KIRA_PPROF`, `internal/pprofserve`), A1d (five `__kiraGridTuning` knobs), A2 (P643
+  spike entry points, spike-only helpers, files arm, accuracy tests, testdata) and A3 (rename
+  `KIRA_SPIKE_DUMP` to `KIRA_BENCH_DUMP`). Moved to P729. Details in `plans/P721.md`.
 
 ## P722
 
@@ -664,3 +669,73 @@ Result. Done.
 - Not covered: pinned-repo-tab UI case (plan 4.4 item 1).
 - Manual platform checklist (plan section 10, 8 items): unverified here. macOS, Windows, Linux X11
   and Wayland checks remain for the user.
+
+## P728
+
+User, at the chapter-end screenshot review: approval prompts and scripts need one coherent rework.
+All items below user-approved.
+
+Scope.
+
+- Script API rename for API, SQL and kube scripts, one namespace: `kira.storeValue(name, value)`
+  (plain), `kira.storeSecret(name, value)` (secret), `kira.getValue(name)` (replaces `kept.get`; in
+  kube scripts plain values only). Replace `kept.set`, `kept.setSecret`, `kept.get` everywhere:
+  engine bindings, tool descriptions and llmprompts, script help and templates, approval card text,
+  docs, fixtures and contracts, tests. `{{kept.x}}` template syntax stays unchanged. After the
+  rename, run the real `claude` test row from DEV_ENVIRONMENT "Real `claude` tests"
+  (`bun run test:claude:db`); probe auth first.
+- Restyle the Details section (`packages/workbench/src/approvals/ApprovalDetails.vue` and per-kind
+  Details components: Db*, Api*, Kube*, ScriptRun, ProofReview, DbExemption, TaskCreate) once in
+  shared components: formatting and highlighting like the boxes above it (method, URL, query, SQL,
+  manifest highlighted via `ApprovalCode`; values split cleanly). Same restyle for the prompt header
+  line (connection, cluster, namespace for DB, API, kube): easier to read, values visibly separated,
+  namespace as a visible chip. Applies to every approval prompt and to the review dialogs. Approvals
+  get their own `KeyValueList` density and style variant; non-approval screens unchanged.
+- Kept-variables box (`KeptVariablesPanel.vue`, `KeptVariableRow`): compact rows like the "Will
+  keep" box. Add expiry (`kept 1m ago · expires in 59m`) and "used in" on one small grey line,
+  shortened "Kept by". Add a small x on each kept value (card and review boxes) to delete it
+  (`KeptVarsService.Clear`).
+- Chip: remove "Runs N scripts". Show a chip only when variables are involved (e.g. "Uses: pod",
+  "Keeps: token").
+- Prepare script result: show as a named list (`pod = web-1`, `tail = 2`) in the same compact row
+  style, above the final command. No invisible variables: every value a prepare script produces
+  appears interpolated and highlighted in the final command text. Add a test that fails when a
+  prepared argument is missing from the command text. Only `kira.store*` writes are invisible by
+  design.
+- One-time values (P719): remove the "Use once / Keep N min" toggle; every typed value is kept for
+  the retention time. Retention stays configurable (`dbMcp.keptRetentionMinutes`, default 60, range
+  5 to 240). Add a small grey line under the inputs, "Kept for N min" (follows the setting), linking
+  to Settings > Studio MCP > Variables (same target as "Manage kept variables").
+- Refresh affected visual baselines. Flow and UI spec pairs per CLAUDE.md Tests where behaviour
+  changes.
+
+Deliverable. Plan `plans/P728.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P729
+
+Depends on P728: runs after it, plans against its tree.
+
+Scope.
+
+- Review dialogs (API, SQL, kube): rename the "Agent gets" and "Response" tabs to "After" and
+  "Before" (After = what the agent gets, Before = raw response). Format toggles (Table, Manifest,
+  Logs, JSON) stay. Add a collapsible "Request" section (shadcn-vue `Collapsible`, collapsed by
+  default) showing the request box the approval prompt showed (SQL: query; kube: command or
+  manifest), reusing P728's restyled request components, above the result.
+- Kube list result: columns size to content (capped), resizable, full dialog width; same fix for the
+  expand-row cell. Pod logs: terminal-style monospace view, no line gaps, optional line numbers,
+  dimmed timestamps, error and warn coloring, wrap toggle (default chosen by the planner: unwrapped
+  with horizontal scroll, or wrapped).
+- Variables tab (P720): min column width per environment column; whole grid scrolls horizontally
+  with the Name column pinned. Verify with a 20-environment fixture screenshot. Fix footer plural
+  ("1 value missing").
+- Removals per P721 decisions: A1c, A1d, A2, A3 exactly as in `plans/P721.md`. A2 detail section:
+  keep what the details bench needs. Run the matching real `claude` bench row after removal. Update
+  DEV_ENVIRONMENT runbook, ARCHITECTURE and PERF.md references, README lines.
+- Refresh affected visual baselines. Flow and UI spec pairs where behaviour changes.
+
+Deliverable. Plan `plans/P729.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
