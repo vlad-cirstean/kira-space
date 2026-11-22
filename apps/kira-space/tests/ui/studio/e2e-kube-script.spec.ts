@@ -29,7 +29,7 @@ test('contract: the list card marks the plain and the secret value its transform
   await expect(c.locator(t('kube-approval-line'))).toContainText('pods');
   // The script marks its own tokens; no separate may-keep line.
   await expect(c.locator(t('kube-approval-script-transform'))).toBeVisible();
-  await expect(c.locator(t('kube-approval-script-transform') + ' .kira-ed-kept')).toHaveCount(2);
+  await expect(c.locator(`${t('kube-approval-script-transform')} .kira-ed-kept`)).toHaveCount(2);
   await page.click(t(`approval-approve-${it.id}`));
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
