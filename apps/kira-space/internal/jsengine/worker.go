@@ -160,12 +160,9 @@ func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
 			if keys++; keys > ReadBackMaxKeys {
 				return nil, newError(KindSaved, "a script can hold at most %d saved values", ReadBackMaxKeys)
 			}
-			text, eerr := st.encode(v, ReadBackValueBytes)
+			text, eerr := st.encodeSaved(b.Name, k, v)
 			if eerr != nil {
-				if strings.HasPrefix(eerr.Message, "result exceeds") {
-					return nil, newError(KindSaved, "%s.%s is over %d bytes; a saved value is capped at %d bytes", b.Name, k, ReadBackValueBytes, ReadBackValueBytes)
-				}
-				return nil, newError(KindSaved, "%s.%s cannot be saved: %s", b.Name, k, strings.TrimPrefix(eerr.Message, "result "))
+				return nil, eerr
 			}
 			rb.JSON[k] = json.RawMessage(text)
 		}
@@ -175,6 +172,18 @@ func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
 		out[b.Name] = rb
 	}
 	return out, nil
+}
+
+// encodeSaved encodes one read-back value under its own cap; a failure names the key.
+func (st *runState) encodeSaved(global, key string, v goja.Value) (string, *Error) {
+	text, err := st.encode(v, ReadBackValueBytes)
+	switch {
+	case err == nil:
+		return text, nil
+	case strings.HasPrefix(err.Message, "result exceeds"):
+		return "", newError(KindSaved, "%s.%s is over %d bytes; a saved value is capped at %d bytes", global, key, ReadBackValueBytes, ReadBackValueBytes)
+	}
+	return "", newError(KindSaved, "%s.%s cannot be saved: %s", global, key, strings.TrimPrefix(err.Message, "result "))
 }
 
 // invalidType names the JS type of a value that has no JSON form, or "".
