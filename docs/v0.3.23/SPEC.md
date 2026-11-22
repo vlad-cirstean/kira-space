@@ -24,7 +24,7 @@ before implementation starts.
 | P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
-| P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Todo |
+| P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
 
 ## P716
 
@@ -556,3 +556,21 @@ Deliverable. One plan `plans/P725.md`, one Sonnet pass. UI spec rewritten
 (`data-view-column-search.spec.ts`), shortcut-hint and module-state specs updated, unit spec for the
 removed filter deleted, `data-grid.png` baseline regenerated in PR CI. Throwaway screenshots for the
 user at chapter end.
+
+Result. Commits on `stream/p725`: refactor! (toolbar field, `columnFilter.ts`, runtime `columnFilter`
+and host narrowing removed; Columns menu search and per-row scroll button; chord and chip moved to
+the Columns button), test (spec rewrite and updates), fix (button alignment). Icon: user asked for an
+eye, so the reveal button uses codicon `eye` (overrides the plan's `target`). It sits right-aligned
+and dim, apart from the left checkbox, with tooltip "Scroll to column" and aria-label "Scroll to
+{column}". Checkboxes got an explicit `aria-label` so the button does not leak into their name.
+Mask preview keeps `eye-closed`, untouched. Disabled with "Not shown in the grid" for an unrendered
+column. `SlickGridHost` exposes `revealColumn` (`scrollColumnIntoView`). Search uses `useFocus`
+(VueUse), `useSortableReorder` gets `ids` of the filtered rows and a `filter` for the button.
+Specs run once, all passed: `data-view-column-search` (renamed from `data-view-column-filter`, new
+contract), `shortcut-hints`, `module-state`, `studio/data-view`, `studio/tooltips` (41 tests; one
+cold-start flake of "flips below the trigger" passed on rerun and four more runs). Typecheck, lint
+rules and hooks passed. `data-grid.png` (visual) not regenerated locally: the toolbar lost the field;
+regenerate in PR CI. Screenshots (dark default theme): session scratchpad `p725/`. Found, not
+fixed (outside scope): a drag reorder in the Columns menu commits `columnOrder` but the grid does not
+re-render the new order until its next page load (`SlickGridHost` only rebuilds on `pageVersion`), so
+the spec asserts the committed order in the menu, not grid headers.
