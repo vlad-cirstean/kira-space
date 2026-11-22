@@ -62,3 +62,13 @@ export async function holdOutside(page: Page, chip: Locator): Promise<void> {
   await page.mouse.move(from.x + 10, from.y, { steps: 5 });
   await page.mouse.move(-60, 200, { steps: 15 });
 }
+
+/** The click modifier the app reads as primary: Meta under a Mac user agent, else Control. */
+export async function primaryModifier(page: Page): Promise<'Meta' | 'Control'> {
+  return (await page.evaluate(() => navigator.userAgent.includes('Mac'))) ? 'Meta' : 'Control';
+}
+
+/** Primary-modifier click on a tab chip (toggles its selection). */
+export async function toggleSelect(page: Page, chip: Locator): Promise<void> {
+  await chip.click({ modifiers: [await primaryModifier(page)] });
+}

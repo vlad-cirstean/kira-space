@@ -10,7 +10,7 @@ import { IPC } from '../support/ipcChannels';
 import { emitWailsEvent } from '../support/mockRuntime';
 import type { ControlSnapshot } from '../support/types';
 import { modeTab } from './support/apiMode';
-import { acceptConfirm, cancelConfirm } from './support/dialogs';
+import { cancelConfirm } from './support/dialogs';
 import {
   activePanel,
   openKind,
@@ -18,7 +18,14 @@ import {
   setupKubernetes,
   tabChip,
 } from './support/kubernetesFixture';
-import { dataTab, holdOutside, httpTab, lastSave, sentMoves } from './support/tabMove';
+import {
+  dataTab,
+  holdOutside,
+  httpTab,
+  lastSave,
+  sentMoves,
+  toggleSelect,
+} from './support/tabMove';
 import { tabLocator } from './support/tabs';
 
 const MANY = 'tab-move-many';
@@ -34,8 +41,6 @@ const TARGETS = [
   { key: 'win-b', number: 2 },
   { key: 'win-c', number: 3 },
 ];
-const MOD = 'ControlOrMeta';
-
 const FOUR = [dataTab('a', 0, true), dataTab('b', 1), dataTab('c', 2), dataTab('d', 3)];
 
 function setup(tabs: unknown[], extra: ControlSnapshot[] = []): ControlSnapshot[] {
@@ -56,28 +61,28 @@ const selectedIds = (page: Page) =>
   page
     .locator('[data-testid="tab"][data-selected="true"]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-tab-id')));
-const addTo = (page: Page, id: string) => tabLocator(page, id).click({ modifiers: [MOD] });
+const addTo = (page: Page, id: string) => toggleSelect(page, tabLocator(page, id));
 
 test('Cmd/Ctrl-click toggles, Shift-click ranges, Esc and a plain click clear', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({ control: setup(FOUR) });
   await addTo(page, 'c');
-  expect(await selectedIds(page)).toEqual(['a', 'c']);
+  await expect.poll(() => selectedIds(page)).toEqual(['a', 'c']);
   await expect(tabLocator(page, 'a')).toHaveAttribute('data-active', 'true');
   await expect(tabLocator(page, 'c')).toContainText('Selected');
 
   await tabLocator(page, 'd').click({ modifiers: ['Shift'] });
-  expect(await selectedIds(page)).toEqual(['c', 'd']);
+  await expect.poll(() => selectedIds(page)).toEqual(['c', 'd']);
 
   await tabLocator(page, 'b').locator('button').first().focus();
   await page.keyboard.press('Escape');
-  expect(await selectedIds(page)).toEqual([]);
+  await expect.poll(() => selectedIds(page)).toEqual([]);
 
   await addTo(page, 'c');
-  expect(await selectedIds(page)).toEqual(['a', 'c']);
+  await expect.poll(() => selectedIds(page)).toEqual(['a', 'c']);
   await tabLocator(page, 'b').click();
-  expect(await selectedIds(page)).toEqual([]);
+  await expect.poll(() => selectedIds(page)).toEqual([]);
   await expect(tabLocator(page, 'b')).toHaveAttribute('data-active', 'true');
 });
 
@@ -109,7 +114,10 @@ test('a dirty API tab in the set asks its own question; Cancel closes nothing', 
 
   await draft.click({ button: 'right' });
   await page.locator('[data-testid="menu-item-close-selected"]').click();
-  await acceptConfirm(page);
+  // Both tabs are unsaved requests: each asks its own question, one by one.
+  const discard = page.locator('[data-testid="confirm-dialog-secondary"]');
+  await discard.click();
+  await discard.click();
   await expect(page.locator('[data-testid="tab"]')).toHaveCount(0);
 });
 
@@ -127,7 +135,7 @@ test('the close-tab chord closes the set holding the active tab, else only the a
   await addTo(other, 'b');
   await addTo(other, 'a');
   await addTo(other, 'c');
-  expect(await selectedIds(other)).toEqual(['b', 'c']);
+  await expect.poll(() => selectedIds(other)).toEqual(['b', 'c']);
   await emitWailsEvent(other, IPC.tabClose, null);
   await expect.poll(() => ids(other)).toEqual(['b', 'c', 'd']);
 });
@@ -203,7 +211,7 @@ test('dragging a selected tab out moves the whole set; an unselected one moves a
   );
   await other.mouse.up();
   await expect.poll(() => ids(other)).toEqual(['a', 'b', 'c']);
-  expect(await selectedIds(other)).toEqual([]);
+  await expect.poll(() => selectedIds(other)).toEqual([]);
   expect(sentMoves(second.control)[0].tabs.map((e: { tab: { id: string } }) => e.tab.id)).toEqual([
     'd',
   ]);
@@ -328,7 +336,7 @@ test('the Kubernetes strip selects resource tabs and closes them, with no move i
     await page.locator(`[data-testid="kube-row"][data-name="${name}"]`).dblclick();
     await expect(activePanel(page).locator('[data-testid="kube-detail-title"]')).toHaveText(name);
   }
-  await tabChip(page, 'web-1').click({ modifiers: [MOD] });
+  await toggleSelect(page, tabChip(page, 'web-1'));
   await expect(page.locator('[data-testid="tab"][data-selected="true"]')).toHaveCount(2);
   await tabChip(page, 'web-1').click({ button: 'right' });
   await expect(page.locator('[data-testid="menu-item-close-selected"]')).toHaveText(/Close 2 tabs/);
