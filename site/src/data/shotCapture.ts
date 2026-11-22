@@ -111,6 +111,8 @@ export const SHOT_CAPTURE = {
   'studio-kube-logs': {
     kind: 'region',
     selector: '[data-testid="kube-detail"][data-active="true"]',
+    bottom: '[data-testid="kube-logs-view-line"]',
+    padding: 16,
   },
   'studio-mongo-documents': { kind: 'window' },
   'space-files-window': { kind: 'window' },

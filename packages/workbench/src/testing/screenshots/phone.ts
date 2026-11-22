@@ -9,8 +9,7 @@ export interface PhoneOptions {
   readonly consoleErrors: readonly string[];
 }
 
-const RADIUS = 40;
-const MARGIN = { top: 24, right: 32, bottom: 64, left: 32 } as const;
+const { radius: RADIUS, margin: MARGIN } = FRAME;
 const CAPTURE = { animations: 'disabled', caret: 'hide', scale: 'device' } as const;
 
 async function compose(page: Page, raw: Buffer, width: number, height: number): Promise<Buffer> {
@@ -26,7 +25,10 @@ async function compose(page: Page, raw: Buffer, width: number, height: number): 
     await shot.setContent(`<!doctype html>
 <html><body style="margin:0;background:transparent">
 <div id="wrap" style="box-sizing:border-box;width:${viewport.width}px;height:${viewport.height}px;padding:${MARGIN.top}px ${MARGIN.right}px ${MARGIN.bottom}px ${MARGIN.left}px">
-<img id="raw" style="display:block;width:${width}px;height:${height}px;border-radius:${RADIUS}px;box-shadow:${FRAME.outline}, ${FRAME.shadow}" src="data:image/png;base64,${raw.toString('base64')}">
+<div style="position:relative;width:${width}px;height:${height}px;border-radius:${RADIUS}px;overflow:hidden;box-shadow:${FRAME.outline}, ${FRAME.shadow}">
+<img id="raw" style="display:block;width:${width}px;height:${height}px" src="data:image/png;base64,${raw.toString('base64')}">
+<div style="position:absolute;inset:0;border-radius:${RADIUS}px;box-shadow:${FRAME.rim}"></div>
+</div>
 </div></body></html>`);
     await shot.evaluate(() => Promise.all([...document.images].map((img) => img.decode())));
     return await shot.locator('#wrap').screenshot({ omitBackground: true, animations: 'disabled' });

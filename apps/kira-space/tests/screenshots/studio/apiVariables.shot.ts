@@ -12,7 +12,6 @@ const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0'
 const COLLECTION = uid(1);
 const STAGING = uid(2);
 const PRODUCTION = uid(3);
-const LOCAL = uid(4);
 const NOW = '2026-09-20T09:40:00Z';
 
 const env = (id: string, name: string, order: number, color: string, isActive: boolean) => ({
@@ -52,10 +51,17 @@ const list = (ownerId: string, scope: string, rows: unknown[]): ControlSnapshot 
   response: rows,
 });
 
+const envRows = (id: string, baseUrl: string, region: string) => [
+  row('environment', id, 'base_url', 0, { value: baseUrl }),
+  row('environment', id, 'tenant', 1, { value: 'acme' }),
+  row('environment', id, 'page_size', 2, { value: '50' }),
+  row('environment', id, 'region', 3, { value: region }),
+];
+
 test('api variables tab', async ({ relaunch, consoleErrors }) => {
   const { window: page } = await relaunch({
     ...CAPTURE_LAUNCH,
-    viewport: { width: 1200, height: 640 },
+    viewport: { width: 1100, height: 640 },
     control: [
       { channel: IPC.apiConfigView, response: { files: [], secrets: [] } },
       { channel: IPC.apiConfigAgentAccess, response: [] },
@@ -83,25 +89,11 @@ test('api variables tab', async ({ relaunch, consoleErrors }) => {
         response: [
           env(STAGING, 'Staging', 0, 'green', true),
           env(PRODUCTION, 'Production', 1, 'red', false),
-          env(LOCAL, 'Local', 2, 'blue', false),
         ],
       },
-      list(COLLECTION, 'collection', [
-        row('collection', COLLECTION, 'page_size', 0, { value: '50' }),
-      ]),
-      list(STAGING, 'environment', [
-        row('environment', STAGING, 'base_url', 0, { value: 'https://api.acme.example' }),
-        row('environment', STAGING, 'token', 1, { isSecret: true, secretSet: true }),
-        row('environment', STAGING, 'region', 2, { value: 'eu-west' }),
-      ]),
-      list(PRODUCTION, 'environment', [
-        row('environment', PRODUCTION, 'base_url', 0, { value: 'https://api.acme.com' }),
-        row('environment', PRODUCTION, 'token', 1, { isSecret: true }),
-      ]),
-      list(LOCAL, 'environment', [
-        row('environment', LOCAL, 'base_url', 0, { value: 'http://localhost:8080' }),
-        row('environment', LOCAL, 'token', 1, { isSecret: true, secretSet: true }),
-      ]),
+      list(COLLECTION, 'collection', []),
+      list(STAGING, 'environment', envRows(STAGING, 'https://api.acme.example', 'eu-west')),
+      list(PRODUCTION, 'environment', envRows(PRODUCTION, 'https://api.acme.com', 'us-east')),
     ],
   });
   await openHttpMode(page);
