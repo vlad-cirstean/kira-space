@@ -34,8 +34,12 @@
   --color-select: var(--kira-select);
   --color-select-edge: var(--kira-select-edge);
   --color-control-edge: var(--kira-control-edge);
-  --color-on: var(--kira-on);
-  --color-on-fg: var(--kira-on-fg);
+  --color-toggle-on: var(--kira-toggle-on);
+  --color-toggle-on-edge: var(--kira-toggle-on-edge);
+  --color-toggle-mark: var(--kira-toggle-mark);
+  --color-toggle-off-edge: var(--kira-toggle-off-edge);
+  --color-toggle-knob: var(--kira-toggle-knob);
+  --color-progress-fill: var(--kira-progress-fill);
   --color-error: var(--kira-error);
   --color-scrim: var(--kira-scrim);
   --color-warn: var(--kira-warn);
