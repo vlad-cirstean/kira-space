@@ -103,14 +103,14 @@ func TestE2EReviewRequestKube(t *testing.T) {
 	}})
 
 	k.setMcp(t, "kind-dev", on("prompt"))
-	pending := k.callAsync("kube_list_resources", args)
+	pending := k.callAsync("kube.list", args)
 	card := k.pending(t)
 	k.app.Contract(t, reviewRequestKey, "ApprovalsService.List#kube-card", []approvals.Item{card.Item}, opts...)
 	k.answerItems(t, false, card.Item.ID)
 	<-pending
 
 	k.setMcp(t, "kind-dev", review("review"))
-	pending, req, held := k.held(t, "kube_list_resources", args)
+	pending, req, held := k.held(t, "kube.list", args)
 	sameFields(t, "kube request",
 		fields(t, card.Item, "tool", "request", "changed"),
 		fields(t, req.Item, "tool", "request", "changed"))

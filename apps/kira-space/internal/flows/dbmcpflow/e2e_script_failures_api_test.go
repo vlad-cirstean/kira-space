@@ -127,7 +127,7 @@ func TestE2EScriptFailuresAPI(t *testing.T) {
 			results[i] = text(wait(t, ch))
 		}
 		for i, got := range results {
-			if want := fmt.Sprintf(`{"result":%d}`, i); got != want {
+			if want := fmt.Sprintf(`{"output":%d}`, i); got != want {
 				t.Errorf("call %d = %q, want %q", i, got, want)
 			}
 		}

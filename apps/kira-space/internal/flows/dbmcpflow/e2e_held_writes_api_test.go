@@ -66,7 +66,7 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		f.app.Contract(t, heldWritesAPIKey, "KeptVarsService.List#beforeSend", listBefore, opts...)
 
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.HasPrefix(text(res), `{"result":1,"saved":[{"name":"w","type":"array","items":2`) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"output":1,"saved":[{"name":"w","type":"array","items":2`) {
 			t.Fatalf("result = %q, want the result and the kept summary", text(res))
 		}
 		e, ok := f.keptValue(t, "w")

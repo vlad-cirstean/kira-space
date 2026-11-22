@@ -283,13 +283,13 @@ func TestDbMcpKeptParamsAllowVerdict(t *testing.T) {
 	if f.queueLen(t) != 0 {
 		t.Fatalf("queue %d, want none for an allowed read", f.queueLen(t))
 	}
-	list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
-	if !strings.Contains(list, `"mine"`) || !strings.Contains(list, "params of run_query") {
-		t.Fatalf("list = %s, want the variable and the run_query note", list)
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
+	if !strings.Contains(list, `"mine"`) {
+		t.Fatalf("list = %s, want the variable", list)
 	}
 }
 
-// TestDbMcpKeptParamsToolSurface: run_query takes params and list_saved_variables is offered with API tools off.
+// TestDbMcpKeptParamsToolSurface: run_query takes params and list offers saved with API tools off.
 func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
@@ -300,8 +300,12 @@ func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 	var haveList, haveParams bool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
-		case "list_saved_variables":
-			haveList = true
+		case "list":
+			raw, merr := json.Marshal(tool.InputSchema)
+			if merr != nil {
+				t.Fatal(merr)
+			}
+			haveList = strings.Contains(string(raw), `"saved"`)
 		case "run_query":
 			raw, merr := json.Marshal(tool.InputSchema)
 			if merr != nil {
@@ -311,6 +315,6 @@ func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 		}
 	}
 	if !haveList || !haveParams {
-		t.Fatalf("list_saved_variables %v, run_query params %v, want both offered", haveList, haveParams)
+		t.Fatalf("list offering saved %v, run_query params %v, want both offered", haveList, haveParams)
 	}
 }

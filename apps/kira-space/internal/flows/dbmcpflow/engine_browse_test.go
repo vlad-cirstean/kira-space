@@ -32,7 +32,7 @@ func TestDbMcpEngineBrowse(t *testing.T) {
 			t.Fatalf("%s count in = %+v, want 2", e.kind, got)
 		}
 		rows := decodeBrowse(t, browse(t, sess, connID, args(map[string]any{"filters": in})))
-		if rows.Returned != 2 {
+		if len(rows.Rows) != 2 {
 			t.Fatalf("%s rows in = %+v, want 2", e.kind, rows)
 		}
 

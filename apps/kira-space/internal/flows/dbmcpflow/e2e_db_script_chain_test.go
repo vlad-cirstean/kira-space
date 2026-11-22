@@ -39,7 +39,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 			t.Fatalf("payload = %s (%v), want a scripted item with rawBytes", req.Item.Payload, err)
 		}
 		held := f.pendingResponse(t, req.RequestID)
-		const envelope = `{"kind":"script","output":{"count":2},"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
+		const envelope = `{"output":{"count":2},"input":{"rowCount":2}}`
 		if held.Text != envelope || !strings.Contains(held.Raw, `"rows":[["1","one"],["2","two"]]`) {
 			t.Fatalf("held text %s raw %s, want the envelope and the rows", held.Text, held.Raw)
 		}

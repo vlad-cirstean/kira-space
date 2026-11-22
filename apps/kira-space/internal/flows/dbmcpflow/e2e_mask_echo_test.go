@@ -70,11 +70,11 @@ func TestE2EMaskEcho(t *testing.T) {
 		pending := callToolAsync(sess, "api_request", call)
 		typed(t, "apikey", echoValue)
 		testWait := f.startHeldFromQueue(t)
-		var heldText struct{ Result map[string]string }
-		if err := json.Unmarshal([]byte(testWait.held.Text), &heldText); err != nil || len(heldText.Result) != 6 {
+		var heldText struct{ Output map[string]string }
+		if err := json.Unmarshal([]byte(testWait.held.Text), &heldText); err != nil || len(heldText.Output) != 6 {
 			t.Fatalf("held text = %q (%v), want the six forms", testWait.held.Text, err)
 		}
-		for k, v := range heldText.Result {
+		for k, v := range heldText.Output {
 			if v != "{{secret.apikey}}" {
 				t.Errorf("held form %s = %q, want the reference", k, v)
 			}

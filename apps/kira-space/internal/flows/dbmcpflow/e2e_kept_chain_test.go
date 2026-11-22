@@ -40,7 +40,7 @@ func TestE2EKeptChain(t *testing.T) {
 		pending := callToolAsync(a, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": chainKeep}))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
-		if res.IsError || !strings.HasPrefix(text(res), `{"result":2,"saved":[{"name":"ids","type":"array","items":2,"secret":false,`) || strings.Contains(text(res), bigID) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"output":2,"saved":[{"name":"ids","type":"array","items":2,"secret":false,`) || strings.Contains(text(res), bigID) {
 			t.Fatalf("result = %q, want the total and a summary without the ids", text(res))
 		}
 		f.app.Contract(t, keptChainKey, "result#step1", expiresIn.ReplaceAllString(text(res), `"expiresInSeconds":0`))
@@ -51,7 +51,7 @@ func TestE2EKeptChain(t *testing.T) {
 	})
 
 	t.Run("B reads it into a request body", func(t *testing.T) {
-		list := text(callTool(t, b, "list_saved_variables", map[string]any{}))
+		list := text(callTool(t, b, "list", map[string]any{"what": []string{"saved"}}))
 		if !strings.Contains(list, `"ids"`) {
 			t.Fatalf("B's listing = %s, want the shared ids", list)
 		}
@@ -108,7 +108,7 @@ func TestE2EKeptChain(t *testing.T) {
 
 	t.Run("a Studio session has its own scope", func(t *testing.T) {
 		s := studio
-		if list := text(callTool(t, s, "list_saved_variables", map[string]any{})); strings.Contains(list, `"ids"`) || strings.Contains(list, `"first"`) {
+		if list := text(callTool(t, s, "list", map[string]any{"what": []string{"saved"}})); strings.Contains(list, `"ids"`) || strings.Contains(list, `"first"`) {
 			t.Fatalf("S's listing = %s, want neither external variable", list)
 		}
 		res := callTool(t, s, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))

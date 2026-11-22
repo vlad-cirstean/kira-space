@@ -93,9 +93,9 @@ func TestDbMcpTableAllowList(t *testing.T) {
 	}
 	nodes := func(path string) []node {
 		t.Helper()
-		res := tool("list_children", map[string]any{"connectionId": f.connID, "path": path})
+		res := tool("describe", map[string]any{"connectionId": f.connID, "path": path})
 		if res.IsError {
-			t.Fatalf("list_children %q = %q", path, text(res))
+			t.Fatalf("describe %q = %q", path, text(res))
 		}
 		var out []node
 		if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
@@ -110,7 +110,7 @@ func TestDbMcpTableAllowList(t *testing.T) {
 		}
 	}
 	if mainPath == "" {
-		t.Fatal("list_children found no database node")
+		t.Fatal("describe found no database node")
 	}
 	var names []string
 	var notesPath string
@@ -121,7 +121,7 @@ func TestDbMcpTableAllowList(t *testing.T) {
 		}
 	}
 	if notesPath == "" || len(names) != 1 {
-		t.Fatalf("list_children under a list = %v, want only notes", names)
+		t.Fatalf("describe under a list = %v, want only notes", names)
 	}
 	secretPath := strings.Replace(notesPath, "notes", "secret", 1)
 	if r := tool("describe", map[string]any{"connectionId": f.connID, "path": notesPath}); r.IsError {
@@ -134,18 +134,17 @@ func TestDbMcpTableAllowList(t *testing.T) {
 	if schema.IsError || strings.Contains(text(schema), "secret") || !strings.Contains(text(schema), "notes") {
 		t.Fatalf("describe under a list = %q, want only notes", text(schema))
 	}
-	conns := tool("list_connections", nil)
-	var listed []struct {
-		Tables struct {
-			All   bool     `json:"all"`
-			Names []string `json:"names"`
-		} `json:"tables"`
+	conns := tool("list", map[string]any{"what": []string{"connections"}})
+	var listed struct {
+		Connections []struct {
+			Tables []string `json:"tables"`
+		} `json:"connections"`
 	}
-	if err := json.Unmarshal([]byte(text(conns)), &listed); err != nil || len(listed) == 0 {
-		t.Fatalf("list_connections = %q (%v)", text(conns), err)
+	if err := json.Unmarshal([]byte(text(conns)), &listed); err != nil || len(listed.Connections) == 0 {
+		t.Fatalf("list = %q (%v)", text(conns), err)
 	}
-	if listed[0].Tables.All || len(listed[0].Tables.Names) != 1 || listed[0].Tables.Names[0] != "notes" {
-		t.Fatalf("list_connections tables = %+v, want exactly notes", listed[0].Tables)
+	if tables := listed.Connections[0].Tables; len(tables) != 1 || tables[0] != "notes" {
+		t.Fatalf("list tables = %+v, want exactly notes", tables)
 	}
 
 	// The MCP tab lists every live relation to pick from.

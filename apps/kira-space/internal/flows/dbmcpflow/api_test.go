@@ -396,25 +396,9 @@ func TestApiToolsToggle(t *testing.T) {
 		t.Fatal("api tools missing after turning them back on")
 	}
 
-	// Result review: off by default, one patch turns it on, the tool text says so only then.
-	desc := func() string {
-		list, err := sess.ListTools(ctx, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, tool := range list.Tools {
-			if tool.Name == "api_request" {
-				return tool.Description
-			}
-		}
-		t.Fatal("api_request missing")
-		return ""
-	}
+	// Result review: off by default, one patch turns it on; the instructions name the review rule either way.
 	if got, err := f.app.W.Settings.GetAll(); err != nil || got.DbMcp.APIReviewResponses {
 		t.Fatalf("apiReviewResponses default = %v (%v), want false", got.DbMcp.APIReviewResponses, err)
-	}
-	if !strings.Contains(desc(), "reviewResults") {
-		t.Fatalf("description = %q, want it to name reviewResults", desc())
 	}
 	f.patchAPI(t, "reviewOn", &model.DbMcpPatch{APIReviewResponses: ptr(true)})
 }
@@ -424,13 +408,13 @@ func TestApiListEnvironments(t *testing.T) {
 	_, sess, envID := f.apiSetup(t, "127.0.0.1", false)
 	f.app.WriteAPIFile(t, "plain.environment.yaml", []byte("name: Plain\nvariables:\n  - name: a\n    value: b\n"))
 
-	res := callTool(t, sess, "api_list_environments", map[string]any{})
+	res := callTool(t, sess, "list", map[string]any{"what": []string{"environments"}})
 	var out struct {
 		Environments []struct {
-			ID            string
-			Name          string
-			ReviewResults struct{ Read, Write bool }
-			Variables     []struct {
+			ID        string
+			Name      string
+			Review    []string
+			Variables []struct {
 				Name   string
 				Secret bool
 				Hosts  []string
@@ -450,8 +434,8 @@ func TestApiListEnvironments(t *testing.T) {
 	if got := strings.Join(names, ","); got != "base_url:false:[],token:true:[127.0.0.1]" {
 		t.Fatalf("variables = %s", got)
 	}
-	if rr := out.Environments[0].ReviewResults; rr.Read || rr.Write {
-		t.Fatalf("reviewResults = %+v, want none by default", rr)
+	if rr := out.Environments[0].Review; len(rr) != 0 {
+		t.Fatalf("review = %v, want none by default", rr)
 	}
 	noSecret(t, "the listing", text(res))
 }

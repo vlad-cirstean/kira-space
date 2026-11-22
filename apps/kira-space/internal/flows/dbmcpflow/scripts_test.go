@@ -111,7 +111,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	f.createScript(t, scripts.CustomScriptFields{Name: "slow", Command: "sleep 30", MCP: allowMCP("")}, nil)
 	f.createScript(t, scripts.CustomScriptFields{Name: "smart", Kind: scripts.KindSmart, Command: "do it", Smart: &scripts.Smart{}}, nil)
 
-	listed := callTool(t, sess, "list_scripts", nil)
+	listed := callTool(t, sess, "list", map[string]any{"what": []string{"scripts"}})
 	var list struct {
 		Scripts []struct {
 			ScriptID    string `json:"scriptId"`
@@ -128,7 +128,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	}](t, listed)
 	if len(list.Scripts) != 2 || list.Scripts[0].ScriptID != "fails" || list.Scripts[1].ScriptID != "slow" ||
 		list.Scripts[0].Description != "Prints three lines and fails." || list.Scripts[0].Approval != "allow" {
-		t.Fatalf("list_scripts = %s, want fails and slow only", text(listed))
+		t.Fatalf("list (what: scripts) = %s, want fails and slow only", text(listed))
 	}
 
 	unknown := callTool(t, sess, "run_script", map[string]any{"scriptId": "hidden"})
@@ -156,7 +156,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 
 	logs := func(args map[string]any) scriptRunResult {
 		args["runId"] = run.RunID
-		return decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", args))
+		return decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", args))
 	}
 	tail := logs(map[string]any{"lines": 2})
 	if !equalStrings(lineTexts(tail), []string{"two", "ERR three"}) || tail.LogLines != 3 || !tail.Truncated {
@@ -170,7 +170,7 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	if !equalStrings(lineTexts(filtered), []string{"ERR three"}) || filtered.Matched == nil || *filtered.Matched != 1 || filtered.LogLines != 3 {
 		t.Fatalf("contains ERR = %+v, want one matched line of 3", filtered)
 	}
-	over, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "get_script_run", Arguments: map[string]any{"runId": run.RunID, "lines": 501}})
+	over, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "run_script", Arguments: map[string]any{"runId": run.RunID, "lines": 501}})
 	if err == nil && !over.IsError {
 		t.Fatalf("lines 501 = %q, want the schema to refuse", text(over))
 	}
@@ -211,8 +211,8 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	if res := cancelOp(t, sess, "run:"+hiddenRun); !res.IsError || !strings.Contains(text(res), "no running operation") {
 		t.Fatalf("cancel of a hidden script's run = %q, want the unknown-id text", text(res))
 	}
-	if res := callTool(t, sess, "get_script_run", map[string]any{"runId": hiddenRun}); !res.IsError {
-		t.Fatalf("get_script_run of a hidden script's run = %q, want a refusal", text(res))
+	if res := callTool(t, sess, "run_script", map[string]any{"runId": hiddenRun}); !res.IsError {
+		t.Fatalf("run_script (runId) of a hidden script's run = %q, want a refusal", text(res))
 	}
 	if err := f.app.W.ScriptRuns.Stop(scriptruns.IDArgs{ID: hiddenRun}); err != nil {
 		t.Fatal(err)
@@ -221,9 +221,9 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	if res := cancelOp(t, sess, "run:"+started.RunID); res.IsError || !strings.Contains(text(res), `"stopped":true`) {
 		t.Fatalf("operations cancel = %q", text(res))
 	}
-	done := decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": started.RunID, "waitSeconds": 5}))
+	done := decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"runId": started.RunID, "waitSeconds": 5}))
 	if done.State != "cancelled" {
-		t.Fatalf("get_script_run after cancel = %+v, want cancelled", done)
+		t.Fatalf("run_script (runId) after cancel = %+v, want cancelled", done)
 	}
 }
 
@@ -346,13 +346,13 @@ func TestDbMcpScriptLongRunning(t *testing.T) {
 			ScriptID string `json:"scriptId"`
 			Mode     string `json:"mode"`
 		} `json:"scripts"`
-	}](t, callTool(t, sess, "list_scripts", nil))
+	}](t, callTool(t, sess, "list", map[string]any{"what": []string{"scripts"}}))
 	modes := map[string]string{}
 	for _, sc := range list.Scripts {
 		modes[sc.ScriptID] = sc.Mode
 	}
 	if len(modes) != 2 || modes["quick"] != "short" || modes["serve"] != "long" {
-		t.Fatalf("list_scripts = %+v, want quick short and serve long", list.Scripts)
+		t.Fatalf("list (what: scripts) = %+v, want quick short and serve long", list.Scripts)
 	}
 
 	began := time.Now()
@@ -368,14 +368,14 @@ func TestDbMcpScriptLongRunning(t *testing.T) {
 	var polled scriptRunResult
 	testx.WaitUntil(t, 20*time.Second, func() bool {
 		began := time.Now()
-		polled = decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": run.RunID}))
+		polled = decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"runId": run.RunID}))
 		if d := time.Since(began); d > 5*time.Second {
-			t.Fatalf("get_script_run of a long script took %v, want it to return at once", d)
+			t.Fatalf("run_script (runId) of a long script took %v, want it to return at once", d)
 		}
 		return equalStrings(lineTexts(polled), []string{"started"})
 	})
 	if polled.State != "running" || polled.Mode != "long" || polled.Next == "" {
-		t.Fatalf("get_script_run while running = %+v, want running with the output so far", polled)
+		t.Fatalf("run_script (runId) while running = %+v, want running with the output so far", polled)
 	}
 
 	// Contract dbmcp-script-long: tests/ui/studio/dbmcp-script-long.spec.ts renders the settings row
@@ -400,10 +400,10 @@ func TestDbMcpScriptLongRunning(t *testing.T) {
 	if err := os.WriteFile(stop, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	done := decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": run.RunID, "waitSeconds": 10}))
+	done := decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"runId": run.RunID, "waitSeconds": 10}))
 	if done.State != "failed" || done.ExitCode == nil || *done.ExitCode != 4 || done.Next != "" ||
 		!equalStrings(lineTexts(done), []string{"started", "bye"}) {
-		t.Fatalf("get_script_run after the stop = %+v, want failed, exit 4, started and bye", done)
+		t.Fatalf("run_script (runId) after the stop = %+v, want failed, exit 4, started and bye", done)
 	}
 	ended, err := f.app.W.ScriptRuns.Get(scriptruns.IDArgs{ID: run.RunID})
 	if err != nil {
@@ -429,7 +429,7 @@ func TestDbMcpScriptLogPaging(t *testing.T) {
 			t.Fatalf("n=%d: run = %+v", n, started)
 		}
 		page := func(from string) scriptRunResult {
-			return decodeResult[scriptRunResult](t, callTool(t, sess, "get_script_run", map[string]any{"runId": started.RunID, "from": from, "lines": 500}))
+			return decodeResult[scriptRunResult](t, callTool(t, sess, "run_script", map[string]any{"runId": started.RunID, "from": from, "lines": 500}))
 		}
 		head, tail := page("head"), page("tail")
 		if len(head.Lines) != 500 || len(tail.Lines) != min(n, 500) || head.Truncated != (n > 500) || tail.Truncated != (n > 500) {

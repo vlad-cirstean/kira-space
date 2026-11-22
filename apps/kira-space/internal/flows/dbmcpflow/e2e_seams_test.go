@@ -19,9 +19,9 @@ func TestE2ESeams(t *testing.T) {
 
 	t.Run("studio session", func(t *testing.T) {
 		sess, end := f.studioSession(t, "s1")
-		res := callTool(t, sess, "list_connections", map[string]any{})
+		res := callTool(t, sess, "list", map[string]any{"what": []string{"connections"}})
 		if res.IsError {
-			t.Fatalf("list_connections = %q", text(res))
+			t.Fatalf("list = %q", text(res))
 		}
 		f.keep(t, "session:s1", "k", `"v"`)
 		if id := f.keptID(t, "session:s1", "k"); id == "" {

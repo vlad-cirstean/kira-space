@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -47,7 +48,7 @@ func wantTimeoutRefusal(t *testing.T, res *mcp.CallToolResult, took time.Duratio
 
 // TestDbMcpEngineTimeout is the real-engine half of TestDbMcpStatementTimeout*: mcp_statement_timeout_sec 1
 // against a 5 s read, write and ddl on every engine, the exemption path, the off switch, browse_table on
-// a slow view and the enforcement list_connections reports. Kibana is left out: its timeout is the same
+// a slow view and the enforcement list reports. Kibana is left out: its timeout is the same
 // app timer sqlite, mongodb and redis exercise here, and no Kibana query sleeps on demand.
 func TestDbMcpEngineTimeout(t *testing.T) {
 	engineTest(t, nil, func(t *testing.T, e engine, f *fixture, sess *mcp.ClientSession) {
@@ -180,7 +181,7 @@ func TestDbMcpEngineTimeoutBrowse(t *testing.T) {
 }
 
 // TestDbMcpEngineTimeoutEnforcement pins which layer enforces the limit per engine, as
-// list_connections reports it (timeoutEnforcementOf).
+// the engine split dbmcp.TimeoutEnforcementOf reports.
 func TestDbMcpEngineTimeoutEnforcement(t *testing.T) {
 	engineTest(t, nil, func(t *testing.T, e engine, f *fixture, sess *mcp.ClientSession) {
 		connID := f.engineConn(t, e, func(c *model.ConnectionFields) { c.McpStatementTimeoutSec = 1 })
@@ -192,32 +193,37 @@ func TestDbMcpEngineTimeoutEnforcement(t *testing.T) {
 			if v.ID != connID {
 				continue
 			}
-			if v.StatementTimeout.Seconds != 1 || !reflect.DeepEqual(v.StatementTimeout.Enforcement, want) {
-				t.Fatalf("statementTimeout = %+v, want 1 s enforced %v", v.StatementTimeout, want)
+			got := map[string]string{}
+			for _, mode := range []string{"read", "write", "ddl"} {
+				got[mode] = dbmcp.TimeoutEnforcementOf(v.Kind, mode)
+			}
+			if v.TimeoutSeconds != 1 || !reflect.DeepEqual(got, want) {
+				t.Fatalf("timeout = %d s enforced %v, want 1 s enforced %v", v.TimeoutSeconds, got, want)
 			}
 			return
 		}
-		t.Fatal("connection missing from list_connections")
+		t.Fatal("connection missing from list")
 	})
 }
 
 type listedTimeout struct {
-	ID               string `json:"id"`
-	StatementTimeout struct {
-		Seconds     int               `json:"seconds"`
-		Enforcement map[string]string `json:"enforcement"`
-	} `json:"statementTimeout"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Kind           string `json:"kind"`
+	TimeoutSeconds int    `json:"timeoutSeconds"`
 }
 
 func listedStatementTimeouts(t *testing.T, sess *mcp.ClientSession) []listedTimeout {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %v, %v", res, err)
+		t.Fatalf("list = %v, %v", res, err)
 	}
-	var out []listedTimeout
+	var out struct {
+		Connections []listedTimeout `json:"connections"`
+	}
 	if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
 		t.Fatal(err)
 	}
-	return out
+	return out.Connections
 }

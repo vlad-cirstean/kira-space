@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connfiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -22,7 +24,7 @@ import (
 
 // Backend half of tests/ui/connection-mcp-expensive.spec.ts: a read-class SELECT whose plan estimates
 // at least advanced.expensiveQueryRows rows is refused before it runs, the exemption path asks the
-// user, and list_connections reports the check per engine. Contract dbmcp-expensive-query.
+// user, and list reports the check per engine. Contract dbmcp-expensive-query.
 
 const expensiveThreshold = 1000
 
@@ -318,7 +320,7 @@ func TestDbMcpExpensiveQueryPostgres(t *testing.T) {
 	}
 }
 
-// SQLite has no row estimate: nothing is refused and list_connections says so.
+// SQLite has no row estimate: nothing is refused and list says so.
 func TestDbMcpExpensiveQueryNoEstimate(t *testing.T) {
 	f := newFixture(t)
 	f.setExpensiveThreshold(t, expensiveThreshold)
@@ -346,33 +348,32 @@ func TestDbMcpExpensiveQueryNoEstimate(t *testing.T) {
 	}
 	views := listViews(t, sess)
 	for _, v := range views {
-		if v.ID == conn.ID && (v.ExpensiveQuery.Check != "none" || v.ExpensiveQuery.RowsThreshold != expensiveThreshold) {
-			t.Errorf("sqlite expensiveQuery = %+v, want none at %d", v.ExpensiveQuery, expensiveThreshold)
+		if v.ID == conn.ID && v.ExpensiveRows != 0 {
+			t.Errorf("sqlite expensiveRows = %d, want none (no estimate)", v.ExpensiveRows)
 		}
 	}
 }
 
 type expensiveListView struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Kind           string `json:"kind"`
-	ExpensiveQuery struct {
-		RowsThreshold int    `json:"rowsThreshold"`
-		Check         string `json:"check"`
-	} `json:"expensiveQuery"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Kind          string `json:"kind"`
+	ExpensiveRows int    `json:"expensiveRows"`
 }
 
 func listViews(t *testing.T, sess *mcp.ClientSession) []expensiveListView {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %v, %v", res, err)
+		t.Fatalf("list = %v, %v", res, err)
 	}
-	var views []expensiveListView
+	var views struct {
+		Connections []expensiveListView `json:"connections"`
+	}
 	if err := json.Unmarshal([]byte(text(res)), &views); err != nil {
 		t.Fatal(err)
 	}
-	return views
+	return views.Connections
 }
 
 func TestDbMcpListConnectionsExpensiveQuery(t *testing.T) {
@@ -411,6 +412,24 @@ func TestDbMcpListConnectionsExpensiveQuery(t *testing.T) {
 	for _, s := range specs {
 		want[s.name] = s.want
 	}
+	// The agent sees expensiveRows only while the check plans; the check state itself is pinned from dbmcp for the Studio mirror.
+	summaries, err := f.app.W.Connections.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkOf := map[string]string{}
+	for _, c := range summaries {
+		checkOf[c.Name] = dbmcp.ExpensiveCheckOf(c)
+	}
+	type pinned struct {
+		Kind           string `json:"kind"`
+		Name           string `json:"name"`
+		ExpensiveQuery struct {
+			RowsThreshold int    `json:"rowsThreshold"`
+			Check         string `json:"check"`
+		} `json:"expensiveQuery"`
+	}
+	all := []pinned{}
 	seen := 0
 	for _, v := range listViews(t, sess) {
 		exp, ok := want[v.Name]
@@ -418,18 +437,20 @@ func TestDbMcpListConnectionsExpensiveQuery(t *testing.T) {
 			continue
 		}
 		seen++
-		if v.ExpensiveQuery.Check != exp || v.ExpensiveQuery.RowsThreshold != expensiveThreshold {
-			t.Errorf("%s expensiveQuery = %+v, want %s at %d", v.Name, v.ExpensiveQuery, exp, expensiveThreshold)
+		wantRows := 0
+		if exp == "plan" {
+			wantRows = expensiveThreshold
 		}
+		if checkOf[v.Name] != exp || v.ExpensiveRows != wantRows {
+			t.Errorf("%s check = %s, expensiveRows = %d, want %s at %d", v.Name, checkOf[v.Name], v.ExpensiveRows, exp, wantRows)
+		}
+		p := pinned{Kind: v.Kind, Name: v.Name}
+		p.ExpensiveQuery.RowsThreshold, p.ExpensiveQuery.Check = v.ExpensiveRows, checkOf[v.Name]
+		all = append(all, p)
 	}
 	if seen != len(want) {
 		t.Fatalf("listed %d of %d created connections", seen, len(want))
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var all any
-	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-expensive-query", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	f.app.Contract(t, "dbmcp-expensive-query", "list", all)
 }

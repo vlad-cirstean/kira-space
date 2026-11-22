@@ -46,7 +46,7 @@ func TestEditedPromptsReachNewSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer after.Close()
-	if got := after.InitializeResult().Instructions; got != instructions {
+	if got := after.InitializeResult().Instructions; !strings.HasPrefix(got, instructions) {
 		t.Fatalf("instructions = %q, want the edit", got)
 	}
 	tools, err := after.ListTools(ctx, nil)

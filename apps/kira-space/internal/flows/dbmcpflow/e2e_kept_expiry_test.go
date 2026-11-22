@@ -104,10 +104,10 @@ func TestE2EKeptExpiry(t *testing.T) {
 
 	t.Run("the next chained call finds it gone", func(t *testing.T) {
 		res := callTool(t, sess, "run_query", f.paramsArgs(e6IDsStmt, "read", "ids"))
-		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list_saved_variables") {
-			t.Fatalf("read = %q, want the not-found text naming list_saved_variables", text(res))
+		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list (what: saved)") {
+			t.Fatalf("read = %q, want the not-found text naming list (what: saved)", text(res))
 		}
-		if list := text(callTool(t, sess, "list_saved_variables", map[string]any{})); strings.Contains(list, `"ids"`) {
+		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}})); strings.Contains(list, `"ids"`) {
 			t.Fatalf("listing = %s, want ids gone", list)
 		}
 	})

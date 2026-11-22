@@ -24,7 +24,7 @@ const (
 	// pickBodies is the script of the plain scenario: only the bodies reach the agent.
 	pickBodies = `return result.rows.map(r => r[1]);`
 	// bodiesEnvelope is what the agent receives for pickBodies on the two seeded notes.
-	bodiesEnvelope = `{"kind":"script","output":["one","two"],"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
+	bodiesEnvelope = `{"output":["one","two"],"input":{"rowCount":2}}`
 	keepIDsScript  = `plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};`
 	chainStmt      = "select body from notes where id in (select value from json_each(?)) order by id"
 )
@@ -140,7 +140,7 @@ func TestDbMcpQueryScriptReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	held := f.pendingResponse(t, req.RequestID)
-	const envelope = `{"kind":"script","output":{"count":2},"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
+	const envelope = `{"output":{"count":2},"input":{"rowCount":2}}`
 	if !item.Scripted || item.Bytes != len(envelope) || item.RawBytes != len(held.Raw) || item.RawBytes == 0 {
 		t.Fatalf("payload = %+v, want a scripted item sized by both texts", item)
 	}
@@ -400,12 +400,13 @@ func TestDbMcpQueryScriptExemption(t *testing.T) {
 	}
 }
 
-// TestDbMcpQueryScriptSetting: the script argument and its text follow the agent scripts setting, and a call
+// TestDbMcpQueryScriptSetting: the script argument and the instructions paragraph follow the agent scripts setting, and a call
 // with the setting off is refused.
 func TestDbMcpQueryScriptSetting(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
-	described := func() (schema, suffix bool) {
+	// Instructions are read at connect: a session opened after the setting changed sees the new text.
+	described := func() (schema, instructions bool) {
 		list, err := sess.ListTools(ctx, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -413,21 +414,21 @@ func TestDbMcpQueryScriptSetting(t *testing.T) {
 		for _, tool := range list.Tools {
 			if tool.Name == "run_query" {
 				b, _ := json.Marshal(tool.InputSchema)
-				return strings.Contains(string(b), `"script"`), strings.Contains(tool.Description, "result script") || strings.Contains(tool.Description, "Optional script")
+				return strings.Contains(string(b), `"script"`), strings.Contains(f.session(t).InitializeResult().Instructions, "sandbox with no network")
 			}
 		}
 		t.Fatal("run_query not listed")
 		return
 	}
 	if s, d := described(); !s || !d {
-		t.Fatalf("scripts on: schema %v, description %v", s, d)
+		t.Fatalf("scripts on: schema %v, instructions %v", s, d)
 	}
 	off := false
 	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIScripts: &off}}}); err != nil {
 		t.Fatal(err)
 	}
 	if s, d := described(); s || d {
-		t.Fatalf("scripts off: schema %v, description %v", s, d)
+		t.Fatalf("scripts off: schema %v, instructions %v", s, d)
 	}
 	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", "return 1"))
 	if !res.IsError || !strings.Contains(text(res), "unexpected additional properties") {

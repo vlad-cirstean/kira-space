@@ -47,7 +47,7 @@ type engine struct {
 	hiddenSetup []string
 	hiddenCall  string
 	hiddenTable string
-	// enforcement is list_connections statementTimeout.enforcement for read, write, ddl.
+	// enforcement is list statementTimeout.enforcement for read, write, ddl.
 	enforcement string
 	// rowEstimate is whether the engine's plan carries a row estimate.
 	rowEstimate bool

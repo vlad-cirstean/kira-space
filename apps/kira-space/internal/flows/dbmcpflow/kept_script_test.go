@@ -92,7 +92,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
 	var got struct {
-		Result struct{ Count int }
+		Output struct{ Count int }
 		Saved  []struct {
 			Name, Type       string
 			Items            int
@@ -102,7 +102,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 	if err := json.Unmarshal([]byte(text(res)), &got); err != nil || res.IsError {
 		t.Fatalf("result = %s (%v)", text(res), err)
 	}
-	if got.Result.Count != 2 || len(got.Saved) != 1 || got.Saved[0].Name != "ids" || got.Saved[0].Type != "array" || got.Saved[0].Items != 2 || got.Saved[0].ExpiresInSeconds < 3590 {
+	if got.Output.Count != 2 || len(got.Saved) != 1 || got.Saved[0].Name != "ids" || got.Saved[0].Type != "array" || got.Saved[0].Items != 2 || got.Saved[0].ExpiresInSeconds < 3590 {
 		t.Fatalf("result = %s, want the count and a summary of ids", text(res))
 	}
 	for _, leak := range []string{"9007199254740993", "a@x.test"} {
@@ -144,7 +144,7 @@ func TestKeptScriptUndeclared(t *testing.T) {
 		f.answer(t, true, it.RequestID)
 		return text(wait(t, pending))
 	}
-	if got := run(map[string]any{"transform": `plain.region; const k = plain; const n = "oth" + "er"; return k[n];`}); got != `{"result":null}` {
+	if got := run(map[string]any{"transform": `plain.region; const k = plain; const n = "oth" + "er"; return k[n];`}); got != `{"output":null}` {
 		t.Fatalf("aliased get = %q, want null: a name the source does not write is not loaded", got)
 	}
 	if got := run(map[string]any{"transform": `plain.a = 1; const k = plain; k["b"] = 2; const n = "c"; k[n] = 3; return 1;`}); !strings.Contains(got, "not written literally") {

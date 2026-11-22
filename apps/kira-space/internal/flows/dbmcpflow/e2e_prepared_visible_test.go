@@ -55,7 +55,7 @@ func TestE2EPreparedVisible(t *testing.T) {
 
 	t.Run("a list prepare sets the namespace, selector and row cap", func(t *testing.T) {
 		args := k.listPods("default", map[string]any{"script": map[string]any{"prepare": `return {namespace: "kube-system", labelSelector: "app=web", maxRows: 7};`}})
-		pending := k.callAsync("kube_list_resources", args)
+		pending := k.callAsync("kube.list", args)
 		req := k.pending(t)
 		var c preparedKube
 		if err := json.Unmarshal(req.Item.Payload, &c); err != nil {
@@ -70,14 +70,14 @@ func TestE2EPreparedVisible(t *testing.T) {
 	})
 
 	t.Run("a logs prepare sets the pod, container and flags", func(t *testing.T) {
-		args := k.logsScript(map[string]any{"prepare": `return {pod: "web-1", container: "sidecar", tail: 3, previous: false, timestamps: true};`})
-		pending := k.callAsync("kube_pod_logs", args)
+		args := k.logsScript(map[string]any{"prepare": `return {name: "web-1", container: "sidecar", tail: 3, previous: false, timestamps: true};`})
+		pending := k.callAsync("kube.logs", args)
 		req := k.pending(t)
 		var c preparedKube
 		if err := json.Unmarshal(req.Item.Payload, &c); err != nil {
 			t.Fatal(err)
 		}
-		if !slices.Equal(c.Changed, []string{"pod", "container", "previous", "timestamps", "tail"}) || c.Request.Pod != "web-1" || c.Request.Container != "sidecar" || c.Request.Previous || !c.Request.Timestamps || c.Request.Tail != 3 {
+		if !slices.Equal(c.Changed, []string{"name", "container", "previous", "timestamps", "tail"}) || c.Request.Pod != "web-1" || c.Request.Container != "sidecar" || c.Request.Previous || !c.Request.Timestamps || c.Request.Tail != 3 {
 			t.Fatalf("card %+v, want the five set keys and their values", c)
 		}
 		contract(t, "ApprovalsService.List#logs", []approvals.Item{req.Item})

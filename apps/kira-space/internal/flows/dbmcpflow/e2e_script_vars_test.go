@@ -195,7 +195,7 @@ func TestE2EScriptVarsKube(t *testing.T) {
 	k := newKubeFixture(t)
 	k.setMcp(t, "kind-dev", on("prompt"))
 
-	pending := k.callAsync("kube_pod_logs", k.logsScript(map[string]any{"prepare": `plain.pod2 = "web-2"; return {pod: "web-1", tail: 2};`}))
+	pending := k.callAsync("kube.logs", k.logsScript(map[string]any{"prepare": `plain.pod2 = "web-2"; return {name: "web-1", tail: 2};`}))
 	req := k.pending(t)
 	var card struct {
 		Script struct {

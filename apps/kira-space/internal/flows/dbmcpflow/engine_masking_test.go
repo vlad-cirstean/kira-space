@@ -70,7 +70,7 @@ func TestDbMcpEngineMasking(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if out := decodeBrowse(t, res); out.Returned == 0 || strings.Contains(text(res), baseline) {
+		if out := decodeBrowse(t, res); len(out.Rows) == 0 || strings.Contains(text(res), baseline) {
 			t.Fatalf("%s masked browse = %q", e.kind, text(res))
 		}
 
@@ -107,8 +107,7 @@ func TestDbMcpEngineMasking(t *testing.T) {
 		f.setReviewed(t, prefix+"id")
 		f.refreshColumns(t)
 		testx.WaitUntil(t, 10*time.Second, func() bool {
-			_, w := f.columnReview(t, sess)
-			return len(w) == len(all)-1
+			return len(f.columnReview(t, sess)) == len(all)-1
 		})
 		star := e.run(t, sess, f.connID, "select * from "+qualified, "read")
 		cols, withheld := f.resultColumns(t, star)

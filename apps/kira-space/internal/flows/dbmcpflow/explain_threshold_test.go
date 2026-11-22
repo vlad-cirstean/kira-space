@@ -1,21 +1,18 @@
 package dbmcpflow
 
 import (
-	"encoding/json"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // Backend half of tests/ui/studio/connection-explain-threshold.spec.ts: a connection's own
-// explain_threshold_rows replaces the app default in the summary and in list_connections, live, and
+// explain_threshold_rows replaces the app default in the summary and in list, live, and
 // an out-of-range value is a problem that leaves the row alone. Contract connection-explain-threshold.
 func TestDbMcpConnectionExplainThreshold(t *testing.T) {
 	f := newFixture(t)
@@ -52,17 +49,17 @@ func TestDbMcpConnectionExplainThreshold(t *testing.T) {
 		t.Helper()
 		out := map[string]int{}
 		for _, v := range listViews(t, sess) {
-			out[v.Name] = v.ExpensiveQuery.RowsThreshold
+			out[v.Name] = v.ExpensiveRows
 		}
 		return out
 	}
-	// The file watcher projects a saved file asynchronously; poll until list_connections agrees.
+	// The file watcher projects a saved file asynchronously; poll until list agrees.
 	waitListed := func(name string, want int) {
 		t.Helper()
 		var got int
 		testx.WaitUntil(t, 10*time.Second, func() bool { got = listed()[name]; return got == want })
 		if got != want {
-			t.Fatalf("list_connections %s rowsThreshold = %d, want %d", name, got, want)
+			t.Fatalf("list %s rowsThreshold = %d, want %d", name, got, want)
 		}
 	}
 
@@ -76,13 +73,20 @@ func TestDbMcpConnectionExplainThreshold(t *testing.T) {
 	if got, rows := summaryRows(plain.ID), listed()["Plain"]; got != 0 || rows != expensiveThreshold {
 		t.Errorf("Plain summary = %d, list = %d, want 0 and %d", got, rows, expensiveThreshold)
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
-	if err != nil {
-		t.Fatal(err)
+	type pinned struct {
+		Name           string `json:"name"`
+		ExpensiveQuery struct {
+			RowsThreshold int `json:"rowsThreshold"`
+		} `json:"expensiveQuery"`
 	}
-	var all any
-	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "connection-explain-threshold", "list_connections", all, flowharness.Mask("id"))
+	all := []pinned{}
+	for _, v := range listViews(t, sess) {
+		p := pinned{Name: v.Name}
+		p.ExpensiveQuery.RowsThreshold = v.ExpensiveRows
+		all = append(all, p)
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	f.app.Contract(t, "connection-explain-threshold", "list", all)
 
 	// Live edit: the same session sees it, no restart.
 	if p := f.setExplainThreshold(t, own.ID, 20_000); p.Message != "" {

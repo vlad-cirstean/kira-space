@@ -155,9 +155,9 @@ func TestDbMcpApprovalFlow(t *testing.T) {
 	}
 	defer sess.Close()
 
-	list, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"})
+	list, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || list.IsError || !strings.Contains(text(list), f.connID) || !strings.Contains(text(list), "scratch notes") {
-		t.Fatalf("list_connections = %q (%v), want the exposed connection with its description", text(list), err)
+		t.Fatalf("list = %q (%v), want the exposed connection with its description", text(list), err)
 	}
 	if read := runQuery(t, sess, f.connID, "select body from notes order by id"); read.IsError || !strings.Contains(text(read), "two") {
 		t.Fatalf("read run_query = %q, want rows without approval", text(read))
@@ -579,8 +579,8 @@ func TestDbMcpSurvivesRestart(t *testing.T) {
 	f.url = m[1]
 
 	// The old session died with the old process; a new one with the same helper token works.
-	if r, err := before.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"}); err == nil && !r.IsError {
-		t.Logf("the pre-restart session still answers; list_connections = %q", text(r))
+	if r, err := before.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}}); err == nil && !r.IsError {
+		t.Logf("the pre-restart session still answers; list = %q", text(r))
 	}
 	after := f.session(t)
 	if r := runQuery(t, after, f.connID, "select count(*) from notes"); r.IsError {

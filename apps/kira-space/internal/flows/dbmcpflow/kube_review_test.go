@@ -84,7 +84,7 @@ func (k *kubeFixture) describeArgs(kind, name, namespace string) map[string]any 
 }
 
 func (k *kubeFixture) logsArgs(extra map[string]any) map[string]any {
-	args := map[string]any{"clusterId": k.ids["kind-dev"], "namespace": "default", "pod": "web-1", "container": "app", "tail": 2}
+	args := map[string]any{"clusterId": k.ids["kind-dev"], "namespace": "default", "name": "web-1", "container": "app", "tail": 2}
 	for key, v := range extra {
 		args[key] = v
 	}
@@ -101,10 +101,10 @@ func TestKubeResponseReview(t *testing.T) {
 		key, tool, op, want string
 		args                map[string]any
 	}{
-		{"list", "kube_list_resources", "list", "web-1", k.listPods("default", nil)},
-		{"describeSecret", "kube_describe", "describe", "db-creds", k.describeArgs("v1/secrets", "db-creds", "default")},
-		{"describePod", "kube_describe", "describe", "web-1", k.describeArgs("v1/pods", "web-1", "default")},
-		{"logs", "kube_pod_logs", "logs", "line three", k.logsArgs(nil)},
+		{"list", "kube.list", "list", "web-1", k.listPods("default", nil)},
+		{"describeSecret", "kube.describe", "describe", "db-creds", k.describeArgs("v1/secrets", "db-creds", "default")},
+		{"describePod", "kube.describe", "describe", "web-1", k.describeArgs("v1/pods", "web-1", "default")},
+		{"logs", "kube.logs", "logs", "line three", k.logsArgs(nil)},
 	}
 	for _, c := range cases {
 		t.Run(c.key, func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestKubeResponseWithhold(t *testing.T) {
 	k := newKubeFixture(t, flowharness.WithApprovalHeldCaps(300, 1<<20))
 	k.setMcp(t, "kind-dev", review("review"))
 
-	pending, req, _ := k.held(t, "kube_pod_logs", k.logsArgs(nil))
+	pending, req, _ := k.held(t, "kube.logs", k.logsArgs(nil))
 	k.answerItems(t, false, req.Item.ID)
 	out := <-pending
 	const want = `the user withheld the result of this Kubernetes logs on "kind-dev"; it ran, but you get no data. Do not rerun it to get the result another way.`
@@ -163,7 +163,7 @@ func TestKubeResponseWithhold(t *testing.T) {
 	}
 
 	// An over-cap result is withheld unseen and raises no item.
-	res := k.call(t, "kube_list_resources", k.listPods("default", nil))
+	res := k.call(t, "kube.list", k.listPods("default", nil))
 	if !res.IsError || !strings.Contains(text(res), "MB, over the 8 MB review limit") || !strings.Contains(text(res), "withheld unseen") {
 		t.Fatalf("over the cap = %q, want the too-large refusal", text(res))
 	}
@@ -178,16 +178,18 @@ func TestKubeResponseSettings(t *testing.T) {
 	dev := k.ids["kind-dev"]
 
 	listed := func() bool {
-		var views []struct {
-			ID            string `json:"id"`
-			ReviewResults bool   `json:"reviewResults"`
+		var views struct {
+			Clusters []struct {
+				ID     string `json:"id"`
+				Review bool   `json:"review"`
+			} `json:"clusters"`
 		}
-		if err := json.Unmarshal([]byte(text(k.call(t, "kube_list_clusters", nil))), &views); err != nil {
+		if err := json.Unmarshal([]byte(text(k.call(t, "list", map[string]any{"what": []string{"clusters"}}))), &views); err != nil {
 			t.Fatal(err)
 		}
-		for _, v := range views {
+		for _, v := range views.Clusters {
 			if v.ID == dev {
-				return v.ReviewResults
+				return v.Review
 			}
 		}
 		t.Fatal("cluster not listed")
@@ -221,27 +223,27 @@ func TestKubeResponseSettings(t *testing.T) {
 
 	// Inherit follows the app leaf.
 	k.setMcp(t, "kind-dev", review("inherit"))
-	if listed() || sendOrHold("kube_list_resources") {
+	if listed() || sendOrHold("kube.list") {
 		t.Fatal("inherit with the app setting off held a result")
 	}
 	k.setKubeApp(t, true, "on")
-	if !listed() || !sendOrHold("kube_list_resources") {
+	if !listed() || !sendOrHold("kube.list") {
 		t.Fatal("inherit with the app setting on did not hold")
 	}
 	// The cluster's own value wins both ways.
 	k.setMcp(t, "kind-dev", review("send"))
-	if listed() || sendOrHold("kube_list_resources") {
+	if listed() || sendOrHold("kube.list") {
 		t.Fatal("send with the app setting on held a result")
 	}
 	k.setKubeApp(t, false, "")
 	k.setMcp(t, "kind-dev", review("review"))
-	if !listed() || !sendOrHold("kube_list_resources") {
+	if !listed() || !sendOrHold("kube.list") {
 		t.Fatal("review with the app setting off did not hold")
 	}
 
 	// Discover returns namespaces and kinds only: never held.
-	if res := k.call(t, "kube_discover", map[string]any{"clusterId": dev}); res.IsError || k.queueLen(t) != 0 {
-		t.Fatalf("kube_discover = %q, queue %d, want a plain result", text(res), k.queueLen(t))
+	if res := k.call(t, "kube.discover", map[string]any{"clusterId": dev}); res.IsError || k.queueLen(t) != 0 {
+		t.Fatalf("kube_read = %q, queue %d, want a plain result", text(res), k.queueLen(t))
 	}
 }
 
@@ -263,7 +265,7 @@ func TestKubeReadReviewOption(t *testing.T) {
 	}
 
 	// No tick: the result goes straight out.
-	pending := k.callAsync("kube_list_resources", k.listPods("default", nil))
+	pending := k.callAsync("kube.list", k.listPods("default", nil))
 	req := k.pending(t)
 	if offered, on := readPayload(req.Item); !offered || on {
 		t.Fatalf("send cluster payload offered=%v on=%v, want the option offered and off", offered, on)
@@ -275,7 +277,7 @@ func TestKubeReadReviewOption(t *testing.T) {
 	}
 
 	// Tick: this result is held.
-	pending = k.callAsync("kube_list_resources", k.listPods("default", nil))
+	pending = k.callAsync("kube.list", k.listPods("default", nil))
 	req = k.pending(t)
 	k.app.Contract(t, kubeReviewKey, "args:ApprovalsService.Answer#tick", approvals.AnswerArgs{
 		IDs: []string{req.Item.ID}, Approve: true, Options: map[string]json.RawMessage{req.Item.ID: json.RawMessage(`{"reviewResult":true}`)},
@@ -295,7 +297,7 @@ func TestKubeReadReviewOption(t *testing.T) {
 
 	// A cluster that reviews shows the option on.
 	k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: true, Approval: "prompt", Review: "review"})
-	pending = k.callAsync("kube_list_resources", k.listPods("default", nil))
+	pending = k.callAsync("kube.list", k.listPods("default", nil))
 	req = k.pending(t)
 	if offered, on := readPayload(req.Item); !offered || !on {
 		t.Fatalf("review cluster payload offered=%v on=%v, want both", offered, on)
@@ -307,7 +309,7 @@ func TestKubeReadReviewOption(t *testing.T) {
 	<-pending
 
 	// Discover has no result to review: no option.
-	pending = k.callAsync("kube_discover", map[string]any{"clusterId": k.ids["kind-dev"]})
+	pending = k.callAsync("kube.discover", map[string]any{"clusterId": k.ids["kind-dev"]})
 	req = k.pending(t)
 	if offered, _ := readPayload(req.Item); offered {
 		t.Fatal("discover offered a result review")
@@ -320,7 +322,7 @@ func TestKubeReadReviewOption(t *testing.T) {
 func TestKubeResponseClusterOff(t *testing.T) {
 	k := newKubeFixture(t)
 	k.setMcp(t, "kind-dev", review("review"))
-	pending, req, _ := k.held(t, "kube_list_resources", k.listPods("default", nil))
+	pending, req, _ := k.held(t, "kube.list", k.listPods("default", nil))
 	k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "allow", Review: "review"})
 	k.answerItems(t, true, req.Item.ID)
 	out := <-pending

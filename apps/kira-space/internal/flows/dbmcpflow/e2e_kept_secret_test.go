@@ -126,10 +126,10 @@ func TestE2EKeptSecret(t *testing.T) {
 		if _, err := reveal(t, h.req.RequestID, "session_token", true); err == nil {
 			t.Fatal("staged reveal after Send succeeded, want a refusal")
 		}
-		list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
+		list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
 		remember(list)
 		if !strings.Contains(list, `"name":"session_token","type":"string","items":0,"secret":true`) || strings.Contains(list, sessionToken) {
-			t.Fatalf("list_saved_variables = %s, want the secret by name and kind only", list)
+			t.Fatalf("list (what: saved) = %s, want the secret by name and kind only", list)
 		}
 	})
 

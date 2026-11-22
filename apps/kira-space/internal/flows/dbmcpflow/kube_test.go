@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"fmt"
+	"maps"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -79,9 +80,21 @@ func on(approval string) kubernetes.McpSettings {
 	return kubernetes.McpSettings{Enabled: true, Approval: approval, Review: "inherit"}
 }
 
+// kubeCallOf maps a case name to the tool call: "kube.<op>" is kube_read with that op; any other name is a tool.
+func kubeCallOf(name string, args map[string]any) (string, map[string]any) {
+	op, ok := strings.CutPrefix(name, "kube.")
+	if !ok {
+		return name, args
+	}
+	out := map[string]any{"op": op}
+	maps.Copy(out, args)
+	return "kube_read", out
+}
+
 func (k *kubeFixture) call(t *testing.T, name string, args map[string]any) *mcp.CallToolResult {
 	t.Helper()
-	res, err := k.sess.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+	tool, args := kubeCallOf(name, args)
+	res, err := k.sess.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 	if err != nil {
 		t.Fatalf("%s: %v", name, err)
 	}
@@ -95,8 +108,9 @@ type kubeOutcome struct {
 
 func (k *kubeFixture) callAsync(name string, args map[string]any) chan kubeOutcome {
 	ch := make(chan kubeOutcome, 1)
+	tool, args := kubeCallOf(name, args)
 	go func() {
-		res, err := k.sess.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+		res, err := k.sess.CallTool(ctx, &mcp.CallToolParams{Name: tool, Arguments: args})
 		ch <- kubeOutcome{res, err}
 	}()
 	return ch
@@ -208,15 +222,15 @@ func TestKubeMcp(t *testing.T) {
 	})
 
 	t.Run("list-clusters", func(t *testing.T) {
-		res := k.call(t, "kube_list_clusters", nil)
+		res := k.call(t, "list", map[string]any{"what": []string{"clusters"}})
 		out := text(res)
 		if res.IsError || !strings.Contains(out, dev) || !strings.Contains(out, "dev cluster, safe to read") ||
 			!strings.Contains(out, `"approval":"allow"`) {
-			t.Fatalf("kube_list_clusters = %q", out)
+			t.Fatalf("list (what: clusters) = %q", out)
 		}
 		for _, hidden := range []string{`"permissions"`, `"user"`, `"source"`, k.cfg, k.ids["down"]} {
 			if strings.Contains(out, hidden) {
-				t.Errorf("kube_list_clusters leaks %q: %s", hidden, out)
+				t.Errorf("list (what: clusters) leaks %q: %s", hidden, out)
 			}
 		}
 	})
@@ -225,17 +239,17 @@ func TestKubeMcp(t *testing.T) {
 		// Same text for an off cluster and an unknown id, on every tool.
 		toolArgs := func(name, id string) map[string]any {
 			switch name {
-			case "kube_discover":
+			case "kube.discover":
 				return map[string]any{"clusterId": id}
-			case "kube_list_resources":
+			case "kube.list":
 				return map[string]any{"clusterId": id, "kind": "v1/pods"}
-			case "kube_describe":
+			case "kube.describe":
 				return map[string]any{"clusterId": id, "kind": "v1/pods", "name": "web-1"}
 			default:
-				return map[string]any{"clusterId": id, "namespace": "default", "pod": "web-1"}
+				return map[string]any{"clusterId": id, "namespace": "default", "name": "web-1"}
 			}
 		}
-		tools := []string{"kube_discover", "kube_list_resources", "kube_describe", "kube_pod_logs"}
+		tools := []string{"kube.discover", "kube.list", "kube.describe", "kube.logs"}
 		wantNoCluster := func(id string, args func(name string) map[string]any) {
 			for _, name := range tools {
 				res := k.call(t, name, args(name))
@@ -251,8 +265,8 @@ func TestKubeMcp(t *testing.T) {
 
 		requests := len(k.fake.Requests(""))
 		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "allow", Review: "inherit"})
-		if out := text(k.call(t, "kube_list_clusters", nil)); out != "[]" {
-			t.Fatalf("kube_list_clusters with every cluster off = %q, want []", out)
+		if out := text(k.call(t, "list", map[string]any{"what": []string{"clusters"}})); out != `{"clusters":[]}` {
+			t.Fatalf("list (what: clusters) with every cluster off = %q, want none", out)
 		}
 		wantNoCluster(dev, func(name string) map[string]any { return toolArgs(name, dev) })
 		if n := len(k.fake.Requests("")); n != requests {
@@ -281,7 +295,7 @@ func TestKubeMcp(t *testing.T) {
 			return n
 		}
 		rowsBefore := stmtRows()
-		pending := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		pending := k.callAsync("kube.list", k.listPods("default", nil))
 		req := k.pending(t)
 		if req.Item.Kind != approvals.KindKubeRead || req.Statement != stmt || req.Cluster == nil ||
 			*req.Cluster != (kubeCluster{Context: "kind-dev", Server: k.fake.URL, Namespace: "default", Operation: "list"}) {
@@ -324,7 +338,7 @@ func TestKubeMcp(t *testing.T) {
 		k.contract(t, "OpsService.Recent", []oplog.Record{row})
 
 		before = k.podRequests()
-		denied := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		denied := k.callAsync("kube.list", k.listPods("default", nil))
 		req = k.pending(t)
 		k.answerItems(t, false, req.Item.ID)
 		out = <-denied
@@ -336,7 +350,7 @@ func TestKubeMcp(t *testing.T) {
 			t.Fatal("a denied list reached the API server")
 		}
 
-		turnedOff := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		turnedOff := k.callAsync("kube.list", k.listPods("default", nil))
 		req = k.pending(t)
 		k.setMcp(t, "kind-dev", kubernetes.McpSettings{Enabled: false, Approval: "prompt", Review: "inherit"})
 		k.answerItems(t, true, req.Item.ID)
@@ -356,7 +370,7 @@ func TestKubeMcp(t *testing.T) {
 		k.setMcp(t, "kind-dev", on("prompt"))
 		k.setMcp(t, "bad-token", on("prompt"))
 		bad := k.ids["bad-token"]
-		a := k.callAsync("kube_list_resources", k.listPods("default", nil))
+		a := k.callAsync("kube.list", k.listPods("default", nil))
 		reqA := k.pending(t)
 		k.answerItems(t, true, reqA.Item.ID)
 		if out := <-a; out.err != nil || out.res.IsError {
@@ -365,7 +379,7 @@ func TestKubeMcp(t *testing.T) {
 
 		reqs := len(k.fake.Requests(""))
 		bArgs := map[string]any{"clusterId": bad, "kind": "v1/pods", "namespace": "default"}
-		b := k.callAsync("kube_list_resources", bArgs)
+		b := k.callAsync("kube.list", bArgs)
 		reqB := k.pending(t)
 		if reqB.Item.ID == reqA.Item.ID || reqB.Cluster == nil || reqB.Cluster.Context != "bad-token" {
 			t.Fatalf("second cluster approval = %+v (cluster %+v), want its own request", reqB.Item, reqB.Cluster)
@@ -385,13 +399,13 @@ func TestKubeMcp(t *testing.T) {
 
 		// An allow cluster asks for nothing while the prompt one still does.
 		k.setMcp(t, "kind-dev", on("allow"))
-		if res := k.call(t, "kube_list_resources", k.listPods("default", nil)); res.IsError {
+		if res := k.call(t, "kube.list", k.listPods("default", nil)); res.IsError {
 			t.Fatalf("allow cluster list = %q", text(res))
 		}
 		if n := len(k.list(t)); n != 0 {
 			t.Fatalf("allow parked %d approvals", n)
 		}
-		c := k.callAsync("kube_list_resources", bArgs)
+		c := k.callAsync("kube.list", bArgs)
 		reqC := k.pending(t)
 		k.answerItems(t, false, reqC.Item.ID)
 		<-c
@@ -400,7 +414,7 @@ func TestKubeMcp(t *testing.T) {
 
 	t.Run("secrets-stay-masked-in-lists", func(t *testing.T) {
 		k.setMcp(t, "kind-dev", on("allow"))
-		res := k.call(t, "kube_list_resources", map[string]any{"clusterId": dev, "kind": "v1/secrets", "namespace": "default"})
+		res := k.call(t, "kube.list", map[string]any{"clusterId": dev, "kind": "v1/secrets", "namespace": "default"})
 		for _, leak := range []string{"hunter2-secret", flowharness.B64("hunter2-secret"), flowharness.B64("admin")} {
 			if strings.Contains(text(res), leak) {
 				t.Fatalf("secret list leaks %q: %s", leak, text(res))
@@ -409,7 +423,7 @@ func TestKubeMcp(t *testing.T) {
 		if res.IsError || !strings.Contains(text(res), "db-creds") {
 			t.Fatalf("secret list = %q", text(res))
 		}
-		log := k.call(t, "kube_describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
+		log := k.call(t, "kube.describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
 		if strings.Contains(text(log), "aHVudGVyMi1zZWNyZXQ=") {
 			t.Fatalf("describe leaks the last-applied copy of the secret: %s", text(log))
 		}
@@ -422,22 +436,22 @@ func TestKubeMcp(t *testing.T) {
 				t.Errorf("allow parked %d approvals", n)
 			}
 		}()
-		if res := k.call(t, "kube_discover", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), "kube-system") || !strings.Contains(text(res), `"key":"v1/pods"`) {
-			t.Fatalf("kube_discover = %q, want namespaces and kinds", text(res))
+		if res := k.call(t, "kube.discover", map[string]any{"clusterId": dev}); res.IsError || !strings.Contains(text(res), "kube-system") || !strings.Contains(text(res), `"key":"v1/pods"`) {
+			t.Fatalf("kube_read = %q, want namespaces and kinds", text(res))
 		}
-		res := k.call(t, "kube_list_resources", k.listPods("", map[string]any{"maxRows": 1}))
+		res := k.call(t, "kube.list", k.listPods("", map[string]any{"maxRows": 1}))
 		if res.IsError || !strings.Contains(text(res), `"truncated":true`) || !strings.Contains(text(res), `"rowCount":1`) {
-			t.Fatalf("capped kube_list_resources = %q", text(res))
+			t.Fatalf("capped kube_read = %q", text(res))
 		}
-		sec := k.call(t, "kube_describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
+		sec := k.call(t, "kube.describe", map[string]any{"clusterId": dev, "kind": "v1/secrets", "name": "db-creds", "namespace": "default"})
 		if sec.IsError || !strings.Contains(text(sec), `14 bytes`) || strings.Contains(text(sec), "hunter2-secret") ||
 			strings.Contains(text(sec), flowharness.B64("hunter2-secret")) {
 			t.Fatalf("secret describe leaks or lacks the byte count: %q", text(sec))
 		}
-		logs := k.call(t, "kube_pod_logs", map[string]any{"clusterId": dev, "namespace": "default", "pod": "web-1", "container": "app", "tail": 2})
+		logs := k.call(t, "kube.logs", map[string]any{"clusterId": dev, "namespace": "default", "name": "web-1", "container": "app", "tail": 2})
 		if logs.IsError || !strings.Contains(text(logs), "line two") || !strings.Contains(text(logs), "line three") || strings.Contains(text(logs), "line one") {
-			t.Fatalf("kube_pod_logs tail 2 = %q", text(logs))
+			t.Fatalf("kube_read tail 2 = %q", text(logs))
 		}
-		wantToolError(t, k.call(t, "kube_pod_logs", map[string]any{"clusterId": dev, "namespace": "default", "pod": "web-1", "container": "nope"}), "")
+		wantToolError(t, k.call(t, "kube.logs", map[string]any{"clusterId": dev, "namespace": "default", "name": "web-1", "container": "nope"}), "")
 	})
 }

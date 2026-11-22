@@ -171,7 +171,7 @@ func TestKeptVarsScope(t *testing.T) {
 	if !res.IsError || !strings.Contains(text(res), `no saved variable "secretive"`) {
 		t.Fatalf("other scope = %q, want not found", text(res))
 	}
-	list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
 	if !strings.Contains(list, `"mine"`) || strings.Contains(list, "secretive") {
 		t.Fatalf("list = %s, want only the caller's variable", list)
 	}
@@ -183,22 +183,22 @@ func TestKeptVarsListTool(t *testing.T) {
 	_, sess, _ := f.apiSetup(t, "127.0.0.1", false)
 	f.keep(t, externalScope, "ids", "[11,12,13]")
 
-	res := callTool(t, sess, "list_saved_variables", map[string]any{})
+	res := callTool(t, sess, "list", map[string]any{"what": []string{"saved"}})
 	var out struct {
-		Variables []struct {
+		Saved []struct {
 			Name             string
 			Type             string
 			Items            int
 			ExpiresInSeconds int
-			Source           struct{ MCP, Tool string }
+			Source           struct{ Kind, Tool string }
 		}
 	}
 	if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Variables) != 1 || out.Variables[0].Name != "ids" || out.Variables[0].Type != "array" || out.Variables[0].Items != 3 ||
-		out.Variables[0].ExpiresInSeconds < 3500 || out.Variables[0].Source.MCP != "api" {
-		t.Fatalf("variables = %+v", out.Variables)
+	if len(out.Saved) != 1 || out.Saved[0].Name != "ids" || out.Saved[0].Type != "array" || out.Saved[0].Items != 3 ||
+		out.Saved[0].ExpiresInSeconds < 3500 || out.Saved[0].Source.Tool != "api_request" {
+		t.Fatalf("variables = %+v", out.Saved)
 	}
 	for _, leak := range []string{"11,12,13", "base_url", "claude-code"} {
 		if strings.Contains(text(res), leak) {
