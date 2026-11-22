@@ -351,7 +351,7 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-api-request',
     title: 'API request approval',
-    alt: 'Kira Space approval card for an agent API request, with the URL, the masked token and the saved variable it uses highlighted.',
+    alt: 'Kira Space approval card for an agent API request, with the URL, the masked token and the temporary variable it uses highlighted.',
     caption: 'API request approval. Agents call your APIs; you see the exact request first.',
     icon: 'globe',
     label: 'API request approval',
@@ -359,7 +359,7 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'build-api-review',
     title: 'API response review',
-    alt: 'Kira Space response review holding an API result until you send it to the agent, with the value it will save.',
+    alt: 'Kira Space response review holding an API result until you send it to the agent, with the value it will set.',
     caption: 'API response review. Send the result or withhold it.',
     icon: 'globe',
     label: 'API response review',
@@ -367,18 +367,18 @@ export const SHOTS: readonly ShotDef[] = [
   {
     id: 'studio-api-values',
     title: 'Typed values',
-    alt: 'Kira Space approval card asking you for a one-time code the agent never sees, next to a value already saved.',
+    alt: 'Kira Space approval card asking you for a one-time code the agent never sees, next to a value already available.',
     caption: 'Typed values. You type the value; the agent only sees the name.',
     icon: 'lock',
     label: 'Typed values',
   },
   {
-    id: 'studio-saved-variables',
-    title: 'Saved variables',
-    alt: 'Kira Space settings listing saved variables with their source and time left; the secret shows dots.',
-    caption: 'Saved variables. Values agents saved, in memory, with time left.',
+    id: 'studio-temp-variables',
+    title: 'Temporary variables',
+    alt: 'Kira Space settings listing temporary variables, one line each, with the time left; the secret shows dots.',
+    caption: 'Temporary variables. Values agents set, in memory, with time left.',
     icon: 'lock',
-    label: 'Saved variables',
+    label: 'Temporary variables',
   },
   {
     id: 'studio-kube-read',

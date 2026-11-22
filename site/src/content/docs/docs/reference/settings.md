@@ -18,7 +18,7 @@ sidebar:
 
 ## Studio modules
 
-Sections: Appearance, Data, Cache, Api, Studio MCP (with Connections, Kubernetes, Scripts, API tools and Variables beneath it), Prompts, Advanced.
+Sections: Appearance, Data, Cache, Api, Studio MCP (with Connections, Kubernetes, Scripts, API tools and Temporary variables beneath it), Prompts, Advanced.
 
 The Studio modules have no agent section. They run Claude Code with hermetic launches on.
 
@@ -44,7 +44,7 @@ See [API client](../../studio/api-client/). Defaults: HTTP version 2, no timeout
 
 ### Studio MCP
 
-The server switch, response preview, focus and token. Off by default. See [Studio MCP server](../../studio/database-mcp/). Connections lists the exposed connections, Kubernetes the clusters and Scripts the scripts an agent may use. API tools holds the API request switch. With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched. Variables lists the values agent API requests saved, with their retention in minutes. Clear one value or all of them there. See [Agent API requests](../../studio/agent-api/).
+The server switch, response preview, focus and token. Off by default. See [Studio MCP server](../../studio/database-mcp/). Connections lists the exposed connections, Kubernetes the clusters and Scripts the scripts an agent may use. API tools holds the API request switch. With API requests on: an approval mode, and host and method rules. A deny rule refuses, and an allow rule sends without asking. A request no rule matches is asked or denied, as you choose. Earlier versions still asked for requests an allow rule matched. Temporary variables lists the values agents set, one line each, with the lifetime in minutes. Hover a name for its source. Delete one value or all of them there. See [Agent API requests](../../studio/agent-api/).
 
 ### Prompts
 

@@ -42,7 +42,7 @@ const SHOT_PAGES: Record<string, readonly ShotId[]> = {
     'build-api-request',
     'studio-api-values',
     'build-api-review',
-    'studio-saved-variables',
+    'studio-temp-variables',
   ],
   'studio/kubernetes': [
     'studio-kube-pods',

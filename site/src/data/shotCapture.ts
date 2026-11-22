@@ -96,7 +96,7 @@ export const SHOT_CAPTURE = {
   'build-api-request': { kind: 'floating', selector: '[data-testid="approvals-dialog"]' },
   'build-api-review': { kind: 'floating', selector: '[data-testid="approvals-dialog"]' },
   'studio-api-values': { kind: 'floating', selector: '[data-testid="approvals-dialog"]' },
-  'studio-saved-variables': {
+  'studio-temp-variables': {
     kind: 'region',
     selector: '[data-testid="settings-dialog"]',
     padding: 0,
