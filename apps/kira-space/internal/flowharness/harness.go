@@ -550,6 +550,7 @@ func (a *App) build() {
 		OpenWindow: a.WindowMgr.OpenWindow, OpenNewWindow: a.WindowMgr.openNew, OpenNewWindowKeyed: a.WindowMgr.openKeyed,
 		CloseWindow: a.WindowMgr.CloseWindow, FocusWindow: a.WindowMgr.FocusWindow,
 		SetWindowTitle: a.WindowMgr.SetWindowTitle, AppFocused: a.WindowMgr.AppFocused,
+		OpenTornWindow: a.WindowMgr.openTorn, WindowGeometry: a.WindowMgr.geometry,
 	})
 	a.built++
 }

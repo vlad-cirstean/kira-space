@@ -38,9 +38,15 @@ test('contract: a pending write shows connection, operation and statement; Appro
   await expect(name).toHaveText(item.target.name);
   await expect(card.locator('[data-testid="approval-target-icon"]')).toBeVisible();
   // The engine icon names the kind: no engine word beside the location.
-  await expect(card.locator('[data-testid="approval-target-kind"]')).toHaveText(
-    item.target.location,
-  );
+  const where = item.payload as { host: string; path: string };
+  const parts = card.locator('[data-testid="approval-target-part"]');
+  await expect(parts).toHaveCount([where.host, where.path].filter(Boolean).length);
+  await expect(parts.first()).toHaveText(where.host || where.path);
+  if (where.host && where.path) {
+    await expect(parts.nth(1).locator('[data-testid="approval-target-chip"]')).toHaveText(
+      where.path,
+    );
+  }
   await expect(card.locator('[data-testid="approval-operation"]')).toHaveText('Write');
   await expect(card.locator('[data-testid="approval-fact"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="approval-countdown"]')).toContainText('left');

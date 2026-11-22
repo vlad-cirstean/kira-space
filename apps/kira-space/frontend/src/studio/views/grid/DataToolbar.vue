@@ -7,7 +7,7 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Popover, PopoverAnchor } from '@theme/components/ui/popover';
 import { t } from '@theme/i18n';
 import ToolbarSeparator from '@workbench/components/ToolbarSeparator.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import type { DataTabRecord } from '../../../state/tabDomain';
 import { useConnectionsStore } from '../../state/connections';
 import { useFakeDataStore } from '../../state/fakeData';
@@ -32,6 +32,7 @@ const pendingChangesStore = usePendingChangesStore();
 const connectionsStore = useConnectionsStore();
 const gridViewStore = useGridViewStore();
 const props = defineProps<{ tab: DataTabRecord }>();
+const emit = defineEmits<{ revealColumn: [name: string] }>();
 
 // P24 D30: SegmentedControl's generic now covers a numeric union too, so this hand-rolled .p-seg
 // (kept only because two leaks.spec.ts assertions read .active, since fixed) can be the primitive.
@@ -213,6 +214,13 @@ function onGenerateData(): void {
 }
 
 const columnsOpen = ref(false);
+const columnsMenu = useTemplateRef<{ focusSearch: () => void }>('columnsMenu');
+// Opening focuses the search box through the menu's own open-auto-focus; an open menu is focused here.
+function openColumnSearch(): void {
+  if (columnsOpen.value) columnsMenu.value?.focusSearch();
+  else columnsOpen.value = true;
+}
+defineExpose({ openColumnSearch });
 const columnsAnchorRef = ref<HTMLElement | null>(null);
 
 // P16 design system's count Badge on the Columns button: "selected / total" — both counts
@@ -338,6 +346,7 @@ function onDeleteRow(): void {
               : t('studio.common.columns.label')
           "
           :aria-label="t('studio.common.columns.label')"
+          shortcut="data.filterColumns"
           class="relative"
           data-testid="toolbar-columns"
           :aria-expanded="columnsOpen"
@@ -349,7 +358,13 @@ function onDeleteRow(): void {
         </TooltipIconButton>
         <PopoverAnchor :reference="columnsAnchorRef ?? undefined" />
       </div>
-      <ColumnsMenu v-if="columnsOpen" :tab-id="tab.id" :caps="caps" />
+      <ColumnsMenu
+        v-if="columnsOpen"
+        ref="columnsMenu"
+        :tab-id="tab.id"
+        :caps="caps"
+        @reveal-column="emit('revealColumn', $event)"
+      />
     </Popover>
   </div>
 

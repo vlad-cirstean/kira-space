@@ -42,3 +42,15 @@ export function useClearKept() {
     queryClient,
   );
 }
+
+/** Removes one value a held result would keep. The held result is refetched: its keep list shrank. */
+export function useDropStaged(requestId: () => string) {
+  return useMutation(
+    {
+      mutationFn: (name: string) => control.keptDropStaged(requestId(), name),
+      onSettled: () =>
+        queryClient.invalidateQueries({ queryKey: ['dbMcpPendingResponse', requestId()] }),
+    },
+    queryClient,
+  );
+}

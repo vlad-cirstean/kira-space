@@ -65,3 +65,6 @@ export async function stableBoundingBox(
   if (!box) throw new Error('stableBoundingBox: locator never settled on a box');
   return box;
 }
+
+/** Whitespace-free form, for comparing a formatted script view with its stored one-line source. */
+export const squash = (s: string): string => s.replace(/\s+/g, '');

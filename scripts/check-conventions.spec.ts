@@ -333,23 +333,29 @@ describe('N17 semantic button variant', () => {
 });
 
 describe('N18 selection stays neutral', () => {
-  const tokens = (select: string, on = 'var(--kira-fg)') =>
+  const tokens = (select: string, on = '#33333a') =>
     [
       `--kira-select: ${select};`,
       '--kira-select-edge: #71717a;',
       '--kira-select-text: #45454d;',
       '--kira-focus: #a1a1aa;',
       '--kira-bg-input: #27272c;',
-      `--kira-on: ${on};`,
-      '--kira-on-fg: var(--kira-bg-chrome);',
+      `--kira-toggle-on: ${on};`,
+      '--kira-toggle-on-edge: #c4c4cc;',
+      '--kira-toggle-mark: #f4f4f5;',
+      '--kira-toggle-off-edge: #3e3e45;',
+      '--kira-toggle-knob: #6b6b73;',
+      '--kira-progress-fill: #b4b4bc;',
       '--kira-control-edge: var(--kira-select-edge);',
     ].join('\n');
 
   test('a blue selection token fails, the grey passes', () => {
     expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
     expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
-    expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain('--kira-on');
-    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(7);
+    expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain(
+      '--kira-toggle-on',
+    );
+    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(11);
   });
 
   test('Monaco keeps every required grey key and ::selection stays themed', () => {
@@ -402,8 +408,10 @@ describe('N18 selection stays neutral', () => {
     expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
     const checkbox = 'packages/theme/src/components/ui/checkbox/Checkbox.vue';
     expect(hits(checkbox, "'data-[state=checked]:bg-primary'")[0]?.rule).toBe('N18');
-    expect(hits(checkbox, "'aria-checked:bg-on aria-checked:text-on-fg'")).toEqual([]);
-    expect(hits(checkbox, "'data-[state=checked]:bg-on'")[0]?.message).toContain('aria-checked');
+    expect(hits(checkbox, "'aria-checked:bg-toggle-on aria-checked:text-toggle-mark'")).toEqual([]);
+    expect(hits(checkbox, "'data-[state=checked]:bg-toggle-on'")[0]?.message).toContain(
+      'aria-checked',
+    );
     expect(
       hits(
         'packages/theme/src/components/ui/progress/Progress.vue',

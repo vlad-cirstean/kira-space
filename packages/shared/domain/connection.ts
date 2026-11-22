@@ -209,7 +209,7 @@ const connectionFieldsSchema = /*#__PURE__*/ z.object({
   // P534: column review for masking is on; the reviewed list lives in the connection file.
   maskReviewOn: z.boolean().default(false),
   // M2: free-text "what this DB is for", passed to an AI client as connection metadata
-  // (list_connections). Never interpreted by this app.
+  // (list). Never interpreted by this app.
   mcpDescription: z.string().max(1000).default(''),
   // M2: per-operation MCP permission, one of deny/allow/prompt. `.default` is load-bearing the
   // same way mcpEnabled's is — an older stored row has no such key. Defaults tighten what M1

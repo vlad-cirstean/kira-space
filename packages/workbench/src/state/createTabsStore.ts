@@ -3,6 +3,7 @@ import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { type Ref, reactive, toRefs } from 'vue';
+import { moveBlock } from '../behaviour/sortableReorder';
 import { TIMING } from '../behaviour/timing';
 import { logError } from '../bridge/log';
 import { useConfirmDialogStore } from './confirmDialog';
@@ -99,11 +100,15 @@ export interface TabsStoreActions<K extends string, R extends TabRecordLike> {
   closeTab(id: string): Promise<void>;
   /** System-initiated cleanup (a deleted connection's tabs): closes without the discard prompt. */
   dropTabs(ids: readonly string[]): void;
+  /** Closes several tabs with Close others' discard rules (pinned and unknown ids skipped). */
+  closeTabs(ids: readonly string[]): Promise<void>;
   closeOthers(id: string): Promise<void>;
   closeToTheRight(id: string): Promise<void>;
   closeAll(key: K): Promise<void>;
   activateTab(id: string): void;
   moveTab(fromId: string, toId: string): void;
+  /** Moves the ids as one block, strip order kept, to toId's slot (`moveBlock`'s rule). */
+  moveTabs(ids: readonly string[], toId: string): void;
   stepTab(key: K, delta: 1 | -1): void;
   isPreview(id: string): boolean;
   promoteTab(id: string): void;
@@ -114,6 +119,16 @@ export interface TabsStoreActions<K extends string, R extends TabRecordLike> {
     opts: { skipUnchanged: boolean },
   ): void;
   saveNow(): void;
+  /** Cancels the debounce and resolves once every save queued so far, the current set included,
+   *  settled. A tab move awaits it so no later save names the tab it just gave away. */
+  settleSaves(): Promise<void>;
+  /** Asks the question closing these tabs asks, when any holds unsaved work; false means keep them. */
+  confirmRelease(ids: readonly string[]): Promise<boolean>;
+  /** The tab's record as stored, `order` and `active` included; null for an unknown id. */
+  serializeTab(id: string): R | null;
+  /** Adds a tab another window handed over, last. `activate` false leaves it inactive. A tab
+   *  already here is only activated (when `activate`). */
+  receiveTab(raw: R, meta: { incognito: boolean; activate: boolean }): R;
 }
 
 export interface TabsHost<
@@ -153,6 +168,9 @@ export interface TabsHost<
    *  hook, copying the source tab's incognito flag onto the duplicate so "Duplicate tab" on an
    *  incognito tab doesn't silently start persisting the copy. */
   onDuplicated?(source: R, duplicate: R): void;
+  /** Runs in `receiveTab` right after a moved-in record joins the list, before the first save — Kira
+   *  Studio's own hook, restoring the incognito flag so the tab is never persisted here. */
+  onReceived?(record: R, meta: { incognito: boolean }): void;
   /** Adds extra actions/state to the returned store, given the generic actions above plus
    *  `dropPageStoresForTab`/`dropAllPagesForTab`/`saveNow` (public precisely so `extend` — and,
    *  for Kira Studio, code outside the store entirely — can reach them). Runs once, inside the
@@ -550,6 +568,17 @@ export function createTabsStore<
       saveNow();
     }
 
+    async function closeTabs(ids: readonly string[]): Promise<void> {
+      const asked = new Set(
+        tabsState.tabs
+          .filter((t) => ids.includes(t.id) && !host.kinds[t.kind]?.pinned)
+          .map((t) => t.id),
+      );
+      if (asked.size === 0) return;
+      if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
+      dropTabs([...asked]);
+    }
+
     async function closeOthers(id: string): Promise<void> {
       const asked = othersToClose(id);
       if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
@@ -611,6 +640,38 @@ export function createTabsStore<
       saveNow();
     }
 
+    function settleSaves(): Promise<void> {
+      saveDebounced.cancel();
+      return enqueueSave(JSON.stringify(persistableTabs()));
+    }
+
+    async function confirmRelease(ids: readonly string[]): Promise<boolean> {
+      const asked = new Set(ids);
+      return dirtyCount(asked) === 0 || (await confirmCloses(asked));
+    }
+
+    function serializeTab(id: string): R | null {
+      const tab = tabsState.tabs.find((t) => t.id === id);
+      return tab ? (JSON.parse(JSON.stringify(tab)) as R) : null;
+    }
+
+    function receiveTab(raw: R, meta: { incognito: boolean; activate: boolean }): R {
+      const existing = tabsState.tabs.find((t) => t.id === raw.id);
+      if (existing) {
+        if (meta.activate) activateTab(existing.id);
+        return existing;
+      }
+      const kind = host.kinds[raw.kind];
+      const state = kind ? (kind.parseState(raw.state) ?? kind.defaultState()) : raw.state;
+      tabsState.tabs.push({ ...raw, state, order: tabsState.tabs.length, active: false });
+      const record = tabsState.tabs[tabsState.tabs.length - 1];
+      host.onReceived?.(record, meta);
+      if (meta.activate) setActiveTabId(record.id, host.workspaceKeyOf(record));
+      host.onOpened?.(record, true);
+      saveNow();
+      return record;
+    }
+
     function activateTab(id: string): void {
       const target = tabsState.tabs.find((t) => t.id === id);
       if (!target) return;
@@ -638,6 +699,28 @@ export function createTabsStore<
       const [moved] = next.splice(fromIdx, 1);
       next.splice(toIdx, 0, moved);
       tabsState.tabs = next;
+      saveNow();
+    }
+
+    function moveTabs(ids: readonly string[], toId: string): void {
+      const toTab = tabsState.tabs.find((t) => t.id === toId);
+      if (!toTab || host.kinds[toTab.kind]?.pinned) return;
+      const key = host.workspaceKeyOf(toTab);
+      const moving = tabsState.tabs
+        .filter(
+          (t) =>
+            ids.includes(t.id) && host.workspaceKeyOf(t) === key && !host.kinds[t.kind]?.pinned,
+        )
+        .map((t) => t.id);
+      const order = moveBlock(
+        tabsState.tabs.map((t) => t.id),
+        moving,
+        toId,
+      );
+      if (moving.length === 0) return;
+      for (const id of moving) removeFromPreviewCohort(key, id);
+      const byId = new Map(tabsState.tabs.map((t) => [t.id, t]));
+      tabsState.tabs = order.map((id) => byId.get(id) as R);
       saveNow();
     }
 
@@ -713,16 +796,22 @@ export function createTabsStore<
       dropAllPagesForTab,
       closeTab,
       dropTabs,
+      closeTabs,
       closeOthers,
       closeToTheRight,
       closeAll,
       activateTab,
       moveTab,
+      moveTabs,
       stepTab,
       isPreview,
       promoteTab,
       patchTabState,
       saveNow,
+      settleSaves,
+      confirmRelease,
+      serializeTab,
+      receiveTab,
     };
 
     const extra = host.extend(actions);

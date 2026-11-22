@@ -180,7 +180,7 @@ func TestApiResponseReviewScripted(t *testing.T) {
 	}
 
 	p, held, res := run("scripted", "GET", transformSrc)
-	const want = `{"result":[{"id":9007199254740993,"domain":"x.test"},{"id":2,"domain":"y.test"}]}`
+	const want = `{"output":[{"id":9007199254740993,"domain":"x.test"},{"id":2,"domain":"y.test"}]}`
 	if !p.Scripted || p.IsError || p.Bytes != len(want) || p.RawBytes != len(held.Raw) || p.RawBytes == 0 || p.Class != "read" {
 		t.Fatalf("payload = %+v, want scripted with raw bytes", p)
 	}
@@ -329,21 +329,25 @@ func TestApiResponseReviewSettings(t *testing.T) {
 	}
 	listed := func() map[string]map[string]bool {
 		t.Helper()
-		res := callTool(t, sess, "api_list_environments", map[string]any{})
+		res := callTool(t, sess, "list", map[string]any{"what": []string{"environments"}})
 		var out struct {
 			Environments []struct {
-				Name          string
-				ReviewResults map[string]bool
+				Name   string
+				Review []string
 			}
 		}
 		if err := json.Unmarshal([]byte(text(res)), &out); err != nil || len(out.Environments) != 1 {
 			t.Fatalf("listing = %s (%v)", text(res), err)
 		}
 		noSecret(t, "the listing", text(res))
-		return map[string]map[string]bool{out.Environments[0].Name: out.Environments[0].ReviewResults}
+		held := map[string]bool{}
+		for _, mode := range out.Environments[0].Review {
+			held[mode] = true
+		}
+		return map[string]map[string]bool{out.Environments[0].Name: held}
 	}
 	if got := listed()["Dev"]; got["read"] || !got["write"] {
-		t.Fatalf("reviewResults = %v, want read sent, write held", got)
+		t.Fatalf("review = %v, want read sent, write held", got)
 	}
 	if held("GET", false) || !held("POST", false) {
 		t.Fatal("env read send / write review: want GET sent and POST held")

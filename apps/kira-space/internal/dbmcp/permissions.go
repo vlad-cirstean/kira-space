@@ -11,9 +11,9 @@ import (
 // browse_table's, with inherit already resolved to read's value.
 type modes struct{ read, write, ddl, masked string }
 
-// reviewResolver maps a review setting to held or not. inherit follows the app setting, read at most
-// once per resolver.
-func (s *Server) reviewResolver() func(string) bool {
+// reviewResolver maps a review setting to held or not. inherit follows the app setting appLeaf reads, at
+// most once per resolver.
+func reviewResolver(appLeaf func() bool) func(string) bool {
 	var app, read bool
 	return func(v string) bool {
 		switch v {
@@ -23,11 +23,14 @@ func (s *Server) reviewResolver() func(string) bool {
 			return false
 		}
 		if !read {
-			app, read = s.cfg.PreviewResponses(), true
+			app, read = appLeaf(), true
 		}
 		return app
 	}
 }
+
+// dbReviewResolver is reviewResolver over the databases app setting.
+func (s *Server) dbReviewResolver() func(string) bool { return reviewResolver(s.cfg.PreviewResponses) }
 
 // reviewFor reports whether a call's result is held: the setting of the declared mode or of the
 // detected class. Either one holds, so declaring a weaker mode than the statement looks like never
@@ -37,7 +40,7 @@ func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapter
 	if mode == modeMasked {
 		return s.reviewForMode(c, mode)
 	}
-	held := s.reviewResolver()
+	held := s.dbReviewResolver()
 	if held(c.McpReview.For(mode)) {
 		return true
 	}
@@ -50,10 +53,10 @@ func (s *Server) reviewFor(c model.ConnectionSummary, mode string, class adapter
 // reviewForMode reports whether mode's own setting holds its results. browse_table uses it alone: it has
 // no agent SQL that could look stronger than its mode, so read's setting never forces review on it.
 func (s *Server) reviewForMode(c model.ConnectionSummary, mode string) bool {
-	return s.reviewResolver()(c.McpReview.For(mode))
+	return s.dbReviewResolver()(c.McpReview.For(mode))
 }
 
-// reviewView is list_connections' reviewResults: which modes hold their results for the user.
+// reviewView is list' reviewResults: which modes hold their results for the user.
 type reviewView struct {
 	Read  bool `json:"read"`
 	Write bool `json:"write"`
@@ -63,7 +66,7 @@ type reviewView struct {
 }
 
 func (s *Server) reviewViewOf(c model.ConnectionSummary) reviewView {
-	held := s.reviewResolver()
+	held := s.dbReviewResolver()
 	return reviewView{
 		Read: held(c.McpReview.Read), Write: held(c.McpReview.Write), DDL: held(c.McpReview.Ddl),
 		Masked: held(c.McpReview.Masked),
@@ -209,7 +212,7 @@ func (a connectionAccess) of(mode string) modeAccess {
 }
 
 // accessOf is the one place a connection's permissions, read-only flag and kind become per-mode
-// access. list_connections reports it and every gate and refusal text reads it.
+// access. list reports it and every gate and refusal text reads it.
 func accessOf(c model.ConnectionSummary) connectionAccess {
 	m := modesOf(c)
 	one := func(mode, configured string) modeAccess {
@@ -266,12 +269,4 @@ func modeVerdict(c model.ConnectionSummary, mode string) string {
 		return "prompt"
 	}
 	return "allow"
-}
-
-// maskedModeOf is the stored browse_table setting, inherit when unset.
-func maskedModeOf(c model.ConnectionSummary) string {
-	if c.McpMaskedMode == "" {
-		return model.McpMaskedInherit
-	}
-	return c.McpMaskedMode
 }

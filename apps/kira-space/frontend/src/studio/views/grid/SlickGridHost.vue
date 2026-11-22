@@ -9,7 +9,7 @@ import EmptyState from '@theme/components/EmptyState.vue';
 import { buttonVariants } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { wrapSelectionOnType } from '@theme/wrapSelection';
-import { useDebounceFn, watchDebounced } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import { copyAndAnnounce, readClipboardText } from '@workbench/behaviour/clipboard';
 import { TIMING } from '@workbench/behaviour/timing';
 import { errorText } from '@workbench/bridge/codedError';
@@ -69,7 +69,6 @@ import { KiraSlickGrid } from '../shared/slick/kiraSlickGrid';
 import { createScrollVelocityTracker } from '../shared/slick/scrollVelocity';
 import { attachScrollProbes, createHybridSelectionModel } from '../shared/slick/selectionModel';
 import { sqlDialectFor } from '../shared/sqlIdent';
-import { visibleColumnOrder } from './columnFilter';
 import FkPreviewPopover from './FkPreviewPopover.vue';
 import {
   type CellFocusRequest,
@@ -360,13 +359,8 @@ function currentOrder(): string[] {
   return p ? displayOrder(p) : [];
 }
 
-// Component-local, not read from the store per call: `currentOrder()` and the built SlickGrid
-// columns must never disagree during the filter's debounce window. Seeded at mount (host remounts
-// per tab); the debounced watch below advances it.
-let appliedColumnFilter = rt()?.columnFilter ?? '';
-
 function displayOrder(p: TabularPage): string[] {
-  return visibleColumnOrder(p, tab()?.state.columnOrder ?? null, appliedColumnFilter);
+  return resolveColumnOrder(p, tab()?.state.columnOrder ?? null);
 }
 
 // Thin, tabId/page/order-bound wrappers over rowValues.ts's own pure functions — every call site
@@ -2115,16 +2109,10 @@ onMounted(() => {
       // ran; forcing every large-delta scroll to call render() immediately, before the batch cap
       // existed, would have run that same unbounded batch on every such frame instead.
       //
-      // Real-hardware update: unconditional `true` coupled main-thread render work to *every*
-      // native scroll-event tick during a fling, which real-macOS testing found produces visible
-      // stutter (the motion itself hitching) — a less forgivable failure than the incumbent
-      // tanstack grid's own "content lags, motion stays smooth" gap symptom.
-      // Defaulted back to `false` (the batch cap alone) pending a real A/B on whether
-      // forceSyncScrolling is the cause; kept overridable from the console (see main.ts's own doc
-      // comment on `forceSyncScrollingOverride`) so both variants can be compared without a rebuild
-      // per variant. Read once here, at construction — this option is construction-time only,
-      // same as `frozenColumn`/`enableColumnReorder`/etc. above.
-      forceSyncScrolling: window.__kiraGridTuning?.forceSyncScrollingOverride ?? false,
+      // Real-hardware update: unconditional `true` coupled main-thread render work to every native
+      // scroll-event tick during a fling, which real-macOS testing found produces visible stutter.
+      // `false` keeps the batch cap alone. Construction-time only, like the options above.
+      forceSyncScrolling: false,
       // Display-position-correct arrows for free: the app's own onKeydown no longer needs to juggle
       // displayPositionOf/rowAtDisplayPosition (DataGrid.vue:1762-1779) because the data source
       // already indexes display positions; navigateUp/Down/Left/Right and the Enter -> edit path
@@ -2312,7 +2300,7 @@ onUnmounted(() => {
   editorCtx.commit = () => {};
 });
 
-// Rebuild core shared by the `pageVersion` watch and the column-filter apply. Returns whether it
+// Rebuild core of the `pageVersion` watch. Returns whether it
 // rebuilt: pageVersion counts every tab's loads and closes, and rebuilding for one that is not
 // ours would destroy an open inline editor and mis-consume a pending focus request.
 function applyPageAndOrder(): boolean {
@@ -2339,18 +2327,17 @@ function applyPageAndOrder(): boolean {
   return true;
 }
 
-function applyColumnFilterNow(): void {
-  const next = rt()?.columnFilter ?? '';
-  if (next === appliedColumnFilter) return;
-  // setColumns destroys an open inline editor: stage it first. Display-column ranges would point
-  // at other columns after the rebuild; clearing also clears rt().selection.
-  flushOpenEdit(props.tabId);
-  selectionModel?.setSelectedRanges([]);
-  appliedColumnFilter = next;
-  applyPageAndOrder();
-}
-
-watchDebounced(() => rt()?.columnFilter ?? '', applyColumnFilterNow, { debounce: TIMING.search });
+// The Columns menu commits a drag reorder into tab state without reloading the page, so the grid
+// rebuilds its columns here. setColumns destroys an open inline editor (stage it first); display
+// column ranges would point at other columns afterwards.
+watch(
+  () => tab()?.state.columnOrder,
+  () => {
+    flushOpenEdit(props.tabId);
+    selectionModel?.setSelectedRanges([]);
+    applyPageAndOrder();
+  },
+);
 
 watch(
   () => pageVersion.n,
@@ -2722,8 +2709,14 @@ watch(
 );
 
 defineExpose({
-  applyColumnFilterNow,
-  /** `pageCol` is a page column index. False when that column is filtered out. */
+  /** Scrolls the grid to the named column. False when the grid does not render it. */
+  revealColumn(name: string): boolean {
+    const idx = currentOrder().indexOf(name);
+    if (!grid || idx === -1) return false;
+    grid.scrollColumnIntoView(idx + 1);
+    return true;
+  },
+  /** `pageCol` is a page column index. False when that column is not rendered. */
   revealPageCell(row: number, pageCol: number): boolean {
     if (!grid) return false;
     const name = getPage(props.tabId)?.columns[pageCol]?.name;

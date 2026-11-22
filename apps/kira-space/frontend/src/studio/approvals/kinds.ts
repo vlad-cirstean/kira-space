@@ -5,18 +5,25 @@ import {
   apiRequestPayloadSchema,
   apiResponsePayloadSchema,
   type DbMcpApprovalPlan,
-  type DbQueryPayload,
   dbExemptionPayloadSchema,
   dbQueryPayloadSchema,
   dbResponsePayloadSchema,
   kubeReadPayloadSchema,
+  kubeResponsePayloadSchema,
 } from '@shared/domain/dbmcp';
 import type { KeptUse } from '@shared/domain/kept';
 import { proofReviewPayloadSchema } from '@shared/domain/proof';
 import { joinSentences, type MessageKey, t } from '@theme/i18n';
-import type { ApprovalKinds, ApprovalRisk, ApprovalVerdict } from '@workbench/approvals/registry';
+import type {
+  ApprovalKinds,
+  ApprovalRisk,
+  ApprovalVerdict,
+  ApprovalWherePart,
+} from '@workbench/approvals/registry';
 import { formatCount, formatDuration } from '@workbench/behaviour/format';
 import { type FunctionalComponent, h, markRaw } from 'vue';
+import { z } from 'zod';
+import ClusterIcon from '../kubernetes/components/ClusterIcon.vue';
 import EngineIcon from '../theme/EngineIcon.vue';
 import ApiRequestBody from './ApiRequestBody.vue';
 import ApiRequestDetails from './ApiRequestDetails.vue';
@@ -29,6 +36,8 @@ import DbQueryDetails from './DbQueryDetails.vue';
 import DbResponseBody from './DbResponseBody.vue';
 import DbResponseDetails from './DbResponseDetails.vue';
 import KubeReadBody from './KubeReadBody.vue';
+import KubeReadDetails from './KubeReadDetails.vue';
+import KubeResponseBody from './KubeResponseBody.vue';
 import ProofOpenWindow from './ProofOpenWindow.vue';
 import ProofReviewBody from './ProofReviewBody.vue';
 import ProofReviewDetails from './ProofReviewDetails.vue';
@@ -74,14 +83,7 @@ function dbVerdict(item: ApprovalItem): ApprovalVerdict {
     item.payload,
   );
   const facts: Fact[] = [];
-  if ('script' in p && p.script) {
-    facts.push({
-      text: t('studio.dbMcp.approval.fact.scripts.status', { count: 1 }),
-      tone: 'warn',
-      icon: 'code',
-      tooltip: t('studio.dbMcp.approval.query.scriptResult.hint'),
-    });
-  }
+  facts.push(...keptFacts(p.kept, 'script' in p ? p.script : null, 'db-approval'));
   const cls = item.operation.class;
   if (cls === 'read') {
     const wording = readOnlyWording(p.enforcement, item.target.readOnly);
@@ -189,33 +191,45 @@ const DbTargetIcon: FunctionalComponent<{ item: ApprovalItem }> = (p) =>
 function apiVerdict(item: ApprovalItem): ApprovalVerdict {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const facts: Fact[] = [];
-  const scripts = [
-    p.script?.prepare && t('studio.dbMcp.approval.api.scriptPrepare.hint'),
-    p.script?.transform && t('studio.dbMcp.approval.api.scriptTransform.hint'),
-  ].filter((x): x is string => !!x);
-  if (scripts.length > 0) {
-    facts.push({
-      text: t('studio.dbMcp.approval.fact.scripts.status', { count: scripts.length }),
-      tone: 'warn',
-      icon: 'code',
-      tooltip: scripts.join('\n'),
+  facts.push(
+    ...keptFacts(
+      p.kept.filter((u) => !u.pending),
+      p.script?.transform,
+      'api-approval',
+    ),
+  );
+  // One badge names every secret the request sends that the user did not write: shared secrets, typed inputs
+  // (needed or stored) and {{secret.x}} temporary secrets, deduped by name. The tooltip says where each goes
+  // and where its value comes from. The tooltip names the request host for a temporary secret; the backend
+  // enforces it only for a bound entry (typed, or kept by an api_request script). A secret a SQL or kube
+  // script kept has no origin.
+  const sends = new Map<string, { hosts: string; key: Parameters<typeof t>[0] }>();
+  for (const c of p.credentials) {
+    sends.set(c.name, {
+      hosts: c.hosts.join(', '),
+      key: 'studio.dbMcp.approval.api.sendsEnvironment.label',
     });
   }
-  if (p.credentials.length > 0) {
+  for (const i of p.inputs) {
+    if (sends.has(i.name)) continue;
+    sends.set(i.name, {
+      hosts: i.origin.replace(/^https?:\/\//, ''),
+      key:
+        i.state === 'needed'
+          ? 'studio.dbMcp.approval.api.sendsTyped.label'
+          : 'studio.dbMcp.approval.api.sendsTemporary.label',
+    });
+  }
+  for (const u of p.kept) {
+    if (!u.secret || sends.has(u.name)) continue;
+    sends.set(u.name, { hosts: p.host, key: 'studio.dbMcp.approval.api.sendsTemporary.label' });
+  }
+  if (sends.size > 0) {
     facts.push({
-      text: t('studio.dbMcp.approval.api.sends.status', {
-        names: p.credentials.map((c) => c.name).join(', '),
-      }),
+      text: t('studio.dbMcp.approval.api.sends.status', { names: [...sends.keys()].join(', ') }),
       tone: isRead(p.method) ? 'neutral' : 'warn',
       icon: 'key',
-      tooltip: p.credentials
-        .map((c) =>
-          t('studio.dbMcp.approval.api.credential.label', {
-            name: c.name,
-            hosts: c.hosts.join(', '),
-          }),
-        )
-        .join('\n'),
+      tooltip: [...sends].map(([name, s]) => t(s.key, { name, hosts: s.hosts })).join('\n'),
     });
   }
   if (isRead(p.method)) {
@@ -251,11 +265,18 @@ function dbOperation(item: ApprovalItem): string {
   return key ? t(key) : item.operation.class;
 }
 
-// "PostgreSQL · db.internal · shop / public": the connection's kind label, then its location.
-function connectionWhere(item: ApprovalItem): string {
+const dbLocationSchema = z.object({ host: z.string().default(''), path: z.string().default('') });
+
+// The connection's host (data font), then its database or path as a chip.
+function connectionWhere(item: ApprovalItem): ApprovalWherePart[] {
   const kind = connectionKindSchema.safeParse(item.target.kind).data;
+  const loc = dbLocationSchema.parse(item.payload);
+  const parts: ApprovalWherePart[] = [];
   // The engine icon names a known kind; text only for an unknown one.
-  return [kind ? '' : item.target.kind, item.target.location].filter(Boolean).join(' · ');
+  if (!kind && item.target.kind) parts.push({ text: item.target.kind, label: 'kind' });
+  if (loc.host) parts.push({ text: loc.host, label: 'host', data: true });
+  if (loc.path) parts.push({ text: loc.path, label: 'database', chip: true, data: true });
+  return parts;
 }
 
 // The plan's estimate over its threshold, then its issues: two tags, the rest as "+N more".
@@ -303,11 +324,7 @@ function planRisks(plan: DbMcpApprovalPlan | null, withRows: boolean): ApprovalR
 
 function queryRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = dbQueryPayloadSchema.parse(item.payload);
-  const out = [
-    ...planRisks(p.plan, true),
-    ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
-    ...queryScriptRisks(p.script),
-  ];
+  const out = [...planRisks(p.plan, true), ...keptRisks(p.kept, item.expiresAt, 'db-approval')];
   // The statement looks less powerful than the mode the agent declared.
   if ((RANK[p.detected] ?? Infinity) < (RANK[p.mode] ?? Infinity)) {
     out.push({
@@ -351,47 +368,55 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
     ...out,
     ...planRisks(p.plan, !hasRowsLimit),
     ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
-    ...queryScriptRisks(p.script),
   ];
 }
 
-// The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
-function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
-  if (!script) return [];
-  const out: ApprovalRisk[] = [];
-  if (script.mayKeep.length) {
-    out.push({
-      text: t('studio.kept.risk.keeps.status', {
-        names: script.mayKeep.map((m) => m.name).join(', '),
-      }),
-      tone: 'neutral',
-      testid: 'db-approval-kept-writes',
-    });
-  }
-  return out;
-}
+// A name the script may save, marked when it is written as secret.<name>.
+const mayKeepName = (m: { name: string; secret: boolean }): string =>
+  m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
 
-// The tags for the kept variables a request uses; the testids carry the surface's prefix.
-function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
-  if (kept.length === 0) return [];
-  const out: ApprovalRisk[] = [
-    {
-      text: t('studio.kept.risk.uses.status', { names: kept.map((u) => u.name).join(', ') }),
+type MayKeep = { mayKeep: readonly { name: string; secret: boolean }[] } | null | undefined;
+
+// The chips for the kept variables a request uses and the ones its transform script may keep; the testids
+// carry the surface's prefix.
+function keptFacts(kept: readonly KeptUse[], script: MayKeep, prefix: string): Fact[] {
+  const out: Fact[] = [];
+  if (kept.length > 0) {
+    out.push({
+      text: t('studio.kept.chip.uses.status', { names: kept.map((u) => u.name).join(', ') }),
       tone: 'neutral',
+      icon: 'symbol-variable',
       testid: `${prefix}-kept`,
       tooltip: kept
         .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
         .join('\n'),
-    },
-  ];
-  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    });
+  }
+  if (script?.mayKeep.length) {
     out.push({
-      text: t('studio.kept.risk.expiring.status'),
-      tone: 'warn',
-      testid: `${prefix}-kept-expiring`,
+      text: t('studio.kept.chip.keeps.status', {
+        names: script.mayKeep.map(mayKeepName).join(', '),
+      }),
+      tone: 'neutral',
+      icon: 'symbol-variable',
+      testid: `${prefix}-kept-writes`,
     });
   }
   return out;
+}
+
+// The tag for a kept variable that expires before the card does.
+function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
+  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    return [
+      {
+        text: t('studio.kept.risk.expiring.status'),
+        tone: 'warn',
+        testid: `${prefix}-kept-expiring`,
+      },
+    ];
+  }
+  return [];
 }
 
 function isRead(method: string): boolean {
@@ -401,14 +426,6 @@ function isRead(method: string): boolean {
 function apiRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.inputs.some((i) => i.state === 'needed')) {
-    out.push({
-      text: t('studio.kept.risk.input.status'),
-      tone: 'warn',
-      testid: 'api-approval-input',
-      tooltip: t('studio.kept.risk.input.tooltip'),
-    });
-  }
   out.push(
     ...keptRisks(
       p.kept.filter((u) => !u.pending),
@@ -416,15 +433,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       'api-approval',
     ),
   );
-  if (p.script?.transform?.mayKeep.length) {
-    out.push({
-      text: t('studio.kept.risk.keeps.status', {
-        names: p.script.transform.mayKeep.map((m) => m.name).join(', '),
-      }),
-      tone: 'neutral',
-      testid: 'api-approval-kept-writes',
-    });
-  }
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),
@@ -438,14 +446,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
 function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = apiResponsePayloadSchema.parse(item.payload);
   const out: ApprovalRisk[] = [];
-  if (p.reason === 'userValue') {
-    out.push({
-      text: t('studio.kept.risk.userValue.status'),
-      tone: 'warn',
-      testid: 'api-review-user-value',
-      tooltip: t('studio.kept.risk.userValue.tooltip'),
-    });
-  }
   if (p.isError) {
     out.push({
       text: t('studio.dbMcp.approval.risk.scriptFailed.status'),
@@ -456,12 +456,75 @@ function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
   return out;
 }
 
+const KubeTargetIcon: FunctionalComponent = () => h(ClusterIcon, { size: 16 });
+
+// Every cluster read is a GET: one Read badge, a lock for the guarantee, and the kept variables it uses or keeps.
+function kubeVerdict(item: ApprovalItem): ApprovalVerdict {
+  const p = kubeReadPayloadSchema.parse(item.payload);
+  return {
+    label: t('studio.project.connectionDialog.mcp.read.label'),
+    tone: 'ok',
+    hue: 'read',
+    icon: 'eye',
+    lock: true,
+    tooltip: t('studio.dbMcp.approval.kube.readOnly.hint'),
+    facts: keptFacts(p.kept, p.script?.transform, 'kube-approval'),
+  };
+}
+
+function kubeRisks(item: ApprovalItem): ApprovalRisk[] {
+  const p = kubeReadPayloadSchema.parse(item.payload);
+  const out = keptRisks(p.kept, item.expiresAt, 'kube-approval');
+  if (p.operation === 'logs') {
+    out.push({
+      text: t('studio.dbMcp.approval.kube.logsUnmasked.status'),
+      tone: 'neutral',
+      testid: 'kube-approval-logs-unmasked',
+    });
+  }
+  if (p.operation === 'describe' && p.request?.kind === 'v1/secrets') {
+    out.push({
+      text: t('studio.dbMcp.approval.kube.secretBytes.status'),
+      tone: 'neutral',
+      testid: 'kube-approval-secret-bytes',
+    });
+  }
+  return out;
+}
+
+// The cluster's API server (data font), then the namespace as a chip ("All namespaces" without one).
+function kubeWhere(
+  schema: typeof kubeReadPayloadSchema | typeof kubeResponsePayloadSchema,
+): (item: ApprovalItem) => ApprovalWherePart[] {
+  return (item) => {
+    const p = schema.parse(item.payload);
+    return [
+      ...(p.server ? [{ text: p.server, label: 'server', data: true }] : []),
+      {
+        text: p.namespace || t('kubernetes.namespace.all.option'),
+        label: 'namespace',
+        chip: true,
+      },
+    ];
+  };
+}
+
+// The environment as a chip with its colour dot; muted text when the request has none.
+function environmentWhere(
+  environment: { name: string; color: string } | null | undefined,
+): ApprovalWherePart[] {
+  if (!environment)
+    return [{ text: t('studio.api.environments.none.option'), label: 'environment' }];
+  return [{ text: environment.name, label: 'environment', chip: true, color: environment.color }];
+}
+
 // P520: Studio's approval kinds (internal/approvals Kind* constants). Each maps a subject to its
 // renderers; the shared surface supplies the chrome.
 export function studioApprovalKinds(): ApprovalKinds {
   return {
     'db.query': {
       content: markRaw(DbQueryBody),
+      sections: true,
       details: markRaw(DbQueryDetails),
       monaco: true,
       footerAction: markRaw(ReviewResultOption),
@@ -479,6 +542,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.exemption': {
       content: markRaw(DbExemptionBody),
+      sections: true,
       monaco: true,
       details: markRaw(DbExemptionDetails),
       footerAction: markRaw(ReviewResultOption),
@@ -494,6 +558,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.response': {
       content: markRaw(DbResponseBody),
+      sections: true,
       monaco: true,
       details: markRaw(DbResponseDetails),
       operation: () => t('common.field.result.label'),
@@ -513,43 +578,51 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'kube.read': {
       content: markRaw(KubeReadBody),
+      sections: true,
+      details: markRaw(KubeReadDetails),
+      monaco: true,
+      targetIcon: markRaw(KubeTargetIcon),
+      verdict: kubeVerdict,
+      risks: kubeRisks,
+      footerAction: markRaw(ReviewResultOption),
       operation: (item) =>
         t(KUBE_OPERATION_LABEL[kubeReadPayloadSchema.parse(item.payload).operation]),
-      // The location already ends in the namespace when one is set.
-      where: (item) =>
-        [
-          item.target.location,
-          kubeReadPayloadSchema.parse(item.payload).namespace
-            ? ''
-            : t('kubernetes.namespace.all.option'),
-        ]
-          .filter(Boolean)
-          .join(' · '),
+      where: kubeWhere(kubeReadPayloadSchema),
+    },
+    'kube.response': {
+      content: markRaw(KubeResponseBody),
+      sections: true,
+      monaco: true,
+      operation: () => t('common.field.result.label'),
+      verdict: () => resultVerdict(true, 'studio.dbMcp.approval.verdict.dbWriteResult.hint'),
+      where: kubeWhere(kubeResponsePayloadSchema),
+      labels: () => ({
+        approve: t('studio.dbMcp.preview.send.label'),
+        deny: t('studio.dbMcp.preview.withhold.label'),
+      }),
     },
     'script.run': {
       content: markRaw(ScriptRunBody),
       details: markRaw(ScriptRunDetails),
       operation: () => t('common.run.untitled.title'),
-      where: (item) => item.target.location,
-      whereData: true,
+      where: (item) => [{ text: item.target.location, label: 'folder', data: true }],
     },
     'api.request': {
       content: markRaw(ApiRequestBody),
+      sections: true,
       monaco: true,
       details: markRaw(ApiRequestDetails),
       footerAction: markRaw(ReviewResultOption),
       operation: (item) => apiRequestPayloadSchema.parse(item.payload).method,
       verdict: apiVerdict,
-      where: (item) =>
-        apiRequestPayloadSchema.parse(item.payload).environment?.name ??
-        t('studio.api.environments.none.option'),
+      where: (item) => environmentWhere(apiRequestPayloadSchema.parse(item.payload).environment),
       targetData: true,
       risks: apiRisks,
       requiredInputs: (item) =>
         apiRequestPayloadSchema
           .parse(item.payload)
           .inputs.filter((i) => i.state === 'needed')
-          .map((i) => ({ name: i.name, label: i.label })),
+          .map((i) => ({ name: i.name, label: i.name })),
       labels: () => ({
         approve: t('common.action.send.label'),
         deny: t('studio.dbMcp.approval.api.dontSend.label'),
@@ -557,6 +630,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'api.response': {
       content: markRaw(ApiResponseBody),
+      sections: true,
       monaco: true,
       details: markRaw(ApiResponseDetails),
       operation: () => t('common.field.result.label'),
@@ -565,9 +639,7 @@ export function studioApprovalKinds(): ApprovalKinds {
           apiResponsePayloadSchema.parse(item.payload).class === 'read',
           'studio.dbMcp.approval.verdict.apiWriteResult.hint',
         ),
-      where: (item) =>
-        apiResponsePayloadSchema.parse(item.payload).environment?.name ??
-        t('studio.api.environments.none.option'),
+      where: (item) => environmentWhere(apiResponsePayloadSchema.parse(item.payload).environment),
       targetData: true,
       risks: apiResponseRisks,
       labels: () => ({
@@ -580,10 +652,14 @@ export function studioApprovalKinds(): ApprovalKinds {
       details: markRaw(ProofReviewDetails),
       footerAction: markRaw(ProofOpenWindow),
       operation: () => t('common.action.edit.label'),
-      where: (item) =>
-        t('studio.proof.approval.rev.label', {
-          n: proofReviewPayloadSchema.parse(item.payload).revision,
-        }),
+      where: (item) => [
+        {
+          text: t('studio.proof.approval.rev.label', {
+            n: proofReviewPayloadSchema.parse(item.payload).revision,
+          }),
+          label: 'revision',
+        },
+      ],
       requester: () => '',
       labels: () => ({
         approve: t('studio.proof.change.accept.label'),

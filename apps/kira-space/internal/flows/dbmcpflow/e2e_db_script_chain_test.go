@@ -39,7 +39,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 			t.Fatalf("payload = %s (%v), want a scripted item with rawBytes", req.Item.Payload, err)
 		}
 		held := f.pendingResponse(t, req.RequestID)
-		const envelope = `{"kind":"script","output":{"count":2},"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
+		const envelope = `{"output":{"count":2},"input":{"rowCount":2}}`
 		if held.Text != envelope || !strings.Contains(held.Raw, `"rows":[["1","one"],["2","two"]]`) {
 			t.Fatalf("held text %s raw %s, want the envelope and the rows", held.Text, held.Raw)
 		}
@@ -54,7 +54,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 		f.app.Contract(t, scriptChainKey, "args:ApprovalsService.Answer#review", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answer(t, true, req.RequestID)
 		res := wait(t, pending)
-		if res.IsError || !strings.Contains(text(res), `"kept":[{"name":"ids","type":"array","items":2,`) {
+		if res.IsError || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,`) {
 			t.Fatalf("sent = %q, want the kept summary", text(res))
 		}
 		if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != "[1,2]" {
@@ -63,7 +63,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 	})
 
 	t.Run("a script that names a delete does not make the call a write", func(t *testing.T) {
-		const script = `const sql = "DELETE FROM notes"; kept.set("x", 1); return sql.length;`
+		const script = `const sql = "DELETE FROM notes"; plain.x = 1; return sql.length;`
 		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", script))
 		req := f.pending(t)
 		if req.Stage != "response" || req.Class != "read" {

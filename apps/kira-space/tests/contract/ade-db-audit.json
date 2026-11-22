@@ -180,7 +180,7 @@
         "stepName": "Work",
         "summary": "",
         "target": "",
-        "tool": "list_connections"
+        "tool": "list"
       }
     ]
   }

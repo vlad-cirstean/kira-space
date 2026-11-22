@@ -199,7 +199,7 @@ useShortcut(
   ['data.generate', 'data.filterColumns'],
   (id) => {
     if (id === 'data.generate') onGenerateData();
-    else filterToolbarRef.value?.focusColumnFilter();
+    else dataToolbarRef.value?.openColumnSearch();
   },
   { capture: true },
 );
@@ -229,17 +229,16 @@ onUnmounted(() => {
 
 const dataGridRef = ref<{
   revealPageCell: (row: number, pageCol: number) => boolean;
-  applyColumnFilterNow: () => void;
+  revealColumn: (name: string) => boolean;
 } | null>(null);
-const filterToolbarRef = ref<{ focusColumnFilter: () => void } | null>(null);
+const dataToolbarRef = ref<{ openColumnSearch: () => void } | null>(null);
 
-// `match.col` is a page column index. A match in a column the display-only column filter hides
-// clears the filter first, applies it at once, then reveals.
+// `match.col` is a page column index.
 function onGoToMatch(match: Match): void {
-  if (dataGridRef.value?.revealPageCell(match.row, match.col)) return;
-  gridViewStore.setColumnFilter(props.tab.id, '');
-  dataGridRef.value?.applyColumnFilterNow();
   dataGridRef.value?.revealPageCell(match.row, match.col);
+}
+function onRevealColumn(name: string): void {
+  dataGridRef.value?.revealColumn(name);
 }
 function onCloseSearch(): void {
   gridViewStore.setSearchOpen(props.tab.id, false);
@@ -301,7 +300,7 @@ function onCloseSearch(): void {
           @click="onStop"
         />
       </div>
-      <DataToolbar :tab="tab" />
+      <DataToolbar ref="dataToolbarRef" :tab="tab" @reveal-column="onRevealColumn" />
       <span class="ml-auto" />
       <RunState :state="runState" />
       <!-- FIX-3: pending edits as a count with both actions beside it — Commit is the only
@@ -367,7 +366,7 @@ function onCloseSearch(): void {
       </div>
     </ViewToolbar>
     <ViewToolbar data-testid="filter-toolbar">
-      <FilterToolbar ref="filterToolbarRef" :tab="tab" />
+      <FilterToolbar :tab="tab" />
     </ViewToolbar>
 
     <!-- Below the filter row, not floating over the grid it searches — the "docks at the bottom

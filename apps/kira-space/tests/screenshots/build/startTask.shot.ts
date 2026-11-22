@@ -30,6 +30,8 @@ test('build start task: workflow and step', async ({ relaunch, consoleErrors }) 
 
   await win.locator(`${t('ade-wf-node')}[data-step-id="impl"]`).click();
   await expect(win.locator(t('ade-wf-inspector'))).toContainText('Implement');
+  // Taller than the window shot, so the inspector shows whole instead of cut at its last field.
+  await win.setViewportSize({ width: 1024, height: 1100 });
   await shoot(win, 'build-start-step', consoleErrors);
 });
 

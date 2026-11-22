@@ -3,10 +3,12 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { agentApiResultSchema, apiResponsePayloadSchema } from '@shared/domain/dbmcp';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
+import ApiRequestView from './ApiRequestView.vue';
 import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
@@ -29,6 +31,24 @@ const script = computed(() => response.data.value?.script ?? null);
 // Values the script keeps once this result is sent (P678): not stored yet, previews only.
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
+// Without a script the raw response is what the agent gets: one view.
+const views = computed(() => {
+  const raw = {
+    value: 'raw',
+    label: t('studio.http.diff.before.label'),
+    testid: 'api-review-view-raw',
+  };
+  return payload.value.scripted
+    ? [
+        {
+          value: 'result',
+          label: t('studio.http.diff.after.label'),
+          testid: 'api-review-view-result',
+        },
+        raw,
+      ]
+    : [raw];
+});
 const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 // Never hide bytes: an unparseable response falls back to its verbatim text.
 const parsedRaw = computed(() => {
@@ -43,16 +63,27 @@ const parsedRaw = computed(() => {
 </script>
 
 <template>
-  <div data-testid="api-review-body">
-    <QueryState :query="response" variant="inline" :is-empty="() => false">
+  <div class="flex flex-col gap-2" data-testid="api-review-body">
+    <ApprovalBox v-if="!response.isSuccess.value" testid="api-review-box-state">
+      <QueryState :query="response" variant="inline" :is-empty="() => false" />
+    </ApprovalBox>
+    <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
       <ResultReview
-        testid="api-review"
-        :scripted="payload.scripted"
-        :raw-label="t('studio.dbMcp.approval.api.responseRaw.label')"
-        :result-label="t('common.agentGets.label')"
-        :views-label="t('studio.dbMcp.approval.api.responseViews.aria')"
+        testid-prefix="api-review"
+        :views="views"
+        :label="t('studio.dbMcp.approval.api.responseViews.aria')"
       >
-        <template #raw>
+        <template #request>
+          <ApiRequestView
+            :method="payload.method"
+            :url="payload.url"
+            :headers="payload.request.headers"
+            :body="payload.request.body"
+            :variables="payload.request.variables"
+            :kept="payload.request.kept"
+          />
+        </template>
+        <template #view-raw>
           <ApiResponseView
             v-if="parsedRaw"
             :response="parsedRaw"
@@ -61,7 +92,7 @@ const parsedRaw = computed(() => {
           />
           <ApprovalCode v-else data-testid="api-review-raw">{{ raw || text }}</ApprovalCode>
         </template>
-        <template #result>
+        <template #view-result>
           <FieldError v-if="failed" class="whitespace-pre-wrap" data-testid="api-review-result">{{
             text
           }}</FieldError>
@@ -73,16 +104,29 @@ const parsedRaw = computed(() => {
           />
           <ApprovalCode v-else data-testid="api-review-result">{{ text }}</ApprovalCode>
         </template>
+        <template #mask>
+          <span
+            v-if="payload.masked.length"
+            class="text-kira-sm text-subtle"
+            data-testid="api-review-mask"
+            >{{
+              t('studio.dbMcp.approval.api.masked.status', { names: payload.masked.join(', ') })
+            }}</span
+          >
+        </template>
         <template #after>
-          <StagedKeepList v-if="keep.length" :keep="keep" testid="api-review-keep" />
+          <ApprovalBox v-if="keep.length" testid="api-review-box-keep">
+            <StagedKeepList :keep="keep" :request-id="requestId" testid="api-review-keep" />
+          </ApprovalBox>
         </template>
         <template #script>
-          <JsScriptBlock
-            v-if="script"
-            :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-            :source="script.source"
-            testid="api-review-script"
-          />
+          <ApprovalBox v-if="script" testid="api-review-box-script">
+            <JsScriptBlock
+              :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
+              :source="script.source"
+              testid="api-review-script"
+            />
+          </ApprovalBox>
         </template>
       </ResultReview>
     </QueryState>

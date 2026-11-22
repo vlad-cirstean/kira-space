@@ -8,9 +8,9 @@ import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
-import { collectionRow } from './support/apiRows';
 
-// The variables dialog edits an environment or collection file as a form and as YAML over one draft.
+// The variables dialog (opened from a column menu of the Variables tab) edits an environment or
+// collection file as a form, as dotenv text and as YAML over one draft.
 // Backend half: apiflow.TestApiVariablesForm writes the api-variables-form contract.
 
 const KEY = 'api-variables-form';
@@ -78,7 +78,8 @@ async function openEnvironment(
   });
   await openHttpMode(app.window);
   await app.window.click('[data-testid="api-environments"]');
-  await app.window.click('[data-testid="environment-edit"]');
+  await app.window.click('[data-testid="matrix-col-menu-env-staging"]');
+  await app.window.click('[data-testid="menu-item-rename"]');
   await expect(app.window.locator(dlg)).toBeVisible();
   await expect(app.window.locator('[data-testid="api-environment-name"]')).toHaveValue('Staging');
   return app;
@@ -129,7 +130,6 @@ test('contract: bad YAML disables the form and names the line', async ({ relaunc
     `Line ${form('bad').problem?.line}`,
   );
   await expect(page.locator('[data-testid="api-tab-variables-errors"]')).toBeVisible();
-  await expect(page.locator('[data-testid="api-variable-name-0"]')).toBeDisabled();
   await expect(page.locator('[data-testid="api-variables-save"]')).toBeDisabled();
 });
 
@@ -162,26 +162,9 @@ test('a save over a file changed elsewhere offers Reload and Overwrite', async (
   await expect(page.locator(`${dlg} [data-testid="api-variables-overwrite"]`)).toBeVisible();
 });
 
-test('a typed secret goes through the write-only call, never the file', async ({ relaunch }) => {
-  const view = contract<{ storage: object }>('api-files', 'ApiConfigService.View');
-  const stored = { ...view, storage: { ...view.storage, available: true, reason: null } };
-  const { window: page, control } = await openEnvironment(relaunch, [
-    { channel: IPC.apiConfigView, response: stored },
-    { channel: IPC.apiConfigSetSecret, response: stored },
-  ]);
-  await page.locator('[data-testid="api-tab-variables"]').click();
-  await page.locator('[data-testid="api-variable-secret-1"]').fill('hunter2');
-  await page.locator('[data-testid="api-variables-save"]').click();
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.apiConfigSetSecret)?.args)
-    .toEqual({ name: 'staging.token', value: 'hunter2' });
-  expect(control.log().some((e) => e.channel === IPC.apiConfigSaveFile)).toBe(false);
-});
-
 test('dotenv text refuses a value typed on a secret line', async ({ relaunch }) => {
   const { window: page, control } = await openEnvironment(relaunch);
   await page.locator('[data-testid="api-tab-variables"]').click();
-  await page.locator('[data-testid="api-variables-bulk-toggle"]').click();
   const editor = page.locator('[data-testid="variables-bulk-text"]');
   await replaceCodeEditorText(
     page,
@@ -193,12 +176,31 @@ test('dotenv text refuses a value typed on a secret line', async ({ relaunch }) 
   expect(control.log().some((e) => e.channel === IPC.apiConfigSetSecret)).toBe(false);
 });
 
-test('a collection file edits its variables from the tree menu', async ({ relaunch }) => {
+test('a collection file edits its dotenv text from the default column menu', async ({
+  relaunch,
+}) => {
   const { window: page } = await (async () => {
     const app = await relaunch({
       control: [
         { channel: IPC.collectionsList, response: COLLECTIONS },
         { channel: IPC.variablesListEnvironments, response: [] },
+        {
+          channel: IPC.variablesList,
+          args: { scope: 'collection', ownerId: 'col-1' },
+          response: [
+            {
+              id: 'var-1',
+              scope: 'collection',
+              ownerId: 'col-1',
+              name: 'host',
+              value: 'api.example.com',
+              isSecret: false,
+              secretSet: false,
+              sortOrder: 0,
+              description: '',
+            },
+          ],
+        },
         {
           channel: IPC.apiConfigFile,
           args: { file: file('collection').file },
@@ -212,8 +214,9 @@ test('a collection file edits its variables from the tree menu', async ({ relaun
       ],
     });
     await openHttpMode(app.window);
-    await collectionRow(app.window, 'col-1').click({ button: 'right' });
-    await app.window.click('[data-testid="menu-item-edit-variables"]');
+    await app.window.click('[data-testid="api-environments"]');
+    await app.window.click('[data-testid="matrix-col-menu-col-1"]');
+    await app.window.click('[data-testid="menu-item-dotenv"]');
     return app;
   })();
   await expect(page.locator(dlg)).toBeVisible();

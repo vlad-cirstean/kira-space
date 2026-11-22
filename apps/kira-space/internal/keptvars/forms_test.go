@@ -13,7 +13,7 @@ func secret(name, value string) Entry {
 
 func TestSecretReplacerLongestFirst(t *testing.T) {
 	r := SecretReplacer([]Entry{secret("a", "tok"), secret("b", "tok-extended-1")})
-	if got := r.Replace("x tok-extended-1 y tok z"); got != "x {{kept.b}} y {{kept.a}} z" {
+	if got := r.Replace("x tok-extended-1 y tok z"); got != "x {{secret.b}} y {{secret.a}} z" {
 		t.Fatalf("got %q", got)
 	}
 }
@@ -25,7 +25,7 @@ func TestSecretFormsEncodedOnlyFromEightBytes(t *testing.T) {
 	}
 	long := SecretReplacer([]Entry{secret("a", "a b/c+d=1")})
 	for _, form := range []string{"a+b%2Fc%2Bd%3D1", "a%20b%2Fc+d=1", "YSBiL2MrZD0x", "YSBiL2MrZD0x"} {
-		if got := long.Replace("v=" + form); got != "v={{kept.a}}" {
+		if got := long.Replace("v=" + form); got != "v={{secret.a}}" {
 			t.Fatalf("form %q not masked: %q", form, got)
 		}
 	}
@@ -36,7 +36,7 @@ func TestSecretJSONEscapedForm(t *testing.T) {
 	if got := r.Replace(`{"k":"p\"q\\r"}`); strings.Contains(got, `p\"q`) {
 		t.Fatalf("escaped form leaked: %q", got)
 	}
-	if got := r.Replace(`p"q\r`); got != "{{kept.a}}" {
+	if got := r.Replace(`p"q\r`); got != "{{secret.a}}" {
 		t.Fatalf("raw form: %q", got)
 	}
 }

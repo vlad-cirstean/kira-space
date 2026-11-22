@@ -111,16 +111,43 @@ func SaveWindowTabs[T any](windows WindowExistsChecker, tabs TabsSaver[T], windo
 	if err := CheckWindow(windows, windowKey); err != nil {
 		return err
 	}
-	if err := tabs.Save(windowKey, records); err != nil {
-		if errors.Is(err, ErrTabOwnedElsewhere) {
-			return ipcerr.Contract("tab id belongs to another window")
-		}
-		if errors.Is(err, ErrInvalidTab) {
-			return ipcerr.Contract("%s", err.Error())
-		}
-		return ipcerr.Internal(err.Error())
+	return mapTabErr(tabs.Save(windowKey, records))
+}
+
+// mapTabErr turns a tab repo error into its IPC error: ownership and validation faults are
+// E_CONTRACT, anything else internal.
+func mapTabErr(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, ErrTabOwnedElsewhere):
+		return ipcerr.Contract("tab id belongs to another window")
+	case errors.Is(err, ErrInvalidTab):
+		return ipcerr.Contract("%s", err.Error())
 	}
-	return nil
+	return ipcerr.Internal(err.Error())
+}
+
+// TabMove is one tab of a move. Persist false writes no row for dst (incognito, session kinds).
+type TabMove[T any] struct {
+	Rec     T
+	Persist bool
+}
+
+// TabsMover is the one method MoveWindowTabs needs from an app's own *repos.TabsRepo.
+type TabsMover[T any] interface {
+	Move(src, dst string, moves []TabMove[T]) error
+}
+
+// MoveWindowTabs re-keys tabs from window src to window dst in one repo transaction: all or none.
+func MoveWindowTabs[T any](windows WindowExistsChecker, tabs TabsMover[T], src, dst string, moves []TabMove[T]) error {
+	if err := CheckWindow(windows, src); err != nil {
+		return err
+	}
+	if err := CheckWindow(windows, dst); err != nil {
+		return err
+	}
+	return mapTabErr(tabs.Move(src, dst, moves))
 }
 
 // ListWindowTabs is both apps' own bridge.TabsService.List (P113 G4): CheckWindow's guard, then the

@@ -52,7 +52,7 @@
                 "from": 15,
                 "index": 0,
                 "part": "prepare",
-                "to": 32
+                "to": 27
               }
             ],
             "source": {
@@ -83,28 +83,30 @@
             "changed": [
               "headers"
             ],
-            "hash": "cba21aa7c4984a73002f5715cc46ac4515209d5d5d0e255bc4bee903f2660559",
+            "hash": "4979f81442b15309353cd61295a58bf23a160898304efc5a1ca48316b43d2bba",
             "input": "",
             "inputTruncated": false,
-            "source": "const region = kept.get(\"region\"); return {headers: [{name: \"X-Region\", value: region}]};"
+            "source": "const region = plain.region; return {headers: [{name: \"X-Region\", value: region}]};",
+            "writes": []
           },
           "transform": {
-            "hash": "01526f73addf648bd419f6313ff41370a159cf309f9fcd980de34fe07e7c30f1",
+            "hash": "965d31783140ded1247314791d81d51cf2bb2c575ecf277aced6ed95fad72c87",
             "mayKeep": [
               {
                 "name": "ids",
+                "secret": false,
                 "sites": [
                   {
                     "field": "script",
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 14
+                    "to": 9
                   }
                 ]
               }
             ],
-            "source": "kept.set(\"ids\", response.json.users.map(u => u.id)); return {count: response.json.total};"
+            "source": "plain.ids = response.json.users.map(u => u.id); return {count: response.json.total};"
           }
         },
         "timeoutSeconds": 30,
@@ -128,5 +130,5 @@
     ],
     "options": null
   },
-  "result": "{\"result\":{\"count\":2},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":0}]}"
+  "result": "{\"output\":{\"count\":2},\"tempSet\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

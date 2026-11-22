@@ -296,6 +296,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	}}
 	agentAPI := &agentapi.Service{Kept: w.Kept, Envs: dbm.apiFiles, Secrets: dbm.apiSecrets, Ops: dbm.router.Host(), Globals: bridge.AgentAPIGlobals(repositories.Settings), Access: bridge.AgentAPIAccess(repositories.Settings)}
 	embedded := w.wireEmbedded(deps, installer, dbm.connectionsSvc, dbm.oplogWiring, proofSvc, agentAPI, opts)
+	w.KeptVars.Staged = embedded.dbMcpSvc.Approvals
 	dbm.apiFiles.Start()
 	dbm.connFiles.Start()
 
@@ -314,7 +315,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	w.Grpc = &bridge.GrpcService{Deps: deps}
 	w.Collections = &bridge.CollectionsService{Deps: deps, Files: dbm.apiFiles}
 	w.Variables = &bridge.VariablesService{Deps: deps, Files: dbm.apiFiles}
-	w.ApiConfig = &bridge.ApiConfigService{Deps: deps, Files: dbm.apiFiles, Agent: agentAPI}
+	w.ApiConfig = &bridge.ApiConfigService{Deps: deps, Files: dbm.apiFiles, Agent: agentAPI, Auth: dbm.authorizer}
 	w.ApiFiles = dbm.apiFiles
 	w.ResponseHistory = &bridge.ResponseHistoryService{Deps: deps}
 	w.GrpcHistory = &bridge.GrpcHistoryService{Deps: deps}

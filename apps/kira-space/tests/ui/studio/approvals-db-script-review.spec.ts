@@ -3,7 +3,7 @@ import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/appro
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
-import { editorText } from './support/editorText';
+import { editorText, squash } from './support/editorText';
 
 // Contract dbmcp-query-script-review. Backend half: dbmcpflow TestDbMcpQueryScriptReview, the same scenario.
 // A held run_query result with a script parks as a db.response item whose payload is sizes only. The
@@ -40,10 +40,12 @@ test('contract: the result view shows what the agent gets, the script and the va
   await expect.poll(() => editorText(result)).toContain('"count": 2');
   await expect(result).not.toContainText('one');
   const script = page.locator('[data-testid="db-review-script"]');
-  await expect.poll(() => editorText(script)).toBe(held().script?.source);
+  await expect
+    .poll(async () => squash(await editorText(script)))
+    .toBe(squash(held().script?.source ?? ''));
   const keep = page.locator('[data-testid="db-review-keep"]');
   await expect(keep.locator('[data-testid="db-review-keep-ids"]')).toContainText(
-    /List of 2\s*\[\s*1,\s*2\s*\]/,
+    /ids\s*Plain\s*\[\s*1,\s*2\s*\]/,
   );
 });
 

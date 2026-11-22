@@ -64,14 +64,16 @@ type Session struct {
 	shell string
 	// cwd and agent are set once, from OpenParams, in newSession — Registry.AgentSessions' own
 	// read of them (P86 §8.2).
-	cwd    string
-	agent  bool
-	cmd    *exec.Cmd
-	ptmx   *os.File
-	onData func([]byte)
-	onExit func(code int, err error)
-	onEnd  func(code int, cause CloseCause)
-	cause  CloseCause
+	cwd   string
+	agent bool
+	// windowKey is the owning window, guarded by Registry.mu: Reown moves it (P722).
+	windowKey string
+	cmd       *exec.Cmd
+	ptmx      *os.File
+	onData    func([]byte)
+	onExit    func(code int, err error)
+	onEnd     func(code int, cause CloseCause)
+	cause     CloseCause
 	// unregister removes this session from its Registry — called exactly once, from the reader
 	// goroutine, whether the exit was requested (Close) or spontaneous (the shell exiting on its
 	// own, e.g. `exit`/Ctrl-D).
@@ -378,6 +380,9 @@ type OpenParams struct {
 	OnExit func(code int, err error)
 	// OnEnd, when set, runs once just before OnExit with why the session ended.
 	OnEnd func(code int, cause CloseCause)
+	// out is the output pump Open tracks under the lock that registers the session, so a session
+	// that exits at once cannot leave a finished pump behind.
+	out *outputCoalescer
 }
 
 // AgentSession is one live Claude Code launch's own wire-agnostic shape — Registry.AgentSessions'
@@ -393,6 +398,9 @@ type Registry struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
 	byWindow map[string]map[string]struct{}
+	// outs is the live output pump of every session the registry opened through
+	// OpenWithCoalescedOutput; Hold, Adopt and Release address a session's pump here (P722).
+	outs map[string]*outputCoalescer
 	// closed is set by CloseAll; pending maps a reserved id to its window while its spawn is in
 	// flight, and doomed marks those whose window closed meanwhile.
 	closed  bool
@@ -450,6 +458,7 @@ func NewRegistry() *Registry {
 	return &Registry{
 		sessions: map[string]*Session{},
 		byWindow: map[string]map[string]struct{}{},
+		outs:     map[string]*outputCoalescer{},
 		pending:  map[string]string{},
 		doomed:   map[string]struct{}{},
 		spawn:    newSession,
@@ -506,12 +515,16 @@ func (r *Registry) Open(p OpenParams) (*Session, error) {
 	case p.Script:
 		untrack = procroots.Scripts.Track(sess.PID())
 	}
+	sess.windowKey = p.WindowKey
 	sess.unregister = func() {
-		r.remove(p.WindowKey, p.ID)
+		r.remove(p.ID)
 		untrack()
 	}
 
 	r.sessions[p.ID] = sess
+	if p.out != nil {
+		r.outs[p.ID] = p.out
+	}
 	if r.byWindow[p.WindowKey] == nil {
 		r.byWindow[p.WindowKey] = map[string]struct{}{}
 	}
@@ -591,14 +604,16 @@ func (r *Registry) closeFor(id string, cause CloseCause) {
 // the exit was requested or spontaneous. **The ordering here is load-bearing**: readLoop (above)
 // calls onExit *before* this, so OnChange must fire from here, after the map entry is gone, never
 // from onExit — otherwise a dying session would still count as live.
-func (r *Registry) remove(windowKey, id string) {
+func (r *Registry) remove(id string) {
 	r.mu.Lock()
 	sess := r.sessions[id]
 	delete(r.sessions, id)
-	if m := r.byWindow[windowKey]; m != nil {
-		delete(m, id)
-		if len(m) == 0 {
-			delete(r.byWindow, windowKey)
+	if sess != nil {
+		if m := r.byWindow[sess.windowKey]; m != nil {
+			delete(m, id)
+			if len(m) == 0 {
+				delete(r.byWindow, sess.windowKey)
+			}
 		}
 	}
 	r.mu.Unlock()

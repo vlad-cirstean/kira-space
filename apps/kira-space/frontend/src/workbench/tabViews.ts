@@ -2,8 +2,7 @@ import ScriptRunView from '@workbench/automations/runs/ScriptRunView.vue';
 import TerminalTabView from '@workbench/terminal/TerminalTabView.vue';
 import type { Component } from 'vue';
 import type { TabKind } from '../state/tabDomain';
-import EnvironmentsTabView from '../studio/api/EnvironmentsView.vue';
-import VariableSetTabView from '../studio/api/VariableSetView.vue';
+import VariablesTabView from '../studio/api/VariablesView.vue';
 import BrowseTabView from '../studio/views/browse/BrowseView.vue';
 import ConsoleTabView from '../studio/views/console/ConsoleTabView.vue';
 import DefinitionTabView from '../studio/views/definition/DefinitionView.vue';
@@ -39,6 +38,5 @@ export const TAB_VIEWS: Record<TabKind, Component> = {
   browse: BrowseTabView,
   'http-request': HttpRequestTabView,
   'grpc-request': GrpcRequestTabView,
-  'variable-set': VariableSetTabView,
-  environments: EnvironmentsTabView,
+  environments: VariablesTabView,
 };

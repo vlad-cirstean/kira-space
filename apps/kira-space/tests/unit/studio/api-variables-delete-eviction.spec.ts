@@ -110,6 +110,7 @@ function variable(id: string, ownerId: string): ApiVariable {
     name: 'token',
     value: 'value',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
     description: '',
   };

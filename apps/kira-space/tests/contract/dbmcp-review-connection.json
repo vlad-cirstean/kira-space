@@ -18,10 +18,12 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 217,
+        "bytes": 145,
         "connectionId": "<id:1>",
+        "host": "",
         "isError": false,
         "mode": "read",
+        "path": "/data/mcp.db",
         "rawBytes": 0,
         "requested": false,
         "scripted": false,
@@ -83,6 +85,6 @@
     "raw": "",
     "requestId": "<id:2>",
     "script": null,
-    "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
+    "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2}"
   }
 }

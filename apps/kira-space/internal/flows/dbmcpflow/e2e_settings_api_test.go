@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -93,11 +94,11 @@ func TestE2ESettingsAPI(t *testing.T) {
 		f.setAPI(t, true, "always")
 		testx.WaitUntil(t, 10*time.Second, func() bool {
 			var out struct {
-				Environments []struct{ ReviewResults map[string]bool }
+				Environments []struct{ Review []string }
 			}
-			raw := text(callTool(t, sess, "api_list_environments", map[string]any{}))
+			raw := text(callTool(t, sess, "list", map[string]any{"what": []string{"environments"}}))
 			_ = json.Unmarshal([]byte(raw), &out)
-			return len(out.Environments) == 1 && out.Environments[0].ReviewResults["write"]
+			return len(out.Environments) == 1 && slices.Contains(out.Environments[0].Review, "write")
 		})
 		f.answerItems(t, true, req.Item.ID)
 		held := response("setting")
@@ -135,7 +136,7 @@ func TestE2ESettingsAPI(t *testing.T) {
 		f.setDbMcp(t, settingsAPIKey, "scriptsOn", &model.DbMcpPatch{APIScripts: ptr(true)})
 		again := callToolAsync(sess, "api_request", scripted())
 		f.answerItems(t, true, f.pending(t).Item.ID)
-		if res := wait(t, again); text(res) != `{"result":1}` {
+		if res := wait(t, again); text(res) != `{"output":1}` {
 			t.Fatalf("scripts back on = %q, want the transform result without a restart", text(res))
 		}
 	})

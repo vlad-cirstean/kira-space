@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/shell"
+	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // Worktrees without a prompt (P702): an agent creates branches and worktrees and removes its own;
@@ -73,7 +74,12 @@ func TestAgentBranchCreateNoPrompt(t *testing.T) {
 	}
 	f.noApproval(t)
 	f.agentOps(t, "agentBranches", "branch.request", 1)
-	rows := branchesOf(t, f.app, f.task.ID)
+	// The conflict check runs async; the contract holds the settled rows.
+	var rows []adewire.Branch
+	testx.WaitUntil(t, waitFor, func() bool {
+		rows = branchesOf(t, f.app, f.task.ID)
+		return !slices.ContainsFunc(rows, func(r adewire.Branch) bool { return r.ConflictCheck != "done" })
+	})
 	if len(rows) != 3 {
 		t.Fatalf("rows = %+v, want three named rows with worktrees", rows)
 	}

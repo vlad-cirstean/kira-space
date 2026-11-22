@@ -538,9 +538,21 @@ export interface Artifact {
   ref: string;
   status: string;
   repo: string;
-  source: 'task' | 'host' | 'git' | 'agent' | 'user' | (string & {});
+  source: 'task' | 'host' | 'git' | 'agent' | 'user' | 'notes' | (string & {});
   /** The Kira session that reported it; '' = user, detected or unknown. */
   sessionId: string;
+  createdAt: number;
+  /** Where a found link (source `notes`) appears, newest first. */
+  foundIn?: ArtifactFound[];
+}
+/** One note or handover that holds a found link. */
+export interface ArtifactFound {
+  handoverId: string;
+  state: 'note' | 'draft' | 'handed' | (string & {});
+  fromStep: string;
+  toStep: string;
+  /** The child task behind a mirrored note; '' otherwise. */
+  fromTask: string;
   createdAt: number;
 }
 /** A source that failed or timed out; the list is partial. */
@@ -595,6 +607,10 @@ export interface LinkResult {
 export interface RemoveArtifactArgs {
   taskId: string;
   id: string;
+}
+export interface DismissFoundLinkArgs {
+  taskId: string;
+  url: string;
 }
 /** One task-folder file whose content differs from what the app accepted. */
 export interface DiskChange {
@@ -654,7 +670,7 @@ interface DbAuditLimit {
 /** An approval raised inside a Kira Studio call. */
 export interface DbAuditApproval {
   id: string;
-  /** The approvals kind: db.query, db.response, db.exemption, kube.read, script.run or api.request. */
+  /** The approvals kind: db.query, db.response, db.exemption, kube.read, kube.response, script.run, api.request or api.response. */
   subject: string;
   reason: string;
   stage: string;

@@ -36,12 +36,19 @@ Collections, environments and variables are files in `~/.kira-space/config/api`.
 
 ## Environments and variables
 
-- Variables belong to a collection or an environment. Edit them in the variables dialog.
+<DocShot id="studio-api-variables" />
+
+The Variables tab is one grid. Each row is a variable name. Each column is a file: the collection or one environment. Edit a value in place. Press `⌥⌘E` to open the tab.
+
+Below 760 px the grid shows one file at a time. Pick the file in the toolbar.
+
+- An environment value overrides the collection value of the same name.
 - **Duplicate** on an environment copies its file as `<name> copy`; the copy shares the secret values. **Delete** asks first and removes the file.
-- A secret variable is written `secret: ${secret:<name>}`. Set its value under Environments, Secrets. The file never holds it.
+- A secret variable is written `secret: ${secret:<name>}`. The lock beside a name turns a variable into a secret. The file never holds the value.
 - Environments carry a colour.
 - Dynamic values come from Faker.
 - The app masks secret values before it saves a response to history.
+- An environment can share variables with agents. See [Agent API requests](../agent-api/).
 
 ## curl
 

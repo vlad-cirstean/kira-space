@@ -47,6 +47,9 @@ type McpSettings struct {
 	Enabled     bool   `json:"enabled"`
 	// Approval is "prompt" (each read asks the user) or "allow" (reads run at once).
 	Approval string `json:"approval"`
+	// Review is "inherit" (the app setting decides), "review" (the user sees list, describe and logs results
+	// before the AI does) or "send" (never held by setting; the approval card can still ask for it).
+	Review string `json:"review"`
 }
 
 // ReorderArgs is Reorder's argument: cluster ids in the wanted order.

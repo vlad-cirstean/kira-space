@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,12 +13,12 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/testx"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Backend half of tests/ui/connection-mcp-timeout.spec.ts: a connection's statement timeout stops an
@@ -255,29 +256,30 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 			t.Fatalf("create %s: %v", kind, err)
 		}
 	}
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections", Arguments: map[string]any{}})
-	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %v, %v", res, err)
+	views := listedStatementTimeouts(t, sess)
+	want := map[string]struct {
+		seconds     int
+		enforcement string
+	}{
+		"t-postgres":   {0, `{"ddl":"session","read":"session","write":"session"}`},
+		"t-mysql":      {10, `{"ddl":"app","read":"session","write":"app"}`},
+		"t-mariadb":    {10, `{"ddl":"app","read":"session","write":"session"}`},
+		"t-clickhouse": {10, `{"ddl":"app","read":"session","write":"app"}`},
+		"t-sqlite":     {10, `{"ddl":"app","read":"app","write":"app"}`},
+		"t-mongodb":    {10, `{"ddl":"app","read":"app","write":"app"}`},
+		"t-redis":      {10, `{"ddl":"app","read":"app","write":"app"}`},
+		"t-kibana":     {10, `{"ddl":"none","read":"app","write":"none"}`},
+		"t-kafka":      {10, `{"ddl":"none","read":"none","write":"none"}`},
 	}
-	var views []struct {
-		Name             string          `json:"name"`
-		Kind             string          `json:"kind"`
-		StatementTimeout json.RawMessage `json:"statementTimeout"`
+	// The agent sees only timeoutSeconds; the per-mode split is pinned from dbmcp itself, for the Studio mirror.
+	type pinned struct {
+		Kind             string `json:"kind"`
+		StatementTimeout struct {
+			Seconds     int               `json:"seconds"`
+			Enforcement map[string]string `json:"enforcement"`
+		} `json:"statementTimeout"`
 	}
-	if err := json.Unmarshal([]byte(text(res)), &views); err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]string{
-		"t-postgres":   `{"seconds":0,"enforcement":{"ddl":"session","read":"session","write":"session"}}`,
-		"t-mysql":      `{"seconds":10,"enforcement":{"ddl":"app","read":"session","write":"app"}}`,
-		"t-mariadb":    `{"seconds":10,"enforcement":{"ddl":"app","read":"session","write":"session"}}`,
-		"t-clickhouse": `{"seconds":10,"enforcement":{"ddl":"app","read":"session","write":"app"}}`,
-		"t-sqlite":     `{"seconds":10,"enforcement":{"ddl":"app","read":"app","write":"app"}}`,
-		"t-mongodb":    `{"seconds":10,"enforcement":{"ddl":"app","read":"app","write":"app"}}`,
-		"t-redis":      `{"seconds":10,"enforcement":{"ddl":"app","read":"app","write":"app"}}`,
-		"t-kibana":     `{"seconds":10,"enforcement":{"ddl":"none","read":"app","write":"none"}}`,
-		"t-kafka":      `{"seconds":10,"enforcement":{"ddl":"none","read":"none","write":"none"}}`,
-	}
+	all := []pinned{}
 	seen := 0
 	for _, v := range views {
 		exp, ok := want[v.Name]
@@ -285,14 +287,21 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 			continue
 		}
 		seen++
-		if string(v.StatementTimeout) != exp {
-			t.Errorf("%s statementTimeout = %s, want %s", v.Name, v.StatementTimeout, exp)
+		p := pinned{Kind: v.Kind}
+		p.StatementTimeout.Seconds = v.TimeoutSeconds
+		p.StatementTimeout.Enforcement = map[string]string{}
+		for _, mode := range []string{"read", "write", "ddl"} {
+			p.StatementTimeout.Enforcement[mode] = dbmcp.TimeoutEnforcementOf(v.Kind, mode)
 		}
+		enforcement, _ := json.Marshal(p.StatementTimeout.Enforcement)
+		if v.TimeoutSeconds != exp.seconds || string(enforcement) != exp.enforcement {
+			t.Errorf("%s timeout = %d s %s, want %d s %s", v.Name, v.TimeoutSeconds, enforcement, exp.seconds, exp.enforcement)
+		}
+		all = append(all, p)
 	}
 	if seen != len(want) {
 		t.Fatalf("listed %d of %d created connections", seen, len(want))
 	}
-	var all any
-	_ = json.Unmarshal([]byte(text(res)), &all)
-	f.app.Contract(t, "dbmcp-statement-timeout", "list_connections", all, flowharness.Mask("id"), flowharness.Replace(f.dbPath, "/data/mcp.db"))
+	sort.Slice(all, func(i, j int) bool { return all[i].Kind < all[j].Kind })
+	f.app.Contract(t, "dbmcp-statement-timeout", "list", all)
 }

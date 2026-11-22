@@ -41,6 +41,8 @@ type Variable struct {
 	IsSecret    bool          `json:"isSecret"`
 	SortOrder   int           `json:"sortOrder"`
 	Description string        `json:"description"`
+	// SecretSet is true for a secret row whose sealed value exists; never the value itself.
+	SecretSet bool `json:"secretSet"`
 }
 
 // VariableHistoryEntry is one api_variable_history row's list projection — the same "no secret

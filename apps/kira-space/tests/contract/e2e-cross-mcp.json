@@ -20,6 +20,7 @@
         "connectionId": "<id:2>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "kept": [
           {
             "bytes": 20,
@@ -61,6 +62,7 @@
         "params": [
           "ids"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -102,7 +104,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"b\": {{kept.bodies}}}",
+          "text": "{\"b\": {{plain.bodies}}}",
           "truncated": false
         },
         "credentials": [],
@@ -132,7 +134,7 @@
                 "from": 6,
                 "index": 0,
                 "part": "",
-                "to": 21
+                "to": 22
               }
             ],
             "source": {

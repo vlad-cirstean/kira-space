@@ -80,29 +80,29 @@ func (f *fixture) resultColumns(t *testing.T, r *mcp.CallToolResult) (cols, with
 	return cols, out.WithheldColumns
 }
 
-func (f *fixture) columnReview(t *testing.T, sess *mcp.ClientSession) (on bool, withheld []string) {
+// columnReview is the connection's withheldColumns in list: empty while review is off or nothing is pending.
+func (f *fixture) columnReview(t *testing.T, sess *mcp.ClientSession) (withheld []string) {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var listed []struct {
-		ID           string `json:"id"`
-		ColumnReview *struct {
-			On       bool     `json:"on"`
-			Withheld []string `json:"withheld"`
-		} `json:"columnReview"`
+	var listed struct {
+		Connections []struct {
+			ID              string   `json:"id"`
+			WithheldColumns []string `json:"withheldColumns"`
+		} `json:"connections"`
 	}
 	if err := json.Unmarshal([]byte(text(res)), &listed); err != nil {
-		t.Fatalf("list_connections %q: %v", text(res), err)
+		t.Fatalf("list %q: %v", text(res), err)
 	}
-	for _, c := range listed {
-		if c.ID == f.connID && c.ColumnReview != nil {
-			return c.ColumnReview.On, c.ColumnReview.Withheld
+	for _, c := range listed.Connections {
+		if c.ID == f.connID {
+			return c.WithheldColumns
 		}
 	}
-	t.Fatalf("list_connections %q has no columnReview for the connection", text(res))
-	return false, nil
+	t.Fatalf("list %q has no connection %s", text(res), f.connID)
+	return nil
 }
 
 func TestDbMcpColumnReview(t *testing.T) {
@@ -111,8 +111,8 @@ func TestDbMcpColumnReview(t *testing.T) {
 	const hush = "hush-value"
 
 	// Off by default: every column reaches the agent, nobody is told anything.
-	if on, _ := f.columnReview(t, sess); on {
-		t.Fatal("columnReview.on = true without a mask_review key")
+	if w := f.columnReview(t, sess); len(w) != 0 {
+		t.Fatalf("withheldColumns = %v without a mask_review key", w)
 	}
 	if cols, w := f.resultColumns(t, runQuery(t, sess, f.connID, "select * from notes")); len(cols) != 2 || len(w) != 0 {
 		t.Fatalf("select * with review off = %v withheld %v, want both columns", cols, w)
@@ -123,8 +123,8 @@ func TestDbMcpColumnReview(t *testing.T) {
 
 	// Every current column reviewed: nothing withheld.
 	f.setReviewed(t, "notes.id", "notes.body")
-	if on, w := f.columnReview(t, sess); !on || len(w) != 0 {
-		t.Fatalf("columnReview = %v %v, want on with nothing withheld", on, w)
+	if w := f.columnReview(t, sess); len(w) != 0 {
+		t.Fatalf("withheldColumns = %v, want nothing withheld", w)
 	}
 	if cols, w := f.resultColumns(t, runQuery(t, sess, f.connID, "select * from notes")); len(cols) != 2 || len(w) != 0 {
 		t.Fatalf("select * all reviewed = %v withheld %v", cols, w)
@@ -134,8 +134,8 @@ func TestDbMcpColumnReview(t *testing.T) {
 	f.execSQL(t, "alter table notes add column secret text", "update notes set secret = '"+hush+"'")
 	f.refreshColumns(t)
 	testx.WaitUntil(t, 5*time.Second, func() bool { return f.maskingPrompt(t) })
-	if _, w := f.columnReview(t, sess); len(w) != 1 || w[0] != "notes.secret" {
-		t.Fatalf("columnReview.withheld = %v, want [notes.secret]", w)
+	if w := f.columnReview(t, sess); len(w) != 1 || w[0] != "notes.secret" {
+		t.Fatalf("withheldColumns = %v, want [notes.secret]", w)
 	}
 	r := runQuery(t, sess, f.connID, "select * from notes")
 	cols, w := f.resultColumns(t, r)

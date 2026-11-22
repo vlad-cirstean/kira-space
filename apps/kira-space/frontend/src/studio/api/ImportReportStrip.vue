@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import CodiconIcon from '@theme/CodiconIcon.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertAction, AlertDescription } from '@theme/components/ui/alert';
+import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
+import { ICON } from '@theme/icons';
 import { computed } from 'vue';
 import { useCollectionsStore } from './state/collections';
+import { useVariablesStore } from './state/variables';
 
 const collectionsStore = useCollectionsStore();
+const variablesStore = useVariablesStore();
 
 // The import report is part of the feature, not decoration. Every warning kind is a case
 // where the app quietly does something other than what the file said — a script that is kept but
@@ -28,6 +33,11 @@ const tone = computed(() => {
   const warned = files.some((f) => (f.collection ?? f.environment)?.warnings.length);
   return warned ? 'warn' : 'info';
 });
+
+/** Secrets the import created references for but could not give a value: set them in the Variables tab. */
+const unsetSecrets = computed(() =>
+  (result.value?.files ?? []).flatMap((f) => (f.collection ?? f.environment)?.secretsUnset ?? []),
+);
 
 interface FileLine {
   key: string;
@@ -89,6 +99,27 @@ const lines = computed<FileLine[]>(() =>
             {{ warning.detail }}
           </li>
         </ul>
+      </div>
+      <div
+        v-if="unsetSecrets.length > 0"
+        class="flex min-w-0 items-center gap-2"
+        data-testid="import-report-secrets"
+      >
+        <span>{{
+          t('studio.api.importReport.secretsUnset.description', {
+            count: unsetSecrets.length,
+            names: unsetSecrets.join(', '),
+          })
+        }}</span>
+        <Button
+          variant="toolbar"
+          size="kira"
+          shortcut="api.environments"
+          data-testid="import-report-open-variables"
+          @click="variablesStore.openEnvironments()"
+          ><CodiconIcon :name="ICON.variables" :size="13" />
+          {{ t('studio.api.importReport.openVariables.label') }}</Button
+        >
       </div>
     </div>
     <AlertAction>

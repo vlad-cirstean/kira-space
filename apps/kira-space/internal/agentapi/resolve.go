@@ -96,7 +96,7 @@ func (s *Service) environmentOf(id string) (EnvInfo, map[string]available, error
 	}
 	ref, err := s.Envs.EnvironmentByID(id)
 	if err != nil {
-		return EnvInfo{}, nil, fmt.Errorf("no environment %q; call api_list_environments for the ids", id)
+		return EnvInfo{}, nil, fmt.Errorf("no environment %q; call list for the ids", id)
 	}
 	return envInfoOf(ref), availableOf(ref), nil
 }

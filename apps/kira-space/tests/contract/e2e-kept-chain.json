@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"ids\": {{kept.ids}}}",
+          "text": "{\"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 8,
                 "index": 0,
                 "part": "",
-                "to": 20
+                "to": 21
               }
             ],
             "source": {
@@ -135,7 +135,7 @@
                 "from": 22,
                 "index": 0,
                 "part": "prepare",
-                "to": 36
+                "to": 31
               }
             ],
             "source": {
@@ -158,28 +158,30 @@
               "body",
               "contentType"
             ],
-            "hash": "48997f64dc3b2240a4a47055df8719c73ef24cab1f898b2ac38306aa986a2980",
+            "hash": "bbd8d11a587ecdf5343435945fe84a367a6aedba129265a9f7af2c272bc6a669",
             "input": "",
             "inputTruncated": false,
-            "source": "return {body: {items: kept.get(\"ids\").map(id => ({id}))}};"
+            "source": "return {body: {items: plain.ids.map(id => ({id}))}};",
+            "writes": []
           },
           "transform": {
-            "hash": "d5d4309fd3975422c1dcbf09a78354b8e461006c45238f286416c70b306a1aa3",
+            "hash": "5a0ba840b4ab805ec9819fa7e2d7c52dc5dcae2d6135567dd0eb5d9ed786e9f3",
             "mayKeep": [
               {
                 "name": "first",
+                "secret": false,
                 "sites": [
                   {
                     "field": "script",
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 16
+                    "to": 11
                   }
                 ]
               }
             ],
-            "source": "kept.set(\"first\", String(response.json.body ? 1 : 0)); return 1;"
+            "source": "plain.first = String(response.json.body ? 1 : 0); return 1;"
           }
         },
         "timeoutSeconds": 30,
@@ -318,5 +320,5 @@
     ],
     "options": null
   },
-  "result#step1": "{\"result\":2,\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":0}]}"
+  "result#step1": "{\"output\":2,\"tempSet\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

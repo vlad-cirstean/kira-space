@@ -3,6 +3,7 @@ import type { ForeignKeyMeta, ObjectMeta } from '@shared/domain/tree';
 import { decodePath } from '@shared/domain/tree';
 import { type MessageKey, t } from '@theme/i18n';
 import { copyAndAnnounce } from '@workbench/behaviour/clipboard';
+import { matchesQuery } from '@workbench/behaviour/match';
 import type { MenuItem, MenuRadioOption } from '@workbench/state/contextMenu';
 import { useTabsStore } from '../../../state/tabs';
 import { defaultCorrelateFor, MASK_KIND_OPTIONS } from '../../project/connection/maskKinds';
@@ -14,6 +15,16 @@ import { identNeedsQuoting, quoteIdent, quoteLiteral, type SqlDialect } from '..
 import { requestCellFocus } from './focusRequest';
 import { usePendingChangesStore } from './pendingChanges';
 import { useGridViewStore } from './state';
+
+/** Column names matching any whitespace/comma-separated term of `query`; all names when blank. */
+export function filterColumnNames(names: readonly string[], query: string): string[] {
+  const terms = query
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter((term) => term !== '');
+  if (terms.length === 0) return [...names];
+  return names.filter((name) => terms.some((term) => matchesQuery(name, term)));
+}
 
 // The pure half of ColumnsMenu.vue's own close() — "None" seeds `selected` from
 // the table/view's primary-key columns, which is empty for any relation with no primary key (every

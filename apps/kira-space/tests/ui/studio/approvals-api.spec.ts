@@ -89,9 +89,58 @@ test('contract: two credentials read as one fact, hosts in its tooltip', async (
   const fact = card(page, it).locator('[data-testid="approval-fact"]');
   await expect(fact).toHaveText('Sends: token, partner_key');
   await fact.hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').first()).toContainText(
-    'api.shop.example',
-  );
+  const tip = page.locator('[data-slot="tooltip-content"]').first();
+  await expect(tip).toContainText('token to api.shop.example (environment secret)');
+  await expect(tip).toContainText('partner_key to');
+});
+
+test('contract: Sends lists a credential, a typed input and a temporary secret with their sources', async ({
+  relaunch,
+}) => {
+  const base = item();
+  const payload = structuredClone(base.payload) as {
+    host: string;
+    credentials: { name: string; hosts: string[] }[];
+    inputs: unknown[];
+    kept: unknown[];
+  };
+  payload.credentials = [{ name: 'token', hosts: ['api.shop.example'] }];
+  payload.inputs = [
+    { name: 'otp', state: 'needed', origin: 'http://api.shop.example', keepMinutes: 60 },
+  ];
+  payload.kept = [
+    {
+      id: 'k1',
+      name: 'apiKey',
+      type: 'string',
+      items: 0,
+      bytes: 8,
+      secret: true,
+      source: {
+        kind: 'script',
+        mcp: 'db',
+        tool: 'api_request',
+        request: 'GET /key',
+        client: 'agent',
+      },
+      createdAt: new Date(Date.now() - 60_000).toISOString(),
+      expiresAt: new Date(Date.now() + 3_000_000).toISOString(),
+      preview: '',
+      previewTruncated: false,
+      pending: false,
+      sites: [],
+    },
+  ];
+  const it = liveItem({ ...base, payload });
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [it]);
+  const fact = card(page, it).locator('[data-testid="approval-fact"]');
+  await expect(fact).toHaveText('Sends: token, otp, apiKey');
+  await fact.hover();
+  const tip = page.locator('[data-slot="tooltip-content"]').first();
+  await expect(tip).toContainText('token to api.shop.example (environment secret)');
+  await expect(tip).toContainText('otp to api.shop.example (you type it)');
+  await expect(tip).toContainText(`apiKey to ${payload.host} (temporary secret)`);
 });
 
 test('contract: the request box reads request line, body, then headers and variables', async ({

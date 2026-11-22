@@ -33,14 +33,15 @@ test('contract: the write card pairs ? 1 with the kept text, quote and statement
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: word');
+  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: word');
   const row = card.locator('[data-testid="db-approval-kept-word"]');
-  await expect(row).toContainText('Text');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Text');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('drop table');
   const params = card.locator('[data-testid="db-approval-params"]');
   await expect(params.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   await expect(params.locator('[data-testid="db-approval-param-0-value"] mark')).toHaveText(
-    '{{kept.word}}',
+    '{{plain.word}}',
   );
 });
 

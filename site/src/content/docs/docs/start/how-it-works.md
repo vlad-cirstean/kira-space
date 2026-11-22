@@ -27,7 +27,7 @@ Kira starts the `claude` or `opencode` command that you installed and signed in 
 
 Kira offers MCP servers to agents:
 
-- `kira-studio` and `kira-studio-session` give a client your databases, under rules you set.
+- `kira-studio` and `kira-studio-session` give a client your databases, API environments, Kubernetes clusters and scripts, under rules you set.
 - `kira-space` gives a task agent its task, branches and proof.
 
 See [MCP and agents](../../space/mcp/).
@@ -35,3 +35,13 @@ See [MCP and agents](../../space/mcp/).
 ## Phone view
 
 Kira Space can serve the agents board to a phone on your home network. See [Phone view](../../space/phone/).
+
+## Tabs and windows
+
+Drag a tab out of the window to open it in a new window. Drop it on another window to move it there.
+
+Cmd-click toggles a tab in the selection. Shift-click selects a range. The tab menu closes the selected tabs or moves them to a new window or to another window.
+
+Pinned tabs never join a move. Runs terminals keep running when their tab moves.
+
+On Wayland, dragging a tab out is off. Use **Move to new window** or **Move to window** in the tab menu instead.

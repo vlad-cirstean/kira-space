@@ -19,9 +19,9 @@ import (
 
 const (
 	keptChainKey = "e2e-kept-chain"
-	chainKeep    = `kept.set("ids", response.json.users.map(u => u.id)); return response.json.total;`
-	chainPrep    = `return {body: {items: kept.get("ids").map(id => ({id}))}};`
-	chainTrans   = `kept.set("first", String(response.json.body ? 1 : 0)); return 1;`
+	chainKeep    = `plain.ids = response.json.users.map(u => u.id); return response.json.total;`
+	chainPrep    = `return {body: {items: plain.ids.map(id => ({id}))}};`
+	chainTrans   = `plain.first = String(response.json.body ? 1 : 0); return 1;`
 	bigID        = "9007199254740993"
 )
 
@@ -40,7 +40,7 @@ func TestE2EKeptChain(t *testing.T) {
 		pending := callToolAsync(a, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": chainKeep}))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
-		if res.IsError || !strings.HasPrefix(text(res), `{"result":2,"kept":[{"name":"ids","type":"array","items":2,`) || strings.Contains(text(res), bigID) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"output":2,"tempSet":[{"name":"ids","type":"array","items":2,"secret":false,`) || strings.Contains(text(res), bigID) {
 			t.Fatalf("result = %q, want the total and a summary without the ids", text(res))
 		}
 		f.app.Contract(t, keptChainKey, "result#step1", expiresIn.ReplaceAllString(text(res), `"expiresInSeconds":0`))
@@ -51,11 +51,11 @@ func TestE2EKeptChain(t *testing.T) {
 	})
 
 	t.Run("B reads it into a request body", func(t *testing.T) {
-		list := text(callTool(t, b, "list_kept_variables", map[string]any{}))
+		list := text(callTool(t, b, "list", map[string]any{"what": []string{"temp"}}))
 		if !strings.Contains(list, `"ids"`) {
 			t.Fatalf("B's listing = %s, want the shared ids", list)
 		}
-		pending := callToolAsync(b, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
+		pending := callToolAsync(b, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
 		req := f.pending(t)
 		var pl keptScriptItem
 		if err := json.Unmarshal(req.Item.Payload, &pl); err != nil {
@@ -88,7 +88,7 @@ func TestE2EKeptChain(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(pl.Kept) != 1 || pl.Kept[0].Name != "ids" || len(pl.Kept[0].Sites) != 1 || pl.Kept[0].Sites[0].Field != "script" || pl.Kept[0].Sites[0].Part != "prepare" ||
-			chainPrep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To] != `kept.get("ids"` {
+			chainPrep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To] != `plain.ids` {
 			t.Fatalf("kept = %+v, want the prepare read site", pl.Kept)
 		}
 		mk := pl.Script.Transform.MayKeep
@@ -108,14 +108,14 @@ func TestE2EKeptChain(t *testing.T) {
 
 	t.Run("a Studio session has its own scope", func(t *testing.T) {
 		s := studio
-		if list := text(callTool(t, s, "list_kept_variables", map[string]any{})); strings.Contains(list, `"ids"`) || strings.Contains(list, `"first"`) {
+		if list := text(callTool(t, s, "list", map[string]any{"what": []string{"temp"}})); strings.Contains(list, `"ids"`) || strings.Contains(list, `"first"`) {
 			t.Fatalf("S's listing = %s, want neither external variable", list)
 		}
-		res := callTool(t, s, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
-		if !res.IsError || !strings.Contains(text(res), `no kept variable "ids"`) || f.queueLen(t) != 0 {
+		res := callTool(t, s, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
+		if !res.IsError || !strings.Contains(text(res), `no temporary variable "ids"`) || f.queueLen(t) != 0 {
 			t.Fatalf("S read = %q, queue %d, want a refusal before any card", text(res), f.queueLen(t))
 		}
-		pending := callToolAsync(s, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": `kept.set("ids", [5]); return 1;`}))
+		pending := callToolAsync(s, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": `plain.ids = [5]; return 1;`}))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		if r := wait(t, pending); r.IsError {
 			t.Fatalf("S keep = %q", text(r))
@@ -144,16 +144,16 @@ func TestE2EKeptChain(t *testing.T) {
 	t.Run("the session ends while its card waits", func(t *testing.T) {
 		s := studio
 		sent := len(srv.Requests())
-		pending := callToolAsync(s, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
+		pending := callToolAsync(s, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
 		f.items(t, 1)
 		releaseStudio()
 		// The session's token is revoked with its grant, so the transport may end the call before the handler's
 		// text reaches the client; when the text does arrive it is the ended-with-the-session refusal.
 		out := <-pending
-		const want = `kept variable "ids" ended with the session while waiting for approval; nothing was sent. Produce it again, then repeat the request.`
+		const want = `temporary variable "ids" ended with the session while waiting for approval; nothing was sent. Produce it again, then repeat the request.`
 		switch {
 		case out.err != nil:
-			if !strings.Contains(out.err.Error(), "terminated without response") {
+			if !strings.Contains(out.err.Error(), "terminated without response") && !strings.Contains(out.err.Error(), "Unauthorized") {
 				t.Fatalf("call error = %v, want the transport ending the call", out.err)
 			}
 		case !out.res.IsError || text(out.res) != want:
@@ -178,16 +178,16 @@ func TestE2EKeptChain(t *testing.T) {
 
 	t.Run("a commit replaces the variable a card waits on", func(t *testing.T) {
 		sent := len(srv.Requests())
-		waiting := callToolAsync(b, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
+		waiting := callToolAsync(b, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
 		first := f.items(t, 1)[0]
-		replacing := callToolAsync(a, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": chainKeep}))
+		replacing := callToolAsync(a, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": `plain.ids = [7, 8]; return 1;`}))
 		items := f.items(t, 2)
 		f.answerItems(t, true, items[1].ID)
 		if res := wait(t, replacing); res.IsError {
 			t.Fatalf("replacing call = %q", text(res))
 		}
 		res := wait(t, waiting)
-		if !res.IsError || !strings.Contains(text(res), `kept variable "ids"`) || !strings.Contains(text(res), "was replaced") {
+		if !res.IsError || !strings.Contains(text(res), `temporary variable "ids"`) || !strings.Contains(text(res), "was replaced") {
 			t.Fatalf("waiting call = %q, want a replaced-while-waiting error", text(res))
 		}
 		testx.WaitUntil(t, 10*time.Second, func() bool { return f.queueLen(t) == 0 })
@@ -208,10 +208,10 @@ func TestE2EKeptChain(t *testing.T) {
 			if strings.Contains(*r.Command, bigID) {
 				t.Errorf("op command %q holds a kept value", *r.Command)
 			}
-			carried = carried || (r.Kind == "jsPrepare" && strings.Contains(*r.Command, `kept.get("ids")`))
+			carried = carried || (r.Kind == "jsPrepare" && strings.Contains(*r.Command, `plain.ids`))
 		}
 		if !carried {
-			t.Error("no jsPrepare row carries the kept.get call")
+			t.Error("no jsPrepare row carries the plain read")
 		}
 	})
 }

@@ -136,14 +136,53 @@ export function encodeWebp(png: Buffer): Promise<Buffer> {
   return sharp(png).webp({ lossless: true, effort: 6 }).toBuffer();
 }
 
-/** Encodes and writes `screenshots/<name>.webp`; `name` is a relative path without extension. */
+/** Alpha above this share of 255 counts as visible. */
+const TRIM_ALPHA = 0.02;
+/** Device px kept around the visible box so the faint shadow tail never clips. */
+const TRIM_SAFETY = 8;
+
+/** Crops transparent margins to the box where alpha exceeds `TRIM_ALPHA`, plus `TRIM_SAFETY` on
+ *  every side. Opaque images pass through untouched. */
+export async function trimTransparent(png: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width, height, channels } = info;
+  const min = Math.ceil(255 * TRIM_ALPHA);
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  let translucent = false;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const alpha = data[(y * width + x) * channels + channels - 1] ?? 255;
+      if (alpha < 255) translucent = true;
+      if (alpha <= min) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    }
+  }
+  if (!translucent || right < 0) return png;
+  left = Math.max(0, left - TRIM_SAFETY);
+  top = Math.max(0, top - TRIM_SAFETY);
+  right = Math.min(width - 1, right + TRIM_SAFETY);
+  bottom = Math.min(height - 1, bottom + TRIM_SAFETY);
+  if (left === 0 && top === 0 && right === width - 1 && bottom === height - 1) return png;
+  return sharp(png)
+    .extract({ left, top, width: right - left + 1, height: bottom - top + 1 })
+    .png()
+    .toBuffer();
+}
+
+/** Trims transparent margins, encodes and writes `screenshots/<name>.webp`; `name` is a relative path without extension. */
 export async function saveShot(name: string, png: Buffer): Promise<string> {
   if (isAbsolute(name) || name.split('/').includes('..') || /\.[a-z0-9]+$/i.test(name)) {
     throw new Error(`saveShot name must be a relative path without extension: ${name}`);
   }
   const file = join(OUT_DIR, `${name}.webp`);
   await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, await encodeWebp(png));
+  await writeFile(file, await encodeWebp(await trimTransparent(png)));
   return file;
 }
 

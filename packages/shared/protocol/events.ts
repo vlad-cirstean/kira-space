@@ -67,6 +67,10 @@ export const CHANNEL = {
   // P83 §3.2: one terminal's coalesced output and its exit, delivered via EmitTo (one window
   // only) — codeSearch's own shape, restated for a byte payload.
   terminal: 'kira:terminal:data',
+  // P722: tabs were moved to this window (EmitTo, no payload): pull them with tabsInbound.
+  tabsInbound: 'kira:tabs:inbound',
+  // P722: a window opened or closed (Emit, app-wide, no payload).
+  windowsChanged: 'kira:windows:changed',
   // P85 §9.3: the custom-scripts list changed — connectionsChanged's own shape (Emit, not EmitTo,
   // so every window's tab-strip dropdown stays in sync).
   customScriptsChanged: 'kira:customScripts:changed',
@@ -182,6 +186,8 @@ export interface ApiDataChangedEvent {
 export interface TerminalEvent {
   terminalId: string;
   data?: string; // base64, absent on the exit event
+  /** Cumulative bytes of the session's output including this chunk (P722). */
+  end: number;
   exited: boolean;
   exitCode?: number;
   error?: string;

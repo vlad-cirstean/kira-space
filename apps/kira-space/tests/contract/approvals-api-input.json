@@ -30,13 +30,13 @@
           {
             "masked": false,
             "name": "X-Api-Key",
-            "value": "{{kept.apikey}}"
+            "value": "{{secret.apikey}}"
           }
         ],
         "host": "127.0.0.1",
         "inputs": [
           {
-            "label": "API key",
+            "keepMinutes": 60,
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -60,7 +60,7 @@
                 "from": 0,
                 "index": 0,
                 "part": "value",
-                "to": 15
+                "to": 17
               }
             ],
             "source": {

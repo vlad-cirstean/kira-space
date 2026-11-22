@@ -873,6 +873,12 @@ const NEUTRAL_TOKENS = [
   '--kira-select-text',
   '--kira-focus',
   '--kira-bg-input',
+  '--kira-toggle-on',
+  '--kira-toggle-on-edge',
+  '--kira-toggle-mark',
+  '--kira-toggle-off-edge',
+  '--kira-toggle-knob',
+  '--kira-progress-fill',
 ] as const;
 // Resolved through var() to a neutral token; checked by name, not hex.
 const NEUTRAL_ALIAS_TARGETS = new Set([
@@ -882,7 +888,7 @@ const NEUTRAL_ALIAS_TARGETS = new Set([
   '--kira-bg-elevated',
   '--kira-select-edge',
 ]);
-const ALIASED_TOKENS = ['--kira-on', '--kira-on-fg', '--kira-control-edge'] as const;
+const ALIASED_TOKENS = ['--kira-control-edge'] as const;
 const NEUTRAL_SPREAD = 12;
 const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
 const MONACO_THEME_PATH = 'packages/workbench/src/editor/monacoTheme.ts';
@@ -920,7 +926,7 @@ const SELECTED_EXPR = /(?:\bselected|\bisSelected|\w+Selected)\b[^'"`\n]*(?:\?|&
 const BLUE_LITERAL = new RegExp(`['"\`][^'"\`]*(?<![\\w-])${BLUE_UTILITY}[^'"\`]*['"\`]`);
 // Swatch pickers paint the data colour when checked.
 const N18_CLASS_ALLOW = ['ade/v2/statusColors.ts', 'connColor.ts'];
-// On-state controls paint --kira-on (grey), never --primary, in any state.
+// On-state controls paint the --kira-toggle-* / --kira-progress-fill greys, never --primary, in any state.
 const ON_STATE_FILES = [
   'packages/theme/src/components/ui/checkbox/Checkbox.vue',
   'packages/theme/src/components/ui/switch/Switch.vue',
@@ -930,7 +936,8 @@ const ON_STATE_FILES = [
 const BLUE_ON_STATE =
   /(?<![\w-])(?:bg|border|text|ring)-(?:primary|accent|info|focus)(?:-foreground)?(?![\w-])/;
 // An `as-child` tooltip trigger overwrites a root's data-state, so on-state fills key on aria-checked.
-const STATE_KEYED_ON = /data-\[state=(?:checked|indeterminate)\]:(?:bg|border)-on(?![\w-])/;
+const STATE_KEYED_ON =
+  /data-\[state=(?:checked|indeterminate)\]:(?:bg-toggle-on|border-toggle-on-edge)(?![\w-])/;
 const N18_CLASS_DIRS = [
   'apps/kira-space/frontend/src',
   'apps/kira-space/frontend/mobile',
@@ -1043,7 +1050,7 @@ export function selectionClassHits(path: string, source: string): Hit[] {
       hits.push({
         rule: 'N18',
         path,
-        message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-on, border-on, text-on-fg`,
+        message: `line ${i + 1}: on-state control uses ${blueOn}; use bg-toggle-on, border-toggle-on-edge, text-toggle-mark`,
       });
     }
     const stateKeyed =

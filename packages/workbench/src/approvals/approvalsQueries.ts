@@ -63,7 +63,11 @@ function answerOptions(
     const hasTyped = typed !== undefined && Object.keys(typed).length > 0;
     if (!(id in store.options) && !hasTyped) continue;
     const base = (store.options[id] ?? {}) as Record<string, unknown>;
-    out[id] = hasTyped ? { ...base, inputs: typed } : store.options[id];
+    if (!hasTyped) {
+      out[id] = store.options[id];
+      continue;
+    }
+    out[id] = { ...base, inputs: typed };
   }
   return out;
 }

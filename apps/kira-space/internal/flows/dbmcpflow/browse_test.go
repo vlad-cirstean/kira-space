@@ -3,6 +3,7 @@ package dbmcpflow
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,7 +86,6 @@ type browseOut struct {
 		Name string `json:"name"`
 	} `json:"columns"`
 	Rows            [][]*string `json:"rows"`
-	Returned        int         `json:"returned"`
 	Offset          int         `json:"offset"`
 	HasMore         bool        `json:"hasMore"`
 	NextOffset      *int        `json:"nextOffset"`
@@ -192,7 +192,7 @@ func TestDbMcpBrowseInherit(t *testing.T) {
 	defer stop()
 
 	out := decodeBrowse(t, browse(t, sess, f.connID, nil))
-	if out.Returned != 5 || len(out.Columns) != 4 || out.HasMore {
+	if len(out.Rows) != 5 || len(out.Columns) != 4 || out.HasMore {
 		t.Fatalf("browse = %+v, want 5 rows, 4 columns", out)
 	}
 	testx.WaitUntil(t, 5*time.Second, func() bool { return count() == 1 })
@@ -217,7 +217,7 @@ func TestDbMcpBrowseMaskedOnly(t *testing.T) {
 
 	res := browse(t, sess, f.connID, nil)
 	out := decodeBrowse(t, res)
-	if out.Returned != 5 || strings.Contains(text(res), "ada@x.io") {
+	if len(out.Rows) != 5 || strings.Contains(text(res), "ada@x.io") {
 		t.Fatalf("browse = %q, want 5 rows with email masked", text(res))
 	}
 	r := runQuery(t, sess, f.connID, "select email from people")
@@ -260,10 +260,10 @@ func TestDbMcpBrowseFilters(t *testing.T) {
 	if got := one(flt("id", "gte", 4)).names("name"); len(got) != 2 {
 		t.Fatalf("gte 4 = %v, want 2 rows", got)
 	}
-	if got := one(flt("note", "isNull", nil)); got.Returned != 1 {
+	if got := one(flt("note", "isNull", nil)); len(got.Rows) != 1 {
 		t.Fatalf("isNull = %+v", got)
 	}
-	if got := one(flt("email", "notNull", nil)); got.Returned != 5 {
+	if got := one(flt("email", "notNull", nil)); len(got.Rows) != 5 {
 		t.Fatalf("masked notNull = %+v, want 5 rows", got)
 	}
 
@@ -341,7 +341,7 @@ func TestDbMcpBrowseView(t *testing.T) {
 	// A path that calls the view a table is still a view.
 	args := map[string]any{"path": tablePath("main", "people_v")}
 
-	if out := decodeBrowse(t, browse(t, sess, f.connID, args)); out.Returned != 5 {
+	if out := decodeBrowse(t, browse(t, sess, f.connID, args)); len(out.Rows) != 5 {
 		t.Fatalf("view without masking = %+v", out)
 	}
 	f.maskPeople(t, "email")
@@ -401,8 +401,8 @@ func TestDbMcpBrowseReview(t *testing.T) {
 	}
 	f.answer(t, true, req.RequestID)
 	decodeBrowse(t, wait(t, done))
-	if rr := f.listReviewResults(t, sess); !rr["masked"] || rr["read"] {
-		t.Fatalf("reviewResults = %v, want masked only", rr)
+	if rr := f.listReviewResults(t, sess); !rr["browse"] || rr["read"] {
+		t.Fatalf("review = %v, want browse only", rr)
 	}
 
 	// Read's setting never forces review on browse.
@@ -430,21 +430,8 @@ func TestDbMcpBrowseReview(t *testing.T) {
 }
 
 type browseListView struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Permissions struct {
-		Masked string `json:"masked"`
-	} `json:"permissions"`
-	Access struct {
-		Masked struct {
-			Allowed bool   `json:"allowed"`
-			Reason  string `json:"reason"`
-		} `json:"masked"`
-	} `json:"access"`
-	Browse struct {
-		Supported bool `json:"supported"`
-		MaxRows   int  `json:"maxRows"`
-	} `json:"browse"`
+	ID  string   `json:"id"`
+	Can []string `json:"can"`
 }
 
 func TestDbMcpBrowseList(t *testing.T) {
@@ -458,23 +445,25 @@ func TestDbMcpBrowseList(t *testing.T) {
 		t.Fatal(err)
 	}
 	sess := f.session(t)
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %q (%v)", text(res), err)
+		t.Fatalf("list = %q (%v)", text(res), err)
 	}
-	var views []browseListView
+	var views struct {
+		Connections []browseListView `json:"connections"`
+	}
 	if err := json.Unmarshal([]byte(text(res)), &views); err != nil {
 		t.Fatal(err)
 	}
-	for _, v := range views {
+	for _, v := range views.Connections {
 		switch v.ID {
 		case f.connID:
-			if v.Permissions.Masked != "allow" || !v.Access.Masked.Allowed || !v.Browse.Supported || v.Browse.MaxRows != 100 {
-				t.Errorf("sqlite view = %+v", v)
+			if !slices.Contains(v.Can, "browse") {
+				t.Errorf("sqlite view = %+v, want browse", v)
 			}
 		case redis.ID:
-			if v.Permissions.Masked != "inherit" || v.Access.Masked.Allowed || v.Access.Masked.Reason != "no structured browse" || v.Browse.Supported {
-				t.Errorf("redis view = %+v", v)
+			if slices.Contains(v.Can, "browse") {
+				t.Errorf("redis view = %+v, want no browse", v)
 			}
 		}
 	}
@@ -532,7 +521,7 @@ func TestDbMcpBrowseExemption(t *testing.T) {
 		t.Fatalf("payload = %+v", pl)
 	}
 	f.answerItems(t, true, items[0].ID)
-	if out := decodeBrowse(t, wait(t, done)); out.Returned != 1 {
+	if out := decodeBrowse(t, wait(t, done)); len(out.Rows) != 1 {
 		t.Fatalf("approved exempt browse = %+v", out)
 	}
 

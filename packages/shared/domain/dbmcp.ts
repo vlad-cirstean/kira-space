@@ -48,7 +48,7 @@ export const dbMcpPayloadModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'dd
 export type DbMcpEnforcement = 'session' | 'app' | 'none';
 
 // Mirror of internal/dbmcp/permissions.go: writeConsoleKinds, enforcementOf and accessOf. The flow
-// test's list_connections contract pins both sides.
+// test's list contract pins both sides.
 const WRITE_CONSOLE_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
   'postgres',
   'mysql',
@@ -69,7 +69,7 @@ export function enforcementOf(kind: string): DbMcpEnforcement {
 }
 
 // Mirror of internal/dbmcp/timeout.go timeoutEnforcementOf: what stops a statement past the
-// connection's statement timeout, per mode. The flow test's list_connections contract pins both sides.
+// connection's statement timeout, per mode. The flow test's list contract pins both sides.
 export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, DbMcpEnforcement> {
   const all = (e: DbMcpEnforcement): Record<DbMcpMode, DbMcpEnforcement> => ({
     read: e,
@@ -98,7 +98,7 @@ export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, D
 export type ExpensiveQueryCheck = 'plan' | 'off' | 'none';
 
 // Mirror of internal/dbmcp/expensive.go expensiveCheckOf: none (no row estimate), off (the connection's
-// MCP auto_explain switch is off) or plan. The flow test's list_connections contract pins both sides.
+// MCP auto_explain switch is off) or plan. The flow test's list contract pins both sides.
 export function expensiveQueryCheckOf(kind: string, autoExplain: boolean): ExpensiveQueryCheck {
   if (!ROW_ESTIMATE_KINDS.has(kind as ConnectionKind)) return 'none';
   return autoExplain ? 'plan' : 'off';
@@ -131,7 +131,13 @@ const transformViewSchema = /*#__PURE__*/ z.object({
   hash: z.string(),
   // Kept variables the script may write (P678), with their calls in the source.
   mayKeep: z
-    .array(z.object({ name: z.string(), sites: z.array(keptSiteSchema) }))
+    .array(
+      z.object({
+        name: z.string(),
+        secret: z.boolean().default(false),
+        sites: z.array(keptSiteSchema),
+      }),
+    )
     .nullish()
     .transform((v) => v ?? []),
 });
@@ -140,6 +146,12 @@ export type TransformView = z.infer<typeof transformViewSchema>;
 // Kept variables bound to the statement: the names as the agent listed them, how each placeholder shows,
 // and the variables as they stood when the statement was checked; the result script, if any (P680).
 // Older items carry none.
+// Where the connection lives, split for the card header (host, then database or path).
+const dbLocationShape = {
+  host: z.string().default(''),
+  path: z.string().default(''),
+};
+
 const dbKeptShape = {
   params: z.array(z.string()).default([]),
   placeholders: z.array(z.string()).default([]),
@@ -161,6 +173,7 @@ export const dbQueryPayloadSchema = /*#__PURE__*/ z.object({
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
   ...dbKeptShape,
+  ...dbLocationShape,
 });
 export type DbQueryPayload = z.infer<typeof dbQueryPayloadSchema>;
 
@@ -184,6 +197,7 @@ export const dbExemptionPayloadSchema = /*#__PURE__*/ z.object({
   reviewOffered: z.boolean().default(false),
   reviewResult: z.boolean().default(false),
   ...dbKeptShape,
+  ...dbLocationShape,
 });
 export type DbExemptionPayload = z.infer<typeof dbExemptionPayloadSchema>;
 
@@ -199,17 +213,100 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   // A script produced the held text from the raw result (P680); rawBytes sizes that raw result.
   scripted: z.boolean().default(false),
   rawBytes: z.number().default(0),
+  // What the prompt bound to the statement, for the review's Request section.
+  params: z.array(z.string()).default([]),
+  placeholders: z.array(z.string()).default([]),
+  kept: z.array(keptUseSchema).default([]),
+  ...dbLocationShape,
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
 
+// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
+const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
+  prepare: z
+    .object({
+      source: z.string(),
+      hash: z.string(),
+      changed: z.array(z.string()),
+      input: z.string(),
+      inputTruncated: z.boolean(),
+      // Values the prepare script saves: this request interpolates them, the store takes them after the result.
+      writes: z.array(keptStagedSchema),
+    })
+    .nullable(),
+  transform: transformViewSchema.nullable(),
+});
+const kubeRequestSchema = /*#__PURE__*/ z.object({
+  kind: z.string(),
+  name: z.string(),
+  namespace: z.string(),
+  labelSelector: z.string(),
+  pod: z.string(),
+  container: z.string(),
+  previous: z.boolean(),
+  timestamps: z.boolean(),
+  tail: z.number(),
+  maxRows: z.number(),
+});
 export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   context: z.string(),
   server: z.string(),
   namespace: z.string(),
   operation: z.enum(['discover', 'list', 'describe', 'logs']),
   statement: z.string(),
+  reviewOffered: z.boolean().default(false),
+  reviewResult: z.boolean().default(false),
+  // list, describe and logs reads: the tool, the final args (after the prepare script), the args the script
+  // set, the kept variables the scripts read and the scripts themselves (P718).
+  tool: z.string().default(''),
+  request: kubeRequestSchema.nullish().transform((v) => v ?? null),
+  changed: z.array(z.string()).default([]),
+  kept: z
+    .array(keptUseSchema)
+    .nullish()
+    .transform((v) => v ?? []),
+  script: apiScriptPayloadSchema.nullish().transform((v) => v ?? null),
 });
 export type KubeReadPayload = z.infer<typeof kubeReadPayloadSchema>;
+
+// kube.response item payload (dbmcp kubeResponsePayload): no result; the text comes from the
+// pending-response query.
+export const kubeResponsePayloadSchema = /*#__PURE__*/ z.object({
+  context: z.string(),
+  server: z.string(),
+  namespace: z.string(),
+  operation: z.enum(['list', 'describe', 'logs']),
+  statement: z.string(),
+  isError: z.boolean(),
+  bytes: z.number(),
+  requested: z.boolean().default(false),
+  // A script produced the held text from the raw result of rawBytes.
+  scripted: z.boolean().default(false),
+  rawBytes: z.number().default(0),
+  // The prompt's final args and the ones the prepare script set, for the review's Request section.
+  tool: z.string().default(''),
+  request: kubeRequestSchema.nullish().transform((v) => v ?? null),
+  changed: z.array(z.string()).default([]),
+});
+export type KubeResponsePayload = z.infer<typeof kubeResponsePayloadSchema>;
+
+// The held kube results as the agent gets them (dbmcp kubeListResources, kubeDescribeTool, kubePodLogs).
+export const kubeListResultSchema = /*#__PURE__*/ z.object({
+  columns: z.array(z.string()),
+  rows: z.array(z.object({ name: z.string(), namespace: z.string(), cells: z.array(z.string()) })),
+  rowCount: z.number(),
+  truncated: z.boolean().default(false),
+});
+export const kubeDescribeResultSchema = /*#__PURE__*/ z.object({
+  kind: z.string(),
+  name: z.string(),
+  manifest: z.string(),
+  manifestTruncated: z.boolean().default(false),
+});
+export const kubeLogsResultSchema = /*#__PURE__*/ z.object({
+  lines: z.array(z.object({ ts: z.string().optional(), text: z.string() })),
+  truncated: z.boolean().default(false),
+});
 
 // One param or env entry of a script request. A secret's value is always empty; saved says its value
 // comes from the script's saved secret values.
@@ -236,28 +333,23 @@ export type ScriptRunPayload = z.infer<typeof scriptRunPayloadSchema>;
 // api.request item payload (dbmcp apiPayload). Values are as the agent sent them: a credential stays
 // {{name}}, and a secret variable's value is "••••".
 const apiPairSchema = /*#__PURE__*/ z.object({ name: z.string(), value: z.string() });
-// Scripts an agent attached to an api.request (P676): the source the user approves, with its hash.
-const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
-  prepare: z
-    .object({
-      source: z.string(),
-      hash: z.string(),
-      changed: z.array(z.string()),
-      input: z.string(),
-      inputTruncated: z.boolean(),
-    })
-    .nullable(),
-  transform: transformViewSchema.nullable(),
-});
 // A declared input of an api.request item (dbmcp apiInputPayload). Never a value.
 export const apiInputSchema = /*#__PURE__*/ z.object({
   name: z.string(),
-  label: z.string(),
   state: z.enum(['needed', 'stored']),
   origin: z.string(),
   keptId: z.string().optional(),
+  // How long Kira keeps a typed value.
+  keepMinutes: z.number().default(60),
 });
 export type ApiInput = z.infer<typeof apiInputSchema>;
+
+const apiBodySchema = /*#__PURE__*/ z.object({
+  contentType: z.string(),
+  text: z.string(),
+  truncated: z.boolean(),
+  form: z.array(apiPairSchema).nullable(),
+});
 
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
@@ -267,14 +359,7 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   query: z.array(apiPairSchema),
   headers: z.array(apiPairSchema.extend({ masked: z.boolean() })),
   auth: z.object({ scheme: z.string(), display: z.string() }).nullable(),
-  body: z
-    .object({
-      contentType: z.string(),
-      text: z.string(),
-      truncated: z.boolean(),
-      form: z.array(apiPairSchema).nullable(),
-    })
-    .nullable(),
+  body: apiBodySchema.nullable(),
   variables: z.array(z.object({ name: z.string(), value: z.string(), secret: z.boolean() })),
   credentials: z.array(z.object({ name: z.string(), hosts: z.array(z.string()) })),
   followRedirects: z.boolean(),
@@ -315,6 +400,20 @@ export const apiResponsePayloadSchema = /*#__PURE__*/ z.object({
   rawBytes: z.number(),
   class: z.enum(['read', 'write']),
   reason: z.string(),
+  // Secret variables the request masker hid in the held text, by name.
+  masked: z.array(z.string()).default([]),
+  // The request as the prompt showed it, for the review's Request section.
+  request: z
+    .object({
+      headers: z.array(apiPairSchema.extend({ masked: z.boolean() })),
+      body: apiBodySchema.nullable(),
+      variables: z.array(z.object({ name: z.string(), value: z.string(), secret: z.boolean() })),
+      kept: z
+        .array(keptUseSchema)
+        .nullish()
+        .transform((v) => v ?? []),
+    })
+    .default({ headers: [], body: null, variables: [], kept: [] }),
 });
 export type ApiResponsePayload = z.infer<typeof apiResponsePayloadSchema>;
 
@@ -364,8 +463,9 @@ export type DbMcpPendingResponse = z.infer<typeof dbMcpPendingResponseSchema>;
 const nullableText = /*#__PURE__*/ z.string().nullable();
 const runQueryEnvelope = {
   rowCount: z.number(),
-  returned: z.number(),
+  returned: z.number().optional(),
   truncated: z.boolean().optional(),
+  hint: z.string().optional(),
   plan: z.unknown().optional(),
   additionalStatementResults: z.number().optional(),
   note: z.string().optional(),
@@ -374,9 +474,9 @@ export const dbMcpRunQueryResultSchema = /*#__PURE__*/ z.discriminatedUnion('kin
   z.object({
     ...runQueryEnvelope,
     kind: z.literal('tabular'),
-    columns: z.array(z.object({ name: z.string(), dataType: z.string(), typeClass: z.string() })),
+    columns: z.array(z.object({ name: z.string(), dataType: z.string() })),
     rows: z.array(z.array(nullableText)),
-    truncatedCells: z.number(),
+    truncatedCells: z.number().optional(),
   }),
   z.object({
     ...runQueryEnvelope,

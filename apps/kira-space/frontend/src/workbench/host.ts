@@ -4,10 +4,11 @@ import { computed } from 'vue';
 import { fileIconStyle } from '../repo/fileIcon';
 import type { TabRecord } from '../state/tabDomain';
 import { TAB_KINDS } from '../state/tabKinds';
-import { useTabsStore } from '../state/tabs';
+import { useTabsStore, WORKBENCH_TAB_SCOPE } from '../state/tabs';
 import { visibleWorkspace, type WorkspaceKey } from '../state/workspace';
 import { useTabIncognitoStore } from '../studio/state/tabIncognito';
 import { TAB_VIEWS } from './tabViews';
+import { createTabWindowMove } from './tabWindowMove';
 
 // The WorkbenchHost instance App.vue provides once. `tabBadge` shows a script terminal's run
 // state; `tabIndicator` the incognito eye of a database or API tab.
@@ -22,6 +23,8 @@ export function createWorkbenchHost(): WorkbenchHost<WorkspaceKey, TabRecord> {
     tabs: tabsStore,
     kinds: TAB_KINDS,
     views: TAB_VIEWS,
+    selectionScope: WORKBENCH_TAB_SCOPE,
+    windowMove: createTabWindowMove(),
     // A tab kind's icon() returns either a codicon name or a `{ filePath }` marker (only
     // 'repo-file', state/tabKinds.ts's own doc comment) — resolved here into the two disjoint
     // render shapes the shared TabStrip.vue needs, the same split AdeFileTreeRow.vue's own

@@ -72,7 +72,7 @@ type apiRequestArgs struct {
 	// Script is set by an agent that attaches JavaScript to the request.
 	Script *apiScriptArgs `json:"script,omitempty"`
 	// Inputs are values only the user has; the user types them in the approval.
-	Inputs []apiInput `json:"inputs,omitempty"`
+	Inputs []string `json:"inputs,omitempty"`
 }
 
 func pairs(in []apiPair) []agentapi.NameValue {
@@ -88,46 +88,11 @@ func (a apiRequestArgs) input(scope string) agentapi.Input {
 		EnvironmentID: a.EnvironmentID, Method: a.Method, URL: a.URL,
 		Headers: pairs(a.Headers), Query: pairs(a.Query), Body: a.Body, ContentType: a.ContentType, Form: pairs(a.Form),
 		TimeoutSeconds: a.TimeoutSeconds, MaxResponseBytes: a.MaxResponseBytes, FollowRedirects: a.FollowRedirects, Scope: scope,
-		Inputs: inputDecls(a.Inputs), ScriptReads: scriptReads(a.Script),
+		Inputs: inputDecls(a.Inputs),
 	}
 }
 
 const apiRequestsOff = "API requests are turned off in Kira Space's Studio MCP settings"
-
-func (s *Server) apiListEnvironments(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-	if !s.apiEnabled() {
-		return errResult(apiRequestsOff)
-	}
-	envs, err := s.cfg.API.Environments()
-	if err != nil {
-		return errResult("the environments could not be read")
-	}
-	return jsonResult(map[string]any{
-		"environments": s.envListing(envs),
-		"note":         "Requests without environmentId are allowed; they can use no variables.",
-	})
-}
-
-// apiEnvListing is one api_list_environments entry: the view plus which request classes hold their
-// responses for the user.
-type apiEnvListing struct {
-	agentapi.EnvView
-	ReviewResults struct {
-		Read  bool `json:"read"`
-		Write bool `json:"write"`
-	} `json:"reviewResults"`
-}
-
-func (s *Server) envListing(envs []agentapi.EnvView) []apiEnvListing {
-	out := make([]apiEnvListing, len(envs))
-	for i, v := range envs {
-		info := agentapi.EnvInfo{Review: v.Review}
-		out[i].EnvView = v
-		out[i].ReviewResults.Read = s.apiReviewSetting(info, true)
-		out[i].ReviewResults.Write = s.apiReviewSetting(info, false)
-	}
-	return out
-}
 
 func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRequestArgs) (*mcp.CallToolResult, any, error) {
 	settings := s.apiSettings()
@@ -141,7 +106,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		if sc, refusal = s.openScripts(ctx, a.Script); refusal != "" {
 			return errResult(refusal)
 		}
-		if sc.kept, refusal = s.keptRunFor(in.Scope, sc, "Nothing was sent."); refusal != "" {
+		if sc.kept, refusal = s.keptRunFor(in.Scope, sc, "api_request", "Nothing was sent."); refusal != "" {
 			return errResult(refusal)
 		}
 		if sc.Prepare != "" {
@@ -169,7 +134,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 			return withNoValueKept(res, plan), nil, err
 		}
 	}
-	statuses, plan, refusal := s.settleInputs(ctx, in, plan, sc, ap.supplied)
+	statuses, plan, refusal := s.settleInputs(ctx, &in, plan, sc, ap.supplied)
 	if refusal != "" {
 		return errResult(refusal)
 	}
@@ -204,10 +169,10 @@ func (s *Server) recheckAPISwitches(sc *apiScripts) string {
 	return ""
 }
 
-// settleInputs stores what the user typed, then plans again so the plan binds the stored entries' ids (a needed
-// input had none, a replaced one has a new id) and the scripts read the fresh entries. The refusal is
-// non-empty when a value could not be kept or the request no longer plans.
-func (s *Server) settleInputs(ctx context.Context, in agentapi.Input, plan agentapi.Planned, sc *apiScripts, supplied SuppliedInputs) ([]agentapi.InputStatus, agentapi.Planned, string) {
+// settleInputs stores what the user typed, then plans again so the plan binds the entries' ids (a needed input had none, a replaced one has a new id) and
+// the scripts read the fresh entries. The refusal is non-empty when a value could not be kept or the request
+// no longer plans.
+func (s *Server) settleInputs(ctx context.Context, in *agentapi.Input, plan agentapi.Planned, sc *apiScripts, supplied SuppliedInputs) ([]agentapi.InputStatus, agentapi.Planned, string) {
 	if len(plan.Inputs) == 0 {
 		supplied.Wipe()
 		return nil, plan, ""
@@ -216,16 +181,9 @@ func (s *Server) settleInputs(ctx context.Context, in agentapi.Input, plan agent
 	if err != nil {
 		return nil, plan, err.Error()
 	}
-	next, err := s.cfg.API.Plan(in)
+	next, err := s.cfg.API.Plan(*in)
 	if err != nil {
 		return nil, plan, err.Error()
-	}
-	names := make([]string, len(plan.Inputs))
-	for i, u := range plan.Inputs {
-		names[i] = u.Name
-	}
-	if sc != nil {
-		sc.kept.rebind(names)
 	}
 	s.fillReused(ctx, statuses)
 	return statuses, next, ""
@@ -288,7 +246,7 @@ func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 	outcome, choice, supplied := s.cfg.Approvals.RequestInputs(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
 		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan, APIScript: sc,
-		OfferReview: true, ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)), Inputs: approvalInputsOf(plan),
+		OfferReview: true, KeepMinutes: s.keepMinutes(), ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)), Inputs: approvalInputsOf(plan),
 	})
 	if outcome != ApprovalApproved {
 		supplied.Wipe()
@@ -303,34 +261,34 @@ func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 	return apiApproval{requested: choice.ReviewResult, supplied: supplied}, nil, nil
 }
 
-// addAPITools registers api_list_environments and api_request.
+// addAPITools registers api_request.
 func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "api_list_environments", Description: llmprompts.DbmcpToolAPIListEnvironments.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "api_list_environments", s.apiListEnvironments))
 	limits := map[string]any{
 		"timeoutSeconds":   llmprompts.LimitVars{Default: 30, Max: 300},
-		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: 512 << 10},
+		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: apiMaxResponseBytes},
 	}
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[apiRequestArgs](src, llmprompts.DbmcpToolAPIRequest.ID(), limits), "method", "url")
 	fixScriptSchema(sch)
 	sch.Properties["method"].Enum = []any{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"}
-	scriptNote := " " + llmprompts.DbmcpToolAPIRequestReview.Text(src, llmprompts.NoVars{})
-	if s.scriptsOn() {
-		scriptNote += " " + llmprompts.DbmcpToolAPIRequestScripts.Text(src, llmprompts.NoVars{})
-	} else {
+	if !s.scriptsOn() {
 		delete(sch.Properties, "script")
 	}
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}) + scriptNote, InputSchema: sch,
+		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}), InputSchema: sch,
 	}, withPanicRecovery(s, "api_request", s.apiRequest))
+}
+
+// pinScriptObject pins script to an object (the generated schema is a nullable object) and returns it.
+func pinScriptObject(sch *jsonschema.Schema) *jsonschema.Schema {
+	script := sch.Properties["script"]
+	script.Type, script.Types = "object", nil
+	return script
 }
 
 // fixScriptSchema pins script to an object and makes script.input any JSON: the generated schemas are a
 // nullable object and a byte array.
 func fixScriptSchema(sch *jsonschema.Schema) {
-	script := sch.Properties["script"]
-	script.Type, script.Types = "object", nil
+	script := pinScriptObject(sch)
 	input := script.Properties["input"]
 	script.Properties["input"] = &jsonschema.Schema{Description: input.Description}
 }
@@ -400,6 +358,19 @@ type apiResponsePayload struct {
 	RawBytes    int            `json:"rawBytes"`
 	Class       string         `json:"class"`
 	Reason      string         `json:"reason"`
+	// Masked names the secret variables the request masker hid in the held text; never a value.
+	Masked []string `json:"masked"`
+	// Request is the request as the prompt showed it, for the review's collapsed Request section.
+	Request apiRequestView `json:"request"`
+}
+
+// apiRequestView is the part of the prompt's payload a review repeats: the headers and body the request
+// carried, the variables it used and the kept values it read. The query rides in the URL.
+type apiRequestView struct {
+	Headers   []apiHeaderPayload `json:"headers"`
+	Body      *apiBodyPayload    `json:"body"`
+	Variables []agentapi.VarUse  `json:"variables"`
+	Kept      []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
@@ -416,8 +387,10 @@ func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
 	out := apiResponsePayload{
 		Method: p.Method, URL: p.URL, Host: p.Host, Status: meta.Status, StatusText: meta.StatusText,
 		IsError: held.IsError, Scripted: held.Script != nil, Bytes: len(held.Text), RawBytes: len(held.Raw),
-		Class: "write", Reason: meta.Reason,
+		Class: "write", Reason: meta.Reason, Masked: maskedNames(p),
 	}
+	prompt := apiPayloadOf(p)
+	out.Request = apiRequestView{Headers: prompt.Headers, Body: prompt.Body, Variables: prompt.Variables, Kept: prompt.Kept}
 	if meta.Read {
 		out.Class = "read"
 	}
@@ -425,6 +398,16 @@ func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
 		out.Environment = &apiEnvPayload{ID: p.Env.ID, Name: p.Env.Name, Color: p.Env.Color}
 	}
 	return out
+}
+
+// maskedNames lists the plan's secret variable names, sorted and unique.
+func maskedNames(p *agentapi.Planned) []string {
+	out := make([]string, 0, len(p.Credentials))
+	for _, c := range p.Credentials {
+		out = append(out, c.Name)
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // apiItemParts projects a planned request into its approval item. It reads the plan only, which holds
@@ -436,7 +419,7 @@ func apiItemParts(r ApprovalRequest) (approvals.Target, approvals.Operation, []b
 	}
 	target, op := apiTargetOp(p)
 	payload := apiPayloadOf(p)
-	payload.Inputs = apiInputsPayload(p)
+	payload.Inputs = apiInputsPayload(p, r.KeepMinutes)
 	payload.Script = apiScriptPayloadOf(r.APIScript)
 	if r.APIScript != nil && r.APIScript.kept != nil {
 		payload.Kept = mergeKept(payload.Kept, r.APIScript.kept.uses)
@@ -582,3 +565,6 @@ func displayedKept(uses []agentapi.KeptUse, body *apiBodyPayload) []agentapi.Kep
 	}
 	return out
 }
+
+// apiMaxResponseBytes mirrors agentapi's response cap, for the schema text and the cut hint.
+const apiMaxResponseBytes = 512 << 10

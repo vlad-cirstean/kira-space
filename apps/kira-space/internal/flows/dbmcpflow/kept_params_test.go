@@ -149,7 +149,7 @@ func TestDbMcpKeptParams(t *testing.T) {
 		return len(withParams) >= 2
 	})
 	for _, c := range withParams {
-		if strings.Contains(c, "drop table") || strings.Contains(c, "[1,2]") || !strings.Contains(c, "{{kept.") {
+		if strings.Contains(c, "drop table") || strings.Contains(c, "[1,2]") || !strings.Contains(c, "{{plain.") {
 			t.Errorf("op command = %q, want the placeholder and the variable label only", c)
 		}
 	}
@@ -204,7 +204,7 @@ func TestDbMcpKeptParamsRefusals(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		"unknown":          {f.paramsArgs("select ? as x", "read", "nope"), `no kept variable "nope"`},
+		"unknown":          {f.paramsArgs("select ? as x", "read", "nope"), `no temporary variable "nope"`},
 		"too few names":    {f.paramsArgs("select ?, ? as x", "read", "n"), "2 placeholders but params lists 1"},
 		"too many names":   {f.paramsArgs("select ? as x", "read", "n", "n"), "1 placeholders but params lists 2"},
 		"second statement": {f.paramsArgs("select ? as x; select 2", "read", "n"), "could not tell what this statement does"},
@@ -273,7 +273,7 @@ func TestDbMcpKeptParamsAllowVerdict(t *testing.T) {
 	f.keep(t, "session:other", "n", "1")
 	f.keep(t, externalScope, "mine", "2")
 
-	if res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "n")); !res.IsError || !strings.Contains(text(res), `no kept variable "n"`) {
+	if res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "n")); !res.IsError || !strings.Contains(text(res), `no temporary variable "n"`) {
 		t.Fatalf("other scope = %q, want not found", text(res))
 	}
 	res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "mine"))
@@ -283,13 +283,13 @@ func TestDbMcpKeptParamsAllowVerdict(t *testing.T) {
 	if f.queueLen(t) != 0 {
 		t.Fatalf("queue %d, want none for an allowed read", f.queueLen(t))
 	}
-	list := text(callTool(t, sess, "list_kept_variables", map[string]any{}))
-	if !strings.Contains(list, `"mine"`) || !strings.Contains(list, "params of run_query") {
-		t.Fatalf("list = %s, want the variable and the run_query note", list)
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}}))
+	if !strings.Contains(list, `"mine"`) {
+		t.Fatalf("list = %s, want the variable", list)
 	}
 }
 
-// TestDbMcpKeptParamsToolSurface: run_query takes params and list_kept_variables is offered with API tools off.
+// TestDbMcpKeptParamsToolSurface: run_query takes params and list offers saved with API tools off.
 func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
@@ -300,8 +300,12 @@ func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 	var haveList, haveParams bool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
-		case "list_kept_variables":
-			haveList = true
+		case "list":
+			raw, merr := json.Marshal(tool.InputSchema)
+			if merr != nil {
+				t.Fatal(merr)
+			}
+			haveList = strings.Contains(string(raw), `"temp"`)
 		case "run_query":
 			raw, merr := json.Marshal(tool.InputSchema)
 			if merr != nil {
@@ -311,6 +315,6 @@ func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 		}
 	}
 	if !haveList || !haveParams {
-		t.Fatalf("list_kept_variables %v, run_query params %v, want both offered", haveList, haveParams)
+		t.Fatalf("list offering saved %v, run_query params %v, want both offered", haveList, haveParams)
 	}
 }

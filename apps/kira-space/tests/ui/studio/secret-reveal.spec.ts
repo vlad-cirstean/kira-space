@@ -12,43 +12,59 @@ import { connectionRow } from './support/tree';
 // only where a gated reveal already exists (connections). No backend half: no new path, and
 // connfiles_test.go / connection_form_test.go cover ConnectionsService.Reveal.
 
-interface ApiView {
-  files: unknown[];
-  secrets: { name: string; set: boolean; referenced: boolean }[];
-}
-const apiView = contract<ApiView>('api-files', 'ApiConfigService.View');
 const tree = contract<{ collections: { id: string }[] }>('api-files', 'CollectionsService.List');
 
-test('api secret dialog: the eye shows and re-masks a typed value, nothing is revealed over IPC', async ({
-  relaunch,
-}) => {
-  const view = { ...apiView, secrets: apiView.secrets.map((s) => ({ ...s, set: false })) };
-  const after = { ...apiView, secrets: apiView.secrets.map((s) => ({ ...s, set: true })) };
-  const { window: page, control } = await relaunch({
+function secretRow(set: boolean) {
+  return {
+    id: 'var-token',
+    scope: 'collection',
+    ownerId: tree.collections[0].id,
+    name: 'token',
+    value: '',
+    isSecret: true,
+    secretSet: set,
+    sortOrder: 0,
+    description: '',
+  };
+}
+
+async function openSecretCell(
+  relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
+  set: boolean,
+) {
+  const id = tree.collections[0].id;
+  const app = await relaunch({
     control: [
       { channel: IPC.collectionsList, response: tree },
       { channel: IPC.variablesListEnvironments, response: [] },
-      { channel: IPC.apiConfigView, response: view },
-      { channel: IPC.apiConfigSetSecret, response: after },
+      {
+        channel: IPC.variablesList,
+        args: { scope: 'collection', ownerId: id },
+        response: [secretRow(set)],
+      },
+      { channel: IPC.apiConfigEditVariables, response: null },
     ],
   });
-  await openHttpMode(page);
-  await page.click('[data-testid="api-environments"]');
-  const secret = page.locator(`[data-testid="api-secret-${view.secrets[0].name}"]`);
-  await secret.locator('[data-testid="api-secret-set"]').click();
-  const input = page.locator('[data-testid="api-secret-value"]');
-  const eye = page.locator('[data-testid="api-secret-value-reveal"]');
+  await openHttpMode(app.window);
+  await app.window.click('[data-testid="api-environments"]');
+  await app.window.click(
+    `[data-testid="${set ? 'matrix-replace' : 'matrix-secret-set'}-token-${id}"]`,
+  );
+  return app;
+}
+
+test('variables tab: the eye shows and re-masks a typed secret, nothing is revealed over IPC', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openSecretCell(relaunch, false);
+  const input = page.locator('[data-testid="matrix-cell-input"]');
+  const eye = page.locator('[data-testid="matrix-cell-input-reveal"]');
   await input.fill('tok-123');
   await expect(input).toHaveAttribute('type', 'password');
   await eye.click();
   await expect(input).toHaveAttribute('type', 'text');
   await expect(eye).toHaveAttribute('aria-pressed', 'true');
   await eye.click();
-  await expect(input).toHaveAttribute('type', 'password');
-  await page.click('[data-testid="api-secret-save"]');
-  await expect(page.locator('[data-testid="api-secret-dialog"]')).toHaveCount(0);
-  await secret.locator('[data-testid="api-secret-set"]').click();
-  await expect(input).toHaveValue('');
   await expect(input).toHaveAttribute('type', 'password');
   expect(
     control
@@ -57,53 +73,12 @@ test('api secret dialog: the eye shows and re-masks a typed value, nothing is re
   ).toHaveLength(0);
 });
 
-test('api variables dialog: the eye of a saved secret row is off until a value is typed', async ({
+test('variables tab: the eye of a saved secret is off until a value is typed', async ({
   relaunch,
 }) => {
-  const KEY = 'api-variables-form';
-  const ENV_FILE = 'staging.environment.yaml';
-  const read = contract<{ file: string }>(KEY, 'file#read');
-  const form = contract<{ text: string }>(KEY, 'form#read');
-  const saved = {
-    ...apiView,
-    storage: { available: true, backend: 'keychain', insecureFallback: false, reason: null },
-    secrets: [{ name: 'staging.token', set: true, referenced: true }],
-  };
-  const { window: page } = await relaunch({
-    control: [
-      {
-        channel: IPC.collectionsList,
-        response: { collections: [], items: [] },
-      },
-      {
-        channel: IPC.variablesListEnvironments,
-        response: [
-          {
-            id: 'env-staging',
-            name: 'Staging',
-            sortOrder: 0,
-            isActive: false,
-            color: 'green',
-            description: '',
-            file: ENV_FILE,
-          },
-        ],
-      },
-      { channel: IPC.apiConfigFile, args: { file: ENV_FILE }, response: read },
-      {
-        channel: IPC.apiConfigForm,
-        args: contract(KEY, 'args:ApiConfigService.Form#read'),
-        response: form,
-      },
-      { channel: IPC.apiConfigView, response: saved },
-    ],
-  });
-  await openHttpMode(page);
-  await page.click('[data-testid="api-environments"]');
-  await page.click('[data-testid="environment-edit"]');
-  await page.locator('[data-testid="api-tab-variables"]').click();
-  const input = page.locator('[data-testid="api-variable-secret-1"]');
-  const eye = page.locator('[data-testid="api-variable-secret-1-reveal"]');
+  const { window: page } = await openSecretCell(relaunch, true);
+  const input = page.locator('[data-testid="matrix-cell-input"]');
+  const eye = page.locator('[data-testid="matrix-cell-input-reveal"]');
   await expect(input).toHaveValue('');
   await expect(eye).toBeDisabled();
   await eye.hover({ force: true });

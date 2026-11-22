@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 )
 
@@ -12,7 +11,7 @@ import (
 // if McpEnabled is true — deny by default.
 // A connection that exists but is not exposed
 // reports the exact same "no such connection" text an unknown id would: its existence is not an
-// AI client's business (the rule for list_connections, applied here to a client that names
+// AI client's business (the rule for list, applied here to a client that names
 // one directly instead of discovering it).
 func (s *Server) resolveEnabled(connectionID string) (model.ConnectionSummary, error) {
 	conns, err := s.cfg.Conns.List()
@@ -29,18 +28,6 @@ func (s *Server) resolveEnabled(connectionID string) (model.ConnectionSummary, e
 		return c, nil
 	}
 	return model.ConnectionSummary{}, fmt.Errorf("no connection %q exposed to MCP", connectionID)
-}
-
-// capsOf extracts the live adapter's own Caps from a connection's current state. Caps are only
-// knowable once connected — adapterhost.Router.Connect stores adapter.Caps() on ConnectResult,
-// carried through to ConnectionState.Caps — so a never-connected or currently-disconnected
-// connection reports ok=false rather than a guess.
-func capsOf(state model.ConnectionState) (adapters.Caps, bool) {
-	if state.Status != "connected" {
-		return adapters.Caps{}, false
-	}
-	caps, ok := state.Caps.(adapters.Caps)
-	return caps, ok
 }
 
 // connectForQuery connects connectionID on demand — run_query's own rule. Exposing a

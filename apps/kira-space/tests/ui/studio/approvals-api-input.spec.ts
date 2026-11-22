@@ -7,7 +7,7 @@ import { IPC } from '../support/ipcChannels';
 
 // Contracts approvals-api-input and approvals-api-input-stored. Backend half: dbmcpflow
 // TestUserInputSupplied. An api_request that declares an input parks with a field for it: Send waits
-// until it is filled, the typed value rides the approve answer only, and nothing keeps it afterwards.
+// until it is filled, the typed value rides the approve answer only, and the page keeps no copy.
 // A value Kira already holds shows as supplied by the user and may be replaced.
 
 const TYPED = 'typed-secret-value-42';
@@ -36,23 +36,28 @@ test('contract: the card asks for the value, marks it and holds Send until it is
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const c = card(page, it);
-  await expect(c.locator('[data-testid="api-approval-input"]')).toHaveText(
-    'Needs a value from you',
+  // One row: label, masked field. No heading, hint or warning repeats it.
+  const row = c.locator('[data-testid="api-approval-input-apikey"]');
+  await expect(row).toContainText('apikey');
+  await expect(c.locator('[data-testid="api-approval-inputs"]')).not.toContainText(
+    'Values you supply',
   );
-  await expect(c.locator('[data-testid="api-approval-inputs"]')).toContainText('Values you supply');
-  await expect(c.locator('[data-testid="api-approval-inputs-hint"]')).toContainText(
-    'http://127.0.0.1:',
+  await expect(c.getByText('Needs a value from you')).toHaveCount(0);
+  await expect(c.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
+    'Available for 60 min',
   );
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
+  await expect(field).toHaveAttribute('placeholder', 'Required');
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeDisabled();
   await field.fill('   ');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeDisabled();
   await field.fill(TYPED);
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
   // The reference is marked in the header, and no pending row lists a value that does not exist yet.
   await expect(c.locator('[data-testid="api-approval-headers"] mark')).toHaveText(
-    '{{kept.apikey}}',
+    '{{secret.apikey}}',
   );
   await expect(c.locator('[data-testid="api-approval-kept-panel"]')).toHaveCount(0);
 });
@@ -104,13 +109,20 @@ test('contract: a held value shows as supplied by you, Send needs no typing, a n
   await pushApprovals(page, [it]);
   const c = card(page, it);
   const row = c.locator('[data-testid="api-approval-kept-apikey"]');
-  await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Typed by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
-  await c.getByText('Enter a new value').click();
+  await c
+    .locator('[data-testid="api-approval-input-replace"] [data-slot="collapsible-trigger"]')
+    .click();
   await page.locator('[data-testid="api-input-apikey"]').fill(TYPED);
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
-    .toEqual({ ids: [it.id], approve: true, options: { [it.id]: { inputs: { apikey: TYPED } } } });
+    .toEqual({
+      ids: [it.id],
+      approve: true,
+      options: { [it.id]: { inputs: { apikey: TYPED } } },
+    });
 });

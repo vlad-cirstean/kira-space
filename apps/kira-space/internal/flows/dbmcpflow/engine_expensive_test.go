@@ -135,7 +135,7 @@ func mergeArgs(base, extra map[string]any) map[string]any {
 }
 
 // TestDbMcpEngineNoExplain: MongoDB and Redis have no EXPLAIN this app can parse. explain:true is
-// refused, list_connections reports no check, and a read is never refused as expensive.
+// refused, list reports no check, and a read is never refused as expensive.
 func TestDbMcpEngineNoExplain(t *testing.T) {
 	engineTest(t, []string{"mongodb", "redis"}, func(t *testing.T, e engine, f *fixture, sess *mcp.ClientSession) {
 		f.setExpensiveThreshold(t, 1000)
@@ -151,8 +151,8 @@ func TestDbMcpEngineNoExplain(t *testing.T) {
 			t.Fatalf("read = %q, want it never refused as expensive", text(r))
 		}
 		for _, v := range listViews(t, sess) {
-			if v.ID == connID && v.ExpensiveQuery.Check != "none" {
-				t.Errorf("%s expensiveQuery = %+v, want check none", e.kind, v.ExpensiveQuery)
+			if v.ID == connID && v.ExpensiveRows != 0 {
+				t.Errorf("%s expensiveRows = %d, want none (no check)", e.kind, v.ExpensiveRows)
 			}
 		}
 	})

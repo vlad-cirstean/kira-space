@@ -196,8 +196,11 @@ func (s *scope) rescan() {
 	}
 }
 
-// forget drops the verdict of key and every dir below it, and the backend watches that went with them.
-func (s *scope) forget(key string) {
+// forget drops the verdict of key and every dir below it, and with unwatch the backend watches that
+// went with them. A Create keeps them: its dir is either fresh (the kernel dropped any old watch with
+// the old inode) or already walked, and removing a live watch would lose events in the window before
+// watchTree adds it again.
+func (s *scope) forget(key string, unwatch bool) {
 	if _, had := s.decided[key]; !had && !s.isRoot(key) {
 		return
 	}
@@ -205,7 +208,7 @@ func (s *scope) forget(key string) {
 	for k, v := range s.decided {
 		if k == key || strings.HasPrefix(k, pre) {
 			delete(s.decided, k)
-			if v.watched {
+			if v.watched && unwatch {
 				s.remove(v.disk)
 			}
 		}
@@ -231,7 +234,7 @@ func (s *scope) admit(r rawEvent) (Event, bool) {
 		key = rt.key
 	}
 	if r.op&(Create|Remove|Rename) != 0 {
-		s.forget(key) // a stale verdict must not outlive a dir that was replaced
+		s.forget(key, r.op&(Remove|Rename) != 0) // a stale verdict must not outlive a dir that was replaced
 	}
 	if rel != "" {
 		if !s.watched(filepath.Dir(key), filepath.Dir(disk)) {

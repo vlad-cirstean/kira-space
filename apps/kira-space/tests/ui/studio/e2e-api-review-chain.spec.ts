@@ -51,12 +51,10 @@ test('contract: the review says the write was sent and lists what the script kee
   await pushApprovals(page, [liveItem(it)]);
   await expect(page.locator('[data-testid="approval-operation"]')).toContainText('already ran');
   const keep = page.locator('[data-testid="api-review-keep"]');
-  await expect(keep).toContainText('Will keep');
-  await expect(keep.locator('[data-testid="api-review-keep-domains"]')).toContainText('List of 2');
+  await expect(keep).toContainText('Will set');
   await expect(keep.locator('[data-testid="kept-value-preview"]')).toContainText('x.test');
-  await expect(
-    keep.locator('[data-testid="kept-value-preview"][data-colorized] span').first(),
-  ).toBeVisible();
+  await keep.locator('[data-testid="api-review-keep-domains"] [data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)

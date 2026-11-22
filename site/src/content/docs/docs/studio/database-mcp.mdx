@@ -26,6 +26,9 @@ The server is off by default. Turn it on with **Enable the Studio MCP server** i
 - Its own bearer token. **Regenerate token** issues a new one.
 - A port conflict stops the server. It never falls back to another port.
 - Tool list: see [MCP tools](../../reference/mcp-tools/).
+- API requests have their own page: [Agent API requests](../agent-api/).
+
+<DocShot id="studio-mcp-settings" />
 
 ## Workflow steps
 
@@ -75,7 +78,7 @@ A timed-out statement is refused, and the AI client can ask for an exemption. Yo
 
 By default an exposed connection shows every table, including tables created later. In the MCP tab, untick **All tables** to choose which tables, views and collections the client may touch. The choice is saved in the connection file as `mcp.tables`: leave the key out for all tables, `[]` for none.
 
-The app parses every `run_query` statement, planned or run, before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `list_children` and `describe` on a database or schema hide unlisted tables, and `describe` on one refuses it.
+The app parses every `run_query` statement, planned or run, before it runs. A statement that touches an unlisted table is refused, in every mode, and no approval or exemption applies. A statement the app cannot parse is refused too. So are `CALL`, `SET`, `USE`, `PRAGMA`, calls to your own functions, and engine features that read other tables. `describe` on a database or schema hide unlisted tables, and `describe` on one refuses it.
 
 Limits: a view is checked by its own name, so listing a view grants what it shows. Scripts and operations are not checked. Kafka, S3, SQS and Redis have no tables, so the list does not apply. Triggers, rules and other code that runs inside the database can still reach unlisted tables; use database permissions for a hard guarantee.
 
@@ -126,7 +129,7 @@ Limits: matching is by column name, like masking, so an allowed column can share
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
 
-When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. Each request is approved on its own; only "Deny all" answers several at once.
+When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. Each request is approved on its own; only "Deny all" answers several at once. When prompts come from several agent sessions, they group by session, and "Deny all" answers only that session.
 
 You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Studio MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
 

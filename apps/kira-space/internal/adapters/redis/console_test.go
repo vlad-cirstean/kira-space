@@ -147,7 +147,7 @@ func kvEntry(t *testing.T, pg page.KeyValuePage, i int) (field, value string) {
 // TestResultToPage_HGETCarriesRealFieldName: resultToPage previously named
 // every scalar reply's Field after the upper-cased command ("HGET"), never the real hash field
 // requested — so a mask rule on that field could never match it through run_query, though
-// list_connections reported the connection as protected. HGET's own field name comes from the
+// list reported the connection as protected. HGET's own field name comes from the
 // command's own argument, not the reply.
 func TestResultToPage_HGETCarriesRealFieldName(t *testing.T) {
 	pg := resultToPage("HGET", []string{"email"}, "person@example.com", page.ResultCap{})

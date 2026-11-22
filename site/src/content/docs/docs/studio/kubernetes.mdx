@@ -1,0 +1,46 @@
+---
+title: Kubernetes
+description: Browse clusters, resources, events and pod logs, read only.
+sources:
+  - README.md
+  - apps/kira-space/README.md
+  - apps/kira-space/internal/kubernetes
+sidebar:
+  order: 8
+---
+
+import DocShot from '../../../../components/DocShot.astro';
+
+The Kubernetes module reads your clusters. It never changes them.
+
+<DocShot id="studio-kube-pods" />
+
+## Read only
+
+Kira Space sends only GET requests: discovery, list, get, events and pod logs. The module has no create, update, delete, exec, attach or port-forward path.
+
+## Clusters
+
+Clusters come from your kubeconfig: the paths in `KUBECONFIG`, else `~/.kube/config`. The module shows whether the file is missing or invalid. Each cluster shows a status, such as unreachable, unauthorized or forbidden. You can reorder clusters.
+
+## MCP access
+
+A cluster is off until you turn it on, from its menu ("MCP settings…") or with its switch in Settings, Studio MCP, Kubernetes. Agents never see an off cluster. When it is on, choose "Ask me first" (each read asks you) or "Read straight away". The choice covers all five Kubernetes tools; the approval card still names the operation (discover, list, describe or logs), so you can refuse one read. A cluster can carry a description of up to 1000 characters. Clusters that were exposed before this change stay on. One that allowed every read without asking stays "Read straight away"; any other asks first. See [MCP tools](../../reference/mcp-tools/).
+
+## Resources and logs
+
+<DocShot id="studio-kube-logs" />
+
+Pick a kind, such as Pod, and the module lists its objects in a namespace. Open one to describe it, with its events and its manifest. Secret values stay hidden.
+
+A pod opens a Logs tab. A filter narrows the lines.
+
+## Approvals and review
+
+<DocShot id="studio-kube-read" />
+
+The approval card names the cluster, the namespace and the operation. A list, describe or logs read can carry a prepare script and a transform script. Scripts read plain temporary variables only.
+
+<DocShot id="studio-kube-review" />
+
+A cluster setting holds the result of a list, describe or logs read for your review. The agent gets it after you send.

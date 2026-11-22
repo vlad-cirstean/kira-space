@@ -24,14 +24,20 @@ export interface KubeCluster {
   mcp: KubeMcpSettings;
 }
 
-/** internal/kubernetes McpSettings: the AI description, the on/off switch and one approval mode. */
+/**
+ * internal/kubernetes McpSettings: the AI description, the on/off switch, one approval mode and one review
+ * setting for list, describe and logs results.
+ */
 export interface KubeMcpSettings {
   description: string;
   enabled: boolean;
   approval: KubeMcpApproval;
+  review: KubeMcpReview;
 }
 
 type KubeMcpApproval = 'prompt' | 'allow';
+/** inherit follows dbMcp.kubeReviewResponses. */
+type KubeMcpReview = 'inherit' | 'review' | 'send';
 
 export interface KubeClusters {
   config: KubeConfigInfo;

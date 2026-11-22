@@ -21,6 +21,25 @@ export function moveId(ids: readonly string[], fromId: string, toId: string): st
   return next;
 }
 
+/** Moves the `moving` ids as one block (kept in `ids` order) to `toId`'s slot: after it when `toId`
+ *  sits past the block's first item, else before it. A drop onto a block member or an unknown id
+ *  changes nothing. A block of one equals `moveId`. */
+export function moveBlock(
+  ids: readonly string[],
+  moving: readonly string[],
+  toId: string,
+): string[] {
+  const set = new Set(moving);
+  const block = ids.filter((id) => set.has(id));
+  const to = ids.indexOf(toId);
+  if (block.length === 0 || to < 0 || set.has(toId)) return [...ids];
+  const after = to > ids.indexOf(block[0]);
+  const rest = ids.filter((id) => !set.has(id));
+  const at = rest.indexOf(toId) + (after ? 1 : 0);
+  rest.splice(at, 0, ...block);
+  return rest;
+}
+
 // One drag at a time. Shared, not per list: the list a cross-list drop lands in never saw the
 // drag start, yet must honour an Esc pressed during it.
 let dragCancelled = false;
@@ -49,6 +68,23 @@ interface SortableReorderOptions {
   itemId?: (el: HTMLElement) => string | null;
   /** With `group`: an item from another list was dropped here, before `beforeId` (null = last). */
   onAdd?: (id: string, beforeId: string | null) => void;
+  /** Whether a drop outside the viewport hands the item to `onDropOutside` (tab tear-off). */
+  canDropOutside?: (id: string) => boolean;
+  /** The item was released outside the viewport. `grab*` is where the press that started the drag
+   *  landed; both points are client coordinates. */
+  onDropOutside?: (id: string, drop: OutsideDrop) => void;
+}
+
+/** A release outside the viewport: client coordinates (CSS px), possibly negative. */
+export interface OutsideDrop {
+  clientX: number;
+  clientY: number;
+  grabX: number;
+  grabY: number;
+}
+
+function isOutside(x: number, y: number): boolean {
+  return x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight;
 }
 
 /** P137's TabStrip pattern, shared: vue-draggable-plus in forceFallback mode bound to an id mirror
@@ -58,7 +94,12 @@ export function useSortableReorder(
   ids: () => readonly string[],
   onMove: (fromId: string, toId: string) => void,
   options: SortableReorderOptions,
-): { dragging: Readonly<Ref<boolean>> } {
+): {
+  dragging: Readonly<Ref<boolean>>;
+  outside: Readonly<Ref<boolean>>;
+  /** Id of the item being dragged, null between drags. */
+  draggedId: Readonly<Ref<string | null>>;
+} {
   const rowIds = shallowRef<string[]>([]);
   watch(
     ids,
@@ -68,6 +109,15 @@ export function useSortableReorder(
     { immediate: true },
   );
   const dragging = shallowRef(false);
+  // True while a drag that may leave the window (canDropOutside) has its pointer outside the viewport.
+  const outside = shallowRef(false);
+  let grab = { x: 0, y: 0, pointerId: 0 };
+  let last = { x: 0, y: 0 };
+  const canLeave = (id: string | null | undefined) =>
+    !!id && !!options.onDropOutside && (options.canDropOutside?.(id) ?? true);
+  const draggedId = shallowRef<string | null>(null);
+  const tearing = () => canLeave(draggedId.value);
+  const idOf = (el: HTMLElement) => options.itemId?.(el) ?? el.dataset.tabId ?? null;
 
   const sortable = useDraggable(
     container,
@@ -88,12 +138,36 @@ export function useSortableReorder(
       fallbackOnBody: options.fallbackOnBody ?? true,
       fallbackTolerance: DRAG_TOLERANCE_PX,
       ghostClass: SORTABLE_GHOST_CLASS,
-      onStart: () => {
+      onStart: (evt) => {
         dragging.value = true;
         dragCancelled = false;
+        draggedId.value = idOf(evt.item);
+        last = { x: grab.x, y: grab.y };
+        // Keeps pointermove/pointerup flowing once the pointer leaves the viewport, so a drag always ends.
+        try {
+          evt.item.setPointerCapture(grab.pointerId);
+        } catch {
+          // The pointer is already gone, or the element cannot capture; the drag still ends.
+        }
       },
-      onEnd: () => {
+      onEnd: (evt) => {
+        const wasOutside = outside.value;
         dragging.value = false;
+        outside.value = false;
+        draggedId.value = null;
+        // Sortable swallows the click after a fallback drag; a release outside the viewport makes
+        // none, so spend it here or the next real click is eaten.
+        if (isOutside(last.x, last.y))
+          document.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        const id = idOf(evt.item);
+        if (dragCancelled || !wasOutside || !id || !canLeave(id)) return;
+        rowIds.value = [...ids()];
+        options.onDropOutside?.(id, {
+          clientX: last.x,
+          clientY: last.y,
+          grabX: grab.x,
+          grabY: grab.y,
+        });
       },
       // The library has already moved its id mirror and DOM; the real order only changes when the
       // backend snapshot lands, so put both back and let that snapshot re-render.
@@ -108,7 +182,7 @@ export function useSortableReorder(
       },
       onUpdate: (evt) => {
         const current = ids();
-        if (dragCancelled) {
+        if (dragCancelled || outside.value) {
           rowIds.value = [...current];
           return;
         }
@@ -117,6 +191,26 @@ export function useSortableReorder(
         if (from && to && from !== to) onMove(from, to);
       },
     })),
+  );
+
+  useEventListener(container, 'pointerdown', (e: PointerEvent) => {
+    grab = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+  });
+  useEventListener(document, 'pointermove', (e: PointerEvent) => {
+    if (!dragging.value) return;
+    last = { x: e.clientX, y: e.clientY };
+    outside.value = tearing() && isOutside(e.clientX, e.clientY);
+  });
+  // The release itself may land past the last move; its coordinates win.
+  useEventListener(
+    document,
+    'pointerup',
+    (e: PointerEvent) => {
+      if (!dragging.value) return;
+      last = { x: e.clientX, y: e.clientY };
+      outside.value = tearing() && isOutside(e.clientX, e.clientY);
+    },
+    { capture: true },
   );
 
   // Esc during a drag drops the item back where it started.
@@ -160,5 +254,5 @@ export function useSortableReorder(
     { immediate: true, flush: 'post' },
   );
 
-  return { dragging };
+  return { dragging, outside, draggedId };
 }

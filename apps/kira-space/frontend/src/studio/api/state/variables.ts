@@ -3,7 +3,6 @@ import type {
   ApiEnvironment,
   ApiVariable,
   ApiVariableHistoryEntry,
-  VariableScope,
 } from '@shared/domain/variables';
 import { useMutation, useQuery } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
@@ -12,15 +11,11 @@ import { errorText } from '@workbench/bridge/codedError';
 import { queryClient } from '@workbench/state/queryClient';
 import { registerTabRuntimeCleanup } from '@workbench/state/tabRuntime';
 import { defineStore } from 'pinia';
-import { computed, reactive, toRefs, watch } from 'vue';
+import { computed, reactive, ref, toRefs, watch } from 'vue';
 import { control } from '../../bridge/control';
 import { useTabIncognitoStore } from '../../state/tabIncognito';
 import { runReveal } from '../reveal';
-import {
-  closeVariableSetTabsForOwner,
-  openEnvironmentsTab,
-  syncVariableSetTabNames,
-} from '../tabs';
+import { openVariablesTab } from '../tabs';
 import {
   apiEnvironmentsKey,
   apiEnvironmentsQueryOptions,
@@ -147,7 +142,6 @@ export const useVariablesStore = defineStore('variables', () => {
   // wipes overrides.
   watch(environments, (list) => {
     if (envQuery.data.value === undefined) return;
-    syncVariableSetTabNames('environment', list);
     const ids = new Set(list.map((e) => e.id));
     for (const [tabId, envId] of incognitoEnvByTab) {
       if (!ids.has(envId)) incognitoEnvByTab.delete(tabId);
@@ -200,11 +194,10 @@ export const useVariablesStore = defineStore('variables', () => {
   );
 
   /** Removes the environment's file. Deleting the active one leaves none active, and its open
-   *  variable-set tab closes: it has no state worth keeping once its owner is gone. */
+   *  column leaves the Variables tab with the next list. */
   async function deleteEnvironment(id: string): Promise<void> {
     await surface.run(async () => {
       await deleteEnvironmentMutation.mutateAsync(id);
-      closeVariableSetTabsForOwner('environment', id);
     });
   }
 
@@ -232,8 +225,8 @@ export const useVariablesStore = defineStore('variables', () => {
   // every caller uses; it opens (or focuses) the environments tab. It used to also refresh the
   // list explicitly — the observer created above is always live, so there is nothing left to
   // trigger here.
-  function openEnvironments(): void {
-    openEnvironmentsTab();
+  function openEnvironments(collectionId?: string): void {
+    openVariablesTab(collectionId);
   }
 
   return {
@@ -256,51 +249,14 @@ export const useVariablesStore = defineStore('variables', () => {
   };
 });
 
-// ---- the variable-set tab — one scope's variable list, one runtime per open tab ----
+// ---- the gated reveal and the history popover ----
 //
-// Re-homes what used to be the single VariablesDialog's own state (variablesDialogState) into
-// a per-tab runtime — createRuntimeStore's own shape (views/httprequest/state.ts:132's precedent),
-// since a variable-set tab, unlike the dialog it replaces, can now be open more than once at a
-// time (one per collection/environment).
-//
-// The row list itself moved to a TanStack Query cache (apiVariablesQueryOptions) — a
-// component observes it directly with useVariableRows; non-component code reads it through
-// loadVariableRows/getQueryData. This store keeps only what a query cache cannot hold: a
-// mutation's own per-tab error, the gated reveal, and the history popover — reachable from
-// each other (revealHistoryEntry/restoreHistoryEntry into setVariableSetError/upsertVariable/
-// openHistoryMenu), which is why they still share one store rather than three.
-
-interface VariableSetRuntime {
-  /** A mutation or reveal failure's message (D10/F10) — shown in the view's own MessageStrip. */
-  error: string | null;
-  /** Name filter text (P375); kept here so a tab switch does not drop it. */
-  filterQuery: string;
-}
-
-function defaultVariableSetRuntime(): VariableSetRuntime {
-  return { error: null, filterQuery: '' };
-}
-
-export interface VariableOverviewRow {
-  id: string;
-  name: string;
-  value: string;
-  isSecret: boolean;
-  description: string;
-  scope: VariableScope;
-  /** True for a collection row whose name is also claimed by some environment row — D2's
-   *  precedence means the environment row is the one that actually resolves. An environment row
-   *  is never shadowed; nothing outranks it. */
-  shadowed: boolean;
-}
+// What a query cache cannot hold: a reveal or history failure's message, the gated reveal and the
+// history popover — reachable from each other (revealHistoryEntry into setVariableSetError), which
+// is why they share one store. Rows are query data (useVariableRows, useVariableMatrix).
 
 interface HistoryMenuState {
   open: boolean;
-  /** Which tab's own row this popover is restoring into — restoreHistoryEntry's own lookup key,
-   *  since rows now live in the query cache rather than one singleton dialog's own list. */
-  tabId: string | null;
-  scope: VariableScope | null;
-  ownerId: string;
   variableId: string | null;
   entries: ApiVariableHistoryEntry[];
 }
@@ -339,34 +295,6 @@ export function mergeVariableRows(
     else values[name] = entry.value;
   }
   return { values, secretNames };
-}
-
-// One row of the read-only overview panel — every stored row from both scopes
-// (not deduplicated into a single resolved value the way mergeVariableRows is, since the panel's
-// whole point is to make the precedence *visible*: a shadowed collection row still appears,
-// dimmed, rather than disappearing the way it would in the merged map above).
-
-/** D20: environment rows first (the scope that wins precedence, D2), then collection rows, each
- *  group in its own `sort_order` (the caller's own row order) — read-only, no dedup within a
- *  scope, since collapsing same-named rows is `mergeVariableRows`'s job, not this list's. */
-export function overviewRowsOf(
-  collectionRows: ApiVariable[],
-  environmentRows: ApiVariable[],
-): VariableOverviewRow[] {
-  const envNames = new Set(environmentRows.map((v) => v.name));
-  const toRow = (v: ApiVariable, scope: VariableScope, shadowed: boolean): VariableOverviewRow => ({
-    id: v.id,
-    name: v.name,
-    value: v.value,
-    isSecret: v.isSecret,
-    description: v.description,
-    scope,
-    shadowed,
-  });
-  return [
-    ...environmentRows.map((v) => toRow(v, 'environment', false)),
-    ...collectionRows.map((v) => toRow(v, 'collection', envNames.has(v.name))),
-  ];
 }
 
 /** variablesForSend's own ids-only half. */
@@ -409,43 +337,17 @@ export async function variablesForSend(
 }
 
 export const useVariableSetStore = defineStore('variableSet', () => {
-  // api/ may not import views/shared/viewOp.ts's own createRuntimeStore (the module-boundary
-  // lint rule) — this is that same small "one reactive record, keyed by tabId, created on first
-  // touch" shape, inlined rather than hoisted somewhere both sides could reach, since this is the
-  // only api/-side per-tab runtime that exists. Returned as a named property directly (not
-  // toRefs-spread): toRefs only captures keys present at call time, unsuitable for a record whose
-  // keys grow as tabs open.
-  const variableSetRuntime = reactive({} as Record<string, VariableSetRuntime>);
+  /** A reveal or history failure's message, shown by the Variables tab. */
+  const error = ref<string | null>(null);
 
-  function ensureVariableSetRuntime(tabId: string): VariableSetRuntime {
-    if (!variableSetRuntime[tabId]) {
-      variableSetRuntime[tabId] = defaultVariableSetRuntime();
-    }
-    return variableSetRuntime[tabId];
-  }
-
-  registerTabRuntimeCleanup((tabId) => {
-    delete variableSetRuntime[tabId];
-    // Finding 5, re-homed: a stale reveal left behind by one tab must never let a different,
-    // later-opened tab (or a later-opened Copy as curl dialog) trust it in place of its own re-auth
-    // gate — the same reason closeVariablesDialog used to clear this on close.
+  registerTabRuntimeCleanup(() => {
+    // A stale reveal left behind by one tab must never let a different, later-opened tab (or a
+    // later-opened Copy as curl dialog) trust it in place of its own re-auth gate.
     clearRevealed();
   });
 
-  function variableSetError(tabId: string): string | null {
-    return variableSetRuntime[tabId]?.error ?? null;
-  }
-
-  function filterQueryFor(tabId: string): string {
-    return variableSetRuntime[tabId]?.filterQuery ?? '';
-  }
-
-  function setFilterQuery(tabId: string, query: string): void {
-    ensureVariableSetRuntime(tabId).filterQuery = query;
-  }
-
-  function setVariableSetError(tabId: string, message: string | null): void {
-    ensureVariableSetRuntime(tabId).error = message;
+  function setVariableSetError(message: string | null): void {
+    error.value = message;
   }
 
   // ---- the gated reveal (D5/D8/D9) ----
@@ -508,9 +410,6 @@ export const useVariableSetStore = defineStore('variableSet', () => {
 
   const historyMenuState = reactive<HistoryMenuState>({
     open: false,
-    tabId: null,
-    scope: null,
-    ownerId: '',
     variableId: null,
     entries: [],
   });
@@ -532,8 +431,8 @@ export const useVariableSetStore = defineStore('variableSet', () => {
     revealedHistoryValuesExpiry.clearAll();
   }
 
-  /** VariableRow.vue's popover is `v-if`-gated on `historyMenuState.variableId ===
-   *  row.id`, so switching from one row's history button to another's unmounts the first popover
+  /** VariablesMatrix.vue's popover is `v-if`-gated on `historyMenuState.variableId ===
+   *  row.id`, so switching from one cell's history to another's unmounts the first popover
    *  without ever firing its own `@close` — closeHistoryMenu below would never run for it. Clearing
    *  here too, before the new popover's own state lands, closes that gap regardless of whether the
    *  previous popover ever closes "cleanly".
@@ -544,16 +443,8 @@ export const useVariableSetStore = defineStore('variableSet', () => {
    *  with the wrong row's history right after the second call had already set `variableId` to the
    *  new row. `variableId` is captured up front and the write only commits if nothing (a newer
    *  open, or a close) has changed it since. */
-  async function openHistoryMenu(
-    tabId: string,
-    scope: VariableScope,
-    ownerId: string,
-    variableId: string,
-  ): Promise<void> {
+  async function openHistoryMenu(variableId: string): Promise<void> {
     clearRevealedHistory();
-    historyMenuState.tabId = tabId;
-    historyMenuState.scope = scope;
-    historyMenuState.ownerId = ownerId;
     historyMenuState.variableId = variableId;
     historyMenuState.open = true;
     try {
@@ -563,29 +454,17 @@ export const useVariableSetStore = defineStore('variableSet', () => {
       }
     } catch (err) {
       if (historyMenuState.variableId === variableId) {
-        setVariableSetError(tabId, errorText(err));
+        setVariableSetError(errorText(err));
       }
     }
   }
 
   function closeHistoryMenu(): void {
     historyMenuState.open = false;
-    historyMenuState.tabId = null;
-    historyMenuState.scope = null;
-    historyMenuState.ownerId = '';
     historyMenuState.variableId = null;
     historyMenuState.entries = [];
     clearRevealedHistory();
   }
-
-  // Closing the tab this popover belongs to used to leave historyMenuState pointing at
-  // it — restoreHistoryEntry's own row lookup would keep resolving against a dead tab's
-  // scope/owner, and the popover itself, still `open`, would keep showing a dead tab's history.
-  // Same "this tab's own leftover state is this store's job to clear" discipline
-  // registerTabRuntimeCleanup already applies to variableSetRuntime.
-  registerTabRuntimeCleanup((tabId) => {
-    if (historyMenuState.tabId === tabId) closeHistoryMenu();
-  });
 
   /** P12 D13: runReveal's own second instantiation, over api_variable_history instead of
    *  api_variables. */
@@ -596,22 +475,17 @@ export const useVariableSetStore = defineStore('variableSet', () => {
         revealedHistoryValues[historyId] = value;
         revealedHistoryValuesExpiry.schedule(historyId);
       },
-      (message) => {
-        if (historyMenuState.tabId) setVariableSetError(historyMenuState.tabId, message);
-      },
+      setVariableSetError,
       t('studio.api.reveal.history.body'),
     );
   }
 
   return {
-    variableSetRuntime,
+    error,
     revealedValues,
     revealedHistoryValues,
     ...toRefs(historyMenuState),
-    variableSetError,
     setVariableSetError,
-    filterQueryFor,
-    setFilterQuery,
     clearRevealed,
     forgetRevealed,
     revealVariable,

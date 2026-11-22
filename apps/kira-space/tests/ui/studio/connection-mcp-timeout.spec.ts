@@ -21,7 +21,7 @@ const view = () =>
 const rows = () =>
   contract<{ kind: string; statementTimeout: { enforcement: Record<string, string> } }[]>(
     'dbmcp-statement-timeout',
-    'list_connections',
+    'list',
   );
 
 interface Spec {
@@ -96,9 +96,7 @@ test('a value over the range shows the range error', async ({ relaunch }) => {
   );
 });
 
-test('contract: the enforcement line follows the engine split in list_connections', async ({
-  relaunch,
-}) => {
+test('contract: the enforcement line follows the engine split in list', async ({ relaunch }) => {
   const byKind = new Map(rows().map((r) => [r.kind, r.statementTimeout.enforcement]));
   for (const kind of ['postgres', 'mysql', 'sqlite', 'kafka']) {
     expect(statementTimeoutEnforcementOf(kind)).toEqual(byKind.get(kind));

@@ -420,6 +420,19 @@ var AdeTaskBranches = struct {
 	Adopted:         "adopted",
 }
 
+// AdeTaskFoundLinkDismissals names table ade_task_found_link_dismissals.
+var AdeTaskFoundLinkDismissals = struct {
+	Table     string
+	TaskID    string
+	URL       string
+	CreatedAt string
+}{
+	Table:     "ade_task_found_link_dismissals",
+	TaskID:    "task_id",
+	URL:       "url",
+	CreatedAt: "created_at",
+}
+
 // AdeTaskHandovers names table ade_task_handovers.
 var AdeTaskHandovers = struct {
 	Table        string
@@ -1173,6 +1186,7 @@ var KubeClusters = struct {
 	MCPDescription string
 	MCPEnabled     string
 	MCPApproval    string
+	MCPReview      string
 }{
 	Table:          "kube_clusters",
 	ID:             "id",
@@ -1184,6 +1198,7 @@ var KubeClusters = struct {
 	MCPDescription: "mcp_description",
 	MCPEnabled:     "mcp_enabled",
 	MCPApproval:    "mcp_approval",
+	MCPReview:      "mcp_review",
 }
 
 // MobileDevices names table mobile_devices.

@@ -24,7 +24,7 @@ const view = () =>
 const rows = () =>
   contract<
     { kind: string; name: string; expensiveQuery: { rowsThreshold: number; check: string } }[]
-  >('dbmcp-expensive-query', 'list_connections');
+  >('dbmcp-expensive-query', 'list');
 
 interface Spec {
   kind: string;
@@ -94,7 +94,7 @@ test('sqlite and kafka: no row estimate, no check', async ({ relaunch }) => {
   await expect(kafka.locator('[data-testid="connection-mcp-auto-explain"]')).toBeDisabled();
 });
 
-test('contract: the check state follows list_connections', async () => {
+test('contract: the check state follows list', async () => {
   const all = rows();
   expect(all.length).toBeGreaterThan(0);
   for (const r of all) {

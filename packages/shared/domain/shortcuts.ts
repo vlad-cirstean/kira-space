@@ -73,6 +73,7 @@ export const SHORTCUTS = {
   'grid.copy': { scope: 'grid', chord: { key: 'C', cmdOrCtrl: true } },
   'grid.paste': { scope: 'grid', chord: { key: 'V', cmdOrCtrl: true } },
   'grid.edit': { scope: 'grid', chord: { key: 'Return' } },
+  'grid.rename': { scope: 'grid', chord: { key: 'F2' } },
   'grid.duplicateRows': { scope: 'grid', chord: { key: 'D', cmdOrCtrl: true } },
   'grid.deleteRows': {
     scope: 'grid',

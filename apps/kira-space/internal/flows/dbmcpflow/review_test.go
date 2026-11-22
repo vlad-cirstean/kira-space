@@ -93,20 +93,26 @@ func payloadOf(t *testing.T, it approvals.Item) reviewPayload {
 
 func (f *fixture) listReviewResults(t *testing.T, sess *mcp.ClientSession) map[string]bool {
 	t.Helper()
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %q (%v)", text(res), err)
+		t.Fatalf("list = %q (%v)", text(res), err)
 	}
-	var conns []struct {
-		ID            string          `json:"id"`
-		ReviewResults map[string]bool `json:"reviewResults"`
+	var conns struct {
+		Connections []struct {
+			ID     string   `json:"id"`
+			Review []string `json:"review"`
+		} `json:"connections"`
 	}
 	if err := json.Unmarshal([]byte(text(res)), &conns); err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range conns {
+	for _, c := range conns.Connections {
 		if c.ID == f.connID {
-			return c.ReviewResults
+			held := map[string]bool{}
+			for _, mode := range c.Review {
+				held[mode] = true
+			}
+			return held
 		}
 	}
 	t.Fatal("connection not listed")
@@ -126,11 +132,11 @@ func TestDbMcpReviewPerMode(t *testing.T) {
 	f.app.Contract(t, "dbmcp-review-mode", "ConnectionsService.List#review", got, flowharness.Mask("createdAt", "updatedAt"), replace)
 
 	if rr := f.listReviewResults(t, sess); !rr["read"] || rr["write"] || rr["ddl"] {
-		t.Fatalf("reviewResults = %v, want read only", rr)
+		t.Fatalf("review = %v, want read only", rr)
 	}
 	f.setPreview(t, true)
 	if rr := f.listReviewResults(t, sess); !rr["read"] || rr["write"] || !rr["ddl"] {
-		t.Fatalf("reviewResults with the app switch on = %v, want read and ddl (inherit)", rr)
+		t.Fatalf("review with the app switch on = %v, want read and ddl (inherit)", rr)
 	}
 	f.setPreview(t, false)
 
@@ -321,7 +327,7 @@ func TestDbMcpReviewOnRequestAlreadyOn(t *testing.T) {
 
 // A result over the per-result cap, or past the total, is withheld unseen.
 func TestDbMcpReviewCaps(t *testing.T) {
-	const per, total = 200, 300
+	const per, total = 200, 200
 	f := newFixture(t, flowharness.WithApprovalHeldCaps(per, total))
 	sess := f.session(t)
 	f.mcpSet(t, map[string]string{"review.read": "review"})

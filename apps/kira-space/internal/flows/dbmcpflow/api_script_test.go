@@ -90,7 +90,7 @@ type scriptItem struct {
 }
 
 // TestApiRequestScripted: prepare builds the request the user approves, transform reduces the response,
-// and the agent gets only {"result": ...}. UI halves: tests/ui/studio/approvals-api-script.spec.ts and
+// and the agent gets only {"output": ...}. UI halves: tests/ui/studio/approvals-api-script.spec.ts and
 // tests/ui/operations-api-script.spec.ts.
 func TestApiRequestScripted(t *testing.T) {
 	f := newFixture(t)
@@ -123,7 +123,7 @@ func TestApiRequestScripted(t *testing.T) {
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
-	const want = `{"result":[{"id":9007199254740993,"domain":"x.test"},{"id":2,"domain":"y.test"}]}`
+	const want = `{"output":[{"id":9007199254740993,"domain":"x.test"},{"id":2,"domain":"y.test"}]}`
 	if res.IsError || text(res) != want {
 		t.Fatalf("result = %s, want %s", text(res), want)
 	}
@@ -250,7 +250,7 @@ func TestApiScriptApprovalClass(t *testing.T) {
 	f.setAPI(t, true, "never")
 	post := scriptArgs(envID, "POST", u, map[string]any{"prepare": `return {body: "x"}`, "transform": `return response.status`})
 	res = callTool(t, sess, "api_request", post)
-	if text(res) != `{"result":200}` || f.queueLen(t) != 0 || !hasKind(f.scriptOpKinds(t), "jsTransform") {
+	if text(res) != `{"output":200}` || f.queueLen(t) != 0 || !hasKind(f.scriptOpKinds(t), "jsTransform") {
 		t.Fatalf("never = %q, queue %d", text(res), f.queueLen(t))
 	}
 
@@ -325,7 +325,7 @@ func TestApiScriptsToggle(t *testing.T) {
 		for _, tool := range list.Tools {
 			if tool.Name == "api_request" {
 				b, _ := json.Marshal(tool.InputSchema)
-				return strings.Contains(string(b), `"script"`), strings.Contains(tool.Description, "script.prepare")
+				return strings.Contains(string(b), `"script"`), strings.Contains(string(b), `"prepare"`)
 			}
 		}
 		t.Fatal("api_request not listed")
@@ -347,7 +347,7 @@ func TestApiScriptsToggle(t *testing.T) {
 		t.Fatalf("scripts back on: schema %v, description %v", s, d)
 	}
 	res = callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": "return 1"}))
-	if text(res) != `{"result":1}` {
+	if text(res) != `{"output":1}` {
 		t.Fatalf("scripts on call = %q", text(res))
 	}
 }

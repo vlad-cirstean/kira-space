@@ -1,11 +1,13 @@
 package bridge
 
 import (
+	"log/slog"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/agentapi"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/internal/configfs"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
@@ -20,6 +22,9 @@ type ApiConfigService struct {
 	Deps  appcore.Deps
 	Files *apifiles.Store
 	Agent *agentapi.Service
+	// Auth gates UnlockVariables; the app's one authorizer, so its grace window is shared with every
+	// other reveal.
+	Auth *localauth.Authorizer
 }
 
 // ApiSecretArgs saves one secret. The value is write-only: no method returns it.
@@ -74,6 +79,122 @@ func (s *ApiConfigService) DeleteSecret(args ApiSecretNameArgs) (apifiles.View, 
 	}
 	emitApiData(s.Deps.Events, configChange())
 	return s.View()
+}
+
+// maxVariableEdits bounds one EditVariables call.
+const maxVariableEdits = 500
+
+// ApiEditVariablesArgs is one batch of variable edits, applied together.
+type ApiEditVariablesArgs struct {
+	Edits []apifiles.VariableEdit `json:"edits"`
+}
+
+// EditVariables applies variable edits to the collection and environment files they name, in place
+// (comments and key order stay), and seals secret values in the same call. A file with a problem is
+// refused and nothing is written.
+func (s *ApiConfigService) EditVariables(args ApiEditVariablesArgs) (apifiles.View, error) {
+	if len(args.Edits) == 0 || len(args.Edits) > maxVariableEdits {
+		return apifiles.View{}, ipcerr.Contract("edits: between 1 and %d edits", maxVariableEdits)
+	}
+	if err := checkVariableEdits(args.Edits); err != nil {
+		return apifiles.View{}, err
+	}
+	for _, e := range args.Edits {
+		if e.Op == apifiles.OpUnlock {
+			return apifiles.View{}, ipcerr.Contract("unlock goes through UnlockVariables")
+		}
+	}
+	if err := s.Files.EditVariables(args.Edits); err != nil {
+		return apifiles.View{}, apiFilesErr(err)
+	}
+	return s.View()
+}
+
+func tooBig(v *string) bool {
+	return v != nil && (len(*v) > maxApiSecretBytes || strings.ContainsRune(*v, 0))
+}
+
+// checkVariableEdits validates the fields every variable edit call shares.
+func checkVariableEdits(edits []apifiles.VariableEdit) error {
+	for _, e := range edits {
+		if e.OwnerID == "" {
+			return ipcerr.Required("ownerId")
+		}
+		if tooBig(e.Value) {
+			return ipcerr.BadRequest(i18n.T("backend.studio.apiFiles.valueTooLong.body", nil))
+		}
+		if tooBig(e.SecretValue) {
+			return ipcerr.BadRequest(i18n.T("backend.core.agentSettings.secretValue.body", nil))
+		}
+		if tooBig(e.Description) {
+			return ipcerr.BadRequest(i18n.T("backend.studio.apiFiles.descriptionTooLong.body", nil))
+		}
+	}
+	return nil
+}
+
+// Outcomes of UnlockVariables, the vocabulary of every reveal gate.
+const (
+	UnlockDone                 = "done"
+	UnlockCancelled            = "cancelled"
+	UnlockConfirmationRequired = "confirmation-required"
+)
+
+// unlockReason is the OS prompt's reason (macOS prefixes it with "Kira Studio wants to").
+const unlockReason = "unlock a saved variable value."
+
+// ApiUnlockArgs unlocks secret variables: Edits are all op unlock. Confirmed is honoured only where
+// the OS cannot authenticate, as on every reveal.
+type ApiUnlockArgs struct {
+	Edits     []apifiles.VariableEdit `json:"edits"`
+	Confirmed bool                    `json:"confirmed"`
+}
+
+// ApiUnlockResult names what the gate decided. View is set only when Outcome is done.
+type ApiUnlockResult struct {
+	Outcome string         `json:"outcome"`
+	View    *apifiles.View `json:"view"`
+}
+
+// UnlockVariables writes secret values back to their files as plain text, behind the reveal gate: an
+// unlock reveals every value it touches. A declined prompt or a missing confirmation changes
+// nothing and comes back as an outcome.
+func (s *ApiConfigService) UnlockVariables(args ApiUnlockArgs) (ApiUnlockResult, error) {
+	if len(args.Edits) == 0 || len(args.Edits) > maxVariableEdits {
+		return ApiUnlockResult{}, ipcerr.Contract("edits: between 1 and %d edits", maxVariableEdits)
+	}
+	if err := checkVariableEdits(args.Edits); err != nil {
+		return ApiUnlockResult{}, err
+	}
+	edits := make([]apifiles.VariableEdit, len(args.Edits))
+	for i, e := range args.Edits {
+		if e.Op != apifiles.OpUnlock {
+			return ApiUnlockResult{}, ipcerr.Contract("edits: every edit is an unlock")
+		}
+		// The renderer's flag never reaches the store; only the gate's grant sets it.
+		e.Confirmed = true
+		edits[i] = e
+	}
+	outcome, err := s.Auth.Authorize(unlockReason, args.Confirmed)
+	if err != nil {
+		slog.Warn("local authentication errored before unlock", "scope", "apiconfig", "err", err)
+		return ApiUnlockResult{}, ipcerr.InternalErr(err)
+	}
+	switch outcome {
+	case localauth.Cancelled:
+		return ApiUnlockResult{Outcome: UnlockCancelled}, nil
+	case localauth.Unavailable:
+		return ApiUnlockResult{Outcome: UnlockConfirmationRequired}, nil
+	}
+	if err := s.Files.EditVariables(edits); err != nil {
+		return ApiUnlockResult{}, apiFilesErr(err)
+	}
+	view, err := s.View()
+	if err != nil {
+		return ApiUnlockResult{}, err
+	}
+	slog.Info("secrets unlocked", "scope", "apiconfig", "count", len(edits))
+	return ApiUnlockResult{Outcome: UnlockDone, View: &view}, nil
 }
 
 // ApiFileArgs names one collection or environment file.

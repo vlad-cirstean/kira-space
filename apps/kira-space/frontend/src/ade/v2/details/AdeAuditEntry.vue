@@ -65,6 +65,7 @@ function subjectLabel(a: DbAuditApproval): string {
     case 'db.query':
       return t('space.ade.details.dbAudit.subjectQuery.label');
     case 'db.response':
+    case 'kube.response':
       return t('space.ade.details.dbAudit.subjectResponse.label');
     case 'db.exemption':
       return t('space.ade.details.dbAudit.subjectExemption.label');

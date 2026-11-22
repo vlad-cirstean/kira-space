@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Kira Studio — S3 demo seed. Runs *inside* the kira-sqs (LocalStack) container (docker exec -i
 # ... < this file), using the `awslocal` CLI the localstack image ships on PATH — the same one
-# container sqs/seed.sh uses, since docker-compose.yml's SERVICES lists both. Mirrors
-# packages/db-fixtures/fixtures/0007_s3_seed.ts's shape (bucket/prefix/object layout) without an AWS SDK
-# dependency.
+# container sqs/seed.sh uses, since docker-compose.yml's SERVICES lists both. Seeds a
+# bucket/prefix/object layout through the CLI, so no AWS SDK dependency.
 #
 # P33: grown from 3 objects in 2 buckets to a full size/type ladder plus a >1000-object prefix —
 # every state the phase introduces (bounded preview, bounded edit, binary refusal, the

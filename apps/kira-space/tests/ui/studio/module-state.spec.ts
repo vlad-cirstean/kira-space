@@ -10,7 +10,7 @@ import { modeTab } from './support/apiMode';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
 import { container, openDocker, seedContainers, setupDocker } from './support/dockerFixture';
-import { gridScroller, headerNames } from './support/grid';
+import { gridScroller } from './support/grid';
 import {
   activePanel,
   k,
@@ -28,13 +28,12 @@ import {
 import { findRow, treeContainer } from './support/tree';
 
 // P660: Studio, API, Docker and Kubernetes keep view state across a module round trip
-// (search bar and text, list and grid scroll, column filter, find bars). No backend half: the
+// (search bar and text, list and grid scroll, find bars). No backend half: the
 // state is frontend-only and session-only, never sent over IPC.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const CONNECTION_ID = 'conn-module-state';
 const FIXTURE = bigRowsFixture(CONNECTION_ID);
-const NAMES = WIDE_TABLE_COLUMNS.map((c) => c.name);
 
 const WIDE_META = {
   path: WIDE_TABLE_PATH,
@@ -107,7 +106,7 @@ const STUDIO_PORT: PortSnapshot[] = [
   },
 ];
 
-test('Studio: tree search and scroll, grid scroll and column filter survive a module round trip', async ({
+test('Studio: tree search and scroll and grid scroll survive a module round trip', async ({
   relaunch,
 }) => {
   test.setTimeout(90_000);
@@ -115,17 +114,13 @@ test('Studio: tree search and scroll, grid scroll and column filter survive a mo
   await page.setViewportSize({ width: 1200, height: 420 });
   await connectAndExpand(page, 'State DB', 'green');
 
-  // Grid scroll on big_rows, then the column filter on wide_table, then back in-module.
+  // Grid scroll on big_rows, then wide_table opened after it (tab order), then back in-module.
   await (await findRow(page, BIG_ROWS_PATH)).dblclick();
   await expect(gridScroller(page)).toBeVisible();
   const gridScrolled = await scrollTo(gridScroller(page), 400);
   // The grid saves its scroll into the tab after a debounce (an unmount inside it drops the write).
   await page.waitForTimeout(TIMING.scrollPersist + 200);
   await (await findRow(page, WIDE_TABLE_PATH)).dblclick();
-  const filter = t('column-filter-input');
-  await page.locator(filter).fill('date');
-  await expect.poll(async () => (await headerNames(page)).length).toBeLessThan(NAMES.length);
-  const narrowed = await headerNames(page);
   await page
     .locator(`${t('tab')}[data-tab-active="true"], ${t('tab')}`)
     .first()
@@ -138,8 +133,6 @@ test('Studio: tree search and scroll, grid scroll and column filter survive a mo
   await roundTrip(page, 'api', 'studio');
 
   await expect.poll(() => scrollTop(treeContainer(page))).toBe(treeScrolled);
-  await expect(page.locator(filter)).toHaveValue('date');
-  expect(await headerNames(page)).toEqual(narrowed);
   await page.locator(t('tab')).first().click();
   await expect.poll(() => scrollTop(gridScroller(page))).toBe(gridScrolled);
 

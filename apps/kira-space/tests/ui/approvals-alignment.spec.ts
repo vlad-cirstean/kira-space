@@ -3,6 +3,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest, test } from './fixtures';
 import { FIXED_NOW, openPlan } from './support/adeV2';
+import { box, left, near, right, TOL } from './support/approvalGeometry';
 import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
@@ -10,19 +11,8 @@ import { IPC } from './support/ipcChannels';
 // Every kind of the approval dialog lines up on the same grid (P589 A1-A11): one left edge, one
 // content indent, one baseline per line 1, details on a fixed column. Each check is within 1px.
 
-const TOL = 1;
 const t = (id: string) => `[data-testid="${id}"]`;
 
-async function box(l: Locator) {
-  const b = await l.boundingBox();
-  if (!b) throw new Error(`no box for ${l}`);
-  return b;
-}
-const left = async (l: Locator) => (await box(l)).x;
-const right = async (l: Locator) => {
-  const b = await box(l);
-  return b.x + b.width;
-};
 const midY = async (l: Locator) => {
   const b = await box(l);
   return b.y + b.height / 2;
@@ -58,11 +48,15 @@ async function baseline(l: Locator): Promise<number> {
     return y;
   });
 }
-function near(actual: number, expected: number, what: string) {
-  expect(Math.abs(actual - expected), `${what}: ${actual} vs ${expected}`).toBeLessThanOrEqual(TOL);
-}
 
-const ORIGIN = { client: 'Claude Code 2.1.318', cwd: '~/shop', task: '', step: '', source: '' };
+const ORIGIN = {
+  client: 'Claude Code 2.1.318',
+  cwd: '~/shop',
+  task: '',
+  step: '',
+  source: '',
+  session: '',
+};
 
 function mk(
   id: string,
@@ -225,6 +219,20 @@ function studioItems(): ApprovalItem[] {
         namespace: 'payments',
         operation: 'list',
         statement: 'pods -l app=checkout',
+        reviewOffered: true,
+        tool: 'kube_read',
+        request: {
+          kind: 'v1/pods',
+          name: '',
+          namespace: 'payments',
+          labelSelector: 'app=checkout',
+          pod: '',
+          container: '',
+          previous: false,
+          timestamps: false,
+          tail: 0,
+          maxRows: 200,
+        },
       },
       0,
     ),
@@ -263,6 +271,7 @@ function studioItems(): ApprovalItem[] {
     ),
     apiResponse('9', false),
     apiResponse('10', true),
+    kubeResponse('11'),
   ];
 }
 
@@ -306,6 +315,35 @@ function apiResponse(id: string, scripted: boolean): ApprovalItem {
   );
 }
 
+const KUBE_RESULT = JSON.stringify({
+  columns: ['Name', 'Ready', 'Status'],
+  rows: [
+    { name: 'checkout-1', namespace: 'payments', cells: ['checkout-1', '1/1', 'Running'] },
+    { name: 'checkout-2', namespace: 'payments', cells: ['checkout-2', '1/1', 'Running'] },
+  ],
+  rowCount: 2,
+  truncated: false,
+});
+
+function kubeResponse(id: string): ApprovalItem {
+  return mk(
+    `kube.response:${id}`,
+    'kube.response',
+    { name: 'prod-eu', kind: 'kubernetes', location: 'k8s.prod.acme:6443 · payments' },
+    { class: 'read', tone: 'neutral' },
+    {
+      context: 'prod-eu',
+      server: 'k8s.prod.acme:6443',
+      namespace: 'payments',
+      operation: 'list',
+      statement: 'pods -l app=checkout',
+      isError: false,
+      bytes: KUBE_RESULT.length,
+      requested: false,
+    },
+  );
+}
+
 // The dialog shows one item at a time; pushing a list of one shows that item alone.
 async function show(page: Page, item: ApprovalItem) {
   await pushApprovals(page, [item]);
@@ -314,6 +352,8 @@ async function show(page: Page, item: ApprovalItem) {
   await expect(dialog.locator('section[data-kind]')).toHaveCount(1);
   if (item.kind === 'db.response')
     await expect(page.locator(t('db-mcp-preview-row')).first()).toBeVisible();
+  if (item.kind === 'kube.response')
+    await expect(page.locator(t('kube-review-row')).first()).toBeVisible();
   if (item.kind === 'api.response')
     await expect(
       page.locator(t('api-review-raw-status')).or(page.locator(t('api-review-result'))),
@@ -358,7 +398,9 @@ async function checkItem(page: Page) {
       near(await right(countdown), itemBox.x + itemBox.width, `${kind} countdown right`);
     // A4: badge row shares one baseline
     const base = await baseline(op);
-    const facts = item.locator(t('approval-fact'));
+    const facts = item.locator(
+      `${t('approval-fact')}, [data-testid$="-approval-kept"], [data-testid$="-approval-kept-writes"]`,
+    );
     for (let i = 0; i < (await facts.count()); i++) {
       near(await baseline(facts.nth(i)), base, `${kind} fact ${i} baseline`);
     }
@@ -367,15 +409,31 @@ async function checkItem(page: Page) {
     const centre = await midY(approve);
     near(await midY(deny), centre, `${kind} deny centre`);
     near((await left(approve)) - (await right(deny)), 6, `${kind} deny/approve gap`);
-    for (const sel of ['db-mcp-approval-review-result', 'proof-review-open']) {
+    for (const sel of [
+      'db-mcp-approval-review-result',
+      'kube-approval-review-result',
+      'proof-review-open',
+    ]) {
       const l = dialog.locator(t(sel));
       if (await l.count()) near(await midY(l), centre, `${kind} ${sel} centre`);
     }
     // A2: content indent inside the body box (1px edge plus 12px padding)
     const body = item.locator(t('approval-body'));
     if (await body.count()) {
-      near((await box(body)).x, titleX, `${kind} body left`);
-      near(await left(body.locator(':scope > *').first()), titleX + 13, `${kind} body indent`);
+      // A kind with `sections` frames each section in its own box (P726); the rest, the body itself.
+      const framed =
+        (await body.getAttribute('data-sections')) === null
+          ? body
+          : body.locator('[data-approval-box]');
+      for (let i = 0; i < (await framed.count()); i++) {
+        const frame = framed.nth(i);
+        near((await box(frame)).x, titleX, `${kind} body box ${i} left`);
+        near(
+          await left(frame.locator(':scope > *').first()),
+          titleX + 13,
+          `${kind} body box ${i} indent`,
+        );
+      }
     }
     // A3: details rows share one pair of columns
     const toggle = item.locator(t('approval-details-toggle'));
@@ -430,6 +488,11 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
           args: { requestId: '4' },
           response: { requestId: '4', text: RESULT, isError: false },
         },
+        {
+          channel: IPC.dbMcpPendingResponse,
+          args: { requestId: '11' },
+          response: { requestId: '11', text: KUBE_RESULT, isError: false },
+        },
       ],
     });
     const byId = (id: string) => {
@@ -450,17 +513,18 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     // A8: tabs right column
     async function checkTabs(it: Locator) {
       const tabs = it.locator('[data-slot="secondary-tabs"]');
-      near(
-        await right(tabs),
-        (await box(it.locator(t('approval-body')))).x +
-          (await box(it.locator(t('approval-body')))).width -
-          13,
-        'tabs right vs body inner right',
-      );
-      const first = it.locator('.view-line, [data-testid="db-mcp-preview-column"]').first();
+      const framed = await box(it.locator('[data-approval-box]:has([data-slot="secondary-tabs"])'));
+      near(await right(tabs), framed.x + framed.width - 13, 'tabs right vs box inner right');
+      const first = it
+        .locator(
+          '.view-line, [data-testid="db-mcp-preview-column"], [data-testid="kube-review-column"]',
+        )
+        .first();
       near(await midY(tabs), await midY(first), 'tabs centre vs first line');
       const content = it
-        .locator('[data-testid="db-mcp-approval-statement"], [data-testid="db-mcp-preview-table"]')
+        .locator(
+          '[data-testid="db-mcp-approval-statement"], [data-testid="db-mcp-preview-table"], [data-testid="kube-review-table"]',
+        )
         .first();
       expect(await left(tabs)).toBeGreaterThanOrEqual((await right(content)) - TOL);
     }
@@ -495,7 +559,7 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     near((await box(q1.locator('.view-line').first())).y, (await box(stmt)).y, 'first line top');
 
     await show(page, byId('kube.read:6'));
-    near(await left(item('kube.read:6').locator(t('db-mcp-approval-kube'))), indent, 'kube code x');
+    near(await left(item('kube.read:6').locator(t('kube-approval-line'))), indent, 'kube code x');
     await show(page, byId('script.run:7'));
     near(
       await left(item('script.run:7').locator(t('db-mcp-approval-script-command'))),
@@ -510,6 +574,13 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
       'table first column x (after the chevron column)',
     );
     await checkTabs(resp);
+    await show(page, byId('kube.response:11'));
+    await checkTabs(item('kube.response:11'));
+    near(
+      await left(item('kube.response:11').locator(t('kube-review-column')).first()),
+      indent + 24,
+      'kube table first column x (after the chevron column)',
+    );
     await show(page, byId('proof.review:8'));
     near(
       await left(item('proof.review:8').locator('ol li > span').first()),
@@ -540,10 +611,11 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     near(await left(scripted.locator(t('api-review-script'))), indent, 'api script x');
     near(
       await right(scripted.locator('[data-slot="secondary-tabs"]')),
-      (await box(scripted.locator(t('approval-body')))).x +
-        (await box(scripted.locator(t('approval-body')))).width -
+      (await box(scripted.locator('[data-approval-box]:has([data-slot="secondary-tabs"])'))).x +
+        (await box(scripted.locator('[data-approval-box]:has([data-slot="secondary-tabs"])')))
+          .width -
         13,
-      'api response tabs right vs body inner right',
+      'api response tabs right vs box inner right',
     );
     await checkFlush(scripted);
 

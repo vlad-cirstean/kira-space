@@ -5,7 +5,7 @@ import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 
 // Contract approvals-api-kept-review. Backend half: dbmcpflow TestKeptScriptReviewHeld. A held response
-// whose transform keeps a value lists it under "Will keep" with a preview; nothing is stored yet.
+// whose transform keeps a value lists it under "Will set" with a preview; nothing is stored yet.
 
 interface Keep {
   name: string;
@@ -31,9 +31,10 @@ test('contract: the review lists the value the script will keep', async ({ relau
   const { window: page } = await relaunch({ control: mocks(held()) });
   await pushApprovals(page, [liveItem(item())]);
   const block = page.locator('[data-testid="api-review-keep"]');
-  await expect(block).toContainText('Will keep');
+  await expect(block).toContainText('Will set');
   const row = block.locator('[data-testid="api-review-keep-ids"]');
-  await expect(row).toContainText('List of 2');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('9007199254740993');
 });
 
@@ -45,7 +46,7 @@ test('a cut preview offers no whole value: nothing is stored yet', async ({ rela
   const row = page.locator('[data-testid="api-review-keep-ids"]');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toBeVisible();
   await expect(row.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
-  await expect(row.getByText('Show all')).toHaveCount(0);
+  await expect(row.locator('[data-testid="kept-value-showall"]')).toHaveCount(0);
 });
 
 test('a value copied from a secret shows dots', async ({ relaunch }) => {
@@ -58,7 +59,7 @@ test('a value copied from a secret shows dots', async ({ relaunch }) => {
   await expect(row.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
 });
 
-test('a review without kept values shows no Will keep block', async ({ relaunch }) => {
+test('a review without kept values shows no Will set block', async ({ relaunch }) => {
   const h = structuredClone(held());
   h.keep = [];
   const { window: page } = await relaunch({ control: mocks(h) });

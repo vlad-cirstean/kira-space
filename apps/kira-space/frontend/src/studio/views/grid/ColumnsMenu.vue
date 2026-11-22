@@ -2,7 +2,9 @@
 import type { Caps } from '@shared/caps';
 import CodiconIcon from '@theme/CodiconIcon.vue';
 import InlineState from '@theme/components/InlineState.vue';
+import SearchField from '@theme/components/SearchField.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
+import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Button } from '@theme/components/ui/button';
 import { Checkbox } from '@theme/components/ui/checkbox';
 import { Label } from '@theme/components/ui/label';
@@ -12,6 +14,7 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
+import { useFocus } from '@vueuse/core';
 import { moveId, useSortableReorder } from '@workbench/behaviour/sortableReorder';
 import {
   type ComponentPublicInstance,
@@ -22,10 +25,12 @@ import {
   watch,
 } from 'vue';
 import { useTabsStore } from '../../../state/tabs';
-import { nextProjectionFromSelectedColumns } from './menu';
+import { filterColumnNames, nextProjectionFromSelectedColumns } from './menu';
+import { getPage, pageVersion } from './page';
 import { useGridViewStore } from './state';
 
 const props = defineProps<{ tabId: string; caps: Caps | null }>();
+const emit = defineEmits<{ revealColumn: [name: string] }>();
 const gridViewStore = useGridViewStore();
 
 const meta = computed(() => gridViewStore.runtime[props.tabId]?.meta ?? null);
@@ -57,6 +62,27 @@ function initialOrder(): string[] {
   return [...kept, ...missing];
 }
 const order = ref<string[]>(initialOrder());
+
+// Search narrows this menu's rows only; the grid and the staged selection are untouched.
+const query = ref('');
+const visibleNames = computed(() => filterColumnNames(order.value, query.value));
+const noMatch = computed(
+  () => !!meta.value && query.value.trim() !== '' && visibleNames.value.length === 0,
+);
+const searchWrap = useTemplateRef<HTMLElement>('searchWrap');
+const { focused: searchFocused } = useFocus(
+  computed(() => searchWrap.value?.querySelector('input')),
+);
+function focusSearch(): void {
+  searchFocused.value = true;
+}
+defineExpose({ focusSearch });
+
+// The grid renders the committed projection; the page is not reactive, hence `pageVersion`.
+const rendered = computed(() => {
+  void pageVersion.n;
+  return new Set(getPage(props.tabId)?.columns.map((c) => c.name) ?? []);
+});
 
 // Meta lands after the first page; a menu opened before then seeds once it arrives, and commits
 // nothing if it closes first.
@@ -97,7 +123,7 @@ const listComponent = useTemplateRef<ComponentPublicInstance>('listComponent');
 const listEl = computed<HTMLElement | null>(() => listComponent.value?.$el ?? null);
 useSortableReorder(
   listEl,
-  () => order.value,
+  () => visibleNames.value,
   (from, to) => {
     order.value = moveId(order.value, from, to);
   },
@@ -106,6 +132,8 @@ useSortableReorder(
     direction: 'vertical',
     fallbackOnBody: false,
     keyboard: true,
+    // Pressing the reveal button must not start a drag.
+    filter: '[data-testid="columns-menu-reveal"]',
   },
 );
 
@@ -137,8 +165,27 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <PopoverContent align="end" flush class="w-56" data-testid="columns-menu">
+  <PopoverContent
+    align="end"
+    flush
+    class="w-56"
+    data-testid="columns-menu"
+    @open-auto-focus="
+      (e: Event) => {
+        e.preventDefault();
+        focusSearch();
+      }
+    "
+  >
     <div class="max-h-80 flex flex-col">
+      <div ref="searchWrap" class="px-1.5 pt-1.5">
+        <SearchField
+          v-model="query"
+          :placeholder="t('studio.grid.columns.search.placeholder')"
+          :aria-label="t('studio.grid.columns.search.aria')"
+          data-testid="columns-menu-search"
+        />
+      </div>
       <PopoverBar>
         <Button variant="toolbar" size="kira" data-testid="columns-select-all" @click="selectAll"
           ><CodiconIcon name="check-all" :size="13" />{{ t('common.state.all.option') }}</Button
@@ -156,7 +203,7 @@ onBeforeUnmount(() => {
           t('studio.grid.columns.loading.loading')
         }}</InlineState>
         <Label
-          v-for="name in order"
+          v-for="name in visibleNames"
           :key="name"
           :class="cn(rowVariants(), 'columns-menu-item', { 'is-pk': pkNames.has(name) })"
           data-testid="columns-menu-row"
@@ -168,6 +215,7 @@ onBeforeUnmount(() => {
           <TextTooltip v-if="pkNames.has(name)" :text="t('studio.grid.columns.primaryKey.tooltip')"
             ><Checkbox
               :model-value="selected.has(name)"
+              :aria-label="name"
               disabled
               data-testid="columns-menu-item"
               @update:model-value="toggle(name)"
@@ -176,11 +224,32 @@ onBeforeUnmount(() => {
           <Checkbox
             v-else
             :model-value="selected.has(name)"
+            :aria-label="name"
             data-testid="columns-menu-item"
             @update:model-value="toggle(name)"
           />
           {{ name }}
+          <span class="ml-auto flex shrink-0">
+            <TooltipIconButton
+              icon="eye"
+              :label="
+                rendered.has(name)
+                  ? t('studio.grid.columns.reveal.tooltip')
+                  : t('studio.grid.columns.revealHidden.tooltip')
+              "
+              :aria-label="t('studio.grid.columns.reveal.aria', { column: name })"
+              variant="toolbar"
+              class="size-5 text-subtle"
+              :disabled="!rendered.has(name)"
+              :disabled-trigger="!rendered.has(name)"
+              data-testid="columns-menu-reveal"
+              @click.stop.prevent="emit('revealColumn', name)"
+            />
+          </span>
         </Label>
+        <InlineState v-if="noMatch" kind="empty" data-testid="columns-menu-no-match">{{
+          t('studio.grid.columns.noMatch.status')
+        }}</InlineState>
       </PopoverList>
       <Separator class="my-1" />
       <div class="px-1.5 pb-1.5 text-kira-sm text-subtle" data-testid="columns-menu-footer">

@@ -16,7 +16,7 @@ import (
 
 const (
 	reviewChainKey = "e2e-api-review-chain"
-	chainDomains   = `kept.set("domains", response.json.users.map(u => u.email.split("@")[1])); return response.json.users.length;`
+	chainDomains   = `plain.domains = response.json.users.map(u => u.email.split("@")[1]); return response.json.users.length;`
 )
 
 func TestE2EApiReviewChain(t *testing.T) {
@@ -69,13 +69,13 @@ func TestE2EApiReviewChain(t *testing.T) {
 		sentBody(t, 1)
 		held := h.held
 		if !strings.Contains(held.Raw, `"status":200`) || !strings.Contains(held.Raw, "a@x.test") || strings.Contains(held.Raw, apiSecret) ||
-			held.Text != `{"result":2}` || len(held.Keep) != 1 || held.Keep[0].Name != "domains" || held.Keep[0].Preview != `["x.test","y.test"]` {
-			t.Fatalf("pending = %+v, want raw 200, text {\"result\":2} and domains in Will keep", held)
+			held.Text != `{"output":2}` || len(held.Keep) != 1 || held.Keep[0].Name != "domains" || held.Keep[0].Preview != `["x.test","y.test"]` {
+			t.Fatalf("pending = %+v, want raw 200, text {\"output\":2} and domains in Will keep", held)
 		}
 		if stored() {
 			t.Fatal("domains stored before Send")
 		}
-		if list := text(callTool(t, sess, "list_kept_variables", map[string]any{})); strings.Contains(list, "domains") {
+		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}})); strings.Contains(list, "domains") {
 			t.Fatalf("agent listing = %s, want no domains while the review waits", list)
 		}
 		f.app.Contract(t, reviewChainKey, "ApprovalsService.List#review", []approvals.Item{h.req.Item}, opts...)
@@ -84,7 +84,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 
 		f.app.Contract(t, reviewChainKey, "args:ApprovalsService.Answer#withhold", approvals.AnswerArgs{IDs: []string{h.req.Item.ID}, Approve: false})
 		res := f.finish(t, h, false)
-		if !res.IsError || !strings.Contains(text(res), "the user withheld the response") || strings.Contains(text(res), "result") || strings.Contains(text(res), "x.test") {
+		if !res.IsError || !strings.Contains(text(res), "the user withheld the response") || strings.Contains(text(res), "output") || strings.Contains(text(res), "x.test") {
 			t.Fatalf("result = %q, want the withheld text and no data", text(res))
 		}
 		if stored() {
@@ -101,12 +101,12 @@ func TestE2EApiReviewChain(t *testing.T) {
 		f.app.Contract(t, reviewChainKey, "args:ApprovalsService.Answer#send", approvals.AnswerArgs{IDs: []string{h.req.Item.ID}, Approve: true})
 		heldText := h.held.Text
 		res := f.finish(t, h, true)
-		var agent, shown struct{ Result int }
+		var agent, shown struct{ Output int }
 		if err := json.Unmarshal([]byte(text(res)), &agent); err != nil || res.IsError {
 			t.Fatalf("result = %q (%v)", text(res), err)
 		}
 		_ = json.Unmarshal([]byte(heldText), &shown)
-		if agent.Result != shown.Result || agent.Result != 2 || !strings.Contains(text(res), `"kept":[{"name":"domains"`) {
+		if agent.Output != shown.Output || agent.Output != 2 || !strings.Contains(text(res), `"tempSet":[{"name":"domains"`) {
 			t.Fatalf("result = %q, held %q, want the held result plus a kept summary", text(res), heldText)
 		}
 		f.app.Contract(t, reviewChainKey, "result#send", expiresIn.ReplaceAllString(stable(text(res)), `"expiresInSeconds":0`), opts...)
@@ -119,7 +119,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 	})
 
 	t.Run("a failed transform is held with its raw response and keeps nothing", func(t *testing.T) {
-		h := start(t, `kept.set("domains", 1); return null.x`, false)
+		h := start(t, `plain.domains = 1; return null.x`, false)
 		if !h.held.IsError || len(h.held.Keep) != 0 || !strings.Contains(h.held.Raw, "a@x.test") || !strings.Contains(h.held.Text, "transform script failed:") {
 			t.Fatalf("pending = %+v, want an error item with the raw response and no staged values", h.held)
 		}

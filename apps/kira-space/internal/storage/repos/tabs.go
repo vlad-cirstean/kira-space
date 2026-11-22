@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/appstorage"
 	"github.com/kirathecat/kira-studio/internal/kiraschema"
@@ -113,4 +114,84 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 		}
 		return nil
 	})
+}
+
+// Move re-keys tabs from window src to window dst in one transaction: all or none. A move with
+// Persist false deletes src's row and writes none for dst (incognito or session-only kind). Rows
+// land last in dst in list order, inactive: dst activates the focused one on receive and saves.
+func (r *TabsRepo) Move(src, dst string, moves []appstorage.TabMove[model.TabRecord]) error {
+	if len(moves) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(moves))
+	seen := make(map[string]bool, len(moves))
+	for _, m := range moves {
+		if err := m.Rec.Validate(); err != nil {
+			return fmt.Errorf("repos/tabs: move: %w", err)
+		}
+		if seen[m.Rec.ID] {
+			return fmt.Errorf("repos/tabs: tab %s: duplicate tab id: %w", m.Rec.ID, appstorage.ErrInvalidTab)
+		}
+		seen[m.Rec.ID] = true
+		ids = append(ids, m.Rec.ID)
+	}
+	c := kiraschema.Tabs
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move: begin: %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	sel := r.Dialect.Select(c.ID, c.WindowKey).From(c.Table)
+	sel.Where(sel.In(c.ID, sqlb.Args(ids)...))
+	rows, err := sqlb.Query(tx, sel)
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move: owners: %w", err)
+	}
+	var foreign string
+	for rows.Next() {
+		var id, owner string
+		if err := rows.Scan(&id, &owner); err != nil {
+			rows.Close() //nolint:errcheck
+			return fmt.Errorf("repos/tabs: move: owners: %w", err)
+		}
+		if owner != src && foreign == "" {
+			foreign = id
+		}
+	}
+	rows.Close() //nolint:errcheck
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("repos/tabs: move: owners: %w", err)
+	}
+	if foreign != "" {
+		return fmt.Errorf("repos/tabs: tab %s: %w", foreign, appstorage.ErrTabOwnedElsewhere)
+	}
+
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.WindowKey, src), del.In(c.ID, sqlb.Args(ids)...))
+	if _, err := sqlb.Exec(tx, del); err != nil {
+		return fmt.Errorf("repos/tabs: move: delete: %w", err)
+	}
+	order, err := sqlb.NextSortOrder(tx, r.Dialect, c.Table, c.SortOrder, func(sb *sqlbuilder.SelectBuilder) string {
+		return sb.Equal(c.WindowKey, dst)
+	})
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move: %w", err)
+	}
+	for _, m := range moves {
+		if !m.Persist {
+			continue
+		}
+		rec := m.Rec
+		ib := r.Dialect.InsertInto(c.Table).Cols(append(append([]string{}, tabsColumns...), c.WindowKey)...).
+			Values(rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), order, false, rec.WorkspaceID, dst)
+		if _, err := sqlb.Exec(tx, ib); err != nil {
+			return fmt.Errorf("repos/tabs: move %s: insert: %w", rec.ID, err)
+		}
+		order++
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repos/tabs: move: commit: %w", err)
+	}
+	return nil
 }

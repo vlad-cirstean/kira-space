@@ -26,12 +26,27 @@ export interface ApprovalVerdict {
     tone: 'ok' | 'warn' | 'neutral' | 'caution';
     icon: string;
     tooltip?: string;
+    /** Replaces the default `approval-fact` testid. */
+    testid?: string;
   }[];
+}
+
+/** One piece of the target row's "where": drawn side by side with a gap, never joined by a separator. */
+export interface ApprovalWherePart {
+  text: string;
+  /** Names the part (`data-part` on it): host, database, namespace, environment. */
+  label?: string;
+  /** Drawn as a chip. */
+  chip?: boolean;
+  /** Data font (host, path, folder). */
+  data?: boolean;
+  /** A connection colour: a dot before a chip's text. */
+  color?: string;
 }
 
 /**
  * What an app supplies for one approval kind. The card draws the target row from the target and
- * `where`, the badge row from `verdict` (`operation` when absent), `content` in a framed box,
+ * `where`, the badge row from `verdict` (`operation` when absent), `content` in a framed box (or its own boxes with `sections`),
  * `risks` as a warnings list under it, and `details` (label/value rows) behind Details.
  * `footerAction` is a control beside Deny and Approve. Every component takes `{ item }`;
  * `content` and `footerAction` may emit `options`.
@@ -44,16 +59,16 @@ export interface ApprovalKindDef {
   verdict?: (item: ApprovalItem) => ApprovalVerdict;
   /** A mark beside the target name (the engine icon); takes `{ item }`. */
   targetIcon?: Component;
-  where?: (item: ApprovalItem) => string;
+  where?: (item: ApprovalItem) => ApprovalWherePart[];
   risks?: (item: ApprovalItem) => ApprovalRisk[];
   /** The "Asked by" row of Details; the origin (client, folder, task, step, source) when absent. */
   requester?: (item: ApprovalItem) => string;
   details?: Component;
+  /** `content` draws its own `ApprovalBox` per section; the card adds no frame. */
+  sections?: boolean;
   footerAction?: Component;
   /** The target is data (host, path): data font. */
   targetData?: boolean;
-  /** Where is data (folder): data font. */
-  whereData?: boolean;
   /** The body renders in Monaco: the surface preloads it as the dialog opens, so the editor does not
    *  pop in. Absent for a kind with no editor, which then never pays for Monaco. */
   monaco?: boolean;

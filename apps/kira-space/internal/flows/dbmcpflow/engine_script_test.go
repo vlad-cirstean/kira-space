@@ -92,9 +92,9 @@ func TestDbMcpEngineQueryScript(t *testing.T) {
 				t.Fatalf("%s second write = %q", e.kind, text(r))
 			}
 			if !sql {
-				res := scripted(e.read, "read", `kept.set("n", 1); return 1;`)
-				if res.IsError || !strings.Contains(text(res), `"kept":[{"name":"n"`) {
-					t.Fatalf("%s kept.set = %q, want it kept", e.kind, text(res))
+				res := scripted(e.read, "read", `plain.n = 1; return 1;`)
+				if res.IsError || !strings.Contains(text(res), `"tempSet":[{"name":"n"`) {
+					t.Fatalf("%s plain write = %q, want it kept", e.kind, text(res))
 				}
 				args := e.args(connID, e.sql(e.read, scratch), "read")
 				args["params"] = []string{"n"}
@@ -103,7 +103,7 @@ func TestDbMcpEngineQueryScript(t *testing.T) {
 				}
 				return
 			}
-			keep := scripted("select id from {t} order by id", "read", `kept.set("ids", result.rows.map(r => Number(r[0]))); return result.rows.length;`)
+			keep := scripted("select id from {t} order by id", "read", `plain.ids = result.rows.map(r => Number(r[0])); return result.rows.length;`)
 			if keep.IsError || !strings.Contains(text(keep), `"output":2`) || !strings.Contains(text(keep), `"name":"ids","type":"array","items":2`) {
 				t.Fatalf("%s keep = %q, want 2 ids kept", e.kind, text(keep))
 			}

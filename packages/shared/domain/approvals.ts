@@ -17,6 +17,8 @@ export const approvalItemSchema = /*#__PURE__*/ z.object({
     task: z.string(),
     step: z.string(),
     source: z.string(),
+    // The agent session behind an MCP request; "" for none.
+    session: z.string().default(''),
   }),
   target: z.object({
     name: z.string(),

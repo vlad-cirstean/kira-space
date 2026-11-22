@@ -1,4 +1,4 @@
-import type { ComputedRef, InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import { inject } from 'vue';
 import type { MenuItem } from './state/contextMenu';
 import type { TabKindRegistry, TabViewMap } from './tabs/types';
@@ -65,6 +65,34 @@ export interface TabStripTabs<WK extends string, R extends TabLike> {
   closeAll?(key: WK): void;
   duplicateTab?(id: string): unknown;
   moveTab?(fromId: string, toId: string): void;
+  /** Closes the selected tabs together (multi-select). */
+  closeTabs?(ids: readonly string[]): void;
+  /** Moves the selected tabs as one block, strip order kept, to toId's slot (multi-select). */
+  moveTabs?(ids: readonly string[], toId: string): void;
+}
+
+/** Where a tab dropped outside the window landed, in client coordinates (CSS px). */
+export interface TabDropPoint {
+  clientX: number;
+  clientY: number;
+  grabX: number;
+  grabY: number;
+  innerWidth: number;
+  innerHeight: number;
+}
+
+/** Moving tabs to another window (P722, several since P727). A strip given none behaves as before. */
+export interface TabWindowMove<R extends TabLike> {
+  /** Whether this tab may leave the window at all. */
+  canMove(tab: R): boolean;
+  /** Whether dragging a tab out of the window works here (false on Linux Wayland). */
+  readonly dragOut: Readonly<Ref<boolean>>;
+  /** The other live windows, numbered as the tab menu names them. */
+  readonly targets: Readonly<Ref<readonly { key: string; number: number }[]>>;
+  move(
+    tabs: readonly R[],
+    to: { newWindow: true } | { target: string } | { drop: TabDropPoint },
+  ): Promise<void>;
 }
 
 /** The narrow seam `TabStrip.vue` consumes: `WorkbenchHost` extends it, and a module with its own
@@ -75,6 +103,10 @@ export interface TabStripHost<WK extends string, R extends TabLike> {
   readonly kinds: { readonly [kind: string]: TabStripKind<R> | undefined };
   iconFor(tab: R): TabIconRender;
   railColorFor(tab: R): string | undefined;
+  /** Names this strip's multi-select set (Cmd/Ctrl-click, Shift-click); absent turns it off. */
+  readonly selectionScope?: string;
+  /** Tear-off and "Move to window"; absent hides both. */
+  windowMove?: TabWindowMove<R>;
   /** A trailing mark after the tab title — Kira Studio's kind-supplied `badge()` member
    *  (`TAB_KINDS[tab.kind].badge`); Kira Space wires none, since no kind of its own declares one. */
   tabBadge?(tab: R): { icon: string; tooltip: string } | null;

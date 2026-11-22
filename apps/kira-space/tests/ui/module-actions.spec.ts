@@ -85,7 +85,7 @@ test('New in API opens an HTTP request tab; New Alternate opens a gRPC one', asy
   await expect(page.locator(panel('tab'))).toHaveCount(2);
 });
 
-test('Environments in API opens the environments tab', async ({ relaunch }) => {
+test('Environments in API opens the Variables tab', async ({ relaunch }) => {
   const { window: page } = await relaunch({
     control: [
       { channel: IPC.collectionsList, response: { collections: [], items: [] } },
@@ -94,7 +94,7 @@ test('Environments in API opens the environments tab', async ({ relaunch }) => {
   });
   await modeTab(page, 'api').click();
   await emitWailsEvent(page, IPC.apiEnvironments, undefined);
-  await expect(page.locator(panel('environments-dialog'))).toBeVisible();
+  await expect(page.locator(panel('variables-matrix'))).toBeVisible();
 });
 
 test('Import in API picks Postman files; in Databases it scans a DataGrip project', async ({

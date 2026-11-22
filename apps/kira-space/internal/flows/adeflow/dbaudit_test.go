@@ -170,7 +170,7 @@ func TestDbAuditTrail(t *testing.T) {
 	}
 
 	// 1-3. A listing, a read with a literal, a syntax error.
-	await(t, callTool(sess, "list_connections", map[string]any{}))
+	await(t, callTool(sess, "list", map[string]any{"what": []string{"connections"}}))
 	read := await(t, callTool(sess, "run_query", args("SELECT * FROM people WHERE email = 'bob@example.com'", "read", nil)))
 	if read.IsError {
 		t.Fatalf("read = %s", resultText(read))
@@ -227,7 +227,7 @@ func TestDbAuditTrail(t *testing.T) {
 		{"run_query", "ok", []string{"approved"}},
 		{"run_query", "error", nil},
 		{"run_query", "ok", nil},
-		{"list_connections", "ok", nil},
+		{"list", "ok", nil},
 	}
 	for i, w := range want {
 		en := got.Entries[i]
@@ -239,7 +239,7 @@ func TestDbAuditTrail(t *testing.T) {
 				t.Fatalf("entry %d approval %d = %s, want %s", i, j, en.Approvals[j].Outcome, o)
 			}
 		}
-		if en.DurationMs == nil || en.StepName != "Work" || en.SessionID != launch.SessionID || en.ConnectionName == "" && en.Tool != "list_connections" {
+		if en.DurationMs == nil || en.StepName != "Work" || en.SessionID != launch.SessionID || en.ConnectionName == "" && en.Tool != "list" {
 			t.Fatalf("entry %d = %+v, want duration, step name Work, the launch session", i, en)
 		}
 	}

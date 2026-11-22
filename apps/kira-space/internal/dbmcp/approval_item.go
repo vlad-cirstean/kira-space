@@ -38,7 +38,27 @@ func planPayloadOf(p *ApprovalPlan) *planPayload {
 	}
 }
 
+// dbLocation is where a connection lives, split for the card header: the host, then the database or
+// schema path (segments joined with " / ").
+type dbLocation struct {
+	Host string `json:"host"`
+	Path string `json:"path"`
+}
+
+func dbLocationOf(t ApprovalTarget) dbLocation {
+	loc := dbLocation{Host: t.Host, Path: t.Database}
+	if len(t.Path) > 0 {
+		segs := make([]string, len(t.Path))
+		for i, s := range t.Path {
+			segs[i] = s.Name
+		}
+		loc.Path = strings.Join(segs, " / ")
+	}
+	return loc
+}
+
 type queryPayload struct {
+	dbLocation
 	ConnectionID string `json:"connectionId"`
 	Statement    string `json:"statement"`
 	// Mode is the declared mode; Detected is what the statement looks like. Enforcement is set on
@@ -68,6 +88,7 @@ type limitHitPayload struct {
 }
 
 type exemptionPayload struct {
+	dbLocation
 	ConnectionID  string             `json:"connectionId"`
 	Statement     string             `json:"statement"`
 	Mode          string             `json:"mode"`
@@ -94,6 +115,7 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		limits[i] = limitHitPayload(h)
 	}
 	return exemptionPayload{
+		dbLocation:   dbLocationOf(r.Target),
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
@@ -110,6 +132,7 @@ func queryScriptView(sc *apiScripts) *apiTransformView {
 }
 
 type responsePayload struct {
+	dbLocation
 	ConnectionID string `json:"connectionId"`
 	Statement    string `json:"statement"`
 	IsError      bool   `json:"isError"`
@@ -121,6 +144,10 @@ type responsePayload struct {
 	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
 	Mode      string `json:"mode"`
 	Requested bool   `json:"requested"`
+	// Params, Placeholders and Kept repeat what the prompt bound to the statement, for the review's Request section.
+	Params       []string           `json:"params,omitempty"`
+	Placeholders []string           `json:"placeholders,omitempty"`
+	Kept         []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 type kubePayload struct {
@@ -129,6 +156,39 @@ type kubePayload struct {
 	Namespace string `json:"namespace"`
 	Operation string `json:"operation"`
 	Statement string `json:"statement"`
+	// ReviewOffered shows "review the result" on a list, describe or logs card; ReviewResult says the
+	// cluster's settings already do.
+	ReviewOffered bool `json:"reviewOffered"`
+	ReviewResult  bool `json:"reviewResult"`
+	// Tool, Request, Changed, Kept and Script exist on a list, describe or logs read; Changed names the args
+	// the prepare script set.
+	Tool    string              `json:"tool"`
+	Request *kubeRequestPayload `json:"request"`
+	Changed []string            `json:"changed"`
+	Kept    []agentapi.KeptUse  `json:"kept,omitempty"`
+	Script  *apiScriptPayload   `json:"script"`
+}
+
+// kubeResponsePayload is the held result of a kube read, minus the result itself: the text is fetched
+// by request id.
+type kubeResponsePayload struct {
+	Context   string `json:"context"`
+	Server    string `json:"server"`
+	Namespace string `json:"namespace"`
+	Operation string `json:"operation"`
+	Statement string `json:"statement"`
+	IsError   bool   `json:"isError"`
+	Bytes     int    `json:"bytes"`
+	// Requested says the approver asked for this review rather than a cluster or app setting.
+	Requested bool `json:"requested"`
+	// Scripted says a script produced the held text from the raw result; RawBytes sizes that raw result.
+	Scripted bool `json:"scripted"`
+	RawBytes int  `json:"rawBytes"`
+	// Tool, Request and Changed repeat the prompt's final args and the ones the prepare script set, for the
+	// review's Request section.
+	Tool    string              `json:"tool"`
+	Request *kubeRequestPayload `json:"request"`
+	Changed []string            `json:"changed"`
 }
 
 type valuePayload struct {
@@ -162,7 +222,10 @@ func itemOf(r ApprovalRequest) approvals.Item {
 	it := approvals.Item{
 		ID: r.itemID(), Kind: r.subject(),
 		CreatedAt: r.EnqueuedAt.UnixMilli(), ExpiresAt: r.ExpiresAt.UnixMilli(),
-		Origin: approvals.Origin{Client: r.Origin.Client, Cwd: r.Origin.Cwd},
+		Origin: approvals.Origin{
+			Client: r.Origin.Client, Cwd: r.Origin.Cwd, Session: r.Origin.SessionID,
+			Task: r.Origin.TaskID, Step: r.Origin.StepID,
+		},
 		Reason: string(r.Reason), Title: promptTitle(r),
 	}
 	switch it.Kind {
@@ -170,7 +233,41 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		c := r.Cluster
 		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
 		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
-		it.Payload = mustJSON(kubePayload{Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement})
+		p := kubePayload{
+			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
+			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn, Tool: c.Tool, Changed: []string{}, Kept: r.Kept,
+			Script: apiScriptPayloadOf(c.Script),
+		}
+		if c.Operation != kubeDiscover {
+			req := kubeRequestPayloadOf(c.Operation, c.Request)
+			p.Request = &req
+		}
+		if c.Script != nil {
+			p.Changed = append(p.Changed, c.Script.Changed...)
+		}
+		it.Payload = mustJSON(p)
+	case approvals.KindKubeResponse:
+		c := r.Cluster
+		held := r.Response
+		if held == nil {
+			held = &ApprovalResponse{}
+		}
+		it.Reason = "preview"
+		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
+		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
+		p := kubeResponsePayload{
+			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
+			IsError: held.IsError, Bytes: len(held.Text), Requested: held.Requested,
+			Scripted: held.Script != nil, RawBytes: len(held.Raw), Tool: c.Tool, Changed: []string{},
+		}
+		if c.Operation != kubeDiscover {
+			req := kubeRequestPayloadOf(c.Operation, c.Request)
+			p.Request = &req
+		}
+		if c.Script != nil {
+			p.Changed = append(p.Changed, c.Script.Changed...)
+		}
+		it.Payload = mustJSON(p)
 	case approvals.KindScriptRun:
 		sc := r.Script
 		if sc == nil {
@@ -199,14 +296,17 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			held = &ApprovalResponse{}
 		}
 		it.Payload = mustJSON(responsePayload{
+			dbLocation:   dbLocationOf(r.Target),
 			ConnectionID: r.ConnectionID, Statement: r.Statement,
 			IsError: held.IsError, Bytes: len(held.Text), Scripted: held.Script != nil, RawBytes: len(held.Raw),
 			AlreadyRan: r.Class != adapters.ClassRead,
 			Mode:       r.Mode, Requested: held.Requested,
+			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)
 		it.Payload = mustJSON(queryPayload{
+			dbLocation:   dbLocationOf(r.Target),
 			ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 			Enforcement: r.Enforcement, Explain: r.Explain, Plan: planPayloadOf(r.Plan),
 			ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,
@@ -218,18 +318,13 @@ func itemOf(r ApprovalRequest) approvals.Item {
 
 func dbTarget(r ApprovalRequest) (approvals.Target, approvals.Operation) {
 	t := r.Target
+	loc := dbLocationOf(t)
 	parts := make([]string, 0, 2)
-	if t.Host != "" {
-		parts = append(parts, t.Host)
+	if loc.Host != "" {
+		parts = append(parts, loc.Host)
 	}
-	if len(t.Path) > 0 {
-		segs := make([]string, len(t.Path))
-		for i, s := range t.Path {
-			segs[i] = s.Name
-		}
-		parts = append(parts, strings.Join(segs, " / "))
-	} else if t.Database != "" {
-		parts = append(parts, t.Database)
+	if loc.Path != "" {
+		parts = append(parts, loc.Path)
 	}
 	return approvals.Target{
 			Name: r.ConnectionName, Kind: r.Kind, Color: t.Color, ReadOnly: t.ReadOnly, Location: strings.Join(parts, " · "),

@@ -140,7 +140,7 @@ func TestDbMcpStep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listConnections := fakeagent.MCPCall{Server: dbSrvName, Tool: "list_connections"}
+	listConnections := fakeagent.MCPCall{Server: dbSrvName, Tool: "list"}
 	claude(app, map[string][]fakeagent.Action{"*": {
 		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
 		{MCP: []fakeagent.MCPCall{listConnections}, Name: "done"},
@@ -185,8 +185,8 @@ func TestDbMcpStep(t *testing.T) {
 	if app.W.DbMcp.Status().Running {
 		t.Fatal("a session grant started the external server")
 	}
-	if got := fakeFile(t, app, "mcp-list_connections-1.json"); !strings.Contains(got, "step db") {
-		t.Fatalf("list_connections result = %s, want the connection", got)
+	if got := fakeFile(t, app, "mcp-list-1.json"); !strings.Contains(got, "step db") {
+		t.Fatalf("list result = %s, want the connection", got)
 	}
 	args1 := fakeFile(t, app, "api-1.args")
 	mustContain(t, "withdb argv", args1, dbAllowRule)

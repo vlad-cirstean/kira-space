@@ -31,16 +31,20 @@ test('contract: the card lists the script read and where the prepare script make
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const row = card(page, it).locator('[data-testid="api-approval-kept-region"]');
-  await expect(row).toContainText('Text');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toHaveText('eu');
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Prepare script');
-  await expect(card(page, it).locator('[data-testid="api-approval-kept"]')).toHaveText(
-    'Uses kept: region',
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Text');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Prepare script',
   );
-  await expect(card(page, it).locator('[data-testid="api-approval-script-reads"]')).toBeVisible();
+  await expect(card(page, it).locator('[data-testid="api-approval-kept"]')).toHaveText(
+    'Uses: region',
+  );
+  // The read is in prepare: the prepare block marks it. No note under the scripts: the marks say it.
+  await expect(card(page, it).locator('[data-testid="api-approval-may-keep"]')).toHaveCount(0);
 });
 
-test('contract: the kept.get and kept.set calls are marked in their scripts', async ({
+test('contract: every plain.x token is marked in its script, which shows formatted', async ({
   relaunch,
 }) => {
   const it = timed(base());
@@ -53,17 +57,12 @@ test('contract: the kept.get and kept.set calls are marked in their scripts', as
   await expect(
     c.locator('[data-testid="api-approval-script-transform"] .kira-ed-kept'),
   ).toHaveCount(1);
-});
-
-test('contract: the card names what the transform may keep', async ({ relaunch }) => {
-  const it = timed(base());
-  const { window: page } = await relaunch({});
-  await pushApprovals(page, [it]);
-  const c = card(page, it);
-  await expect(c.locator('[data-testid="api-approval-may-keep"]')).toHaveText(
-    'This script may keep: ids',
+  // The agent wrote the prepare script on one line; it shows one statement per line, source unchanged.
+  await expect(c.locator('[data-testid="api-approval-script-prepare-formatted"]')).toHaveText(
+    'Formatted',
   );
-  await expect(c.locator('[data-testid="api-approval-kept-writes"]')).toHaveText('May keep: ids');
+  const source = (it.payload as { script: { prepare: { source: string } } }).script.prepare.source;
+  expect(source).not.toContain('\n');
 });
 
 test('a plain request shows none of the script kept notes', async ({ relaunch }) => {
@@ -78,7 +77,5 @@ test('a plain request shows none of the script kept notes', async ({ relaunch })
   const { window: page } = await relaunch({});
   await pushApprovals(page, [live]);
   const c = card(page, live);
-  await expect(c.locator('[data-testid="api-approval-may-keep"]')).toHaveCount(0);
-  await expect(c.locator('[data-testid="api-approval-script-reads"]')).toHaveCount(0);
   await expect(c.locator('[data-testid="api-approval-kept-panel"]')).toHaveCount(0);
 });

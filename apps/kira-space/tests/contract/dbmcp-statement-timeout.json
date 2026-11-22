@@ -19,6 +19,7 @@
       "connectionId": "<id:2>",
       "detected": "read",
       "enforcement": "session",
+      "host": "",
       "limits": [
         {
           "limit": "statement_timeout",
@@ -28,6 +29,7 @@
         }
       ],
       "mode": "read",
+      "path": "/data/mcp.db",
       "plan": null,
       "reason": "the count is needed",
       "reviewOffered": true,
@@ -44,6 +46,107 @@
       "readOnly": false
     }
   },
+  "list": [
+    {
+      "kind": "clickhouse",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "kafka",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "none",
+          "read": "none",
+          "write": "none"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "kibana",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "none",
+          "read": "app",
+          "write": "none"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "mariadb",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "mongodb",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "mysql",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "session",
+          "write": "app"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "postgres",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "session",
+          "read": "session",
+          "write": "session"
+        },
+        "seconds": 0
+      }
+    },
+    {
+      "kind": "redis",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      }
+    },
+    {
+      "kind": "sqlite",
+      "statementTimeout": {
+        "enforcement": {
+          "ddl": "app",
+          "read": "app",
+          "write": "app"
+        },
+        "seconds": 10
+      }
+    }
+  ],
   "list_connections": [
     {
       "access": {

@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "text": "{\"m\": \"m1\", \"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 19,
                 "index": 0,
                 "part": "",
-                "to": 31
+                "to": 32
               }
             ],
             "source": {
@@ -102,6 +102,7 @@
         "connectionId": "<id:4>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "kept": [
           {
             "bytes": 5,
@@ -143,6 +144,7 @@
         "params": [
           "ids"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -179,11 +181,13 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 89,
+        "bytes": 38,
         "connectionId": "<id:4>",
+        "host": "",
         "isError": false,
         "mode": "read",
-        "rawBytes": 239,
+        "path": "/data/mcp.db",
+        "rawBytes": 167,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"
@@ -209,6 +213,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -227,7 +232,7 @@
         "host": "127.0.0.1",
         "inputs": [
           {
-            "label": "API key",
+            "keepMinutes": 60,
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -251,14 +256,14 @@
                 "from": 35,
                 "index": 0,
                 "part": "",
-                "to": 50
+                "to": 52
               },
               {
                 "field": "query",
                 "from": 0,
                 "index": 1,
                 "part": "value",
-                "to": 15
+                "to": 17
               }
             ],
             "source": {
@@ -279,14 +284,14 @@
           },
           {
             "name": "k",
-            "value": "{{kept.apikey}}"
+            "value": "{{secret.apikey}}"
           }
         ],
         "reviewOffered": true,
         "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
-        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{secret.apikey}}",
         "variables": [
           {
             "name": "base_url",
@@ -316,6 +321,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -324,7 +330,9 @@
         "connectionId": "<id:8>",
         "detected": "read",
         "enforcement": "session",
+        "host": "",
         "mode": "read",
+        "path": "/data/mcp.db",
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,
@@ -367,7 +375,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "text": "{\"m\": \"m1\", \"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -397,7 +405,7 @@
                 "from": 19,
                 "index": 0,
                 "part": "",
-                "to": 31
+                "to": 32
               }
             ],
             "source": {
@@ -448,6 +456,7 @@
         "connectionId": "<id:4>",
         "detected": "write",
         "enforcement": "",
+        "host": "",
         "kept": [
           {
             "bytes": 5,
@@ -489,6 +498,7 @@
         "params": [
           "ids"
         ],
+        "path": "/data/mcp.db",
         "placeholders": [
           "? 1"
         ],
@@ -525,11 +535,13 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 89,
+        "bytes": 38,
         "connectionId": "<id:4>",
+        "host": "",
         "isError": false,
         "mode": "read",
-        "rawBytes": 217,
+        "path": "/data/mcp.db",
+        "rawBytes": 145,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"
@@ -555,6 +567,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -573,7 +586,7 @@
         "host": "127.0.0.1",
         "inputs": [
           {
-            "label": "API key",
+            "keepMinutes": 60,
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -597,14 +610,14 @@
                 "from": 35,
                 "index": 0,
                 "part": "",
-                "to": 50
+                "to": 52
               },
               {
                 "field": "query",
                 "from": 0,
                 "index": 1,
                 "part": "value",
-                "to": 15
+                "to": 17
               }
             ],
             "source": {
@@ -625,14 +638,14 @@
           },
           {
             "name": "k",
-            "value": "{{kept.apikey}}"
+            "value": "{{secret.apikey}}"
           }
         ],
         "reviewOffered": true,
         "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
-        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{secret.apikey}}",
         "variables": [
           {
             "name": "base_url",
@@ -662,6 +675,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -670,7 +684,9 @@
         "connectionId": "<id:8>",
         "detected": "read",
         "enforcement": "session",
+        "host": "",
         "mode": "read",
+        "path": "/data/mcp.db",
         "plan": null,
         "reviewOffered": true,
         "reviewResult": false,
@@ -694,24 +710,24 @@
   "DbMcpService.PendingResponse#all": {
     "isError": false,
     "keep": [],
-    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"m2\"],[\"4\",\"m2\"]],\"rowCount\":4,\"returned\":4,\"truncatedCells\":0}",
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"m2\"],[\"4\",\"m2\"]],\"rowCount\":4}",
     "requestId": "<id:5>",
     "script": {
       "hash": "e89a7e5d737b52bcacfca97c4e59c1c7cf7da6b4a1c2313c2fe0144e12b2776f",
       "source": "return \"m3\";"
     },
-    "text": "{\"kind\":\"script\",\"output\":\"m3\",\"input\":{\"kind\":\"tabular\",\"rowCount\":4,\"truncated\":false}}"
+    "text": "{\"output\":\"m3\",\"input\":{\"rowCount\":4}}"
   },
   "DbMcpService.PendingResponse#five": {
     "isError": false,
     "keep": [],
-    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2}",
     "requestId": "<id:5>",
     "script": {
       "hash": "e89a7e5d737b52bcacfca97c4e59c1c7cf7da6b4a1c2313c2fe0144e12b2776f",
       "source": "return \"m3\";"
     },
-    "text": "{\"kind\":\"script\",\"output\":\"m3\",\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+    "text": "{\"output\":\"m3\",\"input\":{\"rowCount\":2}}"
   },
   "args:ApprovalsService.Answer#all": {
     "approve": false,

@@ -18,11 +18,13 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 96,
+        "bytes": 45,
         "connectionId": "<id:2>",
+        "host": "",
         "isError": false,
         "mode": "read",
-        "rawBytes": 217,
+        "path": "/data/mcp.db",
+        "rawBytes": 145,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"
@@ -42,6 +44,7 @@
     "keep": [
       {
         "bytes": 5,
+        "deleted": false,
         "items": 2,
         "name": "ids",
         "preview": "[1,2]",
@@ -50,13 +53,13 @@
         "type": "array"
       }
     ],
-    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "6130cbe33c4797f71be7ed1705a0326335728fa67de64cbee528125484355803",
-      "source": "kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+      "hash": "5b7f397fae724547e07edab95d5b6be2ab2f76c633788a6e55ca21da4ceabdf5",
+      "source": "plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};"
     },
-    "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+    "text": "{\"output\":{\"count\":2},\"input\":{\"rowCount\":2}}"
   },
   "args:ApprovalsService.Answer": {
     "approve": true,
@@ -65,5 +68,5 @@
     ],
     "options": null
   },
-  "result": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"expiresInSeconds\":3600}]}"
+  "result": "{\"output\":{\"count\":2},\"input\":{\"rowCount\":2},\"tempSet\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}"
 }

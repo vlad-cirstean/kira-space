@@ -2,13 +2,8 @@ package claude
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
-	"testing"
 )
 
 // spikeEditStats are the edit-ease and read-effort counters of one run, read from its stream.
@@ -215,55 +210,4 @@ func toolResultText(b contentBlock) string {
 		}
 	}
 	return sb.String()
-}
-
-var logRunRe = regexp.MustCompile(`(F\d) ([TF]) (haiku|sonnet) #(\d+) pass=(true|false) cost=[0-9.]+ turns=\d+ ?(.*)$`)
-
-// TestDetailsSpikeReport rebuilds the results file from the raw transcripts of an earlier
-// TestDetailsSpike run (KIRA_SPIKE_DUMP dir) and its verbose log (pass flags and failure notes).
-// It costs nothing: KIRA_SPIKE_REPORT_DIR=<dump dir> KIRA_SPIKE_REPORT_LOG=<log> [KIRA_SPIKE_OUT=...].
-func TestDetailsSpikeReport(t *testing.T) {
-	dir, logFile := os.Getenv("KIRA_SPIKE_REPORT_DIR"), os.Getenv("KIRA_SPIKE_REPORT_LOG")
-	if dir == "" || logFile == "" {
-		t.Skip("set KIRA_SPIKE_REPORT_DIR and KIRA_SPIKE_REPORT_LOG to rebuild the report from a past run")
-	}
-	pass := map[string][2]string{}
-	raw, err := os.ReadFile(logFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, l := range strings.Split(string(raw), "\n") {
-		if m := logRunRe.FindStringSubmatch(l); m != nil {
-			pass[strings.Join(m[1:5], "-")] = [2]string{m[5], strings.TrimSpace(m[6])}
-		}
-	}
-	files, _ := filepath.Glob(filepath.Join(dir, "*.jsonl"))
-	var recs []spikeRec
-	var spent float64
-	for _, f := range files {
-		base := strings.TrimSuffix(filepath.Base(f), ".jsonl")
-		parts := strings.Split(base, "-")
-		if len(parts) != 4 {
-			continue
-		}
-		rep, _ := strconv.Atoi(parts[3])
-		b, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rec := spikeRec{Flow: parts[0], Arm: parts[1], Model: parts[2], Rep: rep}
-		parseSpikeStream(string(b), &rec)
-		p := pass[base]
-		rec.Pass, rec.Why = p[0] == "true", p[1]
-		spent += rec.Cost
-		recs = append(recs, rec)
-	}
-	out := os.Getenv("KIRA_SPIKE_OUT")
-	if out == "" {
-		out = filepath.Join(t.TempDir(), "P643-spike-results.md") // set KIRA_SPIKE_OUT to keep it
-	}
-	if err := os.WriteFile(out, []byte(spikeReport(recs, spent, "", len(recs))), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("%d runs, %s", len(recs), fmt.Sprintf("%.4f USD", spent))
 }

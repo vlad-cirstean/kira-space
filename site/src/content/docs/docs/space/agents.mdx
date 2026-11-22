@@ -76,6 +76,18 @@ A new task lands in Today with no repositories, so it can start as soon as it ha
 
 Backlog items stay off the plan until you promote them.
 
+### Task links
+
+A task lists its links grouped as issues, change requests and other. A Related line shows links Kira found in notes and handovers, with where each was found. **Add to links** promotes one. In edit mode, **Dismiss** hides one.
+
+### Files window
+
+<DocShot id="space-files-window" />
+
+The files icon in the task panel header opens the task's Files window. It shows every worktree of the task, with a branch picker when there are several. Filter by name or search file contents.
+
+Open any file in a read-only viewer. Markdown files have a reading view. Right-click a file to copy its path, reveal it in the file manager, or open it in VS Code. Open in VS Code opens the worktree and the file, and says so when VS Code is not installed. Nothing in the window edits a file.
+
 ## Base branch and stacking
 
 A task picks its base branch per repository: the repository's main, any branch, or another planner branch to stack on. A headless run rebases the branch when the base changes. **Change base…** and **Rebase onto** start that run.

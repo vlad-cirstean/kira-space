@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapterhost"
@@ -36,11 +37,12 @@ func (st scriptStage) opKind() string {
 	return "jsTransform"
 }
 
-// scriptRun is one engine run. Bindings is built by appending: later phases add theirs before execScript.
+// scriptRun is one engine run. Vars adds the plain and secret globals and settles them after the run.
 type scriptRun struct {
 	Stage    scriptStage
 	Source   string
 	Bindings []jsengine.Binding
+	Vars     *keptRun
 	Limits   jsengine.Limits
 	// ConnectionID ties the op row to a connection (run_query scripts); empty for none.
 	ConnectionID string
@@ -53,10 +55,14 @@ func (s *Server) scriptsOn() bool {
 	return s.cfg.JS != nil && s.cfg.ScriptOps != nil && s.apiSettings().Scripts
 }
 
-// scriptErrText is the engine's message; an internal fault gets a static one.
+// scriptErrText is the engine's message; an internal fault gets a static one. An input, saved-value or variable
+// refusal is the message alone: it already says what to fix.
 func scriptErrText(e *jsengine.Error) string {
-	if e.Kind == jsengine.KindInternal {
+	switch e.Kind {
+	case jsengine.KindInternal:
 		return "internal error"
+	case jsengine.KindInput, jsengine.KindSaved, kindVars:
+		return e.Message
 	}
 	return e.Error()
 }
@@ -87,7 +93,17 @@ func (s *Server) execScript(ctx context.Context, r scriptRun, describe func(*jse
 	}
 	_, _, err := s.cfg.ScriptOps.RunOp(ctx, spec, func(runCtx context.Context, op *adapters.OpCtx) (any, error) {
 		op.SetCommand(r.Source)
-		out, err := s.cfg.JS.Exec(runCtx, jsengine.Run{Source: r.Source, Bindings: r.Bindings, Limits: r.Limits})
+		varBindings, refusal := r.Vars.bindings(r.Stage)
+		if refusal != "" {
+			failure = describe(&jsengine.Error{Kind: kindVars, Message: refusal})
+			return nil, errors.New(failure)
+		}
+		out, err := s.cfg.JS.Exec(runCtx, jsengine.Run{Source: r.Source, Bindings: append(slices.Clone(r.Bindings), varBindings...), Limits: r.Limits})
+		if err == nil {
+			if text := r.Vars.settle(r.Stage, out.ReadBack); text != "" {
+				err = &jsengine.Error{Kind: kindVars, Message: text}
+			}
+		}
 		if err != nil {
 			var je *jsengine.Error
 			if !errors.As(err, &je) {

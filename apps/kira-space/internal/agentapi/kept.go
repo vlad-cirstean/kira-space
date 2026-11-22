@@ -14,7 +14,7 @@ import (
 	"golang.org/x/net/http/httpguts"
 )
 
-// maxKeptNames bounds the distinct kept variables one request may use.
+// maxKeptNames bounds the distinct temporary variables one request may use.
 const maxKeptNames = 16
 
 // Limits on the request once kept values are inserted.
@@ -32,7 +32,7 @@ type KeptReader interface {
 	Secrets() []keptvars.Entry
 }
 
-// KeptSite is one {{kept.<name>}} span in a field of the planned request. From and To are UTF-16 code
+// KeptSite is one {{plain.<name>}} or {{secret.<name>}} span in a field of the planned request. From and To are UTF-16 code
 // units in that field's text as the plan carries it.
 type KeptSite struct {
 	Field string `json:"field"` // url, header, query, form, body or contentType
@@ -42,7 +42,7 @@ type KeptSite struct {
 	To    int    `json:"to"`
 }
 
-// KeptUse is a kept variable a request uses, as it stood at plan time. The value is not part of it: only a
+// KeptUse is a temporary variable a request uses, as it stood at plan time. The value is not part of it: only a
 // preview, empty for a secret.
 type KeptUse struct {
 	ID     string          `json:"id"`
@@ -106,7 +106,7 @@ func inputKeptTexts(in Input) []keptText {
 	return keptTexts(in.URL, in.Headers, in.Query, in.Body, in.Form, in.ContentType)
 }
 
-// keptPlan is what the plan found out about the kept variables a request uses.
+// keptPlan is what the plan found out about the temporary variables a request uses.
 type keptPlan struct {
 	order   []string
 	entries map[string]keptvars.Entry
@@ -117,17 +117,25 @@ type keptPlan struct {
 
 func keptErr(format string, args ...any) error { return fmt.Errorf(format, args...) }
 
-func (s *Service) lookupKept(scope, name string) (keptvars.Entry, bool) {
-	if s.Kept == nil || scope == "" || keptvars.ValidName(name) != nil {
+// lookupStore finds the entry a reference names: a value this run's prepare script set first, else the store.
+func (s *Service) lookupStore(in Input, name string) (keptvars.Entry, bool) {
+	if e, ok := in.Staged[name]; ok {
+		return e, true
+	}
+	if s.Kept == nil || in.Scope == "" || keptvars.ValidName(name) != nil {
 		return keptvars.Entry{}, false
 	}
-	return s.Kept.Get(scope, name)
+	return s.Kept.Get(in.Scope, name)
 }
 
 // admit records the entry a reference names: a live entry, or the stand-in of a needed input.
-func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]InputDecl, origin string) error {
-	e, ok := s.lookupKept(in.Scope, name)
+func (s *Service) admit(kp *keptPlan, in Input, sp keptvars.RefSpan, decls map[string]InputDecl, origin string) error {
+	name := sp.Name
+	e, ok := s.lookupStore(in, name)
 	if d, declared := decls[name]; declared {
+		if !sp.Secret {
+			return kindErr(name, true)
+		}
 		use, err := judgeInput(d, e, ok, origin)
 		if err != nil {
 			return err
@@ -137,19 +145,24 @@ func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]In
 			e = pendingEntry(name, origin)
 			kp.pending[name] = true
 		}
-	} else if !ok {
-		return keptErr("no kept variable %q (it may have expired or been cleared); call list_kept_variables"+inputsDeclHint, name)
-	} else if e.Bound() && origin != "" && e.Origin != origin {
-		return otherOriginError(name, e.Origin, origin)
+	} else if err := checkUndeclared(name, sp, e, ok, origin); err != nil {
+		return err
 	}
 	kp.entries[name] = e
 	kp.order = append(kp.order, name)
 	return nil
 }
 
-// admitUnreferenced judges the declared inputs the request text does not reference: each must be read by a
-// script, else the declaration is dead.
-func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]InputDecl, origin string) error {
+// kindErr is the refusal for a reference whose kind differs from the temporary value's.
+func kindErr(name string, isSecret bool) error {
+	if isSecret {
+		return keptErr("%q is secret; write {{secret.%s}}", name, name)
+	}
+	return keptErr("%q is plain; write {{plain.%s}}", name, name)
+}
+
+// admitUnreferenced refuses a declared input the request text does not reference: the declaration is dead.
+func (s *Service) admitUnreferenced(kp *keptPlan, in Input) error {
 	done := map[string]bool{}
 	for _, u := range kp.inputs {
 		done[u.Name] = true
@@ -158,15 +171,7 @@ func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]Inp
 		if done[d.Name] {
 			continue
 		}
-		e, ok := s.lookupKept(in.Scope, d.Name)
-		use, err := judgeInput(decls[d.Name], e, ok, origin)
-		if err != nil {
-			return err
-		}
-		if !slices.Contains(in.ScriptReads, d.Name) {
-			return keptErr("input %q is declared but not used; write {{kept.%s}} where the value goes", d.Name, d.Name)
-		}
-		kp.inputs = append(kp.inputs, use)
+		return keptErr("input %q is declared but not used; write {{secret.%s}} where the value goes", d.Name, d.Name)
 	}
 	// Declaration order, whatever order the references came in.
 	slices.SortStableFunc(kp.inputs, func(a, b InputUse) int {
@@ -188,20 +193,23 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 	for _, t := range texts {
 		for _, sp := range keptvars.RefSpans(t.text) {
 			if sp.Pipeline {
-				return nil, keptErr("kept variables take no transforms; write {{kept.%s}}", sp.Name)
+				return nil, keptErr("temporary variables take no transforms; write {{%s.%s}}", refKind(sp), sp.Name)
 			}
-			if _, seen := kp.entries[sp.Name]; seen {
+			if e, seen := kp.entries[sp.Name]; seen {
+				if e.Secret != sp.Secret {
+					return nil, kindErr(sp.Name, e.Secret)
+				}
 				continue
 			}
-			if err := s.admit(kp, in, sp.Name, decls, origin); err != nil {
+			if err := s.admit(kp, in, sp, decls, origin); err != nil {
 				return nil, err
 			}
 		}
 	}
-	if err := s.admitUnreferenced(kp, in, decls, origin); err != nil {
+	if err := s.admitUnreferenced(kp, in); err != nil {
 		return nil, err
 	}
-	if err := s.checkRoom(in.Scope, len(kp.pending)+missingUnreferenced(kp)); err != nil {
+	if err := s.checkRoom(in.Scope, len(kp.pending)); err != nil {
 		return nil, err
 	}
 	if len(kp.order) == 0 {
@@ -211,7 +219,7 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 		return kp, nil
 	}
 	if len(kp.order) > maxKeptNames {
-		return nil, errors.New("a request can use at most 16 kept variables")
+		return nil, errors.New("a request can use at most 16 temporary variables")
 	}
 	isJSON := isJSONType(requestContentType(in.ContentType, in.Headers))
 	for _, t := range texts {
@@ -220,17 +228,6 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 		}
 	}
 	return kp, nil
-}
-
-// missingUnreferenced counts needed inputs that only a script reads (they are not in pending).
-func missingUnreferenced(kp *keptPlan) int {
-	n := 0
-	for _, u := range kp.inputs {
-		if u.State == InputNeeded && !kp.pending[u.Name] {
-			n++
-		}
-	}
-	return n
 }
 
 func requestContentType(contentType string, headers []NameValue) string {
@@ -257,7 +254,7 @@ func (kp *keptPlan) checkField(t keptText, isJSON bool) error {
 	}
 	if t.field == "url" {
 		if end := authorityEnd(t.text); spans[0].From < end {
-			return errors.New("a kept variable cannot be part of the URL's scheme, host or port")
+			return errors.New("a temporary variable cannot be part of the URL's scheme, host or port")
 		}
 	}
 	for _, sp := range spans {
@@ -274,9 +271,9 @@ func (kp *keptPlan) checkField(t keptText, isJSON bool) error {
 	}
 	switch {
 	case strings.ContainsAny(out, "\r\n"):
-		return keptErr("kept variable %q contains a line break; it cannot go in a header", spans[0].Name)
+		return keptErr("temporary variable %q contains a line break; it cannot go in a header", spans[0].Name)
 	case t.part == "name" && !httpguts.ValidHeaderFieldName(out), t.part == "value" && !httpguts.ValidHeaderFieldValue(out):
-		return keptErr("kept variable %q makes the header %s invalid", spans[0].Name, t.part)
+		return keptErr("temporary variable %q makes the header %s invalid", spans[0].Name, t.part)
 	}
 	return nil
 }
@@ -297,9 +294,9 @@ func authorityEnd(u string) int {
 func (kp *keptPlan) scalarOK(name string) error {
 	switch kp.entries[name].Type {
 	case "array":
-		return keptErr("kept variable %q is a list; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or keep a joined string", name)
+		return keptErr("temporary variable %q is a list; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or set a joined string", name)
 	case "object":
-		return keptErr("kept variable %q is an object; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or keep a joined string", name)
+		return keptErr("temporary variable %q is an object; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or set a joined string", name)
 	}
 	return nil
 }
@@ -310,7 +307,7 @@ func (kp *keptPlan) checkBody(text string, spans []keptvars.RefSpan, isJSON bool
 	}
 	for _, sp := range spans {
 		if insideJSONString(text, sp.From) {
-			return errors.New("in a JSON body write {{kept." + sp.Name + "}} without quotes; Kira inserts the value as JSON")
+			return errors.New("in a JSON body write {{" + refKind(sp) + "." + sp.Name + "}} without quotes; Kira inserts the value as JSON")
 		}
 	}
 	var b strings.Builder
@@ -322,7 +319,7 @@ func (kp *keptPlan) checkBody(text string, spans []keptvars.RefSpan, isJSON bool
 	}
 	b.WriteString(text[last:])
 	if !json.Valid([]byte(b.String())) {
-		return errors.New("body is not valid JSON once kept variables are inserted")
+		return errors.New("body is not valid JSON once temporary variables are inserted")
 	}
 	return nil
 }
@@ -370,7 +367,7 @@ func expandWith(text string, mode insertMode, lit func(string) string, value fun
 		b.WriteString(lit(text[last:sp.From]))
 		v, ok := value(sp.Name)
 		if !ok {
-			return "", keptErr("kept variable %q is not available", sp.Name)
+			return "", keptErr("temporary variable %q is not available", sp.Name)
 		}
 		piece, err := insertion(v, mode, strings.Contains(text[:sp.From], "?"), sp.Name)
 		if err != nil {
@@ -394,7 +391,7 @@ func insertion(v keptValue, mode insertMode, afterQuery bool, name string) (stri
 		return string(v.raw), nil
 	}
 	if v.typ == "array" || v.typ == "object" {
-		return "", keptErr("kept variable %q is a %s; it cannot go in a URL, header, query or form field", name, v.typ)
+		return "", keptErr("temporary variable %q is a %s; it cannot go in a URL, header, query or form field", name, v.typ)
 	}
 	text := scalarText(v)
 	if mode == insertURL {
@@ -441,6 +438,13 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	}
 	for _, name := range kp.order {
 		e := kp.entries[name]
+		if strings.HasPrefix(e.ID, keptvars.StagedIDPrefix) {
+			// A value prepare saved is no use of the store: the card lists it with the prepare script.
+			if withValues {
+				p.keptValues[name] = keptValue{raw: e.Value, typ: e.Type, secret: e.Secret}
+			}
+			continue
+		}
 		use := NewKeptUse(e, sites[name])
 		use.Pending = kp.pending[name]
 		p.Kept = append(p.Kept, use)
@@ -450,7 +454,7 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	}
 }
 
-// checkKeptCurrent refuses a send whose kept variables changed since approved was planned.
+// checkKeptCurrent refuses a send whose temporary variables changed since approved was planned.
 func (p Planned) checkKeptCurrent(approved Planned) error {
 	now := map[string]string{}
 	for _, k := range p.Kept {
@@ -458,7 +462,7 @@ func (p Planned) checkKeptCurrent(approved Planned) error {
 	}
 	for _, k := range approved.Kept {
 		if now[k.Name] != k.ID {
-			return keptErr("kept variable %q changed while waiting for approval; nothing was sent. Produce it again, then repeat the request.", k.Name)
+			return keptErr("temporary variable %q changed while waiting for approval; nothing was sent. Produce it again, then repeat the request.", k.Name)
 		}
 	}
 	return nil
@@ -499,15 +503,38 @@ func (k *keptResolver) text(text string, mode insertMode, lit func(string) strin
 // checkFinal refuses a request whose inserted kept values broke a header or grew it past a limit.
 func checkFinal(req httpclient.Request) error {
 	if len(req.URL) > maxFinalURLBytes {
-		return errors.New("the url is longer than 64 KiB once kept variables are inserted")
+		return errors.New("the url is longer than 64 KiB once temporary variables are inserted")
 	}
 	if len(req.Body.Raw) > maxFinalBodyBytes {
-		return errors.New("the body is larger than 8 MiB once kept variables are inserted")
+		return errors.New("the body is larger than 8 MiB once temporary variables are inserted")
 	}
 	for _, h := range req.Headers {
 		if !httpguts.ValidHeaderFieldName(h.Name) || !httpguts.ValidHeaderFieldValue(h.Value) || len(h.Value) > maxHeaderBytes {
-			return errors.New("a kept variable made a header invalid")
+			return errors.New("a temporary variable made a header invalid")
 		}
+	}
+	return nil
+}
+
+func refKind(sp keptvars.RefSpan) string {
+	if sp.Secret {
+		return keptvars.KindSecret
+	}
+	return keptvars.KindPlain
+}
+
+// checkUndeclared refuses a reference to a temporary value that is missing, of the other kind or bound elsewhere.
+func checkUndeclared(name string, sp keptvars.RefSpan, e keptvars.Entry, ok bool, origin string) error {
+	switch {
+	case !ok:
+		return keptErr("no temporary variable %q (it may have expired or been cleared); call list (what: temp)"+inputsDeclHint, name)
+	case e.Secret != sp.Secret:
+		return kindErr(name, e.Secret)
+	case e.Bound() && origin != "" && e.Origin != origin:
+		if e.Source.Kind != keptvars.SourceUser {
+			return keptErr("the temporary secret %q belongs to %s and is not sent to %s", name, e.Origin, origin)
+		}
+		return otherOriginError(name, e.Origin, origin)
 	}
 	return nil
 }

@@ -53,14 +53,14 @@ const EphemeralPort = -1
 type TokenProvider func() (rec mcpauth.Record, plain string, minted bool, err error)
 
 // ConnectionsReader is dbmcp's own consumer-declared interface (A11) over *connections.Service —
-// only the three methods list_connections/access.go/run_query actually need.
+// only the three methods list/access.go/run_query actually need.
 type ConnectionsReader interface {
 	List() ([]model.ConnectionSummary, error)
 	StateOf(connectionID string) model.ConnectionState
 	ConnectContext(ctx context.Context, connectionID string) (model.ConnectionState, error)
 }
 
-// MetadataReader is dbmcp's own consumer-declared interface over *tree.Service — list_children/
+// MetadataReader is dbmcp's own consumer-declared interface over *tree.Service — describe/
 // describe's own backend.
 type MetadataReader interface {
 	Children(ctx context.Context, connectionID, path string, refresh bool) (tree.ChildrenResult, error)
@@ -105,7 +105,7 @@ type MaskRules interface {
 	// MaskSetFor is run_query's render path's own seam (§4.2/§4.3) — the folded, per-column-name
 	// rule map plus the connection's Masker.
 	MaskSetFor(connectionID string) (mask.Set, error)
-	// List is list_connections' own seam (§4.5) — the raw per-rule rows (table_name included,
+	// List is list' own seam (§4.5) — the raw per-rule rows (table_name included,
 	// unlike MaskSetFor's already-folded map) needed to report "table.column: kind" per rule.
 	List(connectionID string) ([]model.MaskRule, error)
 }
@@ -119,7 +119,7 @@ type ColumnReview interface {
 	// Recheck is For with a live column read of the statement's relations, for result columns the last check
 	// cannot vouch for.
 	Recheck(ctx context.Context, summary model.ConnectionSummary, req maskreview.Rescan) maskreview.Withheld
-	// Cached is the last state without any op, for list_connections.
+	// Cached is the last state without any op, for list.
 	Cached(connectionID string) (maskreview.Withheld, bool)
 	// MarkStale makes the next For check again, after an MCP write or DDL statement.
 	MarkStale(connectionID string)
@@ -162,6 +162,10 @@ type Config struct {
 	PreviewResponses func() bool
 	// Kube backs the kube_* tools; its calls record their own op-log rows. Nil leaves them unregistered.
 	Kube KubeReader
+	// KubeReviewResponses reports whether kube list, describe and logs results are held for the user's review
+	// (dbMcp.kubeReviewResponses), read fresh on every call. It is the default for clusters whose review setting
+	// is inherit. Required with Kube, for the same reason as PreviewResponses.
+	KubeReviewResponses func() bool
 	// Ops backs operations; nil leaves it unregistered. Runs adds
 	// script runs to them; nil means none are listed or stoppable.
 	Ops  OpsControl
@@ -172,8 +176,8 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
-	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves the tool
-	// unregistered and refuses every {{kept.*}} reference.
+	// Kept backs list (what: temp) and the approval wait on kept values; nil leaves the tool
+	// unregistered and refuses every {{plain.*}} or {{secret.*}} reference.
 	Kept KeptStore
 	// JS and ScriptOps run and record the scripts agents attach; either nil turns scripts off.
 	JS        ScriptEngine
@@ -262,6 +266,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.PreviewResponses == nil {
 		return nil, fmt.Errorf("dbmcp: Config.PreviewResponses is required")
+	}
+	if cfg.Kube != nil && cfg.KubeReviewResponses == nil {
+		return nil, fmt.Errorf("dbmcp: Config.KubeReviewResponses is required with Config.Kube")
 	}
 
 	// plain/minted served the old in-memory-plaintext gate (F8) — cfg.Token() (bridge's
@@ -368,6 +375,14 @@ func (s *Server) toolSetKey() toolSetKey {
 	return toolSetKey{api: s.apiEnabled(), scripts: s.scriptsOn()}
 }
 
+// scriptsInstructions is the instructions paragraph on scripts; empty while scripts are off.
+func (s *Server) scriptsInstructions() string {
+	if !s.scriptsOn() {
+		return ""
+	}
+	return " " + llmprompts.DbmcpInstructionsScripts.Text(s.prompts(), llmprompts.NoVars{})
+}
+
 // buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
@@ -375,35 +390,23 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Name:    "kira-studio",
 		Title:   "Kira Studio",
 		Version: serverVersion,
-	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})
+	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{}) + s.scriptsInstructions()})
 
 	src := s.prompts()
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_connections",
-		Description: llmprompts.DbmcpToolListConnections.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_connections", s.listConnections))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_children",
-		Description: llmprompts.DbmcpToolListChildren.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[listChildrenArgs](src, llmprompts.DbmcpToolListChildren.ID(), nil), "connectionId"),
-	}, withPanicRecovery(s, "list_children", s.listChildren))
+	s.addListTool(srv, src)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "describe",
 		Description: llmprompts.DbmcpToolDescribe.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeArgs](src, llmprompts.DbmcpToolDescribe.ID(), nil), "connectionId", "path"),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeArgs](src, llmprompts.DbmcpToolDescribe.ID(), nil), "connectionId"),
 	}, withPanicRecovery(s, "describe", s.describe))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "browse_table",
 		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
 		InputSchema: browseTableSchema(src),
 	}, withPanicRecovery(s, "browse_table", s.browseTable))
-	scriptNote := ""
-	if s.scriptsOn() {
-		scriptNote = " " + llmprompts.DbmcpToolRunQueryScripts.Text(src, llmprompts.NoVars{})
-	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
-		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}) + scriptNote,
+		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
 		InputSchema: runQuerySchema(src, s.scriptsOn()),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	if s.cfg.Kube != nil {
@@ -417,9 +420,6 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.apiEnabled() {
 		s.addAPITools(srv, src)
-	}
-	if s.cfg.Kept != nil {
-		s.addKeptTools(srv, src)
 	}
 
 	if s.cfg.Audit != nil {

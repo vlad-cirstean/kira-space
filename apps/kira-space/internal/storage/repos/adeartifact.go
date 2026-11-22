@@ -127,3 +127,44 @@ func (r *AdeTaskRepo) DeleteArtifact(id string) error {
 	}
 	return sqlitex.RequireOneRow(res, "artifact "+id)
 }
+
+// maxFoundLinkDismissals caps a task's dismissals; the oldest go first.
+const maxFoundLinkDismissals = 500
+
+// FoundLinkDismissals returns the URLs the user dismissed from the task's found links.
+func (r *AdeTaskRepo) FoundLinkDismissals(taskID string) (map[string]bool, error) {
+	c := kiraschema.AdeTaskFoundLinkDismissals
+	sb := r.Dialect.Select(c.URL).From(c.Table)
+	sb.Where(sb.Equal(c.TaskID, taskID))
+	rows, err := sqlb.Query(r.DB, sb)
+	urls, err := sqlitex.QueryAll(rows, err, func(rows *sql.Rows) (string, bool, error) {
+		var u string
+		err := rows.Scan(&u)
+		return u, true, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repos: found link dismissals %s: %w", taskID, err)
+	}
+	out := make(map[string]bool, len(urls))
+	for _, u := range urls {
+		out[u] = true
+	}
+	return out, nil
+}
+
+// DismissFoundLink records a dismissal (a repeat is a no-op) and drops the task's oldest ones past the cap.
+func (r *AdeTaskRepo) DismissFoundLink(taskID, url string, now int64) error {
+	c := kiraschema.AdeTaskFoundLinkDismissals
+	ib := r.Dialect.InsertIgnoreInto(c.Table).Cols(c.TaskID, c.URL, c.CreatedAt).Values(taskID, url, now)
+	if _, err := sqlb.Exec(r.DB, ib); err != nil {
+		return fmt.Errorf("repos: dismiss found link %s: %w", taskID, err)
+	}
+	keep := r.Dialect.Select(c.URL).From(c.Table)
+	keep.Where(keep.Equal(c.TaskID, taskID)).OrderBy(c.CreatedAt+" DESC", sqlb.RowID+" DESC").Limit(maxFoundLinkDismissals)
+	del := r.Dialect.DeleteFrom(c.Table)
+	del.Where(del.Equal(c.TaskID, taskID), del.NotIn(c.URL, keep))
+	if _, err := sqlb.Exec(r.DB, del); err != nil {
+		return fmt.Errorf("repos: prune found link dismissals %s: %w", taskID, err)
+	}
+	return nil
+}

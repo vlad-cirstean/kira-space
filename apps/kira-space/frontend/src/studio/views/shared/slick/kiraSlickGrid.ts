@@ -10,7 +10,6 @@ import {
   MAX_NEW_CELLS_PER_RENDER,
   MAX_NEW_LEAD_CELLS_PER_RENDER,
   OVERSCAN_PX,
-  type RowRangeExtractorConfig,
   rowRangeBounds,
 } from '../page/columns';
 import type { RowHandle } from './dataSource';
@@ -27,21 +26,11 @@ declare global {
   interface Window {
     __kiraGridScrollWorkStart?: (t: number) => void;
     __kiraGridTuning?: {
-      leadFramesOverride?: number;
-      maxLeadPxOverride?: number;
-      /** P22 iter2-scroll-gaps D2: overrides columns.ts's MAX_NEW_CELLS_PER_RENDER. */
-      maxNewCellsPerRenderOverride?: number;
-      /** P22 iter2-scroll-gaps D3: read by SlickGridHost.vue at grid construction, not by this file
-       *  — declared here too only because this program's declaration merging requires an identical
-       *  shape to main.ts's own. See main.ts's own doc comment for what it does. */
-      forceSyncScrollingOverride?: boolean;
       /** Overrides columns.ts's CHASE_QUIET_MS. Read fresh on every chase
        *  callback, never cached — 0 restores the pre-fix "fire on the very next rAF,
        *  unconditionally" behaviour exactly, so the real-Mac A/B (docs/PERF.md) is a console
        *  line, not a rebuild. */
       chaseQuietMsOverride?: number;
-      /** P22 iter2-pacing D2: overrides columns.ts's MAX_NEW_LEAD_CELLS_PER_RENDER. */
-      maxNewLeadCellsPerRenderOverride?: number;
       /** `false` drops the chase's per-frame gate, leaving only the
        *  CHASE_QUIET_MS wall-clock one. See `scheduleChase` below for why the ms gate alone is not
        *  sufficient. `chaseQuietMsOverride = 0` still disables both at once, so that override keeps
@@ -58,20 +47,6 @@ declare global {
 export interface KiraSlickVelocity {
   pxPerFrame: number;
   direction: 1 | -1 | 0;
-}
-
-/** `__kiraGridTuning`'s overrides, read fresh on every `getRenderedRange` call (never cached) —
- *  the same contract the deleted DataGrid.vue's own row-axis `rangeExtractor` closure had, so the
- *  real-Mac A/B protocol (`docs/PERF.md` §2.1a) needs one build, not a rebuild per variant. */
-function runwayConfig(): RowRangeExtractorConfig {
-  const tuning = window.__kiraGridTuning;
-  return {
-    baseLeadPx: BASE_LEAD_PX,
-    baseTrailPx: BASE_TRAIL_PX,
-    leadFrames: tuning?.leadFramesOverride ?? LEAD_FRAMES,
-    maxLeadPx: tuning?.maxLeadPxOverride ?? MAX_LEAD_PX,
-    cellBudget: CELL_BUDGET,
-  };
 }
 
 /** How many rows in `[start, end]` fall outside
@@ -578,7 +553,13 @@ export class KiraSlickGrid extends SlickGrid<RowHandle, Column<any>> {
       pxPerFrame,
       direction,
       this.mountedColumnCount || 1,
-      runwayConfig(),
+      {
+        baseLeadPx: BASE_LEAD_PX,
+        baseTrailPx: BASE_TRAIL_PX,
+        leadFrames: LEAD_FRAMES,
+        maxLeadPx: MAX_LEAD_PX,
+        cellBudget: CELL_BUDGET,
+      },
     );
 
     // Step 3: the previous call's returned range — a reliable proxy for "what's currently in
@@ -589,12 +570,12 @@ export class KiraSlickGrid extends SlickGrid<RowHandle, Column<any>> {
     // Step 4: how many rows the non-negotiable floor alone requires building fresh this call.
     const mustNewRows = countNewRows(mustStart, mustEnd, prev.start, prev.end);
 
-    // Step 5: the per-call budget, in rows — MAX_NEW_CELLS_PER_RENDER (or its runtime override),
-    // divided by however many columns are currently mounted (mirrors CELL_BUDGET's own divisor,
-    // columns.ts's rowRangeBounds).
-    const tuning = window.__kiraGridTuning;
-    const maxNewCells = tuning?.maxNewCellsPerRenderOverride ?? MAX_NEW_CELLS_PER_RENDER;
-    const budgetRows = Math.floor(maxNewCells / Math.max(1, this.mountedColumnCount || 1));
+    // Step 5: the per-call budget, in rows — MAX_NEW_CELLS_PER_RENDER, divided by
+    // however many columns are currently mounted (mirrors CELL_BUDGET's own divisor, columns.ts's
+    // rowRangeBounds).
+    const budgetRows = Math.floor(
+      MAX_NEW_CELLS_PER_RENDER / Math.max(1, this.mountedColumnCount || 1),
+    );
 
     let start: number;
     let end: number;
@@ -617,14 +598,12 @@ export class KiraSlickGrid extends SlickGrid<RowHandle, Column<any>> {
       // un-cached territory.
       //
       // The *runway* portion of this budget is additionally capped by
-      // MAX_NEW_LEAD_CELLS_PER_RENDER (or its override), separately from budgetRows above (which
-      // stays the absolute per-pass ceiling and step 6's own floor short-circuit). Defaulted equal
-      // to MAX_NEW_CELLS_PER_RENDER, so `leadBudgetRows` never binds tighter than `budgetRows -
-      // mustNewRows` unless a real-hardware A/B (docs/PERF.md) overrides it — this
-      // `min` is then a no-op.
-      const maxLeadCells =
-        tuning?.maxNewLeadCellsPerRenderOverride ?? MAX_NEW_LEAD_CELLS_PER_RENDER;
-      const leadBudgetRows = Math.floor(maxLeadCells / Math.max(1, this.mountedColumnCount || 1));
+      // MAX_NEW_LEAD_CELLS_PER_RENDER, separately from budgetRows above (which stays the absolute
+      // per-pass ceiling and step 6's own floor short-circuit). Equal to MAX_NEW_CELLS_PER_RENDER,
+      // so this `min` is a no-op until the constant is lowered.
+      const leadBudgetRows = Math.floor(
+        MAX_NEW_LEAD_CELLS_PER_RENDER / Math.max(1, this.mountedColumnCount || 1),
+      );
       let remaining = Math.min(budgetRows - mustNewRows, leadBudgetRows);
       start = mustStart;
       end = mustEnd;

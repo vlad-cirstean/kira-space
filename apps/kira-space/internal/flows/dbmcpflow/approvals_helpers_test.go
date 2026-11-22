@@ -47,6 +47,9 @@ func decodeItem(t testing.TB, it approvals.Item) pendingReq {
 		r.Stage = "response"
 	case approvals.KindKubeRead:
 		r.Cluster = &kubeCluster{Context: pl.Context, Server: pl.Server, Namespace: pl.Namespace, Operation: pl.Operation}
+	case approvals.KindKubeResponse:
+		r.Stage = "response"
+		r.Cluster = &kubeCluster{Context: pl.Context, Server: pl.Server, Namespace: pl.Namespace, Operation: pl.Operation}
 	}
 	return r
 }

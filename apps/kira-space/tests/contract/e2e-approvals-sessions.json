@@ -1,0 +1,224 @@
+{
+  "ApprovalsService.List": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "session": "sess-a",
+        "source": "",
+        "step": "step-a",
+        "task": "task-a"
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "n",
+            "value": "a1"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?n=a1",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:3>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "session": "sess-a",
+        "source": "",
+        "step": "step-a",
+        "task": "task-a"
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "n",
+            "value": "a2"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?n=a2",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:4>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "session": "sess-b",
+        "source": "",
+        "step": "step-b",
+        "task": "task-b"
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "n",
+            "value": "b1"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?n=b1",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    },
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:5>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Go-http-client 1.1",
+        "cwd": "<masked>",
+        "session": "sess-b",
+        "source": "",
+        "step": "step-b",
+        "task": "task-b"
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "GET",
+        "query": [
+          {
+            "name": "n",
+            "value": "b2"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": null,
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?n=b2",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "args:ApprovalsService.Answer": {
+    "approve": false,
+    "ids": [
+      "api.request:<id:1>",
+      "api.request:<id:3>"
+    ],
+    "options": null
+  }
+}

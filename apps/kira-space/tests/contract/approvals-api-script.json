@@ -56,7 +56,8 @@
             "hash": "222c63086dde1d6427900c13068d3453e9ceaf0516608766d2d65682bad3431e",
             "input": "{\"ids\":[1,2]}",
             "inputTruncated": false,
-            "source": "return {body: {items: input.ids.map(id => ({id}))}};"
+            "source": "return {body: {items: input.ids.map(id => ({id}))}};",
+            "writes": []
           },
           "transform": {
             "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",

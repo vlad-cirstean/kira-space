@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 )
@@ -14,14 +12,13 @@ import (
 // Limits on declared inputs.
 const (
 	maxInputs      = 4
-	maxLabelRunes  = 80
 	inputsDeclHint = "; to ask the user for it, declare it in inputs"
 )
 
-// InputDecl is a value the agent asks the user for: the kept name and the question shown on the card.
+// InputDecl is a value the agent asks the user for: the name, shown on the card as is. The value is
+// secret, so the request writes {{secret.<name>}}.
 type InputDecl struct {
-	Name  string `json:"name"`
-	Label string `json:"label"`
+	Name string `json:"name"`
 }
 
 // InputState is where a declared input stands at plan time.
@@ -37,7 +34,6 @@ const (
 // InputUse is a declared input as planned. KeptID is the live entry for a stored input, "" for a needed one.
 type InputUse struct {
 	Name   string     `json:"name"`
-	Label  string     `json:"label"`
 	State  InputState `json:"state"`
 	KeptID string     `json:"keptId"`
 	Origin string     `json:"origin"`
@@ -104,23 +100,19 @@ func checkDecls(decls []InputDecl) (map[string]InputDecl, error) {
 		if _, dup := byName[d.Name]; dup {
 			return nil, fmt.Errorf("input %q is declared twice", d.Name)
 		}
-		label := strings.TrimSpace(d.Label)
-		if n := utf8.RuneCountInString(label); n < 1 || n > maxLabelRunes || strings.IndexFunc(label, unicode.IsControl) >= 0 {
-			return nil, fmt.Errorf("input %q needs a label of 1 to %d characters on one line", d.Name, maxLabelRunes)
-		}
-		byName[d.Name] = InputDecl{Name: d.Name, Label: label}
+		byName[d.Name] = d
 	}
 	return byName, nil
 }
 
 // judgeInput decides one declared input against the live entry, if any.
 func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputUse, error) {
-	use := InputUse{Name: d.Name, Label: d.Label, State: InputNeeded, Origin: origin}
+	use := InputUse{Name: d.Name, State: InputNeeded, Origin: origin}
 	if !live {
 		return use, nil
 	}
 	if e.Source.Kind != keptvars.SourceUser {
-		return use, fmt.Errorf("%q is already a kept variable made by a script; choose another input name", d.Name)
+		return use, fmt.Errorf("%q is already a temporary variable made by a script; choose another input name", d.Name)
 	}
 	if e.Origin != origin {
 		return use, otherOriginError(d.Name, e.Origin, origin)
@@ -130,7 +122,7 @@ func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputU
 }
 
 func otherOriginError(name, supplied, now string) error {
-	return fmt.Errorf("the value kept as %q was supplied for %s; choose another input name for %s", name, supplied, now)
+	return fmt.Errorf("the value %q was supplied for %s; choose another input name for %s", name, supplied, now)
 }
 
 // checkRoom refuses a request whose missing inputs would not fit in the scope.

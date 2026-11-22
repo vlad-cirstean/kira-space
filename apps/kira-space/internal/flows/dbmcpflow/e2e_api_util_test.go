@@ -115,16 +115,6 @@ func (f *fixture) studioGrant(t *testing.T, id string) (*mcp.ClientSession, func
 	return sess, release
 }
 
-// startHeldAfterCard runs api_request through its approval card and returns it with the response held.
-func (f *fixture) startHeldAfterCard(t *testing.T, sess *mcp.ClientSession, args map[string]any) heldCall {
-	t.Helper()
-	pending := callToolAsync(sess, "api_request", args)
-	f.answerItems(t, true, f.pending(t).Item.ID)
-	testx.WaitUntil(t, 10*time.Second, func() bool { return f.stageNow(t) == "response" })
-	req := f.pending(t)
-	return heldCall{pending: pending, req: req, held: f.pendingResponse(t, req.RequestID)}
-}
-
 // startHeldFromQueue waits for the oldest response item and returns it with its held response.
 func (f *fixture) startHeldFromQueue(t *testing.T) heldCall {
 	t.Helper()

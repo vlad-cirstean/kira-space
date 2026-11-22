@@ -24,8 +24,8 @@ const (
 	// pickBodies is the script of the plain scenario: only the bodies reach the agent.
 	pickBodies = `return result.rows.map(r => r[1]);`
 	// bodiesEnvelope is what the agent receives for pickBodies on the two seeded notes.
-	bodiesEnvelope = `{"kind":"script","output":["one","two"],"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
-	keepIDsScript  = `kept.set("ids", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};`
+	bodiesEnvelope = `{"output":["one","two"],"input":{"rowCount":2}}`
+	keepIDsScript  = `plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};`
 	chainStmt      = "select body from notes where id in (select value from json_each(?)) order by id"
 )
 
@@ -140,7 +140,7 @@ func TestDbMcpQueryScriptReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	held := f.pendingResponse(t, req.RequestID)
-	const envelope = `{"kind":"script","output":{"count":2},"input":{"kind":"tabular","rowCount":2,"truncated":false}}`
+	const envelope = `{"output":{"count":2},"input":{"rowCount":2}}`
 	if !item.Scripted || item.Bytes != len(envelope) || item.RawBytes != len(held.Raw) || item.RawBytes == 0 {
 		t.Fatalf("payload = %+v, want a scripted item sized by both texts", item)
 	}
@@ -166,7 +166,7 @@ func TestDbMcpQueryScriptReview(t *testing.T) {
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
-	if res.IsError || !strings.HasPrefix(text(res), strings.TrimSuffix(envelope, "}")) || !strings.Contains(text(res), `"kept":[{"name":"ids","type":"array","items":2,`) {
+	if res.IsError || !strings.HasPrefix(text(res), strings.TrimSuffix(envelope, "}")) || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,`) {
 		t.Fatalf("sent = %s, want the envelope and the kept summary", text(res))
 	}
 	if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != "[1,2]" {
@@ -226,7 +226,7 @@ func TestDbMcpQueryScriptKeep(t *testing.T) {
 	sess := f.session(t)
 
 	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", keepIDsScript))
-	if res.IsError || !strings.Contains(text(res), `"output":{"count":2}`) || !strings.Contains(text(res), `"kept":[{"name":"ids","type":"array","items":2,"expiresInSeconds":`) {
+	if res.IsError || !strings.Contains(text(res), `"output":{"count":2}`) || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,"secret":false,"expiresInSeconds":`) {
 		t.Fatalf("result = %s, want the count and the kept summary", text(res))
 	}
 	if strings.Contains(text(res), "[1,2]") || strings.Contains(text(res), "one") {
@@ -244,15 +244,15 @@ func TestDbMcpQueryScriptKeep(t *testing.T) {
 	}
 
 	f.mcpSet(t, map[string]string{"read": "prompt"})
-	const readKeep = `kept.set("n", result.rows.length); return kept.get("ids").length;`
+	const readKeep = `plain.n = result.rows.length; return plain.ids.length;`
 	pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", readKeep))
 	req := f.pending(t)
 	pl := decodeScriptPayload(t, req.Item)
 	if len(pl.Kept) != 1 || pl.Kept[0].ID != e.ID || len(pl.Kept[0].Sites) != 1 || pl.Kept[0].Sites[0].Field != "script" || pl.Kept[0].Sites[0].Part != "transform" {
 		t.Fatalf("payload kept = %+v, want ids read in the script", pl.Kept)
 	}
-	if got := readKeep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To]; !strings.Contains(got, "kept.get") {
-		t.Fatalf("read site = %q in %q, want the kept.get call", got, readKeep)
+	if got := readKeep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To]; !strings.Contains(got, "plain.") {
+		t.Fatalf("read site = %q in %q, want the plain read", got, readKeep)
 	}
 	if pl.Script == nil || len(pl.Script.MayKeep) != 1 || pl.Script.MayKeep[0].Name != "n" {
 		t.Fatalf("payload script = %+v, want n as a name it may keep", pl.Script)
@@ -304,8 +304,7 @@ func TestDbMcpQueryScriptErrors(t *testing.T) {
 	}{
 		"syntax":        {f.queryScriptArgs(scriptStmt, "read", "return ("), "script: script syntax error"},
 		"explain":       {explain, "does not apply to explain"},
-		"unknown kept":  {f.queryScriptArgs(scriptStmt, "read", `return kept.get("nope")`), `no kept variable "nope"`},
-		"secret kept":   {f.queryScriptArgs(scriptStmt, "read", `return kept.get("token")`), "is secret or was typed by the user"},
+		"secret kept":   {f.queryScriptArgs(scriptStmt, "read", `return plain.token`), "is secret;"},
 		"write as read": {f.queryScriptArgs("insert into notes (body) values ('x')", "read", "return 1"), "mode"},
 	} {
 		res := callTool(t, sess, "run_query", c.args)
@@ -323,7 +322,7 @@ func TestDbMcpQueryScriptErrors(t *testing.T) {
 		t.Fatalf("notes = %q, want the seeded rows", got)
 	}
 
-	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.set("x", 1); throw new Error("boom")`))
+	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `plain.x = 1; throw new Error("boom")`))
 	if !read.IsError || !strings.Contains(text(read), "line 1") || !strings.Contains(text(read), "boom") || !strings.Contains(text(read), "its result is not returned") || strings.Contains(text(read), "Its changes stay") {
 		t.Fatalf("read failure = %q, want a positioned error with no changes-stay note", text(read))
 	}
@@ -362,7 +361,7 @@ func TestDbMcpQueryScriptGoneWhileWaiting(t *testing.T) {
 	f.mcpSet(t, map[string]string{"read": "prompt"})
 	meta := f.keep(t, externalScope, "ids", "[1,2]")
 
-	pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("ids")`))
+	pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.ids`))
 	f.items(t, 1)
 	if _, err := f.app.W.KeptVars.Clear(bridge.KeptClearArgs{IDs: []string{meta.ID}}); err != nil {
 		t.Fatal(err)
@@ -401,12 +400,13 @@ func TestDbMcpQueryScriptExemption(t *testing.T) {
 	}
 }
 
-// TestDbMcpQueryScriptSetting: the script argument and its text follow the agent scripts setting, and a call
+// TestDbMcpQueryScriptSetting: the script argument and the instructions paragraph follow the agent scripts setting, and a call
 // with the setting off is refused.
 func TestDbMcpQueryScriptSetting(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
-	described := func() (schema, suffix bool) {
+	// Instructions are read at connect: a session opened after the setting changed sees the new text.
+	described := func() (schema, instructions bool) {
 		list, err := sess.ListTools(ctx, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -414,21 +414,21 @@ func TestDbMcpQueryScriptSetting(t *testing.T) {
 		for _, tool := range list.Tools {
 			if tool.Name == "run_query" {
 				b, _ := json.Marshal(tool.InputSchema)
-				return strings.Contains(string(b), `"script"`), strings.Contains(tool.Description, "result script") || strings.Contains(tool.Description, "Optional script")
+				return strings.Contains(string(b), `"script"`), strings.Contains(f.session(t).InitializeResult().Instructions, "sandbox with no network")
 			}
 		}
 		t.Fatal("run_query not listed")
 		return
 	}
 	if s, d := described(); !s || !d {
-		t.Fatalf("scripts on: schema %v, description %v", s, d)
+		t.Fatalf("scripts on: schema %v, instructions %v", s, d)
 	}
 	off := false
 	if _, err := f.app.W.Settings.Set(bridge.SettingsSetArgs{Patch: model.SettingsPatch{DbMcp: &model.DbMcpPatch{APIScripts: &off}}}); err != nil {
 		t.Fatal(err)
 	}
 	if s, d := described(); s || d {
-		t.Fatalf("scripts off: schema %v, description %v", s, d)
+		t.Fatalf("scripts off: schema %v, instructions %v", s, d)
 	}
 	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", "return 1"))
 	if !res.IsError || !strings.Contains(text(res), "unexpected additional properties") {

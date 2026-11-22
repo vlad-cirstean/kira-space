@@ -346,25 +346,25 @@ func DecodeParam(name string, raw json.RawMessage) (ParamValue, error) {
 }
 
 func objectErr(name string) error {
-	return paramSyntax("kept variable %q is an object; only text, number, boolean or a list of one type binds as a parameter", name)
+	return paramSyntax("temporary variable %q is an object; only text, number, boolean or a list of one type binds as a parameter", name)
 }
 
 func decodeScalarOrList(name string, raw json.RawMessage, top bool) (ParamValue, error) {
 	b := strings.TrimSpace(string(raw))
 	if b == "" {
-		return ParamValue{}, paramSyntax("kept variable %q is empty", name)
+		return ParamValue{}, paramSyntax("temporary variable %q is empty", name)
 	}
 	switch b[0] {
 	case '{':
 		return ParamValue{}, objectErr(name)
 	case '[':
 		if !top {
-			return ParamValue{}, paramSyntax("kept variable %q holds a nested list; only a flat list of one type binds as a parameter", name)
+			return ParamValue{}, paramSyntax("temporary variable %q holds a nested list; only a flat list of one type binds as a parameter", name)
 		}
 		return decodeList(name, raw)
 	case 'n':
 		if !top {
-			return ParamValue{}, paramSyntax("kept variable %q holds a null item; list items must be text, numbers or booleans", name)
+			return ParamValue{}, paramSyntax("temporary variable %q holds a null item; list items must be text, numbers or booleans", name)
 		}
 		return ParamValue{Kind: ParamNull}, nil
 	case 't', 'f':
@@ -372,7 +372,7 @@ func decodeScalarOrList(name string, raw json.RawMessage, top bool) (ParamValue,
 	case '"':
 		var s string
 		if err := json.Unmarshal(raw, &s); err != nil {
-			return ParamValue{}, paramSyntax("kept variable %q is not valid text", name)
+			return ParamValue{}, paramSyntax("temporary variable %q is not valid text", name)
 		}
 		return ParamValue{Kind: ParamString, Text: s}, nil
 	}
@@ -385,10 +385,10 @@ func decodeScalarOrList(name string, raw json.RawMessage, top bool) (ParamValue,
 func decodeList(name string, raw json.RawMessage) (ParamValue, error) {
 	var items []json.RawMessage
 	if err := json.Unmarshal(raw, &items); err != nil {
-		return ParamValue{}, paramSyntax("kept variable %q is not a valid list", name)
+		return ParamValue{}, paramSyntax("temporary variable %q is not a valid list", name)
 	}
 	if len(items) > MaxParamListItems {
-		return ParamValue{}, paramSyntax("kept variable %q has %d items; a bound list takes at most %d", name, len(items), MaxParamListItems)
+		return ParamValue{}, paramSyntax("temporary variable %q has %d items; a bound list takes at most %d", name, len(items), MaxParamListItems)
 	}
 	out := ParamValue{Kind: ParamList, Items: make([]ParamValue, 0, len(items))}
 	for _, it := range items {
@@ -404,7 +404,7 @@ func decodeList(name string, raw json.RawMessage) (ParamValue, error) {
 		case (out.Elem == ParamInt || out.Elem == ParamNumber) && (v.Kind == ParamInt || v.Kind == ParamNumber):
 			out.Elem = ParamNumber
 		default:
-			return ParamValue{}, paramSyntax("kept variable %q mixes types in its list; a bound list holds one of text, numbers or booleans", name)
+			return ParamValue{}, paramSyntax("temporary variable %q mixes types in its list; a bound list holds one of text, numbers or booleans", name)
 		}
 	}
 	return out, nil

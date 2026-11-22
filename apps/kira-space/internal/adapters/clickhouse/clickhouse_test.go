@@ -976,30 +976,30 @@ func chBoundParams(connID string, scratch bool) testsupport.Scenario {
 	c := testsupport.BoundParamsCase{
 		Path: nodePath(connID),
 		Probes: []testsupport.BoundProbe{
-			{Name: "int", SQL: "SELECT name FROM kira_test.regions WHERE id = {id:UInt32}", Params: []model.BindParam{b("{{kept.id}}", "id", "2")}, Want: []string{"APAC"}},
-			{Name: "text with quote and backslash", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"it's -- ; a\\b"`)}, Want: []string{`it's -- ; a\b`}},
-			{Name: "unicode text", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"Zoë 東京 🐱"`)}, Want: []string{"Zoë 東京 🐱"}},
+			{Name: "int", SQL: "SELECT name FROM kira_test.regions WHERE id = {id:UInt32}", Params: []model.BindParam{b("{{plain.id}}", "id", "2")}, Want: []string{"APAC"}},
+			{Name: "text with quote and backslash", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{plain.s}}", "s", `"it's -- ; a\\b"`)}, Want: []string{`it's -- ; a\b`}},
+			{Name: "unicode text", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{plain.s}}", "s", `"Zoë 東京 🐱"`)}, Want: []string{"Zoë 東京 🐱"}},
 			{Name: "1000 ids", SQL: "SELECT name FROM kira_test.regions WHERE id IN {ids:Array(UInt32)} ORDER BY id",
-				Params: []model.BindParam{b("{{kept.ids}}", "ids", testsupport.IDList(1000))}, Want: []string{"EMEA", "APAC"}},
-			{Name: "text with tab and newline", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{kept.s}}", "s", `"a\tb\nc"`)}, Want: []string{"a\tb\nc"}},
-			{Name: "list with tab and newline", SQL: "SELECT arrayJoin({l:Array(String)})", Params: []model.BindParam{b("{{kept.l}}", "l", `["a\tb\nc"]`)}, Want: []string{"a\tb\nc"}},
-			{Name: "big integer", SQL: "SELECT {n:Int64} + 0", Params: []model.BindParam{b("{{kept.n}}", "n", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
-			{Name: "integer past int64", SQL: "SELECT {n:UInt128}", Params: []model.BindParam{b("{{kept.n}}", "n", "18446744073709551616")}, Want: []string{"18446744073709551616"}},
-			{Name: "exact decimal", SQL: "SELECT {d:Decimal(10,2)}", Params: []model.BindParam{b("{{kept.d}}", "d", "12.50")}, Want: []string{"12.5"}},
-			{Name: "bool", SQL: "SELECT {b:Bool}", Params: []model.BindParam{b("{{kept.b}}", "b", "true")}, Want: []string{"true"}},
-			{Name: "null", SQL: "SELECT {z:Nullable(Int32)} IS NULL", Params: []model.BindParam{b("{{kept.z}}", "z", "null")}, Want: []string{"1"}},
+				Params: []model.BindParam{b("{{plain.ids}}", "ids", testsupport.IDList(1000))}, Want: []string{"EMEA", "APAC"}},
+			{Name: "text with tab and newline", SQL: "SELECT {s:String}", Params: []model.BindParam{b("{{plain.s}}", "s", `"a\tb\nc"`)}, Want: []string{"a\tb\nc"}},
+			{Name: "list with tab and newline", SQL: "SELECT arrayJoin({l:Array(String)})", Params: []model.BindParam{b("{{plain.l}}", "l", `["a\tb\nc"]`)}, Want: []string{"a\tb\nc"}},
+			{Name: "big integer", SQL: "SELECT {n:Int64} + 0", Params: []model.BindParam{b("{{plain.n}}", "n", "1152921504606846976")}, Want: []string{"1152921504606846976"}},
+			{Name: "integer past int64", SQL: "SELECT {n:UInt128}", Params: []model.BindParam{b("{{plain.n}}", "n", "18446744073709551616")}, Want: []string{"18446744073709551616"}},
+			{Name: "exact decimal", SQL: "SELECT {d:Decimal(10,2)}", Params: []model.BindParam{b("{{plain.d}}", "d", "12.50")}, Want: []string{"12.5"}},
+			{Name: "bool", SQL: "SELECT {b:Bool}", Params: []model.BindParam{b("{{plain.b}}", "b", "true")}, Want: []string{"true"}},
+			{Name: "null", SQL: "SELECT {z:Nullable(Int32)} IS NULL", Params: []model.BindParam{b("{{plain.z}}", "z", "null")}, Want: []string{"1"}},
 			{Name: "int list", SQL: "SELECT name FROM kira_test.regions WHERE id IN {ids:Array(UInt32)} ORDER BY id",
-				Params: []model.BindParam{b("{{kept.ids}}", "ids", "[1,2]")}, Want: []string{"EMEA", "APAC"}},
+				Params: []model.BindParam{b("{{plain.ids}}", "ids", "[1,2]")}, Want: []string{"EMEA", "APAC"}},
 			{Name: "text list on the lane", Lane: true, SQL: "SELECT id FROM kira_test.regions WHERE name IN {names:Array(String)} ORDER BY id",
-				Params: []model.BindParam{b("{{kept.names}}", "names", `["APAC","EMEA"]`)}, Want: []string{"1", "2"}},
+				Params: []model.BindParam{b("{{plain.names}}", "names", `["APAC","EMEA"]`)}, Want: []string{"1", "2"}},
 			{Name: "list with quote and backslash", SQL: "SELECT arrayJoin({l:Array(String)})",
-				Params: []model.BindParam{b("{{kept.l}}", "l", `["a\"b","c\\d","it's"]`)}, Want: []string{`a"b`, `c\d`, "it's"}},
-			{Name: "empty list", SQL: "SELECT count() FROM kira_test.regions WHERE id IN {ids:Array(UInt32)}", Params: []model.BindParam{b("{{kept.ids}}", "ids", "[]")}, Want: []string{"0"}},
-			{Name: "two values by name", SQL: "SELECT concat({a:String}, '-', {b:String})", Params: []model.BindParam{b("{{kept.y}}", "b", `"b"`), b("{{kept.x}}", "a", `"a"`)}, Want: []string{"a-b"}},
+				Params: []model.BindParam{b("{{plain.l}}", "l", `["a\"b","c\\d","it's"]`)}, Want: []string{`a"b`, `c\d`, "it's"}},
+			{Name: "empty list", SQL: "SELECT count() FROM kira_test.regions WHERE id IN {ids:Array(UInt32)}", Params: []model.BindParam{b("{{plain.ids}}", "ids", "[]")}, Want: []string{"0"}},
+			{Name: "two values by name", SQL: "SELECT concat({a:String}, '-', {b:String})", Params: []model.BindParam{b("{{plain.y}}", "b", `"b"`), b("{{plain.x}}", "a", `"a"`)}, Want: []string{"a-b"}},
 			{Name: "a value is not spliced into the text", SQL: "SELECT count() FROM kira_test.regions WHERE name = {s:String}",
-				Params: []model.BindParam{b("{{kept.s}}", "s", `"EMEA' OR '1'='1"`)}, Want: []string{"0"}},
-			{Name: "a placeholder without a value", SQL: "SELECT {a:UInt8}", Params: []model.BindParam{b("{{kept.a}}", "other", "1")}, WantErr: "a"},
-			{Name: "a second statement", SQL: "SELECT {a:UInt8}; SELECT 2", Params: []model.BindParam{b("{{kept.a}}", "a", "1")}, WantErr: "ulti"},
+				Params: []model.BindParam{b("{{plain.s}}", "s", `"EMEA' OR '1'='1"`)}, Want: []string{"0"}},
+			{Name: "a placeholder without a value", SQL: "SELECT {a:UInt8}", Params: []model.BindParam{b("{{plain.a}}", "other", "1")}, WantErr: "a"},
+			{Name: "a second statement", SQL: "SELECT {a:UInt8}; SELECT 2", Params: []model.BindParam{b("{{plain.a}}", "a", "1")}, WantErr: "ulti"},
 		},
 	}
 	if scratch {
@@ -1007,7 +1007,7 @@ func chBoundParams(connID string, scratch bool) testsupport.Scenario {
 		c.Teardown = []string{"DROP TABLE kira_test.p680_bound"}
 		c.Writes = []testsupport.BoundProbe{
 			{Name: "insert", SQL: "INSERT INTO kira_test.p680_bound SELECT {id:Int64}, {l:String}, {q:Decimal(10,2)}",
-				Params: []model.BindParam{b("{{kept.id}}", "id", "1152921504606846976"), b("{{kept.l}}", "l", `"x'; DROP TABLE kira_test.p680_bound; --"`), b("{{kept.q}}", "q", "12.50")}},
+				Params: []model.BindParam{b("{{plain.id}}", "id", "1152921504606846976"), b("{{plain.l}}", "l", `"x'; DROP TABLE kira_test.p680_bound; --"`), b("{{plain.q}}", "q", "12.50")}},
 		}
 		c.Verify = testsupport.BoundProbe{Name: "read back", SQL: "SELECT id, label, qty FROM kira_test.p680_bound", Want: []string{"1152921504606846976|x'; DROP TABLE kira_test.p680_bound; --|12.5"}}
 	}

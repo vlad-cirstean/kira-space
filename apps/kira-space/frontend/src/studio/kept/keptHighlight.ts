@@ -2,7 +2,7 @@ import type { KeptSite, KeptUse } from '@shared/domain/kept';
 import type { RangeHighlight } from '@workbench/editor/ranges';
 import { indentJson } from '../beautify';
 
-// One mark colour for every kept variable; the name inside the token says which.
+// One mark colour for every saved variable; the name inside the token says which.
 export const KEPT_MARK_CLASS = 'bg-kept-mark';
 // The same tint inside Monaco, where a class name is all a decoration takes (edDecorations.css).
 const KEPT_EDITOR_CLASS = 'kira-ed-kept';
@@ -14,11 +14,12 @@ export interface KeptRange {
 
 interface KeptRef extends KeptRange {
   name: string;
+  secret: boolean;
 }
 
-const KEPT_PREFIX = 'kept.';
+const KEPT_PREFIXES = ['plain.', 'secret.'] as const;
 
-/** `{{kept.<name>}}` spans of a text, same grammar as internal/keptvars RefSpans: `{{` to the next
+/** `{{plain.<name>}}` and `{{secret.<name>}}` spans of a text, same grammar as internal/keptvars RefSpans: `{{` to the next
  *  `}}`, optional `| transform`, offsets in UTF-16 units. */
 export function keptRefs(text: string): KeptRef[] {
   const out: KeptRef[] = [];
@@ -30,14 +31,15 @@ export function keptRefs(text: string): KeptRef[] {
     if (end < 0) break;
     i = end + 2;
     const inner = text.slice(open + 2, end).trim();
-    if (!inner.startsWith(KEPT_PREFIX)) continue;
-    const name = inner.slice(KEPT_PREFIX.length).split('|')[0]?.trim() ?? '';
-    out.push({ name, from: open, to: end + 2 });
+    const prefix = KEPT_PREFIXES.find((p) => inner.startsWith(p));
+    if (!prefix) continue;
+    const name = inner.slice(prefix.length).split('|')[0]?.trim() ?? '';
+    out.push({ name, secret: prefix === 'secret.', from: open, to: end + 2 });
   }
   return out;
 }
 
-/** The ranges of one field's text where the request reads a kept variable. */
+/** The ranges of one field's text where the request reads a saved variable. */
 export function keptRanges(
   uses: readonly KeptUse[],
   field: KeptSite['field'],
@@ -56,17 +58,17 @@ export function keptRanges(
     .sort((a, b) => a.from - b.from);
 }
 
-/** Monaco ranges of a script's kept.get and kept.set calls for one stage. The sites index the source
- *  exactly as shown: a script is not reformatted. */
-export function keptScriptRanges(
-  sites: readonly Pick<KeptSite, 'field' | 'part' | 'from' | 'to'>[],
-  stage: 'prepare' | 'transform',
-) {
-  const marks: readonly RangeHighlight[] = sites
-    .filter((s) => s.field === 'script' && s.part === stage)
-    .map((s) => ({ from: s.from, to: s.to, class: KEPT_EDITOR_CLASS }))
-    .sort((a, b) => a.from - b.from);
-  return (): readonly RangeHighlight[] => marks;
+const SCRIPT_VAR_RE =
+  /\b(?:plain|secret)\s*(?:\.\s*[A-Za-z_$][\w$]*|\[\s*(?:"[^"\\]*"|'[^'\\]*')\s*\])/g;
+
+/** Monaco ranges of every `plain.x` and `secret.x` token of a script, found in the text shown: same
+ *  grammar as internal/keptvars ScanScript. */
+export function scriptVarRanges(doc: string): readonly RangeHighlight[] {
+  return Array.from(doc.matchAll(SCRIPT_VAR_RE), (m) => ({
+    from: m.index,
+    to: m.index + m[0].length,
+    class: KEPT_EDITOR_CLASS,
+  }));
 }
 
 /** Splits text on ranges for `HighlightedText`. */

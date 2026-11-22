@@ -18,8 +18,8 @@ import (
 // of the "Will keep" block of the review (contract approvals-api-kept-review).
 
 const (
-	keepPrepare   = `const region = kept.get("region"); return {headers: [{name: "X-Region", value: region}]};`
-	keepTransform = `kept.set("ids", response.json.users.map(u => u.id)); return {count: response.json.total};`
+	keepPrepare   = `const region = plain.region; return {headers: [{name: "X-Region", value: region}]};`
+	keepTransform = `plain.ids = response.json.users.map(u => u.id); return {count: response.json.total};`
 	// keptIDs is what keepTransform keeps: the first id is above 2^53, so it proves the value stays exact.
 	keptIDs = `[9007199254740993,2]`
 )
@@ -71,12 +71,12 @@ func TestKeptVarsFromScript(t *testing.T) {
 	if len(pl.Kept) != 1 || pl.Kept[0].ID != region.ID || pl.Kept[0].Name != "region" || pl.Kept[0].Preview != `"eu"` {
 		t.Fatalf("kept = %+v, want the region read", pl.Kept)
 	}
-	if s := pl.Kept[0].Sites; len(s) != 1 || s[0].Field != "script" || s[0].Part != "prepare" || keepPrepare[s[0].From:s[0].To] != `kept.get("region"` {
+	if s := pl.Kept[0].Sites; len(s) != 1 || s[0].Field != "script" || s[0].Part != "prepare" || keepPrepare[s[0].From:s[0].To] != `plain.region` {
 		t.Fatalf("read sites = %+v, want the prepare call", s)
 	}
 	mk := pl.Script.Transform.MayKeep
 	if len(mk) != 1 || mk[0].Name != "ids" || len(mk[0].Sites) != 1 || mk[0].Sites[0].Part != "transform" ||
-		keepTransform[mk[0].Sites[0].From:mk[0].Sites[0].To] != `kept.set("ids"` {
+		keepTransform[mk[0].Sites[0].From:mk[0].Sites[0].To] != `plain.ids` {
 		t.Fatalf("mayKeep = %+v, want ids with its transform site", mk)
 	}
 	if _, ok := f.keptValue(t, "ids"); ok {
@@ -92,8 +92,8 @@ func TestKeptVarsFromScript(t *testing.T) {
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
 	var got struct {
-		Result struct{ Count int }
-		Kept   []struct {
+		Output  struct{ Count int }
+		TempSet []struct {
 			Name, Type       string
 			Items            int
 			ExpiresInSeconds int
@@ -102,7 +102,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 	if err := json.Unmarshal([]byte(text(res)), &got); err != nil || res.IsError {
 		t.Fatalf("result = %s (%v)", text(res), err)
 	}
-	if got.Result.Count != 2 || len(got.Kept) != 1 || got.Kept[0].Name != "ids" || got.Kept[0].Type != "array" || got.Kept[0].Items != 2 || got.Kept[0].ExpiresInSeconds < 3590 {
+	if got.Output.Count != 2 || len(got.TempSet) != 1 || got.TempSet[0].Name != "ids" || got.TempSet[0].Type != "array" || got.TempSet[0].Items != 2 || got.TempSet[0].ExpiresInSeconds < 3590 {
 		t.Fatalf("result = %s, want the count and a summary of ids", text(res))
 	}
 	for _, leak := range []string{"9007199254740993", "a@x.test"} {
@@ -116,10 +116,10 @@ func TestKeptVarsFromScript(t *testing.T) {
 		t.Fatalf("stored = %+v ok=%v, want the exact ids with this request as source", e, ok)
 	}
 	if first := srv.Requests(); len(first) != 1 || first[0].Header.Get("X-Region") != "eu" {
-		t.Fatalf("server saw %+v, want X-Region eu from kept.get", first)
+		t.Fatalf("server saw %+v, want X-Region eu from plain.region", first)
 	}
 
-	next := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{kept.ids}}}`))
+	next := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{plain.ids}}}`))
 	f.answer(t, true, f.pending(t).RequestID)
 	if r := wait(t, next); r.IsError {
 		t.Fatalf("chained request = %s", text(r))
@@ -129,8 +129,8 @@ func TestKeptVarsFromScript(t *testing.T) {
 	}
 }
 
-// TestKeptScriptUndeclared: a name the source does not write as a literal is refused, however the call is
-// reached; kept.set is for the transform only.
+// TestKeptScriptUndeclared: a name the source does not write as a literal is refused, however the object is
+// reached. Prepare may write too: its values interpolate into the same request.
 func TestKeptScriptUndeclared(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
@@ -144,19 +144,14 @@ func TestKeptScriptUndeclared(t *testing.T) {
 		f.answer(t, true, it.RequestID)
 		return text(wait(t, pending))
 	}
-	if got := run(map[string]any{"transform": `kept.get("region"); const k = kept; const n = "oth" + "er"; return k.get(n);`}); !strings.Contains(got, "not listed in this script") {
-		t.Fatalf("aliased get = %q, want the not-listed refusal", got)
+	if got := run(map[string]any{"transform": `plain.region; const k = plain; const n = "oth" + "er"; return k[n];`}); got != `{"output":null}` {
+		t.Fatalf("aliased get = %q, want null: a name the source does not write is not loaded", got)
 	}
-	if got := run(map[string]any{"transform": `kept.set("a", 1); const k = kept; k.set("b", 2); return 1;`}); !strings.Contains(got, "not listed in this script") {
-		t.Fatalf("aliased set = %q, want the not-listed refusal", got)
+	if got := run(map[string]any{"transform": `plain.a = 1; const k = plain; k["b"] = 2; const n = "c"; k[n] = 3; return 1;`}); !strings.Contains(got, "not written literally") {
+		t.Fatalf("aliased set = %q, want the not-literal refusal", got)
 	}
 	if _, ok := f.keptValue(t, "a"); ok {
-		t.Error("a failed transform kept a value")
-	}
-
-	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `kept.set("a", 1); return {};`}))
-	if !res.IsError || !strings.Contains(text(res), "transform script only") || f.queueLen(t) != 0 {
-		t.Fatalf("prepare set = %q, want a refusal before any card", text(res))
+		t.Error("a failed transform saved a value")
 	}
 }
 
@@ -168,8 +163,8 @@ func TestKeptScriptNoSmuggledReference(t *testing.T) {
 	f.keep(t, externalScope, "evil", `"Bearer {{token}}"`)
 
 	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL),
-		map[string]any{"prepare": `return {headers: [{name: "Authorization", value: kept.get("evil")}]};`}))
-	if !res.IsError || !strings.Contains(text(res), "references built from kept data are not resolved") || strings.Contains(text(res), "token") {
+		map[string]any{"prepare": `return {headers: [{name: "Authorization", value: plain.evil}]};`}))
+	if !res.IsError || !strings.Contains(text(res), "references built from temporary values are not resolved") || strings.Contains(text(res), "token") {
 		t.Fatalf("result = %q, want a refusal that does not quote the text", text(res))
 	}
 	if f.queueLen(t) != 0 || len(srv.Requests()) != 0 {
@@ -177,8 +172,8 @@ func TestKeptScriptNoSmuggledReference(t *testing.T) {
 	}
 }
 
-// TestKeptScriptSecret: a script cannot read a secret value in prepare; the transform's output is masked
-// and what it keeps afterwards is secret too.
+// TestKeptScriptSecret: a script cannot read a saved secret, in prepare or transform; what it writes as
+// secret.<name> is saved as a secret and never shown.
 func TestKeptScriptSecret(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
@@ -187,20 +182,22 @@ func TestKeptScriptSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `return {headers: [{name: "X-T", value: kept.get("tok")}]};`}))
-	if !res.IsError || !strings.Contains(text(res), "is secret") || strings.Contains(text(res), secret) || f.queueLen(t) != 0 {
-		t.Fatalf("prepare read = %q, want a refusal without the value", text(res))
+	for name, script := range map[string]map[string]any{
+		"prepare":   {"prepare": `return {headers: [{name: "X-T", value: plain.tok}]};`},
+		"transform": {"transform": `plain.copy = plain.tok; return 1;`},
+	} {
+		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), script))
+		if !res.IsError || !strings.Contains(text(res), "is secret") || strings.Contains(text(res), secret) || f.queueLen(t) != 0 {
+			t.Fatalf("%s read = %q, want a refusal without the value", name, text(res))
+		}
 	}
 
-	// A transform reading a secret is always reviewed, whatever the review settings say.
-	h := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", usersURL(srv.URL),
-		map[string]any{"transform": `kept.set("copy", kept.get("tok")); return {t: kept.get("tok")};`}))
-	if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
-		t.Fatalf("held reason = %q, want userValue", p.Reason)
-	}
-	out := f.finish(t, h, true)
-	if out.IsError || strings.Contains(text(out), secret) {
-		t.Fatalf("result = %q, want the secret masked", text(out))
+	pending := callToolAsync(sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL),
+		map[string]any{"transform": `secret.copy = response.json.users[0].email; return {count: response.json.total};`}))
+	f.answer(t, true, f.pending(t).RequestID)
+	out := wait(t, pending)
+	if out.IsError || strings.Contains(text(out), "a@x.test") {
+		t.Fatalf("result = %q, want the secret value absent", text(out))
 	}
 	e, ok := f.keptValue(t, "copy")
 	if !ok || !e.Secret {
@@ -248,7 +245,7 @@ func TestKeptScriptReviewHeld(t *testing.T) {
 		t.Fatalf("held keep = %+v, want the ids preview", held.Keep)
 	}
 	f.answer(t, false, rq.RequestID)
-	if out := wait(t, denied); !out.IsError || strings.Contains(text(out), "kept") {
+	if out := wait(t, denied); !out.IsError || strings.Contains(text(out), "saved") {
 		t.Fatalf("withheld result = %q, want the withhold text only", text(out))
 	}
 	if _, ok := f.keptValue(t, "ids"); ok {
@@ -267,7 +264,7 @@ func TestKeptScriptReviewHeld(t *testing.T) {
 	}
 	f.answer(t, true, rq.RequestID)
 	out := wait(t, sent)
-	if out.IsError || !strings.Contains(text(out), `"kept":[{"name":"ids"`) || strings.Contains(text(out), "9007199254740993") {
+	if out.IsError || !strings.Contains(text(out), `"tempSet":[{"name":"ids"`) || strings.Contains(text(out), "9007199254740993") {
 		t.Fatalf("result = %q, want the count and the kept summary", text(out))
 	}
 	if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != keptIDs {

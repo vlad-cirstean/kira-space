@@ -3,14 +3,17 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { dbResponsePayloadSchema } from '@shared/domain/dbmcp';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
+import DbRequestView from './DbRequestView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import PendingResponse from './PendingResponse.vue';
 import { usePendingResponse } from './pendingResponse';
 import ResultReview from './ResultReview.vue';
+import ReviewRequest from './ReviewRequest.vue';
 import StagedKeepList from './StagedKeepList.vue';
 
 // The held run_query result. Without a script: the rows and the exact bytes the agent gets on Send. With one
@@ -27,32 +30,61 @@ const text = computed(() => response.data.value?.text ?? '');
 const script = computed(() => response.data.value?.script ?? null);
 const keep = computed(() => response.data.value?.keep ?? []);
 const failed = computed(() => payload.value.isError);
+const views = computed(() => [
+  {
+    value: 'result',
+    label: t('studio.http.diff.after.label'),
+    testid: 'db-review-view-result',
+  },
+  {
+    value: 'raw',
+    label: t('studio.http.diff.before.label'),
+    testid: 'db-review-view-raw',
+  },
+]);
 const resultJson = computed(() => (failed.value ? null : indentJson(text.value)));
 </script>
 
 <template>
-  <div data-testid="db-mcp-preview-body">
-    <PendingResponse
-      v-if="!payload.scripted"
-      :request-id="requestId"
-      :connection-id="payload.connectionId"
-    />
+  <div class="flex flex-col gap-2" data-testid="db-mcp-preview-body">
+    <ReviewRequest v-if="!payload.scripted" testid="db-review-box-request">
+      <DbRequestView
+        :kind="item.target.kind"
+        :statement="payload.statement"
+        :kept="payload.kept"
+        :params="payload.params"
+        :placeholders="payload.placeholders"
+      />
+    </ReviewRequest>
+    <ApprovalBox v-if="!payload.scripted" testid="db-review-box-result">
+      <PendingResponse :request-id="requestId" :connection-id="payload.connectionId" />
+    </ApprovalBox>
+    <ApprovalBox v-else-if="!response.isSuccess.value" testid="db-review-box-state">
+      <QueryState :query="response" variant="inline" :is-empty="() => false" />
+    </ApprovalBox>
     <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
       <ResultReview
-        testid="db-review"
-        :scripted="true"
-        :raw-label="t('studio.dbMcp.approval.query.responseRaw.label')"
-        :result-label="t('common.agentGets.label')"
-        :views-label="t('studio.dbMcp.approval.query.responseViews.aria')"
+        testid-prefix="db-review"
+        :views="views"
+        :label="t('studio.dbMcp.approval.query.responseViews.aria')"
       >
-        <template #raw>
+        <template #request>
+          <DbRequestView
+            :kind="item.target.kind"
+            :statement="payload.statement"
+            :kept="payload.kept"
+            :params="payload.params"
+            :placeholders="payload.placeholders"
+          />
+        </template>
+        <template #view-raw>
           <PendingResponse
             :request-id="requestId"
             :connection-id="payload.connectionId"
             field="raw"
           />
         </template>
-        <template #result>
+        <template #view-result>
           <FieldError v-if="failed" class="whitespace-pre-wrap" data-testid="db-review-result">{{
             text
           }}</FieldError>
@@ -64,15 +96,18 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
           />
         </template>
         <template #after>
-          <StagedKeepList v-if="keep.length" :keep="keep" testid="db-review-keep" />
+          <ApprovalBox v-if="keep.length" testid="db-review-box-keep">
+            <StagedKeepList :keep="keep" :request-id="requestId" testid="db-review-keep" />
+          </ApprovalBox>
         </template>
         <template #script>
-          <JsScriptBlock
-            v-if="script"
-            :label="t('studio.dbMcp.approval.query.scriptResult.label')"
-            :source="script.source"
-            testid="db-review-script"
-          />
+          <ApprovalBox v-if="script" testid="db-review-box-script">
+            <JsScriptBlock
+              :label="t('studio.dbMcp.approval.query.scriptResult.label')"
+              :source="script.source"
+              testid="db-review-script"
+            />
+          </ApprovalBox>
         </template>
       </ResultReview>
     </QueryState>

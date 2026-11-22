@@ -67,7 +67,7 @@ func isErrorResult(t *testing.T, res *mcp.CallToolResult) string {
 	return tc.Text
 }
 
-// TestSchemaBrowsingToolsRefuseWhenReadModeDeny: listChildren/describeTable/
+// TestSchemaBrowsingToolsRefuseWhenReadModeDeny: describe (children and table)/
 // describeSchema previously checked only resolveEnabled (mcp_enabled) and never consulted the
 // connection's own read permission mode at all — a connection whose read mode is "deny" still had
 // its full schema browsable by an MCP client. Each must refuse before ever reaching the tree
@@ -78,13 +78,13 @@ func TestSchemaBrowsingToolsRefuseWhenReadModeDeny(t *testing.T) {
 	s := &Server{cfg: Config{Conns: conns, Tree: tr}}
 	ctx := context.Background()
 
-	t.Run("listChildren", func(t *testing.T) {
-		res, _, err := s.listChildren(ctx, nil, listChildrenArgs{ConnectionID: "c1"})
+	t.Run("describe without path", func(t *testing.T) {
+		res, _, err := s.describe(ctx, nil, describeArgs{ConnectionID: "c1"})
 		if err != nil {
-			t.Fatalf("listChildren: %v", err)
+			t.Fatalf("describe without path: %v", err)
 		}
 		if got := isErrorResult(t, res); !strings.Contains(got, "deny read statements") {
-			t.Fatalf("listChildren error = %q, want it to mention denied read statements", got)
+			t.Fatalf("describe without path error = %q, want it to mention denied read statements", got)
 		}
 	})
 
@@ -112,8 +112,8 @@ func TestSchemaBrowsingToolsAllowWhenReadModeAllow(t *testing.T) {
 	s := &Server{cfg: Config{Conns: conns, Tree: tr}}
 	ctx := context.Background()
 
-	if _, _, err := s.listChildren(ctx, nil, listChildrenArgs{ConnectionID: "c1"}); err != nil {
-		t.Fatalf("listChildren: %v", err)
+	if _, _, err := s.describe(ctx, nil, describeArgs{ConnectionID: "c1"}); err != nil {
+		t.Fatalf("describe without path: %v", err)
 	}
 	if _, _, err := s.describe(ctx, nil, describeArgs{ConnectionID: "c1", Path: "t"}); err != nil {
 		t.Fatalf("describe: %v", err)

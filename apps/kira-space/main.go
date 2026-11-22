@@ -28,7 +28,6 @@ import (
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/keepawake"
 	"github.com/kirathecat/kira-studio/internal/logging"
-	"github.com/kirathecat/kira-studio/internal/pprofserve"
 	"github.com/kirathecat/kira-studio/internal/secrets"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/startupfail"
@@ -79,7 +78,6 @@ func main() {
 		reporter.Fatal(startupfail.StepLogging, err)
 	}
 	logging.Sweep(config.LogsDir())
-	pprofserve.Start()
 
 	instanceLock := acquireSingleInstance(reporter)
 	_ = instanceLock // kept open for the process's lifetime (AcquireLock's own doc); closing it releases the lock.
@@ -204,6 +202,12 @@ func main() {
 	wired.BindShell(appwire.ShellHooks{
 		OpenWindow: func(rec shell.WindowRecord) {
 			rec.Bounds = shell.CascadeFrom(app.Window.Current())
+			shell.OpenWindow(winDeps, rec)
+		},
+		OpenTornWindow: func(rec shell.WindowRecord) {
+			if rec.Bounds == nil {
+				rec.Bounds = shell.CascadeFrom(app.Window.Current())
+			}
 			shell.OpenWindow(winDeps, rec)
 		},
 		OpenNewWindow:      openNew,

@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
 // Backend half of tests/ui/studio/e2e-user-value.spec.ts (contract e2e-user-value): a value the user types
-// into a card is reused by later requests and scripts, masked in every answer and shown nowhere afterwards.
+// into a card is always kept for the retention time, reused by later requests and scripts, masked in every answer and shown nowhere afterwards.
 
 const (
 	userValueKey = "e2e-user-value"
@@ -26,8 +28,8 @@ func TestE2EUserValue(t *testing.T) {
 	var agent []string
 	remember := func(res string) { agent = append(agent, res) }
 	withInput := func(path string) map[string]any {
-		args := apiArgs(envID, "GET", "{{base_url}}"+path+"?k={{kept.apikey}}", "X-Api-Key", "{{kept.apikey}}")
-		args["inputs"] = []map[string]string{{"name": "apikey", "label": "API key"}}
+		args := apiArgs(envID, "GET", "{{base_url}}"+path+"?k={{secret.apikey}}", "X-Api-Key", "{{secret.apikey}}")
+		args["inputs"] = []string{"apikey"}
 		return args
 	}
 	type inputState struct {
@@ -63,7 +65,7 @@ func TestE2EUserValue(t *testing.T) {
 		if err := json.Unmarshal([]byte(text(out)), &got); err != nil || out.IsError {
 			t.Fatalf("result = %q (%v)", text(out), err)
 		}
-		if len(got.Inputs) != 1 || got.Inputs[0].Status != "supplied" || strings.Count(got.Body, "{{kept.apikey}}") < 2 {
+		if len(got.Inputs) != 1 || got.Inputs[0].Status != "supplied" || strings.Count(got.Body, "{{secret.apikey}}") < 2 {
 			t.Fatalf("result = %q, want supplied and the echoed header and query masked as the reference", text(out))
 		}
 		seen := srv.Requests()
@@ -80,6 +82,11 @@ func TestE2EUserValue(t *testing.T) {
 		}
 		f.app.Contract(t, userValueKey, "ApprovalsService.List#stored", []approvals.Item{req.Item},
 			append(opts, flowharness.Replace(f.keptID(t, externalScope, "apikey"), "kv_apikey"))...)
+		list, err := f.app.W.KeptVars.List()
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.app.Contract(t, userValueKey, "KeptVarsService.List#held", list, append(opts, flowharness.Replace(f.keptID(t, externalScope, "apikey"), "kv_apikey"))...)
 		f.answerItems(t, true, req.Item.ID)
 		out := wait(t, pending)
 		remember(text(out))
@@ -88,39 +95,10 @@ func TestE2EUserValue(t *testing.T) {
 		}
 	})
 
-	t.Run("a transform reading it forces the review", func(t *testing.T) {
-		args := apiArgs(envID, "GET", "{{base_url}}/echo")
-		args["script"] = map[string]any{"transform": `return kept.get("apikey") + "|" + kept.get("apikey").split("").reverse().join("")`}
-		h := f.startHeldAfterCard(t, sess, args)
-		if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
-			t.Fatalf("held reason = %q, want userValue though the review settings are off", p.Reason)
-		}
-		reversed := reverse(e2eTyped)
-		if !strings.Contains(h.held.Text, "{{kept.apikey}}|"+reversed) || strings.Contains(h.held.Text, e2eTyped) {
-			t.Fatalf("held text = %q, want the value masked and its reversal visible to the user (Known open item)", h.held.Text)
-		}
-		f.app.Contract(t, userValueKey, "ApprovalsService.List#forced", []approvals.Item{h.req.Item}, opts...)
-		held := h.held
-		held.Text, held.Raw = stable(held.Text), stable(held.Raw)
-		f.app.Contract(t, userValueKey, "DbMcpService.PendingResponse#forced", held, opts...)
-		f.app.Contract(t, userValueKey, "args:ApprovalsService.Answer#withhold", approvals.AnswerArgs{IDs: []string{h.req.Item.ID}, Approve: false})
-		list, err := f.app.W.KeptVars.List()
-		if err != nil {
-			t.Fatal(err)
-		}
-		f.app.Contract(t, userValueKey, "KeptVarsService.List#held", list, append(opts, flowharness.Replace(f.keptID(t, externalScope, "apikey"), "kv_apikey"))...)
-
-		res := f.finish(t, h, false)
-		remember(text(res))
-		if !res.IsError || strings.Contains(text(res), reversed) || strings.Contains(text(res), "result") {
-			t.Fatalf("result = %q, want the withheld text and no data", text(res))
-		}
-	})
-
 	t.Run("prepare cannot read it", func(t *testing.T) {
 		sent := len(srv.Requests())
 		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{
-			"prepare": `return {headers: [{name: "X-K", value: kept.get("apikey")}]};`,
+			"prepare": `return {headers: [{name: "X-K", value: plain.apikey}]};`,
 		}))
 		remember(text(res))
 		if !res.IsError || !strings.Contains(text(res), "is secret") || !strings.HasSuffix(text(res), "Nothing was sent.") || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
@@ -131,7 +109,7 @@ func TestE2EUserValue(t *testing.T) {
 	t.Run("another origin is refused", func(t *testing.T) {
 		other := strings.Replace(srv.URL, "127.0.0.1", "localhost", 1)
 		sent := len(srv.Requests())
-		res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other+"/echo?k={{kept.apikey}}"))
+		res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other+"/echo?k={{secret.apikey}}"))
 		remember(text(res))
 		if !res.IsError || !strings.Contains(text(res), "apikey") || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
 			t.Fatalf("result = %q, queue %d, want a refusal before any card", text(res), f.queueLen(t))
@@ -165,15 +143,34 @@ func TestE2EUserValue(t *testing.T) {
 		}
 	})
 
+	t.Run("retention sets the kept time, a stale input mode is a contract error", func(t *testing.T) {
+		f.setDbMcp(t, userValueKey, "retention", &model.DbMcpPatch{KeptRetentionMinutes: ptr(5)})
+		pending := callToolAsync(sess, "api_request", withInput("/echo/retention"))
+		req := f.pending(t)
+		var card struct {
+			Inputs []struct{ KeepMinutes int }
+		}
+		if err := json.Unmarshal(req.Item.Payload, &card); err != nil || len(card.Inputs) != 1 || card.Inputs[0].KeepMinutes != 5 {
+			t.Fatalf("payload inputs = %s (%v), want keepMinutes 5", req.Item.Payload, err)
+		}
+		f.app.Contract(t, userValueKey, "ApprovalsService.List#retention", []approvals.Item{req.Item}, opts...)
+		stale, _ := json.Marshal(map[string]any{"inputs": map[string]string{"apikey": e2eTyped}, "inputModes": map[string]string{"apikey": "once"}})
+		staleArgs := approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true, Options: map[string]json.RawMessage{req.Item.ID: stale}}
+		if res, err := f.app.W.ApprovalsSvc.Answer(staleArgs); err == nil && (len(res) != 1 || res[0].Error == "") {
+			t.Fatalf("answer with inputModes = %+v, want a contract error", res)
+		}
+		if n := f.queueLen(t); n != 1 {
+			t.Fatalf("queue %d after the refused answer, want the item pending", n)
+		}
+		f.answerWith(t, true, req.Item.ID, map[string]string{req.Item.ID: string(inputAnswer(req.Item.ID, e2eTyped).Options[req.Item.ID])})
+		remember(text(wait(t, pending)))
+		e, ok := f.keptValue(t, "apikey")
+		if !ok || e.ExpiresAt.Sub(e.CreatedAt) != 5*time.Minute {
+			t.Fatalf("stored %v (ok=%v), want a 5 minute lifetime", e.ExpiresAt.Sub(e.CreatedAt), ok)
+		}
+	})
+
 	t.Run("the value is nowhere", func(t *testing.T) {
 		f.noLeak(t, e2eTyped, agent...)
 	})
-}
-
-func reverse(s string) string {
-	b := []byte(s)
-	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
-		b[i], b[j] = b[j], b[i]
-	}
-	return string(b)
 }

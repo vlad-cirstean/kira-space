@@ -36,6 +36,10 @@ const (
 	PreviewBytes = 2 << 10
 )
 
+// StagedIDPrefix starts the id of an entry that exists only for one run: a value a prepare script set
+// and the same request interpolates before anything reaches the store.
+const StagedIDPrefix = "staged:"
+
 // Source says where an entry came from. Request is display text only: secrets stay {{name}}.
 type Source struct {
 	Kind      SourceKind `json:"kind"`
@@ -59,13 +63,13 @@ type Meta struct {
 	Source    Source    `json:"source"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiresAt time.Time `json:"expiresAt"`
-	// Origin is scheme://host[:port] a user value was supplied for. A script-kept value derived from one carries
-	// the same Origin; empty otherwise.
+	// Origin is scheme://host[:port] the value goes to: the one a user value was supplied for, or the request
+	// origin of a secret.x an api_request script kept. Empty otherwise (a SQL or kube script's secret.x too).
 	Origin string `json:"origin,omitempty"`
 }
 
 // Bound reports whether the value must go only to its origin and is always reviewed when a script reads it:
-// a value the user supplied, or one a script derived from such a value (it carries the read entry's Origin).
+// a value the user supplied, or one with an Origin (a secret.x an api_request script kept).
 func (m Meta) Bound() bool { return m.Source.Kind == SourceUser || m.Origin != "" }
 
 // Entry is a Meta with its compact JSON value. Store reads return a copy.
@@ -76,18 +80,18 @@ type Entry struct {
 
 // Errors carry fixed text and never a value.
 var (
-	ErrName      = errors.New("a kept variable name starts with a letter and has at most 40 letters, digits or underscores")
-	ErrTooLarge  = errors.New("a kept value is larger than 1 MiB or nested deeper than 64 levels")
-	ErrScopeFull = errors.New("too many kept variables (64 per session); ask the user to clear some in the Kept variables view")
-	ErrStoreFull = errors.New("Kira holds too many kept variables; ask the user to clear some in the Kept variables view")
-	ErrNameTaken = errors.New("a kept variable of that name was supplied by the user and cannot be replaced")
-	ErrClosed    = errors.New("the kept variable store is closed")
-	errBadValue  = errors.New("a kept value must be valid JSON")
-	errBadScope  = errors.New("a kept variable needs a scope")
+	ErrName      = errors.New("a temporary variable name starts with a letter and has at most 40 letters, digits or underscores")
+	ErrTooLarge  = errors.New("a temporary value is larger than 1 MiB or nested deeper than 64 levels")
+	ErrScopeFull = errors.New("too many temporary variables (64 per session); ask the user to clear some in Settings > Studio MCP > Temporary variables")
+	ErrStoreFull = errors.New("Kira holds too many temporary variables; ask the user to clear some in Settings > Studio MCP > Temporary variables")
+	ErrNameTaken = errors.New("a temporary variable of that name was supplied by the user and cannot be replaced")
+	ErrClosed    = errors.New("the temporary variable store is closed")
+	errBadValue  = errors.New("a temporary value must be valid JSON")
+	errBadScope  = errors.New("a temporary variable needs a scope")
 	nameRE       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,39}$`)
 )
 
-// ValidName checks a variable name: usable as a JS identifier and inside a {{kept.<name>}} span.
+// ValidName checks a variable name: usable as a JS identifier and inside a {{plain.<name>}} or {{secret.<name>}} span.
 func ValidName(name string) error {
 	if !nameRE.MatchString(name) {
 		return ErrName

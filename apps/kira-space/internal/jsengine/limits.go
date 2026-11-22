@@ -15,6 +15,10 @@ const (
 	MaxInputBytes      = 32 << 20
 	DefaultOutputBytes = 1 << 20
 	MaxOutputBytes     = 8 << 20
+	// ReadBackValueBytes caps one read-back value (a saved variable) and ReadBackMaxKeys the keys
+	// read back across all read-back globals; both are independent of OutputBytes.
+	ReadBackValueBytes = 1 << 20
+	ReadBackMaxKeys    = 32
 	MaxSourceBytes     = 64 << 10
 	MaxJSONDepth       = 256
 	MaxHostCalls       = 10000

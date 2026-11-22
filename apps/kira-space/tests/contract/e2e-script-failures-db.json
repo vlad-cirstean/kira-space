@@ -20,9 +20,11 @@
         "alreadyRan": false,
         "bytes": 117,
         "connectionId": "<id:2>",
+        "host": "",
         "isError": true,
         "mode": "read",
-        "rawBytes": 231,
+        "path": "/data/mcp.db",
+        "rawBytes": 159,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"
@@ -40,7 +42,7 @@
   "DbMcpService.PendingResponse#failed": {
     "isError": true,
     "keep": [],
-    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"added\"]],\"rowCount\":3,\"returned\":3,\"truncatedCells\":0}",
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"added\"]],\"rowCount\":3}",
     "requestId": "<id:1>",
     "script": {
       "hash": "72c05ad738b22c0bd1bf80bd540df12217fa77a491012c02c9a7d27cc7ae489e",
@@ -53,11 +55,11 @@
       "background": false,
       "cancellable": false,
       "category": "db",
-      "command": "kept.set(\"x\", 1); while (true) {}",
+      "command": "plain.x = 1; while (true) {}",
       "commandTruncated": false,
       "connectionId": "<masked>",
       "durationMs": 0,
-      "error": "script failed: script timeout error at line 1, column 9: script exceeded its time limit. The query ran; its result is not returned.",
+      "error": "script failed: script timeout error at line 1, column 7: script exceeded its time limit. The query ran; its result is not returned.",
       "id": "<masked>",
       "kind": "jsTransform",
       "module": "database",
@@ -221,11 +223,11 @@
       "background": false,
       "cancellable": false,
       "category": "db",
-      "command": "kept.set(\"t\", 1); throw new Error(\"boom ddl\")",
+      "command": "plain.t = 1; throw new Error(\"boom ddl\")",
       "commandTruncated": false,
       "connectionId": "<masked>",
       "durationMs": 0,
-      "error": "script failed: script runtime error at line 1, column 25: Error: boom ddl. The query ran; its result is not returned. Its changes stay. Do not rerun it.",
+      "error": "script failed: script runtime error at line 1, column 20: Error: boom ddl. The query ran; its result is not returned. Its changes stay. Do not rerun it.",
       "id": "<masked>",
       "kind": "jsTransform",
       "module": "database",
@@ -282,7 +284,7 @@
     "options": null
   },
   "failure:ddlThrow": {
-    "command": "kept.set(\"t\", 1); throw new Error(\"boom ddl\")",
+    "command": "plain.t = 1; throw new Error(\"boom ddl\")",
     "kind": "jsTransform"
   },
   "failure:readInput": {
@@ -302,18 +304,18 @@
     "kind": "jsTransform"
   },
   "failure:readTimeout": {
-    "command": "kept.set(\"x\", 1); while (true) {}",
+    "command": "plain.x = 1; while (true) {}",
     "kind": "jsTransform"
   },
   "failure:writeThrow": {
     "command": "throw new Error(\"boom\")",
     "kind": "jsTransform"
   },
-  "failureText:ddlThrow": "script failed: script runtime error at line 1, column 25: Error: boom ddl. The query ran; its result is not returned. Its changes stay. Do not rerun it.",
+  "failureText:ddlThrow": "script failed: script runtime error at line 1, column 20: Error: boom ddl. The query ran; its result is not returned. Its changes stay. Do not rerun it.",
   "failureText:readInput": "script failed: the result is 9.5 MB, over the 8 MB script input limit. The query ran; its result is not returned. Ask for fewer rows or columns.",
   "failureText:readMemory": "script failed: script memory error: script exceeded its memory limit. The query ran; its result is not returned.",
   "failureText:readOutput": "script failed: script output error: result exceeds 4194304 bytes. The query ran; its result is not returned. Return less.",
   "failureText:readStack": "script failed: script stack error at line 1, column 24: call stack too deep (limit 10000 frames). The query ran; its result is not returned.",
-  "failureText:readTimeout": "script failed: script timeout error at line 1, column 9: script exceeded its time limit. The query ran; its result is not returned.",
+  "failureText:readTimeout": "script failed: script timeout error at line 1, column 7: script exceeded its time limit. The query ran; its result is not returned.",
   "failureText:writeThrow": "script failed: script runtime error at line 1, column 7: Error: boom. The query ran; its result is not returned. Its changes stay. Do not rerun it."
 }

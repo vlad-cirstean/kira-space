@@ -26,6 +26,7 @@ import type {
   CloseSessionArgs,
   CreateTaskArgs,
   DeleteStepArgs,
+  DismissFoundLinkArgs,
   EditLinkArgs,
   FinishReviewArgs,
   FocusSessionArgs,
@@ -661,6 +662,13 @@ export function useEditLink() {
 export function useRemoveArtifact() {
   return useMutation({
     mutationFn: (args: RemoveArtifactArgs) => control.adeTaskRemoveArtifact(args),
+    onSuccess: refetchArtifacts,
+  });
+}
+
+export function useDismissFoundLink() {
+  return useMutation({
+    mutationFn: (args: DismissFoundLinkArgs) => control.adeTaskDismissFoundLink(args),
     onSuccess: refetchArtifacts,
   });
 }

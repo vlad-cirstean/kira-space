@@ -103,3 +103,24 @@ export interface ApiFormResult {
   value: ApiEnvironmentFileModel | ApiCollectionFileModel | null;
   problem: { line: number; col?: number; path?: string; message: string } | null;
 }
+
+/** One edit of ApiConfigService.EditVariables; mirrors apifiles.VariableEdit. */
+export interface ApiVariableEdit {
+  scope: 'collection' | 'environment';
+  ownerId: string;
+  op: 'set' | 'unset' | 'rename' | 'lock' | 'unlock' | 'describe' | 'share' | 'move';
+  name: string;
+  newName?: string;
+  value?: string;
+  secretValue?: string;
+  description?: string;
+  agent?: boolean;
+  agentHosts?: string[];
+  before?: string;
+}
+
+/** What the reveal gate decided for ApiConfigService.UnlockVariables; `view` is set on `done`. */
+export interface ApiUnlockResult {
+  outcome: 'done' | 'cancelled' | 'confirmation-required';
+  view: ApiConfigView | null;
+}

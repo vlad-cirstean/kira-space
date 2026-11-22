@@ -4,6 +4,7 @@
 // needs the xterm types), but the shape mirrors monacoEntry.ts's own recorded reasoning: everyone
 // this codebase's Terminal instance touches lives in this one file.
 import { FitAddon } from '@xterm/addon-fit';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -21,6 +22,8 @@ import { type HoveredLink, linkMenuItems } from './linkMenu';
 interface Attached {
   term: Terminal;
   fit: FitAddon;
+  serialize: SerializeAddon;
+  scrollback: number;
   host: HTMLDivElement;
   off: () => void;
   /** Attaches the renderer to `host`; the first call does the work. */
@@ -210,10 +213,11 @@ export function getOrCreateTerminal(
       hint?.hide();
     },
   };
+  const scrollback = launchKind === 'agent' ? AGENT_SCROLLBACK : DEFAULT_SCROLLBACK;
   const term = new Terminal({
     ...(size ?? {}),
     linkHandler: { activate, ...linkHover, allowNonHttpProtocols: false },
-    scrollback: launchKind === 'agent' ? AGENT_SCROLLBACK : DEFAULT_SCROLLBACK,
+    scrollback,
     cursorBlink: true,
     allowProposedApi: false,
     // VS Code parity: keeps screens cleared with ED2 in scrollback.
@@ -224,6 +228,8 @@ export function getOrCreateTerminal(
   });
   const fit = new FitAddon();
   term.loadAddon(fit);
+  const serialize = new SerializeAddon();
+  term.loadAddon(serialize);
   term.loadAddon(new WebLinksAddon(activate, linkHover));
   // Shift+Enter sends ESC CR, xterm's own Alt+Enter bytes: a newline in Claude Code and zsh.
   term.attachCustomKeyEventHandler((ev) => {
@@ -292,7 +298,7 @@ export function getOrCreateTerminal(
     useEventListener(term.element, 'contextmenu', onContextMenu, { capture: true });
   };
 
-  const attached: Attached = { term, fit, host, off, open };
+  const attached: Attached = { term, fit, serialize, scrollback, host, off, open };
   byTabId.set(tabId, attached);
   return attached;
 }
@@ -311,6 +317,28 @@ export function fitTerminal(tabId: string): { cols: number; rows: number } | nul
   if (!attached) return null;
   attached.fit.fit();
   return { cols: attached.term.cols, rows: attached.term.rows };
+}
+
+// Bounds the snapshot that crosses the bridge twice on a tab move.
+const SNAPSHOT_LIMIT_BYTES = 4 * 1024 * 1024;
+
+/** tabId's screen and scrollback as escape sequences, for a tab move; null for an id with no
+ *  terminal. Waits for xterm to parse everything already written. */
+export async function serializeTerminal(
+  tabId: string,
+  maxBytes: number = SNAPSHOT_LIMIT_BYTES,
+): Promise<{ snapshot: string; cols: number; rows: number } | null> {
+  const attached = byTabId.get(tabId);
+  if (!attached) return null;
+  const { term, serialize } = attached;
+  await new Promise<void>((resolve) => term.write('', resolve));
+  let scrollback = attached.scrollback;
+  let snapshot = serialize.serialize({ scrollback });
+  while (encoder.encode(snapshot).length > maxBytes && scrollback > 0) {
+    scrollback = Math.floor(scrollback / 2);
+    snapshot = serialize.serialize({ scrollback });
+  }
+  return { snapshot, cols: term.cols, rows: term.rows };
 }
 
 /** Gives tabId's terminal the keyboard; false when no terminal is attached for it. */

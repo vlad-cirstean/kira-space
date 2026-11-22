@@ -2,6 +2,7 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { type ScriptValue, scriptRunPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
 import { computed } from 'vue';
@@ -26,30 +27,32 @@ function rows(values: ScriptValue[]): { name: string; value: string }[] {
 <template>
   <ApprovalDetails v-if="payload.description || payload.params.length || payload.env.length">
     <template v-if="payload.description">
-      <dt>{{ t('common.field.description.label') }}</dt>
-      <dd class="whitespace-pre-wrap break-words" data-testid="db-mcp-approval-script-description">
-        {{ payload.description }}
-      </dd>
+      <ApprovalDetailItem
+        :label="t('common.field.description.label')"
+        testid="db-mcp-approval-script-description"
+      >
+        <span class="whitespace-pre-wrap break-words">{{ payload.description }}</span>
+      </ApprovalDetailItem>
     </template>
     <template v-if="payload.params.length">
-      <dt>{{ t('studio.http.pane.params.label') }}</dt>
-      <dd>
+      <ApprovalDetailItem :label="t('studio.http.pane.params.label')">
         <ApprovalPairs
           :rows="rows(payload.params)"
+          density="approval"
           testid="db-mcp-approval-script-params"
           :row-testid="(n) => `db-mcp-approval-script-param-${n}`"
         />
-      </dd>
+      </ApprovalDetailItem>
     </template>
     <template v-if="payload.env.length">
-      <dt>{{ t('studio.dbMcp.approval.detail.env.label') }}</dt>
-      <dd>
+      <ApprovalDetailItem :label="t('studio.dbMcp.approval.detail.env.label')">
         <ApprovalPairs
           :rows="rows(payload.env)"
+          density="approval"
           testid="db-mcp-approval-script-env"
           :row-testid="(n) => `db-mcp-approval-script-env-${n}`"
         />
-      </dd>
+      </ApprovalDetailItem>
     </template>
   </ApprovalDetails>
 </template>

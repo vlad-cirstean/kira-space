@@ -46,12 +46,12 @@ func applyStatementTimeout(req *adapterhost.ExecuteRequestWire, summary model.Co
 		return
 	}
 	req.StatementTimeout = time.Duration(summary.McpStatementTimeoutSec) * time.Second
-	req.TimeoutByEngine = timeoutEnforcementOf(summary.Kind, mode) == "session"
+	req.TimeoutByEngine = TimeoutEnforcementOf(summary.Kind, mode) == "session"
 }
 
-// timeoutEnforcementOf names what stops a statement past the timeout for kind and mode: session (the
+// TimeoutEnforcementOf names what stops a statement past the timeout for kind and mode: session (the
 // engine), app (the host timer through the Stop path) or none (no console, nothing runs).
-func timeoutEnforcementOf(kind, mode string) string {
+func TimeoutEnforcementOf(kind, mode string) string {
 	read, write, ddl := "none", "none", "none"
 	switch kind {
 	case "postgres":
@@ -74,21 +74,4 @@ func timeoutEnforcementOf(kind, mode string) string {
 		return write
 	}
 	return ddl
-}
-
-// statementTimeoutView is list_connections' statementTimeout.
-type statementTimeoutView struct {
-	Seconds     int               `json:"seconds"`
-	Enforcement map[string]string `json:"enforcement"`
-}
-
-func timeoutViewOf(c model.ConnectionSummary) statementTimeoutView {
-	return statementTimeoutView{
-		Seconds: c.McpStatementTimeoutSec,
-		Enforcement: map[string]string{
-			modeRead:  timeoutEnforcementOf(c.Kind, modeRead),
-			modeWrite: timeoutEnforcementOf(c.Kind, modeWrite),
-			modeDDL:   timeoutEnforcementOf(c.Kind, modeDDL),
-		},
-	}
 }

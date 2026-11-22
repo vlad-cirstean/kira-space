@@ -1,0 +1,361 @@
+{
+  "ApprovalsService.List#prepare": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Ts",
+            "value": "{{plain.ts}}"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 4,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_region",
+            "items": 0,
+            "name": "region",
+            "preview": "\"eu\"",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "script",
+                "from": 15,
+                "index": 0,
+                "part": "prepare",
+                "to": 27
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "sig",
+            "value": "{{secret.sig}}"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "headers",
+              "query"
+            ],
+            "hash": "80ca4c5ecc457608eefaa5193be5c2977843825110b3ddc51985d0e9f2d91c4b",
+            "input": "",
+            "inputTruncated": false,
+            "source": "const region = plain.region;\nplain.ts = 't-' + region;\nsecret.sig = 'sig-' + region;\nreturn {headers: [{name: 'X-Ts', value: '{{plain.ts}}'}], query: [{name: 'sig', value: '{{secret.sig}}'}]};",
+            "writes": [
+              {
+                "bytes": 6,
+                "deleted": false,
+                "items": 0,
+                "name": "ts",
+                "preview": "\"t-eu\"",
+                "previewTruncated": false,
+                "secret": false,
+                "type": "string"
+              },
+              {
+                "bytes": 8,
+                "deleted": false,
+                "items": 0,
+                "name": "sig",
+                "preview": "",
+                "previewTruncated": false,
+                "secret": true,
+                "type": "string"
+              }
+            ]
+          },
+          "transform": null
+        },
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/echo?sig={{secret.sig}}",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#review": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:3>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 22,
+        "class": "read",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "masked": [],
+        "method": "GET",
+        "rawBytes": 747,
+        "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#transform": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "kept": [
+          {
+            "bytes": 3,
+            "createdAt": "<masked>",
+            "expiresAt": "<masked>",
+            "id": "kv_old",
+            "items": 0,
+            "name": "old",
+            "preview": "\"x\"",
+            "previewTruncated": false,
+            "secret": false,
+            "sites": [
+              {
+                "field": "script",
+                "from": 98,
+                "index": 0,
+                "part": "transform",
+                "to": 107
+              }
+            ],
+            "source": {
+              "client": "claude-code",
+              "kind": "script",
+              "mcp": "api",
+              "request": "GET {{base_url}}/users",
+              "tool": "api_request"
+            },
+            "type": "string"
+          }
+        ],
+        "method": "GET",
+        "query": [
+          {
+            "name": "ct",
+            "value": "application/json"
+          },
+          {
+            "name": "hex",
+            "value": "7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": true,
+        "script": {
+          "prepare": null,
+          "transform": {
+            "hash": "3d1d497bd00e35c613d2804bf6fbf3b935539689a67c38abd647bb4b87e68bff",
+            "mayKeep": [
+              {
+                "name": "next",
+                "secret": false,
+                "sites": [
+                  {
+                    "field": "script",
+                    "from": 0,
+                    "index": 0,
+                    "part": "transform",
+                    "to": 10
+                  }
+                ]
+              },
+              {
+                "name": "token",
+                "secret": true,
+                "sites": [
+                  {
+                    "field": "script",
+                    "from": 40,
+                    "index": 0,
+                    "part": "transform",
+                    "to": 52
+                  }
+                ]
+              },
+              {
+                "name": "old",
+                "secret": false,
+                "sites": [
+                  {
+                    "field": "script",
+                    "from": 98,
+                    "index": 0,
+                    "part": "transform",
+                    "to": 107
+                  }
+                ]
+              }
+            ],
+            "source": "plain.next = response.json.users[0].id;\nsecret.token = 'tok-' + response.json.users[0].id;\ndelete plain.old;\nreturn {count: response.json.total};"
+          }
+        },
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#review": {
+    "isError": false,
+    "keep": [
+      {
+        "bytes": 16,
+        "deleted": false,
+        "items": 0,
+        "name": "next",
+        "preview": "9007199254740993",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "number"
+      },
+      {
+        "bytes": 22,
+        "deleted": false,
+        "items": 0,
+        "name": "token",
+        "preview": "",
+        "previewTruncated": false,
+        "secret": true,
+        "type": "string"
+      },
+      {
+        "bytes": 3,
+        "deleted": true,
+        "items": 0,
+        "name": "old",
+        "preview": "",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "string"
+      }
+    ],
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
+    "requestId": "<id:3>",
+    "script": {
+      "hash": "3d1d497bd00e35c613d2804bf6fbf3b935539689a67c38abd647bb4b87e68bff",
+      "source": "plain.next = response.json.users[0].id;\nsecret.token = 'tok-' + response.json.users[0].id;\ndelete plain.old;\nreturn {count: response.json.total};"
+    },
+    "text": "{\"output\":{\"count\":2}}"
+  },
+  "args:ApprovalsService.Answer#prepare": {
+    "approve": true,
+    "ids": [
+      "api.request:<id:1>"
+    ],
+    "options": null
+  }
+}

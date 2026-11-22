@@ -338,6 +338,32 @@ func validPatterns(patterns []string, bash bool) ([]string, error) {
 	return out, nil
 }
 
+// studioTools is the tool set of Kira's own MCP servers; studioMoved maps a removed tool to what replaced it.
+var (
+	studioServers = map[string]bool{"kira-studio": true, "kira-studio-session": true}
+	studioTools   = map[string]bool{
+		"list": true, "describe": true, "browse_table": true, "run_query": true,
+		"kube_read": true, "operations": true, "run_script": true, "api_request": true,
+	}
+	studioMoved = map[string]string{
+		"list_connections": "list", "api_list_environments": "list", "kube_list_clusters": "list",
+		"list_scripts": "list", "list_kept_variables": "list", "list_children": "describe",
+		"kube_discover": "kube_read", "kube_list_resources": "kube_read", "kube_describe": "kube_read",
+		"kube_pod_logs": "kube_read", "get_script_run": "run_script",
+	}
+)
+
+// staleStudioTool reports a grant on a Kira server for a tool the server no longer has, and the tool to use.
+func staleStudioTool(server, tool string) (use string, stale bool) {
+	if !studioServers[server] || studioTools[tool] {
+		return "", false
+	}
+	if use, ok := studioMoved[tool]; ok {
+		return use, true
+	}
+	return "one of the current tools", true
+}
+
 func validMCP(choices []MCPChoice) ([]MCPChoice, error) {
 	out := []MCPChoice{}
 	if len(choices) > MaxMCPServers {
@@ -368,6 +394,9 @@ func validMCP(choices []MCPChoice) ([]MCPChoice, error) {
 		for j, t := range c.Tools {
 			if !mcpNameRE.MatchString(t) {
 				return nil, invalid(at+"/tools/"+strconv.Itoa(j), "backend.core.runs.smartMcpToolName.body")
+			}
+			if use, stale := staleStudioTool(c.Server, t); stale {
+				return nil, invalid(at+"/tools/"+strconv.Itoa(j), "backend.core.runs.smartMcpStaleTool.body", "server", c.Server, "tool", t, "use", use)
 			}
 			if !dup[t] {
 				dup[t] = true

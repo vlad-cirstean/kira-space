@@ -1020,7 +1020,7 @@ const P17_TREE = {
   items: [],
 };
 
-test('Variables… on a collection row opens a tab, and a second invocation activates it rather than opening a second (D16)', async ({
+test('Variables… on a collection row opens the Variables tab, and a second invocation activates it rather than opening a second (D16)', async ({
   relaunch,
 }) => {
   const CONTROL: ControlSnapshot[] = [
@@ -1035,7 +1035,7 @@ test('Variables… on a collection row opens a tab, and a second invocation acti
   await expect(row).toBeVisible();
   await row.click({ button: 'right' });
   await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
   await expect(page.locator('[data-testid="tab"]')).toHaveCount(1);
 
   // D16's reuse: true — a second invocation activates the same tab, never a second one.
@@ -1044,7 +1044,7 @@ test('Variables… on a collection row opens a tab, and a second invocation acti
   await expect(page.locator('[data-testid="tab"]')).toHaveCount(1);
 });
 
-test('the overview panel opens from a request tab, lists both scopes with their chips, masks a secret, and Edit… opens the D16 tab (item 8)', async ({
+test('the request variables panel lists the variables the request uses with their source, masks a secret, and All variables opens the Variables tab (item 8)', async ({
   relaunch,
 }) => {
   const NOW = '2026-01-01T00:00:00.000Z';
@@ -1069,7 +1069,7 @@ test('the overview panel opens from a request tab, lists both scopes with their 
   };
   const HEALTH_REQUEST = {
     method: 'GET',
-    url: 'https://api.example.com/healthz',
+    url: 'https://api.example.com/{{region}}/{{apiKey}}',
     headers: [],
     bodyMode: 'none',
     body: '',
@@ -1126,23 +1126,23 @@ test('the overview panel opens from a request tab, lists both scopes with their 
   await expect(page.locator('[data-testid="http-request-view"]')).toBeVisible();
 
   await page.click('[data-testid="http-variables-overview-toggle"]');
-  await expect(page.locator('[data-testid="variables-overview"]')).toBeVisible();
+  await expect(page.locator('[data-testid="request-variables"]')).toBeVisible();
 
-  const rows = page.locator('[data-testid="variables-overview-row"]');
-  await expect(rows).toHaveCount(2);
+  await expect(page.locator('[data-testid="request-var-region"]')).toHaveAttribute(
+    'data-state',
+    'environment',
+  );
+  await expect(page.locator('[data-testid="request-var-region"]')).toContainText('us-east');
+  await expect(page.locator('[data-testid="request-var-apiKey"]')).toHaveAttribute(
+    'data-state',
+    'collection',
+  );
   await expect(
-    page.locator('[data-testid="variables-overview-row"][data-scope="environment"]'),
+    page.locator('[data-testid="request-var-apiKey"] [data-slot="masked-value"]'),
   ).toHaveCount(1);
-  await expect(
-    page.locator('[data-testid="variables-overview-row"][data-scope="collection"]'),
-  ).toHaveCount(1);
-  await expect(page.locator('[data-testid="variables-overview-secret"]')).toHaveCount(1);
-  await expect(page.locator('[data-testid="variables-overview-value"]')).toContainText('us-east');
 
-  await page.click('[data-testid="variables-overview-edit-environment"]');
-  await expect(
-    page.locator('[data-testid="variables-dialog"][data-scope="environment"]'),
-  ).toBeVisible();
+  await page.click('[data-testid="request-variables-all"]');
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 });
 
 // P18 D10/D12: gRPC parity with the URL-field (:300) and header-name (:357) cases above — closing
@@ -1309,11 +1309,9 @@ test('an environment’s colour reaches the request view’s toolbar cap and hea
   await expect(headDot).toHaveClass(/none/);
 });
 
-// One row grid, three consumers — VariableSetView's rows used to be independent
-// flex items with their own per-field `flex` value, so a secret row's extra reveal affordance
-// shifted its neighbours out of alignment. This guards the fix directly: three consecutive rows,
-// one of them a secret, share left edges column by column.
-test('a variable-set view: name/value/description cells of three consecutive rows share left edges (D9)', async ({
+// One grid, one column per file: a secret row's reveal affordance must not shift its neighbours.
+// Three consecutive rows, one of them a secret, share left edges column by column.
+test('the Variables grid: name and value cells of three consecutive rows share left edges (D9)', async ({
   relaunch,
 }) => {
   const VARS = [
@@ -1324,6 +1322,7 @@ test('a variable-set view: name/value/description cells of three consecutive row
       name: 'a',
       value: '1',
       isSecret: false,
+      secretSet: false,
       sortOrder: 0,
     },
     {
@@ -1333,6 +1332,7 @@ test('a variable-set view: name/value/description cells of three consecutive row
       name: 'b',
       value: '',
       isSecret: true,
+      secretSet: true,
       sortOrder: 1,
     },
     {
@@ -1342,20 +1342,21 @@ test('a variable-set view: name/value/description cells of three consecutive row
       name: 'c',
       value: '3',
       isSecret: false,
+      secretSet: false,
       sortOrder: 2,
     },
   ];
-  const VARIABLE_SET_TAB = {
+  const VARIABLES_TAB = {
     id: 'tab-vs-1',
     connectionId: null,
-    path: 'variables:collection:col-1',
-    kind: 'variable-set',
+    path: 'environments',
+    kind: 'environments',
     order: 0,
     active: true,
-    state: { scope: 'collection', ownerId: 'col-1', name: 'Orders API' },
+    state: {},
   };
   const CONTROL: ControlSnapshot[] = [
-    { channel: IPC.tabsList, response: [VARIABLE_SET_TAB] },
+    { channel: IPC.tabsList, response: [VARIABLES_TAB] },
     {
       channel: IPC.collectionsList,
       response: {
@@ -1376,22 +1377,21 @@ test('a variable-set view: name/value/description cells of three consecutive row
   ];
   const { window: page } = await relaunch({ control: CONTROL });
 
-  const view = page.locator('[data-testid="variables-dialog"][data-scope="collection"]');
-  await expect(view).toBeVisible();
-  const rows = view.locator('[data-testid="variable-row"]');
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
+  const rows = page.locator('[data-testid^="matrix-row-"][data-lock]');
   await expect(rows).toHaveCount(3);
 
-  async function cellX(rowIndex: number, cellClass: string): Promise<number> {
-    const box = await rows.nth(rowIndex).locator(cellClass).boundingBox();
-    if (!box) throw new Error(`row ${rowIndex} ${cellClass} has no box`);
+  async function cellX(rowIndex: number, selector: string): Promise<number> {
+    const box = await rows.nth(rowIndex).locator(selector).boundingBox();
+    if (!box) throw new Error(`row ${rowIndex} ${selector} has no box`);
     return box.x;
   }
 
-  for (const cellClass of ['.name-cell', '.value-cell', '.description-cell']) {
+  for (const selector of ['[data-testid^="matrix-name-"]', '[data-testid^="matrix-cell-"]']) {
     const [x0, x1, x2] = await Promise.all([
-      cellX(0, cellClass),
-      cellX(1, cellClass),
-      cellX(2, cellClass),
+      cellX(0, selector),
+      cellX(1, selector),
+      cellX(2, selector),
     ]);
     expect(x1).toBe(x0);
     expect(x2).toBe(x0);

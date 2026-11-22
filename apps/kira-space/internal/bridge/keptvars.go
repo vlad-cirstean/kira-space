@@ -28,7 +28,9 @@ func KeptRetention(settings *repos.SettingsRepo) func() time.Duration {
 	return func() time.Duration {
 		all, err := settings.GetAll()
 		if err != nil {
-			warn.Do(func() { slog.Warn("kept variables: read retention, using one hour", "scope", "keptvars", "err", err) })
+			warn.Do(func() {
+				slog.Warn("temporary variables: read retention, using one hour", "scope", "keptvars", "err", err)
+			})
 			return keptvars.DefaultTTL
 		}
 		return time.Duration(all.DbMcp.KeptRetentionMinutes) * time.Minute
@@ -46,6 +48,14 @@ type KeptVarsService struct {
 	// Auth gates Reveal; the app's one authorizer, so the grace window is shared with connection and
 	// variable reveals.
 	Auth *localauth.Authorizer
+	// Staged reads a secret value a held result will keep.
+	Staged StagedSecrets
+}
+
+// StagedSecrets is the broker's view of the values held results will keep: *dbmcp.ApprovalBroker.
+type StagedSecrets interface {
+	StagedSecret(requestID, name string) (string, bool)
+	DropStaged(requestID, name string) bool
 }
 
 // KeptEntryView is one live kept variable: its metadata and a preview. A secret has no preview.
@@ -62,7 +72,7 @@ type KeptEntryView struct {
 	Preview          string    `json:"preview"`
 	PreviewTruncated bool      `json:"previewTruncated"`
 	ScopeLabel       string    `json:"scopeLabel"`
-	// Origin is the scheme://host[:port] a user-supplied value goes to; "" for other kinds.
+	// Origin is the scheme://host[:port] the value goes to: a user-supplied value, or a secret.x an api_request script kept; "" otherwise.
 	Origin string `json:"origin"`
 }
 
@@ -139,16 +149,16 @@ func (s *KeptVarsService) Value(args KeptValueArgs) (KeptValue, error) {
 	}
 	e, ok := s.Store.ByID(args.ID)
 	if !ok {
-		return KeptValue{}, ipcerr.NotFoundNamed("kept variable")
+		return KeptValue{}, ipcerr.NotFoundNamed("temporary variable")
 	}
 	if e.Secret {
-		return KeptValue{}, ipcerr.Contract("a secret kept variable is not shown here")
+		return KeptValue{}, ipcerr.Contract("a secret temporary variable is not shown here")
 	}
 	return KeptValue{JSON: string(e.Value), Type: e.Type}, nil
 }
 
 // keptRevealReason is the OS prompt text (macOS prefixes it with "Kira Studio wants to").
-const keptRevealReason = "show a value you supplied to an agent request."
+const keptRevealReason = "show a secret temporary value an agent request set."
 
 // KeptRevealArgs names the entry to reveal. Confirmed is honoured only where the OS cannot authenticate.
 type KeptRevealArgs struct {
@@ -169,18 +179,27 @@ func (s *KeptVarsService) Reveal(args KeptRevealArgs) (KeptReveal, error) {
 	if args.ID == "" {
 		return KeptReveal{}, ipcerr.Required("id")
 	}
-	outcome, value, err := localauth.Gated(s.Auth.Authorize, keptRevealReason, args.Confirmed, func() (*string, error) {
+	res, err := s.reveal(args.Confirmed, func() (*string, error) {
 		e, ok := s.Store.ByID(args.ID)
 		if !ok {
-			return nil, ipcerr.NotFoundNamed("kept variable")
+			return nil, ipcerr.NotFoundNamed("temporary variable")
 		}
 		if !e.Secret {
-			return nil, ipcerr.Contract("this kept variable is not secret; it is shown in the list")
+			return nil, ipcerr.Contract("this temporary variable is not secret; it is shown in the list")
 		}
 		text := keptvars.SecretText(e)
 		clear(e.Value)
 		return &text, nil
 	})
+	if err == nil && res.Outcome == apivars.OutcomeRevealed {
+		slog.Info("secret revealed", "scope", "keptvars", "id", args.ID)
+	}
+	return res, err
+}
+
+// reveal runs fetch behind the local-auth gate and maps the outcome.
+func (s *KeptVarsService) reveal(confirmed bool, fetch func() (*string, error)) (KeptReveal, error) {
+	outcome, value, err := localauth.Gated(s.Auth.Authorize, keptRevealReason, confirmed, fetch)
 	switch outcome {
 	case localauth.GateCancelled:
 		return KeptReveal{Outcome: apivars.OutcomeCancelled}, nil
@@ -193,8 +212,54 @@ func (s *KeptVarsService) Reveal(args KeptRevealArgs) (KeptReveal, error) {
 	case localauth.GateFetchError:
 		return KeptReveal{}, err
 	}
-	slog.Info("secret revealed", "scope", "keptvars", "id", args.ID)
 	return KeptReveal{Outcome: apivars.OutcomeRevealed, Value: value}, nil
+}
+
+// KeptRevealStagedArgs names a secret value a held result will keep, by the request under review and its
+// name. Confirmed is honoured only where the OS cannot authenticate.
+type KeptRevealStagedArgs struct {
+	RequestID string `json:"requestId"`
+	Name      string `json:"name"`
+	Confirmed bool   `json:"confirmed"`
+}
+
+// RevealStaged shows a secret value a held result will keep, behind the same gate as Reveal. The value is
+// not stored yet, so it is read from the held result and gone once the result is sent or withheld.
+func (s *KeptVarsService) RevealStaged(args KeptRevealStagedArgs) (KeptReveal, error) {
+	if args.RequestID == "" {
+		return KeptReveal{}, ipcerr.Required("requestId")
+	}
+	if args.Name == "" {
+		return KeptReveal{}, ipcerr.Required("name")
+	}
+	return s.reveal(args.Confirmed, func() (*string, error) {
+		text, ok := s.Staged.StagedSecret(args.RequestID, args.Name)
+		if !ok {
+			return nil, ipcerr.NotFoundNamed("secret value under review")
+		}
+		return &text, nil
+	})
+}
+
+// KeptDropStagedArgs names a value a held result will keep, by the request under review and its name.
+type KeptDropStagedArgs struct {
+	RequestID string `json:"requestId"`
+	Name      string `json:"name"`
+}
+
+// DropStaged removes a value a held result will keep: it is not stored when the result is sent, and the
+// agent is told the user chose not to keep it.
+func (s *KeptVarsService) DropStaged(args KeptDropStagedArgs) error {
+	if args.RequestID == "" {
+		return ipcerr.Required("requestId")
+	}
+	if args.Name == "" {
+		return ipcerr.Required("name")
+	}
+	if !s.Staged.DropStaged(args.RequestID, args.Name) {
+		return ipcerr.NotFoundNamed("value under review")
+	}
+	return nil
 }
 
 // KeptClearArgs names the entries to clear.

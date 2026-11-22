@@ -33,6 +33,7 @@ const { shot, eager = false, tile = false, sizes } = Astro.props;
         decoding="async"
         class:list={[
           'mx-auto block h-auto max-w-full',
+          shot.kind === 'phone' && 'max-w-[260px]',
           tile && 'max-h-full object-contain',
           shot.kind === 'region' && 'overflow-hidden rounded-xl border border-border-strong',
         ]}

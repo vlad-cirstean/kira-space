@@ -131,9 +131,6 @@ const studioTabKindSchema = /*#__PURE__*/ z.enum([
   // P11 D2: the second kind inside the 'api' mode — a protocol AND a surface, following
   // 'http-request''s own naming reasoning verbatim.
   'grpc-request',
-  // P17 D16: the third kind inside the 'api' mode — one collection's or one environment's
-  // variable set, opened as a tab rather than a dialog.
-  'variable-set',
   // P28 D16(c): the fourth kind inside the 'api' mode — the environment *list*.
   'environments',
 ]);
@@ -151,7 +148,6 @@ export const STUDIO_TAB_KIND_MODE: Record<StudioTabKind, TabScope> = {
   browse: 'studio',
   'http-request': 'api',
   'grpc-request': 'api',
-  'variable-set': 'api',
   environments: 'api',
 };
 
@@ -236,15 +232,6 @@ export const browseTabStateSchema = /*#__PURE__*/ z.object({
   listWidth: z.number().default(0),
 });
 export type BrowseTabState = z.infer<typeof browseTabStateSchema>;
-
-// P17 D16: a variable-set tab's identity is `path` — `scope`/`ownerId` here are what the view
-// itself needs to query VariablesRepo, duplicated from `path` rather than parsed back out of it.
-export const variableSetTabStateSchema = /*#__PURE__*/ z.object({
-  scope: /*#__PURE__*/ z.enum(['collection', 'environment']),
-  ownerId: z.string(),
-  name: z.string().default(''),
-});
-export type VariableSetTabState = z.infer<typeof variableSetTabStateSchema>;
 
 // P28 D16(c): the environments tab carries no state of its own — an empty object, like every
 // other kind's state, so parseState has something to validate against.
@@ -339,11 +326,6 @@ const tabRecordSchema = /*#__PURE__*/ z.discriminatedUnion('kind', [
   }),
   /*#__PURE__*/ z.object({
     ...tabRecordBase,
-    kind: z.literal('variable-set'),
-    state: variableSetTabStateSchema,
-  }),
-  /*#__PURE__*/ z.object({
-    ...tabRecordBase,
     kind: z.literal('environments'),
     state: environmentsTabStateSchema,
   }),
@@ -432,8 +414,6 @@ export type StreamTabRecord = Extract<TabRecord, { kind: 'stream' }>;
 export type BrowseTabRecord = Extract<TabRecord, { kind: 'browse' }>;
 export type HttpRequestTabRecord = Extract<TabRecord, { kind: 'http-request' }>;
 export type GrpcRequestTabRecord = Extract<TabRecord, { kind: 'grpc-request' }>;
-export type VariableSetTabRecord = Extract<TabRecord, { kind: 'variable-set' }>;
-export type EnvironmentsTabRecord = Extract<TabRecord, { kind: 'environments' }>;
 
 export function asDataTab(tab: TabRecord | null | undefined): DataTabRecord | null {
   return tab && tab.kind === 'data' ? tab : null;

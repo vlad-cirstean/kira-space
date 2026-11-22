@@ -72,6 +72,18 @@ func WithBulkPods(ns string, n int) KubeFakeOption {
 	}
 }
 
+// WithCrashLoopPod adds a crash-looping pod with the given log lines to namespace ns, beside one healthy pod.
+func WithCrashLoopPod(ns, name string, logs []string) KubeFakeOption {
+	return func(f *KubeFake) {
+		pods := f.resources["/v1/pods"]
+		healthy := fakePod(ns, "cart-5c8b", nil, []string{"app"})
+		crash := fakePod(ns, name, nil, []string{"app"})
+		crash.cells = []any{name, "0/1", "CrashLoopBackOff", 7, "5m", "10.0.0.2"}
+		pods.objs = append(pods.objs, healthy, crash)
+		f.lines[name] = logs
+	}
+}
+
 // ForbidResource makes every GET on a resource (for example "pods") answer 403.
 func ForbidResource(name string) KubeFakeOption {
 	return func(f *KubeFake) {

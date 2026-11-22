@@ -30,6 +30,7 @@ const (
 	artifactSrcHost   = "host"
 	artifactSrcGit    = "git"
 	artifactSrcStored = "stored"
+	artifactSrcNotes  = "notes"
 
 	artifactBranch = model.AdeArtifactBranch
 )
@@ -64,13 +65,13 @@ var artifactKindOrder = map[string]int{
 	model.AdeArtifactDeployment: 3, model.AdeArtifactDoc: 4, model.AdeArtifactLink: 5,
 }
 
-// builtinArtifactSources is the registration order: task links, repos, one per issue tracker, stored rows.
+// builtinArtifactSources is the registration order: task links, repos, one per issue tracker, stored rows, links found in notes.
 func (b *TaskBoard) builtinArtifactSources() []ArtifactSource {
 	out := []ArtifactSource{taskLinkSource{b}, repoSource{b}}
 	for _, p := range b.deps.Trackers.All() {
 		out = append(out, trackerSource{b: b, p: p})
 	}
-	return append(out, storedSource{b})
+	return append(out, storedSource{b}, notesSource{b})
 }
 
 // TaskArtifacts lists the task's artifacts (archived tasks included), merged, deduped and sorted. A
@@ -121,19 +122,20 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 }
 
 // mergeArtifacts dedups and sorts. The same non-empty URL, or the same (kind, repo, ref) when the URL
-// is empty, is one artifact. A detected artifact beats a stored one (its status is fresher). Among
+// is empty, is one artifact. A detected artifact beats a stored one (its status is fresher), and both
+// beat a found link. Among
 // detected ones the first source wins, unless it has no status and a later one has.
 func mergeArtifacts(all []adewire.Artifact) []adewire.Artifact {
 	out := make([]adewire.Artifact, 0, len(all))
 	index := map[string]int{}
-	for _, stored := range []bool{false, true} {
+	for pass := range 3 {
 		for _, a := range all {
-			if (a.ID != "") != stored {
+			if artifactPass(a) != pass {
 				continue
 			}
 			k := artifactKey(a)
 			if i, dup := index[k]; dup {
-				if !stored && out[i].ID == "" && out[i].Status == "" && a.Status != "" {
+				if pass == 0 && out[i].ID == "" && out[i].Status == "" && a.Status != "" {
 					out[i] = a
 				}
 				continue
@@ -153,6 +155,18 @@ func mergeArtifacts(all []adewire.Artifact) []adewire.Artifact {
 		return a.Title < b.Title
 	})
 	return out
+}
+
+// artifactPass orders the merge: detected first, then stored, then links found in notes, which never
+// replace or demote anything.
+func artifactPass(a adewire.Artifact) int {
+	switch {
+	case a.Source == artifactSrcNotes:
+		return 2
+	case a.ID != "":
+		return 1
+	}
+	return 0
 }
 
 func artifactKey(a adewire.Artifact) string {

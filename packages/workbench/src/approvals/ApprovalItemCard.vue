@@ -9,15 +9,22 @@ import {
   CollapsibleTrigger,
 } from '@theme/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
+import { colorMarkClass } from '@theme/connColor';
 import { formatElapsed } from '@theme/format';
 import { t } from '@theme/i18n';
 import { TONE_TEXT } from '@theme/lib/statusTone';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, ref, watch } from 'vue';
 import { logWarn } from '../bridge/log';
+import ApprovalBox from './ApprovalBox.vue';
 import ApprovalDetails from './ApprovalDetails.vue';
 import { approvalRequester } from './approvalFooter';
-import { type ApprovalRisk, type ApprovalVerdict, useApprovalKind } from './registry';
+import {
+  type ApprovalRisk,
+  type ApprovalVerdict,
+  type ApprovalWherePart,
+  useApprovalKind,
+} from './registry';
 import { safeKind } from './safeKind';
 import { useCountdown } from './useCountdown';
 
@@ -40,23 +47,21 @@ const operation = computed(() =>
   ),
 );
 const where = computed(() =>
-  safeKind(
-    props.item.kind,
-    () => {
-      if (!def) {
-        return [props.item.target.kind, props.item.target.location].filter(Boolean).join(' · ');
-      }
-      return def.where?.(props.item) ?? '';
-    },
-    '',
-  ),
+  safeKind<ApprovalWherePart[]>(props.item.kind, () => {
+    if (!def) {
+      return [props.item.target.kind, props.item.target.location]
+        .filter(Boolean)
+        .map((text) => ({ text }));
+    }
+    return def.where?.(props.item) ?? [];
+  }, []),
 );
 const countdown = computed(() => {
   const left = remaining.value;
   if (left === null) return '';
   return left === 0
     ? t('common.expired.status')
-    : t('workbench.approvals.left.status', { time: formatElapsed(left * 1000) });
+    : t('common.left.status', { time: formatElapsed(left * 1000) });
 });
 
 const verdictSafe = computed(() =>
@@ -148,12 +153,24 @@ const detailsOpen = ref(false);
         {{ item.target.name }}
       </span>
       <span
-        v-if="where.value"
-        class="text-kira-md text-muted-foreground"
-        :class="def?.whereData && 'font-data'"
+        v-if="where.value.length"
+        class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-kira-md text-muted-foreground"
         data-testid="approval-target-kind"
       >
-        {{ where.value }}
+        <span
+          v-for="(part, i) in where.value"
+          :key="i"
+          class="inline-flex min-w-0 items-center"
+          :class="part.data && 'font-data'"
+          data-testid="approval-target-part"
+          :data-part="part.label"
+        >
+          <Badge v-if="part.chip" data-testid="approval-target-chip">
+            <span v-if="part.color" :class="colorMarkClass('dot', part.color)" aria-hidden="true" />
+            {{ part.text }}
+          </Badge>
+          <template v-else>{{ part.text }}</template>
+        </span>
       </span>
     </div>
 
@@ -185,7 +202,7 @@ const detailsOpen = ref(false);
             :variant="FACT_TONE[fact.tone]"
             class="h-control-lg gap-1.5 px-2 text-kira-md"
             :class="FACT_CLASS[fact.tone]"
-            data-testid="approval-fact"
+            :data-testid="fact.testid ?? 'approval-fact'"
           >
             <CodiconIcon :name="fact.icon" :size="13" />
             {{ fact.text }}
@@ -202,25 +219,30 @@ const detailsOpen = ref(false);
       </span>
     </div>
 
-    <div
-      v-if="def"
-      class="flex min-w-0 flex-col gap-2 rounded-kira-sm border border-border p-3"
-      data-testid="approval-body"
-    >
-      <p
-        v-if="bodyFailed"
-        class="text-kira-md text-muted-foreground"
-        data-testid="approval-body-failed"
-      >
-        {{ t('workbench.approvals.risk.unreadable.tooltip') }}
-      </p>
-      <component
-        :is="def.content"
-        v-else
-        :item="item"
-        @options="(v: unknown) => store.setOption(item.id, v)"
-      />
-    </div>
+    <template v-if="def">
+      <ApprovalBox v-if="bodyFailed || !def.sections" testid="approval-body">
+        <p
+          v-if="bodyFailed"
+          class="text-kira-md text-muted-foreground"
+          data-testid="approval-body-failed"
+        >
+          {{ t('workbench.approvals.risk.unreadable.tooltip') }}
+        </p>
+        <component
+          :is="def.content"
+          v-else
+          :item="item"
+          @options="(v: unknown) => store.setOption(item.id, v)"
+        />
+      </ApprovalBox>
+      <div v-else class="flex min-w-0 flex-col gap-2" data-testid="approval-body" data-sections>
+        <component
+          :is="def.content"
+          :item="item"
+          @options="(v: unknown) => store.setOption(item.id, v)"
+        />
+      </div>
+    </template>
 
     <ul
       v-if="risks.length"

@@ -43,12 +43,10 @@ type Put struct {
 	Value       json.RawMessage
 	Secret      bool
 	Source      Source
-	// Origin binds a SourceUser value to the origin it was supplied for.
+	// Origin binds a value to the origin it goes to: a SourceUser value, or a secret.x an api_request script kept.
 	Origin string
 	// TTL of zero means Options.Retention; it never exceeds MaxTTL.
 	TTL time.Duration
-	// NotAfter, when set, caps the expiry: a value derived from another never outlives it.
-	NotAfter time.Time
 }
 
 type item struct {
@@ -184,6 +182,9 @@ func (s *Store) ttlFor(p Put) time.Duration {
 	return min(ttl, MaxTTL)
 }
 
+// Retention is how long a value Put now would be kept: the setting, capped at MaxTTL.
+func (s *Store) Retention() time.Duration { return s.ttlFor(Put{}) }
+
 // Put stores a value under a name in a scope, replacing an entry of the same name from the same kind
 // of source. It refuses at a cap; it never evicts.
 func (s *Store) Put(p Put) (Meta, error) {
@@ -223,9 +224,6 @@ func (s *Store) Put(p Put) (Meta, error) {
 	}
 	now := s.now()
 	expires := now.Add(ttl)
-	if !p.NotAfter.IsZero() && p.NotAfter.Before(expires) {
-		expires = p.NotAfter
-	}
 	it := &item{value: value, index: -1, meta: Meta{
 		ID: newID(), Scope: p.Scope, Name: p.Name, Type: typ, Bytes: len(value), Items: items,
 		Secret: p.Secret, Source: p.Source, Origin: p.Origin, CreatedAt: now, ExpiresAt: expires,
@@ -277,6 +275,17 @@ func (s *Store) Get(scope, name string) (Entry, bool) {
 		return Entry{}, false
 	}
 	return it.entry(), true
+}
+
+// Meta is Get without the value: it copies nothing, for checks that need only the flags and id.
+func (s *Store) Meta(scope, name string) (Meta, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	it := s.byScope[scope][name]
+	if !s.live(it) {
+		return Meta{}, false
+	}
+	return it.meta, true
 }
 
 // ByID returns the live entry with that id.

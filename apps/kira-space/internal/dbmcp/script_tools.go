@@ -103,44 +103,22 @@ const (
 	scriptLogsMax         = 500
 	scriptLogsMaxBytes    = 64 << 10
 	scriptWaitLongDefault = 0
-	scriptNext            = "Still running: call get_script_run to wait."
-	scriptNextLong        = "Long-running script, still running: call get_script_run to read output; stop it with operations cancel and this opId."
+	scriptNext            = "Still running: call run_script with this runId to wait."
+	scriptNextLong        = "Long-running script, still running: call run_script with this runId to read output; stop it with operations cancel and this opId."
 )
 
+// runScriptArgs start a run with scriptId or read one with runId.
 type runScriptArgs struct {
-	ScriptID    string         `json:"scriptId"`
+	ScriptID    string         `json:"scriptId,omitempty"`
+	RunID       string         `json:"runId,omitempty"`
 	Params      map[string]any `json:"params,omitempty"`
 	WaitSeconds *int           `json:"waitSeconds,omitempty"`
+	From        string         `json:"from,omitempty"`
+	Lines       *int           `json:"lines,omitempty"`
+	Contains    string         `json:"contains,omitempty"`
 }
 
-type getScriptRunArgs struct {
-	RunID       string `json:"runId"`
-	WaitSeconds *int   `json:"waitSeconds,omitempty"`
-	From        string `json:"from,omitempty"`
-	Lines       *int   `json:"lines,omitempty"`
-	Contains    string `json:"contains,omitempty"`
-}
-
-type scriptParamView struct {
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Options  []string `json:"options,omitempty"`
-	Default  []string `json:"default,omitempty"`
-	Required bool     `json:"required,omitempty"`
-	Secret   bool     `json:"secret,omitempty"`
-	Saved    bool     `json:"saved,omitempty"`
-}
-
-type scriptView struct {
-	ScriptID    string            `json:"scriptId"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Approval    string            `json:"approval"`
-	Mode        string            `json:"mode"`
-	Params      []scriptParamView `json:"params"`
-}
-
-// scriptRunView carries output lines once the run has ended, or when get_script_run filters them.
+// scriptRunView carries output lines once the run has ended, or when a read filters them.
 type scriptRunView struct {
 	RunID      string          `json:"runId"`
 	OpID       string          `json:"opId"`
@@ -190,22 +168,6 @@ func (s *Server) exposedRun(runID string) (ScriptRun, ExposedScript, bool, error
 		return ScriptRun{}, ExposedScript{}, false, err
 	}
 	return run, es, true, nil
-}
-
-func (s *Server) listScripts(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-	list, err := s.cfg.Scripts.Exposed()
-	if err != nil {
-		return toolError(err)
-	}
-	out := make([]scriptView, 0, len(list))
-	for _, e := range list {
-		v := scriptView{ScriptID: e.ID, Name: e.Name, Description: e.Description, Approval: e.Run, Mode: e.mode(), Params: make([]scriptParamView, 0, len(e.Params))}
-		for _, p := range e.Params {
-			v.Params = append(v.Params, scriptParamView(p))
-		}
-		out = append(out, v)
-	}
-	return jsonResult(map[string]any{"scripts": out})
 }
 
 // parseScriptParams reads the params argument: each value is a string or a list of strings.
@@ -282,6 +244,18 @@ func (s *Server) approveScript(ctx context.Context, es ExposedScript, plan Scrip
 }
 
 func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runScriptArgs) (*mcp.CallToolResult, any, error) {
+	if (a.ScriptID == "") == (a.RunID == "") {
+		return errResult("pass scriptId to start a run or runId to read one, not both")
+	}
+	if a.RunID != "" {
+		if len(a.Params) > 0 {
+			return errResult("params applies when starting a run with scriptId; drop it")
+		}
+		return s.readScriptRun(ctx, a)
+	}
+	if a.From != "" || a.Lines != nil || a.Contains != "" {
+		return errResult("from, lines and contains apply when reading a run with runId; drop them")
+	}
 	es, found, err := s.exposedScript(a.ScriptID)
 	if err != nil {
 		return toolError(err)
@@ -355,6 +329,7 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery, mode string) 
 		}
 		lines, cut := capLogBytes(log.Lines, q.FromEnd)
 		v.Lines, v.Truncated = lines, log.Truncated || cut || len(lines) < log.Matched
+		v.Note = logCutNote(*q, len(log.Lines) < log.Matched, cut, v.Truncated)
 		if q.Contains == "" {
 			v.LogLines = log.Matched
 		} else {
@@ -375,7 +350,8 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery, mode string) 
 	return jsonResult(v)
 }
 
-func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a getScriptRunArgs) (*mcp.CallToolResult, any, error) {
+// readScriptRun answers the state of one run; filters pick its stored output lines at any state.
+func (s *Server) readScriptRun(ctx context.Context, a runScriptArgs) (*mcp.CallToolResult, any, error) {
 	run, es, found, err := s.exposedRun(a.RunID)
 	if err != nil {
 		return toolError(err)
@@ -392,6 +368,28 @@ func (s *Server) getScriptRun(ctx context.Context, _ *mcp.CallToolRequest, a get
 		q = &ScriptLogQuery{FromEnd: a.From != "head", Limit: n, Contains: a.Contains}
 	}
 	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds, es.mode() == scriptModeLong), q, es.mode())
+}
+
+// logCutNote says what to do next after a cut: a line limit cut is lifted with lines or from, a byte cut
+// only narrowed. "" when nothing was cut.
+func logCutNote(q ScriptLogQuery, lineCut, byteCut, truncated bool) string {
+	end, other := "last", "head"
+	if !q.FromEnd {
+		end, other = "first", "tail"
+	}
+	switch {
+	case lineCut && byteCut:
+		return fmt.Sprintf("output cut at the line limit (%d) and the %d KiB limit: narrow with contains, or read the other end with from: %q", q.Limit, scriptLogsMaxBytes>>10, other)
+	case lineCut && q.Limit < scriptLogsMax:
+		return fmt.Sprintf("showing the %s %d lines: raise lines (max %d), read the other end with from: %q, or filter with contains", end, q.Limit, scriptLogsMax, other)
+	case lineCut:
+		return fmt.Sprintf("showing the %s %d lines: read the other end with from: %q, or filter with contains", end, q.Limit, other)
+	case byteCut:
+		return fmt.Sprintf("output cut at %d KiB: narrow with lines or contains", scriptLogsMaxBytes>>10)
+	case truncated:
+		return "output cut: narrow with lines or contains"
+	}
+	return ""
 }
 
 // capLogBytes drops lines from the far end until the text fits scriptLogsMaxBytes: the oldest for a
@@ -428,24 +426,17 @@ func boundWait(sch *jsonschema.Schema) *jsonschema.Schema {
 	return sch
 }
 
-// addScriptTools registers list_scripts, run_script and get_script_run.
+// addScriptTools registers run_script.
 func (s *Server) addScriptTools(srv *mcp.Server, src llmprompts.Source) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "list_scripts", Description: llmprompts.DbmcpToolListScripts.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_scripts", s.listScripts))
-	wait := map[string]any{"waitSeconds": llmprompts.LimitVars{Default: scriptWaitDefault, Max: scriptWaitMax}}
+	sch := boundWait(llmprompts.InputSchema[runScriptArgs](src, llmprompts.DbmcpToolRunScript.ID(), map[string]any{
+		"waitSeconds": llmprompts.LimitVars{Default: scriptWaitDefault, Max: scriptWaitMax},
+		"lines":       llmprompts.LimitVars{Default: scriptLogsDefault, Max: scriptLogsMax},
+	}))
+	sch.Properties["from"].Enum = []any{"tail", "head"}
+	sch.Properties["lines"].Minimum, sch.Properties["lines"].Maximum = jsonschema.Ptr(1.0), jsonschema.Ptr(float64(scriptLogsMax))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_script",
 		Description: llmprompts.DbmcpToolRunScript.Text(src, llmprompts.NoVars{}),
-		InputSchema: boundWait(llmprompts.RequireNonEmpty(llmprompts.InputSchema[runScriptArgs](src, llmprompts.DbmcpToolRunScript.ID(), wait), "scriptId")),
+		InputSchema: sch,
 	}, withPanicRecovery(s, "run_script", s.runScript))
-	runSch := boundWait(llmprompts.RequireNonEmpty(llmprompts.InputSchema[getScriptRunArgs](src, llmprompts.DbmcpToolGetScriptRun.ID(),
-		map[string]any{"waitSeconds": wait["waitSeconds"], "lines": llmprompts.LimitVars{Default: scriptLogsDefault, Max: scriptLogsMax}}), "runId"))
-	runSch.Properties["from"].Enum = []any{"tail", "head"}
-	runSch.Properties["lines"].Minimum, runSch.Properties["lines"].Maximum = jsonschema.Ptr(1.0), jsonschema.Ptr(float64(scriptLogsMax))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "get_script_run",
-		Description: llmprompts.DbmcpToolGetScriptRun.Text(src, llmprompts.NoVars{}),
-		InputSchema: runSch,
-	}, withPanicRecovery(s, "get_script_run", s.getScriptRun))
 }

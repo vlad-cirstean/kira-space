@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 )
 
 // NameValue is one header, query or form entry.
@@ -39,10 +40,11 @@ type Input struct {
 	// ScriptBodyBytes is the masked body cap for a response a transform script reads (0: no transform,
 	// MaxResponseBytes applies). Bounded to MaxScriptBodyBytes; not part of sameRequest.
 	ScriptBodyBytes int
-	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
+	// Inputs are the values the agent asks the user for; each is used as {{secret.<name>}}.
 	Inputs []InputDecl
-	// ScriptReads names the kept variables the request's scripts read by literal kept.get.
-	ScriptReads []string
+	// Staged are the values a prepare script saved in this run, by name: {{plain.x}} and {{secret.x}} in the
+	// request send them. Their entry ids start with "staged:".
+	Staged map[string]keptvars.Entry
 }
 
 // MaxScriptBodyBytes bounds ScriptBodyBytes.
@@ -142,9 +144,11 @@ type Result struct {
 	Binary      bool        `json:"binary,omitempty"`
 	BodyBytes   int         `json:"bodyBytes"`
 	Truncated   bool        `json:"truncated"`
-	ElapsedMs   int         `json:"elapsedMs"`
-	FinalURL    string      `json:"finalUrl"`
-	Redirects   []Redirect  `json:"redirects"`
+	// Hint names the next step when Truncated; set by the MCP tool, empty elsewhere.
+	Hint      string     `json:"hint,omitempty"`
+	ElapsedMs int        `json:"elapsedMs"`
+	FinalURL  string     `json:"finalUrl"`
+	Redirects []Redirect `json:"redirects"`
 	// Inputs says what happened to each declared input; set by the caller that kept them.
 	Inputs []InputStatus `json:"inputs,omitempty"`
 
@@ -211,6 +215,6 @@ type Service struct {
 	Globals func() (Globals, error)
 	// Access is the user's API access rules, read fresh per plan; nil means no rules.
 	Access func() (apiaccess.Policy, error)
-	// Kept resolves {{kept.<name>}} references; nil refuses them all.
+	// Kept resolves {{plain.<name>}} and {{secret.<name>}} references; nil refuses them all.
 	Kept KeptReader
 }

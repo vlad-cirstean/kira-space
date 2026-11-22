@@ -25,7 +25,7 @@ export interface ResolvedWindowShot extends ShotDef {
 }
 
 interface ResolvedCropShot extends ShotDef {
-  readonly kind: 'floating' | 'region';
+  readonly kind: 'floating' | 'region' | 'phone';
   readonly placeholder: boolean;
   readonly crop: string;
   readonly cropWidth: number;

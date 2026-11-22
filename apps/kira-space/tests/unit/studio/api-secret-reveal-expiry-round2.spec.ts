@@ -53,7 +53,7 @@ describe('revealHistoryEntry grace-window expiry (round 2 finding 5)', () => {
     (control as unknown as { variablesHistory: typeof control.variablesHistory }).variablesHistory =
       async () => [];
 
-    await variableSetStore.openHistoryMenu('tab-1', 'environment', 'env-1', 'var-1');
+    await variableSetStore.openHistoryMenu('var-1');
 
     await withCapturedTimeout(async (fire) => {
       const value = await variableSetStore.revealHistoryEntry('hist-1');
@@ -78,6 +78,7 @@ describe('Copy-as-curl revealed secret grace-window expiry (round 2 finding 5)',
           name: 'apiToken',
           value: '',
           isSecret: true,
+          secretSet: false,
           sortOrder: 0,
           description: '',
         },

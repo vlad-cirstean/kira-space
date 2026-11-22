@@ -32,7 +32,12 @@ function queue(round: 'five' | 'all'): ApprovalItem[] {
         expiresAt: new Date(base + 59 * 60_000).toISOString(),
       }));
     }
-    return liveItem({ ...it, payload }, 600, base + i);
+    // The five cards come from several agent sessions; this spec covers one queue, so they share one client and no session.
+    return liveItem(
+      { ...it, payload, origin: { ...it.origin, client: 'Claude Code 2.1.318', session: '' } },
+      600,
+      base + i,
+    );
   });
 }
 

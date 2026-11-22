@@ -108,7 +108,6 @@ type approvalResolution struct {
 // without it; a stored one may be sent to replace what Kira holds.
 type ApprovalInput struct {
 	Name   string
-	Label  string
 	Needed bool
 }
 
@@ -120,11 +119,11 @@ const maxInputBytes = 8 << 10
 // the answer JSON cannot be zeroed, so the wipe covers the copies Kira owns (stated in ARCHITECTURE).
 type SuppliedInputs map[string][]byte
 
-// Take returns the value of name and forgets it; the caller owns the bytes.
-func (si SuppliedInputs) Take(name string) []byte {
-	v := si[name]
+// Take returns name's value and forgets it; the caller owns the bytes. ok is false when none was typed.
+func (si SuppliedInputs) Take(name string) ([]byte, bool) {
+	v, ok := si[name]
 	delete(si, name)
-	return v
+	return v, ok
 }
 
 // Wipe zeroes every value still held.
@@ -184,8 +183,10 @@ type ApprovalResponse struct {
 	// Script is the script that produced Text from Raw; nil without one.
 	Script *HeldScript
 	// Keep are the values the script will keep once the user sends the result: previews, never the
-	// agent's text. Empty without kept.set.
+	// agent's text. Empty when the script writes no plain or secret value.
 	Keep []HeldKeep
+	// staged is the run that holds the values of Keep until the result is sent; only StagedSecret reads them.
+	staged *keptRun
 }
 
 // HeldKeep is one value a held result will keep. Preview is empty for a secret.
@@ -196,6 +197,8 @@ type HeldKeep struct {
 	Secret           bool
 	Preview          string
 	PreviewTruncated bool
+	// Deleted marks a temporary value the script removes; the other fields describe the value it removes.
+	Deleted bool
 }
 
 // HeldScript is the script a held result came from.
@@ -286,8 +289,8 @@ type ApprovalRequest struct {
 	Plan *ApprovalPlan
 	// Cluster is set for a Kubernetes read; Target is then empty.
 	Cluster *ApprovalCluster
-	// Subject is the approvals kind key. Empty derives it: kube.read with a Cluster, db.response
-	// at the response stage, else db.query.
+	// Subject is the approvals kind key. Empty derives it: kube.read with a Cluster (kube.response at the
+	// response stage), db.response at the response stage, else db.query.
 	Subject string
 	// Origin says which client asked; the tools copy it from the call's context.
 	Origin ApprovalOrigin
@@ -300,7 +303,8 @@ type ApprovalRequest struct {
 	// APIReview is set for the api.response subject: what the item shows beside the held response.
 	APIReview *apiReviewMeta
 	// Params are the kept names bound to the statement's placeholders, Placeholders how each shows on the card
-	// and Kept the entries as they stood when the statement was checked. Set on a db.query or db.exemption item.
+	// and Kept the entries as they stood when the statement was checked. Set on a db.query, db.exemption or
+	// kube.read item.
 	Params       []string
 	Placeholders []string
 	Kept         []agentapi.KeptUse
@@ -310,6 +314,8 @@ type ApprovalRequest struct {
 	Exemption *ApprovalExemption
 	// Inputs are the values the card asks the user to type (api.request); labels only, never values.
 	Inputs []ApprovalInput
+	// KeepMinutes is how long a typed value is kept; shown on the card.
+	KeepMinutes int
 	// OfferReview marks a pre-run item that shows "review the result" to the approver; ReviewOn says the
 	// connection's settings already review this call, so the choice is moot.
 	OfferReview bool
@@ -337,6 +343,8 @@ func (r ApprovalRequest) subject() string {
 	switch {
 	case r.Subject != "":
 		return r.Subject
+	case r.Cluster != nil && r.Stage == ApprovalStageResponse:
+		return approvals.KindKubeResponse
 	case r.Cluster != nil:
 		return approvals.KindKubeRead
 	case r.Stage == ApprovalStageResponse:
@@ -389,7 +397,7 @@ func newApprovalBrokerCaps(now func() time.Time, q *approvals.Queue, perResult, 
 		q = approvals.New(nil)
 	}
 	b := &ApprovalBroker{now: now, Queue: q, queue: notify.NewPendingQueue[*approvalEntry](), maxResult: perResult, maxTotal: total, timeout: ApprovalTimeout}
-	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
+	for _, kind := range []string{approvals.KindDbQuery, approvals.KindDbResponse, approvals.KindDbExemption, approvals.KindKubeRead, approvals.KindKubeResponse, approvals.KindScriptRun, approvals.KindAPIRequest, approvals.KindAPIResponse} {
 		q.Register(kind, brokerOwner{b})
 	}
 	return b
@@ -467,7 +475,7 @@ func checkAnswer(req ApprovalRequest, choice ApprovalChoice, typed map[string]st
 	for _, in := range req.Inputs {
 		if _, ok := supplied[in.Name]; in.Needed && !ok {
 			supplied.Wipe()
-			return nil, ipcerr.Contract("enter %s to send", in.Label)
+			return nil, ipcerr.Contract("enter %s to send", in.Name)
 		}
 	}
 	return supplied, nil
@@ -611,6 +619,36 @@ func (b *ApprovalBroker) ResponseFor(requestID string) (ApprovalResponse, bool) 
 	return *e.req.Response, true
 }
 
+// StagedSecret returns the text of a secret value the held result of requestID will keep, for the user's
+// reveal. false once the request resolved, or for a name that is not a staged secret.
+func (b *ApprovalBroker) StagedSecret(requestID, name string) (string, bool) {
+	b.mu.Lock()
+	e, ok := b.entryLocked(requestID)
+	var run *keptRun
+	if ok && e.req.Stage == ApprovalStageResponse && e.req.Response != nil {
+		run = e.req.Response.staged
+	}
+	b.mu.Unlock()
+	return run.stagedSecret(name)
+}
+
+// DropStaged removes one value the held result of requestID would keep: the user chose not to keep it.
+// false once the request resolved, or for a name that is not staged.
+func (b *ApprovalBroker) DropStaged(requestID, name string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	e, ok := b.entryLocked(requestID)
+	if !ok || e.req.Stage != ApprovalStageResponse || e.req.Response == nil {
+		return false
+	}
+	r := e.req.Response
+	if !r.staged.dropName(name) {
+		return false
+	}
+	r.Keep = slices.DeleteFunc(slices.Clone(r.Keep), func(h HeldKeep) bool { return h.Name == name })
+	return true
+}
+
 // Approve resolves requestID as approved. Deny resolves it as denied. Both report
 // ApprovalActionAlreadyResolved, never an error, for an unknown or already-resolved id —
 // whichever window (or Request's own deadline/ctx branch) got there first wins, the other is a
@@ -712,6 +750,11 @@ type ApprovalCluster struct {
 	Namespace string // "" means all namespaces, or none for discovery
 	// Operation is the permission group: discover, list, describe or logs.
 	Operation string
+	// Tool is the MCP tool name; Request the final args of a list, describe or logs read (after prepare).
+	Tool    string
+	Request kubeRequest
+	// Script is the scripts of the read, shown beside the statement; nil without one.
+	Script *apiScripts
 }
 
 // ApprovalValue is one param or env entry of a script request. A secret's Value is always "".

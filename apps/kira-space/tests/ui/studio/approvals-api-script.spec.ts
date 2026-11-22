@@ -4,7 +4,7 @@ import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { editorOverflows, scrollBodyToEnd } from './support/approvalItems';
-import { editorText } from './support/editorText';
+import { editorText, squash } from './support/editorText';
 
 // Contract approvals-api-script. Backend half: dbmcpflow TestApiRequestScripted, the same scenario.
 // A request with a prepare and a transform script parks with both sources read-only and highlighted,
@@ -33,13 +33,15 @@ test('contract: both scripts show highlighted next to the prepared request', asy
   await pushApprovals(page, [liveItem(it)]);
   const card = page.locator(`[data-testid="approval-item-${it.id}"]`);
 
-  await expect(
-    card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs 2 scripts' }),
-  ).toBeVisible();
+  await expect(card.locator('[data-testid="approval-fact"]')).toHaveCount(0);
   const prepare = card.locator('[data-testid="api-approval-script-prepare"]');
   const transform = card.locator('[data-testid="api-approval-script-transform"]');
-  await expect.poll(() => editorText(prepare)).toBe(payload.script.prepare.source);
-  await expect.poll(() => editorText(transform)).toBe(payload.script.transform.source);
+  await expect
+    .poll(async () => squash(await editorText(prepare)))
+    .toBe(squash(payload.script.prepare.source));
+  await expect
+    .poll(async () => squash(await editorText(transform)))
+    .toBe(squash(payload.script.transform.source));
 
   // Monaco's javascript tokenizer colours a keyword apart from an identifier.
   await expect
@@ -54,16 +56,13 @@ test('contract: both scripts show highlighted next to the prepared request', asy
   await expect
     .poll(() => editorText(card.locator('[data-testid="api-approval-body-text"]')))
     .toContain('"items"');
-  await card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs 2 scripts' }).hover();
-  await expect(page.locator('[data-slot="tooltip-content"]').last()).toContainText(
-    'only what the transform script returns',
-  );
   await card.locator('[data-testid="approval-details-toggle"]').click();
   await expect(
     card.locator('[data-testid="api-approval-script-input"][data-colorized] span').first(),
   ).toBeVisible();
+  await expect(card.locator('[data-testid="api-approval-script-changed"]')).toContainText('body');
   await expect(card.locator('[data-testid="api-approval-script-changed"]')).toContainText(
-    'body, contentType',
+    'contentType',
   );
   await expect(card.locator('[data-testid="api-approval-script-input"]')).toContainText(
     payload.script.prepare.input,

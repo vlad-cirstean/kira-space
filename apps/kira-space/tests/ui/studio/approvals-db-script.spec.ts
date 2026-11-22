@@ -43,14 +43,13 @@ test('contract: the card shows the script next to the statement that runs', asyn
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = cardOf(page, it);
-  await expect(
-    card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs a script' }),
-  ).toBeVisible();
-  await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveCount(0);
-  await expect(card.locator('[data-testid="db-approval-may-keep"]')).toHaveCount(0);
+  await expect(card.locator('[data-testid="approval-fact"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toBeVisible();
   const script = card.locator('[data-testid="db-approval-script"]');
-  await expect.poll(() => editorText(script)).toBe(payload.script.source);
+  // Shown formatted: only whitespace differs from the source the agent wrote.
+  await expect
+    .poll(async () => (await editorText(script)).replace(/\s+/g, ''))
+    .toBe(payload.script.source.replace(/\s+/g, ''));
   await expect(script.locator('.kira-ed-kept')).toHaveCount(0);
 });
 
@@ -67,20 +66,29 @@ test('contract: Send answers the item id', async ({ relaunch }) => {
     .toEqual({ ids: [it.id], approve: true, options: null });
 });
 
-test('contract: a script that reads and keeps values marks both and lists what it reads', async ({
+test('contract: a script that reads and saves values marks both and lists what it reads', async ({
   relaunch,
 }) => {
   const it = keptItem();
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const card = cardOf(page, it);
-  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: ids');
-  await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveText('May keep: n');
+  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
   const row = card.locator('[data-testid="db-approval-kept-ids"]');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText(/1,\s*2/);
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Transform script');
-  await expect(card.locator('[data-testid="db-approval-may-keep"]')).toContainText('n');
-  await expect(card.locator('[data-testid="db-approval-script-reads"]')).toBeVisible();
-  // kept.get("ids") and kept.set("n", ...) are each marked in the source.
-  await expect(card.locator('[data-testid="db-approval-script"] .kira-ed-kept')).toHaveCount(2);
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Transform script',
+  );
+  // plain.ids and plain.n are each marked in the source.
+  // Monaco splits a mark per token, so compare the marked text, not the span count.
+  await expect
+    .poll(async () =>
+      (
+        await card
+          .locator('[data-testid="db-approval-script"] .kira-ed-kept')
+          .evaluateAll((els) => els.map((e) => e.textContent).join(''))
+      ).replace(/\s+/g, ''),
+    )
+    .toBe('plain.nplain.ids');
 });

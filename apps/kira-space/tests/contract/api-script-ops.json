@@ -121,5 +121,5 @@
   "failureText:transformRuntime": "transform script failed: script runtime error at line 1, column 13: TypeError: Cannot read property 'x' of undefined. The request was sent (HTTP 200); its response is not returned.",
   "failureText:transformSyntax": "transform script: script syntax error at line 1, column 9: SyntaxError: Unexpected token }. Nothing was sent.",
   "failureText:transformTimeout": "transform script failed: script timeout error: script exceeded its time limit. The request was sent (HTTP 200); its response is not returned.",
-  "result": "{\"result\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
+  "result": "{\"output\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
 }

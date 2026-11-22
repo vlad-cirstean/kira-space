@@ -41,6 +41,9 @@ type DbMcpSettings struct {
 	APIScripts bool `json:"apiScripts"`
 	// APIReviewResponses holds api_request responses for the user's review; an environment can override it.
 	APIReviewResponses bool `json:"apiReviewResponses"`
+	// KubeReviewResponses holds kube_read list, describe and logs results for the user's
+	// review; a cluster can override it.
+	KubeReviewResponses bool `json:"kubeReviewResponses"`
 }
 
 // ApiSettings mirrors packages/shared/domain/settings.ts's apiSettingsSchema — the
@@ -93,6 +96,7 @@ type DbMcpPatch struct {
 	KeptRetentionMinutes *int  `json:"keptRetentionMinutes,omitempty"`
 	APIScripts           *bool `json:"apiScripts,omitempty"`
 	APIReviewResponses   *bool `json:"apiReviewResponses,omitempty"`
+	KubeReviewResponses  *bool `json:"kubeReviewResponses,omitempty"`
 }
 
 // ValidHTTPVersion mirrors settings.ts's HTTP_VERSIONS — Go's HTTP/1 *is* 1.1, so "1" is never a

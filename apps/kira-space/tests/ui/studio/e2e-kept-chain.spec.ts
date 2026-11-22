@@ -40,9 +40,10 @@ test('contract: the card shows the kept list with its digits and marks the refer
   });
   await pushApprovals(page, [it]);
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: ids');
   const row = c.locator('[data-testid="api-approval-kept-ids"]');
-  await expect(row).toContainText('List of 2');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('9007199254740993');
   await expect(c.locator('[data-testid="api-approval-body-text"] .kira-ed-kept')).toHaveCount(1);
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
@@ -61,11 +62,7 @@ test('contract: a script rewrites the body and the card shows the result the req
   await expect(c.locator('[data-testid="api-approval-body-text"]')).toContainText(
     '"id": 9007199254740993',
   );
-  const chain = c.locator('[data-testid="approval-chain"]');
-  await expect(chain.locator('[data-testid="approval-chain-step"]')).not.toHaveCount(0);
-  const current = chain.locator('[data-testid="approval-chain-current"]');
-  await expect(current).toContainText('POST');
-  await expect(current.locator('[data-slot="badge"]')).not.toHaveCount(0);
+  await expect(c.locator('[data-testid="approval-chain"]')).toHaveCount(0);
   await c.locator('[data-testid="approval-details-toggle"]').click();
   await expect(c.locator('[data-testid="api-approval-script-changed"]')).toBeVisible();
 });

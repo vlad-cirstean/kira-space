@@ -26,9 +26,15 @@
         },
         "host": "127.0.0.1",
         "isError": false,
+        "masked": [],
         "method": "GET",
         "rawBytes": 0,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": false,
         "status": 200,
         "statusText": "OK",
@@ -71,9 +77,15 @@
         },
         "host": "127.0.0.1",
         "isError": true,
+        "masked": [],
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -116,9 +128,15 @@
         },
         "host": "127.0.0.1",
         "isError": false,
+        "masked": [],
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -161,9 +179,15 @@
         },
         "host": "127.0.0.1",
         "isError": false,
+        "masked": [],
         "method": "POST",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -207,7 +231,7 @@
       "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
       "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
     },
-    "text": "{\"result\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
+    "text": "{\"output\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
   },
   "DbMcpService.PendingResponse#scriptedWrite": {
     "isError": false,
@@ -218,7 +242,7 @@
       "hash": "e64a7dec5926ef4e0d81aa2a9773a6850acaab1349bb403739afe62b7c9ab8ed",
       "source": "return response.json.users.map(u => ({id: u.id, domain: u.email.split('@')[1]}));"
     },
-    "text": "{\"result\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
+    "text": "{\"output\":[{\"id\":9007199254740993,\"domain\":\"x.test\"},{\"id\":2,\"domain\":\"y.test\"}]}"
   },
   "args:ApprovalsService.Answer#plain": {
     "approve": true,

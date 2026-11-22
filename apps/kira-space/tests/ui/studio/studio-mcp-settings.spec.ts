@@ -28,7 +28,7 @@ test('Studio MCP settings: nav shows the parent and five children, each section 
     ['clusters', 'Kubernetes'],
     ['scripts', 'Scripts'],
     ['API', 'API tools'],
-    ['variables', 'Variables'],
+    ['variables', 'Temporary variables'],
   ] as const) {
     await expect(nav(`Studio MCP ${child}`)).toHaveText(label);
     await expect(nav(`Studio MCP ${child}`)).toHaveClass(/pl-4/);

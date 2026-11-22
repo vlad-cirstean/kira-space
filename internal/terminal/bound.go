@@ -321,3 +321,59 @@ func (b *BoundService) requireAgent(agent bool) error {
 	_, err := b.Agent.Active().Locate(context.Background(), "")
 	return err
 }
+
+// HoldArgs names the terminal to hold or release.
+type HoldArgs struct {
+	TerminalID string `json:"terminalId"`
+}
+
+// HoldResult is Hold's wire shape.
+type HoldResult struct {
+	End  int64 `json:"end"`  // bytes emitted to the owner so far
+	Live bool  `json:"live"` // false: no live session, nothing held
+}
+
+// AdoptArgs is Adopt's wire shape.
+type AdoptArgs struct {
+	TerminalID string `json:"terminalId"`
+	WindowKey  string `json:"windowKey"`
+}
+
+// Hold stops terminalId's output going to its window and buffers it, ahead of a move to another
+// window (P722). A second Hold on a held terminal is E_CONTRACT.
+func (b *BoundService) Hold(args HoldArgs) (HoldResult, error) {
+	if args.TerminalID == "" {
+		return HoldResult{}, ipcerr.Required("terminalId")
+	}
+	end, live, err := b.Registry.Hold(args.TerminalID)
+	if err != nil {
+		return HoldResult{}, ipcerr.Contract("%s", err.Error())
+	}
+	return HoldResult{End: end, Live: live}, nil
+}
+
+// Adopt makes the window the terminal's output target and returns what was held meanwhile. The
+// window must be the owner after the move; no hold is E_CONTRACT.
+func (b *BoundService) Adopt(args AdoptArgs) (AdoptResult, error) {
+	if args.TerminalID == "" {
+		return AdoptResult{}, ipcerr.Required("terminalId")
+	}
+	if args.WindowKey == "" {
+		return AdoptResult{}, ipcerr.Required("windowKey")
+	}
+	res, err := b.Registry.Adopt(args.TerminalID, args.WindowKey)
+	if err != nil {
+		return AdoptResult{}, ipcerr.Contract("%s", err.Error())
+	}
+	return res, nil
+}
+
+// Release ends a hold in the window that held it, replaying the buffered output there: a move that
+// failed. A no-op for a terminal not held.
+func (b *BoundService) Release(args HoldArgs) error {
+	if args.TerminalID == "" {
+		return ipcerr.Required("terminalId")
+	}
+	b.Registry.Release(args.TerminalID)
+	return nil
+}

@@ -121,10 +121,11 @@ U41 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host maps
 U62 packages/workbench/src/terminal/terminalRenderer.ts # xterm engine host owns terminal focus: Terminal.focus(), not DOM focus
 U11 packages/workbench/src/components/LogLines.vue # ANSI bold is log data
 U11 apps/kira-space/frontend/src/studio/approvals/RequestLine.vue # method and host weight in a code line, not a heading
+U11 apps/kira-space/frontend/src/studio/approvals/KubeRequestLine.vue # verb and resource weight in a code line, not a heading
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
-U36 packages/workbench/src/approvals/ApprovalItemCard.vue # outlined focus box: Card draws no border, and the box must read as one frame around the request
+U36 packages/workbench/src/approvals/ApprovalBox.vue # outlined focus box: Card draws no border, and each section reads as its own frame
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours
@@ -139,7 +140,8 @@ U52 apps/kira-space/frontend/src/studio/views/shared/celleditor/timestamp.ts # s
 U62 apps/kira-space/frontend/src/studio/views/console/ConsoleView.vue # Monaco host exposes focus(); not a DOM element focus
 U47 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # 2D arrow navigation between text inputs; useListNavigation ignores text fields
 U62 apps/kira-space/frontend/src/studio/views/shared/fields/FieldRowsTable.vue # moves focus between sibling inputs and sets the caret
-U62 apps/kira-space/frontend/src/studio/approvals/PendingResponse.vue # Left/Right rove the one expand button across cells; the popover takes focus itself so Copy shows no tooltip over the first Esc
+U62 apps/kira-space/frontend/src/studio/api/VariablesMatrix.vue # arrow keys move focus between grid cells in two dimensions; useListNavigation is one-dimensional
+U62 apps/kira-space/frontend/src/studio/approvals/ReviewTable.vue # Left/Right rove the one expand button across cells; the popover takes focus itself so Copy shows no tooltip over the first Esc
 # B (apps/kira-space)
 U101 packages/workbench/src/approvals/ApprovalsDialog.vue # count marks approvals awaiting the person
 U101 apps/kira-space/frontend/src/ade/v2/shell/AdeShell.vue # count badge marks sessions needing attention, not a tab count
@@ -368,7 +370,6 @@ U179@@vt@@@@byte size passed as a count (use formatBytes, {size})@@\bcount:\s*(?
 U180@@v@@KeptNameMark.vue@@hand kept name and type (use KeptNameMark)@@:mark-class="[^"]*KEPT_MARK_CLASS[^"]*"\s*/>\s*<span
 U181@@vt@@@@JSON.parse/stringify pretty-print (use beautify.ts indentJson, prettyJson)@@JSON\.stringify\(\s*JSON\.parse\(
 U183@@vt@@StagedKeepList.vue@@hand Will keep list (use StagedKeepList)@@studio\.kept\.willKeep\.label
-U184@@vt@@TransformScriptBlock.vue@@hand transform script kept marks (use TransformScriptBlock)@@studio\.kept\.mayKeep\.label|studio\.kept\.scriptReads\.hint
 U185@@v@@GrpcStatusBadge.vue@@hand gRPC status chip (use GrpcStatusBadge)@@\bgrpcCodeClass\(|\bgrpcCodeHint\(
 U186@@vt@@ValueRevealButton.vue@@hand value reveal toggle (use ValueRevealButton)@@common\.secret\.show\.label|common\.hideValue\.label|docker\.env\.revealValue|(?s:import MaskedValue\b.*?(?:icon="eye"|'eye'))
 U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@\.client,\s*\w+\.cwd,\s*\w+\.task\b

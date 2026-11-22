@@ -44,13 +44,16 @@ test('contract: the card lists the variable with its value, source and where the
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = cardOf(page, it);
-  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: word');
+  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: word');
   await expect(c.locator('[data-testid="db-approval-kept-expiring"]')).toHaveCount(0);
   const row = c.locator('[data-testid="db-approval-kept-word"]');
-  await expect(row).toContainText('Text');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('drop table');
-  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText('Expires in 47m');
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Statement, Parameter 1');
+  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText(/47m( \d+s)? left/);
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Text');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Statement, Parameter 1',
+  );
 });
 
 test('contract: the placeholder is marked in the statement as sent', async ({ relaunch }) => {
@@ -73,7 +76,7 @@ test('contract: the parameters block pairs each placeholder with its variable', 
   const params = cardOf(page, it).locator('[data-testid="db-approval-params"]');
   await expect(params.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   const value = params.locator('[data-testid="db-approval-param-0-value"]');
-  await expect(value.locator('mark')).toHaveText('{{kept.word}}');
+  await expect(value.locator('mark')).toHaveText('{{plain.word}}');
   await expect(value).toContainText('Text');
 });
 
@@ -94,12 +97,12 @@ test('contract: a lifted-limit request shows the same variables and marks', asyn
   await pushApprovals(page, [it]);
   const c = cardOf(page, it);
   await expect(c.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveCount(1);
-  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: n');
+  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: n');
   await expect(c.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   await expect(c.locator('[data-testid="db-mcp-approval-statement"] .kira-ed-kept')).toHaveCount(1);
 });
 
-test('contract: Manage kept variables opens the settings view', async ({ relaunch }) => {
+test('contract: Manage temporary variables opens the settings view', async ({ relaunch }) => {
   const it = withTimes(query(), 2880);
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);

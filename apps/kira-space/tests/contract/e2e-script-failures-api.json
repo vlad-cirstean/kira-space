@@ -26,9 +26,15 @@
         },
         "host": "127.0.0.1",
         "isError": true,
+        "masked": [],
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

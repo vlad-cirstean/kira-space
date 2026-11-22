@@ -167,53 +167,47 @@ func TestDbMcpModeGate(t *testing.T) {
 	}
 }
 
-// list_connections reports per-mode access and the read enforcement; the Studio mirror in
+// list reports the access summary and the engine enforcement; the Studio mirror in
 // packages/shared/domain/dbmcp.ts is pinned to this output.
 func TestDbMcpListConnectionsAccess(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
 	f.addConn(t, "frozen", "sqlite", "allow", "allow", "allow", true)
-	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list_connections"})
+	res, err := sess.CallTool(ctx, &mcp.CallToolParams{Name: "list", Arguments: map[string]any{"what": []string{"connections"}}})
 	if err != nil || res.IsError {
-		t.Fatalf("list_connections = %q (%v)", text(res), err)
+		t.Fatalf("list = %q (%v)", text(res), err)
 	}
-	var conns []struct {
-		Name        string `json:"name"`
-		Enforcement string `json:"enforcement"`
-		Access      struct {
-			Write struct {
-				Reason string `json:"reason"`
-			} `json:"write"`
-			DDL struct {
-				Reason string `json:"reason"`
-			} `json:"ddl"`
-			Summary string `json:"summary"`
-		} `json:"access"`
+	var listed struct {
+		Connections []struct {
+			Name        string `json:"name"`
+			Enforcement string `json:"enforcement"`
+			Access      string `json:"access"`
+		} `json:"connections"`
 	}
-	if err := json.Unmarshal([]byte(text(res)), &conns); err != nil {
-		t.Fatalf("list_connections JSON: %v", err)
+	if err := json.Unmarshal([]byte(text(res)), &listed); err != nil {
+		t.Fatalf("list JSON: %v", err)
 	}
 	type row struct{ Name, Enforcement, Summary string }
 	rows := []row{}
-	for _, c := range conns {
-		rows = append(rows, row{c.Name, c.Enforcement, c.Access.Summary})
+	for _, c := range listed.Connections {
+		rows = append(rows, row{c.Name, c.Enforcement, c.Access})
 		switch c.Name {
 		case "notes db":
-			if c.Enforcement != "session" || c.Access.Summary != "read, write (approval)" || c.Access.DDL.Reason != "permission denied" {
+			if c.Enforcement != "session" || c.Access != "read, write (approval)" {
 				t.Fatalf("notes db = %+v", c)
 			}
 		case "frozen":
-			if c.Access.Summary != "read" || c.Access.Write.Reason != "read-only connection" {
+			if c.Access != "read" {
 				t.Fatalf("frozen = %+v", c)
 			}
 		}
 	}
 	if len(rows) != 2 {
-		t.Fatalf("list_connections = %d rows, want 2: %+v", len(rows), rows)
+		t.Fatalf("list = %d rows, want 2: %+v", len(rows), rows)
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Name < rows[j].Name })
 	// Contract dbmcp-list-access: tests/ui/connection-mcp-access.spec.ts mirrors these summaries.
-	f.app.Contract(t, "dbmcp-list-access", "list_connections", rows)
+	f.app.Contract(t, "dbmcp-list-access", "list", rows)
 }
 
 // A lane opens on the first read, is rebuilt after a reconnect and closes on disconnect.

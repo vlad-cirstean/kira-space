@@ -2,9 +2,13 @@ import { base64ToBytes } from '@shared/domain/base64';
 import { canonicalPath } from '@shared/domain/path';
 import type { TerminalLaunchKind } from '@shared/domain/tabs';
 import type { TerminalEvent } from '@shared/protocol/events';
+import { t } from '@theme/i18n';
+import { promiseTimeout } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
+import { TIMING } from '../behaviour/timing';
 import { errorText } from '../bridge/codedError';
+import type { TabTerminalPayload, TerminalAdopt, TerminalHold } from '../bridge/createCoreControl';
 import { fireAndForget } from '../bridge/fireAndForget';
 import { logError } from '../bridge/log';
 import type { TerminalFileLinks } from '../terminal/terminalRenderer';
@@ -65,7 +69,22 @@ export interface TerminalsControl {
   terminalWrite(terminalId: string, data: string): Promise<void>;
   terminalResize(terminalId: string, cols: number, rows: number): Promise<void>;
   terminalClose(terminalId: string): Promise<void>;
+  /** Tab move (Kira Space only; absent in Docker exec). */
+  terminalHold?(terminalId: string): Promise<TerminalHold>;
+  terminalAdopt?(terminalId: string): Promise<TerminalAdopt>;
+  terminalRelease?(terminalId: string): Promise<void>;
 }
+
+/** What a terminal tab needs to be re-created in the window it moves to. */
+export interface AdoptedTerminalTab {
+  tabId: string;
+  codeRepoId: string;
+  cwd: string;
+  command: string;
+  launchKind: TerminalLaunchKind;
+}
+
+const encoder = new TextEncoder();
 
 // P99: was module-level reactive()/plain-Map state. Now a Pinia setup store, same
 // single-responsibility module.
@@ -109,7 +128,61 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       };
     }
 
-    function appendToDrain(tabId: string, bytes: Uint8Array): void {
+    // Cumulative bytes routed per terminal (event `end`), so a move can wait for every event the
+    // source was sent before it serializes; events and call responses do not order against each other.
+    const routedEnd = new Map<string, number>();
+    const routedWaiters = new Map<string, { end: number; done: () => void }[]>();
+    // Ids whose output is queued, not written, until the Adopt answer says where the held bytes end.
+    const adopting = new Map<string, { end: number; bytes: Uint8Array }[]>();
+    // Source-window screens waiting for the new xterm's sink; written first, exempt from the drain cap.
+    const snapshots = new Map<string, string>();
+
+    function noteRouted(tabId: string, end: number): void {
+      routedEnd.set(tabId, end);
+      const waiters = routedWaiters.get(tabId);
+      if (!waiters) return;
+      const rest = waiters.filter((w) => {
+        if (end < w.end) return true;
+        w.done();
+        return false;
+      });
+      if (rest.length > 0) routedWaiters.set(tabId, rest);
+      else routedWaiters.delete(tabId);
+    }
+
+    function waitRouted(tabId: string, end: number, ms: number): Promise<void> {
+      if ((routedEnd.get(tabId) ?? 0) >= end) return Promise.resolve();
+      let waiter: { end: number; done: () => void } | undefined;
+      const reached = new Promise<void>((done) => {
+        waiter = { end, done };
+        routedWaiters.set(tabId, [...(routedWaiters.get(tabId) ?? []), waiter]);
+      });
+      return Promise.race([reached, promiseTimeout(ms)]).finally(() => {
+        const rest = (routedWaiters.get(tabId) ?? []).filter((w) => w !== waiter);
+        if (rest.length > 0) routedWaiters.set(tabId, rest);
+        else routedWaiters.delete(tabId);
+      });
+    }
+
+    // Resolvers of waitExited, run when the tab's exit event lands.
+    const exitWaiters = new Map<string, (() => void)[]>();
+
+    function waitExited(tabId: string, ms: number): Promise<void> {
+      // The exit event often reaches the renderer before the hold reply; nothing left to wait for.
+      if (byTabId.get(tabId)?.status !== 'running') return Promise.resolve();
+      let done: (() => void) | undefined;
+      const exited = new Promise<void>((resolve) => {
+        done = resolve;
+        exitWaiters.set(tabId, [...(exitWaiters.get(tabId) ?? []), resolve]);
+      });
+      return Promise.race([exited, promiseTimeout(ms)]).finally(() => {
+        const rest = (exitWaiters.get(tabId) ?? []).filter((w) => w !== done);
+        if (rest.length > 0) exitWaiters.set(tabId, rest);
+        else exitWaiters.delete(tabId);
+      });
+    }
+
+    function appendToDrain(tabId: string, bytes: Uint8Array, bounded = true): void {
       let drain = drainByTabId.get(tabId);
       if (!drain) {
         drain = { chunks: [], bytes: 0 };
@@ -117,7 +190,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       }
       drain.chunks.push(bytes);
       drain.bytes += bytes.byteLength;
-      while (drain.bytes > DRAIN_LIMIT_BYTES && drain.chunks.length > 1) {
+      while (bounded && drain.bytes > DRAIN_LIMIT_BYTES && drain.chunks.length > 1) {
         const dropped = drain.chunks.shift();
         if (dropped) drain.bytes -= dropped.byteLength;
       }
@@ -127,7 +200,12 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     // Output arriving after closeTerminalSession has already deleted this tab's byTabId entry
     // (racing terminalClose) has nowhere left to drain to -- buffering it anyway just leaks up to
     // DRAIN_LIMIT_BYTES per stale tab id forever, so the drain branch checks byTabId first.
-    function routeTerminalData(terminalId: string, bytes: Uint8Array): void {
+    function routeTerminalData(terminalId: string, bytes: Uint8Array, end = 0): void {
+      const queue = adopting.get(terminalId);
+      if (queue) {
+        queue.push({ end, bytes });
+        return;
+      }
       const sink = sinks.get(terminalId);
       if (sink) {
         sink(bytes);
@@ -143,6 +221,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         sess.status = event.error ? 'failed' : 'exited';
         sess.exitCode = event.exitCode ?? null;
         sess.error = event.error || null;
+        for (const done of exitWaiters.get(event.terminalId) ?? []) done();
       } else if (sess.status === 'starting') {
         sess.status = 'running';
       }
@@ -156,7 +235,10 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       if (subscribed) return;
       subscribed = true;
       control.onTerminal((event) => {
-        if (event.data) routeTerminalData(event.terminalId, base64ToBytes(event.data));
+        // Docker exec events carry no `end`.
+        const end = typeof event.end === 'number' ? event.end : undefined;
+        if (event.data) routeTerminalData(event.terminalId, base64ToBytes(event.data), end);
+        if (end !== undefined) noteRouted(event.terminalId, end);
         applyTerminalStatus(event);
       });
     }
@@ -278,14 +360,139 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
      *  already follows.
      *  Without it, closing any tab of any kind fired a needless TerminalService.Close round trip.
      */
-    function closeTerminalSession(tabId: string): void {
-      if (!byTabId.has(tabId)) return;
+    function forget(tabId: string): void {
       byTabId.delete(tabId);
       lastSize.delete(tabId);
       sinks.delete(tabId);
       drainByTabId.delete(tabId);
+      routedEnd.delete(tabId);
+      for (const done of exitWaiters.get(tabId) ?? []) done();
+      exitWaiters.delete(tabId);
+      adopting.delete(tabId);
+      snapshots.delete(tabId);
       writer.drop(tabId);
+    }
+
+    function closeTerminalSession(tabId: string): void {
+      if (!byTabId.has(tabId)) return;
+      forget(tabId);
       fireAndForget(control.terminalClose(tabId), 'terminals');
+    }
+
+    /** The session moved to another window: drop every local trace without killing the pty. */
+    function detachTerminalSession(tabId: string): void {
+      forget(tabId);
+    }
+
+    /** Source side of a tab move: holds a live session's output, waits for every event already sent,
+     *  then serializes the screen. Throws when the hold is refused; the caller releases on a later
+     *  failure. */
+    async function prepareTerminalMove(
+      tabId: string,
+      opts?: { maxBytes?: number },
+    ): Promise<{ payload: TabTerminalPayload; live: boolean }> {
+      const sess = byTabId.get(tabId);
+      if (!sess) throw new Error('terminal has no session');
+      let live = false;
+      if (sess.status === 'running') {
+        if (!control.terminalHold) throw new Error('terminal move is not supported');
+        const held = await control.terminalHold(tabId);
+        live = held.live;
+        if (live) await waitRouted(tabId, held.end, TIMING.terminalMoveSettle);
+        // Not live: the shell exited after this window last saw it running. Its exit event is on
+        // the way; the target must adopt the recorded exit, not try to adopt a dead session.
+        else await waitExited(tabId, TIMING.terminalMoveSettle);
+      }
+      const renderer = await loadTerminalRenderer();
+      const shot = await renderer.serializeTerminal(tabId, opts?.maxBytes);
+      const size = lastSize.get(tabId) ?? { cols: 80, rows: 24 };
+      // A terminal Go reports not live is never sent as running, even if no exit event arrived.
+      const status = live ? 'running' : sess.status === 'running' ? 'exited' : sess.status;
+      return {
+        live,
+        payload: {
+          snapshot: shot?.snapshot ?? '',
+          cols: shot?.cols ?? size.cols,
+          rows: shot?.rows ?? size.rows,
+          status: status === 'starting' ? 'running' : status,
+          exitCode: sess.exitCode ?? undefined,
+          error: sess.error ?? undefined,
+          shell: sess.shell,
+        },
+      };
+    }
+
+    /** Ends a hold after a failed move: Go replays the held bytes here and output resumes. */
+    async function releaseTerminalMove(tabId: string): Promise<void> {
+      await control.terminalRelease?.(tabId);
+    }
+
+    // Writes what the Adopt answer held, then the live chunks that arrived meanwhile and are newer.
+    function replayAdopted(tabId: string, result: TerminalAdopt): void {
+      const deliver = (bytes: Uint8Array): void => {
+        const sink = sinks.get(tabId);
+        if (sink) sink(bytes);
+        else appendToDrain(tabId, bytes, false);
+      };
+      if (result.truncated) {
+        const notice = t('workbench.terminal.moveTruncated.status');
+        deliver(encoder.encode(`\r\n\x1b[2m${notice}\x1b[0m\r\n`));
+      }
+      if (result.data) deliver(base64ToBytes(result.data));
+      // Live events only note ends this window saw; an idle terminal's next move waits for none.
+      noteRouted(tabId, Math.max(routedEnd.get(tabId) ?? 0, result.end));
+      for (const chunk of adopting.get(tabId) ?? []) {
+        if (chunk.end > result.end) deliver(chunk.bytes);
+      }
+      adopting.delete(tabId);
+      if (result.exited) {
+        applyTerminalStatus({
+          terminalId: tabId,
+          end: result.end,
+          exited: true,
+          exitCode: result.exitCode,
+          error: result.error,
+        });
+      }
+    }
+
+    /** Target side of a tab move: re-creates the session entry, then (live) takes over the output. */
+    async function adoptTerminalSession(
+      tab: AdoptedTerminalTab,
+      payload: TabTerminalPayload,
+    ): Promise<void> {
+      const { tabId } = tab;
+      ensureSubscribed();
+      lastSize.set(tabId, { cols: payload.cols, rows: payload.rows });
+      byTabId.set(tabId, {
+        tabId,
+        codeRepoId: tab.codeRepoId,
+        cwd: canonicalPath(tab.cwd),
+        command: tab.command,
+        status: payload.status,
+        exitCode: payload.exitCode ?? null,
+        error: payload.error ?? null,
+        shell: payload.shell,
+      });
+      if (payload.snapshot) snapshots.set(tabId, payload.snapshot);
+      if (payload.status !== 'running') {
+        void attachHeadlessTerminal(tabId, tab.launchKind);
+        return;
+      }
+      adopting.set(tabId, []);
+      void attachHeadlessTerminal(tabId, tab.launchKind);
+      try {
+        if (!control.terminalAdopt) throw new Error('terminal move is not supported');
+        replayAdopted(tabId, await control.terminalAdopt(tabId));
+      } catch (err) {
+        adopting.delete(tabId);
+        logError('terminals', `${tabId}: adopt failed`, err);
+        const sess = byTabId.get(tabId);
+        if (sess) {
+          sess.status = 'failed';
+          sess.error = errorText(err);
+        }
+      }
     }
 
     function terminalSession(tabId: string): TerminalSession | undefined {
@@ -311,6 +518,11 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       ensureSubscribed();
       sinks.set(tabId, sink);
 
+      const snapshot = snapshots.get(tabId);
+      if (snapshot !== undefined) {
+        snapshots.delete(tabId);
+        sink(encoder.encode(snapshot));
+      }
       const drained = drainByTabId.get(tabId);
       if (drained) {
         drainByTabId.delete(tabId);
@@ -330,6 +542,10 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
       writeTerminal,
       resizeTerminal,
       closeTerminalSession,
+      detachTerminalSession,
+      prepareTerminalMove,
+      releaseTerminalMove,
+      adoptTerminalSession,
       terminalSession,
       terminalCountAtPath,
       onTerminalOutput,

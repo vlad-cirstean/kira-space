@@ -18,10 +18,14 @@
   --kira-accent-hover: #355dad;
   --kira-select: #36363c; /* selected row, cell, list item, chip, card head (P710: neutral grey) */
   --kira-select-edge: #71717a; /* selection frame, ring, underline, drop target (zinc-500) */
-  --kira-control-edge: var(--kira-select-edge); /* unchecked control edge: 3:1 on every ground */
+  --kira-control-edge: var(--kira-select-edge); /* progress track tint */
   --kira-select-text: #45454d; /* selected text: ::selection, Monaco, xterm */
-  --kira-on: var(--kira-fg); /* on-state fill (P710) */
-  --kira-on-fg: var(--kira-bg-chrome); /* mark on --kira-on: check, radio dot, switch thumb */
+  --kira-toggle-on: #33333a; /* on fill: switch track, checkbox, radio (P730) */
+  --kira-toggle-on-edge: #c4c4cc; /* on border (P730) */
+  --kira-toggle-mark: #f4f4f5; /* check, dash, radio dot, on knob (P730) */
+  --kira-toggle-off-edge: #3e3e45; /* off border; 1.4:1 on field, user choice (P730) */
+  --kira-toggle-knob: #6b6b73; /* off switch knob (P730) */
+  --kira-progress-fill: #b4b4bc; /* progress indicator (P730) */
   --kira-scrollbar: var(--kira-border);
   --kira-scrollbar-hover: var(--kira-fg-subtle);
   --kira-scrollbar-active: var(--kira-fg-subtle);
@@ -40,7 +44,7 @@
      independently (P31 D20/D21). Values are the expressions already in use, so no colour changes. */
   --kira-search-match: color-mix(in srgb, var(--kira-warn) 25%, transparent);
   --kira-search-match-current: var(--kira-warn);
-  /* P678: tint behind a {{kept.name}} reference in an approval card, so one colour marks every kept variable. */
+  /* P678: tint behind a {{plain.name}} reference in an approval card, so one colour marks every kept variable. */
   --kira-kept-mark: color-mix(in srgb, var(--kira-info) 20%, transparent);
   /* P19 D17: "a filter/sort/projection is applied right now". Deliberately NOT --kira-accent:
      that token means primary action / on-state control everywhere else, and the three filter

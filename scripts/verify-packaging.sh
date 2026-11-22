@@ -8,7 +8,7 @@
 # P119 adds a real one, but only on an explicit Update click, through scripts/install.sh — ad-hoc
 # signed, correct bundle identity) reasserted against the Wails bundle's own layout.
 #
-# Static checks (S1, S2, S5, S16, S17) always run — S3/S4 were electron-builder.yml checks removed in the
+# Static checks (S1, S2, S5, S10, S16, S17, S18) always run — S3/S4 were electron-builder.yml checks removed in the
 # P57 rewrite; the numbering was never closed up, and check IDs stay as-is since docs/PACKAGING.md
 # cross-references them. Artifact checks (A1, A3, A5, A6, A7, N2 over the .app; A4, N3 over the .dmg P10
 # ships) run only when that artifact exists; otherwise they print "skipped" and pass.
@@ -33,6 +33,29 @@ note() {
   echo "verify-packaging: note — $1"
 }
 
+# Source-only recursive grep (P724): text files only (-I skips the Go binaries `bun run package`
+# writes to bin/, which embed checker.go's indexURL) and no build or vendor output dirs. A release
+# run scans after packaging; local and PR runs have no binary, so only S18 proves this holds.
+source_grep() {
+  _re="$1"
+  shift
+  grep -rnIE --exclude-dir=node_modules --exclude-dir=bindings --exclude-dir=bin \
+    --exclude-dir=dist --exclude-dir=dist-mobile -- "$_re" "$@" 2>/dev/null || true
+}
+
+DOWNLOAD_RE='browser_download_url|releases/(latest/)?download'
+
+# s10_verdict <hits>: prints why <hits> break S10, nothing when they hold exactly checker.go's indexURL.
+s10_verdict() {
+  case "$1" in
+    internal/appupdate/checker.go:*indexURL*) ;;
+    *) echo "references a release download outside scripts/install.sh and checker.go's indexURL: $1"; return ;;
+  esac
+  if [ "$(printf '%s\n' "$1" | grep -c . || true)" -ne 1 ]; then
+    echo "expected exactly one release download reference (checker.go's indexURL); got: $1"
+  fi
+}
+
 # --- S1: no *silent* updater dependency -----------------------------------------------------
 # P119's own update-and-install still goes through scripts/install.sh on an explicit click —
 # electron-updater/update-electron-app are the silent, no-user-action kind this repo has never used.
@@ -41,7 +64,7 @@ if grep -qE '"(electron-updater|update-electron-app)"' package.json; then
 fi
 
 # --- S2: no silent-updater code in apps/ or packages/ ---------------------------------------
-if grep -rnE "autoUpdater|electron-updater" apps/ packages/ >/dev/null 2>&1; then
+if [ -n "$(source_grep 'autoUpdater|electron-updater' apps/ packages/)" ]; then
   fail "updater code present" "apps/ or packages/ references autoUpdater or electron-updater"
 fi
 
@@ -117,15 +140,40 @@ fi
 # own explicit Update click (never silently), is a sanctioned downloader. scripts/ is deliberately
 # excluded from this scan for exactly that reason.
 # The one allowed hit is the release index URL in internal/appupdate/checker.go (metadata, never a
-# binary).
-DOWNLOAD_HITS="$(grep -rnE 'browser_download_url|releases/(latest/)?download' apps/ packages/ internal/ 2>/dev/null \
-  | grep -v '/node_modules/' | grep -v '/bindings/' || true)"
-case "$DOWNLOAD_HITS" in
-  internal/appupdate/checker.go:*indexURL*) ;;
-  *) fail "release asset download present" "apps/, packages/ or internal/ references a release download outside scripts/install.sh and checker.go's indexURL: $DOWNLOAD_HITS" ;;
-esac
-if [ "$(printf '%s\n' "$DOWNLOAD_HITS" | grep -c . || true)" -ne 1 ]; then
-  fail "release asset download present" "expected exactly one release download reference (checker.go's indexURL); got: $DOWNLOAD_HITS"
+# binary). Source only (P724): text files, build output excluded — a packaged binary carries the
+# string by compiling checker.go, not by downloading anything.
+DOWNLOAD_HITS="$(source_grep "$DOWNLOAD_RE" apps/ packages/ internal/)"
+S10_WHY="$(s10_verdict "$DOWNLOAD_HITS")"
+if [ -n "$S10_WHY" ]; then
+  fail "release asset download present" "apps/, packages/ or internal/ $S10_WHY"
+fi
+
+# --- S18: S10 ignores build output (P724) ---------------------------------------------------------
+# Release runs S10 after `bun run package`; local and PR runs have no binary, which hid v0.3.22's
+# failure. Run the same scan and verdict over a fixture whose fake binaries and bundles carry the URL.
+S18_DIR="$(mktemp -d)"
+S18_RESULT="$(
+  cd "$S18_DIR" || exit 1
+  mkdir -p internal/appupdate "apps/kira-space/bin/Kira Space.app/Contents/MacOS" \
+    apps/kira-space/frontend/dist/assets apps/kira-space/dist-mobile \
+    packages/p/node_modules/x apps/kira-space/frontend/bindings/b
+  echo '	indexURL = RepoURL + "/releases/latest/download/" + releaseIndexAsset' >internal/appupdate/checker.go
+  for f in "apps/kira-space/bin/Kira Space" "apps/kira-space/bin/Kira Space.app/Contents/MacOS/Kira Space"; do
+    printf '\317\372\355\376\0\0\0https://github.com/o/r/releases/latest/download/x\0' >"$f"
+  done
+  for f in apps/kira-space/frontend/dist/assets/index.js apps/kira-space/dist-mobile/m.js \
+      packages/p/node_modules/x/i.js apps/kira-space/frontend/bindings/b/b.ts; do
+    echo 'u = "https://github.com/o/r/releases/download/v1/x"' >"$f"
+  done
+  WHY="$(s10_verdict "$(source_grep "$DOWNLOAD_RE" apps/ packages/ internal/)")"
+  [ -z "$WHY" ] || { echo "build output counted: $WHY"; exit 0; }
+  echo 'u = "/releases/download/x"' >apps/kira-space/leak.ts
+  WHY="$(s10_verdict "$(source_grep "$DOWNLOAD_RE" apps/ packages/ internal/)")"
+  [ -n "$WHY" ] || echo "a source reference in apps/ went unreported"
+)"
+rm -rf "$S18_DIR"
+if [ -n "$S18_RESULT" ]; then
+  fail "S10 scan self-test" "$S18_RESULT"
 fi
 
 # --- S11: the curl installer and the Go installer agree on their one shared contract --------

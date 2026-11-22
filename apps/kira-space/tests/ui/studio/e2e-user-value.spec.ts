@@ -35,13 +35,15 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   page.on('console', (m) => logs.push(m.text()));
   await pushApprovals(page, [liveItem(it)]);
   const approve = page.locator(`[data-testid="approval-approve-${it.id}"]`);
-  await expect(page.locator('[data-testid="api-approval-input"]')).toHaveText(
-    'Needs a value from you',
-  );
   await expect(approve).toBeDisabled();
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
   await field.fill(VALUE());
+  // No choice control: every typed value is kept.
+  await expect(page.locator('[data-testid="api-input-apikey-once"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
+    'Available for 60 min',
+  );
   await expect(approve).toBeEnabled();
   await approve.click();
   await expect
@@ -50,6 +52,19 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   // The typed value clears when the answer settles, which is after the IPC call leaves.
   await expect(field).toHaveValue('');
   await expectNoLeak(page, VALUE(), logs);
+});
+
+test('contract: the Available for line shows the retention and opens the variables settings', async ({
+  relaunch,
+}) => {
+  const it = item('retention');
+  const { window: page } = await relaunch({});
+  await pushApprovals(page, [liveItem(it)]);
+  const line = page.locator('[data-testid="api-approval-inputs-kept-for"]');
+  await expect(line).toHaveText('Available for 5 min');
+  await line.click();
+  await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="settings-section-Studio MCP variables"]')).toBeVisible();
 });
 
 test('contract: Don’t send never carries the value', async ({ relaunch }) => {
@@ -85,29 +100,10 @@ test('contract: a held value shows as supplied by you and Send needs no typing',
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const row = page.locator('[data-testid="api-approval-kept-apikey"]');
-  await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Typed by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
-});
-
-test('contract: a forced review shows the script result and Withhold answers deny', async ({
-  relaunch,
-}) => {
-  const it = item('forced');
-  const h = contract<{ text: string }>(SC, 'DbMcpService.PendingResponse#forced');
-  const withhold = contract<Answer>(SC, 'args:ApprovalsService.Answer#withhold');
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.dbMcpPendingResponse, response: h },
-      { channel: IPC.approvalsAnswer, response: answeredOk(withhold.ids) },
-    ],
-  });
-  await pushApprovals(page, [liveItem(it)]);
-  await expect(page.locator('[data-testid="api-review-result"]')).toContainText('{{kept.apikey}}|');
-  await page.click(`[data-testid="approval-deny-${it.id}"]`);
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
-    .toEqual(withhold);
 });
 
 test('contract: the pane lists the value as supplied by you with its origin and Clear removes it', async ({
@@ -131,8 +127,10 @@ test('contract: the pane lists the value as supplied by you with its origin and 
   });
   await openKeptPane(page);
   const row = page.locator('[data-testid="settings-kept-entry"]');
-  await expect(row.locator('[data-testid="kept-entry-supplied"]')).toHaveText('Supplied by you');
-  await expect(row.locator('[data-testid="kept-entry-origin"]')).toContainText('http://127.0.0.1:');
+  await row.locator('[data-testid="kept-name"]').hover();
+  const tip = page.locator('[data-testid="kept-details"]');
+  await expect(tip).toContainText('Typed by you');
+  await expect(tip).toContainText('Goes only to http://127.0.0.1:');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await row.locator('[data-testid="kept-entry-clear"]').click();
   await expect

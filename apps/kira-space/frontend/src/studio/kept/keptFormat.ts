@@ -1,5 +1,5 @@
 import type { KeptSite, KeptUse } from '@shared/domain/kept';
-import { formatBytes, formatClockTime } from '@theme/format';
+import { formatClockTime, formatRelative } from '@theme/format';
 import { t } from '@theme/i18n';
 import type { ConsoleHoverInfo } from '../editor/hoverInfo';
 import { keptRefs } from './keptHighlight';
@@ -7,10 +7,9 @@ import { keptRefs } from './keptHighlight';
 interface TypedEntry {
   type: string;
   items: number;
-  bytes: number;
 }
 
-/** "List of 12", "Text, 34 B": what the variable holds, never its value. */
+/** "List of 12", "Text": what the variable holds, never its value. */
 export function keptTypeLabel(e: TypedEntry): string {
   switch (e.type) {
     case 'array':
@@ -18,7 +17,7 @@ export function keptTypeLabel(e: TypedEntry): string {
     case 'object':
       return t('studio.kept.type.object.status', { count: e.items });
     case 'string':
-      return t('studio.kept.type.string.status', { size: formatBytes(e.bytes) });
+      return t('common.field.text.label');
     case 'number':
       return t('common.field.number.label');
     case 'boolean':
@@ -26,6 +25,32 @@ export function keptTypeLabel(e: TypedEntry): string {
     default:
       return t('studio.common.nullValue.label');
   }
+}
+
+interface DetailedEntry extends TypedEntry {
+  source: { kind: string; request: string; client: string };
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** The tooltip lines of a variable's name, empty ones skipped: who set it, the agent session, where the
+ *  value may go (Settings), when it was set, when it expires, where a request reads it (the card), what
+ *  it holds. */
+export function keptDetails(
+  e: DetailedEntry,
+  extra: { origin?: string; usedIn?: string } = {},
+): string[] {
+  return [
+    e.source.kind === 'user'
+      ? t('studio.kept.supplied.status')
+      : t('studio.kept.setBy.label', { request: e.source.request }),
+    e.source.client,
+    extra.origin ? t('studio.kept.origin.label', { origin: extra.origin }) : '',
+    t('studio.kept.lastSet.label', { time: formatRelative(e.createdAt) }),
+    t('studio.kept.expiresAt.status', { time: formatClockTime(new Date(e.expiresAt)) }),
+    extra.usedIn ? t('studio.kept.usedIn.label', { sites: extra.usedIn }) : '',
+    keptTypeLabel(e),
+  ].filter((l) => l !== '');
 }
 
 /** Where a request reads a variable: "URL", "body", "header Authorization". `pairName` names the

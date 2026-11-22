@@ -11,6 +11,9 @@
           "folders": 1,
           "name": "Flow Orders",
           "requests": 4,
+          "secretsUnset": [
+            "baseUrl"
+          ],
           "warnings": [
             {
               "count": 3,

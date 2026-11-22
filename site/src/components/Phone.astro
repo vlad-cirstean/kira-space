@@ -1,0 +1,53 @@
+---
+import { PHONE } from '../data/content';
+import { href } from '../data/nav';
+import type { ResolvedShot } from '../lib/shots';
+import Shot from './Shot.astro';
+import Sparkle from './Sparkle.astro';
+
+interface Props {
+  shots: readonly ResolvedShot[];
+}
+
+const { shots } = Astro.props;
+---
+
+<section
+  class="relative isolate mx-auto max-w-6xl px-4 py-8 lg:py-16"
+  aria-labelledby="phone-title"
+>
+  <div class="mx-auto max-w-3xl text-center">
+    <span
+      class="inline-flex items-center gap-2 rounded-full bg-pink/10 px-3 py-1 text-sm font-semibold uppercase tracking-[0.14em] text-pink border border-pink/30"
+    >
+      <Sparkle class="size-3" />
+      {PHONE.eyebrow}
+    </span>
+    <h2
+      id="phone-title"
+      class="mt-5 text-4xl leading-[1.05] font-bold tracking-[-0.03em] sm:text-5xl lg:text-6xl"
+    >
+      {PHONE.title}
+    </h2>
+    <p class="mt-5 text-lg text-muted">{PHONE.lead}</p>
+    <ul class="mx-auto mt-6 flex max-w-xl flex-col gap-2 text-left text-base text-muted">
+      {PHONE.points.map((pt) => (
+        <li class="flex gap-3">
+          <span aria-hidden="true" class="text-lime">
+            &#10003;
+          </span>
+          {pt}
+        </li>
+      ))}
+    </ul>
+    <p class="mt-4 text-base text-muted">{PHONE.note}</p>
+    <a
+      class="mt-2 inline-flex min-h-11 items-center font-semibold text-brand-glow underline"
+      href={href(PHONE.link.path)}
+      >{PHONE.link.label}</a
+    >
+  </div>
+  <div class="mt-12 grid grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    {shots.map((shot) => <Shot shot={shot} />)}
+  </div>
+</section>

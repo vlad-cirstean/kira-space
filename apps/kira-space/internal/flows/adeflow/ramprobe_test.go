@@ -17,7 +17,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
-	"github.com/kirathecat/kira-studio/internal/pprofserve"
 	"github.com/kirathecat/kira-studio/internal/shell"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -286,9 +285,6 @@ func TestRAMProbeAgents(t *testing.T) {
 		t.Skip("set KIRA_RAM_PROBE=1 to run the P693 Go RAM probe")
 	}
 	runtime.MemProfileRate = 32 << 10
-	if os.Getenv("KIRA_PPROF") != "" {
-		pprofserve.Start()
-	}
 	probe := &ramProbe{t: t, out: ramOutDir(t)}
 	dir := t.TempDir()
 	never := filepath.Join(dir, "never")

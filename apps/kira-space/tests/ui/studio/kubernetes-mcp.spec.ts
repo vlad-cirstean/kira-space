@@ -20,7 +20,7 @@ import { openSettings } from './support/settings';
 const SCENARIO = 'dbmcp-kube';
 interface SetMcpArgs {
   clusterId: string;
-  mcp: { description: string; enabled: boolean; approval: string };
+  mcp: { description: string; enabled: boolean; approval: string; review: string };
 }
 const setMcpArgs = (key = 'args:KubernetesService.SetMcp') => contract<SetMcpArgs>(SCENARIO, key);
 
@@ -49,6 +49,28 @@ test('contract: the cluster menu turns MCP on, sets description and approval, Sa
   await loc(page, `kube-mcp-${args.mcp.approval}`).click();
   await loc(page, `kube-mcp-${args.mcp.approval}`).click();
   await expect(loc(page, `kube-mcp-${args.mcp.approval}`)).toHaveAttribute('data-state', 'on');
+  await loc(page, 'kube-mcp-save').click();
+
+  await expect(loc(page, 'kube-mcp-dialog')).toHaveCount(0);
+  expect(kube.calls('SetMcp').map((c) => c.args)).toEqual([
+    { ...args, clusterId: idOf('kind-dev') },
+  ]);
+});
+
+test('contract: the dialog sets the review of list, describe and logs results', async ({
+  relaunch,
+}) => {
+  const args = setMcpArgs('args:KubernetesService.SetMcp:review');
+  const { page, kube } = await setupKubernetes(relaunch);
+  await openMcpDialog(page);
+
+  await expect(loc(page, 'kube-mcp-review')).toHaveCount(0);
+  await loc(page, 'kube-mcp-enabled').click();
+  await expect(loc(page, 'kube-mcp-review-inherit')).toHaveAttribute('data-state', 'on');
+  await loc(page, 'kube-mcp-description').fill(args.mcp.description);
+  await loc(page, `kube-mcp-${args.mcp.approval}`).click();
+  await loc(page, `kube-mcp-review-${args.mcp.review}`).click();
+  await expect(loc(page, `kube-mcp-review-${args.mcp.review}`)).toHaveAttribute('data-state', 'on');
   await loc(page, 'kube-mcp-save').click();
 
   await expect(loc(page, 'kube-mcp-dialog')).toHaveCount(0);
@@ -132,9 +154,12 @@ test('contract: a Kubernetes read shows the cluster and answers by item id', asy
 
   await pushApprovals(page, [liveItem(item)]);
   await expect(loc(page, 'approval-target-name')).toHaveText(item.target.name);
-  await expect(loc(page, `approval-item-${item.id}`)).toContainText(item.target.location);
-  await expect(loc(page, 'approval-target-kind')).toContainText(payload.namespace);
-  await expect(loc(page, 'db-mcp-approval-kube')).toContainText(payload.statement);
+  await expect(loc(page, 'approval-target-kind')).toContainText(
+    item.target.location.split(' · ')[0],
+  );
+  await expect(loc(page, 'approval-target-chip')).toHaveText(payload.namespace);
+  await expect(loc(page, 'kube-approval-line')).toContainText('pods');
+  await expect(loc(page, 'kube-approval-line')).toContainText(payload.namespace);
 
   await page.click(`[data-testid="approval-approve-${item.id}"]`);
   await expect

@@ -1,0 +1,48 @@
+{
+  "TerminalService.Adopt": {
+    "data": "<masked>",
+    "end": 0,
+    "exited": false,
+    "truncated": false
+  },
+  "TerminalService.Adopt:error": {
+    "code": "E_CONTRACT",
+    "message": "terminal belongs to another window"
+  },
+  "TerminalService.Hold": {
+    "end": 0,
+    "live": true
+  },
+  "TerminalService.Hold:exited": {
+    "end": 0,
+    "live": false
+  },
+  "args:TabsService.Move:terminal": {
+    "drop": null,
+    "newWindow": false,
+    "tabs": [
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "t1",
+          "kind": "terminal",
+          "order": 0,
+          "path": "p/t1",
+          "state": {},
+          "workspaceId": "automations"
+        },
+        "terminal": {
+          "cols": 80,
+          "rows": 24,
+          "shell": "/bin/sh",
+          "snapshot": "x",
+          "status": "running"
+        }
+      }
+    ],
+    "target": "B",
+    "windowKey": "<masked>"
+  }
+}

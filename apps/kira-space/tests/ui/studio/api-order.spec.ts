@@ -1,5 +1,4 @@
 import type { Locator, Page } from '@playwright/test';
-import { sortableHover } from '@workbench/testing/ui/drag';
 import type { ControlSnapshot } from '../../ipc/support/types';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
@@ -8,7 +7,8 @@ import { openHttpMode } from './support/apiMode';
 import { collectionRow } from './support/apiRows';
 import { dragRow, settleFrames } from './support/tree';
 
-// Collections and environments keep a manual order (drag; Alt+Arrow for environments); items
+// Collections and environments keep a manual order (drag; Move left and Move right for
+// environment columns); items
 // still reorder inside a collection. The Go half is apiflow TestApiOrder; contract api-order fixes
 // the call shapes and the trees. Seed order is file-load order: Zeta, Alpha, Mid.
 
@@ -230,9 +230,6 @@ interface Env {
   name: string;
 }
 const envSeed = contract<Env[]>(KEY, 'environments#seed');
-const envReordered = contract<Env[]>(KEY, 'environments#reordered').filter((e) =>
-  envSeed.some((s) => s.id === e.id),
-);
 const envId = (name: string): string => {
   const hit = envSeed.find((e) => e.name === name);
   if (!hit) throw new Error(`no environment ${name}`);
@@ -241,52 +238,14 @@ const envId = (name: string): string => {
 const DEV = envId('dev');
 const PROD = envId('prod');
 const STAGE = envId('stage');
-const envRows = (page: Page) => page.locator('[data-testid="environment-row"]');
-const envRow = (page: Page, id: string) =>
-  page.locator(`[data-testid="environment-row"][data-id="${id}"]`);
-const envIds = (page: Page) =>
-  envRows(page).evaluateAll((els) => els.map((el) => el.getAttribute('data-id')));
 
 async function openEnvironments(page: Page): Promise<void> {
   await openHttpMode(page);
   await page.click('[data-testid="api-environments"]');
-  await expect(envRows(page)).toHaveCount(3);
+  await expect(page.locator(`[data-testid="matrix-col-${PROD}"]`)).toBeVisible();
 }
 
-test('environments: dragging the grip sends the order and renders the refetched list', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      ...list(seed),
-      { channel: IPC.variablesListEnvironments, response: envSeed },
-      { channel: IPC.variablesListEnvironments, response: envReordered },
-      { channel: IPC.variablesReorderEnvironments, response: null },
-    ],
-  });
-  await openEnvironments(page);
-  await expect.poll(() => envIds(page)).toEqual([DEV, PROD, STAGE]);
-
-  const grip = (id: string) => envRow(page, id).locator('[data-testid="environment-grip"]');
-  const from = await grip(STAGE).boundingBox();
-  const to = await envRow(page, DEV).boundingBox();
-  if (!from || !to) throw new Error('row has no box');
-  await sortableHover(
-    page,
-    { x: from.x + from.width / 2, y: from.y + from.height / 2 },
-    { x: to.x + to.width / 2, y: to.y + to.height * 0.25 },
-  );
-  await page.mouse.up();
-
-  await expect.poll(() => calls(control, IPC.variablesReorderEnvironments)).toHaveLength(1);
-  expect(calls(control, IPC.variablesReorderEnvironments)[0].args).toEqual({
-    ...contract<object>(KEY, 'args:VariablesService.ReorderEnvironments#drag'),
-    ids: [STAGE, DEV, PROD],
-  });
-  await expect.poll(() => envIds(page)).toEqual(envReordered.map((e) => e.id));
-});
-
-test('environments: Alt+ArrowUp on a focused grip sends one reorder', async ({ relaunch }) => {
+test('environments: Move left in the column menu sends the new order', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
     control: [
       ...list(seed),
@@ -296,15 +255,15 @@ test('environments: Alt+ArrowUp on a focused grip sends one reorder', async ({ r
   });
   await openEnvironments(page);
 
-  await envRow(page, PROD).locator('[data-testid="environment-grip"]').focus();
-  await page.keyboard.press('Alt+ArrowUp');
+  await page.click(`[data-testid="matrix-col-menu-${PROD}"]`);
+  await page.click('[data-testid="menu-item-move-left"]');
   await expect.poll(() => calls(control, IPC.variablesReorderEnvironments)).toHaveLength(1);
   expect(calls(control, IPC.variablesReorderEnvironments)[0].args).toEqual({
     ids: [PROD, DEV, STAGE],
   });
 });
 
-test('environments: while filtered the grip explains and a drag sends nothing', async ({
+test('environments: the first column cannot move left and the last cannot move right', async ({
   relaunch,
 }) => {
   const { window: page, control } = await relaunch({
@@ -315,22 +274,11 @@ test('environments: while filtered the grip explains and a drag sends nothing', 
     ],
   });
   await openEnvironments(page);
-  await page.fill('[data-testid="environments-filter"]', 'd');
-  await expect(envRows(page)).toHaveCount(2);
 
-  const grip = envRow(page, DEV).locator('[data-testid="environment-grip"]');
-  await grip.hover();
-  await expect(page.getByText('Clear the filter to reorder.')).toBeVisible();
-
-  const from = await grip.boundingBox();
-  const to = await envRow(page, PROD).boundingBox();
-  if (!from || !to) throw new Error('row has no box');
-  await sortableHover(
-    page,
-    { x: from.x + from.width / 2, y: from.y + from.height / 2 },
-    { x: to.x + to.width / 2, y: to.y + to.height * 0.75 },
-  );
-  await page.mouse.up();
-  await settleFrames(page);
+  await page.click(`[data-testid="matrix-col-menu-${DEV}"]`);
+  await expect(page.locator('[data-testid="menu-item-move-left"]')).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await page.click(`[data-testid="matrix-col-menu-${STAGE}"]`);
+  await expect(page.locator('[data-testid="menu-item-move-right"]')).toBeDisabled();
   expect(calls(control, IPC.variablesReorderEnvironments)).toHaveLength(0);
 });

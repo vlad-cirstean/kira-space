@@ -124,3 +124,55 @@ func TestPromiseReturnRefused(t *testing.T) {
 		wantKind(t, e, KindOutput)
 	}
 }
+
+func TestReadBack(t *testing.T) {
+	b := []Binding{{Name: "plain", Value: []byte(`{"a":1}`), ReadBack: true}}
+	res, e := exec1(t, Run{Source: `plain.a = 2; plain.b = [1, "x"]; plain.f = () => 1; plain.u = undefined;
+		Object.defineProperty(plain, "g", {get() { return 1 }, enumerable: true});
+		let r; try { plain = {}; r = "ok" } catch (e) { r = e.name }
+		return [r, Object.getPrototypeOf(plain)]`, Bindings: b, Limits: small})
+	if e != nil {
+		t.Fatalf("%v", e)
+	}
+	if string(res.JSON) != `["TypeError",null]` {
+		t.Fatalf("result %s", res.JSON)
+	}
+	rb := res.ReadBack["plain"]
+	if string(rb.JSON["a"]) != "2" || string(rb.JSON["b"]) != `[1,"x"]` || len(rb.JSON) != 2 {
+		t.Fatalf("json %v", rb.JSON)
+	}
+	want := map[string]string{"f": "function", "u": "undefined", "g": "accessor"}
+	if !reflect.DeepEqual(rb.Invalid, want) {
+		t.Fatalf("invalid %v", rb.Invalid)
+	}
+	if _, e := exec1(t, Run{Source: `const plain = {};`, Bindings: b, Limits: small}); e == nil || e.Kind != KindInput {
+		t.Fatalf("shadow not refused: %v", e)
+	}
+}
+
+func TestReadBackBudgetIsIndependentOfOutputCap(t *testing.T) {
+	big := `{"ids":"` + strings.Repeat("x", 200<<10) + `"}`
+	b := []Binding{{Name: "plain", Value: []byte(big), ReadBack: true}}
+	lim := small
+	lim.OutputBytes = 1 << 10
+	res, e := exec1(t, Run{Source: `return plain.ids.length`, Bindings: b, Limits: lim})
+	if e != nil {
+		t.Fatalf("a read-only 200 KB value hit the output cap: %v", e)
+	}
+	if string(res.JSON) != "204800" || len(res.ReadBack["plain"].JSON["ids"]) < 200<<10 {
+		t.Fatalf("result %s", res.JSON)
+	}
+	// The cap on the script result still applies to the result alone.
+	if _, e := exec1(t, Run{Source: `return plain.ids`, Bindings: b, Limits: lim}); e == nil || e.Kind != KindOutput {
+		t.Fatalf("result cap: %v", e)
+	}
+	// Several values at the per-value cap fit; one over it names the key and the fixed cap.
+	src := `for (let i = 0; i < 16; i++) plain["k" + i] = "y".repeat(1000000); return 1`
+	if _, e := exec1(t, Run{Source: src, Bindings: []Binding{{Name: "plain", Value: []byte(`{}`), ReadBack: true}}, Limits: Limits{MemoryBytes: 128 << 20, Timeout: 10 * time.Second}}); e != nil {
+		t.Fatalf("16 values of 1 MB: %v", e)
+	}
+	_, e = exec1(t, Run{Source: `plain.big = "z".repeat(1 << 20); return 1`, Bindings: []Binding{{Name: "plain", Value: []byte(`{}`), ReadBack: true}}, Limits: small})
+	if e == nil || e.Kind != KindSaved || !strings.Contains(e.Message, "plain.big") || !strings.Contains(e.Message, "1048576") {
+		t.Fatalf("oversized value: %v", e)
+	}
+}

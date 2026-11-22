@@ -43,7 +43,7 @@ type DbMcpService struct {
 	Scripts dbmcp.ScriptControl
 	// API backs the API request tools; nil leaves them unregistered.
 	API dbmcp.APIRequester
-	// Kept backs list_kept_variables and the approval wait on kept values; nil leaves them off.
+	// Kept backs list (what: temp) and the approval wait on kept values; nil leaves them off.
 	Kept dbmcp.KeptStore
 	// JS and ScriptOps run and record the scripts agents attach to API requests (P676); nil turns scripts off.
 	JS        dbmcp.ScriptEngine
@@ -130,28 +130,29 @@ func NewDbMcpService(deps appcore.Deps, installer harness.MCPInstaller, approval
 // pool its Sessions.
 func (s *DbMcpService) serverConfig(port int) dbmcp.Config {
 	return dbmcp.Config{
-		Home:             config.KiraSpaceHome(),
-		Conns:            s.Deps.Connections,
-		Tree:             s.Deps.Tree,
-		Query:            s.Deps.Router,
-		Approvals:        s.Approvals,
-		Kube:             s.Kube,
-		Ops:              s.Deps.Router,
-		Runs:             s.Runs,
-		Scripts:          s.Scripts,
-		API:              s.API,
-		APISettings:      s.apiSettings,
-		Kept:             s.Kept,
-		JS:               s.JS,
-		ScriptOps:        s.ScriptOps,
-		MaskRules:        s.Deps.MaskRules,
-		ColumnReview:     s.Deps.MaskReview,
-		ExplainThreshold: s.explainThreshold,
-		PreviewResponses: s.previewResponses,
-		Logger:           slog.Default(),
-		Prompts:          s.Deps.Prompts,
-		Limits:           s.Limits,
-		Port:             port,
+		Home:                config.KiraSpaceHome(),
+		Conns:               s.Deps.Connections,
+		Tree:                s.Deps.Tree,
+		Query:               s.Deps.Router,
+		Approvals:           s.Approvals,
+		Kube:                s.Kube,
+		Ops:                 s.Deps.Router,
+		Runs:                s.Runs,
+		Scripts:             s.Scripts,
+		API:                 s.API,
+		APISettings:         s.apiSettings,
+		Kept:                s.Kept,
+		JS:                  s.JS,
+		ScriptOps:           s.ScriptOps,
+		MaskRules:           s.Deps.MaskRules,
+		ColumnReview:        s.Deps.MaskReview,
+		ExplainThreshold:    s.explainThreshold,
+		PreviewResponses:    s.previewResponses,
+		KubeReviewResponses: s.kubeReviewResponses,
+		Logger:              slog.Default(),
+		Prompts:             s.Deps.Prompts,
+		Limits:              s.Limits,
+		Port:                port,
 	}
 }
 
@@ -282,6 +283,17 @@ func (s *DbMcpService) previewResponses() bool {
 		return true
 	}
 	return settings.DbMcp.PreviewResponses
+}
+
+// kubeReviewResponses is dbmcp.Config.KubeReviewResponses' real backend, read fresh on every call. A read
+// failure fails closed (true), like previewResponses.
+func (s *DbMcpService) kubeReviewResponses() bool {
+	settings, err := s.Deps.Repos.Settings.GetAll()
+	if err != nil {
+		slog.Warn("db mcp: read kube review setting, holding results for review", "scope", "dbmcp", "err", err)
+		return true
+	}
+	return settings.DbMcp.KubeReviewResponses
 }
 
 // startIfEnabled is main.go's own boot-time call: a failure (a bind conflict) is logged, never
@@ -415,7 +427,7 @@ type DbMcpPendingResponse struct {
 	Keep []DbMcpPendingKeep `json:"keep"`
 }
 
-// DbMcpPendingKeep is one value a held result will keep.
+// DbMcpPendingKeep is one value a held result will set, or one temporary value it deletes.
 type DbMcpPendingKeep struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
@@ -424,6 +436,7 @@ type DbMcpPendingKeep struct {
 	Secret           bool   `json:"secret"`
 	Preview          string `json:"preview"`
 	PreviewTruncated bool   `json:"previewTruncated"`
+	Deleted          bool   `json:"deleted"`
 }
 
 // DbMcpPendingScript is the script of a held result.

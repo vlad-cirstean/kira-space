@@ -21,7 +21,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     v-bind="forwarded"
     :class="
       cn(
-        'peer relative flex size-control-inline shrink-0 items-center justify-center rounded-kira-sm border border-control-edge bg-field transition-colors aria-checked:border-on aria-checked:bg-on aria-checked:text-on-fg aria-[checked=mixed]:border-on aria-[checked=mixed]:bg-on aria-[checked=mixed]:text-on-fg aria-invalid:border-error aria-invalid:aria-checked:border-on group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-default disabled:opacity-50',
+        'peer relative flex size-control-inline shrink-0 items-center justify-center rounded-kira-sm border border-toggle-off-edge bg-field transition-colors focus-visible:outline-offset-2 aria-checked:border-toggle-on-edge aria-checked:bg-toggle-on aria-checked:text-toggle-mark aria-[checked=mixed]:border-toggle-on-edge aria-[checked=mixed]:bg-toggle-on aria-[checked=mixed]:text-toggle-mark aria-invalid:border-error aria-invalid:aria-checked:border-toggle-on-edge group-has-disabled/field:opacity-50 after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-default disabled:opacity-50',
         props.class,
       )
     "

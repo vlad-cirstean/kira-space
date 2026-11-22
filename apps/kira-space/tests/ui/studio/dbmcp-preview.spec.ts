@@ -55,7 +55,7 @@ test('contract: the held result shows as a table and Send answers by item id', a
   const rows = page.locator('[data-testid="db-mcp-preview-row"]');
   await expect(rows).toHaveCount(result.rows.length);
   for (const [i, row] of result.rows.entries()) {
-    await expect(rows.nth(i).locator('td:not(:first-child)')).toHaveText(
+    await expect(rows.nth(i).locator('td:not(:first-child):not(:last-child)')).toHaveText(
       row.map((cell) => cell ?? 'NULL'),
     );
   }
@@ -310,6 +310,29 @@ test('contract: the preview switch sends the settings patch', async ({ relaunch 
     .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
     .toEqual(args);
   await expect(page.locator('[data-testid="settings-db-mcp-preview"]')).toBeChecked();
+});
+
+test('contract: the Kubernetes review switch sends the settings patch', async ({ relaunch }) => {
+  const args = contract<unknown>('kube-review', 'args:SettingsService.Set#on');
+  const { window: page, control } = await relaunch({
+    control: [
+      {
+        channel: IPC.settingsSet,
+        response: {
+          ...defaultSettings,
+          dbMcp: { ...defaultSettings.dbMcp, kubeReviewResponses: true },
+        },
+      },
+    ],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Studio MCP"]');
+  await expect(page.locator('[data-testid="settings-kube-mcp-preview"]')).not.toBeChecked();
+  await page.click('[data-testid="settings-kube-mcp-preview"]');
+  await expect
+    .poll(() => control.log().find((e) => e.channel === IPC.settingsSet)?.args)
+    .toEqual(args);
+  await expect(page.locator('[data-testid="settings-kube-mcp-preview"]')).toBeChecked();
 });
 
 test('contract: the statement in Details is syntax highlighted', async ({ relaunch }) => {

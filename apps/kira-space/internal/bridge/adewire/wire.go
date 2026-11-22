@@ -1615,10 +1615,23 @@ type Artifact struct {
 	Ref    string `json:"ref"` // display ref: #12, PROJ-7, worktree path, short sha, file path
 	Status string `json:"status"`
 	Repo   string `json:"repo"`   // repo nickname, '' none
-	Source string `json:"source"` // task | host | git | agent | user, or a tracker id
+	Source string `json:"source"` // task | host | git | agent | user | notes, or a tracker id
 	// SessionID is the Kira session that reported it; '' = user, detected or unknown.
 	SessionID string `json:"sessionId"`
 	CreatedAt int64  `json:"createdAt"`
+	// FoundIn lists where a found link (Source 'notes') appears, newest first; empty for every other source.
+	FoundIn []ArtifactFound `json:"foundIn,omitempty"`
+}
+
+// ArtifactFound is one note or handover that holds a found link. State is note | draft | handed;
+// FromTask names the child behind a mirrored note.
+type ArtifactFound struct {
+	HandoverID string `json:"handoverId"`
+	State      string `json:"state"`
+	FromStep   string `json:"fromStep"`
+	ToStep     string `json:"toStep"`
+	FromTask   string `json:"fromTask"`
+	CreatedAt  int64  `json:"createdAt"`
 }
 
 // ArtifactGap names a source that failed or timed out; the list is partial.
@@ -1693,6 +1706,12 @@ type LinkResult struct {
 type RemoveArtifactArgs struct {
 	TaskID string `json:"taskId"`
 	ID     string `json:"id"`
+}
+
+// DismissFoundLinkArgs hides one found link of the task; URL is any form of it.
+type DismissFoundLinkArgs struct {
+	TaskID string `json:"taskId"`
+	URL    string `json:"url"`
 }
 
 // TrackedUpdate is one tracked item with changes the user has not seen. Concepts are unfiltered:

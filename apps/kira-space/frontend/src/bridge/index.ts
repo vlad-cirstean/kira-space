@@ -702,6 +702,8 @@ const spaceControl = {
     unwrap(AdeTaskService.EditLink(args)).then((r) => trust<V2.LinkResult>(r)),
   adeTaskRemoveArtifact: (args: V2.RemoveArtifactArgs): Promise<void> =>
     unwrap(AdeTaskService.RemoveArtifact(args)),
+  adeTaskDismissFoundLink: (args: V2.DismissFoundLinkArgs): Promise<void> =>
+    unwrap(AdeTaskService.DismissFoundLink(args)),
   adeTaskDetailsDiskChanges: (args: V2.DiskChangesArgs): Promise<V2.DiskChange[]> =>
     unwrap(AdeTaskService.DetailsDiskChanges(args)).then((r) => trust<V2.DiskChange[]>(r ?? [])),
   adeTaskDetailsAcceptDisk: (args: V2.DiskResolveArgs): Promise<void> =>

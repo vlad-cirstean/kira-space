@@ -17,60 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// --- list_connections (§4.1) ---
-
-type listConnectionsArgs struct{}
-
-// listConnections returns every connection with mcp_enabled true — deny by default: a
-// connection the user has not exposed is absent entirely, not listed-and-denied, since its
-// existence is not the AI client's business.
-//
-// Deliberately not gated on read mode the way listChildren/describeTable/
-// describeSchema now are. This tool's whole job is enumerating exposed connections *and their own
-// configured permissions* (the Permissions field below) so a caller can see, up front, that a
-// connection denies read/write/DDL before trying any of them — gating it on read mode would hide
-// exactly the information it exists to surface, for a connection that denies reads but still
-// allows writes or DDL.
-func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ listConnectionsArgs) (*mcp.CallToolResult, any, error) {
-	conns, err := s.cfg.Conns.List()
-	if err != nil {
-		return nil, nil, err
-	}
-	out := make([]connectionView, 0, len(conns))
-	for _, c := range conns {
-		if !c.McpEnabled {
-			continue
-		}
-		state := s.cfg.Conns.StateOf(c.ID)
-		view := connectionView{
-			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
-			Description: c.McpDescription,
-			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode, Masked: maskedModeOf(c)},
-			Access:      accessOf(c), Browse: browseView{Supported: HasBrowse(c.Kind), MaxRows: browseMaxRows}, Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
-			ExpensiveQuery: expensiveQueryView{RowsThreshold: s.thresholdFor(c), Check: expensiveCheckOf(c)},
-			ReviewResults:  s.reviewViewOf(c),
-		}
-		if state.ServerVersion != nil {
-			view.ServerVersion = state.ServerVersion
-		}
-		if caps, ok := capsOf(state); ok {
-			view.Capabilities = &connectionCapabilities{Query: caps.SQL, Describe: caps.Describe, SchemaColumns: caps.SchemaColumns}
-		}
-		// §4.5: cheap — one repo read per list_connections call, a human-frequency operation. A
-		// read failure degrades to "no masked columns reported" rather than failing the whole
-		// listing; the render path's own refusal (§4.4) is the real safety backstop regardless.
-		set, serr := allowListOf(c)
-		view.Tables = tablesView(c)
-		view.ColumnReview = s.columnReviewViewOf(c)
-		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil && serr == nil {
-			view.MaskedColumns = maskedColumnsFor(filterMaskRules(set, rules))
-		}
-		out = append(out, view)
-	}
-	return jsonResult(out)
-}
-
-// resolveReadGated is list_children/describe's shared preamble:
+// resolveReadGated is describe/describe's shared preamble:
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.
 //
@@ -104,50 +51,22 @@ func needsDatabasePath(summary model.ConnectionSummary, path string) string {
 	if err != nil || (len(p.Segments) > 0 && p.Segments[0].Kind == "database") {
 		return ""
 	}
-	return fmt.Sprintf("path is required for connection %q (%s): pass a database path from list_children with this connectionId", summary.Name, summary.Kind)
+	return fmt.Sprintf("path is required for connection %q (%s): pass a database path from describe with this connectionId", summary.Name, summary.Kind)
 }
 
-// --- list_children — replacing the fixed-name list_databases/list_schemas SPEC first named:
-// the adapter layer's metadata primitive is one lazy level (Adapter.Children), and the levels
-// differ per kind, so one tool that returns the node's own `kind` is strictly more
-// information than a pair of fixed names could carry. ---
-
-type listChildrenArgs struct {
-	ConnectionID string `json:"connectionId"`
-	Path         string `json:"path,omitempty"`
-	Refresh      bool   `json:"refresh,omitempty"`
-}
-
-func (s *Server) listChildren(ctx context.Context, _ *mcp.CallToolRequest, args listChildrenArgs) (*mcp.CallToolResult, any, error) {
-	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
-	if done {
-		return res, out, err
-	}
-	set, serr := allowListOf(summary)
-	if serr != nil {
-		return badListResult(summary)
-	}
-	if msg := allowedPath(summary, set, args.Path, false); msg != "" {
-		return errResult(msg)
-	}
-	result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
-	if err != nil {
-		return toolError(err)
-	}
-	return jsonResult(filterNodes(summary, set, result.Nodes))
-}
-
-// --- describe ---
+// --- describe walks the tree: the metadata primitive is one lazy level (Adapter.Children) and the levels
+// differ per kind, so the node's own `kind` says what a returned path is. ---
 
 type describeArgs struct {
 	ConnectionID string `json:"connectionId"`
-	Path         string `json:"path"`
+	Path         string `json:"path,omitempty"`
+	Columns      bool   `json:"columns,omitempty"`
 	Refresh      bool   `json:"refresh,omitempty"`
 }
 
-// describe answers for the node the path ends at: a database or schema returns the columns of its
-// relations, anything else returns that one node's structure. An adapter that cannot describe a node
-// answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis), surfaced verbatim by toolError.
+// describe answers for the node the path ends at. No path or a database or schema path: its children, or with
+// columns the columns of every relation under it. Any other path: that one node's structure. An adapter that
+// cannot describe a node answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis), surfaced verbatim by toolError.
 func (s *Server) describe(ctx context.Context, _ *mcp.CallToolRequest, args describeArgs) (*mcp.CallToolResult, any, error) {
 	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
 	if done {
@@ -157,12 +76,26 @@ func (s *Server) describe(ctx context.Context, _ *mcp.CallToolRequest, args desc
 	if serr != nil {
 		return badListResult(summary)
 	}
-	if isContainerPath(summary, args.Path) {
+	container := isContainerPath(summary, args.Path)
+	if args.Columns && !container {
+		return errResult("columns applies to a database or schema path; drop it")
+	}
+	switch {
+	case container && args.Columns:
 		result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
 		if err != nil {
 			return toolError(err)
 		}
 		return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
+	case container || args.Path == "":
+		if msg := allowedPath(summary, set, args.Path, false); msg != "" {
+			return errResult(msg)
+		}
+		result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
+		if err != nil {
+			return toolError(err)
+		}
+		return jsonResult(filterNodes(summary, set, result.Nodes))
 	}
 	if msg := allowedPath(summary, set, args.Path, true); msg != "" {
 		return errResult(msg)
@@ -187,7 +120,7 @@ func isContainerPath(summary model.ConnectionSummary, path string) bool {
 // --- run_query (§4.5) ---
 
 const (
-	runQueryDefaultMaxRows = 200
+	runQueryDefaultMaxRows = 100
 	runQueryMaxMaxRows     = 2000
 )
 
@@ -293,7 +226,7 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 	var o *queryScriptOutcome
 	if rv.script.hasTransform() && res != nil && !res.IsError && err == nil {
 		o = s.transformQuery(ctx, rv, resultText(res))
-		res, out, err = o.agentResult(nil, nil)
+		res, out, err = o.agentResult(nil, nil, nil)
 	}
 	return s.deliverQuery(ctx, args, rv, set, res, out, err, o)
 }
@@ -372,7 +305,7 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		s.cfg.ColumnReview.MarkStale(args.ConnectionID)
 	}
 	if len(resp.Pages) == 0 {
-		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0, "returned": 0})
+		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0})
 		return res, out, err, set, true
 	}
 	if tp, ok := resp.Pages[0].(page.TabularPage); ok && set.known != nil {
@@ -437,15 +370,11 @@ func (s *Server) reviewResponse(ctx context.Context, args runQueryArgs, rv query
 // holdResponse raises the response-stage item for held and waits for the answer. A non-empty string is the
 // refusal text; "" means the user sent the result.
 func (s *Server) holdResponse(ctx context.Context, args runQueryArgs, rv queryResolution, rendered maskset, held ApprovalResponse) string {
-	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
+	return s.holdResult(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Statement: args.SQL, Reason: ApprovalReasonPermission,
-		Target: targetOf(rv.summary, args.Path), Stage: ApprovalStageResponse, Response: &held, Origin: originFrom(ctx),
-	})
-	if outcome == ApprovalApproved {
-		return s.recheckHeld(ctx, rv, args, rendered)
-	}
-	return heldRefusal(outcome, rv, held.Bytes)
+		Target: targetOf(rv.summary, args.Path), Origin: originFrom(ctx),
+	}, held, dbHeldCall(rv), func() string { return s.recheckHeld(ctx, rv, args, rendered) })
 }
 
 // recheckHeld returns why an approved result must still be withheld, "" when it may go. The review can take
@@ -474,44 +403,9 @@ func (s *Server) recheckHeld(ctx context.Context, rv queryResolution, args runQu
 	return ""
 }
 
-// heldRefusal is the app-authored text of a result the user did not send. It never carries data. The
-// statement has run, so every text says so.
-func heldRefusal(outcome ApprovalOutcome, rv queryResolution, size int) string {
-	name := rv.summary.Name
-	switch outcome {
-	case ApprovalDenied:
-		return ranSuffix(fmt.Sprintf("the user withheld the result of this query on %q; it ran, but you get no rows. Do not rerun it to get the result another way.", name), rv)
-	case ApprovalTooLarge:
-		msg := fmt.Sprintf("the query on %q ran, but its result is %.1f MB, over the %d MB review limit, so it was withheld unseen.", name, float64(size)/(1<<20), maxHeldResultBytes>>20)
-		if rv.class == adapters.ClassRead {
-			return msg + " Ask for fewer rows or columns."
-		}
-		return ranSuffix(msg, rv)
-	case ApprovalHeldFull:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but too many results are waiting for the user's review, so its result was withheld. Do not rerun it.", name), rv)
-	case ApprovalTimedOut:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but its result got no review within %s and was withheld.", name, approvalWindow()), rv)
-	case ApprovalAbandoned:
-		return ranSuffix(fmt.Sprintf("the Studio MCP server stopped before the result of the query against %q was reviewed; the query ran and its result was withheld.", name), rv)
-	case ApprovalQueueFull:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but too many queries are waiting for approval, so its result was withheld. Do not rerun it.", name), rv)
-	default:
-		return ranSuffix(fmt.Sprintf("query against %q ran, but its result was not approved.", name), rv)
-	}
-}
-
 // ranSuffix tells the agent a non-read statement's changes stay and it must not rerun, so it does not repeat a
 // committed write.
-func ranSuffix(msg string, rv queryResolution) string {
-	if rv.class == adapters.ClassRead {
-		return msg
-	}
-	msg += " Its changes stay."
-	if !strings.Contains(msg, "not rerun") {
-		msg += " Do not rerun it."
-	}
-	return msg
-}
+func ranSuffix(msg string, rv queryResolution) string { return dbHeldCall(rv).suffix(msg) }
 
 // resultText is the concatenated TextContent of res — the bytes the client receives.
 func resultText(res *mcp.CallToolResult) string {

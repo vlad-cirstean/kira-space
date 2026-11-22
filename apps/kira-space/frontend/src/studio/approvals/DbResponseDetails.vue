@@ -3,9 +3,10 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { connectionKindSchema } from '@shared/domain/connection';
 import { dbResponsePayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
+import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
+import ApprovalDetailItem from '@workbench/approvals/ApprovalDetailItem.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import { formatBytes } from '@workbench/behaviour/format';
-import OpLogCodeBlock from '@workbench/components/OpLogCodeBlock.vue';
 import { computed } from 'vue';
 import { consoleLanguageFor } from '../views/console/format';
 
@@ -18,15 +19,19 @@ const language = computed(() =>
 
 <template>
   <ApprovalDetails>
-    <dt>{{ t('studio.dbMcp.approval.detail.statement.label') }}</dt>
-    <dd data-testid="db-mcp-preview-statement">
-      <OpLogCodeBlock unboxed :text="payload.statement" :language="language" />
-    </dd>
+    <ApprovalDetailItem
+      :label="t('studio.dbMcp.approval.detail.statement.label')"
+      testid="db-mcp-preview-statement"
+    >
+      <ApprovalCode :text="payload.statement" :language="language" />
+    </ApprovalDetailItem>
     <template v-if="payload.scripted">
-      <dt>{{ t('common.agentGets.label') }}</dt>
-      <dd data-testid="db-review-bytes">{{ formatBytes(payload.bytes) }}</dd>
-      <dt>{{ t('studio.dbMcp.approval.query.responseRaw.label') }}</dt>
-      <dd data-testid="db-review-raw-bytes">{{ formatBytes(payload.rawBytes) }}</dd>
+      <ApprovalDetailItem :label="t('studio.http.diff.after.label')" testid="db-review-bytes">
+        {{ formatBytes(payload.bytes) }}
+      </ApprovalDetailItem>
+      <ApprovalDetailItem :label="t('studio.http.diff.before.label')" testid="db-review-raw-bytes">
+        {{ formatBytes(payload.rawBytes) }}
+      </ApprovalDetailItem>
     </template>
   </ApprovalDetails>
 </template>

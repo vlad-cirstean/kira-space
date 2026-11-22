@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -19,6 +20,8 @@ import (
 )
 
 const dbServer = "kira-studio"
+
+var storedName = regexp.MustCompile(`\b(?:plain|secret)\.([A-Za-z]\w*)\s*=[^=]`)
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -58,7 +61,7 @@ func enableDbMcp(t *testing.T, app *realApp, tweak ...func(*model.ConnectionFiel
 	return connName, in.URL, in.Token
 }
 
-// TestDbMcpThroughClaude has the real claude call list_connections on the embedded DB MCP server.
+// TestDbMcpThroughClaude has the real claude call list on the embedded DB MCP server.
 func TestDbMcpThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	connName, url, helper := enableDbMcp(t, app)
@@ -74,20 +77,20 @@ func TestDbMcpThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call the list_connections tool once, then reply with the word done.",
-		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", "mcp__"+dbServer+"__list_connections",
+		"Call the list tool once, then reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", "mcp__"+dbServer+"__list",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
-	uses := toolUses(msgs, "mcp__"+dbServer+"__list_connections")
+	uses := toolUses(msgs, "mcp__"+dbServer+"__list")
 	if len(uses) == 0 {
-		t.Fatalf("no list_connections tool use in the stream:\n%s", tail(out, 1500))
+		t.Fatalf("no list tool use in the stream:\n%s", tail(out, 1500))
 	}
 	text, isErr, ok := toolResult(msgs, uses[0].ID)
 	if !ok || isErr {
-		t.Fatalf("list_connections result missing or an error (ok=%v, text=%q)", ok, text)
+		t.Fatalf("list result missing or an error (ok=%v, text=%q)", ok, text)
 	}
 	if !strings.Contains(text, connName) {
-		t.Fatalf("list_connections result lacks %q:\n%s", connName, text)
+		t.Fatalf("list result lacks %q:\n%s", connName, text)
 	}
 	if res := resultMsg(t, msgs); res.IsError {
 		t.Fatalf("claude run ended in error: %+v", res)
@@ -111,9 +114,9 @@ func TestDbMcpRunQueryModeThroughClaude(t *testing.T) {
 	}
 	tool := "mcp__" + dbServer + "__run_query"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call list_connections, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\" and an empty path. Declare the least powerful mode that fits. Then reply with the word done.",
+		"Call list, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\" and an empty path. Declare the least powerful mode that fits. Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool,
+		"--allowedTools", "mcp__"+dbServer+"__list,"+tool,
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	uses := toolUses(msgs, tool)
@@ -162,7 +165,7 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"Show me 3 rows of the notes table in the connection named "+connName+". Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe",
+		"--allowedTools", "mcp__"+dbServer+"__list,"+tool+",mcp__"+dbServer+"__describe",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	uses := toolUses(msgs, tool)
@@ -205,7 +208,7 @@ func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 	out, _ := app.claudeP(t, t.TempDir(), nil,
 		"In the connection named "+connName+", count the rows of the notes table whose id is 1, 2 or 5, then list every note two per page. Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "mcp__"+dbServer+"__list_connections,"+browseTool+","+queryTool+",mcp__"+dbServer+"__list_children,mcp__"+dbServer+"__describe",
+		"--allowedTools", "mcp__"+dbServer+"__list,"+browseTool+","+queryTool+",mcp__"+dbServer+"__describe",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	if uses := toolUses(msgs, queryTool); len(uses) > 0 {
@@ -234,7 +237,7 @@ func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 }
 
 // TestDbMcpScriptThroughClaude has the real claude run an allow-mode script over MCP, then read
-// the output from the run result itself. The get_script_run filter is the model's choice, so the
+// the output from the run result itself. The run_script read filter is the model's choice, so the
 // flow test covers it.
 func TestDbMcpScriptThroughClaude(t *testing.T) {
 	app := newRealApp(t)
@@ -257,9 +260,9 @@ func TestDbMcpScriptThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_scripts, then run_script for the script probe with waitSeconds 20. Reply with the output line containing marker.",
+		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list, then run_script for the script probe with waitSeconds 20. Reply with the output line containing marker.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_scripts,mcp__"+dbServer+"__run_script",
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list,mcp__"+dbServer+"__run_script",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	runs := toolUses(msgs, "mcp__"+dbServer+"__run_script")
@@ -308,7 +311,7 @@ func TestDbMcpInstallRegisters(t *testing.T) {
 }
 
 // TestDbMcpSessionStep runs a headless agent step with db_mcp on while the Settings switch is off:
-// the real claude must reach the session server and call list_connections.
+// the real claude must reach the session server and call list.
 func TestDbMcpSessionStep(t *testing.T) {
 	f := newAdeFixture(t, nil)
 	dbFile := filepath.Join(t.TempDir(), "real.sqlite")
@@ -327,21 +330,22 @@ func TestDbMcpSessionStep(t *testing.T) {
 		t.Fatalf("Connections.Connect: %v", err)
 	}
 	f.saveWorkflow(t, "flow", "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 3m\n    db_mcp: true\n"+
-		"    prompt: Call the list_connections tool of the kira-studio-session server once, then call state with action step.finish and args status done.\n"+
+		"    prompt: Call the list tool of the kira-studio-session server once, then call state with action step.finish and args status done.\n"+
 		manualStepYAML)
 	run := f.startRun(t, f.createTask(t, "flow"), "feat/real-claude-db")
 	log := f.runLog(t, run.ID)
 	if run.State != "done" {
 		t.Fatalf("run = %+v, want done; log:\n%s", run, tail(log, 1500))
 	}
-	if !strings.Contains(log, "mcp__kira-studio-session__list_connections") || !strings.Contains(log, connName) {
-		t.Fatalf("run log lacks the list_connections call or %q:\n%s", connName, tail(log, 1500))
+	if !strings.Contains(log, "mcp__kira-studio-session__list") || !strings.Contains(log, connName) {
+		t.Fatalf("run log lacks the list call or %q:\n%s", connName, tail(log, 1500))
 	}
 }
 
-// TestDbMcpKeptChainThroughClaude (P686): Claude Code accepts the generated run_query schema with `script`
-// (nullable object) and `params`, and a model chains by name: a script keeps the ids it read, and a second
-// call binds them by name. The flow tests cover every rule; this checks the real client and model.
+// TestDbMcpKeptChainThroughClaude (P686, P716): Claude Code accepts the generated run_query schema with
+// `script` (nullable object) and `params`. The prompt names the task only: the model learns kept variables
+// from the tool descriptions alone, keeps the ids in a script and binds them by name in a second call. The
+// flow tests cover every rule; this checks the real client and model.
 func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
@@ -367,15 +371,15 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 	}
 	tool := "mcp__" + dbServer + "__run_query"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"You must use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. Call list_connections, then call run_query on the connection named "+connName+
-			" with sql \"select id, body from notes order by id\", an empty path, mode read and this exact script: kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return result.rowCount;"+
-			" Then call run_query again on the same connection with sql \"select body from notes where id in (select value from json_each(?)) order by id\", an empty path, mode read and params [\"ids\"]."+
-			" Reply with the bodies it returned.",
+		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. The connection named "+connName+
+			" has a notes table (id, body). Read every note's id in one read query, then in a second read query fetch the bodies of those ids, ordered by id."+
+			" Do not put the ids in your own text or your own sql: they must never pass through you. Reply with the bodies.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_kept_variables",
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list,"+tool,
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	var scripted, bound bool
+	var keptName string
 	for _, u := range toolUses(msgs, tool) {
 		var in struct {
 			Script *string  `json:"script"`
@@ -386,12 +390,17 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 		}
 		text, isErr, ok := toolResult(msgs, u.ID)
 		switch {
-		case in.Script != nil && strings.Contains(*in.Script, "kept.set"):
-			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"ids"`) || strings.Contains(text, "[1,2]") {
-				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
+		case in.Script != nil && storedName.MatchString(*in.Script):
+			name := storedName.FindStringSubmatch(*in.Script)[1]
+			if strings.Contains(text, "[1,2]") {
+				t.Fatalf("scripted run_query result = %q, want no ids", text)
 			}
-			scripted = true
-		case len(in.Params) == 1 && in.Params[0] == "ids":
+			// A script the model got wrong (error, nothing set) is its own retry, not a product fault.
+			if !ok || isErr || !strings.Contains(text, `"tempSet":[{"name":"`+name+`"`) {
+				continue
+			}
+			keptName, scripted = name, true
+		case keptName != "" && len(in.Params) == 1 && in.Params[0] == keptName:
 			if !ok || isErr || !strings.Contains(text, "one") || !strings.Contains(text, "two") {
 				t.Fatalf("params run_query result = %q (ok=%v, error=%v), want both bodies", text, ok, isErr)
 			}

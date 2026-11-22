@@ -28,7 +28,6 @@ typecheck_targets() {
   [ -n "$_ts" ] || return 0
   printf '%s\n' "$_ts" | while IFS= read -r _f; do
     case "$_f" in
-      apps/kira-space/frontend/proto/*|apps/kira-space/frontend/*proto*|apps/kira-space/tests/proto/*) echo "proto web mobile tests unit" ;;
       apps/kira-space/frontend/*|apps/kira-space/tests/*|apps/kira-space/tsconfig*|apps/kira-space/playwright*) echo "web mobile tests unit" ;;
       packages/api-core/*) echo "api-core" ;;
       packages/git-*/*) echo "git" ;;

@@ -40,6 +40,15 @@ type Result struct {
 	JSON    json.RawMessage // compact, key order as JSON.stringify gives it, big integers exact; "null" for undefined
 	Type    string          // undefined | null | boolean | number | bigint | string | array | object
 	Elapsed time.Duration   // script time inside the worker, spawn excluded
+	// ReadBack holds, per read-back binding, the object's own enumerable string keys after the run.
+	ReadBack map[string]ReadBack
+}
+
+// ReadBack is one read-back binding after the run. JSON maps each key to its encoded value; Invalid
+// maps a key that holds no JSON value to its JS type (function, symbol, undefined, accessor).
+type ReadBack struct {
+	JSON    map[string]json.RawMessage `json:"json,omitempty"`
+	Invalid map[string]string          `json:"invalid,omitempty"`
 }
 
 // Engine runs scripts. Safe for concurrent use; each Exec runs in its own worker process.
@@ -80,8 +89,14 @@ func prepare(r Run) (*prepared, error) {
 	if lerr != nil {
 		return nil, lerr
 	}
-	if _, cerr := parseSource(r.Source); cerr != nil {
+	prog, cerr := parseSource(r.Source)
+	if cerr != nil {
 		return nil, cerr
+	}
+	for _, b := range r.Bindings {
+		if b.ReadBack && declares(prog, []string{b.Name}) != "" {
+			return nil, newError(KindInput, "the script declares its own %q; remove it: %s is Kira's global for saved values.", b.Name, b.Name)
+		}
 	}
 	if berr := validateBindings(r.Bindings, lim.InputBytes); berr != nil {
 		return nil, berr
@@ -92,7 +107,7 @@ func prepare(r Run) (*prepared, error) {
 	for i, b := range r.Bindings {
 		total += len(b.Value)
 		byName[b.Name] = b
-		wire[i] = wireBinding{Name: b.Name, Value: b.Value}
+		wire[i] = wireBinding{Name: b.Name, Value: b.Value, ReadBack: b.ReadBack}
 		for fn := range b.Funcs {
 			wire[i].Funcs = append(wire[i].Funcs, fn)
 		}
@@ -289,7 +304,7 @@ func (c *child) final(m workerMsg, lim Limits) (Result, bool, error) {
 		if len(m.Result.JSON) > lim.OutputBytes {
 			return Result{}, true, newError(KindOutput, "result exceeds %d bytes", lim.OutputBytes)
 		}
-		return Result{JSON: m.Result.JSON, Type: m.Result.Type, Elapsed: time.Duration(m.Result.ElapsedNs)}, true, nil
+		return Result{JSON: m.Result.JSON, Type: m.Result.Type, Elapsed: time.Duration(m.Result.ElapsedNs), ReadBack: m.Result.ReadBack}, true, nil
 	case m.Error != nil:
 		c.p.Stop()
 		return Result{}, true, m.Error

@@ -40,6 +40,13 @@ func (st *runState) newVM(req *workerRequest) *Error {
 		return newError(KindInternal, "JSON.stringify missing")
 	}
 
+	if reflectObj, isObj := vm.Get("Reflect").(*goja.Object); isObj {
+		st.gopd, _ = goja.AssertFunction(reflectObj.Get("getOwnPropertyDescriptor"))
+	}
+	if st.gopd == nil {
+		return newError(KindInternal, "Reflect.getOwnPropertyDescriptor missing")
+	}
+
 	global := vm.GlobalObject()
 	if err := global.Delete("eval"); err != nil {
 		return newError(KindInternal, "cannot remove eval")

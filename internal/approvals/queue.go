@@ -19,6 +19,7 @@ const (
 	KindDbResponse    = "db.response"
 	KindDbExemption   = "db.exemption"
 	KindKubeRead      = "kube.read"
+	KindKubeResponse  = "kube.response"
 	KindProofReview   = "proof.review"
 	KindBranchRequest = "branch.request"
 	KindTaskCreate    = "task.create"
@@ -55,6 +56,8 @@ type Origin struct {
 	Step   string `json:"step"`
 	// Source is session, run, automation or "".
 	Source string `json:"source"`
+	// Session is the agent session id behind an MCP request; "" for none.
+	Session string `json:"session,omitempty"`
 }
 
 // Target is what the request acts on.

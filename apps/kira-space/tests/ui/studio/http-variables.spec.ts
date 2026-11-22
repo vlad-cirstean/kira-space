@@ -4,7 +4,12 @@ import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
 import { openHttpMode } from './support/apiMode';
-import { collectionRow, variableRow } from './support/apiRows';
+import {
+  collectionRow,
+  matrixCell,
+  openVariableHistory,
+  openVariablesTab,
+} from './support/apiRows';
 import { acceptConfirm } from './support/dialogs';
 
 // P5 §6.3: five tests, own file (§0.3 — nothing appended to collections.spec.ts or the mixed
@@ -57,9 +62,8 @@ const HEALTH_REQUEST = {
 async function openVariablesDialog(page: Page): Promise<void> {
   await openHttpMode(page);
   await expect(collectionRow(page, 'col-1')).toBeVisible();
-  await collectionRow(page, 'col-1').click({ button: 'right' });
-  await page.click('[data-testid="menu-item-variables"]');
-  await expect(page.locator('[data-testid="variables-dialog"]')).toBeVisible();
+  await openVariablesTab(page);
+  await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 }
 
 // ---- 1. A secret is masked, and revealing it is gated ----
@@ -72,6 +76,7 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
     name: 'host',
     value: 'api.example.com',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const SECRET_OK = {
@@ -81,6 +86,7 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
     name: 'apiKey',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 1,
   };
   const SECRET_CANCEL = {
@@ -90,6 +96,7 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
     name: 'cancelled',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 2,
   };
   const SECRET_ERROR = {
@@ -99,6 +106,7 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
     name: 'errored',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 3,
   };
 
@@ -140,11 +148,9 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
 
   // The plaintext row shows its value; every secret row is masked; not one Reveal call has been
   // made yet, and no bound call's own log carries the secret's plaintext before a reveal.
-  await expect(variableRow(page, 'var-plain').locator('[data-testid="variable-value"]')).toHaveText(
-    'api.example.com',
-  );
+  await expect(matrixCell(page, 'host', 'col-1')).toContainText('api.example.com');
   await expect(
-    variableRow(page, 'var-secret-ok').locator('[data-testid="variable-value-masked"]'),
+    matrixCell(page, 'apiKey', 'col-1').locator('[data-slot="masked-value"]'),
   ).toHaveText('••••••••');
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(0);
   for (const entry of control.log()) {
@@ -153,26 +159,24 @@ test('a secret is masked, and revealing it is gated', async ({ relaunch }) => {
 
   // Confirmation-required -> the app's own confirm dialog -> accept -> a second Reveal call with
   // confirmed: true, and the value now renders.
-  await variableRow(page, 'var-secret-ok').locator('[data-testid="variable-reveal"]').click();
+  await page.click('[data-testid="matrix-reveal-apiKey-col-1"]');
   await expect(page.locator('[data-testid="confirm-dialog-message"]')).toHaveText(
     'This variable’s value will be displayed in plain text.',
   );
   await acceptConfirm(page);
-  await expect(
-    variableRow(page, 'var-secret-ok').locator('[data-testid="variable-value"]'),
-  ).toHaveText('s3cr3t');
+  await expect(matrixCell(page, 'apiKey', 'col-1')).toContainText('s3cr3t');
   expect(control.log().filter((e) => e.channel === IPC.variablesReveal)).toHaveLength(2);
 
   // A cancelled reveal leaves the row masked, with no further call than the one Reveal itself.
-  await variableRow(page, 'var-secret-cancel').locator('[data-testid="variable-reveal"]').click();
+  await page.click('[data-testid="matrix-reveal-cancelled-col-1"]');
   await expect(
-    variableRow(page, 'var-secret-cancel').locator('[data-testid="variable-value-masked"]'),
+    matrixCell(page, 'cancelled', 'col-1').locator('[data-slot="masked-value"]'),
   ).toHaveText('••••••••');
 
   // An error leaves the row masked too, and surfaces in the dialog's own error strip.
-  await variableRow(page, 'var-secret-error').locator('[data-testid="variable-reveal"]').click();
+  await page.click('[data-testid="matrix-reveal-errored-col-1"]');
   await expect(
-    variableRow(page, 'var-secret-error').locator('[data-testid="variable-value-masked"]'),
+    matrixCell(page, 'errored', 'col-1').locator('[data-slot="masked-value"]'),
   ).toHaveText('••••••••');
   await expect(page.locator('[data-testid="variables-error"]')).toContainText(
     'could not be decrypted',
@@ -190,6 +194,7 @@ test('substitution reaches the wire, and a secret does not', async ({ relaunch }
     name: 'host',
     value: 'api.example.com',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const TOKEN_VAR = {
@@ -199,6 +204,7 @@ test('substitution reaches the wire, and a secret does not', async ({ relaunch }
     name: 'token',
     value: '',
     isSecret: true,
+    secretSet: true,
     sortOrder: 1,
   };
   const RESPONSE = {
@@ -315,6 +321,7 @@ test('precedence is environment-over-collection', async ({ relaunch }) => {
     name: 'region',
     value: 'us-environment',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const COL_REGION = {
@@ -324,6 +331,7 @@ test('precedence is environment-over-collection', async ({ relaunch }) => {
     name: 'region',
     value: 'us-collection',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const RESPONSE = {
@@ -397,6 +405,7 @@ test('history lists prior values and offers no restore', async ({ relaunch }) =>
     name: 'baseUrl',
     value: 'v3',
     isSecret: false,
+    secretSet: false,
     sortOrder: 0,
   };
   const HISTORY = [
@@ -435,7 +444,7 @@ test('history lists prior values and offers no restore', async ({ relaunch }) =>
   const { window: page } = await relaunch({ control: CONTROL });
 
   await openVariablesDialog(page);
-  await variableRow(page, 'var-1').locator('[data-testid="variable-history"]').click();
+  await openVariableHistory(page, CURRENT.name);
 
   const entries = page.locator('[data-testid="variable-history-entry"]');
   await expect(entries).toHaveCount(3);

@@ -50,11 +50,6 @@ var benchSetup func(*testing.T, *spikeRun, spikeFlow) (string, []string, func())
 // benchRunCapUSD is execute's per-run budget while the benchmark runs; zero keeps the spike cap.
 var benchRunCapUSD float64
 
-// benchRoles are the grant shapes whose tool lists the baseline freezes, by flow.
-var benchRoles = []struct{ name, flow string }{
-	{"run", "F5"}, {"run-proof", "F2"}, {"orchestrator", "F4"},
-}
-
 func benchRoleOf(flow string) string {
 	switch flow {
 	case "F2", "F3", "F3b":
@@ -372,10 +367,8 @@ func TestDetailsBench(t *testing.T) {
 		budget = v
 	}
 
-	spike1bOn, spikeFixtures1b, benchRunCapUSD = true, benchFixtures, benchRunCap
-	defer func() {
-		spike1bOn, spikeFixtures1b, benchRunCapUSD, benchSetup = false, "testdata/details-spike-1b", 0, nil
-	}()
+	benchRunCapUSD = benchRunCap
+	defer func() { benchRunCapUSD, benchSetup = 0, nil }()
 	home := spikeHome(t)
 
 	var recs []spikeRec
@@ -538,9 +531,8 @@ func inconclusive(a, b []float64) bool {
 // frozen tools and answers the calls its flows make.
 func TestDetailsBenchFrozenServes(t *testing.T) {
 	base := loadBenchBaseline(t)
-	spike1bOn, spikeFixtures1b = true, benchFixtures
 	benchSetup = benchSetupT(t, base)
-	defer func() { spike1bOn, spikeFixtures1b, benchSetup = false, "testdata/details-spike-1b", nil }()
+	defer func() { benchSetup = nil }()
 	for _, flow := range []string{"F5", "F2", "F4"} {
 		r := &spikeRun{t: t, flow: flow, arm: "T", lib: loadSpikeLib(t)}
 		fl := flowByIDs(spikeFlows1b, flow)
@@ -779,9 +771,8 @@ func seedProofR(t *testing.T, dir string, rows int) {
 // TestDetailsBenchArmRServes checks, with no claude and no tokens, that arm R serves the uniform Space
 // surface over the task folder and answers the calls its flows make.
 func TestDetailsBenchArmRServes(t *testing.T) {
-	spike1bOn, spikeFixtures1b = true, benchFixtures
 	benchSetup = benchSetupR(t, benchBaseline{})
-	defer func() { spike1bOn, spikeFixtures1b, benchSetup = false, "testdata/details-spike-1b", nil }()
+	defer func() { benchSetup = nil }()
 	for _, flow := range []string{"F1", "F4", "F5", "F6"} {
 		r := &spikeRun{t: t, flow: flow, arm: "R", lib: loadSpikeLib(t)}
 		fl := flowByIDs(spikeFlows1b, flow)
