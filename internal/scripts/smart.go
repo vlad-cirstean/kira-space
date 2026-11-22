@@ -347,7 +347,7 @@ var (
 	}
 	studioMoved = map[string]string{
 		"list_connections": "list", "api_list_environments": "list", "kube_list_clusters": "list",
-		"list_scripts": "list", "list_saved_variables": "list", "list_children": "describe",
+		"list_scripts": "list", "list_kept_variables": "list", "list_children": "describe",
 		"kube_discover": "kube_read", "kube_list_resources": "kube_read", "kube_describe": "kube_read",
 		"kube_pod_logs": "kube_read", "get_script_run": "run_script",
 	}
