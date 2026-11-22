@@ -174,11 +174,11 @@ export const SHOTS: readonly ShotDef[] = [
   },
   {
     id: 'studio-api-variables',
-    title: 'Api variables',
-    alt: 'Kira Space Api module Variables tab: one grid with a row per variable name and a column per environment.',
+    title: 'API variables',
+    alt: 'Kira Space API module Variables tab: one grid with a row per variable name and a column per environment.',
     caption: 'Variables tab. One grid of names by environments, edited in place.',
     icon: 'table',
-    label: 'Api variables',
+    label: 'API variables',
   },
   {
     id: 'studio-mcp-settings',

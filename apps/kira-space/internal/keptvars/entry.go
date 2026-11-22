@@ -63,13 +63,13 @@ type Meta struct {
 	Source    Source    `json:"source"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiresAt time.Time `json:"expiresAt"`
-	// Origin is scheme://host[:port] a user value was supplied for. A script-kept value derived from one carries
-	// the same Origin; empty otherwise.
+	// Origin is scheme://host[:port] the value goes to: the one a user value was supplied for, or the request
+	// origin of a secret.x an api_request script kept. Empty otherwise (a SQL or kube script's secret.x too).
 	Origin string `json:"origin,omitempty"`
 }
 
 // Bound reports whether the value must go only to its origin and is always reviewed when a script reads it:
-// a value the user supplied, or one a script derived from such a value (it carries the read entry's Origin).
+// a value the user supplied, or one with an Origin (a secret.x an api_request script kept).
 func (m Meta) Bound() bool { return m.Source.Kind == SourceUser || m.Origin != "" }
 
 // Entry is a Meta with its compact JSON value. Store reads return a copy.

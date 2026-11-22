@@ -200,8 +200,9 @@ function apiVerdict(item: ApprovalItem): ApprovalVerdict {
   );
   // One badge names every secret the request sends that the user did not write: shared secrets, typed inputs
   // (needed or stored) and {{secret.x}} temporary secrets, deduped by name. The tooltip says where each goes
-  // and where its value comes from. A temporary secret goes only to the request host (the backend refuses
-  // any other).
+  // and where its value comes from. The tooltip names the request host for a temporary secret; the backend
+  // enforces it only for a bound entry (typed, or kept by an api_request script). A secret a SQL or kube
+  // script kept has no origin.
   const sends = new Map<string, { hosts: string; key: Parameters<typeof t>[0] }>();
   for (const c of p.credentials) {
     sends.set(c.name, {

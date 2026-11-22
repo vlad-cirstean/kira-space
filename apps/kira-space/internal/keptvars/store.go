@@ -43,12 +43,10 @@ type Put struct {
 	Value       json.RawMessage
 	Secret      bool
 	Source      Source
-	// Origin binds a SourceUser value to the origin it was supplied for.
+	// Origin binds a value to the origin it goes to: a SourceUser value, or a secret.x an api_request script kept.
 	Origin string
 	// TTL of zero means Options.Retention; it never exceeds MaxTTL.
 	TTL time.Duration
-	// NotAfter, when set, caps the expiry: a value derived from another never outlives it.
-	NotAfter time.Time
 }
 
 type item struct {
@@ -226,9 +224,6 @@ func (s *Store) Put(p Put) (Meta, error) {
 	}
 	now := s.now()
 	expires := now.Add(ttl)
-	if !p.NotAfter.IsZero() && p.NotAfter.Before(expires) {
-		expires = p.NotAfter
-	}
 	it := &item{value: value, index: -1, meta: Meta{
 		ID: newID(), Scope: p.Scope, Name: p.Name, Type: typ, Bytes: len(value), Items: items,
 		Secret: p.Secret, Source: p.Source, Origin: p.Origin, CreatedAt: now, ExpiresAt: expires,

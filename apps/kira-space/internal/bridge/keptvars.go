@@ -72,7 +72,7 @@ type KeptEntryView struct {
 	Preview          string    `json:"preview"`
 	PreviewTruncated bool      `json:"previewTruncated"`
 	ScopeLabel       string    `json:"scopeLabel"`
-	// Origin is the scheme://host[:port] a user-supplied value goes to; "" for other kinds.
+	// Origin is the scheme://host[:port] the value goes to: a user-supplied value, or a secret.x an api_request script kept; "" otherwise.
 	Origin string `json:"origin"`
 }
 
