@@ -4,12 +4,10 @@ import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed } from 'vue';
-import { keptScriptRanges } from '../kept/keptHighlight';
 import ApiRequestView from './ApiRequestView.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 import { apiPrepared } from './preparedValues';
-import TransformScriptBlock from './TransformScriptBlock.vue';
 import UserInputsPanel from './UserInputsPanel.vue';
 
 // What the agent would send, one box per section: kept variables, the request (line, body, headers
@@ -24,8 +22,6 @@ const keptRows = computed(() => kept.value.filter((u) => !u.pending));
 
 const prepared = computed(() => apiPrepared(payload.value));
 const changed = computed(() => payload.value.script?.prepare?.changed ?? []);
-// The prepare script's own kept calls (reads); the transform block marks its own.
-const keptSites = computed(() => kept.value.flatMap((u) => u.sites));
 const pairName = (field: 'header' | 'query' | 'form', index: number): string => {
   if (field === 'header') return payload.value.headers[index]?.name ?? '';
   if (field === 'query') return payload.value.query[index]?.name ?? '';
@@ -57,17 +53,14 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
       <JsScriptBlock
         :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
         :source="payload.script.prepare.source"
-        :range-highlights="kept.length ? keptScriptRanges(keptSites, 'prepare') : undefined"
         testid="api-approval-script-prepare"
       />
     </ApprovalBox>
     <ApprovalBox v-if="payload.script?.transform" testid="api-approval-box-transform">
-      <TransformScriptBlock
+      <JsScriptBlock
         :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-        :script="payload.script.transform"
-        :kept="kept"
-        testid="api-approval"
-        script-testid="api-approval-script-transform"
+        :source="payload.script.transform.source"
+        testid="api-approval-script-transform"
       />
     </ApprovalBox>
   </div>

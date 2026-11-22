@@ -370,7 +370,6 @@ U179@@vt@@@@byte size passed as a count (use formatBytes, {size})@@\bcount:\s*(?
 U180@@v@@KeptNameMark.vue@@hand kept name and type (use KeptNameMark)@@:mark-class="[^"]*KEPT_MARK_CLASS[^"]*"\s*/>\s*<span
 U181@@vt@@@@JSON.parse/stringify pretty-print (use beautify.ts indentJson, prettyJson)@@JSON\.stringify\(\s*JSON\.parse\(
 U183@@vt@@StagedKeepList.vue@@hand Will keep list (use StagedKeepList)@@studio\.kept\.willKeep\.label
-U184@@vt@@TransformScriptBlock.vue@@hand transform script kept marks (use TransformScriptBlock)@@studio\.kept\.mayKeep\.label|studio\.kept\.scriptReads\.hint
 U185@@v@@GrpcStatusBadge.vue@@hand gRPC status chip (use GrpcStatusBadge)@@\bgrpcCodeClass\(|\bgrpcCodeHint\(
 U186@@vt@@ValueRevealButton.vue@@hand value reveal toggle (use ValueRevealButton)@@common\.secret\.show\.label|common\.hideValue\.label|docker\.env\.revealValue|(?s:import MaskedValue\b.*?(?:icon="eye"|'eye'))
 U187@@vt@@approvalFooter.ts@@hand approval origin text (use approvalRequester)@@\.client,\s*\w+\.cwd,\s*\w+\.task\b

@@ -4,18 +4,15 @@ import { kubeReadPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed } from 'vue';
-import { keptScriptRanges } from '../kept/keptHighlight';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 import KubeRequestView from './KubeRequestView.vue';
-import TransformScriptBlock from './TransformScriptBlock.vue';
 
 // What the agent would read, one box per section: the kept variables its scripts read, the kubectl
 // line, then the scripts. Discover has no final args, so it keeps the plain statement.
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => kubeReadPayloadSchema.parse(props.item.payload));
-const keptSites = computed(() => payload.value.kept.flatMap((u) => u.sites));
 </script>
 
 <template>
@@ -34,17 +31,14 @@ const keptSites = computed(() => payload.value.kept.flatMap((u) => u.sites));
       <JsScriptBlock
         :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
         :source="payload.script.prepare.source"
-        :range-highlights="payload.kept.length ? keptScriptRanges(keptSites, 'prepare') : undefined"
         testid="kube-approval-script-prepare"
       />
     </ApprovalBox>
     <ApprovalBox v-if="payload.script?.transform" testid="kube-approval-box-transform">
-      <TransformScriptBlock
+      <JsScriptBlock
         :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-        :script="payload.script.transform"
-        :kept="payload.kept"
-        testid="kube-approval"
-        script-testid="kube-approval-script-transform"
+        :source="payload.script.transform.source"
+        testid="kube-approval-script-transform"
       />
     </ApprovalBox>
   </div>

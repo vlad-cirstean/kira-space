@@ -5,8 +5,8 @@ import { t } from '@theme/i18n';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed } from 'vue';
 import DbRequestView from './DbRequestView.vue';
+import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
-import TransformScriptBlock from './TransformScriptBlock.vue';
 
 const props = defineProps<{ item: ApprovalItem }>();
 
@@ -34,12 +34,10 @@ const payload = computed(() => dbExemptionPayloadSchema.parse(props.item.payload
       />
     </ApprovalBox>
     <ApprovalBox v-if="payload.script" testid="db-approval-box-transform">
-      <TransformScriptBlock
+      <JsScriptBlock
         :label="t('studio.dbMcp.approval.query.scriptResult.label')"
-        :script="payload.script"
-        :kept="payload.kept"
-        testid="db-approval"
-        script-testid="db-approval-script"
+        :source="payload.script.source"
+        testid="db-approval-script"
       />
     </ApprovalBox>
   </div>

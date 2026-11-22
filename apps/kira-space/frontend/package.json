@@ -17,6 +17,7 @@
     "@kira/git-ipc": "workspace:*",
     "@kira/git-ui": "workspace:*",
     "dompurify": "3.4.17",
+    "js-beautify": "2.0.3",
     "mermaid": "12.2.0",
     "modern-screenshot": "4.7.0",
     "shlex": "3.0.0",

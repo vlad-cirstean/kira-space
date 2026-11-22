@@ -14558,6 +14558,9 @@
           }
         },
         "script": {
+          "formatted": {
+            "tooltip": "Shown formatted; the script runs as the agent wrote it"
+          },
           "secretMissing": {
             "status": "Secret · unset"
           },
@@ -15797,9 +15800,6 @@
       "manage": {
         "label": "Manage saved variables"
       },
-      "mayKeep": {
-        "label": "This script may keep:"
-      },
       "origin": {
         "label": "Goes only to {origin}"
       },
@@ -15824,9 +15824,6 @@
         "source": {
           "label": "{name}, saved by {request}"
         }
-      },
-      "scriptReads": {
-        "hint": "This script reads kept variables; what it returns goes to the agent."
       },
       "site": {
         "contentType": {

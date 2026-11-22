@@ -57,17 +57,17 @@ export function keptRanges(
     .sort((a, b) => a.from - b.from);
 }
 
-/** Monaco ranges of a script's kira.getValue and kira.storeValue calls for one stage. The sites index the source
- *  exactly as shown: a script is not reformatted. */
-export function keptScriptRanges(
-  sites: readonly Pick<KeptSite, 'field' | 'part' | 'from' | 'to'>[],
-  stage: 'prepare' | 'transform',
-) {
-  const marks: readonly RangeHighlight[] = sites
-    .filter((s) => s.field === 'script' && s.part === stage)
-    .map((s) => ({ from: s.from, to: s.to, class: KEPT_EDITOR_CLASS }))
-    .sort((a, b) => a.from - b.from);
-  return (): readonly RangeHighlight[] => marks;
+const SCRIPT_VAR_RE =
+  /\b(?:plain|secret)\s*(?:\.\s*[A-Za-z_$][\w$]*|\[\s*(?:"[^"\\]*"|'[^'\\]*')\s*\])/g;
+
+/** Monaco ranges of every `plain.x` and `secret.x` token of a script, found in the text shown: same
+ *  grammar as internal/keptvars ScanScript. */
+export function scriptVarRanges(doc: string): readonly RangeHighlight[] {
+  return Array.from(doc.matchAll(SCRIPT_VAR_RE), (m) => ({
+    from: m.index,
+    to: m.index + m[0].length,
+    class: KEPT_EDITOR_CLASS,
+  }));
 }
 
 /** Splits text on ranges for `HighlightedText`. */
