@@ -38,14 +38,14 @@ func withInputs(in Input, decls ...InputDecl) Input {
 	return in
 }
 
-var tokenDecl = InputDecl{Name: "token", Label: "Access token"}
+var tokenDecl = InputDecl{Name: "token"}
 
 const originA, originB = "https://a.example", "https://b.example"
 
 func TestInputDecisionTable(t *testing.T) {
 	user := func(origin string) seed { return seed{"token", `"V"`, origin, keptvars.SourceUser} }
 	script := seed{"token", `"V"`, "", keptvars.SourceScript}
-	ref := func(host string) Input { return get("https://" + host + "/p?t={{kept.token}}") }
+	ref := func(host string) Input { return get("https://" + host + "/p?t={{secret.token}}") }
 	unref := func(host string) Input { return get("https://" + host + "/p") }
 	cases := []struct {
 		name  string
@@ -73,7 +73,7 @@ func TestInputDecisionTable(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || len(p.Inputs) != 1 || p.Inputs[0].State != c.state || p.Inputs[0].Label != "Access token" {
+			if err != nil || len(p.Inputs) != 1 || p.Inputs[0].State != c.state {
 				t.Fatalf("inputs = %+v, err %v, want state %s", p.Inputs, err, c.state)
 			}
 			if (c.state == InputNeeded) != (p.MissingInputs() == 1) || (c.state == InputNeeded) != p.Kept[0].Pending {
@@ -83,32 +83,30 @@ func TestInputDecisionTable(t *testing.T) {
 	}
 }
 
-func unrefGet() Input { return get("https://a.example/p") }
-
 func TestUndeclaredReferenceToUserEntry(t *testing.T) {
 	svc := inputSvc(t, seed{"token", `"V"`, originA, keptvars.SourceUser})
-	p, err := svc.Plan(get("https://a.example/p?t={{kept.token}}"))
+	p, err := svc.Plan(get("https://a.example/p?t={{secret.token}}"))
 	if err != nil || !p.UsesUserValue() || p.Kept[0].Pending {
 		t.Fatalf("same origin: %v %+v", err, p.Kept)
 	}
-	if _, err := svc.Plan(get("https://b.example/p?t={{kept.token}}")); err == nil || !strings.Contains(err.Error(), "supplied for https://a.example") {
+	if _, err := svc.Plan(get("https://b.example/p?t={{secret.token}}")); err == nil || !strings.Contains(err.Error(), "supplied for https://a.example") {
 		t.Fatalf("other origin: %v", err)
 	}
-	if _, err := svc.Plan(get("https://a.example/p?t={{kept.nope}}")); err == nil || !strings.HasSuffix(err.Error(), "declare it in inputs") {
+	if _, err := svc.Plan(get("https://a.example/p?t={{secret.nope}}")); err == nil || !strings.HasSuffix(err.Error(), "declare it in inputs") {
 		t.Fatalf("absent: %v", err)
 	}
 }
 
 func TestPendingInputPositions(t *testing.T) {
 	svc := inputSvc(t)
-	hdr := Input{Method: "GET", URL: "https://a.example/", Scope: "external", Headers: []NameValue{{Name: "Authorization", Value: "Bearer {{kept.token}}"}}}
-	jsonBody := Input{Method: "POST", URL: "https://a.example/", Scope: "external", ContentType: "application/json", Body: `{"t": {{kept.token}}}`}
-	quoted := Input{Method: "POST", URL: "https://a.example/", Scope: "external", ContentType: "application/json", Body: `{"t": "{{kept.token}}"}`}
+	hdr := Input{Method: "GET", URL: "https://a.example/", Scope: "external", Headers: []NameValue{{Name: "Authorization", Value: "Bearer {{secret.token}}"}}}
+	jsonBody := Input{Method: "POST", URL: "https://a.example/", Scope: "external", ContentType: "application/json", Body: `{"t": {{secret.token}}}`}
+	quoted := Input{Method: "POST", URL: "https://a.example/", Scope: "external", ContentType: "application/json", Body: `{"t": "{{secret.token}}"}`}
 	for name, c := range map[string]struct {
 		in  Input
 		err string
 	}{
-		"authority":  {get("https://{{kept.token}}.example/"), "scheme, host or port"},
+		"authority":  {get("https://{{secret.token}}.example/"), "scheme, host or port"},
 		"header":     {hdr, ""},
 		"json body":  {jsonBody, ""},
 		"json quote": {quoted, "without quotes"},
@@ -124,23 +122,19 @@ func TestPendingInputPositions(t *testing.T) {
 
 func TestInputDeclarationRules(t *testing.T) {
 	svc := inputSvc(t)
-	in := get("https://a.example/{{kept.a}}{{kept.b}}{{kept.c}}{{kept.d}}{{kept.e}}")
+	in := get("https://a.example/{{secret.a}}{{secret.b}}{{secret.c}}{{secret.d}}{{secret.e}}")
 	var five []InputDecl
 	for _, n := range []string{"a", "b", "c", "d", "e"} {
-		five = append(five, InputDecl{Name: n, Label: n})
+		five = append(five, InputDecl{Name: n})
 	}
-	long := strings.Repeat("x", 81)
 	cases := []struct {
 		name  string
 		decls []InputDecl
 		err   string
 	}{
 		{"five", five, "at most 4 inputs"},
-		{"duplicate", []InputDecl{{Name: "a", Label: "A"}, {Name: "a", Label: "B"}}, "declared twice"},
-		{"bad name", []InputDecl{{Name: "1a", Label: "A"}}, "kept variable name"},
-		{"empty label", []InputDecl{{Name: "a", Label: "  "}}, "label of 1 to 80 characters"},
-		{"long label", []InputDecl{{Name: "a", Label: long}}, "label of 1 to 80 characters"},
-		{"multiline label", []InputDecl{{Name: "a", Label: "x\ny"}}, "on one line"},
+		{"duplicate", []InputDecl{{Name: "a"}, {Name: "a"}}, "declared twice"},
+		{"bad name", []InputDecl{{Name: "1a"}}, "saved variable name"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -160,7 +154,7 @@ func TestInputRoomOverScopeCap(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	_, err := (&Service{Kept: st}).Plan(withInputs(get("https://a.example/{{kept.token}}"), tokenDecl))
+	_, err := (&Service{Kept: st}).Plan(withInputs(get("https://a.example/{{secret.token}}"), tokenDecl))
 	if err != keptvars.ErrScopeFull {
 		t.Fatalf("err = %v", err)
 	}
@@ -168,7 +162,7 @@ func TestInputRoomOverScopeCap(t *testing.T) {
 
 func TestSendRefusesMissingInput(t *testing.T) {
 	svc := inputSvc(t)
-	if _, err := svc.Send(context.Background(), withInputs(get("https://a.example/{{kept.token}}"), tokenDecl), nil); err != errInputMissing {
+	if _, err := svc.Send(context.Background(), withInputs(get("https://a.example/{{secret.token}}"), tokenDecl), nil); err != errInputMissing {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -177,7 +171,7 @@ func TestUserValueMaskedInEveryForm(t *testing.T) {
 	svc := inputSvc(t, seed{"token", `"p@ss w0rd/1"`, originA, keptvars.SourceUser})
 	m := newMask(&apifiles.Opened{}, nil, svc.keptSecrets(), nil)
 	for _, echo := range []string{"p@ss w0rd/1", "p%40ss+w0rd%2F1", "p@ss%20w0rd%2F1", "cEBzcyB3MHJkLzE="} {
-		if got := m.text("x " + echo + " y"); got != "x {{kept.token}} y" {
+		if got := m.text("x " + echo + " y"); got != "x {{secret.token}} y" {
 			t.Fatalf("echo %q -> %q", echo, got)
 		}
 	}

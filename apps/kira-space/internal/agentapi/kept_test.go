@@ -46,17 +46,17 @@ func TestKeptInsertionByPositionAndType(t *testing.T) {
 		url  string
 		body string
 	}{
-		{"path string escaped", get("http://h/p/{{kept.s}}"), "http://h/p/a%20b%2Fc&d", ""},
-		{"query string escaped", get("http://h/p?q={{kept.s}}"), "http://h/p?q=a+b%2Fc%26d", ""},
-		{"path number", get("http://h/p/{{kept.n}}"), "http://h/p/12", ""},
-		{"path big integer exact", get("http://h/p/{{kept.big}}"), "http://h/p/12345678901234567890", ""},
-		{"path boolean", get("http://h/p/{{kept.t}}"), "http://h/p/true", ""},
-		{"path null empty", get("http://h/p/{{kept.nl}}x"), "http://h/p/x", ""},
-		{"agent query entry", Input{Method: "GET", URL: "http://h/p", Scope: "external", Query: []NameValue{{Name: "q", Value: "{{kept.s}}"}}}, "http://h/p?q=a+b%2Fc%26d", ""},
-		{"json body array", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "application/json", Body: `{"ids": {{kept.arr}}, "n": {{kept.n}}, "o": {{kept.obj}}, "s": {{kept.s}}, "z": {{kept.nl}}}`}, "http://h/p", `{"ids": [1,"x"], "n": 12, "o": {"k":[2]}, "s": "a b/c&d", "z": null}`},
-		{"json body big integer", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "application/vnd.api+JSON", Body: `[{{kept.big}}]`}, "http://h/p", `[12345678901234567890]`},
-		{"raw body string raw", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "text/plain", Body: `v={{kept.s}}`}, "http://h/p", `v=a b/c&d`},
-		{"raw body list as json", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "text/plain", Body: `v={{kept.arr}} {{kept.n}} {{kept.t}}`}, "http://h/p", `v=[1,"x"] 12 true`},
+		{"path string escaped", get("http://h/p/{{plain.s}}"), "http://h/p/a%20b%2Fc&d", ""},
+		{"query string escaped", get("http://h/p?q={{plain.s}}"), "http://h/p?q=a+b%2Fc%26d", ""},
+		{"path number", get("http://h/p/{{plain.n}}"), "http://h/p/12", ""},
+		{"path big integer exact", get("http://h/p/{{plain.big}}"), "http://h/p/12345678901234567890", ""},
+		{"path boolean", get("http://h/p/{{plain.t}}"), "http://h/p/true", ""},
+		{"path null empty", get("http://h/p/{{plain.nl}}x"), "http://h/p/x", ""},
+		{"agent query entry", Input{Method: "GET", URL: "http://h/p", Scope: "external", Query: []NameValue{{Name: "q", Value: "{{plain.s}}"}}}, "http://h/p?q=a+b%2Fc%26d", ""},
+		{"json body array", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "application/json", Body: `{"ids": {{plain.arr}}, "n": {{plain.n}}, "o": {{plain.obj}}, "s": {{plain.s}}, "z": {{plain.nl}}}`}, "http://h/p", `{"ids": [1,"x"], "n": 12, "o": {"k":[2]}, "s": "a b/c&d", "z": null}`},
+		{"json body big integer", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "application/vnd.api+JSON", Body: `[{{plain.big}}]`}, "http://h/p", `[12345678901234567890]`},
+		{"raw body string raw", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "text/plain", Body: `v={{plain.s}}`}, "http://h/p", `v=a b/c&d`},
+		{"raw body list as json", Input{Method: "POST", URL: "http://h/p", Scope: "external", ContentType: "text/plain", Body: `v={{plain.arr}} {{plain.n}} {{plain.t}}`}, "http://h/p", `v=[1,"x"] 12 true`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestKeptInsertionByPositionAndType(t *testing.T) {
 
 func TestKeptFormAndHeader(t *testing.T) {
 	svc := keptSvc(t, map[string]string{"n": `7`, "s": `"v"`})
-	in := Input{Method: "POST", URL: "http://h/p", Scope: "external", Headers: []NameValue{{Name: "X-A", Value: "id={{kept.n}}"}}, Form: []NameValue{{Name: "k{{kept.s}}", Value: "{{kept.n}}"}}}
+	in := Input{Method: "POST", URL: "http://h/p", Scope: "external", Headers: []NameValue{{Name: "X-A", Value: "id={{plain.n}}"}}, Form: []NameValue{{Name: "k{{plain.s}}", Value: "{{plain.n}}"}}}
 	req, err := build(t, svc, in)
 	if err != nil {
 		t.Fatal(err)
@@ -91,26 +91,26 @@ func TestKeptRefusals(t *testing.T) {
 	svc := keptSvc(t, vals)
 	many := ""
 	for i := 0; i < 17; i++ {
-		many += "{{kept.v" + string(rune('a'+i)) + "}}"
+		many += "{{plain.v" + string(rune('a'+i)) + "}}"
 	}
 	cases := []struct {
 		name string
 		in   Input
 		want string
 	}{
-		{"unknown", get("http://h/{{kept.nope}}"), `no kept variable "nope"`},
-		{"other scope", Input{Method: "GET", URL: "http://h/{{kept.x}}", Scope: "session:1"}, `no kept variable "x"`},
-		{"host", get("https://{{kept.h}}/"), "scheme, host or port"},
-		{"port", get("https://a.com:{{kept.p}}/"), "scheme, host or port"},
-		{"scheme", get("{{kept.h}}://a.com/"), "scheme, host or port"},
-		{"userinfo", get("https://u:{{kept.x}}@a.com/"), "scheme, host or port"},
-		{"pipeline", get("http://h/{{kept.x | base64}}"), "no transforms"},
-		{"list in url", get("http://h/{{kept.arr}}"), "is a list"},
-		{"list in header", Input{Method: "GET", URL: "http://h/", Scope: "external", Headers: []NameValue{{Name: "X", Value: "{{kept.arr}}"}}}, "is a list"},
-		{"line break in header", Input{Method: "GET", URL: "http://h/", Scope: "external", Headers: []NameValue{{Name: "X", Value: "{{kept.nl}}"}}}, "line break"},
-		{"quoted in json", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": "{{kept.x}}"}`}, "without quotes"},
-		{"quoted after escaped quote", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": "a\"{{kept.x}}"}`}, "without quotes"},
-		{"invalid json template", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": {{kept.x}} {{kept.x}}}`}, "not valid JSON"},
+		{"unknown", get("http://h/{{plain.nope}}"), `no saved variable "nope"`},
+		{"other scope", Input{Method: "GET", URL: "http://h/{{plain.x}}", Scope: "session:1"}, `no saved variable "x"`},
+		{"host", get("https://{{plain.h}}/"), "scheme, host or port"},
+		{"port", get("https://a.com:{{plain.p}}/"), "scheme, host or port"},
+		{"scheme", get("{{plain.h}}://a.com/"), "scheme, host or port"},
+		{"userinfo", get("https://u:{{plain.x}}@a.com/"), "scheme, host or port"},
+		{"pipeline", get("http://h/{{plain.x | base64}}"), "no transforms"},
+		{"list in url", get("http://h/{{plain.arr}}"), "is a list"},
+		{"list in header", Input{Method: "GET", URL: "http://h/", Scope: "external", Headers: []NameValue{{Name: "X", Value: "{{plain.arr}}"}}}, "is a list"},
+		{"line break in header", Input{Method: "GET", URL: "http://h/", Scope: "external", Headers: []NameValue{{Name: "X", Value: "{{plain.nl}}"}}}, "line break"},
+		{"quoted in json", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": "{{plain.x}}"}`}, "without quotes"},
+		{"quoted after escaped quote", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": "a\"{{plain.x}}"}`}, "without quotes"},
+		{"invalid json template", Input{Method: "POST", URL: "http://h/", Scope: "external", ContentType: "application/json", Body: `{"a": {{plain.x}} {{plain.x}}}`}, "not valid JSON"},
 		{"seventeen names", get("http://h/?" + many), "at most 16"},
 	}
 	for _, c := range cases {
@@ -125,7 +125,7 @@ func TestKeptRefusals(t *testing.T) {
 
 func TestKeptValueIsNeverRescanned(t *testing.T) {
 	svc := keptSvc(t, map[string]string{"x": `"{{token}}"`})
-	p, err := svc.plan(Input{Method: "POST", URL: "http://h/p", Scope: "external", Body: `{{kept.x}}`}, true)
+	p, err := svc.plan(Input{Method: "POST", URL: "http://h/p", Scope: "external", Body: `{{plain.x}}`}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestKeptValueIsNeverRescanned(t *testing.T) {
 
 func TestKeptSecretValueIsMasked(t *testing.T) {
 	svc := keptSvc(t, map[string]string{"s": `"hunter2"`})
-	p, err := svc.plan(Input{Method: "GET", URL: "http://h/{{kept.s}}", Scope: "external"}, true)
+	p, err := svc.plan(Input{Method: "GET", URL: "http://h/{{plain.s}}", Scope: "external"}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestKeptSecretValueIsMasked(t *testing.T) {
 
 func TestKeptPlanCarriesNoValueAndSitesFollowText(t *testing.T) {
 	svc := keptSvc(t, map[string]string{"ids": `[101,102]`, "region": `"eu"`})
-	p, err := svc.Plan(Input{Method: "POST", URL: "http://h/é/{{kept.region}}", Scope: "external", ContentType: "application/json", Body: `{"ids": {{kept.ids}}}`})
+	p, err := svc.Plan(Input{Method: "POST", URL: "http://h/é/{{plain.region}}", Scope: "external", ContentType: "application/json", Body: `{"ids": {{plain.ids}}}`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,17 +163,17 @@ func TestKeptPlanCarriesNoValueAndSitesFollowText(t *testing.T) {
 		t.Fatalf("kept = %+v, values held = %v", p.Kept, p.keptValues != nil)
 	}
 	site := p.Kept[0].Sites[0]
-	if p.Kept[0].Name != "region" || site.Field != "url" || string([]rune(p.URL)[site.From:site.To]) != "{{kept.region}}" {
+	if p.Kept[0].Name != "region" || site.Field != "url" || string([]rune(p.URL)[site.From:site.To]) != "{{plain.region}}" {
 		t.Fatalf("site = %+v in %q", site, p.URL)
 	}
-	if b := p.Kept[1].Sites[0]; b.Field != "body" || p.Body[b.From:b.To] != "{{kept.ids}}" {
+	if b := p.Kept[1].Sites[0]; b.Field != "body" || p.Body[b.From:b.To] != "{{plain.ids}}" {
 		t.Fatalf("body site = %+v", b)
 	}
 }
 
 func TestSendRefusesAChangedKeptValueButNotSameRequest(t *testing.T) {
 	svc := keptSvc(t, map[string]string{"x": `1`})
-	in := get("http://h/{{kept.x}}")
+	in := get("http://h/{{plain.x}}")
 	approved, err := svc.Plan(in)
 	if err != nil {
 		t.Fatal(err)

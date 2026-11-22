@@ -145,15 +145,8 @@ func (s *Service) admit(kp *keptPlan, in Input, sp keptvars.RefSpan, decls map[s
 			e = pendingEntry(name, origin)
 			kp.pending[name] = true
 		}
-	} else if !ok {
-		return keptErr("no saved variable %q (it may have expired or been cleared); call list_saved_variables"+inputsDeclHint, name)
-	} else if e.Secret != sp.Secret {
-		return kindErr(name, e.Secret)
-	} else if e.Bound() && origin != "" && e.Origin != origin {
-		if e.Source.Kind != keptvars.SourceUser {
-			return keptErr("the secret saved as %q belongs to %s and is not sent to %s", name, e.Origin, origin)
-		}
-		return otherOriginError(name, e.Origin, origin)
+	} else if err := checkUndeclared(name, sp, e, ok, origin); err != nil {
+		return err
 	}
 	kp.entries[name] = e
 	kp.order = append(kp.order, name)
@@ -528,4 +521,20 @@ func refKind(sp keptvars.RefSpan) string {
 		return keptvars.KindSecret
 	}
 	return keptvars.KindPlain
+}
+
+// checkUndeclared refuses a reference to a saved value that is missing, of the other kind or bound elsewhere.
+func checkUndeclared(name string, sp keptvars.RefSpan, e keptvars.Entry, ok bool, origin string) error {
+	switch {
+	case !ok:
+		return keptErr("no saved variable %q (it may have expired or been cleared); call list_saved_variables"+inputsDeclHint, name)
+	case e.Secret != sp.Secret:
+		return kindErr(name, e.Secret)
+	case e.Bound() && origin != "" && e.Origin != origin:
+		if e.Source.Kind != keptvars.SourceUser {
+			return keptErr("the secret saved as %q belongs to %s and is not sent to %s", name, e.Origin, origin)
+		}
+		return otherOriginError(name, e.Origin, origin)
+	}
+	return nil
 }

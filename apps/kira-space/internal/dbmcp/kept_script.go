@@ -223,6 +223,114 @@ var invalidTypeText = map[string]string{
 	"function": "a function", "symbol": "a symbol", "undefined": "undefined", "accessor": "an accessor property",
 }
 
+// scriptWrite is one staged write: kind is plain or secret.
+type scriptWrite struct {
+	kind, name string
+	value      json.RawMessage
+}
+
+// scriptChanges is what a run changed: its writes, its plain deletes and every key written as a secret.
+type scriptChanges struct {
+	writes     []scriptWrite
+	deletes    []string
+	secretKeys map[string]bool
+}
+
+// diffGlobals compares the globals after a run with the plain values injected before it. A refusal text
+// names the rule and never a value.
+func diffGlobals(rb map[string]jsengine.ReadBack, inj map[string]json.RawMessage) (scriptChanges, string) {
+	ch := scriptChanges{secretKeys: map[string]bool{}}
+	plainKeys := map[string]bool{}
+	for _, kind := range []string{keptvars.KindPlain, keptvars.KindSecret} {
+		r := rb[kind]
+		names := slices.Sorted(maps.Keys(r.JSON))
+		names = append(names, slices.Sorted(maps.Keys(r.Invalid))...)
+		for _, name := range names {
+			if err := keptvars.ValidName(name); err != nil {
+				return ch, fmt.Sprintf("%s[%q] is not a valid name: start with a letter, then letters, digits or _, at most 40.", kind, name)
+			}
+			if typ, bad := r.Invalid[name]; bad {
+				return ch, fmt.Sprintf("%s.%s is %s; save text, a number, true/false, null, a list or an object.", kind, name, invalidTypeText[typ])
+			}
+			if kind == keptvars.KindSecret {
+				ch.secretKeys[name] = true
+				ch.writes = append(ch.writes, scriptWrite{kind, name, r.JSON[name]})
+				continue
+			}
+			plainKeys[name] = true
+			if old, had := inj[name]; !had || !bytes.Equal(old, r.JSON[name]) {
+				ch.writes = append(ch.writes, scriptWrite{kind, name, r.JSON[name]})
+			}
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(inj)) {
+		if !plainKeys[name] {
+			ch.deletes = append(ch.deletes, name)
+		}
+	}
+	return ch, ""
+}
+
+// checkKinds refuses a name written as both kinds, or in the other kind from what the run or the store holds.
+func (k *keptRun) checkKinds(ch scriptChanges) string {
+	for _, w := range ch.writes {
+		if w.kind == keptvars.KindPlain && ch.secretKeys[w.name] {
+			return bothKindsText(w.name)
+		}
+	}
+	for _, name := range ch.deletes {
+		if ch.secretKeys[name] {
+			return bothKindsText(name)
+		}
+	}
+	for _, w := range ch.writes {
+		if _, ok := k.staged[w.name]; ok && k.secretNames[w.name] != (w.kind == keptvars.KindSecret) {
+			return bothKindsText(w.name)
+		}
+	}
+	return ""
+}
+
+// checkSites refuses a write or delete the script does not spell out literally, so the user sees it on the card.
+func (k *keptRun) checkSites(stage scriptStage, ch scriptChanges) string {
+	for _, w := range ch.writes {
+		if !k.hasSite(stage, w.kind, w.name, keptvars.OpWrite) {
+			return fmt.Sprintf("%s.%s is not written literally in the script; write %s.%s = … so the user sees it.", w.kind, w.name, w.kind, w.name)
+		}
+		if e, ok := k.lookup(w.name); ok && e.Secret != (w.kind == keptvars.KindSecret) {
+			return clashText(w.name, e.Secret)
+		}
+	}
+	for _, name := range ch.deletes {
+		if !k.hasSite(stage, keptvars.KindPlain, name, keptvars.OpDelete) {
+			return fmt.Sprintf("plain.%s is not deleted literally in the script; write delete plain.%s so the user sees it.", name, name)
+		}
+	}
+	return ""
+}
+
+// checkLimits refuses a run that stages too many names or a value the store would not take.
+func (k *keptRun) checkLimits(ch scriptChanges) string {
+	added := 0
+	for _, w := range ch.writes {
+		if _, seen := k.staged[w.name]; !seen {
+			added++
+		}
+	}
+	if len(k.order)+added > maxKeptScriptNames {
+		return fmt.Sprintf("a script can save at most %d values per run", maxKeptScriptNames)
+	}
+	for _, w := range ch.writes {
+		if len(w.value) > keptvars.MaxValueBytes {
+			return fmt.Sprintf("saved variable %q: %s", w.name, keptvars.ErrTooLarge)
+		}
+		if _, _, _, err := keptvars.Describe(w.value); err != nil {
+			return fmt.Sprintf("saved variable %q: %s", w.name, err)
+		}
+	}
+	return ""
+}
+
 // settle diffs the globals after a successful run and stages what changed: a plain key that is new or
 // changed is a write, one that is gone a delete, every secret key a write. A refusal fails the stage like
 // a thrown error; the text names the rule and never a value. "" is ok and everything was staged.
@@ -232,89 +340,27 @@ func (k *keptRun) settle(stage scriptStage, rb map[string]jsengine.ReadBack) str
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	type write struct {
-		kind, name string
-		value      json.RawMessage
-	}
-	var writes []write
-	var deletes []string
-	inj := k.injected[stage]
-	plainKeys := map[string]bool{}
-	secretKeys := map[string]bool{}
-	for _, kind := range []string{keptvars.KindPlain, keptvars.KindSecret} {
-		r := rb[kind]
-		names := slices.Sorted(maps.Keys(r.JSON))
-		names = append(names, slices.Sorted(maps.Keys(r.Invalid))...)
-		for _, name := range names {
-			if err := keptvars.ValidName(name); err != nil {
-				return fmt.Sprintf("%s[%q] is not a valid name: start with a letter, then letters, digits or _, at most 40.", kind, name)
-			}
-			if typ, bad := r.Invalid[name]; bad {
-				return fmt.Sprintf("%s.%s is %s; save text, a number, true/false, null, a list or an object.", kind, name, invalidTypeText[typ])
-			}
-			if kind == keptvars.KindSecret {
-				secretKeys[name] = true
-				writes = append(writes, write{kind, name, r.JSON[name]})
-				continue
-			}
-			plainKeys[name] = true
-			if old, had := inj[name]; !had || !bytes.Equal(old, r.JSON[name]) {
-				writes = append(writes, write{kind, name, r.JSON[name]})
-			}
-		}
-	}
-	for _, name := range slices.Sorted(maps.Keys(inj)) {
-		if !plainKeys[name] {
-			deletes = append(deletes, name)
-		}
-	}
-	for _, w := range writes {
-		if w.kind == keptvars.KindPlain && secretKeys[w.name] {
-			return bothKindsText(w.name)
-		}
-	}
-	for _, name := range deletes {
-		if secretKeys[name] {
-			return bothKindsText(name)
-		}
-	}
-	for _, w := range writes {
-		if _, ok := k.staged[w.name]; ok && k.secretNames[w.name] != (w.kind == keptvars.KindSecret) {
-			return bothKindsText(w.name)
-		}
-	}
-	for _, w := range writes {
-		if !k.hasSite(stage, w.kind, w.name, keptvars.OpWrite) {
-			return fmt.Sprintf("%s.%s is not written literally in the script; write %s.%s = … so the user sees it.", w.kind, w.name, w.kind, w.name)
-		}
-		if e, ok := k.lookup(w.name); ok && e.Secret != (w.kind == keptvars.KindSecret) {
-			return clashText(w.name, e.Secret)
-		}
-	}
-	for _, name := range deletes {
-		if !k.hasSite(stage, keptvars.KindPlain, name, keptvars.OpDelete) {
-			return fmt.Sprintf("plain.%s is not deleted literally in the script; write delete plain.%s so the user sees it.", name, name)
-		}
+	ch, refusal := diffGlobals(rb, k.injected[stage])
+	if refusal != "" {
+		return refusal
 	}
 	// Every refusal comes before the first staging: a refusal leaves nothing half staged.
-	added := 0
-	for _, w := range writes {
-		if _, seen := k.staged[w.name]; !seen {
-			added++
+	for _, check := range []func() string{
+		func() string { return k.checkKinds(ch) },
+		func() string { return k.checkSites(stage, ch) },
+		func() string { return k.checkLimits(ch) },
+	} {
+		if refusal := check(); refusal != "" {
+			return refusal
 		}
 	}
-	if len(k.order)+added > maxKeptScriptNames {
-		return fmt.Sprintf("a script can save at most %d values per run", maxKeptScriptNames)
-	}
-	for _, w := range writes {
-		if len(w.value) > keptvars.MaxValueBytes {
-			return fmt.Sprintf("saved variable %q: %s", w.name, keptvars.ErrTooLarge)
-		}
-		if _, _, _, err := keptvars.Describe(w.value); err != nil {
-			return fmt.Sprintf("saved variable %q: %s", w.name, err)
-		}
-	}
-	for _, w := range writes {
+	k.stage(ch)
+	return ""
+}
+
+// stage records the checked changes.
+func (k *keptRun) stage(ch scriptChanges) {
+	for _, w := range ch.writes {
 		if _, seen := k.staged[w.name]; !seen {
 			k.order = append(k.order, w.name)
 		}
@@ -330,7 +376,7 @@ func (k *keptRun) settle(stage scriptStage, rb map[string]jsengine.ReadBack) str
 			delete(k.secretNames, w.name)
 		}
 	}
-	for _, name := range deletes {
+	for _, name := range ch.deletes {
 		if v, ok := k.staged[name]; ok {
 			clear(v)
 			delete(k.staged, name)
@@ -343,7 +389,6 @@ func (k *keptRun) settle(stage scriptStage, rb map[string]jsengine.ReadBack) str
 			k.deleted[name] = k.uses[i].ID
 		}
 	}
-	return ""
 }
 
 func bothKindsText(name string) string {

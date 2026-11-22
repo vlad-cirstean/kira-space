@@ -103,43 +103,55 @@ func isIdentByte(c byte) bool {
 // skipChain returns the index past the .name and [expr] members that follow i.
 func skipChain(src string, i int) int {
 	for {
-		j := i
-		for j < len(src) && (src[j] == ' ' || src[j] == '\t' || src[j] == '\n' || src[j] == '\r') {
-			j++
-		}
+		j := skipBlank(src, i, " \t\n\r")
+		var next int
 		switch {
 		case j < len(src) && src[j] == '.':
-			k := j + 1
-			for k < len(src) && (src[k] == ' ' || src[k] == '\t') {
-				k++
-			}
-			e := k
-			for e < len(src) && isIdentByte(src[e]) {
-				e++
-			}
-			if e == k {
-				return i
-			}
-			i = e
+			next = skipDotMember(src, j)
 		case j < len(src) && src[j] == '[':
-			depth, k := 0, j
-			for ; k < len(src); k++ {
-				if src[k] == '[' {
-					depth++
-				} else if src[k] == ']' {
-					if depth--; depth == 0 {
-						break
-					}
-				}
-			}
-			if k >= len(src) {
-				return i
-			}
-			i = k + 1
-		default:
+			next = skipBracket(src, j)
+		}
+		if next == 0 {
 			return i
 		}
+		i = next
 	}
+}
+
+func skipBlank(src string, i int, set string) int {
+	for i < len(src) && strings.IndexByte(set, src[i]) >= 0 {
+		i++
+	}
+	return i
+}
+
+// skipDotMember returns the index past the .name at j, or 0 when no name follows the dot.
+func skipDotMember(src string, j int) int {
+	k := skipBlank(src, j+1, " \t")
+	e := k
+	for e < len(src) && isIdentByte(src[e]) {
+		e++
+	}
+	if e == k {
+		return 0
+	}
+	return e
+}
+
+// skipBracket returns the index past the balanced [expr] at j, or 0 when it never closes.
+func skipBracket(src string, j int) int {
+	depth := 0
+	for k := j; k < len(src); k++ {
+		switch src[k] {
+		case '[':
+			depth++
+		case ']':
+			if depth--; depth == 0 {
+				return k + 1
+			}
+		}
+	}
+	return 0
 }
 
 // Describe reports what a value is without storing it: its compact size, JSON type and item count. The
