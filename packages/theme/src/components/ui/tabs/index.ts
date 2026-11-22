@@ -14,11 +14,18 @@ export const tabChipVariants = cva(
     variants: {
       active: {
         true: 'is-active bg-elevated border-transparent text-fg',
-        false: 'border-transparent text-muted-foreground hover:bg-field',
+        false: 'border-transparent',
       },
+      // Multi-select (P727): grey selection tokens, never the accent (N18).
+      selected: { true: 'is-selected', false: '' },
       size: { default: 'px-1.5', icon: 'px-1', wide: 'px-3' },
     },
-    defaultVariants: { active: false, size: 'default' },
+    compoundVariants: [
+      { active: false, selected: false, class: 'text-muted-foreground hover:bg-field' },
+      { active: false, selected: true, class: 'bg-select text-fg' },
+      { active: true, selected: true, class: 'ring-1 ring-inset ring-select-edge' },
+    ],
+    defaultVariants: { active: false, selected: false, size: 'default' },
   },
 );
 
