@@ -124,3 +124,28 @@ func TestPromiseReturnRefused(t *testing.T) {
 		wantKind(t, e, KindOutput)
 	}
 }
+
+func TestReadBack(t *testing.T) {
+	b := []Binding{{Name: "plain", Value: []byte(`{"a":1}`), ReadBack: true}}
+	res, e := exec1(t, Run{Source: `plain.a = 2; plain.b = [1, "x"]; plain.f = () => 1; plain.u = undefined;
+		Object.defineProperty(plain, "g", {get() { return 1 }, enumerable: true});
+		let r; try { plain = {}; r = "ok" } catch (e) { r = e.name }
+		return [r, Object.getPrototypeOf(plain)]`, Bindings: b, Limits: small})
+	if e != nil {
+		t.Fatalf("%v", e)
+	}
+	if string(res.JSON) != `["TypeError",null]` {
+		t.Fatalf("result %s", res.JSON)
+	}
+	rb := res.ReadBack["plain"]
+	if string(rb.JSON["a"]) != "2" || string(rb.JSON["b"]) != `[1,"x"]` || len(rb.JSON) != 2 {
+		t.Fatalf("json %v", rb.JSON)
+	}
+	want := map[string]string{"f": "function", "u": "undefined", "g": "accessor"}
+	if !reflect.DeepEqual(rb.Invalid, want) {
+		t.Fatalf("invalid %v", rb.Invalid)
+	}
+	if _, e := exec1(t, Run{Source: `const plain = {};`, Bindings: b, Limits: small}); e == nil || e.Kind != KindInput {
+		t.Fatalf("shadow not refused: %v", e)
+	}
+}

@@ -17,9 +17,10 @@ type workerRequest struct {
 }
 
 type wireBinding struct {
-	Name  string          `json:"name"`
-	Value json.RawMessage `json:"value,omitempty"`
-	Funcs []string        `json:"funcs,omitempty"`
+	Name     string          `json:"name"`
+	Value    json.RawMessage `json:"value,omitempty"`
+	Funcs    []string        `json:"funcs,omitempty"`
+	ReadBack bool            `json:"readBack,omitempty"`
 }
 
 // workerMsg is any worker-to-parent line; exactly one field is set.
@@ -38,9 +39,10 @@ type callMsg struct {
 }
 
 type resultMsg struct {
-	JSON      json.RawMessage `json:"json"`
-	Type      string          `json:"type"`
-	ElapsedNs int64           `json:"elapsedNs"`
+	JSON      json.RawMessage     `json:"json"`
+	Type      string              `json:"type"`
+	ElapsedNs int64               `json:"elapsedNs"`
+	ReadBack  map[string]ReadBack `json:"readBack,omitempty"`
 }
 
 // parentMsg is a parent-to-worker reply to a call.

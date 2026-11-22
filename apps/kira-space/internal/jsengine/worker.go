@@ -24,6 +24,7 @@ type runState struct {
 	joinDepth int
 
 	origStringify goja.Callable
+	gopd          goja.Callable // Reflect.getOwnPropertyDescriptor, captured before the script runs
 	jsonObj       *goja.Object
 	ctors         map[string]goja.Value
 	guardErrs     map[*goja.Object]bool
@@ -94,16 +95,25 @@ func RunWorker(args []string) int {
 	start := time.Now()
 	res, err := st.run(prg)
 	elapsed := time.Since(start)
+	var readBack map[string]ReadBack
+	var rerr *Error
+	if err == nil {
+		// Under the deadline and memory watchdog: reading back runs user getters.
+		readBack, rerr = st.readBack(req.Bindings)
+	}
 	timer.Stop()
 	stopWatch()
 	if err != nil {
 		return st.finish(workerMsg{Error: fromGoja(err, st.src, st.guardErrs, st.safeString)})
 	}
+	if rerr != nil {
+		return st.finish(workerMsg{Error: rerr})
+	}
 	out, typ, oerr := st.output(res)
 	if oerr != nil {
 		return st.finish(workerMsg{Error: oerr})
 	}
-	return st.finish(workerMsg{Result: &resultMsg{JSON: json.RawMessage(out), Type: typ, ElapsedNs: elapsed.Nanoseconds()}})
+	return st.finish(workerMsg{Result: &resultMsg{JSON: json.RawMessage(out), Type: typ, ElapsedNs: elapsed.Nanoseconds(), ReadBack: readBack}})
 }
 
 func (st *runState) run(prg *goja.Program) (goja.Value, error) {
@@ -116,6 +126,63 @@ func (st *runState) run(prg *goja.Program) (goja.Value, error) {
 		return nil, newError(KindInternal, "script wrapper is not a function")
 	}
 	return fn(goja.Undefined())
+}
+
+// readBack reports the own enumerable string keys of each read-back global. A key holding a
+// function, symbol, undefined or an accessor goes to Invalid with its JS type.
+func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
+	var out map[string]ReadBack
+	budget := st.limits.OutputBytes
+	for _, b := range bs {
+		if !b.ReadBack {
+			continue
+		}
+		obj, ok := st.vm.GlobalObject().Get(b.Name).(*goja.Object)
+		if !ok {
+			continue
+		}
+		rb := ReadBack{JSON: map[string]json.RawMessage{}, Invalid: map[string]string{}}
+		for _, k := range obj.Keys() {
+			desc, derr := st.gopd(goja.Undefined(), obj, st.vm.ToValue(k))
+			if derr == nil {
+				if d, isObj := desc.(*goja.Object); isObj && (d.Get("get") != nil || d.Get("set") != nil) {
+					rb.Invalid[k] = "accessor"
+					continue
+				}
+			}
+			v := obj.Get(k)
+			if typ := invalidType(v); typ != "" {
+				rb.Invalid[k] = typ
+				continue
+			}
+			text, eerr := st.encode(v, budget)
+			if eerr != nil {
+				return nil, eerr
+			}
+			budget -= len(text)
+			rb.JSON[k] = json.RawMessage(text)
+		}
+		if out == nil {
+			out = map[string]ReadBack{}
+		}
+		out[b.Name] = rb
+	}
+	return out, nil
+}
+
+// invalidType names the JS type of a value that has no JSON form, or "".
+func invalidType(v goja.Value) string {
+	switch {
+	case v == nil || goja.IsUndefined(v):
+		return "undefined"
+	}
+	if _, ok := v.(*goja.Symbol); ok {
+		return "symbol"
+	}
+	if _, ok := goja.AssertFunction(v); ok {
+		return "function"
+	}
+	return ""
 }
 
 // send writes one line; a failed write means the parent is gone.

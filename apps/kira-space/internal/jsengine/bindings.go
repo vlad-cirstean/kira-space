@@ -1,6 +1,7 @@
 package jsengine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,11 +14,14 @@ import (
 )
 
 // Binding is a read-only global the script sees: an eager JSON value, or an object of host methods
-// (Value nil). Values are not frozen; they are per run.
+// (Value nil). Values are not frozen; they are per run. ReadBack (Value must be a JSON object)
+// installs a null-prototype object whose own keys the run's Result returns after the script ends,
+// and refuses a script that declares its own binding of the name.
 type Binding struct {
-	Name  string
-	Value json.RawMessage
-	Funcs map[string]HostFunc
+	Name     string
+	Value    json.RawMessage
+	Funcs    map[string]HostFunc
+	ReadBack bool
 }
 
 // HostFunc gets the JS call's arguments as one JSON array (big integers lossless) and returns one
@@ -53,6 +57,8 @@ func validateBindings(bs []Binding, inputBytes int) *Error {
 			return newError(KindInput, "binding %q is defined twice", b.Name)
 		case (b.Funcs == nil) == (len(b.Value) == 0):
 			return newError(KindInput, "binding %q needs exactly one of Value and Funcs", b.Name)
+		case b.ReadBack && !isJSONObject(b.Value):
+			return newError(KindInput, "read-back binding %q needs a JSON object value", b.Name)
 		}
 		seen[b.Name] = true
 		for fn := range b.Funcs {
@@ -74,6 +80,11 @@ func validateBindings(bs []Binding, inputBytes int) *Error {
 		return newError(KindInput, "input is %d bytes; the limit is %d", total, inputBytes)
 	}
 	return nil
+}
+
+func isJSONObject(raw json.RawMessage) bool {
+	t := bytes.TrimSpace(raw)
+	return len(t) > 0 && t[0] == '{'
 }
 
 // installBindings defines each binding as a read-only global (worker side).
@@ -101,6 +112,11 @@ func (st *runState) installBindings(bs []wireBinding) *Error {
 			var err error
 			if v, err = st.fromJSON(b.Value); err != nil {
 				return newError(KindInput, "binding %q: %v", b.Name, err)
+			}
+			if b.ReadBack {
+				if err := v.(*goja.Object).SetPrototype(nil); err != nil {
+					return newError(KindInternal, "binding %q: %v", b.Name, err)
+				}
 			}
 		} else {
 			obj := st.vm.NewObject()
