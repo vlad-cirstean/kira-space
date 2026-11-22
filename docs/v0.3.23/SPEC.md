@@ -31,7 +31,7 @@ before implementation starts.
 | P729 | Removals, Variables tab and kube result views | Done |
 | P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
-| P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Todo |
+| P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Done |
 | P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
 | P734 | Presentation site: screenshots of approvals, variables and other missing features | Todo |
 
@@ -823,7 +823,7 @@ Scope (user decisions, final).
 
 Deliverable. Plan `plans/P732.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Hard cut: scripts in API, SQL and kube get globals `plain` (current values of the names the source mentions literally) and `secret` (starts empty); Go diffs both after the run. Prepare writes are staged, interpolate into the same request (ids `staged:<name>`) and commit after the final response; a prepare-only kube script commits with no envelope. Scripts never read secrets; refusals cover both-kinds, kind clash, invalid name, non-JSON value, local `plain`/`secret`, dynamic names, secret reads and more than 16 writes. Templates are `{{plain.x}}` and `{{secret.x}}` with a kind check; `api_request` inputs are names only and typed values are secret; results carry `saved`, `deleted`, `notSaved`; MCP tool `list_saved_variables`. Internal names (`keptvars`, `studio/kept/*`, i18n key paths, contract file names, `dbMcp.keptRetentionMinutes`) stay. UI: scripts show formatted by lazy-loaded `js-beautify` (coordinator override of prettier; display only, "Formatted" chip, highlights on the shown text, raw text only if the import fails); the may-keep box is gone, prepare writes list above the request and are marked in the script; Review Request is an expandable box after the result and before Details; one "Replace saved values" box lists stored inputs; the dialog groups prompts by agent session (`origin.session`), Deny all covers the shown session, counter stays on the header line. Tests: flow plus UI pairs on contracts `e2e-script-vars` and `e2e-approvals-sessions`; every older flow and UI spec converted; obsolete cases dropped (forced user-value review, derived secrets, prepare cannot keep). Full `dbmcpflow` green (134s); agentapi, dbmcp, keptvars green; typecheck, `bun run lint`, `lint:dead`, golangci-lint clean; targeted UI specs green; 10 visual baselines refreshed (approvals dialog, api input, kube read and review, kept secret, resized row, three kube-review); `bun run test:claude:db` 14 passed, none skipped.
 
 ## P733
 
