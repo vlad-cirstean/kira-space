@@ -1502,7 +1502,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - An approval-card kept name with its type is `KeptNameMark` (U180).
 - Studio JSON pretty-printing goes through `beautify.ts` (`indentJson`, `prettyJson`): lossless, never `JSON.stringify(JSON.parse())` (U181).
 - Catalog ownership: a module's sources use its own namespace plus `common`, `format`, `shared`, `theme`, `backend`; pairs mobile to `space.`, space to `git.`, `studio.proof.`; shell dirs (`src/workbench/`, `src/state/`, `src/shortcuts/`, `src/bridge/`, `App.vue`, `main.ts`) read `space` plus shared namespaces, pairs `studio.settings.`, `studio.mode.`, `studio.operations.`, `studio.tab.`, `llmPrompts.nav.`; `packages/workbench/src` reads `workbench`, `llmPrompts` its own (U182).
-- A held result's "Will keep" list is `StagedKeepList` (U183).
+- A held result's "Will keep" list is `StagedKeepList` (U183). Its x calls `KeptVarsService.DropStaged` (`ApprovalBroker.DropStaged`): the value leaves the held `Keep` views and the staged run, and the agent's `keptNotSaved` lists it as "the user chose not to keep it". The x on a stored kept row of a card calls `Clear`; a card waiting on that variable ends (P728, `TestE2EKeptDelete`).
 - A transform script in an approval card with its kept marks, "may keep" line and reads note is `TransformScriptBlock` (U184).
 - A gRPC status is `GrpcStatusBadge` (Studio): `grpcCodeClass` tone, `grpcCodeHint` tooltip, data font, "NAME (code)" (U185).
 - A masked value's show and hide toggle is `ValueRevealButton`: "Show value" / "Hide value", eye flips, pressed when shown (U186).

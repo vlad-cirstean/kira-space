@@ -631,6 +631,23 @@ func (b *ApprovalBroker) StagedSecret(requestID, name string) (string, bool) {
 	return run.stagedSecret(name)
 }
 
+// DropStaged removes one value the held result of requestID would keep: the user chose not to keep it.
+// false once the request resolved, or for a name that is not staged.
+func (b *ApprovalBroker) DropStaged(requestID, name string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	e, ok := b.entryLocked(requestID)
+	if !ok || e.req.Stage != ApprovalStageResponse || e.req.Response == nil {
+		return false
+	}
+	r := e.req.Response
+	if !r.staged.dropName(name) {
+		return false
+	}
+	r.Keep = slices.DeleteFunc(slices.Clone(r.Keep), func(h HeldKeep) bool { return h.Name == name })
+	return true
+}
+
 // Approve resolves requestID as approved. Deny resolves it as denied. Both report
 // ApprovalActionAlreadyResolved, never an error, for an unknown or already-resolved id —
 // whichever window (or Request's own deadline/ctx branch) got there first wins, the other is a

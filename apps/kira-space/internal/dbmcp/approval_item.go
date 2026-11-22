@@ -115,7 +115,7 @@ func exemptionPayloadOf(r ApprovalRequest) exemptionPayload {
 		limits[i] = limitHitPayload(h)
 	}
 	return exemptionPayload{
-		dbLocation: dbLocationOf(r.Target),
+		dbLocation:   dbLocationOf(r.Target),
 		ConnectionID: r.ConnectionID, Statement: r.Statement, Mode: r.Mode, Detected: string(r.Class),
 		Enforcement: r.Enforcement, Reason: ex.Reason, Limits: limits, Plan: planPayloadOf(r.Plan),
 		ReviewOffered: r.OfferReview, ReviewResult: r.ReviewOn,

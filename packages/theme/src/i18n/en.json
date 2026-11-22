@@ -15749,11 +15749,14 @@
       }
     },
     "kept": {
+      "clear": {
+        "tooltip": "Delete this kept value. A request that reads it stops"
+      },
+      "drop": {
+        "tooltip": "Do not keep this value. The agent is told you chose not to"
+      },
       "expiresAt": {
         "status": "Expires at {time}"
-      },
-      "expiry": {
-        "label": "Expiry"
       },
       "input": {
         "keptFor": {
@@ -15828,9 +15831,6 @@
         "query": {
           "label": "Query {name}"
         }
-      },
-      "source": {
-        "label": "Kept by"
       },
       "supplied": {
         "status": "Supplied by you"

@@ -382,6 +382,9 @@ const studioControl = {
     unwrap(KeptVarsService.RevealStaged({ requestId, name, confirmed })).then((r) =>
       trust<RevealResult>(r),
     ),
+  // Drops one value a held result would keep: it is not stored on send.
+  keptDropStaged: (requestId: string, name: string): Promise<void> =>
+    unwrap(KeptVarsService.DropStaged({ requestId, name })),
   keptClear: (ids: string[]): Promise<number> => unwrap(KeptVarsService.Clear({ ids })),
   keptClearAll: (): Promise<number> => unwrap(KeptVarsService.ClearAll()),
   onKeptChanged: (cb: () => void): (() => void) => on(CHANNEL.keptChanged, () => cb()),

@@ -36,6 +36,7 @@ type keptRun struct {
 	prepareReads bool
 	staged       map[string]json.RawMessage
 	order        []string
+	userDropped  []string // staged values the user removed; commit reports them
 	// secretNames are the staged names a kira.storeSecret call wrote: secret whatever the script read.
 	secretNames map[string]bool
 	// secretRead taints every value the run stages: it may have copied a secret.
@@ -315,6 +316,25 @@ func (k *keptRun) drop() {
 	k.order = nil
 }
 
+// dropName forgets one staged value the user chose not to keep. false for an unknown name.
+func (k *keptRun) dropName(name string) bool {
+	if k == nil {
+		return false
+	}
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	v, ok := k.staged[name]
+	if !ok {
+		return false
+	}
+	clear(v)
+	delete(k.staged, name)
+	delete(k.secretNames, name)
+	k.order = slices.DeleteFunc(k.order, func(n string) bool { return n == name })
+	k.userDropped = append(k.userDropped, name)
+	return true
+}
+
 // stagedViews is what the review card shows under "Will keep": a preview per value, none for a secret (one
 // kira.storeSecret wrote, or one the run may have copied from a secret).
 func (k *keptRun) stagedViews() []HeldKeep {
@@ -364,6 +384,9 @@ type keptSummary struct {
 // errMixedOrigins is the refusal text for values derived from user values bound to different origins.
 const errMixedOrigins = "the script read user values supplied for different origins, so its values cannot be bound to one origin"
 
+// errUserDropped is the refusal text for a staged value the user removed before sending the result.
+const errUserDropped = "the user chose not to keep it"
+
 // keptFailure is a staged value the store refused.
 type keptFailure struct {
 	Name  string `json:"name"`
@@ -381,6 +404,10 @@ func (k *keptRun) commit(src keptvars.Source, secretOrigin string) ([]keptSummar
 	defer k.mu.Unlock()
 	var saved []keptSummary
 	var failed []keptFailure
+	for _, name := range k.userDropped {
+		failed = append(failed, keptFailure{Name: name, Error: errUserDropped})
+	}
+	k.userDropped = nil
 	for _, name := range k.order {
 		if k.mixedOrigins {
 			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})

@@ -53,6 +53,7 @@ type KeptVarsService struct {
 // StagedSecrets is the broker's view of the values held results will keep: *dbmcp.ApprovalBroker.
 type StagedSecrets interface {
 	StagedSecret(requestID, name string) (string, bool)
+	DropStaged(requestID, name string) bool
 }
 
 // KeptEntryView is one live kept variable: its metadata and a preview. A secret has no preview.
@@ -236,6 +237,27 @@ func (s *KeptVarsService) RevealStaged(args KeptRevealStagedArgs) (KeptReveal, e
 		}
 		return &text, nil
 	})
+}
+
+// KeptDropStagedArgs names a value a held result will keep, by the request under review and its name.
+type KeptDropStagedArgs struct {
+	RequestID string `json:"requestId"`
+	Name      string `json:"name"`
+}
+
+// DropStaged removes a value a held result will keep: it is not stored when the result is sent, and the
+// agent is told the user chose not to keep it.
+func (s *KeptVarsService) DropStaged(args KeptDropStagedArgs) error {
+	if args.RequestID == "" {
+		return ipcerr.Required("requestId")
+	}
+	if args.Name == "" {
+		return ipcerr.Required("name")
+	}
+	if !s.Staged.DropStaged(args.RequestID, args.Name) {
+		return ipcerr.NotFoundNamed("value under review")
+	}
+	return nil
 }
 
 // KeptClearArgs names the entries to clear.
