@@ -765,7 +765,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Kira Studio: databases, Kubernetes clusters, HTTP environments and scripts the user exposed. Start with `list`. A call may wait up to 10 minutes for the user's approval. The user may hold a result for review; a withheld result is an error that says what already ran: never repeat that call. Saved variables carry values between calls without passing through you: a later call uses {{plain.name}} or {{secret.name}} in `api_request`, or `params` in `run_query`. The result lists saved names, never values.",
+	Default:    "Kira Studio: databases, Kubernetes clusters, HTTP environments and scripts the user exposed. Start with `list`. A call may wait up to 10 minutes for approval. The user may hold a result for review; a withheld result is an error that says what already ran: never repeat that call. Saved variables carry values between calls without passing through you: a later call uses {{plain.name}} or {{secret.name}} in `api_request`, or `params` in `run_query`. The result lists saved names, never values.",
 }, NoVars{})
 
 // DbmcpInstructionsScripts follows the instructions while agent scripts are on.
@@ -816,8 +816,8 @@ var (
 	_ = arg(DbmcpToolBrowseTable.id, "order", studioApp, NextCall, `At most 5. The key is appended so pages do not overlap.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "order.column", studioApp, NextCall, `Column name.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "order.direction", studioApp, NextCall, `asc or desc.`, NoVars{})
-	_ = arg(DbmcpToolBrowseTable.id, "limit", studioApp, NextCall, `1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 50, Max: 100})
-	_ = arg(DbmcpToolBrowseTable.id, "offset", studioApp, NextCall, `Pass the previous nextOffset.`, NoVars{})
+	_ = arg(DbmcpToolBrowseTable.id, "limit", studioApp, NextCall, `Page size, 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 50, Max: 100})
+	_ = arg(DbmcpToolBrowseTable.id, "offset", studioApp, NextCall, `The previous nextOffset.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "count", studioApp, NextCall, `Count the matching rows instead of returning them.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "exemption", studioApp, NextCall, `Only after a limit refusal; the refusal says how.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "exemption.id", studioApp, NextCall, `From the refusal.`, NoVars{})

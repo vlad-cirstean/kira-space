@@ -41,7 +41,7 @@ ade.rebase.contextLine	95
 ade.sendBack.line	63
 run.resume.line	314
 restore.continue.line	44
-dbmcp.instructions	504
+dbmcp.instructions	493
 dbmcp.instructions.scripts	579
 dbmcp.tool.list	169
 dbmcp.tool.list.arg.what	33
@@ -62,8 +62,8 @@ dbmcp.tool.browse_table.arg.filters.values	7
 dbmcp.tool.browse_table.arg.order	55
 dbmcp.tool.browse_table.arg.order.column	12
 dbmcp.tool.browse_table.arg.order.direction	12
-dbmcp.tool.browse_table.arg.limit	18
-dbmcp.tool.browse_table.arg.offset	29
+dbmcp.tool.browse_table.arg.limit	29
+dbmcp.tool.browse_table.arg.offset	24
 dbmcp.tool.browse_table.arg.count	50
 dbmcp.tool.browse_table.arg.exemption	49
 dbmcp.tool.browse_table.arg.exemption.id	17
