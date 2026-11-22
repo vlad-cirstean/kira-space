@@ -14,8 +14,8 @@
         "cwd": "<masked>",
         "session": "sess-a",
         "source": "",
-        "step": "",
-        "task": ""
+        "step": "step-a",
+        "task": "task-a"
       },
       "payload": {
         "auth": null,
@@ -67,8 +67,8 @@
         "cwd": "<masked>",
         "session": "sess-a",
         "source": "",
-        "step": "",
-        "task": ""
+        "step": "step-a",
+        "task": "task-a"
       },
       "payload": {
         "auth": null,
@@ -120,8 +120,8 @@
         "cwd": "<masked>",
         "session": "sess-b",
         "source": "",
-        "step": "",
-        "task": ""
+        "step": "step-b",
+        "task": "task-b"
       },
       "payload": {
         "auth": null,
@@ -173,8 +173,8 @@
         "cwd": "<masked>",
         "session": "sess-b",
         "source": "",
-        "step": "",
-        "task": ""
+        "step": "step-b",
+        "task": "task-b"
       },
       "payload": {
         "auth": null,

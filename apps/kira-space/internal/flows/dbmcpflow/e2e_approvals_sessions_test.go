@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/dbmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -20,8 +21,8 @@ func TestE2EApprovalsSessions(t *testing.T) {
 	captureLog(t)
 	f := newFixture(t)
 	srv, _, envID := f.apiSetup(t, "127.0.0.1", false)
-	a, _ := f.studioSession(t, "sess-a")
-	b, _ := f.studioSession(t, "sess-b")
+	a, _ := f.studioSessionAs(t, dbmcp.SessionIdentity{SessionID: "sess-a", TaskID: "task-a", StepID: "step-a", Cwd: f.app.Work})
+	b, _ := f.studioSessionAs(t, dbmcp.SessionIdentity{SessionID: "sess-b", TaskID: "task-b", StepID: "step-b", Cwd: f.app.Work})
 	opts := f.e2eOpts(srv.URL)
 	req := func(n string) map[string]any { return apiArgs(envID, "GET", srv.URL+"/echo?n="+n) }
 
@@ -44,6 +45,11 @@ func TestE2EApprovalsSessions(t *testing.T) {
 	}
 	if len(bySession) != 2 {
 		t.Fatalf("sessions = %v, want two groups", bySession)
+	}
+	for _, it := range items {
+		if it.Origin.Task == "" || it.Origin.Step == "" {
+			t.Fatalf("item %s origin = %+v, want task and step so same-folder sessions label apart", it.ID, it.Origin)
+		}
 	}
 	f.app.Contract(t, sessionsKey, "ApprovalsService.List", items, opts...)
 

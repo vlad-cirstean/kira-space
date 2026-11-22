@@ -60,7 +60,14 @@ func captureLog(t *testing.T) *safeBuf {
 // session: it clears the session's kept variables and abandons its parked approvals.
 func (f *fixture) studioSession(t *testing.T, id string) (*mcp.ClientSession, func()) {
 	t.Helper()
-	entry, release, err := f.app.W.DbMcpSessions.Grant(dbmcp.SessionIdentity{SessionID: id, Cwd: f.app.Work})
+	return f.studioSessionAs(t, dbmcp.SessionIdentity{SessionID: id, Cwd: f.app.Work})
+}
+
+// studioSessionAs is studioSession for a session with the given identity (task and step included).
+func (f *fixture) studioSessionAs(t *testing.T, ident dbmcp.SessionIdentity) (*mcp.ClientSession, func()) {
+	t.Helper()
+	id := ident.SessionID
+	entry, release, err := f.app.W.DbMcpSessions.Grant(ident)
 	if err != nil {
 		t.Fatalf("grant session %s: %v", id, err)
 	}
