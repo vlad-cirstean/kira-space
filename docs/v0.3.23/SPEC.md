@@ -33,7 +33,7 @@ before implementation starts.
 | P731 | Auto-extracted task links from notes and handovers | Done |
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Done |
 | P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
-| P734 | Presentation site: screenshots of approvals, variables and other missing features | Todo |
+| P734 | Presentation site: screenshots of approvals, variables and other missing features | Done |
 
 ## P716
 
@@ -880,4 +880,4 @@ Scope (user request).
 
 Deliverable. Plan `plans/P734.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. 16 new shots (11 crops, 4 phone, plus windows): `build-api-request`, `build-api-review`, `studio-api-values`, `studio-saved-variables`, `studio-kube-read`, `studio-kube-review`, `studio-kube-logs`, `studio-api-variables`, `studio-kube-pods`, `studio-mongo-documents`, `space-files-window`, phone `phone-needs`, `phone-plan`, `phone-terminal`, `phone-activity`; `build-db-settings` renamed `studio-mcp-settings` and recaptured. New shot kind `phone` (manifest, `capturePhone`, `Shot.astro`, `bun run screenshots` builds the mobile bundle first) with a scripted mock server and terminal replay over `routeWebSocket`. Fixtures use story names only (acme-*, api.acme.example, Export orders as CSV); each image opened and checked. Approval card crops use `bottom` to stop above the action bar. Build step 2 renamed "Let the agent ask your data" with the two API shots (27 shots, within the 20 to 30 limit); landing gets a Phone section (`Phone.astro`, `PHONE`); new docs page Agent API requests; Kubernetes, Databases, Docker, Runs, Workspace, Phone pages moved to `.mdx` with images; text added to api-client, database-mcp (images and link only, tool names untouched), how-it-works (Tabs and windows), agents (Task links, Files window), features and settings. Runs: `bun run screenshots` 37 of 38 passed in one run, the failing apiAgent response-review spec was a formatting-timing flake and now waits for the formatted script, 4 reruns green; `phone.shot.ts` run twice, all four files byte-identical; `site:shots:fill` 52 of 52; `check-docs` 24 files 0 violations; typecheck site, tests and docs-check clean; `bun run site:check` 271 passed, 1 skipped, after refreshing the four visual baselines on Linux. Size: total new 809 KB; largest new crop 49,496 B (`studio-api-values`) against largest existing crop 50,636 B; largest new window 102,328 B (`space-files-window`) against 130,846 B; largest new phone 62,604 B; all lossless WebP. Unverified: PR CI, macOS visual baselines.
