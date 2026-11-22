@@ -121,25 +121,6 @@ type getScriptRunArgs struct {
 	Contains    string `json:"contains,omitempty"`
 }
 
-type scriptParamView struct {
-	Name     string   `json:"name"`
-	Type     string   `json:"type"`
-	Options  []string `json:"options,omitempty"`
-	Default  []string `json:"default,omitempty"`
-	Required bool     `json:"required,omitempty"`
-	Secret   bool     `json:"secret,omitempty"`
-	Saved    bool     `json:"saved,omitempty"`
-}
-
-type scriptView struct {
-	ScriptID    string            `json:"scriptId"`
-	Name        string            `json:"name"`
-	Description string            `json:"description"`
-	Approval    string            `json:"approval"`
-	Mode        string            `json:"mode"`
-	Params      []scriptParamView `json:"params"`
-}
-
 // scriptRunView carries output lines once the run has ended, or when get_script_run filters them.
 type scriptRunView struct {
 	RunID      string          `json:"runId"`
@@ -190,22 +171,6 @@ func (s *Server) exposedRun(runID string) (ScriptRun, ExposedScript, bool, error
 		return ScriptRun{}, ExposedScript{}, false, err
 	}
 	return run, es, true, nil
-}
-
-func (s *Server) listScripts(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-	list, err := s.cfg.Scripts.Exposed()
-	if err != nil {
-		return toolError(err)
-	}
-	out := make([]scriptView, 0, len(list))
-	for _, e := range list {
-		v := scriptView{ScriptID: e.ID, Name: e.Name, Description: e.Description, Approval: e.Run, Mode: e.mode(), Params: make([]scriptParamView, 0, len(e.Params))}
-		for _, p := range e.Params {
-			v.Params = append(v.Params, scriptParamView(p))
-		}
-		out = append(out, v)
-	}
-	return jsonResult(map[string]any{"scripts": out})
 }
 
 // parseScriptParams reads the params argument: each value is a string or a list of strings.
@@ -430,9 +395,6 @@ func boundWait(sch *jsonschema.Schema) *jsonschema.Schema {
 
 // addScriptTools registers list_scripts, run_script and get_script_run.
 func (s *Server) addScriptTools(srv *mcp.Server, src llmprompts.Source) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "list_scripts", Description: llmprompts.DbmcpToolListScripts.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_scripts", s.listScripts))
 	wait := map[string]any{"waitSeconds": llmprompts.LimitVars{Default: scriptWaitDefault, Max: scriptWaitMax}}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_script",

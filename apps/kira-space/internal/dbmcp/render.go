@@ -143,68 +143,6 @@ func maskedToolError(err error) (*mcp.CallToolResult, any, error) {
 	return nil, nil, err
 }
 
-// --- list_connections' own response shape (§4.1) ---
-
-// connectionCapabilities is list_connections' own "capabilities" object — present only when the
-// connection is currently connected (capsOf's own ok=false otherwise omits the whole field).
-type connectionCapabilities struct {
-	Query         bool `json:"query"`
-	Describe      bool `json:"describe"`
-	SchemaColumns bool `json:"schemaColumns"`
-}
-
-// connectionPermissions is list_connections' own "permissions" object (M2 §6.1) — always present,
-// so a client that knows a write will be refused can say so instead of composing one.
-type connectionPermissions struct {
-	Read  string `json:"read"`
-	Write string `json:"write"`
-	DDL   string `json:"ddl"`
-	// Masked is the stored browse_table setting: inherit, deny, allow or prompt.
-	Masked string `json:"masked"`
-}
-
-// browseView is list_connections' browse: whether browse_table works on the kind, and its row cap.
-type browseView struct {
-	Supported bool `json:"supported"`
-	MaxRows   int  `json:"maxRows"`
-}
-
-// connectionView is list_connections' own per-connection element.
-type connectionView struct {
-	ID            string                  `json:"id"`
-	Name          string                  `json:"name"`
-	Kind          string                  `json:"kind"`
-	ReadOnly      bool                    `json:"readOnly"`
-	Status        string                  `json:"status"`
-	ServerVersion *string                 `json:"serverVersion,omitempty"`
-	Capabilities  *connectionCapabilities `json:"capabilities,omitempty"`
-	// Description is M2's free-text "what this DB is for", passed verbatim — omitted when unset.
-	Description string `json:"description,omitempty"`
-	// Permissions is M2's per-operation MCP mode, always present.
-	Permissions connectionPermissions `json:"permissions"`
-	// Access is what each declared run_query mode allows (accessOf); Enforcement says what backs
-	// mode read: session, app or none.
-	Access      connectionAccess `json:"access"`
-	Browse      browseView       `json:"browse"`
-	Enforcement string           `json:"enforcement"`
-	// StatementTimeout is the run_query timeout: seconds (0 off) and what stops a statement per mode.
-	StatementTimeout statementTimeoutView `json:"statementTimeout"`
-	// ExpensiveQuery is the run_query row-estimate check: the app-wide threshold and whether this connection is checked.
-	ExpensiveQuery expensiveQueryView `json:"expensiveQuery"`
-	// MaskedColumns is "table.column: kind" per rule, sorted, capped at 50 with a trailing
-	// "+N more" entry — so a client that does not know a column is masked does not misread a bucket
-	// string (e.g. "[1000-10000)") as a literal value. Omitted when the connection
-	// has no rules at all.
-	MaskedColumns []string `json:"maskedColumns,omitempty"`
-	// ReviewResults says which modes hold their run_query result for the user before the agent gets it.
-	ReviewResults reviewView `json:"reviewResults"`
-	// Tables is the table allow list (P532): all, or the exact tables MCP may touch.
-	Tables *allowedTablesView `json:"tables"`
-	// ColumnReview says whether new columns are withheld until the user reviews masking (P534). Omitted for
-	// kinds without column review.
-	ColumnReview *columnReviewView `json:"columnReview,omitempty"`
-}
-
 // columnReviewView is list_connections' column review summary, from cached state only.
 type columnReviewView struct {
 	On bool `json:"on"`

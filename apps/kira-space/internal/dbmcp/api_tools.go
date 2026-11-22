@@ -94,41 +94,6 @@ func (a apiRequestArgs) input(scope string) agentapi.Input {
 
 const apiRequestsOff = "API requests are turned off in Kira Space's Studio MCP settings"
 
-func (s *Server) apiListEnvironments(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-	if !s.apiEnabled() {
-		return errResult(apiRequestsOff)
-	}
-	envs, err := s.cfg.API.Environments()
-	if err != nil {
-		return errResult("the environments could not be read")
-	}
-	return jsonResult(map[string]any{
-		"environments": s.envListing(envs),
-		"note":         "Requests without environmentId are allowed; they can use no variables.",
-	})
-}
-
-// apiEnvListing is one api_list_environments entry: the view plus which request classes hold their
-// responses for the user.
-type apiEnvListing struct {
-	agentapi.EnvView
-	ReviewResults struct {
-		Read  bool `json:"read"`
-		Write bool `json:"write"`
-	} `json:"reviewResults"`
-}
-
-func (s *Server) envListing(envs []agentapi.EnvView) []apiEnvListing {
-	out := make([]apiEnvListing, len(envs))
-	for i, v := range envs {
-		info := agentapi.EnvInfo{Review: v.Review}
-		out[i].EnvView = v
-		out[i].ReviewResults.Read = s.apiReviewSetting(info, true)
-		out[i].ReviewResults.Write = s.apiReviewSetting(info, false)
-	}
-	return out
-}
-
 func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRequestArgs) (*mcp.CallToolResult, any, error) {
 	settings := s.apiSettings()
 	if !settings.Enabled {
@@ -296,11 +261,8 @@ func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 	return apiApproval{requested: choice.ReviewResult, supplied: supplied}, nil, nil
 }
 
-// addAPITools registers api_list_environments and api_request.
+// addAPITools registers api_request.
 func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "api_list_environments", Description: llmprompts.DbmcpToolAPIListEnvironments.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "api_list_environments", s.apiListEnvironments))
 	limits := map[string]any{
 		"timeoutSeconds":   llmprompts.LimitVars{Default: 30, Max: 300},
 		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: 512 << 10},
@@ -308,14 +270,11 @@ func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[apiRequestArgs](src, llmprompts.DbmcpToolAPIRequest.ID(), limits), "method", "url")
 	fixScriptSchema(sch)
 	sch.Properties["method"].Enum = []any{"GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"}
-	scriptNote := " " + llmprompts.DbmcpToolAPIRequestReview.Text(src, llmprompts.NoVars{})
-	if s.scriptsOn() {
-		scriptNote += " " + llmprompts.DbmcpToolAPIRequestScripts.Text(src, llmprompts.NoVars{})
-	} else {
+	if !s.scriptsOn() {
 		delete(sch.Properties, "script")
 	}
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}) + scriptNote, InputSchema: sch,
+		Name: "api_request", Description: llmprompts.DbmcpToolAPIRequest.Text(src, llmprompts.NoVars{}), InputSchema: sch,
 	}, withPanicRecovery(s, "api_request", s.apiRequest))
 }
 

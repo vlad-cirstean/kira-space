@@ -17,59 +17,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// --- list_connections (§4.1) ---
-
-type listConnectionsArgs struct{}
-
-// listConnections returns every connection with mcp_enabled true — deny by default: a
-// connection the user has not exposed is absent entirely, not listed-and-denied, since its
-// existence is not the AI client's business.
-//
-// Deliberately not gated on read mode the way listChildren/describeTable/
-// describeSchema now are. This tool's whole job is enumerating exposed connections *and their own
-// configured permissions* (the Permissions field below) so a caller can see, up front, that a
-// connection denies read/write/DDL before trying any of them — gating it on read mode would hide
-// exactly the information it exists to surface, for a connection that denies reads but still
-// allows writes or DDL.
-func (s *Server) listConnections(_ context.Context, _ *mcp.CallToolRequest, _ listConnectionsArgs) (*mcp.CallToolResult, any, error) {
-	conns, err := s.cfg.Conns.List()
-	if err != nil {
-		return nil, nil, err
-	}
-	out := make([]connectionView, 0, len(conns))
-	for _, c := range conns {
-		if !c.McpEnabled {
-			continue
-		}
-		state := s.cfg.Conns.StateOf(c.ID)
-		view := connectionView{
-			ID: c.ID, Name: c.Name, Kind: c.Kind, ReadOnly: c.ReadOnly, Status: state.Status,
-			Description: c.McpDescription,
-			Permissions: connectionPermissions{Read: c.McpReadMode, Write: c.McpWriteMode, DDL: c.McpDdlMode, Masked: maskedModeOf(c)},
-			Access:      accessOf(c), Browse: browseView{Supported: HasBrowse(c.Kind), MaxRows: browseMaxRows}, Enforcement: enforcementOf(c.Kind), StatementTimeout: timeoutViewOf(c),
-			ExpensiveQuery: expensiveQueryView{RowsThreshold: s.thresholdFor(c), Check: expensiveCheckOf(c)},
-			ReviewResults:  s.reviewViewOf(c),
-		}
-		if state.ServerVersion != nil {
-			view.ServerVersion = state.ServerVersion
-		}
-		if caps, ok := capsOf(state); ok {
-			view.Capabilities = &connectionCapabilities{Query: caps.SQL, Describe: caps.Describe, SchemaColumns: caps.SchemaColumns}
-		}
-		// §4.5: cheap — one repo read per list_connections call, a human-frequency operation. A
-		// read failure degrades to "no masked columns reported" rather than failing the whole
-		// listing; the render path's own refusal (§4.4) is the real safety backstop regardless.
-		set, serr := allowListOf(c)
-		view.Tables = tablesView(c)
-		view.ColumnReview = s.columnReviewViewOf(c)
-		if rules, err := s.cfg.MaskRules.List(c.ID); err == nil && serr == nil {
-			view.MaskedColumns = maskedColumnsFor(filterMaskRules(set, rules))
-		}
-		out = append(out, view)
-	}
-	return jsonResult(out)
-}
-
 // resolveReadGated is list_children/describe's shared preamble:
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.

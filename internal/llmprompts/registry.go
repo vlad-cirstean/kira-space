@@ -768,6 +768,14 @@ var DbmcpInstructions = define(Entry{
 	Default:    "Query the databases, Kubernetes clusters and scripts the user exposed in Kira Studio. Start with `list_connections`: each entry's `access` names the modes `run_query` may use and which need approval, `description` says what it is for, `maskedColumns` lists masked columns. Declare the least powerful `mode` that fits. Walk structure with `list_children`, passing back a returned `path`; levels differ per engine. `describe` a database or schema path for every table's columns before writing a query. Read rows, counts and pages with `browse_table`; use `run_query` only for joins, grouped aggregates or expressions, and `explain` an expensive-looking one first. A masked cell is redacted; a trailing `#TAG` is a correlation token: equal values share a tag, rarely two distinct ones do, so a match is a hint, not proof. A prompt permission waits up to 10 minutes for the user. `operations` lists running work; its `cancel` stops one. `run_script` runs a `list_scripts` script and returns its output tail. `kube_*` tools are read only, and their reads take scripts too; start with `kube_list_clusters`. `api_request` appears only when the user enabled it; you see variable names, never values. Saved variables: a script saves a result with `plain.name = value` or `secret.name = value` (such as a token); you never see a secret. When one result feeds the next call, save it and make that call yourself with {{plain.name}} or {{secret.name}}, `params` or, in a kube read, a script's `plain.name`.",
 }, NoVars{})
 
+// DbmcpToolList describes the list tool.
+var DbmcpToolList = define(Entry{
+	ID: "dbmcp.tool.list", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list",
+	Default: "Start here. Lists what the user exposed and what each allows: connections (databases), clusters (Kubernetes), environments (HTTP variables), scripts and saved variables.",
+}, NoVars{})
+
+var _ = arg(DbmcpToolList.id, "what", studioApp, NextCall, `Sections to return. Omit for all.`, NoVars{})
+
 // DbmcpToolListConnections describes the list_connections tool.
 var DbmcpToolListConnections = define(Entry{
 	ID: "dbmcp.tool.list_connections", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_connections",

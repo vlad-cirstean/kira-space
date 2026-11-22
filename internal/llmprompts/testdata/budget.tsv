@@ -42,6 +42,8 @@ ade.sendBack.line	63
 run.resume.line	314
 restore.continue.line	44
 dbmcp.instructions	1556
+dbmcp.tool.list	169
+dbmcp.tool.list.arg.what	33
 dbmcp.tool.list_connections	653
 dbmcp.tool.list_scripts	130
 dbmcp.tool.run_script	337

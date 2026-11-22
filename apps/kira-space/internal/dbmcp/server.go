@@ -385,10 +385,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})
 
 	src := s.prompts()
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_connections",
-		Description: llmprompts.DbmcpToolListConnections.Text(src, llmprompts.NoVars{}),
-	}, withPanicRecovery(s, "list_connections", s.listConnections))
+	s.addListTool(srv, src)
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_children",
 		Description: llmprompts.DbmcpToolListChildren.Text(src, llmprompts.NoVars{}),
@@ -424,9 +421,6 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	}
 	if s.apiEnabled() {
 		s.addAPITools(srv, src)
-	}
-	if s.cfg.Kept != nil {
-		s.addKeptTools(srv, src)
 	}
 
 	if s.cfg.Audit != nil {
