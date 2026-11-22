@@ -18,7 +18,7 @@ import { useResizeObserver, useScroll } from '@vueuse/core';
 import ColorLine from '@workbench/components/ColorLine.vue';
 import { shortcutKeydown } from '@workbench/shortcuts/useShortcut';
 import { useApprovalsStore } from '@workbench/state/approvals';
-import { computed, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import ApprovalItemActions from './ApprovalItemActions.vue';
 import ApprovalItemCard from './ApprovalItemCard.vue';
 import { approvalRequester } from './approvalFooter';
@@ -49,14 +49,24 @@ const store = useApprovalsStore();
 const { answer, pending } = useApprovalActions();
 
 // One prompt at a time, from one requester's group. The first group's oldest item is shown until the person
-// picks another; answering moves to the next oldest of the same group, then the next group.
+// picks another; answering moves to the next oldest of the same group, then the next group once it empties.
 const groups = computed(() => groupApprovals(props.items));
 const kinds = useApprovalKinds();
 const focused = computed(() => props.items.find((i) => i.id === store.focusId));
+// The group last shown: an answered item drops out of `props.items`, so focus alone cannot say where to stay.
+const shownKey = ref<string | null>(null);
 const group = computed(
   () =>
     groups.value.find((g) => focused.value && g.items.some((i) => i.id === focused.value?.id)) ??
+    groups.value.find((g) => g.key === shownKey.value) ??
     (groups.value[0] as (typeof groups.value)[number]),
+);
+watch(
+  () => group.value.key,
+  (key) => {
+    shownKey.value = key;
+  },
+  { immediate: true },
 );
 const current = computed(() => focused.value ?? (group.value.items[0] as ApprovalItem));
 const lineColor = computed(() => connColorVar(current.value.target.color));
