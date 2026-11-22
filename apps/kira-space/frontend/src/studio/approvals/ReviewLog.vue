@@ -1,48 +1,66 @@
 <script setup lang="ts">
-import { useVirtualRows } from '@workbench/behaviour/virtualRows';
-import { useRowHeight } from '@workbench/lib/rowHeight';
-import { computed, ref } from 'vue';
+import { Toggle } from '@theme/components/ui/toggle';
+import { t } from '@theme/i18n';
+import LogLines, { type LogLine } from '@workbench/components/LogLines.vue';
+import { storeToRefs } from 'pinia';
+import { computed } from 'vue';
+import { useCodeLineHeight } from './codeLine';
+import { useReviewLogStore } from './reviewLogStore';
 
-// A held log as lines, verbatim: a timestamp column when any line has one, long lines scroll sideways.
-// Rows are virtualized, so a long tail stays cheap.
+// A held log as terminal-style lines, verbatim. The shared log viewer virtualizes, so a long tail
+// stays cheap; the toggles pick wrapping, timestamps and a line-number gutter.
 const props = defineProps<{
   lines: readonly { ts?: string; text: string }[];
   testid: string;
 }>();
 
-const { single: rowHeight } = useRowHeight();
-const scrollRef = ref<HTMLElement | null>(null);
-const {
-  virtualItems: virtualRows,
-  totalSize,
-  onScroll,
-} = useVirtualRows({
-  count: () => props.lines.length,
-  rowHeight: () => rowHeight.value,
-  scrollElement: scrollRef,
-  overscan: 12,
-});
-const hasTs = computed(() => props.lines.some((l) => l.ts));
+const { wrap, timestamps, lineNumbers } = storeToRefs(useReviewLogStore());
+const lineHeight = useCodeLineHeight();
+const logLines = computed<LogLine[]>(() =>
+  props.lines.map((l, id) => ({ id, text: l.text, stream: 'stdout', ts: l.ts })),
+);
 </script>
 
 <template>
-  <div
-    ref="scrollRef"
-    class="max-h-72 overflow-auto font-data text-kira-md"
-    :data-testid="testid"
-    @scroll.passive="onScroll"
-  >
-    <div class="relative min-w-max" :style="{ height: `${totalSize}px` }">
-      <div
-        v-for="vr in virtualRows"
-        :key="vr.index"
-        class="absolute inset-x-0 flex items-center gap-3 whitespace-pre"
-        :style="{ top: `${vr.start}px`, height: `${rowHeight}px` }"
-        :data-testid="`${testid}-line`"
+  <div class="flex flex-col gap-1.5">
+    <div class="flex items-center gap-1">
+      <Toggle
+        v-model="wrap"
+        size="kira"
+        :data-testid="`${testid}-wrap`"
+        :aria-label="t('common.logs.wrap.label')"
+        >{{
+          t('common.logs.wrap.label')
+        }}</Toggle
       >
-        <span v-if="hasTs" class="shrink-0 text-subtle">{{ lines[vr.index]?.ts ?? '' }}</span>
-        <span>{{ lines[vr.index]?.text }}</span>
-      </div>
+      <Toggle
+        v-model="timestamps"
+        size="kira"
+        :data-testid="`${testid}-timestamps`"
+        :aria-label="t('common.logs.timestamps.label')"
+        >{{
+          t('common.logs.timestamps.label')
+        }}</Toggle
+      >
+      <Toggle
+        v-model="lineNumbers"
+        size="kira"
+        :data-testid="`${testid}-line-numbers`"
+        :aria-label="t('common.logs.lineNumbers.label')"
+        >{{
+          t('common.logs.lineNumbers.label')
+        }}</Toggle
+      >
     </div>
+    <LogLines
+      :lines="logLines"
+      :testid="testid"
+      max-height="18rem"
+      :wrap="wrap"
+      :show-timestamps="timestamps"
+      :line-numbers="lineNumbers"
+      levels
+      :line-height="lineHeight"
+    />
   </div>
 </template>

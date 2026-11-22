@@ -3762,6 +3762,9 @@
       "follow": {
         "label": "Follow"
       },
+      "lineNumbers": {
+        "label": "Line numbers"
+      },
       "matches": {
         "status": "{shown} of {total} lines"
       },

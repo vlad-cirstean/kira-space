@@ -13,6 +13,7 @@ import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
+import { useCodeLineHeight } from './codeLine';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import { usePendingResponse } from './pendingResponse';
@@ -33,7 +34,8 @@ const requestId = computed(() => props.item.id.slice(props.item.kind.length + 1)
 const response = usePendingResponse(() => requestId.value);
 
 const { single: rowHeight } = useRowHeight();
-const firstLines = computed(() => ({ table: rowHeight.value, log: rowHeight.value }));
+const codeLine = useCodeLineHeight();
+const firstLines = computed(() => ({ table: rowHeight.value, log: codeLine.value }));
 
 const scripted = computed(() => payload.value.scripted);
 // What the agent gets on Send; with a script, the result the script read is a view of its own.
