@@ -45,9 +45,10 @@ test('contract: the held read shows the envelope, the script and the ids it keep
   await expect
     .poll(() => editorText(page.locator('[data-testid="db-review-result"]')))
     .toContain('"count": 2');
-  await expect(page.locator('[data-testid="db-review-keep-ids"]')).toContainText(
-    /List of 2\s*Plain\s*\[\s*1,\s*2\s*\]/,
-  );
+  const keep = page.locator('[data-testid="db-review-keep-ids"]');
+  await keep.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
+  await expect(keep).toContainText(/Plain\s*\[\s*1,\s*2\s*\]/);
   await page.click('[data-testid="db-review-view-raw"]');
   await expect(page.locator('[data-testid="db-mcp-preview-row"]')).toHaveCount(2);
   await approve(page, it);

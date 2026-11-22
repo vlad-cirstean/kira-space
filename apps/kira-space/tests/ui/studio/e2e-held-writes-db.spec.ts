@@ -31,9 +31,10 @@ test('contract: the held result lists w with its preview before anything is stor
 }) => {
   const { window: page } = await relaunch({ control: mocks('send') });
   await pushApprovals(page, [liveItem(item())]);
-  await expect(page.locator('[data-testid="db-review-keep-w"]')).toContainText(
-    /List of 2\s*Plain\s*\[\s*1,\s*2\s*\]/,
-  );
+  const row = page.locator('[data-testid="db-review-keep-w"]');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
+  await expect(row).toContainText(/Plain\s*\[\s*1,\s*2\s*\]/);
 });
 
 for (const key of ['send', 'withhold'] as const) {
@@ -64,6 +65,7 @@ test('contract: after Send the kept pane lists w from the db script', async ({ r
   await openKeptPane(page);
   const entries = page.locator('[data-testid="settings-kept-entry"]');
   await expect(entries).toHaveCount(1);
-  await expect(entries.first()).toContainText('List of 2');
+  await entries.first().locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
   await expect(entries.first().locator('[data-testid="kept-value-preview"]')).toContainText('1');
 });

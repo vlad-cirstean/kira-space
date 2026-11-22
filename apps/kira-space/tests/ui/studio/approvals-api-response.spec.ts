@@ -63,14 +63,14 @@ test('contract: a scripted response shows the result, the raw response and the s
 }) => {
   const { window: page } = await relaunch({ control: mocks('scripted') });
   await pushApprovals(page, [liveItem(item('scripted'))]);
+  // The script shows formatted, so match its first line up to the opening of the object literal.
   const source = held('scripted').script?.source ?? '';
+  const head = source.slice(0, source.indexOf('({') + 2);
   const result = page.locator('[data-testid="api-review-result"]');
   // A big integer keeps its digits through the re-indent.
   await expect(result).toContainText('"id": 9007199254740993');
   await expect(result).toContainText('"domain": "x.test"');
-  await expect(page.locator('[data-testid="api-review-script"]')).toContainText(
-    source.split('\n')[0] ?? '',
-  );
+  await expect(page.locator('[data-testid="api-review-script"]')).toContainText(head);
   await expect(page.locator('[data-testid="api-review-view-result"]')).toHaveText('After');
   await expect(page.locator('[data-testid="api-review-view-raw"]')).toHaveText('Before');
   await page.click('[data-testid="api-review-view-raw"]');

@@ -22,9 +22,12 @@ test('contract: a SQL write that binds an API list shows the API request that ke
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
   await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
   const row = c.locator('[data-testid="db-approval-kept-ids"]');
-  await expect(row).toContainText('List of 2');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 2');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    /GET http:\/\/127\.0\.0\.1:<port>\/raw/,
+  );
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('9007199254740993');
-  await expect(row).toContainText(/GET http:\/\/127\.0\.0\.1:<port>\/raw/);
   await expect(c.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
 });
 
@@ -37,8 +40,9 @@ test('contract: an API request that fills its body from SQL rows shows the state
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
   await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: bodies');
   const row = c.locator('[data-testid="api-approval-kept-bodies"]');
-  await expect(row).toContainText('List of 3');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('List of 3');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('notes db: select');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('hit');
-  await expect(row).toContainText('notes db: select');
   await expect(c.locator('[data-testid="api-approval-body-text"] .kira-ed-kept')).toHaveCount(1);
 });
