@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "text": "{\"m\": \"m1\", \"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 19,
                 "index": 0,
                 "part": "",
-                "to": 31
+                "to": 32
               }
             ],
             "source": {
@@ -213,6 +213,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -232,7 +233,6 @@
         "inputs": [
           {
             "keepMinutes": 60,
-            "label": "API key",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -256,14 +256,14 @@
                 "from": 35,
                 "index": 0,
                 "part": "",
-                "to": 50
+                "to": 52
               },
               {
                 "field": "query",
                 "from": 0,
                 "index": 1,
                 "part": "value",
-                "to": 15
+                "to": 17
               }
             ],
             "source": {
@@ -284,14 +284,14 @@
           },
           {
             "name": "k",
-            "value": "{{kept.apikey}}"
+            "value": "{{secret.apikey}}"
           }
         ],
         "reviewOffered": true,
         "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
-        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{secret.apikey}}",
         "variables": [
           {
             "name": "base_url",
@@ -321,6 +321,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -374,7 +375,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"m\": \"m1\", \"ids\": {{kept.ids}}}",
+          "text": "{\"m\": \"m1\", \"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -404,7 +405,7 @@
                 "from": 19,
                 "index": 0,
                 "part": "",
-                "to": 31
+                "to": 32
               }
             ],
             "source": {
@@ -566,6 +567,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""
@@ -585,7 +587,6 @@
         "inputs": [
           {
             "keepMinutes": 60,
-            "label": "API key",
             "name": "apikey",
             "origin": "http://127.0.0.1:<port>",
             "state": "needed"
@@ -609,14 +610,14 @@
                 "from": 35,
                 "index": 0,
                 "part": "",
-                "to": 50
+                "to": 52
               },
               {
                 "field": "query",
                 "from": 0,
                 "index": 1,
                 "part": "value",
-                "to": 15
+                "to": 17
               }
             ],
             "source": {
@@ -637,14 +638,14 @@
           },
           {
             "name": "k",
-            "value": "{{kept.apikey}}"
+            "value": "{{secret.apikey}}"
           }
         ],
         "reviewOffered": true,
         "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
-        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{kept.apikey}}",
+        "url": "http://127.0.0.1:<port>/echo?m=m4&k={{secret.apikey}}",
         "variables": [
           {
             "name": "base_url",
@@ -674,6 +675,7 @@
       "origin": {
         "client": "Go-http-client 1.1",
         "cwd": "<masked>",
+        "session": "e13-s",
         "source": "",
         "step": "",
         "task": ""

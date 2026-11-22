@@ -44,6 +44,7 @@
     "keep": [
       {
         "bytes": 5,
+        "deleted": false,
         "items": 2,
         "name": "ids",
         "preview": "[1,2]",
@@ -55,8 +56,8 @@
     "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
-      "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+      "hash": "5b7f397fae724547e07edab95d5b6be2ab2f76c633788a6e55ca21da4ceabdf5",
+      "source": "plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};"
     },
     "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
   },
@@ -67,5 +68,5 @@
     ],
     "options": null
   },
-  "result": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}"
+  "result": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}"
 }

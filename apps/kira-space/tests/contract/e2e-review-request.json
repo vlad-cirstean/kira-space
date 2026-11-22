@@ -195,7 +195,7 @@
         "reviewOffered": true,
         "reviewResult": true,
         "script": {
-          "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
+          "hash": "5b7f397fae724547e07edab95d5b6be2ab2f76c633788a6e55ca21da4ceabdf5",
           "mayKeep": [
             {
               "name": "ids",
@@ -206,12 +206,12 @@
                   "from": 0,
                   "index": 0,
                   "part": "transform",
-                  "to": 21
+                  "to": 9
                 }
               ]
             }
           ],
-          "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+          "source": "plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};"
         },
         "statement": "select id, body from notes order by id"
       },
@@ -329,7 +329,8 @@
             "hash": "<masked>",
             "input": "",
             "inputTruncated": false,
-            "source": "return {labelSelector: \"app=web\", maxRows: 5};"
+            "source": "return {labelSelector: \"app=web\", maxRows: 5};",
+            "writes": []
           },
           "transform": {
             "hash": "<masked>",
@@ -367,6 +368,7 @@
     "keep": [
       {
         "bytes": 0,
+        "deleted": false,
         "items": 2,
         "name": "ids",
         "preview": "[1,2]",
@@ -378,8 +380,8 @@
     "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
     "requestId": "<id:3>",
     "script": {
-      "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
-      "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+      "hash": "5b7f397fae724547e07edab95d5b6be2ab2f76c633788a6e55ca21da4ceabdf5",
+      "source": "plain.ids = result.rows.map(r => Number(r[0])); return {count: result.rows.length};"
     },
     "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
   },

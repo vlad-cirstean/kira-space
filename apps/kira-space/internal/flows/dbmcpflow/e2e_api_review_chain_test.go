@@ -16,7 +16,7 @@ import (
 
 const (
 	reviewChainKey = "e2e-api-review-chain"
-	chainDomains   = `kira.storeValue("domains", response.json.users.map(u => u.email.split("@")[1])); return response.json.users.length;`
+	chainDomains   = `plain.domains = response.json.users.map(u => u.email.split("@")[1]); return response.json.users.length;`
 )
 
 func TestE2EApiReviewChain(t *testing.T) {
@@ -75,7 +75,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 		if stored() {
 			t.Fatal("domains stored before Send")
 		}
-		if list := text(callTool(t, sess, "list_kept_variables", map[string]any{})); strings.Contains(list, "domains") {
+		if list := text(callTool(t, sess, "list_saved_variables", map[string]any{})); strings.Contains(list, "domains") {
 			t.Fatalf("agent listing = %s, want no domains while the review waits", list)
 		}
 		f.app.Contract(t, reviewChainKey, "ApprovalsService.List#review", []approvals.Item{h.req.Item}, opts...)
@@ -106,7 +106,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 			t.Fatalf("result = %q (%v)", text(res), err)
 		}
 		_ = json.Unmarshal([]byte(heldText), &shown)
-		if agent.Result != shown.Result || agent.Result != 2 || !strings.Contains(text(res), `"kept":[{"name":"domains"`) {
+		if agent.Result != shown.Result || agent.Result != 2 || !strings.Contains(text(res), `"saved":[{"name":"domains"`) {
 			t.Fatalf("result = %q, held %q, want the held result plus a kept summary", text(res), heldText)
 		}
 		f.app.Contract(t, reviewChainKey, "result#send", expiresIn.ReplaceAllString(stable(text(res)), `"expiresInSeconds":0`), opts...)
@@ -119,7 +119,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 	})
 
 	t.Run("a failed transform is held with its raw response and keeps nothing", func(t *testing.T) {
-		h := start(t, `kira.storeValue("domains", 1); return null.x`, false)
+		h := start(t, `plain.domains = 1; return null.x`, false)
 		if !h.held.IsError || len(h.held.Keep) != 0 || !strings.Contains(h.held.Raw, "a@x.test") || !strings.Contains(h.held.Text, "transform script failed:") {
 			t.Fatalf("pending = %+v, want an error item with the raw response and no staged values", h.held)
 		}

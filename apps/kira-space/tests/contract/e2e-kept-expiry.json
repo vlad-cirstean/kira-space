@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"ids\": {{kept.ids}}}",
+          "text": "{\"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 8,
                 "index": 0,
                 "part": "",
-                "to": 20
+                "to": 21
               }
             ],
             "source": {
@@ -188,7 +188,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"ids\": {{kept.ids}}}",
+          "text": "{\"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -218,7 +218,7 @@
                 "from": 8,
                 "index": 0,
                 "part": "",
-                "to": 20
+                "to": 21
               }
             ],
             "source": {
@@ -368,7 +368,7 @@
                 "from": 7,
                 "index": 0,
                 "part": "transform",
-                "to": 26
+                "to": 16
               }
             ],
             "source": {
@@ -387,9 +387,9 @@
         "reviewOffered": true,
         "reviewResult": false,
         "script": {
-          "hash": "d4acb23702719426f014b1441bfe73e432d2c96fb25a8778708214f016c0ce23",
+          "hash": "f136eefe25aad6a83be67be8035690ff2c9a1c6d19713f67dbbd7d7181469e12",
           "mayKeep": [],
-          "source": "return kira.getValue(\"ids\").length;"
+          "source": "return plain.ids.length;"
         },
         "statement": "select id, body from notes order by id"
       },

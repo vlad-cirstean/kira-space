@@ -46,14 +46,14 @@
                 "from": 32,
                 "index": 0,
                 "part": "",
-                "to": 44
+                "to": 45
               },
               {
                 "field": "query",
                 "from": 0,
                 "index": 0,
                 "part": "value",
-                "to": 12
+                "to": 13
               }
             ],
             "source": {
@@ -70,14 +70,14 @@
         "query": [
           {
             "name": "pod",
-            "value": "{{kept.pod}}"
+            "value": "{{plain.pod}}"
           }
         ],
         "reviewOffered": true,
         "reviewResult": false,
         "script": null,
         "timeoutSeconds": 30,
-        "url": "<api>/echo?pod={{kept.pod}}",
+        "url": "<api>/echo?pod={{plain.pod}}",
         "variables": []
       },
       "reason": "permission",
@@ -129,7 +129,7 @@
         "script": {
           "prepare": null,
           "transform": {
-            "hash": "313e045062ce1530795f49e3eaf8ff4a5d53eff6d5cc0d7c86aea054a7862bc3",
+            "hash": "6c16ab95af2dc38439a317d4b5a155c11d145eacc515c9f47d5d42e4998045a1",
             "mayKeep": [
               {
                 "name": "pod",
@@ -140,7 +140,7 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 21
+                    "to": 9
                   }
                 ]
               },
@@ -150,15 +150,15 @@
                 "sites": [
                   {
                     "field": "script",
-                    "from": 45,
+                    "from": 33,
                     "index": 0,
                     "part": "transform",
-                    "to": 69
+                    "to": 45
                   }
                 ]
               }
             ],
-            "source": "kira.storeValue(\"pod\", result.rows[0].name); kira.storeSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
+            "source": "plain.pod = result.rows[0].name; secret.token = \"tok-kube-\" + result.rows[0].name; return {first: result.rows[0].name, count: result.rowCount};"
           }
         },
         "server": "<kube>",
@@ -215,7 +215,7 @@
                 "from": 13,
                 "index": 0,
                 "part": "prepare",
-                "to": 32
+                "to": 22
               }
             ],
             "source": {
@@ -250,10 +250,11 @@
               "pod",
               "tail"
             ],
-            "hash": "0a7084c13cdc6b5563ce922c67214203a14fa20af1c353eacc721358bc85a43b",
+            "hash": "dd99eccc445b053236243a79d484ac0473274f9169a1aba119a39211eb3b24ca",
             "input": "",
             "inputTruncated": false,
-            "source": "return {pod: kira.getValue(\"pod\"), tail: 2};"
+            "source": "return {pod: plain.pod, tail: 2};",
+            "writes": []
           },
           "transform": {
             "hash": "9d5b8bfab70d2b8f2b62a6aae5a573c96f467efc1efeff779c47a7ccac393c93",
@@ -333,6 +334,7 @@
     "keep": [
       {
         "bytes": 7,
+        "deleted": false,
         "items": 0,
         "name": "pod",
         "preview": "\"web-1\"",
@@ -342,6 +344,7 @@
       },
       {
         "bytes": 16,
+        "deleted": false,
         "items": 0,
         "name": "token",
         "preview": "",
@@ -353,8 +356,8 @@
     "raw": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":3,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"db-0\",\"namespace\":\"default\",\"cells\":[\"db-0\",\"1/1\",\"Running\",\"0\",\"5m\"]}],\"truncated\":false}",
     "requestId": "<masked>",
     "script": {
-      "hash": "313e045062ce1530795f49e3eaf8ff4a5d53eff6d5cc0d7c86aea054a7862bc3",
-      "source": "kira.storeValue(\"pod\", result.rows[0].name); kira.storeSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
+      "hash": "6c16ab95af2dc38439a317d4b5a155c11d145eacc515c9f47d5d42e4998045a1",
+      "source": "plain.pod = result.rows[0].name; secret.token = \"tok-kube-\" + result.rows[0].name; return {first: result.rows[0].name, count: result.rowCount};"
     },
     "text": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false}}"
   },
@@ -401,6 +404,6 @@
     "name": "token",
     "requestId": "<masked>"
   },
-  "result#list": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false},\"kept\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
+  "result#list": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false},\"saved\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
   "result#logs": "{\"kind\":\"script\",\"output\":2,\"input\":{\"operation\":\"logs\",\"rowCount\":2,\"truncated\":false}}"
 }

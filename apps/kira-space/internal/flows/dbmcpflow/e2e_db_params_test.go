@@ -30,7 +30,7 @@ func TestE2EDbParams(t *testing.T) {
 
 	t.Run("a script keeps 1000 ids and the next read binds them", func(t *testing.T) {
 		// The script reads the rendered result, 200 rows unless maxRows asks for more.
-		args := f.queryScriptArgs(thousandCTE, "read", `kira.storeValue("big", result.rows.map(r => Number(r[0]))); return 1;`)
+		args := f.queryScriptArgs(thousandCTE, "read", `plain.big = result.rows.map(r => Number(r[0])); return 1;`)
 		args["maxRows"] = 1000
 		keep := callTool(t, sess, "run_query", args)
 		if keep.IsError || !strings.Contains(text(keep), `"name":"big","type":"array","items":1000`) {
@@ -104,7 +104,7 @@ func TestE2EDbParams(t *testing.T) {
 			t.Fatal(err)
 		}
 		res := callTool(t, sess, "run_query", f.paramsArgs("select ? as x", "read", "apikey"))
-		if !res.IsError || !strings.Contains(text(res), `kept variable "apikey" is secret`) {
+		if !res.IsError || !strings.Contains(text(res), `saved variable "apikey" is secret`) {
 			t.Fatalf("typed value as param = %q, want an is-secret refusal", text(res))
 		}
 		f.noLeak(t, typed, text(res))

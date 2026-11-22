@@ -15,7 +15,7 @@ import (
 
 const (
 	deleteKey  = "e2e-kept-delete"
-	deleteKeep = `kira.storeValue("token", response.json.token); kira.storeValue("account_id", response.json.account); return {account: response.json.account};`
+	deleteKeep = `plain.token = response.json.token; plain.account_id = response.json.account; return {account: response.json.account};`
 )
 
 func TestE2EKeptDelete(t *testing.T) {
@@ -32,7 +32,7 @@ func TestE2EKeptDelete(t *testing.T) {
 		f.answerItems(t, true, req.Item.ID)
 		h := f.startHeldFromQueue(t)
 		h.pending = pending
-		if got := keepNames(h.held.Keep); !slices.Equal(got, []string{"token", "account_id"}) {
+		if got := keepNames(h.held.Keep); !slices.Equal(got, []string{"account_id", "token"}) {
 			t.Fatalf("Will keep = %v, want token and account_id", got)
 		}
 		sized := append(slices.Clip(opts), flowharness.Mask("rawBytes", "bytes"))
@@ -59,14 +59,14 @@ func TestE2EKeptDelete(t *testing.T) {
 
 		res := f.finish(t, h, true)
 		var out struct {
-			Kept     []struct{ Name string }        `json:"kept"`
-			NotSaved []struct{ Name, Error string } `json:"keptNotSaved"`
+			Kept     []struct{ Name string }        `json:"saved"`
+			NotSaved []struct{ Name, Error string } `json:"notSaved"`
 		}
 		if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
 			t.Fatalf("result %q: %v", text(res), err)
 		}
 		if res.IsError || len(out.Kept) != 1 || out.Kept[0].Name != "token" ||
-			len(out.NotSaved) != 1 || out.NotSaved[0].Name != "account_id" || out.NotSaved[0].Error != "the user chose not to keep it" {
+			len(out.NotSaved) != 1 || out.NotSaved[0].Name != "account_id" || out.NotSaved[0].Error != "the user chose not to save it" {
 			t.Fatalf("result = %q, want token kept and account_id reported as not kept by the user", text(res))
 		}
 		f.app.Contract(t, deleteKey, "result#send", expiresIn.ReplaceAllString(text(res), `"expiresInSeconds":0`), opts...)
@@ -77,7 +77,7 @@ func TestE2EKeptDelete(t *testing.T) {
 
 	t.Run("deleting a variable a card waits on ends the call", func(t *testing.T) {
 		sent := len(srv.Requests())
-		pending := callToolAsync(sess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo", "Authorization", "Bearer {{kept.token}}"))
+		pending := callToolAsync(sess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo", "Authorization", "Bearer {{plain.token}}"))
 		req := f.pending(t)
 		id := f.keptID(t, externalScope, "token")
 		ro := append(slices.Clip(opts), flowharness.Replace(id, "kv_token"))

@@ -242,7 +242,7 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. In the cluster whose context is kind-dev, read the logs of the crash-looping pod in namespace shop."+
 			" Never write the pod's name yourself: it must not pass through you. Reply with the last log line.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,"+pre+"kube_list_clusters,"+list+","+pre+"kube_describe,"+logs+","+pre+"list_kept_variables",
+		"--allowedTools", "ToolSearch,"+pre+"kube_list_clusters,"+list+","+pre+"kube_describe,"+logs+","+pre+"list_saved_variables",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 
@@ -260,7 +260,7 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		}
 		keptName = storedName.FindStringSubmatch(in.Script.Transform)[1]
 		text, isErr, ok := toolResult(msgs, u.ID)
-		if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
+		if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
 			t.Fatalf("scripted kube_list_resources result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
 		}
 		kept = true

@@ -380,7 +380,7 @@ func wait(t *testing.T, ch chan callOutcome) *mcp.CallToolResult {
 	select {
 	case out := <-ch:
 		if out.err != nil || out.res == nil {
-			t.Fatalf("run_query = %+v, want a tool result", out)
+			t.Fatalf("run_query = res %v err %v, want a tool result", out.res, out.err)
 		}
 		return out.res
 	case <-time.After(clientTimeout):

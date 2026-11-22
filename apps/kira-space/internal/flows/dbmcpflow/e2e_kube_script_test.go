@@ -15,12 +15,12 @@ import (
 
 // Backend half of tests/ui/studio/e2e-kube-script.spec.ts (contract e2e-kube-script): a kube list keeps a pod
 // name and a token, the agent's next kube_pod_logs reads the pod in its prepare script, an API request reads
-// it with {{kept.pod}}, and a reviewed scripted read stages its keeps until Send.
+// it with {{plain.pod}}, and a reviewed scripted read stages its keeps until Send.
 
 const (
 	kubeScriptKey = "e2e-kube-script"
-	kubeListKeep  = `kira.storeValue("pod", result.rows[0].name); kira.storeSecret("token", "tok-kube-" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};`
-	kubeLogsPrep  = `return {pod: kira.getValue("pod"), tail: 2};`
+	kubeListKeep  = `plain.pod = result.rows[0].name; secret.token = "tok-kube-" + result.rows[0].name; return {first: result.rows[0].name, count: result.rowCount};`
+	kubeLogsPrep  = `return {pod: plain.pod, tail: 2};`
 	kubeLogsTrans = `return result.lines.length;`
 )
 
@@ -147,7 +147,7 @@ func TestE2EKubeScript(t *testing.T) {
 	})
 
 	t.Run("an API request reads the kube value", func(t *testing.T) {
-		pending := callToolAsync(apiSess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo?pod={{kept.pod}}"))
+		pending := callToolAsync(apiSess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo?pod={{plain.pod}}"))
 		req := k.pending(t)
 		k.scriptContract(t, "ApprovalsService.List#api", []approvals.Item{req.Item}, flowharness.Replace(k.keptID(t, externalScope, "pod"), "kv_pod"), flowharness.Replace(srv.URL, "<api>"))
 		k.scriptContract(t, "args:ApprovalsService.Answer#api", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
@@ -161,7 +161,7 @@ func TestE2EKubeScript(t *testing.T) {
 	})
 
 	t.Run("the kube secret reaches an API header and no SQL", func(t *testing.T) {
-		pending := callToolAsync(apiSess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo", "Authorization", "Bearer {{kept.token}}"))
+		pending := callToolAsync(apiSess, "api_request", apiArgs(envID, "GET", srv.URL+"/echo", "Authorization", "Bearer {{secret.token}}"))
 		req := k.pending(t)
 		k.answerItems(t, true, req.Item.ID)
 		res := wait(t, pending)
@@ -177,7 +177,7 @@ func TestE2EKubeScript(t *testing.T) {
 		k.keep(t, externalScope, "ns", `"default"`)
 		pending := k.callAsync("kube_pod_logs", map[string]any{
 			"clusterId": k.ids["kind-dev"], "namespace": "other", "pod": "web-1", "container": "app",
-			"script": map[string]any{"prepare": `return {namespace: kira.getValue("ns")};`},
+			"script": map[string]any{"prepare": `return {namespace: plain.ns};`},
 		})
 		req := k.pending(t)
 		if c := decodeKubeCard(t, req.Item); len(c.Changed) != 1 || c.Changed[0] != "namespace" || c.Request.Namespace != "default" {
@@ -209,10 +209,8 @@ func TestE2EKubeScript(t *testing.T) {
 			want       string
 		}{
 			{"empty", "kube_pod_logs", k.logsScript(map[string]any{}), "script"},
-			{"keepInPrepare", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `kira.storeValue("x", 1); return {pod: "web-1"};`}), "transform script only"},
-			{"secretRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("token")};`}), `kept variable "token" is secret or was typed by the user`},
-			{"userTypedRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("usertok")};`}), `kept variable "usertok" is secret or was typed by the user`},
-			{"unknownKept", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("nope")};`}), `"nope"`},
+			{"secretRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: plain.token};`}), `"token" is secret;`},
+			{"userTypedRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: plain.usertok};`}), `"usertok" is secret;`},
 			{"clusterKey", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {clusterId: "x", pod: "web-1"};`}), "unknown key"},
 			{"unknownKey", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {bogus: 1, pod: "web-1"};`}), "unknown key"},
 			{"wrongType", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: "web-1", tail: "ten"};`}), "tail"},
@@ -260,7 +258,7 @@ func TestE2EKubeScript(t *testing.T) {
 
 	t.Run("a kept value that vanishes cancels the card", func(t *testing.T) {
 		k.keep(t, externalScope, "gone", `"web-1"`)
-		pending := k.callAsync("kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("gone")};`}))
+		pending := k.callAsync("kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: plain.gone};`}))
 		k.pending(t)
 		k.dropKept("gone")
 		out := <-pending

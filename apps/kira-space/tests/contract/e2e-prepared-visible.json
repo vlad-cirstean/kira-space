@@ -66,7 +66,8 @@
             "hash": "<masked>",
             "input": "",
             "inputTruncated": false,
-            "source": "return {method: \"POST\", url: \"<api>/echo?a=1\", headers: [{name: \"X-Prepared\", value: \"yes\"}], query: [{name: \"q\", value: \"2\"}], body: {items: [1, 2]}};"
+            "source": "return {method: \"POST\", url: \"<api>/echo?a=1\", headers: [{name: \"X-Prepared\", value: \"yes\"}], query: [{name: \"q\", value: \"2\"}], body: {items: [1, 2]}};",
+            "writes": []
           },
           "transform": null
         },
@@ -134,7 +135,8 @@
             "hash": "<masked>",
             "input": "",
             "inputTruncated": false,
-            "source": "return {namespace: \"kube-system\", labelSelector: \"app=web\", maxRows: 7};"
+            "source": "return {namespace: \"kube-system\", labelSelector: \"app=web\", maxRows: 7};",
+            "writes": []
           },
           "transform": null
         },
@@ -206,7 +208,8 @@
             "hash": "<masked>",
             "input": "",
             "inputTruncated": false,
-            "source": "return {pod: \"web-1\", container: \"sidecar\", tail: 3, previous: false, timestamps: true};"
+            "source": "return {pod: \"web-1\", container: \"sidecar\", tail: 3, previous: false, timestamps: true};",
+            "writes": []
           },
           "transform": null
         },

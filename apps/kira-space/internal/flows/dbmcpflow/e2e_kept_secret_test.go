@@ -23,7 +23,7 @@ const (
 	secretKey    = "e2e-kept-secret"
 	sessionToken = "tok-e2e-session-7Q2xK"
 	loginJSON    = `{"token":"` + sessionToken + `","account":"acct_42","orders":[11,12]}`
-	loginKeep    = `kira.storeSecret("session_token", response.json.token); kira.storeValue("account_id", response.json.account); return {account: response.json.account, orders: response.json.orders.length};`
+	loginKeep    = `secret.session_token = response.json.token; plain.account_id = response.json.account; return {account: response.json.account, orders: response.json.orders.length};`
 )
 
 func loginURL(base string) string {
@@ -76,8 +76,8 @@ func TestE2EKeptSecret(t *testing.T) {
 		h := f.startHeldFromQueue(t)
 		h.pending = pending
 		keep := h.held.Keep
-		if len(keep) != 2 || keep[0].Name != "session_token" || !keep[0].Secret || keep[0].Preview != "" ||
-			keep[1].Name != "account_id" || keep[1].Secret || keep[1].Preview != `"acct_42"` {
+		if len(keep) != 2 || keep[0].Name != "account_id" || keep[0].Secret || keep[0].Preview != `"acct_42"` ||
+			keep[1].Name != "session_token" || !keep[1].Secret || keep[1].Preview != "" {
 			t.Fatalf("Will keep = %+v, want the secret without preview and the account with one", keep)
 		}
 		if strings.Contains(h.held.Text, sessionToken) || !strings.Contains(h.held.Text, "acct_42") {
@@ -126,15 +126,15 @@ func TestE2EKeptSecret(t *testing.T) {
 		if _, err := reveal(t, h.req.RequestID, "session_token", true); err == nil {
 			t.Fatal("staged reveal after Send succeeded, want a refusal")
 		}
-		list := text(callTool(t, sess, "list_kept_variables", map[string]any{}))
+		list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
 		remember(list)
 		if !strings.Contains(list, `"name":"session_token","type":"string","items":0,"secret":true`) || strings.Contains(list, sessionToken) {
-			t.Fatalf("list_kept_variables = %s, want the secret by name and kind only", list)
+			t.Fatalf("list_saved_variables = %s, want the secret by name and kind only", list)
 		}
 	})
 
 	t.Run("the follow-up request reads both", func(t *testing.T) {
-		args := apiArgs(envID, "GET", srv.URL+"/echo?account={{kept.account_id}}", "Authorization", "Bearer {{kept.session_token}}")
+		args := apiArgs(envID, "GET", srv.URL+"/echo?account={{plain.account_id}}", "Authorization", "Bearer {{secret.session_token}}")
 		pending := callToolAsync(sess, "api_request", args)
 		req := f.pending(t)
 		var card secretCard
@@ -173,20 +173,12 @@ func TestE2EKeptSecret(t *testing.T) {
 	t.Run("the secret stays with the origin that made it", func(t *testing.T) {
 		other := strings.Replace(srv.URL, "127.0.0.1", "localhost", 1)
 		sent := len(srv.Requests())
-		res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other+"/echo", "Authorization", "Bearer {{kept.session_token}}"))
+		res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other+"/echo", "Authorization", "Bearer {{secret.session_token}}"))
 		remember(text(res))
-		if !res.IsError || !strings.Contains(text(res), `the secret kept as "session_token" belongs to `+srv.URL) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
+		if !res.IsError || !strings.Contains(text(res), `the secret saved as "session_token" belongs to `+srv.URL) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
 			t.Fatalf("result = %q, queue %d, want a refusal before any card", text(res), f.queueLen(t))
 		}
 		f.app.Contract(t, secretKey, "result#otherOrigin", text(res), append(opts, flowharness.Replace(other, "http://localhost:<port>"))...)
-	})
-
-	t.Run("prepare cannot keep", func(t *testing.T) {
-		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"prepare": `kira.storeSecret("x", 1); return {};`}))
-		remember(text(res))
-		if !res.IsError || !strings.Contains(text(res), "kira.storeValue and kira.storeSecret are available in the transform script only") || f.queueLen(t) != 0 {
-			t.Fatalf("result = %q, want a refusal before any card", text(res))
-		}
 	})
 
 	t.Run("Settings lists the kinds", func(t *testing.T) {
@@ -227,7 +219,7 @@ func TestDbMcpQueryScriptKeepSecret(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
 
-	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeSecret("note_key", result.rows[0][1]); return {count: result.rows.length};`))
+	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `secret.note_key = result.rows[0][1]; return {count: result.rows.length};`))
 	if res.IsError || !strings.Contains(text(res), `"name":"note_key","type":"string","items":0,"secret":true`) || strings.Contains(text(res), "one") {
 		t.Fatalf("result = %s, want a secret summary and no cell", text(res))
 	}
@@ -238,8 +230,8 @@ func TestDbMcpQueryScriptKeepSecret(t *testing.T) {
 	if e.Source.Kind != keptvars.SourceScript {
 		t.Fatalf("source = %s, want script", e.Source.Kind)
 	}
-	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("note_key");`))
-	if !read.IsError || !strings.Contains(text(read), `kept variable "note_key" is secret`) {
+	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.note_key;`))
+	if !read.IsError || !strings.Contains(text(read), `"note_key" is secret;`) {
 		t.Fatalf("read back = %s, want the secret refusal", text(read))
 	}
 }

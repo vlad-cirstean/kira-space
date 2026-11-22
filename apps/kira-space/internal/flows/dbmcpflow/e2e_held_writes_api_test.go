@@ -17,13 +17,13 @@ import (
 )
 
 // Backend half of tests/ui/studio/e2e-held-writes.spec.ts (contract e2e-held-writes-api): a transform's
-// kira.storeValue is staged while its response is held, and reaches the store only on Send. Every other exit
+// plain write is staged while its response is held, and reaches the store only on Send. Every other exit
 // (withhold, timeout, switches turned off, client gone, failed transform, refused write) keeps nothing.
 
 const (
 	heldWritesAPIKey = "e2e-held-writes-api"
-	stageW           = `kira.storeValue("w", [1, 2]); return 1;`
-	notSavedUser     = "a kept variable of that name was supplied by the user and cannot be replaced"
+	stageW           = `plain.w = [1, 2]; return 1;`
+	notSavedUser     = "a saved variable of that name was supplied by the user and cannot be replaced"
 )
 
 func TestE2EHeldWritesAPI(t *testing.T) {
@@ -66,7 +66,7 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		f.app.Contract(t, heldWritesAPIKey, "KeptVarsService.List#beforeSend", listBefore, opts...)
 
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.HasPrefix(text(res), `{"result":1,"kept":[{"name":"w","type":"array","items":2`) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"result":1,"saved":[{"name":"w","type":"array","items":2`) {
 			t.Fatalf("result = %q, want the result and the kept summary", text(res))
 		}
 		e, ok := f.keptValue(t, "w")
@@ -143,9 +143,9 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		nothingStored(t)
 	})
 
-	t.Run("transform fails after kira.storeValue", func(t *testing.T) {
+	t.Run("transform fails after plain write", func(t *testing.T) {
 		fresh(t)
-		h := f.startHeld(t, sess, script(`kira.storeValue("w", [1, 2]); throw new Error("boom");`))
+		h := f.startHeld(t, sess, script(`plain.w = [1, 2]; throw new Error("boom");`))
 		if len(h.held.Keep) != 0 || !h.held.IsError {
 			t.Fatalf("held = %+v, want an error with no staged values", h.held)
 		}
@@ -165,12 +165,12 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		h := f.startHeld(t, sess, script(stageW))
+		h := f.startHeld(t, sess, script(`secret.w = "other"; return 1;`))
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"`+notSavedUser+`"}]`) {
-			t.Fatalf("result = %q, want the result and keptNotSaved naming w", text(res))
+		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+notSavedUser+`"}]`) {
+			t.Fatalf("result = %q, want the result and notSaved naming w", text(res))
 		}
-		if strings.Contains(text(res), `"kept":[`) {
+		if strings.Contains(text(res), `"saved":[`) {
 			t.Fatalf("result = %q, want no saved summary", text(res))
 		}
 		now, ok := f.keptValue(t, "w")
@@ -188,8 +188,8 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		before := f.keptNames(externalScope)
 		h := f.startHeld(t, sess, script(stageW))
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"too many kept variables (64 per session)`) {
-			t.Fatalf("result = %q, want keptNotSaved for the full scope", text(res))
+		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"too many saved variables (64 per session)`) {
+			t.Fatalf("result = %q, want notSaved for the full scope", text(res))
 		}
 		if after := f.keptNames(externalScope); strings.Join(after, ",") != strings.Join(before, ",") {
 			t.Fatalf("kept changed from %d to %d names: something was evicted", len(before), len(after))
@@ -199,9 +199,9 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 
 	t.Run("value over 1 MiB", func(t *testing.T) {
 		fresh(t)
-		h := f.startHeld(t, sess, script(`kira.storeValue("w", "x".repeat(1100000)); return 1;`))
+		h := f.startHeld(t, sess, script(`plain.w = "x".repeat(1100000); return 1;`))
 		res := f.finish(t, h, true)
-		if !res.IsError || strings.Contains(text(res), `"kept"`) {
+		if !res.IsError || strings.Contains(text(res), `"saved"`) {
 			t.Fatalf("result = %q, want a failed script", text(res))
 		}
 		nothingStored(t)

@@ -52,7 +52,7 @@
                 "from": 15,
                 "index": 0,
                 "part": "prepare",
-                "to": 37
+                "to": 27
               }
             ],
             "source": {
@@ -83,13 +83,14 @@
             "changed": [
               "headers"
             ],
-            "hash": "340bce308a9cc7d17801d02e7026a8fc3eed176f4ed7d628924d2425f4c33a44",
+            "hash": "4979f81442b15309353cd61295a58bf23a160898304efc5a1ca48316b43d2bba",
             "input": "",
             "inputTruncated": false,
-            "source": "const region = kira.getValue(\"region\"); return {headers: [{name: \"X-Region\", value: region}]};"
+            "source": "const region = plain.region; return {headers: [{name: \"X-Region\", value: region}]};",
+            "writes": []
           },
           "transform": {
-            "hash": "c54579f044985adf92789f541798249c177cc7b295a702ee920a18b5e7bade63",
+            "hash": "965d31783140ded1247314791d81d51cf2bb2c575ecf277aced6ed95fad72c87",
             "mayKeep": [
               {
                 "name": "ids",
@@ -100,12 +101,12 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 21
+                    "to": 9
                   }
                 ]
               }
             ],
-            "source": "kira.storeValue(\"ids\", response.json.users.map(u => u.id)); return {count: response.json.total};"
+            "source": "plain.ids = response.json.users.map(u => u.id); return {count: response.json.total};"
           }
         },
         "timeoutSeconds": 30,
@@ -129,5 +130,5 @@
     ],
     "options": null
   },
-  "result": "{\"result\":{\"count\":2},\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result": "{\"result\":{\"count\":2},\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

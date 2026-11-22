@@ -15,8 +15,8 @@ import (
 const typedSecret = "typed-secret-value-42"
 
 func keyArgs(envID, url string) map[string]any {
-	args := apiArgs(envID, "GET", url, "X-Api-Key", "{{kept.apikey}}")
-	args["inputs"] = []map[string]string{{"name": "apikey", "label": "API key"}}
+	args := apiArgs(envID, "GET", url, "X-Api-Key", "{{secret.apikey}}")
+	args["inputs"] = []string{"apikey"}
 	return args
 }
 
@@ -26,7 +26,7 @@ func inputAnswer(itemID, value string) approvals.AnswerArgs {
 }
 
 type inputPayload struct {
-	Inputs []struct{ Name, Label, State, Origin, KeptID string }
+	Inputs []struct{ Name, State, Origin, KeptID string }
 	Kept   []struct {
 		ID, Name string
 		Pending  bool
@@ -48,7 +48,7 @@ func TestUserInputSupplied(t *testing.T) {
 	if err := json.Unmarshal(req.Item.Payload, &pl); err != nil {
 		t.Fatal(err)
 	}
-	if len(pl.Inputs) != 1 || pl.Inputs[0].State != "needed" || pl.Inputs[0].Label != "API key" || pl.Inputs[0].Origin != srv.URL {
+	if len(pl.Inputs) != 1 || pl.Inputs[0].State != "needed" || pl.Inputs[0].Origin != srv.URL {
 		t.Fatalf("inputs = %+v, want one needed input bound to %s", pl.Inputs, srv.URL)
 	}
 	if len(pl.Kept) != 1 || !pl.Kept[0].Pending || pl.Kept[0].ID != "" || !pl.Kept[0].Secret {
@@ -91,7 +91,7 @@ func TestUserInputSupplied(t *testing.T) {
 	if len(got.Inputs) != 1 || got.Inputs[0].Name != "apikey" || got.Inputs[0].Status != "supplied" || got.Inputs[0].ExpiresInSeconds < 3500 {
 		t.Fatalf("inputs = %+v, want apikey supplied", got.Inputs)
 	}
-	if strings.Contains(text(out), typedSecret) || !strings.Contains(got.Body, "{{kept.apikey}}") {
+	if strings.Contains(text(out), typedSecret) || !strings.Contains(got.Body, "{{secret.apikey}}") {
 		t.Fatalf("result = %s, want the echoed value masked as its reference", text(out))
 	}
 	if seen := srv.Requests(); len(seen) != 1 || seen[0].Header.Get("X-Api-Key") != typedSecret {
@@ -102,7 +102,7 @@ func TestUserInputSupplied(t *testing.T) {
 	if !ok || !e.Secret || e.Source.Kind != keptvars.SourceUser || e.Origin != srv.URL || string(e.Value) != `"`+typedSecret+`"` {
 		t.Fatalf("stored = %+v ok=%v, want a secret user entry bound to %s", e, ok, srv.URL)
 	}
-	list := text(callTool(t, sess, "list_kept_variables", map[string]any{}))
+	list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
 	if !strings.Contains(list, `"apikey"`) || !strings.Contains(list, `"secret":true`) || strings.Contains(list, typedSecret) {
 		t.Fatalf("listing = %s, want the name and secret flag, no value", list)
 	}
@@ -163,7 +163,7 @@ func TestUserInputRefusals(t *testing.T) {
 	}
 	// A declared input must be used.
 	args := apiArgs(envID, "GET", "{{base_url}}/echo")
-	args["inputs"] = []map[string]string{{"name": "unused", "label": "Unused"}}
+	args["inputs"] = []string{"unused"}
 	if res := callTool(t, sess, "api_request", args); !res.IsError {
 		t.Fatalf("unused input = %q, want a refusal", text(res))
 	}

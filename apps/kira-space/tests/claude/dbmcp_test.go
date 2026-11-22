@@ -21,7 +21,7 @@ import (
 
 const dbServer = "kira-studio"
 
-var storedName = regexp.MustCompile(`kira\.(?:storeValue|storeSecret)\(\s*["']([^"']+)["']`)
+var storedName = regexp.MustCompile(`\b(?:plain|secret)\.([A-Za-z]\w*)\s*=[^=]`)
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -375,7 +375,7 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 			" has a notes table (id, body). Read every note's id in one read query, then in a second read query fetch the bodies of those ids, ordered by id."+
 			" Do not put the ids in your own text or your own sql: they must never pass through you. Reply with the bodies.",
 		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_kept_variables",
+		"--allowedTools", "ToolSearch,mcp__"+dbServer+"__list_connections,"+tool+",mcp__"+dbServer+"__list_saved_variables",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	var scripted, bound bool
@@ -392,7 +392,7 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 		switch {
 		case in.Script != nil && storedName.MatchString(*in.Script):
 			keptName = storedName.FindStringSubmatch(*in.Script)[1]
-			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, "[1,2]") {
+			if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+keptName+`"`) || strings.Contains(text, "[1,2]") {
 				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
 			}
 			scripted = true

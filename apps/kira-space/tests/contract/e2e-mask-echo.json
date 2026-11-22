@@ -17,7 +17,7 @@
         "task": ""
       },
       "payload": {
-        "bytes": 236,
+        "bytes": 248,
         "class": "read",
         "environment": {
           "color": "green",
@@ -28,7 +28,7 @@
         "isError": false,
         "masked": [],
         "method": "GET",
-        "rawBytes": 517,
+        "rawBytes": 529,
         "reason": "setting",
         "request": {
           "body": null,
@@ -36,7 +36,7 @@
             {
               "masked": false,
               "name": "X-Echo",
-              "value": "{{kept.apikey}}"
+              "value": "{{secret.apikey}}"
             }
           ],
           "kept": [
@@ -56,7 +56,7 @@
                   "from": 0,
                   "index": 0,
                   "part": "value",
-                  "to": 15
+                  "to": 17
                 }
               ],
               "source": {
@@ -89,14 +89,14 @@
   "DbMcpService.PendingResponse#forms": {
     "isError": false,
     "keep": [],
-    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"193\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"{{kept.apikey}}\\\",\\\"b64url\\\":\\\"{{kept.apikey}}\\\",\\\"json\\\":\\\"{{kept.apikey}}\\\",\\\"path\\\":\\\"{{kept.apikey}}\\\",\\\"query\\\":\\\"{{kept.apikey}}\\\",\\\"raw\\\":\\\"{{kept.apikey}}\\\"}\\n\",\"bodyBytes\":193,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[]}",
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"193\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"{{secret.apikey}}\\\",\\\"b64url\\\":\\\"{{secret.apikey}}\\\",\\\"json\\\":\\\"{{secret.apikey}}\\\",\\\"path\\\":\\\"{{secret.apikey}}\\\",\\\"query\\\":\\\"{{secret.apikey}}\\\",\\\"raw\\\":\\\"{{secret.apikey}}\\\"}\\n\",\"bodyBytes\":193,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[]}",
     "requestId": "<id:1>",
     "script": {
       "hash": "981d6b4b0509970abf1ef7e8a9a78db28a5869c2ce8e684df52a2efa9abc549c",
       "source": "return response.json;"
     },
-    "text": "{\"result\":{\"b64\":\"{{kept.apikey}}\",\"b64url\":\"{{kept.apikey}}\",\"json\":\"{{kept.apikey}}\",\"path\":\"{{kept.apikey}}\",\"query\":\"{{kept.apikey}}\",\"raw\":\"{{kept.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
+    "text": "{\"result\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
   },
-  "result#forms": "{\"result\":{\"b64\":\"{{kept.apikey}}\",\"b64url\":\"{{kept.apikey}}\",\"json\":\"{{kept.apikey}}\",\"path\":\"{{kept.apikey}}\",\"query\":\"{{kept.apikey}}\",\"raw\":\"{{kept.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}",
-  "result#short": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"103\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"YWIxMmNk\\\",\\\"b64url\\\":\\\"YWIxMmNk\\\",\\\"json\\\":\\\"{{kept.pin}}\\\",\\\"path\\\":\\\"{{kept.pin}}\\\",\\\"query\\\":\\\"{{kept.pin}}\\\",\\\"raw\\\":\\\"{{kept.pin}}\\\"}\\n\",\"bodyBytes\":103,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[],\"inputs\":[{\"name\":\"pin\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
+  "result#forms": "{\"result\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}",
+  "result#short": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"103\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"YWIxMmNk\\\",\\\"b64url\\\":\\\"YWIxMmNk\\\",\\\"json\\\":\\\"{{secret.pin}}\\\",\\\"path\\\":\\\"{{secret.pin}}\\\",\\\"query\\\":\\\"{{secret.pin}}\\\",\\\"raw\\\":\\\"{{secret.pin}}\\\"}\\n\",\"bodyBytes\":103,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[],\"inputs\":[{\"name\":\"pin\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
 }

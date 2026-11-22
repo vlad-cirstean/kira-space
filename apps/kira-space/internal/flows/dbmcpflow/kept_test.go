@@ -47,7 +47,7 @@ func TestKeptVarsChainedRequest(t *testing.T) {
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
 	meta := f.keep(t, externalScope, "ids", "[11,12,13]")
 
-	pending := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{kept.ids}}, "n": 3}`))
+	pending := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{plain.ids}}, "n": 3}`))
 	req := f.pending(t)
 	var pl struct {
 		Body struct{ Text string }
@@ -67,7 +67,7 @@ func TestKeptVarsChainedRequest(t *testing.T) {
 		t.Fatalf("kept = %+v, want the ids list", pl.Kept)
 	}
 	site := pl.Kept[0].Sites
-	if len(site) != 1 || site[0].Field != "body" || pl.Body.Text[site[0].From:site[0].To] != "{{kept.ids}}" {
+	if len(site) != 1 || site[0].Field != "body" || pl.Body.Text[site[0].From:site[0].To] != "{{plain.ids}}" {
 		t.Fatalf("sites = %+v in %q, want the body span", site, pl.Body.Text)
 	}
 	f.app.Contract(t, "approvals-api-kept", "ApprovalsService.List", []approvals.Item{req.Item},
@@ -109,7 +109,7 @@ func TestKeptVarsGoneWhileWaiting(t *testing.T) {
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
 	meta := f.keep(t, externalScope, "ids", "[1]")
 
-	pending := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{kept.ids}}}`))
+	pending := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{plain.ids}}}`))
 	f.items(t, 1)
 	if _, err := f.app.W.KeptVars.Clear(bridge.KeptClearArgs{IDs: []string{meta.ID}}); err != nil {
 		t.Fatal(err)
@@ -143,12 +143,12 @@ func TestKeptVarsRefusals(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		"unknown":       {post("{{base_url}}/echo", `{"a": {{kept.nope}}}`), `no kept variable "nope"`},
-		"host":          {apiArgs(envID, "GET", "http://{{kept.word}}/echo"), "scheme, host or port"},
-		"list in query": {apiArgs(envID, "GET", "{{base_url}}/echo?x={{kept.ids}}"), "is a list"},
-		"quoted":        {post("{{base_url}}/echo", `{"a": "{{kept.word}}"}`), "without quotes"},
-		"line break":    {post("{{base_url}}/echo", `{}`, "X-A", "{{kept.multi}}"), "line break"},
-		"pipeline":      {apiArgs(envID, "GET", "{{base_url}}/echo?x={{kept.word | base64}}"), "no transforms"},
+		"unknown":       {post("{{base_url}}/echo", `{"a": {{plain.nope}}}`), `no saved variable "nope"`},
+		"host":          {apiArgs(envID, "GET", "http://{{plain.word}}/echo"), "scheme, host or port"},
+		"list in query": {apiArgs(envID, "GET", "{{base_url}}/echo?x={{plain.ids}}"), "is a list"},
+		"quoted":        {post("{{base_url}}/echo", `{"a": "{{plain.word}}"}`), "without quotes"},
+		"line break":    {post("{{base_url}}/echo", `{}`, "X-A", "{{plain.multi}}"), "line break"},
+		"pipeline":      {apiArgs(envID, "GET", "{{base_url}}/echo?x={{plain.word | base64}}"), "no transforms"},
 	} {
 		res := callTool(t, sess, "api_request", c.args)
 		if !res.IsError || !strings.Contains(text(res), c.want) {
@@ -167,11 +167,11 @@ func TestKeptVarsScope(t *testing.T) {
 	f.keep(t, "session:other", "secretive", `"x"`)
 	f.keep(t, externalScope, "mine", `"y"`)
 
-	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo?x={{kept.secretive}}"))
-	if !res.IsError || !strings.Contains(text(res), `no kept variable "secretive"`) {
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo?x={{secret.secretive}}"))
+	if !res.IsError || !strings.Contains(text(res), `no saved variable "secretive"`) {
 		t.Fatalf("other scope = %q, want not found", text(res))
 	}
-	list := text(callTool(t, sess, "list_kept_variables", map[string]any{}))
+	list := text(callTool(t, sess, "list_saved_variables", map[string]any{}))
 	if !strings.Contains(list, `"mine"`) || strings.Contains(list, "secretive") {
 		t.Fatalf("list = %s, want only the caller's variable", list)
 	}
@@ -183,7 +183,7 @@ func TestKeptVarsListTool(t *testing.T) {
 	_, sess, _ := f.apiSetup(t, "127.0.0.1", false)
 	f.keep(t, externalScope, "ids", "[11,12,13]")
 
-	res := callTool(t, sess, "list_kept_variables", map[string]any{})
+	res := callTool(t, sess, "list_saved_variables", map[string]any{})
 	var out struct {
 		Variables []struct {
 			Name             string
@@ -213,7 +213,7 @@ func TestKeptVarsAllowRule(t *testing.T) {
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", true)
 	f.keep(t, externalScope, "page", "2")
 
-	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo?page={{kept.page}}"))
+	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo?page={{plain.page}}"))
 	if out := decodeResult[apiResult](t, res); out.Status != 200 || f.queueLen(t) != 0 {
 		t.Fatalf("auto-approved read = %s, queue %d, want a send with no card", text(res), f.queueLen(t))
 	}

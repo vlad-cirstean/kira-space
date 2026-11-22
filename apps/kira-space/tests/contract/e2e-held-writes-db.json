@@ -44,6 +44,7 @@
     "keep": [
       {
         "bytes": 5,
+        "deleted": false,
         "items": 2,
         "name": "w",
         "preview": "[1,2]",
@@ -55,8 +56,8 @@
     "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "0dc9d27a166e5fae821f401487428a783655c5c94ff944c66ada32a0bb13a4c9",
-      "source": "kira.storeValue(\"w\", [1,2]); return 1;"
+      "hash": "a4d07e16b8d3b33deb21bd35f0cb6fc80e45dfb252651563459b42cc11318bc6",
+      "source": "plain.w = [1,2]; return 1;"
     },
     "text": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
   },
@@ -100,8 +101,8 @@
     ],
     "options": null
   },
-  "result#scopeFull": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"too many kept variables (64 per session); ask the user to clear some in the Kept variables view\"}]}",
-  "result#send": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"kept\":[{\"name\":\"w\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}",
-  "result#tooLarge": "script failed: script runtime error at line 1, column 16: Error: kept variable \"w\": a kept value is larger than 1 MiB or nested deeper than 64 levels. The query ran; its result is not returned.",
-  "result#userEntry": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"a kept variable of that name was supplied by the user and cannot be replaced\"}]}"
+  "result#scopeFull": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"notSaved\":[{\"name\":\"w\",\"error\":\"too many saved variables (64 per session); ask the user to clear some in the Saved variables view\"}]}",
+  "result#send": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"saved\":[{\"name\":\"w\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}",
+  "result#tooLarge": "script failed: saved variable \"w\": a saved value is larger than 1 MiB or nested deeper than 64 levels. The query ran; its result is not returned.",
+  "result#userEntry": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false},\"notSaved\":[{\"name\":\"w\",\"error\":\"a saved variable of that name was supplied by the user and cannot be replaced\"}]}"
 }

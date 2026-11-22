@@ -89,7 +89,7 @@ func TestE2EScriptFailuresDB(t *testing.T) {
 	}
 
 	t.Run("a read that never ends times out", func(t *testing.T) {
-		fails(t, "readTimeout", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("x", 1); while (true) {}`), `kira.storeValue("x", 1); while (true) {}`, "timeout")
+		fails(t, "readTimeout", f.queryScriptArgs(scriptStmt, "read", `plain.x = 1; while (true) {}`), `plain.x = 1; while (true) {}`, "timeout")
 	})
 	t.Run("a read that exhausts memory", func(t *testing.T) {
 		msg := fails(t, "readMemory", f.queryScriptArgs(scriptStmt, "read", ropeScript), ropeScript, "memory")
@@ -123,7 +123,7 @@ func TestE2EScriptFailuresDB(t *testing.T) {
 		}
 	})
 	t.Run("ddl keeps its changes", func(t *testing.T) {
-		const script = `kira.storeValue("t", 1); throw new Error("boom ddl")`
+		const script = `plain.t = 1; throw new Error("boom ddl")`
 		fails(t, "ddlThrow", f.queryScriptArgs("create table scratch (id integer)", "ddl", script), script, "boom ddl", "Its changes stay.")
 		if !f.tableExists(t, "scratch") {
 			t.Fatal("table scratch missing, want the statement to have run")

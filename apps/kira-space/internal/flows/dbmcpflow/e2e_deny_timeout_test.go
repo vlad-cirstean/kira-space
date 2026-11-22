@@ -19,7 +19,7 @@ import (
 
 const (
 	denyTimeoutKey = "e2e-deny-timeout"
-	e12Stage       = `kira.storeValue("w", [1,2]); return 1;`
+	e12Stage       = `plain.w = [1,2]; return 1;`
 	e12Exempt      = "select body from notes where id in (select value from json_each(?)) /* big */"
 )
 
@@ -43,9 +43,9 @@ func TestE2EDenyTimeout(t *testing.T) {
 	f.mcpSet(t, map[string]string{"review.read": "review"})
 	f.keep(t, externalScope, "ids", "[1,2]")
 
-	req := apiArgs(envID, "POST", "{{base_url}}/echo", "X-Api-Key", "{{kept.apikey}}")
-	req["body"], req["contentType"] = `{"ids": {{kept.ids}}}`, "application/json"
-	req["inputs"] = []map[string]string{{"name": "apikey", "label": "API key"}}
+	req := apiArgs(envID, "POST", "{{base_url}}/echo", "X-Api-Key", "{{secret.apikey}}")
+	req["body"], req["contentType"] = `{"ids": {{plain.ids}}}`, "application/json"
+	req["inputs"] = []string{"apikey"}
 	scripted := scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"transform": e12Stage})
 	raise := func(name string, args map[string]any) func(*testing.T) chan callOutcome {
 		return func(t *testing.T) chan callOutcome {

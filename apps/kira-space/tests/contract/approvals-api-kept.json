@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"ids\": {{kept.ids}}, \"n\": 3}",
+          "text": "{\"ids\": {{plain.ids}}, \"n\": 3}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 8,
                 "index": 0,
                 "part": "",
-                "to": 20
+                "to": 21
               }
             ],
             "source": {

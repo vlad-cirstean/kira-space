@@ -42,11 +42,11 @@ func (r e13Rig) raiseFive(t *testing.T) ([]chan callOutcome, []approvals.Item) {
 	f := r.f
 	f.app.W.Kept.ClearAll()
 	f.keep(t, externalScope, "ids", "[1,2]")
-	input := apiArgs(r.envID, "GET", "{{base_url}}/echo?m=m4&k={{kept.apikey}}")
-	input["inputs"] = []map[string]string{{"name": "apikey", "label": "API key"}}
+	input := apiArgs(r.envID, "GET", "{{base_url}}/echo?m=m4&k={{secret.apikey}}")
+	input["inputs"] = []string{"apikey"}
 	prompted := withMode(r.promptConn, scriptStmt, "read")
 	prompted["script"] = `return "m5";`
-	calls := []chan callOutcome{callToolAsync(r.a, "api_request", jsonPost(r.envID, r.echo, `{"m": "m1", "ids": {{kept.ids}}}`))}
+	calls := []chan callOutcome{callToolAsync(r.a, "api_request", jsonPost(r.envID, r.echo, `{"m": "m1", "ids": {{plain.ids}}}`))}
 	f.items(t, 1)
 	calls = append(calls, callToolAsync(r.b, "run_query", f.paramsArgs(e13Insert, "write", "ids")))
 	f.items(t, 2)
@@ -158,9 +158,9 @@ func TestE2EConcurrency(t *testing.T) {
 		f.app.W.Kept.ClearAll()
 		f.keep(t, externalScope, "ids", "[9]")
 		notes := f.notesBodies(t)
-		first := callToolAsync(r.a, "run_query", f.queryScriptArgs("select id, body from notes order by id", "read", `kira.storeValue("ids", [1]); return 1;`))
+		first := callToolAsync(r.a, "run_query", f.queryScriptArgs("select id, body from notes order by id", "read", `plain.ids = [1]; return 1;`))
 		f.items(t, 1)
-		second := callToolAsync(r.a, "run_query", f.queryScriptArgs("select id, body from notes order by id desc", "read", `kira.storeValue("ids", [2]); return 2;`))
+		second := callToolAsync(r.a, "run_query", f.queryScriptArgs("select id, body from notes order by id desc", "read", `plain.ids = [2]; return 2;`))
 		f.items(t, 2)
 		pinned := callToolAsync(r.b, "run_query", f.paramsArgs(e13Insert, "write", "ids"))
 		items := f.items(t, 3)
@@ -168,13 +168,13 @@ func TestE2EConcurrency(t *testing.T) {
 			t.Fatalf("kinds = %s %s %s, want two held results and the pinned write", items[0].Kind, items[1].Kind, items[2].Kind)
 		}
 		f.answerItems(t, true, items[1].ID)
-		want(t, second, `"kept":[{"name":"ids"`)
+		want(t, second, `"saved":[{"name":"ids"`)
 		out := wait(t, pinned)
-		if !out.IsError || !strings.HasPrefix(text(out), `kept variable "ids" was replaced while waiting for approval; nothing ran.`) {
+		if !out.IsError || !strings.HasPrefix(text(out), `saved variable "ids" was replaced while waiting for approval; nothing ran.`) {
 			t.Fatalf("pinned = %q, want it withdrawn as replaced", text(out))
 		}
 		f.answerItems(t, true, items[0].ID)
-		want(t, first, `"kept":[{"name":"ids"`)
+		want(t, first, `"saved":[{"name":"ids"`)
 		e, ok := f.keptValue(t, "ids")
 		if !ok || string(e.Value) != "[1]" || !strings.Contains(e.Source.Request, "order by id") || strings.Contains(e.Source.Request, "desc") {
 			t.Fatalf("ids = %s from %q ok=%v, want [1] from the statement delivered last", e.Value, e.Source.Request, ok)
@@ -230,10 +230,10 @@ func TestE2EConcurrency(t *testing.T) {
 		exempt := f.queryScriptArgs(e12Exempt, "read", `return result.rows.length;`, "ids")
 		id := exemptionID(t, callTool(t, r.a, "run_query", exempt))
 		exempt["exemption"] = map[string]any{"id": id, "reason": "needs the full run"}
-		input := apiArgs(envID, "GET", "{{base_url}}/echo?m=m9&k={{kept.apikey}}")
-		input["inputs"] = []map[string]string{{"name": "apikey", "label": "API key"}}
+		input := apiArgs(envID, "GET", "{{base_url}}/echo?m=m9&k={{secret.apikey}}")
+		input["inputs"] = []string{"apikey"}
 		notes := f.notesBodies(t)
-		calls := []chan callOutcome{callToolAsync(r.a, "api_request", jsonPost(envID, r.echo, `{"m": "m6", "ids": {{kept.ids}}}`))}
+		calls := []chan callOutcome{callToolAsync(r.a, "api_request", jsonPost(envID, r.echo, `{"m": "m6", "ids": {{plain.ids}}}`))}
 		f.items(t, 1)
 		calls = append(calls, callToolAsync(r.b, "run_query", f.paramsArgs(e13Insert, "write", "ids")))
 		f.items(t, 2)

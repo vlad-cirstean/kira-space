@@ -59,7 +59,7 @@ func e6ExpiryOf(t *testing.T, it approvals.Item) time.Time {
 
 func e6WantGone(t *testing.T, got, name, why, nothing string) {
 	t.Helper()
-	want := `kept variable "` + name + `" ` + why + ` while waiting for approval; ` + nothing
+	want := `saved variable "` + name + `" ` + why + ` while waiting for approval; ` + nothing
 	if !strings.HasPrefix(got, want) {
 		t.Fatalf("result = %q, want it to start with %q", got, want)
 	}
@@ -84,7 +84,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 	})
 
 	t.Run("an API card waits past the expiry", func(t *testing.T) {
-		pending := callToolAsync(sess, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
+		pending := callToolAsync(sess, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
 		req := f.pending(t)
 		if exp := e6ExpiryOf(t, req.Item); !exp.Before(time.UnixMilli(req.Item.ExpiresAt)) {
 			t.Fatalf("kept expires %v, item %v, want the variable first", exp, time.UnixMilli(req.Item.ExpiresAt))
@@ -104,10 +104,10 @@ func TestE2EKeptExpiry(t *testing.T) {
 
 	t.Run("the next chained call finds it gone", func(t *testing.T) {
 		res := callTool(t, sess, "run_query", f.paramsArgs(e6IDsStmt, "read", "ids"))
-		if !res.IsError || !strings.Contains(text(res), `no kept variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list_kept_variables") {
-			t.Fatalf("read = %q, want the not-found text naming list_kept_variables", text(res))
+		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list_saved_variables") {
+			t.Fatalf("read = %q, want the not-found text naming list_saved_variables", text(res))
 		}
-		if list := text(callTool(t, sess, "list_kept_variables", map[string]any{})); strings.Contains(list, `"ids"`) {
+		if list := text(callTool(t, sess, "list_saved_variables", map[string]any{})); strings.Contains(list, `"ids"`) {
 			t.Fatalf("listing = %s, want ids gone", list)
 		}
 	})
@@ -136,12 +136,12 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("a clear mid-chain refuses the next call and ends a waiting write", func(t *testing.T) {
 		before := f.notesBodies(t)
 		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", keepIDsScript))
-		if keep.IsError || !strings.Contains(text(keep), `"kept":[{"name":"ids"`) {
+		if keep.IsError || !strings.Contains(text(keep), `"saved":[{"name":"ids"`) {
 			t.Fatalf("keep = %q, want ids kept", text(keep))
 		}
 		f.e6Clear(t, f.keptID(t, externalScope, "ids"))
 		res := callTool(t, sess, "run_query", f.paramsArgs(e6IDsStmt, "read", "ids"))
-		if !res.IsError || !strings.Contains(text(res), `no kept variable "ids"`) {
+		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids"`) {
 			t.Fatalf("read after clear = %q, want not found", text(res))
 		}
 
@@ -165,11 +165,11 @@ func TestE2EKeptExpiry(t *testing.T) {
 		f.keep(t, externalScope, "ids", "[1,2]")
 		before := f.notesBodies(t)
 		sent := len(srv.Requests())
-		api := callToolAsync(sess, "api_request", jsonPost(envID, echo, `{"ids": {{kept.ids}}}`))
+		api := callToolAsync(sess, "api_request", jsonPost(envID, echo, `{"ids": {{plain.ids}}}`))
 		f.items(t, 1)
 		write := callToolAsync(sess, "run_query", f.paramsArgs(e6WriteSQL, "write", "ids"))
 		f.items(t, 2)
-		script := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("ids").length;`))
+		script := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.ids.length;`))
 		items := f.items(t, 3)
 		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"))
 		f.app.Contract(t, expiryKey, "ApprovalsService.List#three", items, ro...)
@@ -202,7 +202,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("a clear while a review waits leaves the review", func(t *testing.T) {
 		f.mcpSet(t, map[string]string{"review.read": "review"})
 		f.keep(t, externalScope, "ids", "[1,2]")
-		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("ids");`))
+		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.ids;`))
 		req := f.pending(t)
 		if req.Stage != "response" {
 			t.Fatalf("pending = %+v, want a held result", req)
@@ -222,7 +222,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("retention applies to later values only", func(t *testing.T) {
 		old := f.keep(t, externalScope, "older", "1")
 		f.setDbMcp(t, expiryKey, "retention", &model.DbMcpPatch{KeptRetentionMinutes: ptr(5)})
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("fresh", 1); return 1;`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `plain.fresh = 1; return 1;`))
 		if res.IsError {
 			t.Fatalf("keep = %q", text(res))
 		}

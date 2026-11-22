@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
@@ -37,7 +36,7 @@ func TestE2EMaskEcho(t *testing.T) {
 		return args
 	}
 	input := func(name string) map[string]any {
-		return map[string]any{"inputs": []map[string]string{{"name": name, "label": name}}}
+		return map[string]any{"inputs": []string{name}}
 	}
 	typed := func(t *testing.T, name, value string) {
 		t.Helper()
@@ -66,7 +65,7 @@ func TestE2EMaskEcho(t *testing.T) {
 
 	t.Run("a long user value is masked in all six forms, held and sent alike", func(t *testing.T) {
 		f.setReviewApp(t, true)
-		call := echoCall("{{kept.apikey}}", map[string]any{"script": map[string]any{"transform": "return response.json;"}})
+		call := echoCall("{{secret.apikey}}", map[string]any{"script": map[string]any{"transform": "return response.json;"}})
 		call["inputs"] = input("apikey")["inputs"]
 		pending := callToolAsync(sess, "api_request", call)
 		typed(t, "apikey", echoValue)
@@ -76,7 +75,7 @@ func TestE2EMaskEcho(t *testing.T) {
 			t.Fatalf("held text = %q (%v), want the six forms", testWait.held.Text, err)
 		}
 		for k, v := range heldText.Result {
-			if v != "{{kept.apikey}}" {
+			if v != "{{secret.apikey}}" {
 				t.Errorf("held form %s = %q, want the reference", k, v)
 			}
 		}
@@ -105,7 +104,7 @@ func TestE2EMaskEcho(t *testing.T) {
 
 	t.Run("a short user value keeps its base64 form (documented rule)", func(t *testing.T) {
 		const pin = "ab12cd"
-		call := echoCall("{{kept.pin}}", input("pin"))
+		call := echoCall("{{secret.pin}}", input("pin"))
 		pending := callToolAsync(sess, "api_request", call)
 		typed(t, "pin", pin)
 		res := wait(t, pending)
@@ -115,7 +114,7 @@ func TestE2EMaskEcho(t *testing.T) {
 		got := echoed(t, bodyOf(t, text(res)))
 		b64 := base64.StdEncoding.EncodeToString([]byte(pin))
 		for _, k := range []string{"raw", "json", "query", "path"} {
-			if got[k] != "{{kept.pin}}" {
+			if got[k] != "{{secret.pin}}" {
 				t.Errorf("form %s = %q, want the reference", k, got[k])
 			}
 		}
@@ -127,25 +126,23 @@ func TestE2EMaskEcho(t *testing.T) {
 		f.app.Contract(t, maskEchoKey, "result#short", stable(text(res)), opts...)
 	})
 
-	t.Run("a value derived from a secret is secret", func(t *testing.T) {
-		if _, err := f.app.W.Kept.Put(keptvars.Put{Scope: externalScope, Name: "token2", Value: json.RawMessage(`"tok2-secret-value"`), Secret: true, Source: keptSource}); err != nil {
-			t.Fatal(err)
-		}
-		args := scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": `kira.storeValue("derived", kira.getValue("token2") + "-x"); return 1`})
-		// The transform reads a secret, so its response is held for review.
-		if res := f.finish(t, f.startHeldAfterCard(t, sess, args), true); res.IsError {
+	t.Run("a secret saved by a script is masked in all forms", func(t *testing.T) {
+		args := scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": `secret.derived = ["tok2", "secret", "value", "x"].join("-"); return 1`})
+		pending := callToolAsync(sess, "api_request", args)
+		f.answerItems(t, true, f.pending(t).Item.ID)
+		if res := wait(t, pending); res.IsError {
 			t.Fatalf("derive = %q", text(res))
 		}
 		e, ok := f.keptValue(t, "derived")
 		if !ok || !e.Secret {
 			t.Fatalf("derived = %+v ok=%v, want a secret entry", e.Meta, ok)
 		}
-		pending := callToolAsync(sess, "api_request", echoCall("{{kept.derived}}", nil))
+		pending = callToolAsync(sess, "api_request", echoCall("{{secret.derived}}", nil))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
 		got := echoed(t, bodyOf(t, text(res)))
 		for k, v := range got {
-			if v != "{{kept.derived}}" {
+			if v != "{{secret.derived}}" {
 				t.Errorf("form %s = %q, want the reference", k, v)
 			}
 		}
@@ -155,7 +152,7 @@ func TestE2EMaskEcho(t *testing.T) {
 
 	t.Run("a plain kept value is not masked (Known open item)", func(t *testing.T) {
 		f.keep(t, externalScope, "plainid", `"p-123456"`)
-		pending := callToolAsync(sess, "api_request", echoCall("{{kept.plainid}}", nil))
+		pending := callToolAsync(sess, "api_request", echoCall("{{plain.plainid}}", nil))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		res := wait(t, pending)
 		if got := echoed(t, bodyOf(t, text(res))); got["raw"] != "p-123456" {

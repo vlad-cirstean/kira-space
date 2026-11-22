@@ -19,12 +19,12 @@ import (
 )
 
 // Backend half of tests/ui/studio/e2e-held-writes-db.spec.ts (contract e2e-held-writes-db): values a result
-// script stages with kira.storeValue reach the store only when the user sends the held result. Every other exit
+// script stages with plain write reach the store only when the user sends the held result. Every other exit
 // drops them.
 
 const (
 	heldKey     = "e2e-held-writes-db"
-	dbStageW    = `kira.storeValue("w", [1,2]); return 1;`
+	dbStageW    = `plain.w = [1,2]; return 1;`
 	waitingText = "got no review within"
 )
 
@@ -67,7 +67,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		f.app.Contract(t, heldKey, "args:ApprovalsService.Answer#send", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answer(t, true, req.RequestID)
 		res := wait(t, pending)
-		if res.IsError || !strings.Contains(text(res), `"kept":[{"name":"w","type":"array","items":2,`) {
+		if res.IsError || !strings.Contains(text(res), `"saved":[{"name":"w","type":"array","items":2,`) {
 			t.Fatalf("sent = %q, want the envelope and the kept summary", text(res))
 		}
 		e, ok := f.keptValue(t, "w")
@@ -136,9 +136,9 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		noW(t)
 	})
 
-	t.Run("transform fails after kira.storeValue", func(t *testing.T) {
+	t.Run("transform fails after plain write", func(t *testing.T) {
 		f.mcpSet(t, map[string]string{"review.read": "send"})
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("w", [1,2]); throw new Error("boom")`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `plain.w = [1,2]; throw new Error("boom")`))
 		if !res.IsError || !strings.Contains(text(res), "boom") {
 			t.Fatalf("failing script = %q, want its failure", text(res))
 		}
@@ -155,9 +155,9 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", dbStageW))
-		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) || strings.Contains(text(res), `"kept":[`) {
-			t.Fatalf("result = %q, want the output and keptNotSaved naming the user entry", text(res))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `secret.w = "other"; return 1;`))
+		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) || strings.Contains(text(res), `"saved":[`) {
+			t.Fatalf("result = %q, want the output and notSaved naming the user entry", text(res))
 		}
 		if e, ok := f.keptValue(t, "w"); !ok || e.ID != user.ID || string(e.Value) != `"typed"` {
 			t.Fatalf("w = %+v ok=%v, want the user entry untouched", e, ok)
@@ -171,8 +171,8 @@ func TestE2EHeldWritesDB(t *testing.T) {
 			f.keep(t, externalScope, fmt.Sprintf("n%d", i), "1")
 		}
 		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", dbStageW))
-		if res.IsError || !strings.Contains(text(res), `"keptNotSaved":[{"name":"w","error":"`+keptvars.ErrScopeFull.Error()+`"}]`) {
-			t.Fatalf("result = %q, want keptNotSaved naming the scope cap", text(res))
+		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+keptvars.ErrScopeFull.Error()+`"}]`) {
+			t.Fatalf("result = %q, want notSaved naming the scope cap", text(res))
 		}
 		if n := len(f.app.W.Kept.List(externalScope)); n != keptvars.MaxScopeEntries {
 			t.Fatalf("%d entries, want 64 and nothing evicted", n)
@@ -183,7 +183,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	})
 
 	t.Run("a value over 1 MiB", func(t *testing.T) {
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("w", "x".repeat(2 << 20)); return 1;`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `plain.w = "x".repeat(2 << 20); return 1;`))
 		if !res.IsError {
 			t.Fatalf("result = %q, want the script to fail", text(res))
 		}

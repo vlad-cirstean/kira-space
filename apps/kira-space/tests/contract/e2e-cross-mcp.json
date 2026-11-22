@@ -104,7 +104,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"b\": {{kept.bodies}}}",
+          "text": "{\"b\": {{plain.bodies}}}",
           "truncated": false
         },
         "credentials": [],
@@ -134,7 +134,7 @@
                 "from": 6,
                 "index": 0,
                 "part": "",
-                "to": 21
+                "to": 22
               }
             ],
             "source": {

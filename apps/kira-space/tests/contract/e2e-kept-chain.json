@@ -21,7 +21,7 @@
         "body": {
           "contentType": "application/json",
           "form": null,
-          "text": "{\"ids\": {{kept.ids}}}",
+          "text": "{\"ids\": {{plain.ids}}}",
           "truncated": false
         },
         "credentials": [],
@@ -51,7 +51,7 @@
                 "from": 8,
                 "index": 0,
                 "part": "",
-                "to": 20
+                "to": 21
               }
             ],
             "source": {
@@ -135,7 +135,7 @@
                 "from": 22,
                 "index": 0,
                 "part": "prepare",
-                "to": 41
+                "to": 31
               }
             ],
             "source": {
@@ -158,13 +158,14 @@
               "body",
               "contentType"
             ],
-            "hash": "bbf710b900cb8f999ceec01750dfca9a5eb1b19d579901d8e1fe7e42fd62b5e7",
+            "hash": "bbd8d11a587ecdf5343435945fe84a367a6aedba129265a9f7af2c272bc6a669",
             "input": "",
             "inputTruncated": false,
-            "source": "return {body: {items: kira.getValue(\"ids\").map(id => ({id}))}};"
+            "source": "return {body: {items: plain.ids.map(id => ({id}))}};",
+            "writes": []
           },
           "transform": {
-            "hash": "a42e7ac0b4ee986c27f7a70f665742c53a4fc9748809a94ecb3a317ea395a05a",
+            "hash": "5a0ba840b4ab805ec9819fa7e2d7c52dc5dcae2d6135567dd0eb5d9ed786e9f3",
             "mayKeep": [
               {
                 "name": "first",
@@ -175,12 +176,12 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 23
+                    "to": 11
                   }
                 ]
               }
             ],
-            "source": "kira.storeValue(\"first\", String(response.json.body ? 1 : 0)); return 1;"
+            "source": "plain.first = String(response.json.body ? 1 : 0); return 1;"
           }
         },
         "timeoutSeconds": 30,
@@ -319,5 +320,5 @@
     ],
     "options": null
   },
-  "result#step1": "{\"result\":2,\"kept\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result#step1": "{\"result\":2,\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }
