@@ -25,6 +25,7 @@ before implementation starts.
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Todo |
+| P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Todo |
 
 ## P716
 
@@ -556,3 +557,36 @@ Deliverable. One plan `plans/P725.md`, one Sonnet pass. UI spec rewritten
 (`data-view-column-search.spec.ts`), shortcut-hint and module-state specs updated, unit spec for the
 removed filter deleted, `data-grid.png` baseline regenerated in PR CI. Throwaway screenshots for the
 user at chapter end.
+
+## P726
+
+User, on the API card with one-time values (P719 shots): "that's a variable length string before
+the input making each input miss aligned. Also add a small separator between what is about the
+request and the variables section so that's easier on the eye. And i want the same separation with
+pre after scripts too. I see it as the current box that's inside the dialog but like 3 or 4 of them".
+
+Today. `ApprovalItemCard.vue` (packages/workbench) draws one bordered box (`approval-body`) around
+the kind's `content`. API, DB, kube read and the three result reviews stack everything inside it:
+kept variables, request line, body, headers and variables, prepare script, transform script, typed
+values. `UserInputsPanel.vue` lays each value row out as a wrapping flex line: label, masked field,
+Use once / Keep choice. Label width varies, so the fields start at different x.
+
+Reading chosen (no questions to the user):
+
+- Value rows share one grid: a label column as wide as the longest label (capped, wraps past the
+  cap), a field column, a choice column. Every field and every choice group lines up for 1 to 4
+  rows. An opened "Enter a new value" row puts its field in the same column.
+- The card body becomes several stacked boxes, each the existing box style, 8px apart: kept
+  variables, request (line, body, headers, variables), values to type, prepare script, transform
+  script. Result reviews: result views (with the masking note), script, Will keep. A box shows only
+  when it has content. Existing section headings stay the box titles (Prepare script, Transform
+  script, Result script, Kept variables this request uses, Will keep). The request and values boxes
+  stay untitled (P719: no extra headings). Verdict row, warnings, Details and footer stay outside.
+- One shared `ApprovalBox` component; the card's own box becomes it. A kind opts in with a registry
+  flag; script runs, proof review, Space and phone kinds keep the single box unchanged.
+
+Scope. Frontend layout only: no payload, IPC or copy change, no new catalog keys, no backend half.
+
+Deliverable. One plan `plans/P726.md`, one Sonnet pass. New UI spec for box structure and value-row
+alignment, `approvals-alignment.spec.ts` updated, affected approval visual baselines regenerated.
+Throwaway screenshots for the user at chapter end.
