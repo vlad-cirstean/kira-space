@@ -49,7 +49,14 @@ async function baseline(l: Locator): Promise<number> {
   });
 }
 
-const ORIGIN = { client: 'Claude Code 2.1.318', cwd: '~/shop', task: '', step: '', source: '' };
+const ORIGIN = {
+  client: 'Claude Code 2.1.318',
+  cwd: '~/shop',
+  task: '',
+  step: '',
+  source: '',
+  session: '',
+};
 
 function mk(
   id: string,

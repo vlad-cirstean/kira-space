@@ -56,6 +56,8 @@ type Origin struct {
 	Step   string `json:"step"`
 	// Source is session, run, automation or "".
 	Source string `json:"source"`
+	// Session is the agent session id behind an MCP request; "" for none.
+	Session string `json:"session"`
 }
 
 // Target is what the request acts on.

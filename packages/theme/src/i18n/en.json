@@ -18449,6 +18449,9 @@
           "status": "Unsupported"
         }
       },
+      "sessions": {
+        "label": "Requesters"
+      },
       "toast": {
         "count": {
           "status": "{count} thing awaiting your approval | {count} things awaiting your approval"

@@ -230,7 +230,14 @@ test('scripted kube review: request, result, script and Will keep boxes', async 
 });
 
 test('script runs and proof reviews keep the single approval-body box', async ({ relaunch }) => {
-  const origin = { client: 'Claude Code 2.1.318', cwd: '~/shop', task: '', step: '', source: '' };
+  const origin = {
+    client: 'Claude Code 2.1.318',
+    cwd: '~/shop',
+    task: '',
+    step: '',
+    source: '',
+    session: '',
+  };
   const target = { name: 'x', kind: '', color: '', readOnly: false, location: '' };
   const mk = (id: string, kind: string, operation: ApprovalItem['operation'], payload: unknown) =>
     liveItem({

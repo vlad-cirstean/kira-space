@@ -222,7 +222,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 	it := approvals.Item{
 		ID: r.itemID(), Kind: r.subject(),
 		CreatedAt: r.EnqueuedAt.UnixMilli(), ExpiresAt: r.ExpiresAt.UnixMilli(),
-		Origin: approvals.Origin{Client: r.Origin.Client, Cwd: r.Origin.Cwd},
+		Origin: approvals.Origin{Client: r.Origin.Client, Cwd: r.Origin.Cwd, Session: r.Origin.SessionID},
 		Reason: string(r.Reason), Title: promptTitle(r),
 	}
 	switch it.Kind {
