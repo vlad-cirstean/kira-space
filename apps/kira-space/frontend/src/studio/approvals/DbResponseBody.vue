@@ -3,6 +3,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { dbResponsePayloadSchema } from '@shared/domain/dbmcp';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
@@ -43,14 +44,19 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
 </script>
 
 <template>
-  <div data-testid="db-mcp-preview-body">
-    <PendingResponse
-      v-if="!payload.scripted"
-      :request-id="requestId"
-      :connection-id="payload.connectionId"
-    />
+  <div class="flex flex-col gap-2" data-testid="db-mcp-preview-body">
+    <ApprovalBox v-if="!payload.scripted" testid="db-review-box-result">
+      <PendingResponse :request-id="requestId" :connection-id="payload.connectionId" />
+    </ApprovalBox>
+    <ApprovalBox v-else-if="!response.isSuccess.value" testid="db-review-box-state">
+      <QueryState :query="response" variant="inline" :is-empty="() => false" />
+    </ApprovalBox>
     <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
-      <ResultReview :views="views" :label="t('studio.dbMcp.approval.query.responseViews.aria')">
+      <ResultReview
+        testid-prefix="db-review"
+        :views="views"
+        :label="t('studio.dbMcp.approval.query.responseViews.aria')"
+      >
         <template #view-raw>
           <PendingResponse
             :request-id="requestId"
@@ -70,20 +76,18 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
           />
         </template>
         <template #after>
-          <StagedKeepList
-            v-if="keep.length"
-            :keep="keep"
-            :request-id="requestId"
-            testid="db-review-keep"
-          />
+          <ApprovalBox v-if="keep.length" testid="db-review-box-keep">
+            <StagedKeepList :keep="keep" :request-id="requestId" testid="db-review-keep" />
+          </ApprovalBox>
         </template>
         <template #script>
-          <JsScriptBlock
-            v-if="script"
-            :label="t('studio.dbMcp.approval.query.scriptResult.label')"
-            :source="script.source"
-            testid="db-review-script"
-          />
+          <ApprovalBox v-if="script" testid="db-review-box-script">
+            <JsScriptBlock
+              :label="t('studio.dbMcp.approval.query.scriptResult.label')"
+              :source="script.source"
+              testid="db-review-script"
+            />
+          </ApprovalBox>
         </template>
       </ResultReview>
     </QueryState>

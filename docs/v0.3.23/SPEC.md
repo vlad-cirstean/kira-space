@@ -25,6 +25,7 @@ before implementation starts.
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
+| P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 
 ## P716
 
@@ -576,3 +577,38 @@ order until its next page load. Confirmed on chapter head `d8a026f11` (before P7
 spec: the swap showed in the menu, not in the headers. Fix: `SlickGridHost` watches
 `tab.state.columnOrder`, stages an open edit, clears the selection and calls `applyPageAndOrder`.
 The spec asserts the grid header order after the drag.
+
+## P726
+
+User, on the API card with one-time values (P719 shots): "that's a variable length string before
+the input making each input miss aligned. Also add a small separator between what is about the
+request and the variables section so that's easier on the eye. And i want the same separation with
+pre after scripts too. I see it as the current box that's inside the dialog but like 3 or 4 of them".
+
+Today. `ApprovalItemCard.vue` (packages/workbench) draws one bordered box (`approval-body`) around
+the kind's `content`. API, DB, kube read and the three result reviews stack everything inside it:
+kept variables, request line, body, headers and variables, prepare script, transform script, typed
+values. `UserInputsPanel.vue` lays each value row out as a wrapping flex line: label, masked field,
+Use once / Keep choice. Label width varies, so the fields start at different x.
+
+Reading chosen (no questions to the user):
+
+- Value rows share one grid: a label column as wide as the longest label (capped, wraps past the
+  cap), a field column, a choice column. Every field and every choice group lines up for 1 to 4
+  rows. An opened "Enter a new value" row puts its field in the same column.
+- The card body becomes several stacked boxes, each the existing box style, 8px apart: kept
+  variables, request (line, body, headers, variables), values to type, prepare script, transform
+  script. Result reviews: result views (with the masking note), script, Will keep. A box shows only
+  when it has content. Existing section headings stay the box titles (Prepare script, Transform
+  script, Result script, Kept variables this request uses, Will keep). The request and values boxes
+  stay untitled (P719: no extra headings). Verdict row, warnings, Details and footer stay outside.
+- One shared `ApprovalBox` component; the card's own box becomes it. A kind opts in with a registry
+  flag; script runs, proof review, Space and phone kinds keep the single box unchanged.
+
+Scope. Frontend layout only: no payload, IPC or copy change, no new catalog keys, no backend half.
+
+Deliverable. One plan `plans/P726.md`, one Sonnet pass. New UI spec for box structure and value-row
+alignment, `approvals-alignment.spec.ts` updated, affected approval visual baselines regenerated.
+Throwaway screenshots for the user at chapter end.
+
+Result. Done. `ApprovalBox.vue` (workbench) frames one section; the card uses it for the whole body unless the kind sets registry flag `sections` (`db.query`, `db.exemption`, `db.response`, `kube.read`, `kube.response`, `api.request`, `api.response`). Sectioned bodies draw their own boxes, 8px apart, a box only when it has content: API request kept, request (line, body, headers, variables), values, prepare, transform; DB statement (with Parameters) between kept and Result script; kube read kept, request, prepare, transform; reviews (`ResultReview` takes `testidPrefix`) result (tabs plus mask/footnote notes), script, Will keep, with loading and error state in one `-box-state` box. Existing headings are the box titles; no copy keys added. `script.run`, `proof.review`, Space and phone kinds keep the single `approval-body` box. `UserInputsPanel` rows share one 3-column grid (label up to `max-w-48`, field, choice) through subgrid rows; an opened stored row puts its field and choice in the same columns. Choice groups line up on the left; their right edges follow the label width ("Keep 5 min" vs "Keep 60 min"). `scripts/check-ui-primitives.sh` U36 exemption moved from the card to `ApprovalBox.vue`. Tests: new `studio/approvals-sections.spec.ts` (11: value-row alignment for 1 to 4 rows, opened stored row with computed `display: grid`, box order and 8px gaps for API, DB, kube read, kube review, unopted kinds), `approvals-alignment.spec.ts` (A2 and A8 measure per box; shared geometry in `support/approvalGeometry.ts`), and a stale assertion in `approvals-api-kept-script.spec.ts` fixed (the reads note shows only for a transform read; the contract item reads in prepare). Ran 161 approval UI specs (`approvals*`, `studio/approvals-*`, `dbmcp-approval*`, `kept-variables*`, `e2e-kept-*`, `e2e-user-value`, `e2e-kube-script`, `e2e-api-review-chain`, `ade-mobile-approval`): all pass after the fix. `fc-match sans-serif` printed Inter and unchanged baselines still matched, so nine baselines were regenerated locally: `approvals-api-input-once`, `approvals-kube-read-script`, `approvals-kube-read-list`, `approvals-kube-review-script`, `approvals-kept-login`, `approvals-kept-review`, `approvals-kept-review-revealed`, `approvals-kube-read-review-option`, `approvals-kube-review-list`; the four visual specs pass on rerun. Mobile `tests/mobile/approvals.spec.ts` not run (phone kinds untouched, not built for this pass).

@@ -8,6 +8,7 @@ import {
 } from '@shared/domain/dbmcp';
 import { FieldError } from '@theme/components/ui/field';
 import { t } from '@theme/i18n';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { computed } from 'vue';
@@ -95,13 +96,19 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
 </script>
 
 <template>
-  <div data-testid="kube-review-body">
-    <QueryState :query="response" variant="inline" :is-empty="() => false">
-      <FieldError v-if="failed" class="whitespace-pre-wrap" data-testid="kube-review-error">{{
-        text
-      }}</FieldError>
+  <div class="flex flex-col gap-2" data-testid="kube-review-body">
+    <ApprovalBox v-if="!response.isSuccess.value" testid="kube-review-box-state">
+      <QueryState :query="response" variant="inline" :is-empty="() => false" />
+    </ApprovalBox>
+    <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
+      <ApprovalBox v-if="failed" testid="kube-review-box-result">
+        <FieldError class="whitespace-pre-wrap" data-testid="kube-review-error">{{
+          text
+        }}</FieldError>
+      </ApprovalBox>
       <ResultReview
         v-else
+        testid-prefix="kube-review"
         :views="views"
         :first-lines="firstLines"
         :label="t('studio.dbMcp.approval.query.responseViews.aria')"
@@ -145,20 +152,18 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
           <FlushEditor :doc="json ?? read" language="json" data-testid="kube-review-json" />
         </template>
         <template #script>
-          <JsScriptBlock
-            v-if="script"
-            :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-            :source="script.source"
-            testid="kube-review-script"
-          />
+          <ApprovalBox v-if="script" testid="kube-review-box-script">
+            <JsScriptBlock
+              :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
+              :source="script.source"
+              testid="kube-review-script"
+            />
+          </ApprovalBox>
         </template>
         <template #after>
-          <StagedKeepList
-            v-if="keep.length"
-            :keep="keep"
-            :request-id="requestId"
-            testid="kube-review-keep"
-          />
+          <ApprovalBox v-if="keep.length" testid="kube-review-box-keep">
+            <StagedKeepList :keep="keep" :request-id="requestId" testid="kube-review-keep" />
+          </ApprovalBox>
         </template>
         <template #mask>
           <span v-if="secretNote" class="text-kira-sm text-subtle" data-testid="kube-review-mask">{{

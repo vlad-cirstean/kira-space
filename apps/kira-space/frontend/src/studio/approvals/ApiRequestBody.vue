@@ -3,6 +3,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { apiRequestPayloadSchema } from '@shared/domain/dbmcp';
 import HighlightedText from '@theme/components/HighlightedText.vue';
 import { t } from '@theme/i18n';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import ApprovalDetails from '@workbench/approvals/ApprovalDetails.vue';
 import ApprovalPairs from '@workbench/approvals/ApprovalPairs.vue';
@@ -23,9 +24,9 @@ import RequestLine from './RequestLine.vue';
 import TransformScriptBlock from './TransformScriptBlock.vue';
 import UserInputsPanel from './UserInputsPanel.vue';
 
-// What the agent would send: request line, body, headers and variables, then scripts. A
-// credential's value never reaches this view. Kept variables list first, and every place the
-// request reads one is marked.
+// What the agent would send, one box per section: kept variables, the request (line, body, headers
+// and variables), values to type, prepare script, transform script. A credential's value never
+// reaches this view. Every place the request reads a kept variable is marked.
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload));
@@ -64,67 +65,77 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
 </script>
 
 <template>
-  <div class="flex flex-col gap-1" data-testid="api-approval-body">
-    <KeptVariablesPanel v-if="keptRows.length" :uses="keptRows" :pair-name="pairName" />
-    <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
-    <template v-if="payload.body">
-      <ApprovalPairs
-        v-if="payload.body.form"
-        :rows="payload.body.form"
-        :highlight="formParts"
-        :mark-class="KEPT_MARK_CLASS"
-        testid="api-approval-form"
-      />
-      <FlushEditor
-        v-else-if="json !== null"
-        :doc="json"
-        language="json"
-        :range-highlights="kept.length ? keptEditorRanges(keptNames) : undefined"
-        :hover-source="kept.length ? keptHover(kept) : undefined"
-        data-testid="api-approval-body-text"
-      />
-      <ApprovalCode v-else data-testid="api-approval-body-text"
-        ><HighlightedText v-if="kept.length" :parts="bodyParts" :mark-class="KEPT_MARK_CLASS" />
-        <template v-else>{{ payload.body.text }}</template></ApprovalCode
-      >
-    </template>
-    <ApprovalDetails v-if="payload.headers.length || payload.variables.length" class="py-1">
-      <template v-if="payload.headers.length">
-        <dt>{{ t('studio.http.pane.headers.label') }}</dt>
-        <dd>
+  <div class="flex flex-col gap-2" data-testid="api-approval-body">
+    <ApprovalBox v-if="keptRows.length" testid="api-approval-box-kept">
+      <KeptVariablesPanel :uses="keptRows" :pair-name="pairName" />
+    </ApprovalBox>
+    <ApprovalBox testid="api-approval-box-request">
+      <div class="flex flex-col gap-1">
+        <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
+        <template v-if="payload.body">
           <ApprovalPairs
-            :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
-            :highlight="headerParts"
+            v-if="payload.body.form"
+            :rows="payload.body.form"
+            :highlight="formParts"
             :mark-class="KEPT_MARK_CLASS"
-            testid="api-approval-headers"
+            testid="api-approval-form"
           />
-        </dd>
-      </template>
-      <template v-if="payload.variables.length">
-        <dt>{{ t('common.module.variables.label') }}</dt>
-        <dd>
-          <ApprovalPairs
-            :rows="payload.variables.map((v) => ({ name: v.name, value: v.value }))"
-            testid="api-approval-variables"
+          <FlushEditor
+            v-else-if="json !== null"
+            :doc="json"
+            language="json"
+            :range-highlights="kept.length ? keptEditorRanges(keptNames) : undefined"
+            :hover-source="kept.length ? keptHover(kept) : undefined"
+            data-testid="api-approval-body-text"
           />
-        </dd>
-      </template>
-    </ApprovalDetails>
-    <JsScriptBlock
-      v-if="payload.script?.prepare"
-      :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
-      :source="payload.script.prepare.source"
-      :range-highlights="kept.length ? keptScriptRanges(keptSites, 'prepare') : undefined"
-      testid="api-approval-script-prepare"
-    />
-    <TransformScriptBlock
-      v-if="payload.script?.transform"
-      :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
-      :script="payload.script.transform"
-      :kept="kept"
-      testid="api-approval"
-      script-testid="api-approval-script-transform"
-    />
-    <UserInputsPanel v-if="payload.inputs.length" :item-id="item.id" :inputs="payload.inputs" />
+          <ApprovalCode v-else data-testid="api-approval-body-text"
+            ><HighlightedText v-if="kept.length" :parts="bodyParts" :mark-class="KEPT_MARK_CLASS" />
+            <template v-else>{{ payload.body.text }}</template></ApprovalCode
+          >
+        </template>
+        <ApprovalDetails v-if="payload.headers.length || payload.variables.length" class="py-1">
+          <template v-if="payload.headers.length">
+            <dt>{{ t('studio.http.pane.headers.label') }}</dt>
+            <dd>
+              <ApprovalPairs
+                :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
+                :highlight="headerParts"
+                :mark-class="KEPT_MARK_CLASS"
+                testid="api-approval-headers"
+              />
+            </dd>
+          </template>
+          <template v-if="payload.variables.length">
+            <dt>{{ t('common.module.variables.label') }}</dt>
+            <dd>
+              <ApprovalPairs
+                :rows="payload.variables.map((v) => ({ name: v.name, value: v.value }))"
+                testid="api-approval-variables"
+              />
+            </dd>
+          </template>
+        </ApprovalDetails>
+      </div>
+    </ApprovalBox>
+    <ApprovalBox v-if="payload.inputs.length" testid="api-approval-box-inputs">
+      <UserInputsPanel :item-id="item.id" :inputs="payload.inputs" />
+    </ApprovalBox>
+    <ApprovalBox v-if="payload.script?.prepare" testid="api-approval-box-prepare">
+      <JsScriptBlock
+        :label="t('studio.dbMcp.approval.api.scriptPrepare.label')"
+        :source="payload.script.prepare.source"
+        :range-highlights="kept.length ? keptScriptRanges(keptSites, 'prepare') : undefined"
+        testid="api-approval-script-prepare"
+      />
+    </ApprovalBox>
+    <ApprovalBox v-if="payload.script?.transform" testid="api-approval-box-transform">
+      <TransformScriptBlock
+        :label="t('studio.dbMcp.approval.api.scriptTransform.label')"
+        :script="payload.script.transform"
+        :kept="kept"
+        testid="api-approval"
+        script-testid="api-approval-script-transform"
+      />
+    </ApprovalBox>
   </div>
 </template>

@@ -9,10 +9,15 @@ import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref, watchEffect } from 'vue';
 
 // The values the agent asked the person to type: one row each (label, masked field, use once or keep).
+// Rows share one grid, so fields and choices line up whatever the label or keep minutes.
 // Needed ones block Send; a stored one (held from an earlier answer, same origin) may be replaced. A
 // typed value lives only in the approvals store until the answer goes out. What the choice means is
 // a tooltip on its two items, never a line per row.
 const props = defineProps<{ itemId: string; inputs: readonly ApiInput[] }>();
+
+// Trigger spans the row; the content joins the panel grid so its field lines up with the others.
+const STORED_ROW =
+  'col-span-full grid grid-cols-subgrid [&>[data-slot=collapsible-trigger]]:col-span-full [&>[data-slot=collapsible-content]]:col-span-full [&>[data-slot=collapsible-content]]:grid [&>[data-slot=collapsible-content]]:grid-cols-subgrid [&>[data-slot=collapsible-content]]:items-center';
 
 const store = useApprovalsStore();
 const needed = computed(() => props.inputs.filter((i) => i.state === 'needed'));
@@ -55,19 +60,19 @@ const choices = (i: ApiInput) => [
 <template>
   <section
     v-if="needed.length || stored.length"
-    class="flex flex-col gap-2"
+    class="grid grid-cols-[minmax(0,max-content)_minmax(12rem,1fr)_max-content] items-center gap-x-2 gap-y-2"
     data-testid="api-approval-inputs"
   >
     <div
       v-for="i in needed"
       :key="i.name"
-      class="flex flex-wrap items-center gap-x-2 gap-y-1"
+      class="col-span-full grid grid-cols-subgrid items-center"
       :data-testid="`api-approval-input-${i.name}`"
     >
-      <FieldLabel :for="fieldId(i.name)" class="shrink-0">{{ i.label }}</FieldLabel>
+      <FieldLabel :for="fieldId(i.name)" class="max-w-48 break-words">{{ i.label }}</FieldLabel>
       <SecretInput
         :id="fieldId(i.name)"
-        class="min-w-48 flex-1"
+        class="min-w-0"
         :model-value="typed(i.name)"
         :placeholder="t('common.required.label')"
         :aria-invalid="spaces[i.name] || undefined"
@@ -88,28 +93,28 @@ const choices = (i: ApiInput) => [
       v-for="i in stored"
       :key="i.name"
       meta
+      :class="STORED_ROW"
       :label="t('studio.kept.input.replace.label', { label: i.label })"
       :data-testid="`api-approval-input-replace-${i.name}`"
     >
-      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <SecretInput
-          :id="fieldId(i.name)"
-          class="min-w-48 flex-1"
-          :model-value="typed(i.name)"
-          :aria-label="i.label"
-          :data-testid="`api-input-${i.name}`"
-          @update:model-value="(v: string) => onType(i.name, v)"
-        />
-        <SecondaryTabs
-          variant="choice"
-          :aria-label="t('studio.kept.input.choice.label')"
-          :items="choices(i)"
-          :model-value="mode(i)"
-          @update:model-value="
-            (v: string) => store.setInputMode(itemId, i.name, v === 'keep' ? 'keep' : 'once')
-          "
-        />
-      </div>
+      <span aria-hidden="true" />
+      <SecretInput
+        :id="fieldId(i.name)"
+        class="min-w-0"
+        :model-value="typed(i.name)"
+        :aria-label="i.label"
+        :data-testid="`api-input-${i.name}`"
+        @update:model-value="(v: string) => onType(i.name, v)"
+      />
+      <SecondaryTabs
+        variant="choice"
+        :aria-label="t('studio.kept.input.choice.label')"
+        :items="choices(i)"
+        :model-value="mode(i)"
+        @update:model-value="
+          (v: string) => store.setInputMode(itemId, i.name, v === 'keep' ? 'keep' : 'once')
+        "
+      />
     </Disclosure>
   </section>
 </template>
