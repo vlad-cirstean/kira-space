@@ -32,6 +32,7 @@ before implementation starts.
 | P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Todo |
+| P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
 
 ## P716
 
@@ -820,5 +821,31 @@ Scope (user decisions, final).
 - Flow test plus UI spec pair per CLAUDE.md Tests; refresh visual baselines; run the real `claude` row for the DB/API MCP after changes.
 
 Deliverable. Plan `plans/P732.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P733
+
+Runs after P732 (P732 renames the variable API and edits tool descriptions). Planning starts now in parallel and
+plans against the P732 plan's end state; implementation starts once P732 is done, planned against that tree.
+
+Scope (user request).
+
+- Audit every Kira Studio MCP tool the agents see (DB, API, kube and any other studio server; planner finds them):
+  names, descriptions, input schemas, results, error messages, server-level instructions.
+- Goal: efficient for the agent. Short descriptions that still tell the agent from the start what to do and the
+  order of calls; no repeated rules; no text the agent does not need until a specific error.
+- Planner decides, with evidence from current MCP and agent best practices (tool-definition token cost,
+  fewer and more capable tools, consolidated tools, response shaping and size limits, error messages that name
+  the fix, pagination, avoiding re-sent data):
+  - which tools merge or split, and which are dropped (hard cut, no alias);
+  - description and schema rewrites, measured in tokens before and after;
+  - result shaping: smaller default payloads, field selection, truncation notes the agent can act on;
+  - what is dynamic (loaded only when needed) vs always sent.
+- Verification: token count of the full tool list before and after (script in the plan, not committed unless it
+  guards a budget), the real `claude` rows that exercise the tools (DEV_ENVIRONMENT) with call counts for
+  representative tasks before and after, flow test plus UI spec pairs for behaviour changes.
+
+Deliverable. Plan `plans/P733.md`, Opus-authored, then Sonnet implementation.
 
 Result. Todo.
