@@ -26,6 +26,9 @@ The server is off by default. Turn it on with **Enable the Studio MCP server** i
 - Its own bearer token. **Regenerate token** issues a new one.
 - A port conflict stops the server. It never falls back to another port.
 - Tool list: see [MCP tools](../../reference/mcp-tools/).
+- API requests have their own page: [Agent API requests](../agent-api/).
+
+<DocShot id="studio-mcp-settings" />
 
 ## Workflow steps
 
@@ -126,7 +129,7 @@ Limits: matching is by column name, like masking, so an allowed column can share
 
 A prompt waits for you to approve the exact statement. The dialog names the connection and the statement class.
 
-When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. Each request is approved on its own; only "Deny all" answers several at once.
+When a limit rejects a statement, the AI client can ask you to lift that limit for that one statement. You always get a dialog, even for modes that need no approval. It shows the limit, the measured value, the limit value, the client's reason and the statement. Approving covers that one run; the limit stays for every other call. Each request is approved on its own; only "Deny all" answers several at once. When prompts come from several agent sessions, they group by session, and "Deny all" answers only that session.
 
 You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Studio MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
 

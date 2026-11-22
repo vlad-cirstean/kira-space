@@ -6,8 +6,9 @@ import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import Install from '../components/Install.astro';
+import Phone from '../components/Phone.astro';
 import Story from '../components/Story.astro';
-import { APP as content, STORY } from '../data/content';
+import { APP as content, PHONE, STORY } from '../data/content';
 import { type ResolvedWindowShot, resolveAllShots } from '../lib/shots';
 import Base from './Base.astro';
 
@@ -30,6 +31,13 @@ const hero = windowShot(content.hero);
     <Engines />
     <Bento shots={content.features.flatMap((f) => (f.shot ? [windowShot(f.shot)] : []))} />
     <Story shots={STORY.map((c) => windowShot(c.shot))} />
+    <Phone
+      shots={PHONE.shots.map((id) => {
+        const shot = shots.find((s) => s.id === id);
+        if (!shot) throw new Error(`Missing shot ${id}`);
+        return shot;
+      })}
+    />
     <BuildBand />
     <Install app={content} />
   </main>

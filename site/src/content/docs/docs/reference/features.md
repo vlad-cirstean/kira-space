@@ -27,3 +27,5 @@ Release notes are on [GitHub Releases](https://github.com/vlad-cirstean/kira-spa
 | HTTP and gRPC client | Api | [API client](../../studio/api-client/) |
 | Docker | Docker | [Docker](../../studio/docker/) |
 | Kubernetes, read only | Kubernetes | [Kubernetes](../../studio/kubernetes/) |
+| Agent API requests | Studio | [Agent API requests](../../studio/agent-api/) |
+| Tabs and windows | All modules | [How it works](../../start/how-it-works/) |

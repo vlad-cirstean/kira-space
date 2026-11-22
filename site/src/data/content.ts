@@ -184,6 +184,20 @@ export const STORY: readonly StoryChapter[] = [
   },
 ];
 
+export const PHONE = {
+  eyebrow: 'Phone view',
+  title: 'Your agents board, on your phone.',
+  lead: "Pair a phone on your home network and keep up with your agents from anywhere in the house. It opens in the phone's browser, served by Kira Space.",
+  points: [
+    'Scan a QR code and confirm a four-digit code on the computer.',
+    'See what needs you, the plan and live activity.',
+    'Answer branch requests, reply to agents and take over a terminal when you allow it.',
+  ],
+  note: 'Plain HTTP on a trusted home network only. Off until you turn it on.',
+  link: { label: 'How the phone view works', path: 'docs/space/phone/' },
+  shots: ['phone-needs', 'phone-plan', 'phone-terminal', 'phone-activity'],
+} as const;
+
 export const BUILD_TEASER = {
   title: 'Build with Kira',
   body: 'Follow one task from plan to proof.',

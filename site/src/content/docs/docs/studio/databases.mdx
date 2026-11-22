@@ -13,6 +13,10 @@ sidebar:
   order: 1
 ---
 
+import DocShot from '../../../../components/DocShot.astro';
+
+<DocShot id="studio-connections" />
+
 ## Engines
 
 | Engine | Default view | Query console | Writes |
@@ -61,3 +65,9 @@ Mark a column as PII with one of six masks: name, email, text, number, date or r
 A rule matches the column name in every table. Set rules in the connection's Privacy tab or from a column header.
 
 Masking is display only. The data never changes.
+
+## Document engines
+
+MongoDB opens collections as documents. Each document shows its fields, and nested values fold. Filter and sort take shell-style expressions.
+
+<DocShot id="studio-mongo-documents" />

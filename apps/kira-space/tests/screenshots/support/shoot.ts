@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { captureShot } from '@workbench/testing/screenshots/capture';
 import { captureCrop } from '@workbench/testing/screenshots/crop';
+import { capturePhone } from '@workbench/testing/screenshots/phone';
 import {
   SHOT_CAPTURE,
   type ShotCapture,
@@ -18,6 +19,10 @@ export async function shoot(
     await captureShot(page, { id, consoleErrors });
     return;
   }
+  if (capture.kind === 'phone') {
+    await capturePhone(page, { id, consoleErrors });
+    return;
+  }
   await captureCrop(page, {
     id,
     kind: capture.kind,
@@ -26,5 +31,14 @@ export async function shoot(
     top: capture.kind === 'region' ? capture.top : undefined,
     bottom: capture.kind === 'region' ? capture.bottom : undefined,
     consoleErrors,
+  });
+}
+
+/** Lets the approvals dialog grow to its content, so a crop shows header, card and actions whole.
+ *  The app pins the dialog at 640 px and scrolls the card; call on a viewport tall enough. */
+export async function expandApprovalsDialog(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content:
+      '[data-testid="approvals-dialog"]{height:auto!important;max-height:none!important}[data-testid="approvals-dialog"] *{max-height:none!important}',
   });
 }
