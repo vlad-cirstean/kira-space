@@ -73,6 +73,36 @@ export function resetMeasureCtx(): void {
   namedWidthsCache = new WeakMap();
 }
 
+/** Content-sized widths for a plain string grid: per column the wider of its header (plus
+ *  `headerExtra` px of chrome) and the first `sampleRows` cells (plus `cellPadding`), clamped to
+ *  [min, max]. Shares this module's canvas measuring, so it follows the appearance tokens. */
+export function measureTextColumns(
+  headers: readonly string[],
+  rows: readonly (readonly (string | null)[])[],
+  opts: {
+    min: number;
+    max: number;
+    sampleRows: number;
+    cellPadding: number;
+    headerExtra: readonly number[];
+  },
+): number[] {
+  const headerCtx = getMeasureCtx('--kira-t-sm');
+  const cellCtx = getMeasureCtx();
+  const sample = rows.slice(0, opts.sampleRows);
+  return headers.map((header, c) => {
+    let cells = 0;
+    for (const row of sample) {
+      const cell = row[c];
+      // 200 chars already exceed any max: bounds the work on huge cells.
+      if (cell) cells = Math.max(cells, cellCtx.measureText(cell.slice(0, 200)).width);
+    }
+    const head = headerCtx.measureText(header).width + (opts.headerExtra[c] ?? 0);
+    const width = Math.ceil(Math.max(head, cells > 0 ? cells + opts.cellPadding : 0));
+    return Math.min(opts.max, Math.max(opts.min, width));
+  });
+}
+
 /** What a header cell spends before its name gets a pixel — read off slickTheme.css's own rules
  *  for `.slick-header-column` (`display: flex; gap: var(--kira-s-2)`, so every adjacent pair of
  *  flex children gets its own 4px gap in addition to any margin a child declares on itself) and
