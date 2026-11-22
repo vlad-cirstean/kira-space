@@ -25,7 +25,7 @@ before implementation starts.
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Todo |
-| P727 | Window tabs: select several tabs, close them or move them to another window | Todo |
+| P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 
 ## P716
 
@@ -588,3 +588,23 @@ Scope.
 Tests. Flow `TestTabMoveMany` (real PTY, two live terminals), P722 flow tests on the list shape, UI
 spec `tab-multi-select.spec.ts`, P722 UI spec on the list shape, one unit spec for block reorder.
 Throwaway screenshots for the user at chapter end; manual checklist for macOS, Windows, Linux X11.
+
+Result. Done.
+
+- Backend: `TabsService.Move` takes a list (100 tabs, 16 MiB limits); `TabsRepo.Move` runs one
+  transaction, any refusal moves nothing. Several live terminals: hold all, one move, re-own all,
+  target adopts each; failure releases every hold.
+- Frontend: `tabSelection` Pinia store keyed by selection scope; Primary-modifier toggle, Shift
+  range, plain click and Esc clear; grey selection token; multi menu; ⌘W closes the set; one shared
+  dirty question, per-tab prompts for API tabs; drag applies the set on drop via pure `moveBlock`.
+  Kubernetes strip included.
+- Also fixed: 3 unit specs (repo-tab slots, tabs-save-serialized x2) failing on chapter HEAD. Cause:
+  spread copy of `control` in `state/tabs.ts`; now prototype delegation.
+- Tests run once at end: flow `TestTabMoveMany` and P722 flow tests with `-race`, contract
+  `tab-move-many.json`; 63 UI tests across `tab-multi-select`, `tab-window-move` and related P722
+  specs; `move-block.spec.ts`; unit suite 1426 pass, 0 fail; four typechecks; hooks pass.
+- Screenshots (throwaway, not committed): 6 PNGs in the session scratchpad `p727-final/`. Confirm
+  shot shows the API per-tab dialog.
+- Not covered: pinned-repo-tab UI case (plan 4.4 item 1).
+- Manual platform checklist (plan section 10, 8 items): unverified here. macOS, Windows, Linux X11
+  and Wayland checks remain for the user.
