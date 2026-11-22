@@ -69,7 +69,7 @@ test('contract: the review previews the plain value and reveals the secret behin
   });
   await pushApprovals(page, [it]);
   const block = page.locator('[data-testid="api-review-keep"]');
-  await expect(block).toContainText('Will save');
+  await expect(block).toContainText('Will set');
   const secret = block.locator('[data-testid="api-review-keep-session_token"]');
   const plain = block.locator('[data-testid="api-review-keep-account_id"]');
   await expect(secret.locator('[data-testid="kept-kind-secret"]')).toHaveText('Secret');
@@ -138,8 +138,8 @@ test('contract: Settings lists both kinds and reveals the secret', async ({ rela
   await openKeptPane(page);
   const rows = page.locator('[data-testid="settings-kept-entry"]');
   await expect(rows).toHaveCount(2);
-  const secret = rows.filter({ has: page.locator('[data-testid="kept-entry-secret"]') });
-  const plain = rows.filter({ has: page.locator('[data-testid="kept-entry-plain"]') });
+  const secret = rows.filter({ has: page.locator('[data-testid="kept-kind-secret"]') });
+  const plain = rows.filter({ has: page.locator('[data-testid="kept-kind-plain"]') });
   await expect(secret).toHaveCount(1);
   await expect(plain).toHaveCount(1);
   await expect(plain.locator('[data-testid="kept-value-preview"]')).toContainText('acct_42');

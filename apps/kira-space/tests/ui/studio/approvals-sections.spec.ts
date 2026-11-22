@@ -197,7 +197,7 @@ test('kube read: kept, request, prepare, transform boxes', async ({ relaunch }) 
   ]);
 });
 
-test('scripted kube review: request, result, script and Will save boxes', async ({ relaunch }) => {
+test('scripted kube review: request, result, script and Will set boxes', async ({ relaunch }) => {
   const it = liveItem(
     contract<ApprovalItem[]>(KUBE, 'ApprovalsService.List#review')[0] as ApprovalItem,
   );

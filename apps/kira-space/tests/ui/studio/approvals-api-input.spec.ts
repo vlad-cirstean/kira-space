@@ -44,7 +44,7 @@ test('contract: the card asks for the value, marks it and holds Send until it is
   );
   await expect(c.getByText('Needs a value from you')).toHaveCount(0);
   await expect(c.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
-    'Saved for 60 min',
+    'Available for 60 min',
   );
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
@@ -109,7 +109,8 @@ test('contract: a held value shows as supplied by you, Send needs no typing, a n
   await pushApprovals(page, [it]);
   const c = card(page, it);
   const row = c.locator('[data-testid="api-approval-kept-apikey"]');
-  await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Typed by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
   await c

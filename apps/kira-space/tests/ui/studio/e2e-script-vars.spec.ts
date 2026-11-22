@@ -45,12 +45,14 @@ test('contract: the review lists the saved values and the delete', async ({ rela
   });
   await pushApprovals(page, [it]);
   const block = page.locator('[data-testid="api-review-keep"]');
-  await expect(block).toContainText('Will save');
+  await expect(block).toContainText('Will set');
   await expect(block.locator('[data-testid="api-review-keep-next"]')).toContainText(
     '9007199254740993',
   );
   await expect(
     block.locator('[data-testid="api-review-keep-token"] [data-testid="kept-value-secret"]'),
   ).toBeVisible();
-  await expect(block.locator('[data-testid="api-review-keep-old-deleted"]')).toBeVisible();
+  await expect(
+    block.locator('[data-testid="api-review-keep-old"] [data-testid="kept-deleted"]'),
+  ).toBeVisible();
 });

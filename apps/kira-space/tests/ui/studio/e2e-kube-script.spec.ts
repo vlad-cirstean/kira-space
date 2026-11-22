@@ -101,7 +101,7 @@ test('contract: the scripted review shows the envelope, the raw table and both k
   await expect(page.locator(t('kube-review-script'))).toBeVisible();
 
   const block = page.locator(t('kube-review-keep'));
-  await expect(block).toContainText('Will save');
+  await expect(block).toContainText('Will set');
   const secret = block.locator(t('kube-review-keep-token'));
   const plain = block.locator(t('kube-review-keep-pod'));
   await expect(secret.locator(t('kept-kind-secret'))).toHaveText('Secret');

@@ -42,7 +42,7 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   // No choice control: every typed value is kept.
   await expect(page.locator('[data-testid="api-input-apikey-once"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
-    'Saved for 60 min',
+    'Available for 60 min',
   );
   await expect(approve).toBeEnabled();
   await approve.click();
@@ -54,14 +54,14 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   await expectNoLeak(page, VALUE(), logs);
 });
 
-test('contract: the Saved for line shows the retention and opens the variables settings', async ({
+test('contract: the Available for line shows the retention and opens the variables settings', async ({
   relaunch,
 }) => {
   const it = item('retention');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const line = page.locator('[data-testid="api-approval-inputs-kept-for"]');
-  await expect(line).toHaveText('Saved for 5 min');
+  await expect(line).toHaveText('Available for 5 min');
   await line.click();
   await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
   await expect(page.locator('[data-testid="settings-section-Studio MCP variables"]')).toBeVisible();
@@ -100,7 +100,8 @@ test('contract: a held value shows as supplied by you and Send needs no typing',
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const row = page.locator('[data-testid="api-approval-kept-apikey"]');
-  await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Typed by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
 });
@@ -126,8 +127,10 @@ test('contract: the pane lists the value as supplied by you with its origin and 
   });
   await openKeptPane(page);
   const row = page.locator('[data-testid="settings-kept-entry"]');
-  await expect(row.locator('[data-testid="kept-entry-supplied"]')).toHaveText('Supplied by you');
-  await expect(row.locator('[data-testid="kept-entry-origin"]')).toContainText('http://127.0.0.1:');
+  await row.locator('[data-testid="kept-name"]').hover();
+  const tip = page.locator('[data-testid="kept-details"]');
+  await expect(tip).toContainText('Typed by you');
+  await expect(tip).toContainText('Goes only to http://127.0.0.1:');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await row.locator('[data-testid="kept-entry-clear"]').click();
   await expect

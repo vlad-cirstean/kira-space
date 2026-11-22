@@ -28,10 +28,10 @@ const idOf = (name: string) => {
 };
 const entry = (page: import('@playwright/test').Page, name: string) =>
   page.locator('[data-testid="settings-kept-entry"]').filter({
-    has: page.locator('[data-testid="kept-entry-name"]', { hasText: new RegExp(`^${name}$`) }),
+    has: page.locator('[data-testid="kept-name"]', { hasText: new RegExp(`^${name}$`) }),
   });
 
-test('contract: the pane lists each variable with its type, scope, source and time left', async ({
+test('contract: the pane lists each variable on one line with its source in a tooltip and time left', async ({
   relaunch,
 }) => {
   const { window: page } = await relaunch({
@@ -40,10 +40,26 @@ test('contract: the pane lists each variable with its type, scope, source and ti
   await openKeptPane(page);
   await expect(page.locator('[data-testid="settings-kept-entry"]')).toHaveCount(3);
   const ids = entry(page, 'ids');
-  await expect(ids).toContainText('List of 800');
-  await expect(ids).toContainText('External clients');
-  await expect(ids).toContainText('GET {{base_url}}/users');
-  await expect(ids.locator('[data-testid="kept-entry-expiry"]')).toContainText('Expires in');
+  await expect(ids.locator('[data-testid="kept-expiry"]')).toContainText('left');
+  // Each row is one line: no taller than twice a control, and no byte sizes.
+  const rows = page.locator('[data-testid="settings-kept-entry"]');
+  for (const [i, name] of ['ids', 'word', 'token'].entries()) {
+    const row = entry(page, name);
+    const nameBox = await row.locator('[data-testid="kept-name"]').boundingBox();
+    const rowBox = await row
+      .locator('[data-testid="kept-name"]')
+      .locator('xpath=ancestor::li[1]')
+      .boundingBox();
+    expect(rowBox!.height, `row ${i}`).toBeLessThan(nameBox!.height * 3);
+    await expect(rows.nth(i)).not.toContainText(/\d B\b/);
+  }
+  await ids.locator('[data-testid="kept-name"]').hover();
+  const tip = page.locator('[data-testid="kept-details"]');
+  await expect(tip).toContainText('List of 800');
+  await expect(tip).toContainText('Set by GET {{base_url}}/users');
+  // Clear all is a link-meta button in the legend row.
+  const clearAll = page.locator('[data-testid="settings-kept-clear-all"]');
+  await expect(clearAll).toHaveAttribute('data-variant', 'link-meta');
   await expect(entry(page, 'word').locator('[data-testid="kept-value-preview"]')).toHaveText(
     'hello',
   );
@@ -71,7 +87,7 @@ test('contract: Show all reads the whole value', async ({ relaunch }) => {
   await openKeptPane(page);
   const ids = entry(page, 'ids');
   await expect(ids.locator('[data-testid="kept-value-full"]')).toHaveCount(0);
-  await ids.getByText('Show all').click();
+  await ids.locator('[data-testid="kept-value-showall"]').click();
   await expect(ids.locator('[data-testid="kept-value-full"]')).toBeVisible();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.keptValue)?.args)

@@ -76,7 +76,19 @@ test('contract: a script that reads and saves values marks both and lists what i
   await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
   const row = card.locator('[data-testid="db-approval-kept-ids"]');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText(/1,\s*2/);
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Transform script');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Transform script',
+  );
   // plain.ids and plain.n are each marked in the source.
-  await expect(card.locator('[data-testid="db-approval-script"] .kira-ed-kept')).toHaveCount(2);
+  // Monaco splits a mark per token, so compare the marked text, not the span count.
+  await expect
+    .poll(async () =>
+      (
+        await card
+          .locator('[data-testid="db-approval-script"] .kira-ed-kept')
+          .evaluateAll((els) => els.map((e) => e.textContent).join(''))
+      ).replace(/\s+/g, ''),
+    )
+    .toBe('plain.nplain.ids');
 });

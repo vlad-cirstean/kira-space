@@ -41,12 +41,19 @@ test('contract: the card lists the variable with its value, source and expiry', 
   await expect(c.locator('[data-testid="api-approval-kept-expiring"]')).toHaveCount(0);
   const row = c.locator('[data-testid="api-approval-kept-ids"]');
   await expect(row).toContainText('ids');
-  await expect(row).toContainText('List of 3');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('12');
-  await expect(row).toContainText('GET {{base_url}}/users');
-  await expect(row.locator('[data-testid="kept-age"]')).toContainText('12');
-  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText('Expires in 47m');
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Body');
+  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText(/47m( \d+s)? left/);
+  // One line: the row is no taller than a control and shows no type or size.
+  const box = await row.locator('[data-testid="kept-name"]').boundingBox();
+  const line = await row.boundingBox();
+  expect(line!.height).toBeLessThan(box!.height * 2);
+  await expect(row).not.toContainText('Text, ');
+  await expect(row).not.toContainText('Used in');
+  await row.locator('[data-testid="kept-name"]').hover();
+  const tip = page.locator('[data-testid="kept-details"]');
+  await expect(tip).toContainText('List of 3');
+  await expect(tip).toContainText('Set by GET {{base_url}}/users');
+  await expect(tip).toContainText('Used in Body');
 });
 
 test('contract: the reference is marked in the JSON body', async ({ relaunch }) => {
@@ -88,12 +95,13 @@ test('contract: URL and header references are marked', async ({ relaunch }) => {
   const c = card(page, it);
   await expect(c.locator('[data-testid="api-approval-url"] mark')).toHaveText('{{plain.ids}}');
   await expect(c.locator('[data-testid="api-approval-headers"] mark')).toHaveText('{{plain.ids}}');
-  await expect(c.locator('[data-testid="kept-used-in"]')).toHaveText(
-    'Request URL, Header Authorization',
+  await c.locator('[data-testid="api-approval-kept-ids"] [data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Request URL, Header Authorization',
   );
 });
 
-test('contract: Manage kept variables opens the settings view', async ({ relaunch }) => {
+test('contract: Manage temporary variables opens the settings view', async ({ relaunch }) => {
   const it = withTimes(base(), 2880);
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);

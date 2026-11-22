@@ -47,10 +47,13 @@ test('contract: the card lists the variable with its value, source and where the
   await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: word');
   await expect(c.locator('[data-testid="db-approval-kept-expiring"]')).toHaveCount(0);
   const row = c.locator('[data-testid="db-approval-kept-word"]');
-  await expect(row).toContainText('Text');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('drop table');
-  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText('Expires in 47m');
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Statement, Parameter 1');
+  await expect(row.locator('[data-testid="kept-expiry"]')).toContainText(/47m( \d+s)? left/);
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Text');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Statement, Parameter 1',
+  );
 });
 
 test('contract: the placeholder is marked in the statement as sent', async ({ relaunch }) => {
@@ -99,7 +102,7 @@ test('contract: a lifted-limit request shows the same variables and marks', asyn
   await expect(c.locator('[data-testid="db-mcp-approval-statement"] .kira-ed-kept')).toHaveCount(1);
 });
 
-test('contract: Manage kept variables opens the settings view', async ({ relaunch }) => {
+test('contract: Manage temporary variables opens the settings view', async ({ relaunch }) => {
   const it = withTimes(query(), 2880);
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);

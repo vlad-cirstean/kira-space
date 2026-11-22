@@ -31,9 +31,12 @@ test('contract: the card lists the script read and where the prepare script make
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const row = card(page, it).locator('[data-testid="api-approval-kept-region"]');
-  await expect(row).toContainText('Text');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toHaveText('eu');
-  await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Prepare script');
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Text');
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText(
+    'Used in Prepare script',
+  );
   await expect(card(page, it).locator('[data-testid="api-approval-kept"]')).toHaveText(
     'Uses: region',
   );

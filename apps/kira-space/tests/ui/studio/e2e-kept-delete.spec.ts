@@ -7,7 +7,7 @@ import { IPC } from '../support/ipcChannels';
 import { withTimes } from './support/keptTimes';
 
 // Contract e2e-kept-delete. Backend half: dbmcpflow TestE2EKeptDelete, the same scenario. The x on a kept row
-// deletes the variable the card waits on; the x on a Will save row drops that value from a held result.
+// deletes the variable the card waits on; the x on a Will set row drops that value from a held result.
 
 const SC = 'e2e-kept-delete';
 const item = (key: string) =>
@@ -23,14 +23,15 @@ test('contract: the x on a kept row deletes that variable', async ({ relaunch })
   const row = page.locator(
     `[data-testid="approval-item-${it.id}"] [data-testid="api-approval-kept-token"]`,
   );
-  await expect(row.locator('[data-testid="kept-used-in"]')).toBeVisible();
+  await row.locator('[data-testid="kept-name"]').hover();
+  await expect(page.locator('[data-testid="kept-details"]')).toContainText('Used in');
   await row.locator('[data-testid="api-approval-kept-token-clear"]').click();
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.keptClear)?.args)
     .toEqual(clear);
 });
 
-test('contract: the x on a Will save row drops that value and the list refetches', async ({
+test('contract: the x on a Will set row drops that value and the list refetches', async ({
   relaunch,
 }) => {
   const it = liveItem(item('review'));

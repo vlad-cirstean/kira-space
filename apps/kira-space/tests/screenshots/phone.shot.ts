@@ -1,5 +1,4 @@
 import { devices } from '@playwright/test';
-import type { ApprovalItem } from '@shared/domain/approvals';
 import { CAPTURE_NOW, installCaptureFonts } from '@workbench/testing/screenshots/capture';
 import { expect, test } from '../mobile/fixtures';
 import { contract } from '../ui/support/contract';

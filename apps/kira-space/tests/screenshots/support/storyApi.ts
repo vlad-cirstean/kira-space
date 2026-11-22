@@ -245,7 +245,7 @@ export function storyApiValues(): ApprovalItem {
   );
 }
 
-/** Saved variables as Settings lists them, with live times. */
+/** Temporary variables as Settings lists them, with live times. */
 export function storyKeptList(): KeptList {
   const list = contract<KeptList>('kept-vars', 'KeptVarsService.List');
   const [secret, plain] = list.entries;

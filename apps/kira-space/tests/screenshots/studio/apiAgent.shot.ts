@@ -2,7 +2,7 @@ import { CAPTURE_LAUNCH, CAPTURE_NOW } from '@workbench/testing/screenshots/capt
 import { expect, test } from '../../ui/fixtures';
 import { seedApprovals } from '../../ui/support/approvals';
 import { IPC } from '../../ui/support/ipcChannels';
-import { STORY, storyBoard } from '../support/buildStory';
+import { storyBoard } from '../support/buildStory';
 import { expandApprovalsDialog, shoot } from '../support/shoot';
 import {
   API_HOST,
@@ -12,7 +12,7 @@ import {
   storyKeptList,
 } from '../support/storyApi';
 
-// P734: agent API requests: the approval card, the held response, typed values and the saved
+// P734: agent API requests: the approval card, the held response, typed values and the temporary
 // variables. Run by `bun run screenshots`; output goes to /screenshots/crop.
 
 const t = (id: string) => `[data-testid="${id}"]`;
@@ -71,7 +71,7 @@ test('agent api: typed values', async ({ relaunch, consoleErrors }) => {
   await shoot(win, 'studio-api-values', consoleErrors);
 });
 
-test('agent api: saved variables', async ({ relaunch, consoleErrors }) => {
+test('agent api: temporary variables', async ({ relaunch, consoleErrors }) => {
   const { window: win } = await relaunch({
     ...CAPTURE_LAUNCH,
     control: storyBoard([
@@ -86,5 +86,5 @@ test('agent api: saved variables', async ({ relaunch, consoleErrors }) => {
   await win.click(t('settings-section-Studio MCP variables'));
   await expect(win.locator(t('settings-kept-entry'))).toHaveCount(3);
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
-  await shoot(win, 'studio-saved-variables', consoleErrors);
+  await shoot(win, 'studio-temp-variables', consoleErrors);
 });

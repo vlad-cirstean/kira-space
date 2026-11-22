@@ -33,10 +33,10 @@ test('contract: a user value lists as supplied by you with its origin and dots',
   });
   await openKeptPane(page);
   const row = page.locator('[data-testid="settings-kept-entry"]');
-  await expect(row.locator('[data-testid="kept-entry-supplied"]')).toHaveText('Supplied by you');
-  await expect(row.locator('[data-testid="kept-entry-origin"]')).toContainText(
-    'https://api.example.test',
-  );
+  await row.locator('[data-testid="kept-name"]').hover();
+  const tip = page.locator('[data-testid="kept-details"]');
+  await expect(tip).toContainText('Typed by you');
+  await expect(tip).toContainText('Goes only to https://api.example.test');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(row.locator('[data-testid="kept-value-copy"]')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(TYPED);
