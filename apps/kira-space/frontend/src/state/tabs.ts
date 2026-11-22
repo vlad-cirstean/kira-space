@@ -55,10 +55,11 @@ export const WORKBENCH_TAB_SCOPE = 'workbench';
 export const useTabsStore = createTabsStore({
   kinds: TAB_KINDS,
   workspaceKeyOf,
-  control: {
-    ...control,
+  // Delegates through the prototype, not a spread copy, so a later swap of a `control` method
+  // (the unit specs replace `tabsSave`) still reaches the store.
+  control: Object.assign(Object.create(control) as typeof control, {
     tabsList: async () => restoreLegacyVariableTabs(await control.tabsList()),
-  },
+  }),
   // No explicit workspaceId: a database or API kind opens in its module, anything else in the one
   // shared unscoped slot.
   fallbackWorkspaceKey: (kind) =>
