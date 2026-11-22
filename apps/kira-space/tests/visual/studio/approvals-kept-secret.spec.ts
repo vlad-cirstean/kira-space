@@ -1,8 +1,10 @@
 import type { ApprovalItem } from '@shared/domain/approvals';
 import type { DbMcpPendingResponse } from '@shared/domain/dbmcp';
+import type { KeptList } from '@shared/domain/kept';
 import type { RevealResult } from '@shared/domain/variables';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../../ui/fixtures';
+import { openKeptPane } from '../../ui/studio/support/settings';
 import { contract } from '../../ui/support/contract';
 import { IPC } from '../../ui/support/ipcChannels';
 import { settleFonts } from './support/settle';
@@ -64,5 +66,28 @@ test('review previews plain and reveals secret', async ({ relaunch }) => {
   await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveScreenshot(
     'approvals-kept-review-revealed.png',
     { mask: mask(page) },
+  );
+});
+
+test('settings lists the temporary variables', async ({ relaunch }) => {
+  const list = contract<KeptList>('kept-vars', 'KeptVarsService.List');
+  const now = Date.now();
+  const live: KeptList = {
+    ...list,
+    entries: list.entries.map((e, i) => ({
+      ...e,
+      createdAt: new Date(now - (i + 1) * 60_000).toISOString(),
+      expiresAt: new Date(now + (60 - i) * 60_000).toISOString(),
+    })),
+  };
+  const { window: page } = await relaunch({ control: [{ channel: IPC.keptList, response: live }] });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await openKeptPane(page);
+  await expect(page.locator('[data-testid="settings-kept-entry"]')).toHaveCount(3);
+  await page.mouse.move(0, 0);
+  await settleFonts(page);
+  await expect(page.locator('[data-testid="settings-dialog"]')).toHaveScreenshot(
+    'settings-temp-variables.png',
+    { mask: [page.locator('[data-testid="kept-expiry"]')] },
   );
 });
