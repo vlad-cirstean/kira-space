@@ -1,4 +1,24 @@
 {
+  "list": [
+    {
+      "expensiveQuery": {
+        "rowsThreshold": 5000
+      },
+      "name": "Own"
+    },
+    {
+      "expensiveQuery": {
+        "rowsThreshold": 1000
+      },
+      "name": "Plain"
+    },
+    {
+      "expensiveQuery": {
+        "rowsThreshold": 0
+      },
+      "name": "notes db"
+    }
+  ],
   "list_connections": [
     {
       "access": {

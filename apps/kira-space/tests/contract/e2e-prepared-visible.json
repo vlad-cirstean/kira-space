@@ -142,7 +142,7 @@
         },
         "server": "<kube>",
         "statement": "kubectl get pods -n kube-system -l app=web --context kind-dev",
-        "tool": "kube_list_resources"
+        "tool": "kube_read"
       },
       "reason": "permission",
       "target": {
@@ -173,7 +173,7 @@
       },
       "payload": {
         "changed": [
-          "pod",
+          "name",
           "container",
           "previous",
           "timestamps",
@@ -199,7 +199,7 @@
         "script": {
           "prepare": {
             "changed": [
-              "pod",
+              "name",
               "container",
               "previous",
               "timestamps",
@@ -208,14 +208,14 @@
             "hash": "<masked>",
             "input": "",
             "inputTruncated": false,
-            "source": "return {pod: \"web-1\", container: \"sidecar\", tail: 3, previous: false, timestamps: true};",
+            "source": "return {name: \"web-1\", container: \"sidecar\", tail: 3, previous: false, timestamps: true};",
             "writes": []
           },
           "transform": null
         },
         "server": "<kube>",
         "statement": "kubectl logs web-1 -n default -c sidecar --tail 3 --timestamps --context kind-dev",
-        "tool": "kube_pod_logs"
+        "tool": "kube_read"
       },
       "reason": "permission",
       "target": {

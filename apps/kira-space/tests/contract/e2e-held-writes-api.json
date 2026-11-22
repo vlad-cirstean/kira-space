@@ -70,7 +70,7 @@
       "hash": "00e525d9ceed4b677687ee6be80d4aaa18421c8977142ada637731fbe619e1fb",
       "source": "plain.w = [1, 2]; return 1;"
     },
-    "text": "{\"result\":1}"
+    "text": "{\"output\":1}"
   },
   "KeptVarsService.List#afterSend": {
     "entries": [
@@ -130,8 +130,8 @@
       }
     }
   },
-  "result#scopeFull": "{\"result\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"too many saved variables (64 per session); ask the user to clear some in the Saved variables view\"}]}",
+  "result#scopeFull": "{\"output\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"too many saved variables (64 per session); ask the user to clear some in the Saved variables view\"}]}",
   "result#scriptsOff": "the GET 127.0.0.1 request was sent, but scripts are turned off in Kira Space's Studio MCP settings while its response was in review, so it was withheld.",
   "result#tooLarge": "transform script failed: script output error: result exceeds 65536 bytes. The request was sent (HTTP 200); its response is not returned. Return less, or raise maxResponseBytes (max 524288).",
-  "result#userEntry": "{\"result\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"a saved variable of that name was supplied by the user and cannot be replaced\"}]}"
+  "result#userEntry": "{\"output\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"a saved variable of that name was supplied by the user and cannot be replaced\"}]}"
 }

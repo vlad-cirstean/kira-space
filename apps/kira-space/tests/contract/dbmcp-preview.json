@@ -18,7 +18,7 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 231,
+        "bytes": 159,
         "connectionId": "<id:2>",
         "host": "",
         "isError": false,
@@ -45,7 +45,7 @@
     "raw": "",
     "requestId": "<id:1>",
     "script": null,
-    "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}"
+    "text": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"[redacted]\"],[\"2\",\"[redacted]\"]],\"rowCount\":2}"
   },
   "args:ApprovalsService.Answer": {
     "approve": true,

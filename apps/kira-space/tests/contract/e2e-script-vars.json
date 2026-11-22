@@ -349,7 +349,7 @@
       "hash": "3d1d497bd00e35c613d2804bf6fbf3b935539689a67c38abd647bb4b87e68bff",
       "source": "plain.next = response.json.users[0].id;\nsecret.token = 'tok-' + response.json.users[0].id;\ndelete plain.old;\nreturn {count: response.json.total};"
     },
-    "text": "{\"result\":{\"count\":2}}"
+    "text": "{\"output\":{\"count\":2}}"
   },
   "args:ApprovalsService.Answer#prepare": {
     "approve": true,

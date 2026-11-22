@@ -1,4 +1,16 @@
 {
+  "list": [
+    {
+      "Enforcement": "session",
+      "Name": "frozen",
+      "Summary": "read"
+    },
+    {
+      "Enforcement": "session",
+      "Name": "notes db",
+      "Summary": "read, write (approval)"
+    }
+  ],
   "list_connections": [
     {
       "Enforcement": "session",

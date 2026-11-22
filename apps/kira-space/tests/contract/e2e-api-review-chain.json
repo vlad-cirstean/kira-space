@@ -236,7 +236,7 @@
       "hash": "71dfa47e81594b0bc17df5233c9d1b7c9105bdb766a562139b113a72328f9a25",
       "source": "plain.domains = response.json.users.map(u => u.email.split(\"@\")[1]); return response.json.users.length;"
     },
-    "text": "{\"result\":2}"
+    "text": "{\"output\":2}"
   },
   "args:ApprovalsService.Answer#card": {
     "approve": true,
@@ -259,5 +259,5 @@
     ],
     "options": null
   },
-  "result#send": "{\"result\":2,\"saved\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result#send": "{\"output\":2,\"saved\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

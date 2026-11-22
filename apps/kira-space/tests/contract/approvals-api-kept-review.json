@@ -76,7 +76,7 @@
       "hash": "965d31783140ded1247314791d81d51cf2bb2c575ecf277aced6ed95fad72c87",
       "source": "plain.ids = response.json.users.map(u => u.id); return {count: response.json.total};"
     },
-    "text": "{\"result\":{\"count\":2}}"
+    "text": "{\"output\":{\"count\":2}}"
   },
   "args:ApprovalsService.Answer": {
     "approve": true,

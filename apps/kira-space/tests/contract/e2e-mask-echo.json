@@ -95,8 +95,8 @@
       "hash": "981d6b4b0509970abf1ef7e8a9a78db28a5869c2ce8e684df52a2efa9abc549c",
       "source": "return response.json;"
     },
-    "text": "{\"result\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
+    "text": "{\"output\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
   },
-  "result#forms": "{\"result\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}",
+  "result#forms": "{\"output\":{\"b64\":\"{{secret.apikey}}\",\"b64url\":\"{{secret.apikey}}\",\"json\":\"{{secret.apikey}}\",\"path\":\"{{secret.apikey}}\",\"query\":\"{{secret.apikey}}\",\"raw\":\"{{secret.apikey}}\"},\"inputs\":[{\"name\":\"apikey\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}",
   "result#short": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"103\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"b64\\\":\\\"YWIxMmNk\\\",\\\"b64url\\\":\\\"YWIxMmNk\\\",\\\"json\\\":\\\"{{secret.pin}}\\\",\\\"path\\\":\\\"{{secret.pin}}\\\",\\\"query\\\":\\\"{{secret.pin}}\\\",\\\"raw\\\":\\\"{{secret.pin}}\\\"}\\n\",\"bodyBytes\":103,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/forms\",\"redirects\":[],\"inputs\":[{\"name\":\"pin\",\"status\":\"supplied\",\"expiresInSeconds\":3600}]}"
 }

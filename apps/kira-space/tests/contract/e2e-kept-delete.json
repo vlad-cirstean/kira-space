@@ -168,7 +168,7 @@
       "hash": "215ba9018055065e1c480b4d8650c8d7e113b405cea03d36f92a71023672f6c3",
       "source": "plain.token = response.json.token; plain.account_id = response.json.account; return {account: response.json.account};"
     },
-    "text": "{\"result\":{\"account\":\"acct_42\"}}"
+    "text": "{\"output\":{\"account\":\"acct_42\"}}"
   },
   "DbMcpService.PendingResponse#dropped": {
     "isError": false,
@@ -190,7 +190,7 @@
       "hash": "215ba9018055065e1c480b4d8650c8d7e113b405cea03d36f92a71023672f6c3",
       "source": "plain.token = response.json.token; plain.account_id = response.json.account; return {account: response.json.account};"
     },
-    "text": "{\"result\":{\"account\":\"acct_42\"}}"
+    "text": "{\"output\":{\"account\":\"acct_42\"}}"
   },
   "args:KeptVarsService.Clear#row": {
     "ids": [
@@ -201,5 +201,5 @@
     "name": "account_id",
     "requestId": "<request>"
   },
-  "result#send": "{\"result\":{\"account\":\"acct_42\"},\"saved\":[{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":0}],\"notSaved\":[{\"name\":\"account_id\",\"error\":\"the user chose not to save it\"}]}"
+  "result#send": "{\"output\":{\"account\":\"acct_42\"},\"saved\":[{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":0}],\"notSaved\":[{\"name\":\"account_id\",\"error\":\"the user chose not to save it\"}]}"
 }

@@ -38,7 +38,7 @@
         "script": null,
         "server": "<kube>",
         "statement": "kubectl get pods -n default --context kind-dev",
-        "tool": "kube_list_resources"
+        "tool": "kube_read"
       },
       "reason": "permission",
       "target": {

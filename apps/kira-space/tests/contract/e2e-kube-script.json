@@ -61,7 +61,7 @@
               "kind": "script",
               "mcp": "kube",
               "request": "kind-dev: kubectl get pods -n default --context kind-dev",
-              "tool": "kube_list_resources"
+              "tool": "kube_read"
             },
             "type": "string"
           }
@@ -163,7 +163,7 @@
         },
         "server": "<kube>",
         "statement": "kubectl get pods -n default --context kind-dev",
-        "tool": "kube_list_resources"
+        "tool": "kube_read"
       },
       "reason": "permission",
       "target": {
@@ -194,7 +194,7 @@
       },
       "payload": {
         "changed": [
-          "pod",
+          "name",
           "tail"
         ],
         "context": "kind-dev",
@@ -212,10 +212,10 @@
             "sites": [
               {
                 "field": "script",
-                "from": 13,
+                "from": 14,
                 "index": 0,
                 "part": "prepare",
-                "to": 22
+                "to": 23
               }
             ],
             "source": {
@@ -223,7 +223,7 @@
               "kind": "script",
               "mcp": "kube",
               "request": "kind-dev: kubectl get pods -n default --context kind-dev",
-              "tool": "kube_list_resources"
+              "tool": "kube_read"
             },
             "type": "string"
           }
@@ -247,13 +247,13 @@
         "script": {
           "prepare": {
             "changed": [
-              "pod",
+              "name",
               "tail"
             ],
-            "hash": "dd99eccc445b053236243a79d484ac0473274f9169a1aba119a39211eb3b24ca",
+            "hash": "2b7e5826e7e0fa006216d48893e6f4ab3410017e487c09c9ea566534a0250bc9",
             "input": "",
             "inputTruncated": false,
-            "source": "return {pod: plain.pod, tail: 2};",
+            "source": "return {name: plain.pod, tail: 2};",
             "writes": []
           },
           "transform": {
@@ -264,7 +264,7 @@
         },
         "server": "<kube>",
         "statement": "kubectl logs web-1 -n default -c app --tail 2 --context kind-dev",
-        "tool": "kube_pod_logs"
+        "tool": "kube_read"
       },
       "reason": "permission",
       "target": {
@@ -317,7 +317,7 @@
         "scripted": true,
         "server": "<kube>",
         "statement": "kubectl get pods -n default --context kind-dev",
-        "tool": "kube_list_resources"
+        "tool": "kube_read"
       },
       "reason": "preview",
       "target": {
@@ -353,13 +353,13 @@
         "type": "string"
       }
     ],
-    "raw": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":3,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"db-0\",\"namespace\":\"default\",\"cells\":[\"db-0\",\"1/1\",\"Running\",\"0\",\"5m\"]}],\"truncated\":false}",
+    "raw": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":3,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"db-0\",\"namespace\":\"default\",\"cells\":[\"db-0\",\"1/1\",\"Running\",\"0\",\"5m\"]}]}",
     "requestId": "<masked>",
     "script": {
       "hash": "6c16ab95af2dc38439a317d4b5a155c11d145eacc515c9f47d5d42e4998045a1",
       "source": "plain.pod = result.rows[0].name; secret.token = \"tok-kube-\" + result.rows[0].name; return {first: result.rows[0].name, count: result.rowCount};"
     },
-    "text": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false}}"
+    "text": "{\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"rowCount\":3}}"
   },
   "KeptVarsService.RevealStaged#confirmation": {
     "error": null,
@@ -404,6 +404,6 @@
     "name": "token",
     "requestId": "<masked>"
   },
-  "result#list": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false},\"saved\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
-  "result#logs": "{\"kind\":\"script\",\"output\":2,\"input\":{\"operation\":\"logs\",\"rowCount\":2,\"truncated\":false}}"
+  "result#list": "{\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"rowCount\":3},\"saved\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
+  "result#logs": "{\"output\":2,\"input\":{\"rowCount\":2}}"
 }

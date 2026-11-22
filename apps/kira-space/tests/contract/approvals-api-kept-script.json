@@ -130,5 +130,5 @@
     ],
     "options": null
   },
-  "result": "{\"result\":{\"count\":2},\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result": "{\"output\":{\"count\":2},\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

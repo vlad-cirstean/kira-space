@@ -89,5 +89,5 @@
     ],
     "options": null
   },
-  "result#count": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"n\",\"dataType\":\"\",\"typeClass\":\"other\"}],\"rows\":[[\"1000\"]],\"rowCount\":1,\"returned\":1,\"truncatedCells\":0}"
+  "result#count": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"n\",\"dataType\":\"\"}],\"rows\":[[\"1000\"]],\"rowCount\":1}"
 }

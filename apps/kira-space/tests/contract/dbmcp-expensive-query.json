@@ -55,6 +55,80 @@
       "readOnly": false
     }
   },
+  "list": [
+    {
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "kind": "clickhouse",
+      "name": "e-clickhouse"
+    },
+    {
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 0
+      },
+      "kind": "kafka",
+      "name": "e-kafka"
+    },
+    {
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "kind": "mariadb",
+      "name": "e-mariadb"
+    },
+    {
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 0
+      },
+      "kind": "mongodb",
+      "name": "e-mongodb"
+    },
+    {
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "kind": "mysql",
+      "name": "e-mysql"
+    },
+    {
+      "expensiveQuery": {
+        "check": "plan",
+        "rowsThreshold": 1000
+      },
+      "kind": "postgres",
+      "name": "e-postgres"
+    },
+    {
+      "expensiveQuery": {
+        "check": "off",
+        "rowsThreshold": 0
+      },
+      "kind": "postgres",
+      "name": "e-postgres-off"
+    },
+    {
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 0
+      },
+      "kind": "redis",
+      "name": "e-redis"
+    },
+    {
+      "expensiveQuery": {
+        "check": "none",
+        "rowsThreshold": 0
+      },
+      "kind": "sqlite",
+      "name": "e-sqlite"
+    }
+  ],
   "list_connections": [
     {
       "access": {

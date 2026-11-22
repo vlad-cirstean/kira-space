@@ -320,5 +320,5 @@
     ],
     "options": null
   },
-  "result#step1": "{\"result\":2,\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result#step1": "{\"output\":2,\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

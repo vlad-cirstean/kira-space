@@ -58,7 +58,7 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 217,
+        "bytes": 145,
         "connectionId": "<id:2>",
         "host": "",
         "isError": false,
@@ -142,13 +142,13 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 96,
+        "bytes": 45,
         "connectionId": "<id:2>",
         "host": "",
         "isError": false,
         "mode": "read",
         "path": "/data/mcp.db",
-        "rawBytes": 217,
+        "rawBytes": 145,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"

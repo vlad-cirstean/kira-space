@@ -24,7 +24,7 @@
         "isError": true,
         "mode": "read",
         "path": "/data/mcp.db",
-        "rawBytes": 231,
+        "rawBytes": 159,
         "requested": false,
         "scripted": true,
         "statement": "select id, body from notes order by id"
@@ -42,7 +42,7 @@
   "DbMcpService.PendingResponse#failed": {
     "isError": true,
     "keep": [],
-    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"added\"]],\"rowCount\":3,\"returned\":3,\"truncatedCells\":0}",
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\"},{\"name\":\"body\",\"dataType\":\"TEXT\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"],[\"3\",\"added\"]],\"rowCount\":3}",
     "requestId": "<id:1>",
     "script": {
       "hash": "72c05ad738b22c0bd1bf80bd540df12217fa77a491012c02c9a7d27cc7ae489e",

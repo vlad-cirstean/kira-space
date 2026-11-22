@@ -147,7 +147,7 @@
       },
       "payload": {
         "alreadyRan": true,
-        "bytes": 146,
+        "bytes": 95,
         "connectionId": "<id:2>",
         "host": "",
         "isError": false,
@@ -187,7 +187,7 @@
       },
       "payload": {
         "alreadyRan": false,
-        "bytes": 217,
+        "bytes": 145,
         "connectionId": "<id:1>",
         "host": "",
         "isError": false,
