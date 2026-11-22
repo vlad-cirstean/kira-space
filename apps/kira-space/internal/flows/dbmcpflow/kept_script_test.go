@@ -18,8 +18,8 @@ import (
 // of the "Will keep" block of the review (contract approvals-api-kept-review).
 
 const (
-	keepPrepare   = `const region = kept.get("region"); return {headers: [{name: "X-Region", value: region}]};`
-	keepTransform = `kept.set("ids", response.json.users.map(u => u.id)); return {count: response.json.total};`
+	keepPrepare   = `const region = kira.getValue("region"); return {headers: [{name: "X-Region", value: region}]};`
+	keepTransform = `kira.storeValue("ids", response.json.users.map(u => u.id)); return {count: response.json.total};`
 	// keptIDs is what keepTransform keeps: the first id is above 2^53, so it proves the value stays exact.
 	keptIDs = `[9007199254740993,2]`
 )
@@ -71,12 +71,12 @@ func TestKeptVarsFromScript(t *testing.T) {
 	if len(pl.Kept) != 1 || pl.Kept[0].ID != region.ID || pl.Kept[0].Name != "region" || pl.Kept[0].Preview != `"eu"` {
 		t.Fatalf("kept = %+v, want the region read", pl.Kept)
 	}
-	if s := pl.Kept[0].Sites; len(s) != 1 || s[0].Field != "script" || s[0].Part != "prepare" || keepPrepare[s[0].From:s[0].To] != `kept.get("region"` {
+	if s := pl.Kept[0].Sites; len(s) != 1 || s[0].Field != "script" || s[0].Part != "prepare" || keepPrepare[s[0].From:s[0].To] != `kira.getValue("region"` {
 		t.Fatalf("read sites = %+v, want the prepare call", s)
 	}
 	mk := pl.Script.Transform.MayKeep
 	if len(mk) != 1 || mk[0].Name != "ids" || len(mk[0].Sites) != 1 || mk[0].Sites[0].Part != "transform" ||
-		keepTransform[mk[0].Sites[0].From:mk[0].Sites[0].To] != `kept.set("ids"` {
+		keepTransform[mk[0].Sites[0].From:mk[0].Sites[0].To] != `kira.storeValue("ids"` {
 		t.Fatalf("mayKeep = %+v, want ids with its transform site", mk)
 	}
 	if _, ok := f.keptValue(t, "ids"); ok {
@@ -116,7 +116,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 		t.Fatalf("stored = %+v ok=%v, want the exact ids with this request as source", e, ok)
 	}
 	if first := srv.Requests(); len(first) != 1 || first[0].Header.Get("X-Region") != "eu" {
-		t.Fatalf("server saw %+v, want X-Region eu from kept.get", first)
+		t.Fatalf("server saw %+v, want X-Region eu from kira.getValue", first)
 	}
 
 	next := callToolAsync(sess, "api_request", jsonPost(envID, "{{base_url}}/echo", `{"ids": {{kept.ids}}}`))
@@ -130,7 +130,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 }
 
 // TestKeptScriptUndeclared: a name the source does not write as a literal is refused, however the call is
-// reached; kept.set is for the transform only.
+// reached; kira.storeValue is for the transform only.
 func TestKeptScriptUndeclared(t *testing.T) {
 	f := newFixture(t)
 	srv, sess, envID := f.apiSetup(t, "127.0.0.1", false)
@@ -144,17 +144,17 @@ func TestKeptScriptUndeclared(t *testing.T) {
 		f.answer(t, true, it.RequestID)
 		return text(wait(t, pending))
 	}
-	if got := run(map[string]any{"transform": `kept.get("region"); const k = kept; const n = "oth" + "er"; return k.get(n);`}); !strings.Contains(got, "not listed in this script") {
+	if got := run(map[string]any{"transform": `kira.getValue("region"); const k = kira; const n = "oth" + "er"; return k.getValue(n);`}); !strings.Contains(got, "not listed in this script") {
 		t.Fatalf("aliased get = %q, want the not-listed refusal", got)
 	}
-	if got := run(map[string]any{"transform": `kept.set("a", 1); const k = kept; k.set("b", 2); return 1;`}); !strings.Contains(got, "not listed in this script") {
+	if got := run(map[string]any{"transform": `kira.storeValue("a", 1); const k = kira; k.storeValue("b", 2); return 1;`}); !strings.Contains(got, "not listed in this script") {
 		t.Fatalf("aliased set = %q, want the not-listed refusal", got)
 	}
 	if _, ok := f.keptValue(t, "a"); ok {
 		t.Error("a failed transform kept a value")
 	}
 
-	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `kept.set("a", 1); return {};`}))
+	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `kira.storeValue("a", 1); return {};`}))
 	if !res.IsError || !strings.Contains(text(res), "transform script only") || f.queueLen(t) != 0 {
 		t.Fatalf("prepare set = %q, want a refusal before any card", text(res))
 	}
@@ -168,7 +168,7 @@ func TestKeptScriptNoSmuggledReference(t *testing.T) {
 	f.keep(t, externalScope, "evil", `"Bearer {{token}}"`)
 
 	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL),
-		map[string]any{"prepare": `return {headers: [{name: "Authorization", value: kept.get("evil")}]};`}))
+		map[string]any{"prepare": `return {headers: [{name: "Authorization", value: kira.getValue("evil")}]};`}))
 	if !res.IsError || !strings.Contains(text(res), "references built from kept data are not resolved") || strings.Contains(text(res), "token") {
 		t.Fatalf("result = %q, want a refusal that does not quote the text", text(res))
 	}
@@ -187,14 +187,14 @@ func TestKeptScriptSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `return {headers: [{name: "X-T", value: kept.get("tok")}]};`}))
+	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL), map[string]any{"prepare": `return {headers: [{name: "X-T", value: kira.getValue("tok")}]};`}))
 	if !res.IsError || !strings.Contains(text(res), "is secret") || strings.Contains(text(res), secret) || f.queueLen(t) != 0 {
 		t.Fatalf("prepare read = %q, want a refusal without the value", text(res))
 	}
 
 	// A transform reading a secret is always reviewed, whatever the review settings say.
 	h := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", usersURL(srv.URL),
-		map[string]any{"transform": `kept.set("copy", kept.get("tok")); return {t: kept.get("tok")};`}))
+		map[string]any{"transform": `kira.storeValue("copy", kira.getValue("tok")); return {t: kira.getValue("tok")};`}))
 	if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
 		t.Fatalf("held reason = %q, want userValue", p.Reason)
 	}

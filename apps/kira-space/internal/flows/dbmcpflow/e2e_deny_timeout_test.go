@@ -19,7 +19,7 @@ import (
 
 const (
 	denyTimeoutKey = "e2e-deny-timeout"
-	e12Stage       = `kept.set("w", [1,2]); return 1;`
+	e12Stage       = `kira.storeValue("w", [1,2]); return 1;`
 	e12Exempt      = "select body from notes where id in (select value from json_each(?)) /* big */"
 )
 

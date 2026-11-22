@@ -47,7 +47,7 @@ func validateBindings(bs []Binding, inputBytes int) *Error {
 		switch {
 		case !bindingNameRE.MatchString(b.Name):
 			return newError(KindInput, "binding name %q must match %s", b.Name, bindingNameRE)
-		case slices.Contains(reservedWords, b.Name):
+		case slices.Contains(reservedWords, b.Name) && !(b.Name == "kira" && b.Funcs != nil):
 			return newError(KindInput, "binding name %q is reserved", b.Name)
 		case seen[b.Name]:
 			return newError(KindInput, "binding %q is defined twice", b.Name)
@@ -80,6 +80,19 @@ func validateBindings(bs []Binding, inputBytes int) *Error {
 func (st *runState) installBindings(bs []wireBinding) *Error {
 	global := st.vm.GlobalObject()
 	for _, b := range bs {
+		if b.Name == "kira" && b.Value == nil {
+			// Host methods join the sandbox's own kira object (parseJSON); freeze seals it afterwards.
+			kira := global.Get("kira").ToObject(st.vm)
+			for _, fn := range b.Funcs {
+				if fn == "parseJSON" || kira.Get(fn) != nil {
+					return newError(KindInput, "kira method %q is already defined", fn)
+				}
+				f := st.vm.ToValue(st.hostFunc(b.Name, fn))
+				_ = f.(*goja.Object).DefineDataProperty("name", st.vm.ToValue(fn), goja.FLAG_FALSE, goja.FLAG_TRUE, goja.FLAG_FALSE)
+				_ = kira.DefineDataProperty(fn, f, goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
+			}
+			continue
+		}
 		if global.Get(b.Name) != nil {
 			return newError(KindInput, "binding name %q is already a global", b.Name)
 		}

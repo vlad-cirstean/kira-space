@@ -49,7 +49,7 @@ func (s *Server) openQueryScript(ctx context.Context, source string) (*apiScript
 	// A read that cannot resolve now would fail after the statement ran, so it refuses here.
 	if k != nil {
 		for _, st := range k.sites[stageTransform] {
-			if st.Op != "get" {
+			if st.Op != "getValue" {
 				continue
 			}
 			i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == st.Name })

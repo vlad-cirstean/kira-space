@@ -34,10 +34,10 @@
             "sites": [
               {
                 "field": "script",
-                "from": 42,
+                "from": 49,
                 "index": 0,
                 "part": "transform",
-                "to": 56
+                "to": 68
               }
             ],
             "source": {
@@ -55,7 +55,7 @@
         "reviewOffered": true,
         "reviewResult": false,
         "script": {
-          "hash": "9b1160ef319acc01df3ae33dd16b5f781b1b001f5fdb8ec9a2ee5779e1663bd6",
+          "hash": "98d3c953f39319634fb20c1b66fa1b33ee6cdf4fb17d32e09c2d1f38bbfb3c2f",
           "mayKeep": [
             {
               "name": "n",
@@ -66,12 +66,12 @@
                   "from": 0,
                   "index": 0,
                   "part": "transform",
-                  "to": 12
+                  "to": 19
                 }
               ]
             }
           ],
-          "source": "kept.set(\"n\", result.rows.length); return kept.get(\"ids\").length;"
+          "source": "kira.storeValue(\"n\", result.rows.length); return kira.getValue(\"ids\").length;"
         },
         "statement": "select id, body from notes order by id"
       },

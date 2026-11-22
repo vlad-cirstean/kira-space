@@ -137,7 +137,7 @@ func (s *Server) openKubeScripts(ctx context.Context, tool string, a *kubeScript
 	if k != nil {
 		for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 			for _, st := range k.sites[stage] {
-				if st.Op != "get" {
+				if st.Op != "getValue" {
 					continue
 				}
 				i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == st.Name })

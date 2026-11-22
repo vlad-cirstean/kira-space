@@ -90,7 +90,7 @@ func TestE2EUserValue(t *testing.T) {
 
 	t.Run("a transform reading it forces the review", func(t *testing.T) {
 		args := apiArgs(envID, "GET", "{{base_url}}/echo")
-		args["script"] = map[string]any{"transform": `return kept.get("apikey") + "|" + kept.get("apikey").split("").reverse().join("")`}
+		args["script"] = map[string]any{"transform": `return kira.getValue("apikey") + "|" + kira.getValue("apikey").split("").reverse().join("")`}
 		h := f.startHeldAfterCard(t, sess, args)
 		if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
 			t.Fatalf("held reason = %q, want userValue though the review settings are off", p.Reason)
@@ -120,7 +120,7 @@ func TestE2EUserValue(t *testing.T) {
 	t.Run("prepare cannot read it", func(t *testing.T) {
 		sent := len(srv.Requests())
 		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{
-			"prepare": `return {headers: [{name: "X-K", value: kept.get("apikey")}]};`,
+			"prepare": `return {headers: [{name: "X-K", value: kira.getValue("apikey")}]};`,
 		}))
 		remember(text(res))
 		if !res.IsError || !strings.Contains(text(res), "is secret") || !strings.HasSuffix(text(res), "Nothing was sent.") || f.queueLen(t) != 0 || len(srv.Requests()) != sent {

@@ -63,7 +63,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 	})
 
 	t.Run("a script that names a delete does not make the call a write", func(t *testing.T) {
-		const script = `const sql = "DELETE FROM notes"; kept.set("x", 1); return sql.length;`
+		const script = `const sql = "DELETE FROM notes"; kira.storeValue("x", 1); return sql.length;`
 		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", script))
 		req := f.pending(t)
 		if req.Stage != "response" || req.Class != "read" {

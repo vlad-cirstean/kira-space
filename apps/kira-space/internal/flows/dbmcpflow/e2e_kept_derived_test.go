@@ -34,7 +34,7 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 
 	t.Run("copy keeps the origin and the user taint", func(t *testing.T) {
 		args := apiArgs(envID, "GET", echo)
-		args["script"] = map[string]any{"transform": `kept.set("d", kept.get("pw")); return 1;`}
+		args["script"] = map[string]any{"transform": `kira.storeValue("d", kira.getValue("pw")); return 1;`}
 		h := f.startHeldAfterCard(t, sess, args)
 		if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
 			t.Fatalf("held reason = %q, want userValue", p.Reason)
@@ -52,7 +52,7 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 
 	t.Run("a leaf of a derived object stays masked when the server reshapes it", func(t *testing.T) {
 		args := apiArgs(envID, "GET", echo)
-		args["script"] = map[string]any{"transform": `kept.set("obj", {a: kept.get("pw").split("").reverse().join(""), n: [kept.get("pw")]}); return 1;`}
+		args["script"] = map[string]any{"transform": `kira.storeValue("obj", {a: kira.getValue("pw").split("").reverse().join(""), n: [kira.getValue("pw")]}); return 1;`}
 		h := f.startHeldAfterCard(t, sess, args)
 		res := f.finish(t, h, true)
 		agent = append(agent, text(res))
@@ -83,7 +83,7 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 
 	t.Run("transform reshaping the derived value is reviewed", func(t *testing.T) {
 		args := apiArgs(envID, "GET", echo)
-		args["script"] = map[string]any{"transform": `return kept.get("d").split("").reverse().join("")`}
+		args["script"] = map[string]any{"transform": `return kira.getValue("d").split("").reverse().join("")`}
 		h := f.startHeldAfterCard(t, sess, args)
 		if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
 			t.Fatalf("held reason = %q, want userValue though the review settings are off", p.Reason)
@@ -101,7 +101,7 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 	t.Run("any secret read in a transform is reviewed", func(t *testing.T) {
 		put("tok", keptvars.SourceScript, "")
 		args := apiArgs(envID, "GET", echo)
-		args["script"] = map[string]any{"transform": `return kept.get("tok").split("").reverse().join("")`}
+		args["script"] = map[string]any{"transform": `return kira.getValue("tok").split("").reverse().join("")`}
 		h := f.startHeldAfterCard(t, sess, args)
 		if p := f.responseItem(t, h.req.Item); p.Reason != "userValue" {
 			t.Fatalf("held reason = %q, want userValue for a secret script value", p.Reason)
@@ -116,7 +116,7 @@ func TestKeptDerivedFromUserValue(t *testing.T) {
 	t.Run("values of two origins cannot be combined", func(t *testing.T) {
 		put("pw2", keptvars.SourceUser, "http://localhost:1")
 		args := apiArgs(envID, "GET", echo)
-		args["script"] = map[string]any{"transform": `kept.set("mix", kept.get("pw") + kept.get("pw2")); return 1;`}
+		args["script"] = map[string]any{"transform": `kira.storeValue("mix", kira.getValue("pw") + kira.getValue("pw2")); return 1;`}
 		h := f.startHeldAfterCard(t, sess, args)
 		res := f.finish(t, h, true)
 		agent = append(agent, text(res))

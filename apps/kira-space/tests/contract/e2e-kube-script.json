@@ -129,7 +129,7 @@
         "script": {
           "prepare": null,
           "transform": {
-            "hash": "9dfaf1b8fed8d3a9d8cfbaf3ea9705969fd2826ff7b32fb8aee9606264e61bad",
+            "hash": "313e045062ce1530795f49e3eaf8ff4a5d53eff6d5cc0d7c86aea054a7862bc3",
             "mayKeep": [
               {
                 "name": "pod",
@@ -140,7 +140,7 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 14
+                    "to": 21
                   }
                 ]
               },
@@ -150,15 +150,15 @@
                 "sites": [
                   {
                     "field": "script",
-                    "from": 38,
+                    "from": 45,
                     "index": 0,
                     "part": "transform",
-                    "to": 60
+                    "to": 69
                   }
                 ]
               }
             ],
-            "source": "kept.set(\"pod\", result.rows[0].name); kept.setSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
+            "source": "kira.storeValue(\"pod\", result.rows[0].name); kira.storeSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
           }
         },
         "server": "<kube>",
@@ -215,7 +215,7 @@
                 "from": 13,
                 "index": 0,
                 "part": "prepare",
-                "to": 27
+                "to": 32
               }
             ],
             "source": {
@@ -250,10 +250,10 @@
               "pod",
               "tail"
             ],
-            "hash": "35f45d62f4a65f1b30ce3caab0621eb2761fc800978481a8ee63a916389be27b",
+            "hash": "0a7084c13cdc6b5563ce922c67214203a14fa20af1c353eacc721358bc85a43b",
             "input": "",
             "inputTruncated": false,
-            "source": "return {pod: kept.get(\"pod\"), tail: 2};"
+            "source": "return {pod: kira.getValue(\"pod\"), tail: 2};"
           },
           "transform": {
             "hash": "9d5b8bfab70d2b8f2b62a6aae5a573c96f467efc1efeff779c47a7ccac393c93",
@@ -341,8 +341,8 @@
     "raw": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":3,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"db-0\",\"namespace\":\"default\",\"cells\":[\"db-0\",\"1/1\",\"Running\",\"0\",\"5m\"]}],\"truncated\":false}",
     "requestId": "<masked>",
     "script": {
-      "hash": "9dfaf1b8fed8d3a9d8cfbaf3ea9705969fd2826ff7b32fb8aee9606264e61bad",
-      "source": "kept.set(\"pod\", result.rows[0].name); kept.setSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
+      "hash": "313e045062ce1530795f49e3eaf8ff4a5d53eff6d5cc0d7c86aea054a7862bc3",
+      "source": "kira.storeValue(\"pod\", result.rows[0].name); kira.storeSecret(\"token\", \"tok-kube-\" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};"
     },
     "text": "{\"kind\":\"script\",\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"operation\":\"list\",\"rowCount\":3,\"truncated\":false}}"
   },

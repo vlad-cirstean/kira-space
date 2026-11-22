@@ -42,7 +42,7 @@ type Input struct {
 	ScriptBodyBytes int
 	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
 	Inputs []InputDecl
-	// ScriptReads names the kept variables the request's scripts read by literal kept.get.
+	// ScriptReads names the kept variables the request's scripts read by literal kira.getValue.
 	ScriptReads []string
 	// Once holds the values the user typed for this request only, by input name. They are read before the store
 	// and never written to it; the caller wipes their bytes once the request ends.

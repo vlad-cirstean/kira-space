@@ -5,17 +5,17 @@ import (
 	"regexp"
 )
 
-// ScriptSite is one literal kept.get("name"), kept.set("name", ...) or kept.setSecret("name", ...) call in a script. From and To are
+// ScriptSite is one literal kira.getValue("name"), kira.storeValue("name", ...) or kira.storeSecret("name", ...) call in a script. From and To are
 // UTF-16 code units of the source, the unit an editor indexes by.
 type ScriptSite struct {
 	Name     string
-	Op       string // "get", "set" or "setSecret"
+	Op       string // "getValue", "storeValue" or "storeSecret"
 	From, To int
 }
 
-var scriptCallRE = regexp.MustCompile(`\bkept\.(get|setSecret|set)\(\s*(?:"([A-Za-z][A-Za-z0-9_]{0,39})"|'([A-Za-z][A-Za-z0-9_]{0,39})')`)
+var scriptCallRE = regexp.MustCompile(`\bkira\.(getValue|storeSecret|storeValue)\(\s*(?:"([A-Za-z][A-Za-z0-9_]{0,39})"|'([A-Za-z][A-Za-z0-9_]{0,39})')`)
 
-// ScanScript lists the literal kept calls of src. Comments and strings count too: over-listing is the safe
+// ScanScript lists the literal kira calls of src. Comments and strings count too: over-listing is the safe
 // side, because the host functions refuse every name the scan did not find.
 func ScanScript(src string) []ScriptSite {
 	matches := scriptCallRE.FindAllStringSubmatchIndex(src, -1)

@@ -29,7 +29,7 @@ func inputDecls(in []apiInput) []agentapi.InputDecl {
 	return out
 }
 
-// scriptReads lists the names the scripts read by literal kept.get: a declared input one of them reads
+// scriptReads lists the names the scripts read by literal kira.getValue: a declared input one of them reads
 // counts as used.
 func scriptReads(a *apiScriptArgs) []string {
 	if a == nil {
@@ -38,7 +38,7 @@ func scriptReads(a *apiScriptArgs) []string {
 	var out []string
 	for _, src := range []string{a.Prepare, a.Transform} {
 		for _, st := range keptvars.ScanScript(src) {
-			if st.Op == "get" {
+			if st.Op == "getValue" {
 				out = append(out, st.Name)
 			}
 		}

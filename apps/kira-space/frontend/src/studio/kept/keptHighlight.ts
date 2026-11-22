@@ -56,7 +56,7 @@ export function keptRanges(
     .sort((a, b) => a.from - b.from);
 }
 
-/** Monaco ranges of a script's kept.get and kept.set calls for one stage. The sites index the source
+/** Monaco ranges of a script's kira.getValue and kira.storeValue calls for one stage. The sites index the source
  *  exactly as shown: a script is not reformatted. */
 export function keptScriptRanges(
   sites: readonly Pick<KeptSite, 'field' | 'part' | 'from' | 'to'>[],

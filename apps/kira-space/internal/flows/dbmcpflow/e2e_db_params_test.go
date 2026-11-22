@@ -30,7 +30,7 @@ func TestE2EDbParams(t *testing.T) {
 
 	t.Run("a script keeps 1000 ids and the next read binds them", func(t *testing.T) {
 		// The script reads the rendered result, 200 rows unless maxRows asks for more.
-		args := f.queryScriptArgs(thousandCTE, "read", `kept.set("big", result.rows.map(r => Number(r[0]))); return 1;`)
+		args := f.queryScriptArgs(thousandCTE, "read", `kira.storeValue("big", result.rows.map(r => Number(r[0]))); return 1;`)
 		args["maxRows"] = 1000
 		keep := callTool(t, sess, "run_query", args)
 		if keep.IsError || !strings.Contains(text(keep), `"name":"big","type":"array","items":1000`) {

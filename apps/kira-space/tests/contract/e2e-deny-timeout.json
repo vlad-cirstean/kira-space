@@ -257,7 +257,7 @@
         "reviewOffered": true,
         "reviewResult": true,
         "script": {
-          "hash": "84c3722bb019ca93ebc4ce610cd61e17cf67f21028f0595e5460cf14ff4b77c0",
+          "hash": "0dc9d27a166e5fae821f401487428a783655c5c94ff944c66ada32a0bb13a4c9",
           "mayKeep": [
             {
               "name": "w",
@@ -268,12 +268,12 @@
                   "from": 0,
                   "index": 0,
                   "part": "transform",
-                  "to": 12
+                  "to": 19
                 }
               ]
             }
           ],
-          "source": "kept.set(\"w\", [1,2]); return 1;"
+          "source": "kira.storeValue(\"w\", [1,2]); return 1;"
         },
         "statement": "select body from notes where id in (select value from json_each(?)) /* big */"
       },
@@ -356,7 +356,7 @@
         "reviewOffered": true,
         "reviewResult": false,
         "script": {
-          "hash": "84c3722bb019ca93ebc4ce610cd61e17cf67f21028f0595e5460cf14ff4b77c0",
+          "hash": "0dc9d27a166e5fae821f401487428a783655c5c94ff944c66ada32a0bb13a4c9",
           "mayKeep": [
             {
               "name": "w",
@@ -367,12 +367,12 @@
                   "from": 0,
                   "index": 0,
                   "part": "transform",
-                  "to": 12
+                  "to": 19
                 }
               ]
             }
           ],
-          "source": "kept.set(\"w\", [1,2]); return 1;"
+          "source": "kira.storeValue(\"w\", [1,2]); return 1;"
         },
         "statement": "insert into notes (body) select 'x' from json_each(?)"
       },
@@ -441,8 +441,8 @@
     "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "84c3722bb019ca93ebc4ce610cd61e17cf67f21028f0595e5460cf14ff4b77c0",
-      "source": "kept.set(\"w\", [1,2]); return 1;"
+      "hash": "0dc9d27a166e5fae821f401487428a783655c5c94ff944c66ada32a0bb13a4c9",
+      "source": "kira.storeValue(\"w\", [1,2]); return 1;"
     },
     "text": "{\"result\":1}"
   },
@@ -463,8 +463,8 @@
     "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "84c3722bb019ca93ebc4ce610cd61e17cf67f21028f0595e5460cf14ff4b77c0",
-      "source": "kept.set(\"w\", [1,2]); return 1;"
+      "hash": "0dc9d27a166e5fae821f401487428a783655c5c94ff944c66ada32a0bb13a4c9",
+      "source": "kira.storeValue(\"w\", [1,2]); return 1;"
     },
     "text": "{\"kind\":\"script\",\"output\":1,\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
   },

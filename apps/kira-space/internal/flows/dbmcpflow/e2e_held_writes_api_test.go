@@ -17,12 +17,12 @@ import (
 )
 
 // Backend half of tests/ui/studio/e2e-held-writes.spec.ts (contract e2e-held-writes-api): a transform's
-// kept.set is staged while its response is held, and reaches the store only on Send. Every other exit
+// kira.storeValue is staged while its response is held, and reaches the store only on Send. Every other exit
 // (withhold, timeout, switches turned off, client gone, failed transform, refused write) keeps nothing.
 
 const (
 	heldWritesAPIKey = "e2e-held-writes-api"
-	stageW           = `kept.set("w", [1, 2]); return 1;`
+	stageW           = `kira.storeValue("w", [1, 2]); return 1;`
 	notSavedUser     = "a kept variable of that name was supplied by the user and cannot be replaced"
 )
 
@@ -143,9 +143,9 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		nothingStored(t)
 	})
 
-	t.Run("transform fails after kept.set", func(t *testing.T) {
+	t.Run("transform fails after kira.storeValue", func(t *testing.T) {
 		fresh(t)
-		h := f.startHeld(t, sess, script(`kept.set("w", [1, 2]); throw new Error("boom");`))
+		h := f.startHeld(t, sess, script(`kira.storeValue("w", [1, 2]); throw new Error("boom");`))
 		if len(h.held.Keep) != 0 || !h.held.IsError {
 			t.Fatalf("held = %+v, want an error with no staged values", h.held)
 		}
@@ -199,7 +199,7 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 
 	t.Run("value over 1 MiB", func(t *testing.T) {
 		fresh(t)
-		h := f.startHeld(t, sess, script(`kept.set("w", "x".repeat(1100000)); return 1;`))
+		h := f.startHeld(t, sess, script(`kira.storeValue("w", "x".repeat(1100000)); return 1;`))
 		res := f.finish(t, h, true)
 		if !res.IsError || strings.Contains(text(res), `"kept"`) {
 			t.Fatalf("result = %q, want a failed script", text(res))

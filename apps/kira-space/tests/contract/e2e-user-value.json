@@ -411,8 +411,8 @@
     "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"265\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"body\\\":\\\"\\\",\\\"bodyLen\\\":0,\\\"bodySha256\\\":\\\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\\\",\\\"header\\\":{\\\"Accept-Encoding\\\":[\\\"gzip\\\"],\\\"User-Agent\\\":[\\\"Kira Space/0.0.0-dev\\\"]},\\\"host\\\":\\\"127.0.0.1:<port>\\\",\\\"method\\\":\\\"GET\\\",\\\"path\\\":\\\"/echo\\\",\\\"proto\\\":\\\"HTTP/1.1\\\",\\\"query\\\":\\\"\\\"}\\n\",\"bodyBytes\":265,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/echo\",\"redirects\":[]}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "60a77ee029822db2d789debf6d6d62d72e87e9e377568c8b9c68870da80fbaeb",
-      "source": "return kept.get(\"apikey\") + \"|\" + kept.get(\"apikey\").split(\"\").reverse().join(\"\")"
+      "hash": "c0dca50d77cc9d69188ecab76f40a1abe8c55bbfb07238e94c0b5ac21eea5e99",
+      "source": "return kira.getValue(\"apikey\") + \"|\" + kira.getValue(\"apikey\").split(\"\").reverse().join(\"\")"
     },
     "text": "{\"result\":\"{{kept.apikey}}|9Q7-terces-depyt-e2e\"}"
   },

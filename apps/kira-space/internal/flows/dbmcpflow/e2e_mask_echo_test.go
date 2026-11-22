@@ -128,7 +128,7 @@ func TestE2EMaskEcho(t *testing.T) {
 		if _, err := f.app.W.Kept.Put(keptvars.Put{Scope: externalScope, Name: "token2", Value: json.RawMessage(`"tok2-secret-value"`), Secret: true, Source: keptSource}); err != nil {
 			t.Fatal(err)
 		}
-		args := scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": `kept.set("derived", kept.get("token2") + "-x"); return 1`})
+		args := scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"transform": `kira.storeValue("derived", kira.getValue("token2") + "-x"); return 1`})
 		// The transform reads a secret, so its response is held for review.
 		if res := f.finish(t, f.startHeldAfterCard(t, sess, args), true); res.IsError {
 			t.Fatalf("derive = %q", text(res))

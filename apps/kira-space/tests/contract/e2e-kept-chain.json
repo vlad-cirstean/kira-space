@@ -135,7 +135,7 @@
                 "from": 22,
                 "index": 0,
                 "part": "prepare",
-                "to": 36
+                "to": 41
               }
             ],
             "source": {
@@ -158,13 +158,13 @@
               "body",
               "contentType"
             ],
-            "hash": "48997f64dc3b2240a4a47055df8719c73ef24cab1f898b2ac38306aa986a2980",
+            "hash": "bbf710b900cb8f999ceec01750dfca9a5eb1b19d579901d8e1fe7e42fd62b5e7",
             "input": "",
             "inputTruncated": false,
-            "source": "return {body: {items: kept.get(\"ids\").map(id => ({id}))}};"
+            "source": "return {body: {items: kira.getValue(\"ids\").map(id => ({id}))}};"
           },
           "transform": {
-            "hash": "d5d4309fd3975422c1dcbf09a78354b8e461006c45238f286416c70b306a1aa3",
+            "hash": "a42e7ac0b4ee986c27f7a70f665742c53a4fc9748809a94ecb3a317ea395a05a",
             "mayKeep": [
               {
                 "name": "first",
@@ -175,12 +175,12 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 16
+                    "to": 23
                   }
                 ]
               }
             ],
-            "source": "kept.set(\"first\", String(response.json.body ? 1 : 0)); return 1;"
+            "source": "kira.storeValue(\"first\", String(response.json.body ? 1 : 0)); return 1;"
           }
         },
         "timeoutSeconds": 30,

@@ -366,7 +366,7 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
   ];
 }
 
-// A name the script may keep, marked when a kept.setSecret call writes it.
+// A name the script may keep, marked when a kira.storeSecret call writes it.
 const mayKeepName = (m: { name: string; secret: boolean }): string =>
   m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
 

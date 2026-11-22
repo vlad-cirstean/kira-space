@@ -81,6 +81,6 @@ test('contract: a script that reads and keeps values marks both and lists what i
   await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Transform script');
   await expect(card.locator('[data-testid="db-approval-may-keep"]')).toContainText('n');
   await expect(card.locator('[data-testid="db-approval-script-reads"]')).toBeVisible();
-  // kept.get("ids") and kept.set("n", ...) are each marked in the source.
+  // kira.getValue("ids") and kira.storeValue("n", ...) are each marked in the source.
   await expect(card.locator('[data-testid="db-approval-script"] .kira-ed-kept')).toHaveCount(2);
 });

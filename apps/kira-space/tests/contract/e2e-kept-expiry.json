@@ -363,7 +363,7 @@
                 "from": 7,
                 "index": 0,
                 "part": "transform",
-                "to": 21
+                "to": 26
               }
             ],
             "source": {
@@ -381,9 +381,9 @@
         "reviewOffered": true,
         "reviewResult": false,
         "script": {
-          "hash": "2daa77d1895d82bba8c93d71c1a06e999d0e9b7d05ceecf4a8e1116191d0a06e",
+          "hash": "d4acb23702719426f014b1441bfe73e432d2c96fb25a8778708214f016c0ce23",
           "mayKeep": [],
-          "source": "return kept.get(\"ids\").length;"
+          "source": "return kira.getValue(\"ids\").length;"
         },
         "statement": "select id, body from notes order by id"
       },

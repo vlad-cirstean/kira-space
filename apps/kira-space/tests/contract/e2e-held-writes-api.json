@@ -62,8 +62,8 @@
     "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"118\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"users\\\":[{\\\"id\\\":9007199254740993,\\\"email\\\":\\\"a@x.test\\\",\\\"name\\\":\\\"Ann\\\"},{\\\"id\\\":2,\\\"email\\\":\\\"b@y.test\\\",\\\"name\\\":\\\"Bob\\\"}],\\\"total\\\":2}\",\"bodyBytes\":118,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b227573657273223a5b7b226964223a393030373139393235343734303939332c22656d61696c223a226140782e74657374222c226e616d65223a22416e6e227d2c7b226964223a322c22656d61696c223a226240792e74657374222c226e616d65223a22426f62227d5d2c22746f74616c223a327d\",\"redirects\":[]}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "cfecdd8501f9b4df387bde408638ce2122ef34ae69cf28c6e3ac8a35a785d87d",
-      "source": "kept.set(\"w\", [1, 2]); return 1;"
+      "hash": "93368d3a7887b598efe453f3371b2b5b17916b75b2cb80d59a7ab2b1035ca9d7",
+      "source": "kira.storeValue(\"w\", [1, 2]); return 1;"
     },
     "text": "{\"result\":1}"
   },
@@ -127,6 +127,6 @@
   },
   "result#scopeFull": "{\"result\":1,\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"too many kept variables (64 per session); ask the user to clear some in the Kept variables view\"}]}",
   "result#scriptsOff": "the GET 127.0.0.1 request was sent, but scripts are turned off in Kira Space's Studio MCP settings while its response was in review, so it was withheld.",
-  "result#tooLarge": "transform script failed: script runtime error at line 1, column 9: Error: kept variable \"w\": a kept value is larger than 1 MiB or nested deeper than 64 levels. The request was sent (HTTP 200); its response is not returned.",
+  "result#tooLarge": "transform script failed: script runtime error at line 1, column 16: Error: kept variable \"w\": a kept value is larger than 1 MiB or nested deeper than 64 levels. The request was sent (HTTP 200); its response is not returned.",
   "result#userEntry": "{\"result\":1,\"keptNotSaved\":[{\"name\":\"w\",\"error\":\"a kept variable of that name was supplied by the user and cannot be replaced\"}]}"
 }

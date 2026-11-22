@@ -22,7 +22,7 @@ const (
 	secretKey    = "e2e-kept-secret"
 	sessionToken = "tok-e2e-session-7Q2xK"
 	loginJSON    = `{"token":"` + sessionToken + `","account":"acct_42","orders":[11,12]}`
-	loginKeep    = `kept.setSecret("session_token", response.json.token); kept.set("account_id", response.json.account); return {account: response.json.account, orders: response.json.orders.length};`
+	loginKeep    = `kira.storeSecret("session_token", response.json.token); kira.storeValue("account_id", response.json.account); return {account: response.json.account, orders: response.json.orders.length};`
 )
 
 func loginURL(base string) string {
@@ -181,9 +181,9 @@ func TestE2EKeptSecret(t *testing.T) {
 	})
 
 	t.Run("prepare cannot keep", func(t *testing.T) {
-		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"prepare": `kept.setSecret("x", 1); return {};`}))
+		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"prepare": `kira.storeSecret("x", 1); return {};`}))
 		remember(text(res))
-		if !res.IsError || !strings.Contains(text(res), "kept.set and kept.setSecret are available in the transform script only") || f.queueLen(t) != 0 {
+		if !res.IsError || !strings.Contains(text(res), "kira.storeValue and kira.storeSecret are available in the transform script only") || f.queueLen(t) != 0 {
 			t.Fatalf("result = %q, want a refusal before any card", text(res))
 		}
 	})
@@ -226,7 +226,7 @@ func TestDbMcpQueryScriptKeepSecret(t *testing.T) {
 	f := newFixture(t)
 	sess := f.session(t)
 
-	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.setSecret("note_key", result.rows[0][1]); return {count: result.rows.length};`))
+	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeSecret("note_key", result.rows[0][1]); return {count: result.rows.length};`))
 	if res.IsError || !strings.Contains(text(res), `"name":"note_key","type":"string","items":0,"secret":true`) || strings.Contains(text(res), "one") {
 		t.Fatalf("result = %s, want a secret summary and no cell", text(res))
 	}
@@ -237,7 +237,7 @@ func TestDbMcpQueryScriptKeepSecret(t *testing.T) {
 	if e.Source.Kind != keptvars.SourceScript {
 		t.Fatalf("source = %s, want script", e.Source.Kind)
 	}
-	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("note_key");`))
+	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("note_key");`))
 	if !read.IsError || !strings.Contains(text(read), `kept variable "note_key" is secret`) {
 		t.Fatalf("read back = %s, want the secret refusal", text(read))
 	}

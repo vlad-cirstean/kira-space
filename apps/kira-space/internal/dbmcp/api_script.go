@@ -44,7 +44,7 @@ type apiScripts struct {
 	Prepare, Transform string
 	Input              json.RawMessage
 	Changed            []string // set by prepare: the request fields it returned
-	kept               *keptRun // nil unless a script calls kept.get or kept.set
+	kept               *keptRun // nil unless a script calls kira.getValue or kira.storeValue
 }
 
 // apiOutcome is everything the final point needs: the raw masked response, and the transform output or failure.

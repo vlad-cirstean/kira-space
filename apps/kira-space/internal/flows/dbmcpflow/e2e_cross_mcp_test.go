@@ -18,7 +18,7 @@ import (
 const (
 	crossKey   = "e2e-cross-mcp"
 	crossWrite = "update notes set body = 'hit' where id in (select value from json_each(?))"
-	crossKeep  = `kept.set("bodies", result.rows.map(r => r[1])); return result.rows.length;`
+	crossKeep  = `kira.storeValue("bodies", result.rows.map(r => r[1])); return result.rows.length;`
 )
 
 func TestE2ECrossMcp(t *testing.T) {
@@ -107,7 +107,7 @@ func TestE2ECrossMcp(t *testing.T) {
 			t.Fatal(err)
 		}
 		// The transform reads a secret, so its response is held for review.
-		derive := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", echo, map[string]any{"transform": `kept.set("tainted", kept.get("token2") + "-y"); return 1`}))
+		derive := f.startHeldAfterCard(t, sess, scriptArgs(envID, "GET", echo, map[string]any{"transform": `kira.storeValue("tainted", kira.getValue("token2") + "-y"); return 1`}))
 		if res := f.finish(t, derive, true); res.IsError {
 			t.Fatalf("derive = %q", text(res))
 		}
@@ -116,7 +116,7 @@ func TestE2ECrossMcp(t *testing.T) {
 		}
 		before := f.notesBodies(t)
 		params := callTool(t, sess, "run_query", f.paramsArgs(crossWrite, "write", "tainted"))
-		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("tainted");`))
+		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("tainted");`))
 		if !params.IsError || !strings.Contains(text(params), `kept variable "tainted" is secret`) {
 			t.Fatalf("params = %q, want the secret refusal", text(params))
 		}
@@ -139,7 +139,7 @@ func TestE2ECrossMcp(t *testing.T) {
 		}
 		before := f.notesBodies(t)
 		params := callTool(t, sess, "run_query", f.paramsArgs("select ? as x", "read", "apikey"))
-		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("apikey");`))
+		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("apikey");`))
 		if !params.IsError || !strings.Contains(text(params), `kept variable "apikey" is secret`) {
 			t.Fatalf("params = %q, want the secret refusal", text(params))
 		}
@@ -150,7 +150,7 @@ func TestE2ECrossMcp(t *testing.T) {
 		agent = append(agent, text(params), text(script))
 		f.noLeak(t, e2eTyped, agent...)
 
-		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.set("apikey", 1); return 1;`))
+		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("apikey", 1); return 1;`))
 		if keep.IsError || !strings.Contains(text(keep), `"keptNotSaved":[{"name":"apikey","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) {
 			t.Fatalf("keep = %q, want keptNotSaved naming the user entry", text(keep))
 		}

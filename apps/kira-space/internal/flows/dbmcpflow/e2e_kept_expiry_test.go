@@ -169,7 +169,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 		f.items(t, 1)
 		write := callToolAsync(sess, "run_query", f.paramsArgs(e6WriteSQL, "write", "ids"))
 		f.items(t, 2)
-		script := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("ids").length;`))
+		script := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("ids").length;`))
 		items := f.items(t, 3)
 		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "ids"), "kv_ids"))
 		f.app.Contract(t, expiryKey, "ApprovalsService.List#three", items, ro...)
@@ -202,7 +202,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("a clear while a review waits leaves the review", func(t *testing.T) {
 		f.mcpSet(t, map[string]string{"review.read": "review"})
 		f.keep(t, externalScope, "ids", "[1,2]")
-		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kept.get("ids");`))
+		pending := callToolAsync(sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return kira.getValue("ids");`))
 		req := f.pending(t)
 		if req.Stage != "response" {
 			t.Fatalf("pending = %+v, want a held result", req)
@@ -222,7 +222,7 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("retention applies to later values only", func(t *testing.T) {
 		old := f.keep(t, externalScope, "older", "1")
 		f.setDbMcp(t, expiryKey, "retention", &model.DbMcpPatch{KeptRetentionMinutes: ptr(5)})
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.set("fresh", 1); return 1;`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("fresh", 1); return 1;`))
 		if res.IsError {
 			t.Fatalf("keep = %q", text(res))
 		}

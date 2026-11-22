@@ -201,8 +201,8 @@
     "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "6130cbe33c4797f71be7ed1705a0326335728fa67de64cbee528125484355803",
-      "source": "kept.set(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+      "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
+      "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
     },
     "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
   },

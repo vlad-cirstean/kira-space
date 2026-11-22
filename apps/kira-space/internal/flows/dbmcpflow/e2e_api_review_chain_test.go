@@ -16,7 +16,7 @@ import (
 
 const (
 	reviewChainKey = "e2e-api-review-chain"
-	chainDomains   = `kept.set("domains", response.json.users.map(u => u.email.split("@")[1])); return response.json.users.length;`
+	chainDomains   = `kira.storeValue("domains", response.json.users.map(u => u.email.split("@")[1])); return response.json.users.length;`
 )
 
 func TestE2EApiReviewChain(t *testing.T) {
@@ -119,7 +119,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 	})
 
 	t.Run("a failed transform is held with its raw response and keeps nothing", func(t *testing.T) {
-		h := start(t, `kept.set("domains", 1); return null.x`, false)
+		h := start(t, `kira.storeValue("domains", 1); return null.x`, false)
 		if !h.held.IsError || len(h.held.Keep) != 0 || !strings.Contains(h.held.Raw, "a@x.test") || !strings.Contains(h.held.Text, "transform script failed:") {
 			t.Fatalf("pending = %+v, want an error item with the raw response and no staged values", h.held)
 		}

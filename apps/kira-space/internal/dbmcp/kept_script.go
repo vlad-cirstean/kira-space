@@ -36,7 +36,7 @@ type keptRun struct {
 	prepareReads bool
 	staged       map[string]json.RawMessage
 	order        []string
-	// secretNames are the staged names a kept.setSecret call wrote: secret whatever the script read.
+	// secretNames are the staged names a kira.storeSecret call wrote: secret whatever the script read.
 	secretNames map[string]bool
 	// secretRead taints every value the run stages: it may have copied a secret.
 	secretRead  bool
@@ -54,14 +54,14 @@ type keptRun struct {
 }
 
 // keptMayKeep is a name the transform script may keep, with where its source says so. Secret is set when a
-// kept.setSecret call names it; a value may also turn secret at run time (the script read a secret).
+// kira.storeSecret call names it; a value may also turn secret at run time (the script read a secret).
 type keptMayKeep struct {
 	Name   string              `json:"name"`
 	Secret bool                `json:"secret"`
 	Sites  []agentapi.KeptSite `json:"sites"`
 }
 
-// keptRunFor reads the scripts for kept.get and kept.set calls and snapshots what they may read. nil
+// keptRunFor reads the scripts for kira.getValue and kira.storeValue calls and snapshots what they may read. nil
 // without kept support or without a call. A non-empty string is the refusal text; nothing ran.
 func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*keptRun, string) {
 	if s.cfg.Kept == nil || sc == nil {
@@ -70,8 +70,8 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	k := &keptRun{store: s.cfg.Kept, scope: scope, sites: map[scriptStage][]keptvars.ScriptSite{}, staged: map[string]json.RawMessage{}, secretNames: map[string]bool{}}
 	k.sites[stagePrepare] = keptvars.ScanScript(sc.Prepare)
 	k.sites[stageTransform] = keptvars.ScanScript(sc.Transform)
-	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op != "get" }) {
-		return nil, "kept.set and kept.setSecret are available in the transform script only. " + nothing
+	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op != "getValue" }) {
+		return nil, "kira.storeValue and kira.storeSecret are available in the transform script only. " + nothing
 	}
 	if len(k.sites[stagePrepare]) == 0 && len(k.sites[stageTransform]) == 0 {
 		return nil, ""
@@ -79,7 +79,7 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	reads, sets := map[string]bool{}, map[string]bool{}
 	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 		for _, st := range k.sites[stage] {
-			if st.Op == "get" {
+			if st.Op == "getValue" {
 				reads[st.Name] = true
 			} else {
 				sets[st.Name] = true
@@ -92,8 +92,8 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*kept
 	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 		for _, st := range k.sites[stage] {
 			site := agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To}
-			if st.Op != "get" {
-				k.addMayKeep(st.Name, site, st.Op == "setSecret")
+			if st.Op != "getValue" {
+				k.addMayKeep(st.Name, site, st.Op == "storeSecret")
 				continue
 			}
 			k.addUse(st.Name, site)
@@ -158,7 +158,7 @@ func (k *keptRun) rebind(names []string, once map[string]keptvars.Entry) {
 		} else {
 			for _, stage := range []scriptStage{stagePrepare, stageTransform} {
 				for _, st := range k.sites[stage] {
-					if st.Op == "get" && st.Name == name {
+					if st.Op == "getValue" && st.Name == name {
 						sites = append(sites, agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To})
 					}
 				}
@@ -184,18 +184,18 @@ func (k *keptRun) declared(stage scriptStage, op, name string) bool {
 	return slices.ContainsFunc(k.sites[stage], func(st keptvars.ScriptSite) bool { return st.Op == op && st.Name == name })
 }
 
-// Bindings is the kept global for stage, or none when its source makes no call (a script may use its own
-// variable named kept).
+// Bindings is the kira global for stage, or none when its source makes no call (a script may use its own
+// variable named kira).
 func (k *keptRun) Bindings(stage scriptStage) []jsengine.Binding {
 	if k == nil || len(k.sites[stage]) == 0 {
 		return nil
 	}
-	funcs := map[string]jsengine.HostFunc{"get": k.get(stage)}
+	funcs := map[string]jsengine.HostFunc{"getValue": k.get(stage)}
 	if stage == stageTransform {
-		funcs["set"] = k.set(false)
-		funcs["setSecret"] = k.set(true)
+		funcs["storeValue"] = k.set(false)
+		funcs["storeSecret"] = k.set(true)
 	}
-	return []jsengine.Binding{{Name: "kept", Funcs: funcs}}
+	return []jsengine.Binding{{Name: "kira", Funcs: funcs}}
 }
 
 func hostArgs(args json.RawMessage, want int, usage string) ([]json.RawMessage, error) {
@@ -208,13 +208,13 @@ func hostArgs(args json.RawMessage, want int, usage string) ([]json.RawMessage, 
 
 func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
 	return func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
-		a, err := hostArgs(args, 1, "kept.get takes a name")
+		a, err := hostArgs(args, 1, "kira.getValue takes a name")
 		if err != nil {
 			return nil, err
 		}
 		var name string
-		if json.Unmarshal(a[0], &name) != nil || !k.declared(stage, "get", name) {
-			return nil, errors.New("this kept variable is not listed in this script: call kept.get with a literal name")
+		if json.Unmarshal(a[0], &name) != nil || !k.declared(stage, "getValue", name) {
+			return nil, errors.New("this kept variable is not listed in this script: call kira.getValue with a literal name")
 		}
 		planned := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name })
 		e, ok := k.lookup(name)
@@ -268,11 +268,11 @@ func (k *keptRun) noteExpiry(at time.Time) {
 	}
 }
 
-// set stages a value for kept.set, or for kept.setSecret when secret; nothing reaches the store before commit.
+// set stages a value for kira.storeValue, or for kira.storeSecret when secret; nothing reaches the store before commit.
 func (k *keptRun) set(secret bool) jsengine.HostFunc {
-	op, call := "set", "kept.set"
+	op, call := "storeValue", "kira.storeValue"
 	if secret {
-		op, call = "setSecret", "kept.setSecret"
+		op, call = "storeSecret", "kira.storeSecret"
 	}
 	return func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
 		a, err := hostArgs(args, 2, call+" takes a name and a value")
@@ -327,7 +327,7 @@ func (k *keptRun) drop() {
 }
 
 // stagedViews is what the review card shows under "Will keep": a preview per value, none for a secret (one
-// kept.setSecret wrote, or one the run may have copied from a secret).
+// kira.storeSecret wrote, or one the run may have copied from a secret).
 func (k *keptRun) stagedViews() []HeldKeep {
 	if k == nil {
 		return nil
@@ -385,7 +385,7 @@ type keptFailure struct {
 }
 
 // commit stores the staged values. A refusal names its cap or rule, never a value. secretOrigin is the origin a
-// kept.setSecret value is bound to ("" binds none): the one its request went to, so the agent cannot send a
+// kira.storeSecret value is bound to ("" binds none): the one its request went to, so the agent cannot send a
 // session token somewhere else.
 func (k *keptRun) commit(src keptvars.Source, secretOrigin string) ([]keptSummary, []keptFailure) {
 	if k == nil {

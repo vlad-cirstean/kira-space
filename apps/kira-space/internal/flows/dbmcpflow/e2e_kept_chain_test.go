@@ -19,9 +19,9 @@ import (
 
 const (
 	keptChainKey = "e2e-kept-chain"
-	chainKeep    = `kept.set("ids", response.json.users.map(u => u.id)); return response.json.total;`
-	chainPrep    = `return {body: {items: kept.get("ids").map(id => ({id}))}};`
-	chainTrans   = `kept.set("first", String(response.json.body ? 1 : 0)); return 1;`
+	chainKeep    = `kira.storeValue("ids", response.json.users.map(u => u.id)); return response.json.total;`
+	chainPrep    = `return {body: {items: kira.getValue("ids").map(id => ({id}))}};`
+	chainTrans   = `kira.storeValue("first", String(response.json.body ? 1 : 0)); return 1;`
 	bigID        = "9007199254740993"
 )
 
@@ -88,7 +88,7 @@ func TestE2EKeptChain(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(pl.Kept) != 1 || pl.Kept[0].Name != "ids" || len(pl.Kept[0].Sites) != 1 || pl.Kept[0].Sites[0].Field != "script" || pl.Kept[0].Sites[0].Part != "prepare" ||
-			chainPrep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To] != `kept.get("ids"` {
+			chainPrep[pl.Kept[0].Sites[0].From:pl.Kept[0].Sites[0].To] != `kira.getValue("ids"` {
 			t.Fatalf("kept = %+v, want the prepare read site", pl.Kept)
 		}
 		mk := pl.Script.Transform.MayKeep
@@ -115,7 +115,7 @@ func TestE2EKeptChain(t *testing.T) {
 		if !res.IsError || !strings.Contains(text(res), `no kept variable "ids"`) || f.queueLen(t) != 0 {
 			t.Fatalf("S read = %q, queue %d, want a refusal before any card", text(res), f.queueLen(t))
 		}
-		pending := callToolAsync(s, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": `kept.set("ids", [5]); return 1;`}))
+		pending := callToolAsync(s, "api_request", scriptArgs(envID, "GET", u, map[string]any{"transform": `kira.storeValue("ids", [5]); return 1;`}))
 		f.answerItems(t, true, f.pending(t).Item.ID)
 		if r := wait(t, pending); r.IsError {
 			t.Fatalf("S keep = %q", text(r))
@@ -208,10 +208,10 @@ func TestE2EKeptChain(t *testing.T) {
 			if strings.Contains(*r.Command, bigID) {
 				t.Errorf("op command %q holds a kept value", *r.Command)
 			}
-			carried = carried || (r.Kind == "jsPrepare" && strings.Contains(*r.Command, `kept.get("ids")`))
+			carried = carried || (r.Kind == "jsPrepare" && strings.Contains(*r.Command, `kira.getValue("ids")`))
 		}
 		if !carried {
-			t.Error("no jsPrepare row carries the kept.get call")
+			t.Error("no jsPrepare row carries the kira.getValue call")
 		}
 	})
 }

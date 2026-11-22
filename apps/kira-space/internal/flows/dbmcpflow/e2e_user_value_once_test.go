@@ -172,7 +172,7 @@ func TestE2EUserValueOnce(t *testing.T) {
 
 	t.Run("a transform reading it keeps nothing derived", func(t *testing.T) {
 		args := otpArgs("/echo/derive")
-		args["script"] = map[string]any{"transform": `kept.set("derived", kept.get("otp") + "-x"); return "done"`}
+		args["script"] = map[string]any{"transform": `kira.storeValue("derived", kira.getValue("otp") + "-x"); return "done"`}
 		pending := callToolAsync(sess, "api_request", args)
 		req := f.pending(t)
 		answer(t, req.Item.ID, map[string]string{"otp": deriveText}, map[string]string{"otp": "once"})

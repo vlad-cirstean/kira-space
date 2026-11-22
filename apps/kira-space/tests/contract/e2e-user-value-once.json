@@ -703,8 +703,8 @@
     "raw": "{\"status\":404,\"statusText\":\"Not Found\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"19\"},{\"name\":\"Content-Type\",\"value\":\"text/plain; charset=utf-8\"},{\"name\":\"Date\",\"value\":\"<date>\"},{\"name\":\"X-Content-Type-Options\",\"value\":\"nosniff\"}],\"contentType\":\"text/plain; charset=utf-8\",\"body\":\"404 page not found\\n\",\"bodyBytes\":19,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/echo/derive?code={{kept.otp}}\",\"redirects\":[]}",
     "requestId": "<id:1>",
     "script": {
-      "hash": "0f157b60c597312807c69b35ad8ff13be13f6d91d7abf9e4acfbca666844d28d",
-      "source": "kept.set(\"derived\", kept.get(\"otp\") + \"-x\"); return \"done\""
+      "hash": "24aa96192143041e803344fdcbfe36530b8bc3887775eb246a3cb03054f1c3b4",
+      "source": "kira.storeValue(\"derived\", kira.getValue(\"otp\") + \"-x\"); return \"done\""
     },
     "text": "{\"result\":\"done\",\"inputs\":[{\"name\":\"otp\",\"status\":\"once\",\"expiresInSeconds\":0}]}"
   },

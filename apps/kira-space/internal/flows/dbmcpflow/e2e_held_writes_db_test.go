@@ -19,12 +19,12 @@ import (
 )
 
 // Backend half of tests/ui/studio/e2e-held-writes-db.spec.ts (contract e2e-held-writes-db): values a result
-// script stages with kept.set reach the store only when the user sends the held result. Every other exit
+// script stages with kira.storeValue reach the store only when the user sends the held result. Every other exit
 // drops them.
 
 const (
 	heldKey     = "e2e-held-writes-db"
-	dbStageW    = `kept.set("w", [1,2]); return 1;`
+	dbStageW    = `kira.storeValue("w", [1,2]); return 1;`
 	waitingText = "got no review within"
 )
 
@@ -136,9 +136,9 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		noW(t)
 	})
 
-	t.Run("transform fails after kept.set", func(t *testing.T) {
+	t.Run("transform fails after kira.storeValue", func(t *testing.T) {
 		f.mcpSet(t, map[string]string{"review.read": "send"})
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.set("w", [1,2]); throw new Error("boom")`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("w", [1,2]); throw new Error("boom")`))
 		if !res.IsError || !strings.Contains(text(res), "boom") {
 			t.Fatalf("failing script = %q, want its failure", text(res))
 		}
@@ -183,7 +183,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 	})
 
 	t.Run("a value over 1 MiB", func(t *testing.T) {
-		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kept.set("w", "x".repeat(2 << 20)); return 1;`))
+		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `kira.storeValue("w", "x".repeat(2 << 20)); return 1;`))
 		if !res.IsError {
 			t.Fatalf("result = %q, want the script to fail", text(res))
 		}

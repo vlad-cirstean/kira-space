@@ -41,7 +41,7 @@ test('contract: the card lists the script read and where the prepare script make
   await expect(card(page, it).locator('[data-testid="api-approval-script-reads"]')).toHaveCount(0);
 });
 
-test('contract: the kept.get and kept.set calls are marked in their scripts', async ({
+test('contract: the kira.getValue and kira.storeValue calls are marked in their scripts', async ({
   relaunch,
 }) => {
   const it = timed(base());

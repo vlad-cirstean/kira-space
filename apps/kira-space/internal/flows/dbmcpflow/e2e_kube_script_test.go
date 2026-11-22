@@ -19,8 +19,8 @@ import (
 
 const (
 	kubeScriptKey = "e2e-kube-script"
-	kubeListKeep  = `kept.set("pod", result.rows[0].name); kept.setSecret("token", "tok-kube-" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};`
-	kubeLogsPrep  = `return {pod: kept.get("pod"), tail: 2};`
+	kubeListKeep  = `kira.storeValue("pod", result.rows[0].name); kira.storeSecret("token", "tok-kube-" + result.rows[0].name); return {first: result.rows[0].name, count: result.rowCount};`
+	kubeLogsPrep  = `return {pod: kira.getValue("pod"), tail: 2};`
 	kubeLogsTrans = `return result.lines.length;`
 )
 
@@ -177,7 +177,7 @@ func TestE2EKubeScript(t *testing.T) {
 		k.keep(t, externalScope, "ns", `"default"`)
 		pending := k.callAsync("kube_pod_logs", map[string]any{
 			"clusterId": k.ids["kind-dev"], "namespace": "other", "pod": "web-1", "container": "app",
-			"script": map[string]any{"prepare": `return {namespace: kept.get("ns")};`},
+			"script": map[string]any{"prepare": `return {namespace: kira.getValue("ns")};`},
 		})
 		req := k.pending(t)
 		if c := decodeKubeCard(t, req.Item); len(c.Changed) != 1 || c.Changed[0] != "namespace" || c.Request.Namespace != "default" {
@@ -209,10 +209,10 @@ func TestE2EKubeScript(t *testing.T) {
 			want       string
 		}{
 			{"empty", "kube_pod_logs", k.logsScript(map[string]any{}), "script"},
-			{"keepInPrepare", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `kept.set("x", 1); return {pod: "web-1"};`}), "transform script only"},
-			{"secretRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kept.get("token")};`}), `kept variable "token" is secret or was typed by the user`},
-			{"userTypedRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kept.get("usertok")};`}), `kept variable "usertok" is secret or was typed by the user`},
-			{"unknownKept", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kept.get("nope")};`}), `"nope"`},
+			{"keepInPrepare", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `kira.storeValue("x", 1); return {pod: "web-1"};`}), "transform script only"},
+			{"secretRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("token")};`}), `kept variable "token" is secret or was typed by the user`},
+			{"userTypedRead", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("usertok")};`}), `kept variable "usertok" is secret or was typed by the user`},
+			{"unknownKept", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("nope")};`}), `"nope"`},
 			{"clusterKey", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {clusterId: "x", pod: "web-1"};`}), "unknown key"},
 			{"unknownKey", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {bogus: 1, pod: "web-1"};`}), "unknown key"},
 			{"wrongType", "kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: "web-1", tail: "ten"};`}), "tail"},
@@ -260,7 +260,7 @@ func TestE2EKubeScript(t *testing.T) {
 
 	t.Run("a kept value that vanishes cancels the card", func(t *testing.T) {
 		k.keep(t, externalScope, "gone", `"web-1"`)
-		pending := k.callAsync("kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kept.get("gone")};`}))
+		pending := k.callAsync("kube_pod_logs", k.logsScript(map[string]any{"prepare": `return {pod: kira.getValue("gone")};`}))
 		k.pending(t)
 		k.dropKept("gone")
 		out := <-pending

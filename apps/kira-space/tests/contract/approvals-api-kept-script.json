@@ -52,7 +52,7 @@
                 "from": 15,
                 "index": 0,
                 "part": "prepare",
-                "to": 32
+                "to": 37
               }
             ],
             "source": {
@@ -83,13 +83,13 @@
             "changed": [
               "headers"
             ],
-            "hash": "cba21aa7c4984a73002f5715cc46ac4515209d5d5d0e255bc4bee903f2660559",
+            "hash": "340bce308a9cc7d17801d02e7026a8fc3eed176f4ed7d628924d2425f4c33a44",
             "input": "",
             "inputTruncated": false,
-            "source": "const region = kept.get(\"region\"); return {headers: [{name: \"X-Region\", value: region}]};"
+            "source": "const region = kira.getValue(\"region\"); return {headers: [{name: \"X-Region\", value: region}]};"
           },
           "transform": {
-            "hash": "01526f73addf648bd419f6313ff41370a159cf309f9fcd980de34fe07e7c30f1",
+            "hash": "c54579f044985adf92789f541798249c177cc7b295a702ee920a18b5e7bade63",
             "mayKeep": [
               {
                 "name": "ids",
@@ -100,12 +100,12 @@
                     "from": 0,
                     "index": 0,
                     "part": "transform",
-                    "to": 14
+                    "to": 21
                   }
                 ]
               }
             ],
-            "source": "kept.set(\"ids\", response.json.users.map(u => u.id)); return {count: response.json.total};"
+            "source": "kira.storeValue(\"ids\", response.json.users.map(u => u.id)); return {count: response.json.total};"
           }
         },
         "timeoutSeconds": 30,

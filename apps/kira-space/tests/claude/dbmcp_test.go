@@ -21,7 +21,7 @@ import (
 
 const dbServer = "kira-studio"
 
-var keptSetName = regexp.MustCompile(`kept\.(?:set|setSecret)\(\s*["']([^"']+)["']`)
+var storedName = regexp.MustCompile(`kira\.(?:storeValue|storeSecret)\(\s*["']([^"']+)["']`)
 
 // enableDbMcp creates an MCP-exposed SQLite connection, turns the DB MCP server on and returns
 // the connection name plus the URL and headersHelper path the app would register with Claude Code.
@@ -390,8 +390,8 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 		}
 		text, isErr, ok := toolResult(msgs, u.ID)
 		switch {
-		case in.Script != nil && keptSetName.MatchString(*in.Script):
-			keptName = keptSetName.FindStringSubmatch(*in.Script)[1]
+		case in.Script != nil && storedName.MatchString(*in.Script):
+			keptName = storedName.FindStringSubmatch(*in.Script)[1]
 			if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, "[1,2]") {
 				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
 			}

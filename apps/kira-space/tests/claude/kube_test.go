@@ -255,10 +255,10 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		if err := json.Unmarshal(u.Input, &in); err != nil {
 			t.Fatalf("kube_list_resources input %s: %v", u.Input, err)
 		}
-		if in.Script == nil || !keptSetName.MatchString(in.Script.Transform) {
+		if in.Script == nil || !storedName.MatchString(in.Script.Transform) {
 			continue
 		}
-		keptName = keptSetName.FindStringSubmatch(in.Script.Transform)[1]
+		keptName = storedName.FindStringSubmatch(in.Script.Transform)[1]
 		text, isErr, ok := toolResult(msgs, u.ID)
 		if !ok || isErr || !strings.Contains(text, `"kept":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
 			t.Fatalf("scripted kube_list_resources result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
