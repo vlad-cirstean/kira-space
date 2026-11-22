@@ -2109,16 +2109,10 @@ onMounted(() => {
       // ran; forcing every large-delta scroll to call render() immediately, before the batch cap
       // existed, would have run that same unbounded batch on every such frame instead.
       //
-      // Real-hardware update: unconditional `true` coupled main-thread render work to *every*
-      // native scroll-event tick during a fling, which real-macOS testing found produces visible
-      // stutter (the motion itself hitching) — a less forgivable failure than the incumbent
-      // tanstack grid's own "content lags, motion stays smooth" gap symptom.
-      // Defaulted back to `false` (the batch cap alone) pending a real A/B on whether
-      // forceSyncScrolling is the cause; kept overridable from the console (see main.ts's own doc
-      // comment on `forceSyncScrollingOverride`) so both variants can be compared without a rebuild
-      // per variant. Read once here, at construction — this option is construction-time only,
-      // same as `frozenColumn`/`enableColumnReorder`/etc. above.
-      forceSyncScrolling: window.__kiraGridTuning?.forceSyncScrollingOverride ?? false,
+      // Real-hardware update: unconditional `true` coupled main-thread render work to every native
+      // scroll-event tick during a fling, which real-macOS testing found produces visible stutter.
+      // `false` keeps the batch cap alone. Construction-time only, like the options above.
+      forceSyncScrolling: false,
       // Display-position-correct arrows for free: the app's own onKeydown no longer needs to juggle
       // displayPositionOf/rowAtDisplayPosition (DataGrid.vue:1762-1779) because the data source
       // already indexes display positions; navigateUp/Down/Left/Right and the Enter -> edit path

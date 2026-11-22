@@ -238,8 +238,7 @@ export const MAX_NEW_CELLS_PER_RENDER = 600;
 // directly against how fast the runway converges (uncoveredPx). Literal matches
 // MAX_NEW_CELLS_PER_RENDER on purpose — i.e. behaviourally neutral, byte-identical to today's
 // emitted range — because nobody has a real-hardware number for it yet; docs/PERF.md step 4 is the
-// A/B that sets it. Same precedent as forceSyncScrollingOverride (main.ts): a dial with a
-// documented default, not a silent behaviour change. Consumed by
+// A/B that sets it. Consumed by
 // views/shared/slick/kiraSlickGrid.ts's own getRenderedRange override, step 7.
 export const MAX_NEW_LEAD_CELLS_PER_RENDER = 600;
 

@@ -152,27 +152,11 @@ declare global {
      */
     __kiraScrollTrace?: { start: () => void; stop: () => ScrollTraceResult | null };
     /**
-     * Runtime tuning for DataGrid.vue's row overscan and per-row memoisation — read from the
-     * console so the real-Mac A/B needs one build, not a rebuild per variant. `undefined` on any
-     * field means "use the compiled default".
+     * Runtime tuning of the SlickGrid scroll chase, read from the console so the real-Mac A/B needs
+     * one build, not a rebuild per variant. `undefined` on any field means "use the compiled
+     * default".
      */
     __kiraGridTuning?: {
-      /** Overrides columns.ts's LEAD_FRAMES. */
-      leadFramesOverride?: number;
-      /** Overrides columns.ts's MAX_LEAD_PX. */
-      maxLeadPxOverride?: number;
-      /** P22 iter2-scroll-gaps D2: overrides columns.ts's MAX_NEW_CELLS_PER_RENDER — the SlickGrid
-       *  engine's per-call new-cell batch cap, read fresh on every `getRenderedRange` call. */
-      maxNewCellsPerRenderOverride?: number;
-      /** Real-hardware finding: `forceSyncScrolling: true` unconditionally (SlickGridHost.vue)
-       *  coupled main-thread render work to every native scroll-event tick during a fling, which
-       *  read on real macOS hardware as visible stutter — worse than the incumbent tanstack grid's
-       *  own "content lags, motion stays smooth" gap symptom. Default flipped to `false`
-       *  (the batch cap alone) pending a real A/B on whether it is the cause; `true` restores the
-       *  old unconditional-sync behaviour. Unlike the runway overrides above
-       *  (read fresh on every call), this is a SlickGrid construction-time option — read once, at
-       *  `new KiraSlickGrid(...)`, not live thereafter. */
-      forceSyncScrollingOverride?: boolean;
       /** How long (ms) the viewport must go without a native scroll event
        *  before a self-scheduled catch-up render is allowed to run — overrides columns.ts's
        *  CHASE_QUIET_MS. Read fresh on every chase callback, never cached. `0` restores the pre-fix
@@ -180,13 +164,6 @@ declare global {
        *  (docs/PERF.md) is a console line, not a rebuild. See kiraSlickGrid.ts's own
        *  `scheduleChase` for why the gate is scroll quiescence, not a same-frame-render token. */
       chaseQuietMsOverride?: number;
-      /** A per-render cap on *runway* (beyond strictly-visible) growth,
-       *  separate from maxNewCellsPerRenderOverride above (which stays the absolute per-pass
-       *  ceiling and the floor short-circuit) — overrides columns.ts's
-       *  MAX_NEW_LEAD_CELLS_PER_RENDER. Defaulted equal to MAX_NEW_CELLS_PER_RENDER (neutral, no
-       *  behaviour change) pending a real-hardware A/B (docs/PERF.md step 4) on the
-       *  variance-vs-convergence trade lowering it makes. */
-      maxNewLeadCellsPerRenderOverride?: number;
       /** Whether the catch-up render's *per-frame* gate is on — a chase may
        *  only run when no native `scroll` event arrived between the previous animation frame and
        *  this one. It joins `chaseQuietMsOverride`'s wall-clock gate because that one alone cannot

@@ -60,20 +60,13 @@ declare global {
         };
       } | null;
     };
-    /** P22 iter2-pacing D1/D2 — runtime tuning for the SlickGrid engine's frame-pacing gate and
-     *  runway-growth cap, mirroring apps/kira-space/frontend/src/studio/main.ts's own `declare global`
+    /** Runtime tuning for the SlickGrid scroll chase, mirroring apps/kira-space/frontend/src/studio/main.ts's own `declare global`
      *  (a separate TS program, D9's own re-declaration precedent — only the fields tests/ui/ specs
      *  actually set are carried here, not the whole shape). */
     __kiraGridTuning?: {
-      leadFramesOverride?: number;
-      maxLeadPxOverride?: number;
-      maxNewCellsPerRenderOverride?: number;
-      forceSyncScrollingOverride?: boolean;
       /** P22 iter2-pacing D1: 0 restores the pre-fix "fire on the very next rAF, unconditionally"
        *  chase behaviour exactly. */
       chaseQuietMsOverride?: number;
-      /** P22 iter2-pacing D2: overrides columns.ts's MAX_NEW_LEAD_CELLS_PER_RENDER. */
-      maxNewLeadCellsPerRenderOverride?: number;
       /** P22 iter2-onset D2: `false` drops the chase's per-frame gate, leaving only the
        *  CHASE_QUIET_MS wall-clock one — i.e. the policy as shipped at a9dc570. */
       chaseFrameGateOverride?: boolean;
