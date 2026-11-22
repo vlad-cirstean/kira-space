@@ -29,6 +29,11 @@ test('agent api: request card', async ({ relaunch, consoleErrors }) => {
   await expect(card).toContainText(API_HOST);
   await expect(card.locator(t('api-approval-script-transform'))).toBeVisible();
   await expect(card.locator(t('api-approval-script-transform-formatted'))).toBeVisible();
+  await expect
+    .poll(() =>
+      card.locator(t('api-approval-script-transform')).locator('.cm-line, .view-line').count(),
+    )
+    .toBeGreaterThan(3);
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
   await shoot(win, 'build-api-request', consoleErrors);
 });
@@ -43,7 +48,9 @@ test('agent api: response review', async ({ relaunch, consoleErrors }) => {
     ]),
   });
   const card = win.locator(`[data-testid="approval-item-${item.id}"]`);
-  await expect(card.locator(t('api-review-keep'))).toBeVisible();
+  await expect(card.locator('.view-line').filter({ hasText: /^\s*file:/ })).toHaveCount(1, {
+    timeout: 15_000,
+  });
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
   await shoot(win, 'build-api-review', consoleErrors);
 });

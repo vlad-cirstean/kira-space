@@ -16,7 +16,7 @@ export const BUILD = {
   intro:
     'One task, from plan to proof, in one app. Follow a single story: export orders as a CSV file.',
   description:
-    'Plan a task on a workflow, let the agent ask your database with your approval, track branches and handover notes, review the change, and keep proof it works. Kira Space, step by step.',
+    'Plan a task on a workflow, let the agent ask your databases and APIs with your approval, track branches and handover notes, review the change, and keep proof it works. Kira Space, step by step.',
 } as const;
 
 export const BUILD_SECTIONS: readonly BuildSection[] = [
@@ -38,11 +38,18 @@ export const BUILD_SECTIONS: readonly BuildSection[] = [
   {
     anchor: 'db-prompt',
     step: 2,
-    name: 'Let the agent ask the database',
+    name: 'Let the agent ask your data',
     pitch:
-      'Agents need real data, and you need to know what they run. Kira lets the agent ask and shows you the statement first.',
-    body: 'The Studio MCP server is off by default and set per connection. A write waits in the approvals dialog with its statement and query plan. An expensive query asks for a limit exemption with the measured cost. Every call lands in the task audit trail, with the statement masked.',
-    shots: ['build-db-approval', 'build-db-statement', 'build-db-exemption', 'build-db-audit'],
+      'Agents need real data, and you need to know what they run. Kira lets the agent ask your databases and APIs and shows you each request first.',
+    body: 'The Studio MCP server is off by default and set per connection. A database write waits in the approvals dialog with its statement and query plan. An API request waits too, with its URL, its headers and its transform script, formatted. Secret values stay masked, and plain values show. You review the saved result before the agent reads it. An expensive query asks for a limit exemption with the measured cost. Every call lands in the task audit trail, with the statement masked.',
+    shots: [
+      'build-db-approval',
+      'build-db-statement',
+      'build-api-request',
+      'build-api-review',
+      'build-db-exemption',
+      'build-db-audit',
+    ],
   },
   {
     anchor: 'branches-handover',

@@ -106,6 +106,7 @@ export const SHOT_CAPTURE = {
     bottom: '[data-testid^="approval-item-kube.response"] > :last-child',
     padding: 6,
   },
+  'studio-api-variables': { kind: 'window' },
   'studio-kube-pods': { kind: 'window' },
   'studio-kube-logs': {
     kind: 'region',

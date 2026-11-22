@@ -173,6 +173,14 @@ export const SHOTS: readonly ShotDef[] = [
     label: 'Audit trail',
   },
   {
+    id: 'studio-api-variables',
+    title: 'Api variables',
+    alt: 'Kira Space Api module Variables tab: one grid with a row per variable name and a column per environment.',
+    caption: 'Variables tab. One grid of names by environments, edited in place.',
+    icon: 'table',
+    label: 'Api variables',
+  },
+  {
     id: 'studio-mcp-settings',
     title: 'Studio MCP settings',
     alt: 'Kira Space Studio MCP settings with switches for response preview, focus on approval and API requests.',
