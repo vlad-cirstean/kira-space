@@ -11,7 +11,11 @@ sidebar:
   order: 7
 ---
 
-The phone view shows the agents board on a phone: Backlog, Need You and Plan. It is off by default.
+import DocShot from '../../../../components/DocShot.astro';
+
+The phone view shows the agents board on a phone, in four tabs: Need You, Later, Plan and Activity. It is off by default.
+
+<DocShot id="phone-plan" />
 
 :::danger
 The phone view uses plain HTTP with no encryption. Anyone on the same network can read the board, the backlog and terminal output. They can also copy a phone's cookie and act as that phone. Enable it on a trusted home network only.
@@ -35,6 +39,8 @@ Device tokens expire after 30 days. Pair again after that. **Revoke** removes a 
 
 ## What a phone can do
 
+<DocShot id="phone-needs" />
+
 Each paired phone has two switches in the device list:
 
 - **Changes**: reorder the backlog, move tasks between steps, start runs.
@@ -44,9 +50,15 @@ Agent input also needs the global switch **Let phones reply to agents and contro
 
 When a phone controls a terminal, the desktop window shows **Reconnect here** to take control back.
 
+<DocShot id="phone-terminal" />
+
+Tap an agent to open its terminal. A key bar sends Esc, Tab, Ctrl and arrow keys, and the message line sends text with Enter. Font size buttons resize the text. Release gives the terminal back to the computer.
+
 Tap a link in a terminal to open it on the phone.
 
 ## Status on the phone
+
+<DocShot id="phone-activity" />
 
 The phone shows the same status as the desktop, read-only, and updates by itself:
 

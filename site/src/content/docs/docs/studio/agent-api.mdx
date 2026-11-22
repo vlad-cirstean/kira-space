@@ -1,0 +1,68 @@
+---
+title: Agent API requests
+description: Let an agent send HTTP requests through Kira Space, with your approval, saved variables and reviewed results.
+sources:
+  - apps/kira-space/internal/agentapi
+  - apps/kira-space/frontend/src/studio/approvals
+  - apps/kira-space/frontend/src/studio/kept
+  - docs/ARCHITECTURE.md
+  - packages/theme/src/i18n/en.json
+sidebar:
+  order: 7
+---
+
+import DocShot from '../../../../components/DocShot.astro';
+
+An agent on the Studio MCP server can send an HTTP request through your API environments. Each request waits for your approval unless you allow reads.
+
+## Turn it on
+
+API access is off by default. Open Settings, Studio MCP, API tools and choose the environments an agent may use.
+
+Each environment sets how requests are approved. Reads can run without a prompt, and every other method asks first. You can also limit the hosts an agent may call.
+
+An environment shares a variable with agents only when you allow it. A secret variable is shared only for the hosts you list.
+
+## The approval card
+
+<DocShot id="build-api-request" />
+
+The card shows the method, the URL, the headers, the body and the environment. Secrets stay as `{{name}}` and show masked. Saved variables are highlighted.
+
+A script on the request shows formatted. The text that runs is unchanged.
+
+When several prompts wait, they group by agent session. **Deny all** answers only the prompts of that session.
+
+## Values you type
+
+<DocShot id="studio-api-values" />
+
+An agent can name a value it needs, such as a one-time code. You type the value in the card. It goes only to the origin of that request. The agent never receives it.
+
+A value you typed earlier stays saved for a while. Open **Replace saved values** to type a new one.
+
+## Scripts
+
+A request can carry a prepare script and a transform script. Prepare runs before the request. Transform runs on the response.
+
+- `plain.name = value` saves a plain value. Later requests read it as `{{plain.name}}`.
+- `secret.name = value` saves a secret. Later requests send it as `{{secret.name}}`.
+- Scripts read plain values. They never read secrets.
+
+## Response review
+
+<DocShot id="build-api-review" />
+
+You can hold a response for review before the agent gets it. The card shows the result, the script and the values it will save.
+
+Choose **Send to AI** to release the result. Choose **Withhold** to keep it back. A script saves its values only after you send.
+
+## Saved variables
+
+<DocShot id="studio-saved-variables" />
+
+Saved variables live in memory only. They are cleared when the app quits.
+
+Each value expires after the retention you set. The range is 5 to 240 minutes, and the default is 60. The setting applies to new values only.
+
+Clear one value, or clear all, in Settings, Studio MCP, Variables.
