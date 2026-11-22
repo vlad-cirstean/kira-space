@@ -236,7 +236,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Script: apiScriptPayloadOf(c.Script),
 		}
 		if c.Operation != kubeDiscover {
-			req := kubeRequestPayloadOf(c.Request)
+			req := kubeRequestPayloadOf(c.Operation, c.Request)
 			p.Request = &req
 		}
 		if c.Script != nil {
@@ -258,7 +258,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Scripted: held.Script != nil, RawBytes: len(held.Raw), Tool: c.Tool, Changed: []string{},
 		}
 		if c.Operation != kubeDiscover {
-			req := kubeRequestPayloadOf(c.Request)
+			req := kubeRequestPayloadOf(c.Operation, c.Request)
 			p.Request = &req
 		}
 		if c.Script != nil {

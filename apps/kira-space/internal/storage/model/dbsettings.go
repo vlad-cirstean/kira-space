@@ -41,7 +41,7 @@ type DbMcpSettings struct {
 	APIScripts bool `json:"apiScripts"`
 	// APIReviewResponses holds api_request responses for the user's review; an environment can override it.
 	APIReviewResponses bool `json:"apiReviewResponses"`
-	// KubeReviewResponses holds kube_list_resources, kube_describe and kube_pod_logs results for the user's
+	// KubeReviewResponses holds kube_read list, describe and logs results for the user's
 	// review; a cluster can override it.
 	KubeReviewResponses bool `json:"kubeReviewResponses"`
 }

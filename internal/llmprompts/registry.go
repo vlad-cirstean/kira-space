@@ -946,86 +946,25 @@ var DbmcpToolAPIRequestReview = define(Entry{
 	Default:    "The user may hold the response for review before you get it (reviewResults in api_list_environments). A withheld response is an error that says the request was sent; do not resend it.",
 }, NoVars{})
 
-// DbmcpToolKubeListClusters describes the kube_list_clusters tool.
-var DbmcpToolKubeListClusters = define(Entry{
-	ID: "dbmcp.tool.kube_list_clusters", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_clusters",
-	Default: "List the Kubernetes clusters (kubeconfig contexts) exposed to MCP, with each one's description and approval mode (prompt or allow). reviewResults true: the user holds list, describe and logs results until they send them.",
-}, NoVars{})
-
-// DbmcpToolKubeReview is added to the description of every kube tool that returns cluster data.
-var DbmcpToolKubeReview = define(Entry{
-	ID: "dbmcp.tool.kube.reviewSuffix", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
-	TitleKey:   "llmPrompts.entry.dbmcpToolKubeReview.title",
-	PurposeKey: "llmPrompts.entry.dbmcpToolKubeReview.description",
-	UsedByKey:  "llmPrompts.entry.dbmcpToolKubeReview.usedBy.body",
-	Default:    "The user may hold the result for review before you get it (reviewResults in kube_list_clusters). A withheld result is an error with no data; the read ran, so do not rerun it to get the data.",
-}, NoVars{})
-
-// DbmcpToolKubeScripts is added to the description of kube_list_resources, kube_describe and kube_pod_logs while scripts are on.
-var DbmcpToolKubeScripts = define(Entry{
-	ID: "dbmcp.tool.kube.scripts", Kind: KindSuffix, Apps: studioApp, Applies: NextCall,
-	TitleKey:   "llmPrompts.entry.dbmcpToolKubeScripts.title",
-	PurposeKey: "llmPrompts.entry.dbmcpToolKubeScripts.description",
-	UsedByKey:  "llmPrompts.entry.dbmcpToolKubeScripts.usedBy.body",
-	Default:    "Optional script, JavaScript run by Kira in a sandbox: no network, files, timers or console; Date is fixed for the run and UTC; 2 s and 256 MiB. Each part is a function body that ends with return, one statement per line, 2-space indent. The user sees both. script.prepare runs before approval on the global request (your args without clusterId) and returns args that replace yours; it cannot change clusterId or the tool. Omit args prepare sets. script.transform runs after the read on the global result (what the tool returns) and request; you receive only {kind: \"script\", output: <its return value>, input: {operation, rowCount, truncated}}, never the data unless it returns it. Result input up to 8 MiB, output up to 4 MiB. Saved variables: `plain` holds the plain values your script names. `plain.name = value` saves one the user can preview; `secret.name = value` saves a secret the user reveals only behind their fingerprint (1 MiB, 16 per run); `delete plain.name` removes one; for a later kube read, api_request or run_query. Names are literal (`plain.name`, `plain[\"name\"]`); never declare your own `plain` or `secret`. Saved once the result is sent, prepare's too; you get saved: [{name, type, items, secret, expiresInSeconds}] and deleted: [names], never a value. Secrets cannot be read here.",
-}, NoVars{})
-
-// DbmcpToolKubeDiscover describes the kube_discover tool.
-var DbmcpToolKubeDiscover = define(Entry{
-	ID: "dbmcp.tool.kube_discover", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_discover",
-	Default: "List one cluster's namespaces and resource kinds. restricted: the cluster denied the namespace list; fallback is then the context's own namespace. partial: some API groups failed discovery. Pass a kind's key to kube_list_resources and kube_describe.",
-}, NoVars{})
-
-var _ = arg(DbmcpToolKubeDiscover.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-
-// DbmcpToolKubeListResources describes the kube_list_resources tool.
-var DbmcpToolKubeListResources = define(Entry{
-	ID: "dbmcp.tool.kube_list_resources", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_list_resources",
-	Default: "List one kind's objects as kubectl get columns. Namespace empty lists all namespaces. Capped at maxRows; truncated says so.",
+// DbmcpToolKubeRead describes the kube_read tool.
+var DbmcpToolKubeRead = define(Entry{
+	ID: "dbmcp.tool.kube_read", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_read",
+	Default: "Read one Kubernetes cluster. op discover: namespaces and kind keys. list: one kind's objects as kubectl get columns. describe: one object with conditions, events and manifest; secret values become byte counts. logs: last lines of one pod container, no follow.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolKubeListResources.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods or apps/v1/deployments.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "namespace", studioApp, NextCall, `Namespace to list. Omit for all namespaces.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "labelSelector", studioApp, NextCall, `Label selector, such as app=web,tier!=db. Omit for none.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "maxRows", studioApp, NextCall, `Rows to return, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 2000})
-	_ = arg(DbmcpToolKubeListResources.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (kind, namespace, labelSelector, maxRows). Return an object with any of these args to replace yours.`, NoVars{})
-	_ = arg(DbmcpToolKubeListResources.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (columns, rows [{name, namespace, cells}], rowCount, truncated) and request (the final args).`, NoVars{})
-)
-
-// DbmcpToolKubeDescribe describes the kube_describe tool.
-var DbmcpToolKubeDescribe = define(Entry{
-	ID: "dbmcp.tool.kube_describe", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_describe",
-	Default: "Describe one object: metadata, owners, conditions, events and YAML manifest. Secret values are replaced by their byte counts.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolKubeDescribe.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "kind", studioApp, NextCall, `Kind key from kube_discover, such as v1/pods.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "name", studioApp, NextCall, `Object name.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "namespace", studioApp, NextCall, `Object namespace. Omit for a cluster-scoped kind.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (kind, namespace, name). Return an object with any of these args to replace yours.`, NoVars{})
-	_ = arg(DbmcpToolKubeDescribe.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (kind, apiVersion, name, namespace, uid, created, labels, annotations, owners, conditions, containers, events, manifest, manifestTruncated) and request (the final args).`, NoVars{})
-)
-
-// DbmcpToolKubePodLogs describes the kube_pod_logs tool.
-var DbmcpToolKubePodLogs = define(Entry{
-	ID: "dbmcp.tool.kube_pod_logs", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "kube_pod_logs",
-	Default: "Read the last lines of one pod container's log, up to 256 KiB. No follow.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolKubePodLogs.id, "clusterId", studioApp, NextCall, `Cluster id from kube_list_clusters.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "namespace", studioApp, NextCall, `Pod namespace.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "pod", studioApp, NextCall, `Pod name, from kube_list_resources on v1/pods.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "container", studioApp, NextCall, `Container name. Omit when the pod has one.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "previous", studioApp, NextCall, `Read the previous container instance's log. Default false.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "timestamps", studioApp, NextCall, `Prefix each line with its timestamp. Default false.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "tail", studioApp, NextCall, `Lines from the end, 1-{{.Max}}. Default {{.Default}}.`, LimitVars{Default: 200, Max: 5000})
-	_ = arg(DbmcpToolKubePodLogs.id, "script", studioApp, NextCall, `Optional scripts Kira runs for this read. At least one of prepare or transform.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "script.prepare", studioApp, NextCall, `Function body, up to 64 KiB. Global: request (namespace, pod, container, previous, timestamps, tail). Return an object with any of these args to replace yours.`, NoVars{})
-	_ = arg(DbmcpToolKubePodLogs.id, "script.transform", studioApp, NextCall, `Function body, up to 64 KiB. Globals: result (lines [{ts, text}], truncated) and request (the final args).`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "clusterId", studioApp, NextCall, `From list.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "op", studioApp, NextCall, `What to read.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "kind", studioApp, NextCall, `Kind key from discover, such as v1/pods.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "namespace", studioApp, NextCall, `Omit for all namespaces or a cluster-scoped kind.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "name", studioApp, NextCall, `Object name; the pod for logs.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "labelSelector", studioApp, NextCall, `list: such as app=web,tier!=db.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "maxRows", studioApp, NextCall, `list: 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 200, Max: 2000})
+	_ = arg(DbmcpToolKubeRead.id, "container", studioApp, NextCall, `logs: omit when the pod has one.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "previous", studioApp, NextCall, `logs: the previous instance.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "timestamps", studioApp, NextCall, `logs: prefix timestamps.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "tail", studioApp, NextCall, `logs: 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 200, Max: 5000})
+	_ = arg(DbmcpToolKubeRead.id, "script", studioApp, NextCall, `Optional. At least one of prepare or transform.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.prepare", studioApp, NextCall, `Runs before approval on request (your args); returns args that replace yours, never clusterId or op.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on result (what op returns) and request. You get {output, input: {rowCount, truncated}}.`, NoVars{})
 )

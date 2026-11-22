@@ -7304,20 +7304,6 @@
           "body": "Added to the api_request tool description while agent scripts are on in the Studio MCP settings."
         }
       },
-      "dbmcpToolKubeReview": {
-        "description": "Tells the agent that the user may hold a cluster list, describe or logs result for review and what a withheld result means.",
-        "title": "Kubernetes result review notice",
-        "usedBy": {
-          "body": "Added to the kube_list_resources, kube_describe and kube_pod_logs tool descriptions."
-        }
-      },
-      "dbmcpToolKubeScripts": {
-        "description": "Tells the agent how to attach a prepare or transform script to a cluster read, what the sandbox allows and what it receives back.",
-        "title": "Kubernetes scripts notice",
-        "usedBy": {
-          "body": "Added to the kube_list_resources, kube_describe and kube_pod_logs tool descriptions while agent scripts are on in the Studio MCP settings."
-        }
-      },
       "dbmcpToolRunQueryScripts": {
         "description": "Tells the agent how to attach a result script to run_query, what the sandbox allows and what it receives back.",
         "title": "Query result scripts notice",

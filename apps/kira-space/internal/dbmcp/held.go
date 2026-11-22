@@ -119,7 +119,7 @@ func apiHeldCall(p agentapi.Planned) heldCall {
 	}
 }
 
-// kubeHeldCall words a held kube_list_resources, kube_describe or kube_pod_logs result. A cluster read
+// kubeHeldCall words a held kube_read list, describe or logs result. A cluster read
 // changes nothing, so the call is always a read.
 func kubeHeldCall(cluster, op string) heldCall {
 	what := fmt.Sprintf("Kubernetes %s on %q", op, cluster)

@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
-	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
@@ -41,49 +39,20 @@ const (
 	kubeLogs     = "logs"
 )
 
-type kubeClusterArgs struct {
-	ClusterID string `json:"clusterId"`
-}
-
-type kubeListArgs struct {
+// kubeReadArgs are the args of kube_read; op picks which of them apply.
+type kubeReadArgs struct {
 	ClusterID     string          `json:"clusterId"`
-	Kind          string          `json:"kind"`
+	Op            string          `json:"op"`
+	Kind          string          `json:"kind,omitempty"`
 	Namespace     string          `json:"namespace,omitempty"`
+	Name          string          `json:"name,omitempty"`
 	LabelSelector string          `json:"labelSelector,omitempty"`
 	MaxRows       int             `json:"maxRows,omitempty"`
+	Container     string          `json:"container,omitempty"`
+	Previous      bool            `json:"previous,omitempty"`
+	Timestamps    bool            `json:"timestamps,omitempty"`
+	Tail          int             `json:"tail,omitempty"`
 	Script        *kubeScriptArgs `json:"script,omitempty"`
-}
-
-type kubeDescribeArgs struct {
-	ClusterID string          `json:"clusterId"`
-	Kind      string          `json:"kind"`
-	Name      string          `json:"name"`
-	Namespace string          `json:"namespace,omitempty"`
-	Script    *kubeScriptArgs `json:"script,omitempty"`
-}
-
-type kubePodLogsArgs struct {
-	ClusterID  string          `json:"clusterId"`
-	Namespace  string          `json:"namespace"`
-	Pod        string          `json:"pod"`
-	Container  string          `json:"container,omitempty"`
-	Previous   bool            `json:"previous,omitempty"`
-	Timestamps bool            `json:"timestamps,omitempty"`
-	Tail       int             `json:"tail,omitempty"`
-	Script     *kubeScriptArgs `json:"script,omitempty"`
-}
-
-type kubeClusterView struct {
-	ID          string `json:"id"`
-	Context     string `json:"context"`
-	Cluster     string `json:"cluster"`
-	Server      string `json:"server"`
-	Namespace   string `json:"namespace"`
-	Current     bool   `json:"current"`
-	Description string `json:"description"`
-	Approval    string `json:"approval"`
-	// ReviewResults says list, describe and logs results are held for the user before the AI gets them.
-	ReviewResults bool `json:"reviewResults"`
 }
 
 type kubeKindView struct {
@@ -101,7 +70,14 @@ type kubeRowView struct {
 
 type kubeDescribeResult struct {
 	kubernetes.Description
-	ManifestTruncated bool `json:"manifestTruncated"`
+	ManifestTruncated bool   `json:"manifestTruncated,omitempty"`
+	Hint              string `json:"hint,omitempty"`
+}
+
+// kubeLogsResult is the lines of a log read, with what to do when the cap cut them.
+type kubeLogsResult struct {
+	kubernetes.LogsReadResult
+	Hint string `json:"hint,omitempty"`
 }
 
 // kubeExposed reports whether the user turned the cluster on; an off cluster is hidden, like an
@@ -158,7 +134,7 @@ func (s *Server) kubeRun(ctx context.Context, call kubeCall, statement func(kube
 	}
 	for _, key := range kubeRequired[call.op] {
 		if strings.TrimSpace(req.text(key)) == "" {
-			return errResult(key + " cannot be empty. " + kubeNothingRead)
+			return errResult(kubeNeeds(call.op) + ". " + kubeNothingRead)
 		}
 	}
 	reviewable := kubeReviewable(call.op)
@@ -277,44 +253,47 @@ func (s *Server) holdKube(ctx context.Context, req ApprovalRequest, c kubernetes
 	})
 }
 
-func (s *Server) kubeListClusters(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, any, error) {
-	res, err := s.cfg.Kube.Clusters(ctx)
-	if err != nil {
-		return toolError(err)
-	}
-	out := make([]kubeClusterView, 0, len(res.Clusters))
-	for _, c := range res.Clusters {
-		if !kubeExposed(c.Mcp) {
-			continue
+// kubeRead is the one kube tool: it checks op, then runs the read through kubeRun.
+func (s *Server) kubeRead(ctx context.Context, _ *mcp.CallToolRequest, a kubeReadArgs) (*mcp.CallToolResult, any, error) {
+	call := kubeCall{tool: "kube_read", op: a.Op, clusterID: a.ClusterID, script: a.Script}
+	switch a.Op {
+	case kubeDiscover:
+		if a.Script != nil {
+			return errResult("discover takes no script")
 		}
-		out = append(out, kubeClusterView{
-			ID: c.ID, Context: c.Context, Cluster: c.Cluster, Server: c.Server, Namespace: c.Namespace,
-			Current: c.Current, Description: c.Mcp.Description,
-			Approval: c.Mcp.Approval, ReviewResults: s.kubeReviewFor(c),
-		})
+		return s.kubeDiscoverRead(ctx, call)
+	case kubeList:
+		call.req = kubeClamp(kubeList, kubeRequest{Kind: a.Kind, Namespace: a.Namespace, LabelSelector: a.LabelSelector, MaxRows: a.MaxRows})
+		return s.kubeListRead(ctx, call)
+	case kubeDescribe:
+		call.req = kubeRequest{Kind: a.Kind, Name: a.Name, Namespace: a.Namespace}
+		return s.kubeDescribeRead(ctx, call)
+	case kubeLogs:
+		call.req = kubeClamp(kubeLogs, kubeRequest{Namespace: a.Namespace, Name: a.Name, Container: a.Container, Previous: a.Previous, Timestamps: a.Timestamps, Tail: a.Tail})
+		return s.kubeLogsRead(ctx, call)
 	}
-	return jsonResult(out)
+	return errResult(fmt.Sprintf("op must be discover, list, describe or logs, not %q", a.Op))
 }
 
-// kubeDiscoverResult is kube_discover's answer: the namespaces and the listable kinds of one cluster.
+// kubeDiscoverResult is discover's answer: the namespaces and the listable kinds of one cluster.
 type kubeDiscoverResult struct {
 	kubernetes.NamespacesResult
 	Kinds   []kubeKindView `json:"kinds"`
-	Partial bool           `json:"partial"`
+	Partial bool           `json:"partial,omitempty"`
 }
 
-// kubeDiscoverTool returns namespaces and kinds under one discover approval.
-func (s *Server) kubeDiscoverTool(ctx context.Context, _ *mcp.CallToolRequest, a kubeClusterArgs) (*mcp.CallToolResult, any, error) {
-	return s.kubeRun(ctx, kubeCall{tool: "kube_discover", op: kubeDiscover, clusterID: a.ClusterID},
+// kubeDiscoverRead returns namespaces and kinds under one discover approval.
+func (s *Server) kubeDiscoverRead(ctx context.Context, call kubeCall) (*mcp.CallToolResult, any, error) {
+	return s.kubeRun(ctx, call,
 		func(c kubernetes.Cluster, _ kubeRequest) string {
 			return kubernetes.NamespacesCommand(c.Context) + "\n" + kubernetes.KindsCommand(c.Context)
 		},
 		func(ctx context.Context, _ kubeRequest) (any, error) {
-			ns, err := s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
+			ns, err := s.cfg.Kube.Namespaces(ctx, kubernetes.ClusterArgs{ClusterID: call.clusterID})
 			if err != nil {
 				return nil, err
 			}
-			r, err := s.cfg.Kube.Kinds(ctx, kubernetes.ClusterArgs{ClusterID: a.ClusterID})
+			r, err := s.cfg.Kube.Kinds(ctx, kubernetes.ClusterArgs{ClusterID: call.clusterID})
 			if err != nil {
 				return nil, err
 			}
@@ -326,18 +305,14 @@ func (s *Server) kubeDiscoverTool(ctx context.Context, _ *mcp.CallToolRequest, a
 		})
 }
 
-func (s *Server) kubeListResources(ctx context.Context, _ *mcp.CallToolRequest, a kubeListArgs) (*mcp.CallToolResult, any, error) {
-	call := kubeCall{
-		tool: "kube_list_resources", op: kubeList, clusterID: a.ClusterID, script: a.Script,
-		req: kubeClamp(kubeList, kubeRequest{Kind: a.Kind, Namespace: a.Namespace, LabelSelector: a.LabelSelector, MaxRows: a.MaxRows}),
-	}
+func (s *Server) kubeListRead(ctx context.Context, call kubeCall) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, call,
 		func(c kubernetes.Cluster, r kubeRequest) string {
-			return kubernetes.ListCommand(c.Context, kubernetes.ListArgs{ClusterID: a.ClusterID, Kind: r.Kind, Namespace: r.Namespace, LabelSelector: r.LabelSelector})
+			return kubernetes.ListCommand(c.Context, kubernetes.ListArgs{ClusterID: call.clusterID, Kind: r.Kind, Namespace: r.Namespace, LabelSelector: r.LabelSelector})
 		},
 		func(ctx context.Context, r kubeRequest) (any, error) {
 			res, err := s.cfg.Kube.ListCapped(ctx, kubernetes.ListArgs{
-				ClusterID: a.ClusterID, Kind: r.Kind, Namespace: r.Namespace, LabelSelector: r.LabelSelector,
+				ClusterID: call.clusterID, Kind: r.Kind, Namespace: r.Namespace, LabelSelector: r.LabelSelector,
 			}, r.MaxRows)
 			if err != nil {
 				return nil, err
@@ -350,46 +325,54 @@ func (s *Server) kubeListResources(ctx context.Context, _ *mcp.CallToolRequest, 
 			for _, row := range res.Rows {
 				rows = append(rows, kubeRowView{Name: row.Name, Namespace: row.Namespace, Cells: row.Cells})
 			}
-			return map[string]any{"columns": cols, "rows": rows, "rowCount": len(rows), "truncated": res.Truncated}, nil
+			out := map[string]any{"columns": cols, "rows": rows, "rowCount": len(rows)}
+			if res.Truncated {
+				out["truncated"] = true
+				out["hint"] = fmt.Sprintf("stopped at maxRows %d: add labelSelector or namespace, or raise maxRows (max %d)", r.MaxRows, kubeListMaxRows)
+			}
+			return out, nil
 		})
 }
 
-func (s *Server) kubeDescribeTool(ctx context.Context, _ *mcp.CallToolRequest, a kubeDescribeArgs) (*mcp.CallToolResult, any, error) {
-	call := kubeCall{
-		tool: "kube_describe", op: kubeDescribe, clusterID: a.ClusterID, script: a.Script,
-		req: kubeRequest{Kind: a.Kind, Name: a.Name, Namespace: a.Namespace},
-	}
+func (s *Server) kubeDescribeRead(ctx context.Context, call kubeCall) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, call,
 		func(c kubernetes.Cluster, r kubeRequest) string {
-			return kubernetes.DescribeCommand(c.Context, kubernetes.DescribeArgs{ClusterID: a.ClusterID, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name})
+			return kubernetes.DescribeCommand(c.Context, kubernetes.DescribeArgs{ClusterID: call.clusterID, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name})
 		},
 		func(ctx context.Context, r kubeRequest) (any, error) {
 			d, err := s.cfg.Kube.Describe(ctx, kubernetes.DescribeArgs{
-				ClusterID: a.ClusterID, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name,
+				ClusterID: call.clusterID, Kind: r.Kind, Namespace: r.Namespace, Name: r.Name,
 			})
 			if err != nil {
 				return nil, err
 			}
 			res := kubeDescribeResult{Description: d}
 			res.Manifest, res.ManifestTruncated = cutLines(d.Manifest, kubeManifestMax)
+			if res.ManifestTruncated {
+				res.Hint = fmt.Sprintf("manifest cut at %d KiB: read what you need with a transform", kubeManifestMax>>10)
+			}
 			return res, nil
 		})
 }
 
-func (s *Server) kubePodLogs(ctx context.Context, _ *mcp.CallToolRequest, a kubePodLogsArgs) (*mcp.CallToolResult, any, error) {
-	call := kubeCall{
-		tool: "kube_pod_logs", op: kubeLogs, clusterID: a.ClusterID, script: a.Script,
-		req: kubeClamp(kubeLogs, kubeRequest{Namespace: a.Namespace, Pod: a.Pod, Container: a.Container, Previous: a.Previous, Timestamps: a.Timestamps, Tail: a.Tail}),
-	}
+func (s *Server) kubeLogsRead(ctx context.Context, call kubeCall) (*mcp.CallToolResult, any, error) {
 	return s.kubeRun(ctx, call,
 		func(c kubernetes.Cluster, r kubeRequest) string {
-			return kubernetes.LogsCommand(c.Context, kubernetes.LogsReadArgs{Namespace: r.Namespace, Pod: r.Pod, Container: r.Container, Previous: r.Previous, Timestamps: r.Timestamps, Tail: r.Tail}, false)
+			return kubernetes.LogsCommand(c.Context, kubernetes.LogsReadArgs{Namespace: r.Namespace, Pod: r.Name, Container: r.Container, Previous: r.Previous, Timestamps: r.Timestamps, Tail: r.Tail}, false)
 		},
 		func(ctx context.Context, r kubeRequest) (any, error) {
-			return s.cfg.Kube.ReadLogs(ctx, kubernetes.LogsReadArgs{
-				ClusterID: a.ClusterID, Namespace: r.Namespace, Pod: r.Pod, Container: r.Container,
+			res, err := s.cfg.Kube.ReadLogs(ctx, kubernetes.LogsReadArgs{
+				ClusterID: call.clusterID, Namespace: r.Namespace, Pod: r.Name, Container: r.Container,
 				Previous: r.Previous, Timestamps: r.Timestamps, Tail: r.Tail,
 			})
+			if err != nil {
+				return nil, err
+			}
+			out := kubeLogsResult{LogsReadResult: res}
+			if res.Truncated {
+				out.Hint = "log cut at the size cap: lower tail or filter with a transform"
+			}
+			return out, nil
 		})
 }
 
@@ -415,48 +398,20 @@ func cutLines(s string, max int) (string, bool) {
 	return cut, true
 }
 
-// addKubeTools registers the five read-only kube tools next to the database tools.
+// addKubeTools registers kube_read next to the database tools.
 func (s *Server) addKubeTools(srv *mcp.Server, src llmprompts.Source) {
-	desc := func(e llmprompts.Prompt[llmprompts.NoVars]) string { return e.Text(src, llmprompts.NoVars{}) }
-	scripts := s.scriptsOn()
-	// The three tools that return cluster data carry the review notice and, while scripts are on, the script one.
-	reviewed := func(e llmprompts.Prompt[llmprompts.NoVars]) string {
-		text := desc(e) + " " + desc(llmprompts.DbmcpToolKubeReview)
-		if scripts {
-			text += " " + desc(llmprompts.DbmcpToolKubeScripts)
-		}
-		return text
-	}
-	// dataSchema pins script to an object and drops it while scripts are off. A prepare can set the
-	// required args, so with scripts on they may be omitted; kubeRun enforces them on the final request.
-	dataSchema := func(op string, sch *jsonschema.Schema) *jsonschema.Schema {
-		if scripts {
-			pinScriptObject(sch)
-			sch.Required = slices.DeleteFunc(sch.Required, func(n string) bool { return slices.Contains(kubeRequired[op], n) })
-		} else {
-			delete(sch.Properties, "script")
-		}
-		return sch
+	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeReadArgs](src, llmprompts.DbmcpToolKubeRead.ID(), map[string]any{
+		"maxRows": llmprompts.LimitVars{Default: kubeListDefaultRows, Max: kubeListMaxRows},
+		"tail":    llmprompts.LimitVars{Default: kubeLogsDefaultTail, Max: kubeLogsMaxTail},
+	}), "clusterId", "op")
+	sch.Properties["op"].Enum = []any{kubeDiscover, kubeList, kubeDescribe, kubeLogs}
+	// A prepare can set any arg, so a read's own args stay optional; kubeRun checks the final request.
+	if s.scriptsOn() {
+		pinScriptObject(sch)
+	} else {
+		delete(sch.Properties, "script")
 	}
 	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_list_clusters", Description: desc(llmprompts.DbmcpToolKubeListClusters),
-	}, withPanicRecovery(s, "kube_list_clusters", s.kubeListClusters))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_discover", Description: desc(llmprompts.DbmcpToolKubeDiscover),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeClusterArgs](src, llmprompts.DbmcpToolKubeDiscover.ID(), nil), "clusterId"),
-	}, withPanicRecovery(s, "kube_discover", s.kubeDiscoverTool))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_list_resources", Description: reviewed(llmprompts.DbmcpToolKubeListResources),
-		InputSchema: dataSchema(kubeList, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeListArgs](src, llmprompts.DbmcpToolKubeListResources.ID(),
-			map[string]any{"maxRows": llmprompts.LimitVars{Default: kubeListDefaultRows, Max: kubeListMaxRows}}), "clusterId", "kind")),
-	}, withPanicRecovery(s, "kube_list_resources", s.kubeListResources))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_describe", Description: reviewed(llmprompts.DbmcpToolKubeDescribe),
-		InputSchema: dataSchema(kubeDescribe, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubeDescribeArgs](src, llmprompts.DbmcpToolKubeDescribe.ID(), nil), "clusterId", "kind", "name")),
-	}, withPanicRecovery(s, "kube_describe", s.kubeDescribeTool))
-	mcp.AddTool(srv, &mcp.Tool{
-		Name: "kube_pod_logs", Description: reviewed(llmprompts.DbmcpToolKubePodLogs),
-		InputSchema: dataSchema(kubeLogs, llmprompts.RequireNonEmpty(llmprompts.InputSchema[kubePodLogsArgs](src, llmprompts.DbmcpToolKubePodLogs.ID(),
-			map[string]any{"tail": llmprompts.LimitVars{Default: kubeLogsDefaultTail, Max: kubeLogsMaxTail}}), "clusterId", "namespace", "pod")),
-	}, withPanicRecovery(s, "kube_pod_logs", s.kubePodLogs))
+		Name: "kube_read", Description: llmprompts.DbmcpToolKubeRead.Text(src, llmprompts.NoVars{}), InputSchema: sch,
+	}, withPanicRecovery(s, "kube_read", s.kubeRead))
 }

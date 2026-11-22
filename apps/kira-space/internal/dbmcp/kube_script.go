@@ -36,9 +36,9 @@ type kubeScriptArgs struct {
 // kubeRequest is every arg a kube read takes, minus the cluster: one shape so prepare, the card, the
 // statement and the read use the same values.
 type kubeRequest struct {
-	Kind, Name, Namespace, LabelSelector, Pod, Container string
-	Previous, Timestamps                                 bool
-	Tail, MaxRows                                        int
+	Kind, Name, Namespace, LabelSelector, Container string
+	Previous, Timestamps                            bool
+	Tail, MaxRows                                   int
 }
 
 // kubeCall is one data read as the handler decoded it.
@@ -52,14 +52,25 @@ type kubeCall struct {
 var kubePrepareKeys = map[string][]string{
 	kubeList:     {"kind", "namespace", "labelSelector", "maxRows"},
 	kubeDescribe: {"kind", "namespace", "name"},
-	kubeLogs:     {"namespace", "pod", "container", "previous", "timestamps", "tail"},
+	kubeLogs:     {"namespace", "name", "container", "previous", "timestamps", "tail"},
 }
 
 // kubeRequired are the args a read cannot do without.
 var kubeRequired = map[string][]string{
 	kubeList:     {"kind"},
 	kubeDescribe: {"kind", "name"},
-	kubeLogs:     {"namespace", "pod"},
+	kubeLogs:     {"namespace", "name"},
+}
+
+// kubeNeeds is the refusal for a read missing a required arg; it names the op and the fix.
+func kubeNeeds(op string) string {
+	switch op {
+	case kubeList:
+		return "op list needs kind (a key from discover)"
+	case kubeDescribe:
+		return "op describe needs kind and name"
+	}
+	return "op logs needs namespace and name (the pod)"
 }
 
 // kubeClamp applies the tool's own limits.
@@ -77,7 +88,7 @@ func kubeClamp(op string, r kubeRequest) kubeRequest {
 func kubeFields(op string, r kubeRequest) map[string]any {
 	all := map[string]any{
 		"kind": r.Kind, "name": r.Name, "namespace": r.Namespace, "labelSelector": r.LabelSelector,
-		"pod": r.Pod, "container": r.Container, "previous": r.Previous, "timestamps": r.Timestamps,
+		"container": r.Container, "previous": r.Previous, "timestamps": r.Timestamps,
 		"tail": r.Tail, "maxRows": r.MaxRows,
 	}
 	out := make(map[string]any, len(kubePrepareKeys[op]))
@@ -97,8 +108,6 @@ func (r kubeRequest) text(key string) string {
 		return r.Namespace
 	case "labelSelector":
 		return r.LabelSelector
-	case "pod":
-		return r.Pod
 	case "container":
 		return r.Container
 	}
@@ -248,8 +257,6 @@ func setKubeField(in *kubeRequest, key string, raw json.RawMessage) error {
 			in.Namespace = v
 		case "labelSelector":
 			in.LabelSelector = v
-		case "pod":
-			in.Pod = v
 		case "container":
 			in.Container = v
 		}
@@ -259,9 +266,8 @@ func setKubeField(in *kubeRequest, key string, raw json.RawMessage) error {
 
 // kubeScriptInput describes what the transform read: metadata only, never a row or a line.
 type kubeScriptInput struct {
-	Operation string `json:"operation"`
-	RowCount  int    `json:"rowCount"`
-	Truncated bool   `json:"truncated"`
+	RowCount  int  `json:"rowCount"`
+	Truncated bool `json:"truncated"`
 }
 
 func kubeScriptInputOf(op, raw string) kubeScriptInput {
@@ -272,7 +278,7 @@ func kubeScriptInputOf(op, raw string) kubeScriptInput {
 		ManifestTruncated bool              `json:"manifestTruncated"`
 	}
 	_ = json.Unmarshal([]byte(raw), &r)
-	in := kubeScriptInput{Operation: op, Truncated: r.Truncated || r.ManifestTruncated}
+	in := kubeScriptInput{Truncated: r.Truncated || r.ManifestTruncated}
 	switch op {
 	case kubeList:
 		in.RowCount = r.RowCount
@@ -332,7 +338,6 @@ func (s *Server) transformKube(ctx context.Context, call kubeCall, req kubeReque
 
 // kubeScriptEnvelope is what the agent receives when a script ran.
 type kubeScriptEnvelope struct {
-	Kind     string          `json:"kind"`
 	Output   json.RawMessage `json:"output"`
 	Input    kubeScriptInput `json:"input"`
 	Saved    []keptSummary   `json:"saved,omitempty"`
@@ -345,7 +350,7 @@ func (o *kubeScriptOutcome) agentResult(saved []keptSummary, failed []keptFailur
 	if o.Failure != "" {
 		return errResult(o.Failure)
 	}
-	return jsonResult(kubeScriptEnvelope{Kind: "script", Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
+	return jsonResult(kubeScriptEnvelope{Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
 }
 
 // heldOf is the review entry of a scripted result: the envelope the agent gets on Send, the JSON the script
@@ -386,4 +391,16 @@ type kubeRequestPayload struct {
 	MaxRows       int    `json:"maxRows"`
 }
 
-func kubeRequestPayloadOf(r kubeRequest) kubeRequestPayload { return kubeRequestPayload(r) }
+// kubeRequestPayloadOf maps a pod's name to the payload's pod for logs, and to name for any other read.
+func kubeRequestPayloadOf(op string, r kubeRequest) kubeRequestPayload {
+	p := kubeRequestPayload{
+		Kind: r.Kind, Namespace: r.Namespace, LabelSelector: r.LabelSelector, Container: r.Container,
+		Previous: r.Previous, Timestamps: r.Timestamps, Tail: r.Tail, MaxRows: r.MaxRows,
+	}
+	if op == kubeLogs {
+		p.Pod = r.Name
+	} else {
+		p.Name = r.Name
+	}
+	return p
+}
