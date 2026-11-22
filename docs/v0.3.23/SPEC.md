@@ -34,6 +34,7 @@ before implementation starts.
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Done |
 | P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
 | P734 | Presentation site: screenshots of approvals, variables and other missing features | Todo |
+| P735 | Saved variables polish: uses/sends wording, Settings variables pane, compact request list | Todo |
 
 ## P716
 
@@ -879,5 +880,30 @@ Scope (user request).
   factual about shipped behaviour only.
 
 Deliverable. Plan `plans/P734.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P735
+
+Follow-up to P732 from the user's review of its screenshots. Planning may start now (read-only); implementation
+starts after P733 is Done and merged state is stable (shared approval files and baselines).
+
+Scope (user feedback, final).
+
+- Wording: the API approval card shows both "Uses credential {name} (hosts: ...)" and "Sends the value you type for
+  {name} (host: ...)". The user asks what the difference is: both mean a secret goes out in the request; the only
+  difference is where the value comes from (stored credential vs typed now). Planner proposes one consistent
+  phrasing and layout (for example one "Sends" list naming the variable and the host, with the source as a small
+  marker) and applies it to prompt and review cards; keep the "Uses:" chip for script variables distinct or fold it.
+- Settings > Studio MCP > Variables ("manage variables") looks bad and unlike the rest of the app: redesign with
+  the app's existing settings-pane patterns (look at sibling panes: Connections, Kubernetes, Scripts, API tools):
+  compact rows, no raw layout noise, shadcn-vue components, one row per variable with name, kind chip, source
+  (collapsed), expiry, copy/reveal/delete; Clear all as a normal action.
+- The "saved variables this request uses" box on the approval card (and the review box) takes too much space and its
+  layout is inefficient: drop useless details (byte sizes, "Text, 14 B"), put the agent session in a tooltip, one
+  tight line per variable. Same compact rows should be shared with the Settings pane where it fits.
+- Flow test plus UI spec pair per CLAUDE.md Tests where behaviour changes; refresh visual baselines once.
+
+Deliverable. Plan `plans/P735.md`, Opus-authored, then Sonnet implementation.
 
 Result. Todo.
