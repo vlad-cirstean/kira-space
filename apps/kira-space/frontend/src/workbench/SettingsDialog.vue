@@ -64,7 +64,7 @@ const sectionLabels = computed<Record<Section, string>>(() => ({
   'Studio MCP clusters': t('common.product.kubernetes.label'),
   'Studio MCP scripts': t('common.module.scripts.label'),
   'Studio MCP API': t('studio.settings.nav.studioMcpApi.label'),
-  'Studio MCP variables': t('common.module.variables.label'),
+  'Studio MCP variables': t('common.temporaryVariables.label'),
   Prompts: t('llmPrompts.nav.label'),
   Advanced: t('common.advanced.label'),
   About: t('space.settings.nav.about.label'),
