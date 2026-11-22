@@ -587,47 +587,7 @@ func (s *Store) DuplicateEnvironment(id string) (string, error) {
 	setScalar(root, "name", name)
 	var copied []string
 	stem, err := createFile(s, s.environments, EnvironmentExt, Slug(name, "environment"), func(stem string) ([]byte, error) {
-		names, referenced, err := s.secretNames()
-		if err != nil {
-			return nil, err
-		}
-		taken := map[string]bool{}
-		saved := map[string]bool{}
-		for _, n := range names {
-			taken[n], saved[n] = true, true
-		}
-		for n := range referenced {
-			taken[n] = true
-		}
-		seq := variablesSeq(root, false)
-		if seq == nil {
-			return encodeDoc(doc)
-		}
-		for _, v := range seq.Content {
-			if v.Kind != yaml.MappingNode {
-				continue
-			}
-			old := SecretNameOf(scalarOf(v, "secret"))
-			if old == "" {
-				continue
-			}
-			fresh := freeName(SecretName(stem, scalarOf(v, "name")), func(c string) bool { return taken[c] })
-			taken[fresh] = true
-			if saved[old] {
-				val, err := s.o.Secrets.Reveal(old)
-				if err != nil {
-					return nil, err
-				}
-				if err := s.o.Secrets.Put(fresh, val); err != nil {
-					return nil, fmt.Errorf("apifiles: copy secret: %w", err)
-				}
-				copied = append(copied, fresh)
-			}
-			if err := setValueKey(v, "secret", "${secret:"+fresh+"}"); err != nil {
-				return nil, err
-			}
-		}
-		return encodeDoc(doc)
+		return s.duplicateSecrets(doc, root, stem, &copied)
 	})
 	if err != nil {
 		for _, n := range copied {
@@ -636,4 +596,57 @@ func (s *Store) DuplicateEnvironment(id string) (string, error) {
 		return "", err
 	}
 	return s.environmentIDByStem(stem)
+}
+
+// duplicateSecrets gives each secret variable of the copy in root its own secret under stem, sealed with
+// the original's value, and returns the encoded document. It appends each secret it writes to copied.
+func (s *Store) duplicateSecrets(doc, root *yaml.Node, stem string, copied *[]string) ([]byte, error) {
+	names, referenced, err := s.secretNames()
+	if err != nil {
+		return nil, err
+	}
+	taken := map[string]bool{}
+	saved := map[string]bool{}
+	for _, n := range names {
+		taken[n], saved[n] = true, true
+	}
+	for n := range referenced {
+		taken[n] = true
+	}
+	seq := variablesSeq(root, false)
+	if seq == nil {
+		return encodeDoc(doc)
+	}
+	for _, v := range seq.Content {
+		if v.Kind != yaml.MappingNode {
+			continue
+		}
+		old := SecretNameOf(scalarOf(v, "secret"))
+		if old == "" {
+			continue
+		}
+		fresh := freeName(SecretName(stem, scalarOf(v, "name")), func(c string) bool { return taken[c] })
+		taken[fresh] = true
+		if saved[old] {
+			if err := s.copySecret(old, fresh); err != nil {
+				return nil, err
+			}
+			*copied = append(*copied, fresh)
+		}
+		if err := setValueKey(v, "secret", "${secret:"+fresh+"}"); err != nil {
+			return nil, err
+		}
+	}
+	return encodeDoc(doc)
+}
+
+func (s *Store) copySecret(from, to string) error {
+	val, err := s.o.Secrets.Reveal(from)
+	if err != nil {
+		return err
+	}
+	if err := s.o.Secrets.Put(to, val); err != nil {
+		return fmt.Errorf("apifiles: copy secret: %w", err)
+	}
+	return nil
 }

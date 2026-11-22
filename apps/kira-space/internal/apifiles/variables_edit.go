@@ -60,9 +60,8 @@ type editRun struct {
 	s *Store
 	// taken holds every secret name in use or queued, for freeName.
 	taken map[string]bool
-	// puts are the secret values to seal, in order; created lists the names that did not exist before.
-	puts    []secretPut
-	created []string
+	// puts are the secret values to seal, in order.
+	puts []secretPut
 	// release lists secret names a removed or unlocked variable named; each is deleted when nothing
 	// references it any more.
 	release []string
@@ -145,13 +144,7 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 		existing[name] = true
 	}
 
-	type pending struct {
-		kind, file string
-		hash       string
-		before     string
-		out        []byte
-	}
-	var writes []pending
+	var writes []pendingWrite
 	for i := 0; i < n; i++ {
 		kind, file, out, err := next(i, run)
 		if err != nil {
@@ -161,7 +154,7 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 		if err != nil {
 			return err
 		}
-		writes = append(writes, pending{kind: kind, file: file, hash: hash, before: string(src), out: out})
+		writes = append(writes, pendingWrite{kind: kind, file: file, hash: hash, before: string(src), out: out})
 	}
 
 	if len(run.puts) > 0 && !s.o.Secrets.Status().Available {
@@ -169,54 +162,16 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 	}
 	// A failed call leaves nothing behind: files already written go back to their text, a secret
 	// that existed gets its old value back, and a new one is deleted unless a file still names it.
-	var sealed []string
-	olds := map[string]string{}
-	undo := func(saved []pending, hashes []string) {
-		for i, w := range saved {
-			_, _ = s.saveLocked(w.kind, w.file, hashes[i], w.before)
-		}
-		_, referenced, err := s.secretNames()
-		if err != nil {
-			// References unknown: keep every new secret rather than drop one a file may name.
-			referenced = map[string]bool{}
-			for _, name := range sealed {
-				referenced[name] = true
-			}
-		}
-		for _, name := range sealed {
-			switch old, had := olds[name]; {
-			case had:
-				_ = s.o.Secrets.Put(name, old)
-			case !existing[name] && !referenced[name]:
-				_ = s.o.Secrets.Delete(name)
-			}
-		}
+	j := &secretJournal{s: s, existing: existing, olds: map[string]string{}}
+	if err := j.seal(run.puts); err != nil {
+		return err
 	}
-	for _, p := range run.puts {
-		if existing[p.name] {
-			if _, kept := olds[p.name]; !kept {
-				old, err := s.o.Secrets.Reveal(p.name)
-				if err != nil && !errors.Is(err, configfs.ErrSecretMissing) {
-					undo(nil, nil)
-					return fmt.Errorf("apifiles: read secret: %w", err)
-				}
-				if err == nil {
-					olds[p.name] = old
-				}
-			}
-		}
-		if err := s.o.Secrets.Put(p.name, p.value); err != nil {
-			undo(nil, nil)
-			return fmt.Errorf("apifiles: seal secret: %w", err)
-		}
-		sealed = append(sealed, p.name)
-	}
-	var saved []pending
+	var saved []pendingWrite
 	var hashes []string
 	for _, w := range writes {
 		d, err := s.saveLocked(w.kind, w.file, w.hash, string(w.out))
 		if err != nil {
-			undo(saved, hashes)
+			j.undo(saved, hashes)
 			return err
 		}
 		saved = append(saved, w)
@@ -227,6 +182,68 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 	}
 	s.pend.Config = true
 	return run.releaseUnused()
+}
+
+type pendingWrite struct {
+	kind, file string
+	hash       string
+	before     string
+	out        []byte
+}
+
+// secretJournal records the secrets one edit call sealed so a failure can roll them back.
+type secretJournal struct {
+	s        *Store
+	existing map[string]bool
+	olds     map[string]string
+	sealed   []string
+}
+
+// seal writes each put, undoing every earlier one when a write fails.
+func (j *secretJournal) seal(puts []secretPut) error {
+	for _, p := range puts {
+		if j.existing[p.name] {
+			if _, kept := j.olds[p.name]; !kept {
+				old, err := j.s.o.Secrets.Reveal(p.name)
+				if err != nil && !errors.Is(err, configfs.ErrSecretMissing) {
+					j.undo(nil, nil)
+					return fmt.Errorf("apifiles: read secret: %w", err)
+				}
+				if err == nil {
+					j.olds[p.name] = old
+				}
+			}
+		}
+		if err := j.s.o.Secrets.Put(p.name, p.value); err != nil {
+			j.undo(nil, nil)
+			return fmt.Errorf("apifiles: seal secret: %w", err)
+		}
+		j.sealed = append(j.sealed, p.name)
+	}
+	return nil
+}
+
+func (j *secretJournal) undo(saved []pendingWrite, hashes []string) {
+	s := j.s
+	for i, w := range saved {
+		_, _ = s.saveLocked(w.kind, w.file, hashes[i], w.before)
+	}
+	_, referenced, err := s.secretNames()
+	if err != nil {
+		// References unknown: keep every new secret rather than drop one a file may name.
+		referenced = map[string]bool{}
+		for _, name := range j.sealed {
+			referenced[name] = true
+		}
+	}
+	for _, name := range j.sealed {
+		switch old, had := j.olds[name]; {
+		case had:
+			_ = s.o.Secrets.Put(name, old)
+		case !j.existing[name] && !referenced[name]:
+			_ = s.o.Secrets.Delete(name)
+		}
+	}
 }
 
 func (s *Store) readLocked(kind, file string) ([]byte, string, error) {
@@ -422,73 +439,13 @@ func (r *editRun) applyOne(root *yaml.Node, stem, kind string, e VariableEdit) e
 		}
 		setScalar(v, "name", e.NewName)
 	case OpLock:
-		if scalarOf(v, "secret") != "" {
-			return nil
-		}
-		val := scalarOf(v, "value")
-		name := r.newSecretName(stem, e.Name)
-		if val != "" {
-			r.put(name, val)
-		}
-		removeKey(v, "value")
-		// A shared secret needs allowed hosts the lock cannot invent; the user shares it again.
-		removeKey(v, "agent")
-		removeKey(v, "agentHosts")
-		return setValueKey(v, "secret", "${secret:"+name+"}")
+		return r.opLock(v, stem, e)
 	case OpUnlock:
-		if !e.Confirmed {
-			return ErrUnconfirmed
-		}
-		ref := SecretNameOf(scalarOf(v, "secret"))
-		if scalarOf(v, "secret") == "" {
-			return nil
-		}
-		val := ""
-		if ref != "" {
-			got, err := r.s.o.Secrets.Reveal(ref)
-			if err != nil && !errors.Is(err, configfs.ErrSecretMissing) {
-				return err
-			}
-			val = got
-			r.release = append(r.release, ref)
-		}
-		removeKey(v, "secret")
-		// A plain shared value reaches every host; the user shares it again on purpose.
-		removeKey(v, "agent")
-		removeKey(v, "agentHosts")
-		if val != "" {
-			return setValueKey(v, "value", val)
-		}
+		return r.opUnlock(v, e)
 	case OpDescribe:
-		if e.Description == nil {
-			return invalidEdit("description is required")
-		}
-		if *e.Description == "" {
-			removeKey(v, "description")
-			return nil
-		}
-		return setValueKey(v, "description", *e.Description)
+		return opDescribe(v, e)
 	case OpShare:
-		if kind != kindEnvironment {
-			return invalidEdit("only an environment variable can be shared with agents")
-		}
-		if e.Agent == nil {
-			return invalidEdit("agent is required")
-		}
-		if !*e.Agent {
-			removeKey(v, "agent")
-			removeKey(v, "agentHosts")
-			return nil
-		}
-		if err := setValueKey(v, "agent", true); err != nil {
-			return err
-		}
-		if len(e.AgentHosts) > 0 {
-			return setValueKey(v, "agentHosts", e.AgentHosts)
-		}
-		if scalarOf(v, "secret") == "" {
-			removeKey(v, "agentHosts")
-		}
+		return opShare(v, kind, e)
 	case OpMove:
 		seq.Content = append(seq.Content[:at], seq.Content[at+1:]...)
 		to := len(seq.Content)
@@ -500,6 +457,84 @@ func (r *editRun) applyOne(root *yaml.Node, stem, kind string, e VariableEdit) e
 		seq.Content = append(seq.Content[:to], append([]*yaml.Node{v}, seq.Content[to:]...)...)
 	default:
 		return invalidEdit("op %q", e.Op)
+	}
+	return nil
+}
+
+func (r *editRun) opLock(v *yaml.Node, stem string, e VariableEdit) error {
+	if scalarOf(v, "secret") != "" {
+		return nil
+	}
+	val := scalarOf(v, "value")
+	name := r.newSecretName(stem, e.Name)
+	if val != "" {
+		r.put(name, val)
+	}
+	removeKey(v, "value")
+	// A shared secret needs allowed hosts the lock cannot invent; the user shares it again.
+	removeKey(v, "agent")
+	removeKey(v, "agentHosts")
+	return setValueKey(v, "secret", "${secret:"+name+"}")
+}
+
+func (r *editRun) opUnlock(v *yaml.Node, e VariableEdit) error {
+	if !e.Confirmed {
+		return ErrUnconfirmed
+	}
+	ref := SecretNameOf(scalarOf(v, "secret"))
+	if scalarOf(v, "secret") == "" {
+		return nil
+	}
+	val := ""
+	if ref != "" {
+		got, err := r.s.o.Secrets.Reveal(ref)
+		if err != nil && !errors.Is(err, configfs.ErrSecretMissing) {
+			return err
+		}
+		val = got
+		r.release = append(r.release, ref)
+	}
+	removeKey(v, "secret")
+	// A plain shared value reaches every host; the user shares it again on purpose.
+	removeKey(v, "agent")
+	removeKey(v, "agentHosts")
+	if val != "" {
+		return setValueKey(v, "value", val)
+	}
+	return nil
+}
+
+func opDescribe(v *yaml.Node, e VariableEdit) error {
+	if e.Description == nil {
+		return invalidEdit("description is required")
+	}
+	if *e.Description == "" {
+		removeKey(v, "description")
+		return nil
+	}
+	return setValueKey(v, "description", *e.Description)
+}
+
+func opShare(v *yaml.Node, kind string, e VariableEdit) error {
+	if kind != kindEnvironment {
+		return invalidEdit("only an environment variable can be shared with agents")
+	}
+	if e.Agent == nil {
+		return invalidEdit("agent is required")
+	}
+	if !*e.Agent {
+		removeKey(v, "agent")
+		removeKey(v, "agentHosts")
+		return nil
+	}
+	if err := setValueKey(v, "agent", true); err != nil {
+		return err
+	}
+	if len(e.AgentHosts) > 0 {
+		return setValueKey(v, "agentHosts", e.AgentHosts)
+	}
+	if scalarOf(v, "secret") == "" {
+		removeKey(v, "agentHosts")
 	}
 	return nil
 }
