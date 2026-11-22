@@ -8,7 +8,7 @@ import { t } from '@theme/i18n';
 import { ICON } from '@theme/icons';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { computed } from 'vue';
-import { indentJson } from '../beautify';
+import { beautifyJson, indentJson } from '../beautify';
 import { control } from '../bridge/control';
 import { useKeptReveal } from './useKeptReveal';
 
@@ -49,7 +49,11 @@ const line = computed(() => {
     const [first = '', ...rest] = preview.split('\n');
     return previewTruncated || rest.length ? `${first}…` : first;
   }
-  if (typeof p.value !== 'string') return JSON.stringify(p.value);
+  // Compact from the source text: re-stringifying a parsed number would round a big integer.
+  if (typeof p.value !== 'string') {
+    const r = beautifyJson(preview, 'compact');
+    return r.ok ? r.text : preview;
+  }
   const [first = '', ...rest] = p.value.split('\n');
   return rest.length ? `${first}…` : first;
 });
