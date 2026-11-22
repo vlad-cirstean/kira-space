@@ -488,7 +488,7 @@ func runClaude(t *testing.T, home string, r *spikeRun, fl spikeFlow, cfg string,
 	timer := time.AfterFunc(6*time.Minute, func() { _ = cmd.Process.Kill() })
 	runErr := cmd.Run()
 	timer.Stop()
-	if d := os.Getenv("KIRA_SPIKE_DUMP"); d != "" {
+	if d := os.Getenv("KIRA_BENCH_DUMP"); d != "" {
 		_ = os.MkdirAll(d, 0o755)
 		_ = os.WriteFile(filepath.Join(d, fmt.Sprintf("%s-%s-%s-%d%s.jsonl", fl.id, arm, model, rep, tag)), []byte(so.String()+"\n"+se.String()), 0o644)
 	}
