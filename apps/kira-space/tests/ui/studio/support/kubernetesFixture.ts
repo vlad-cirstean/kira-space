@@ -117,8 +117,9 @@ export async function setupKubernetes(
   relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
   overrides: Record<string, KubeHandler> = {},
   controlRoutes: readonly ControlSnapshot[] = [],
+  launch: Record<string, unknown> = {},
 ) {
-  const { window: page, control } = await relaunch({ control: controlRoutes });
+  const { window: page, control } = await relaunch({ ...launch, control: controlRoutes });
   const kube = await install(page, { ...defaults(), ...overrides });
   return { page, kube, control };
 }

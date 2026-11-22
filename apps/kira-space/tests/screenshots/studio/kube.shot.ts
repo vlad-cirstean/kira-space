@@ -11,7 +11,7 @@ import { seedApprovals } from '../../ui/support/approvals';
 import { IPC } from '../../ui/support/ipcChannels';
 import { emitWailsEvent } from '../../ui/support/mockRuntime';
 import { storyBoard } from '../support/buildStory';
-import { shoot } from '../support/shoot';
+import { expandApprovalsDialog, shoot } from '../support/shoot';
 import { storyKubeRead, storyKubeReview } from '../support/storyApi';
 import { ACME_KUBE, NAMESPACE, POD, POD_LOG, STAGING } from './support/acmeKube';
 
@@ -19,8 +19,7 @@ import { ACME_KUBE, NAMESPACE, POD, POD_LOG, STAGING } from './support/acmeKube'
 // Run by `bun run screenshots`; output goes to /screenshots.
 
 test('kubernetes module: pods, description and logs', async ({ relaunch, consoleErrors }) => {
-  const { page, kube } = await setupKubernetes(relaunch, ACME_KUBE, []);
-  void CAPTURE_LAUNCH;
+  const { page, kube } = await setupKubernetes(relaunch, ACME_KUBE, [], CAPTURE_LAUNCH);
   await openKubernetes(page);
   await openCluster(page, STAGING);
   await expect(
@@ -40,6 +39,8 @@ test('kubernetes module: pods, description and logs', async ({ relaunch, console
     ended: true,
   });
   await expect(loc(page, 'kube-logs-view-line')).toHaveCount(POD_LOG.length);
+  // Wider and taller than the window shot: one-row toolbars and every log line in view.
+  await page.setViewportSize({ width: 1400, height: 1000 });
   await shoot(page, 'studio-kube-logs', consoleErrors);
 });
 
@@ -53,6 +54,7 @@ plainTest('kubernetes approvals: read with a script', async ({ relaunch, console
   await expect(card).toContainText('acme-staging');
   await expect(card.locator(t('kube-approval-script-transform'))).toBeVisible();
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expandApprovalsDialog(win);
   await shoot(win, 'studio-kube-read', consoleErrors);
 });
 
@@ -60,7 +62,6 @@ plainTest('kubernetes approvals: held pod list', async ({ relaunch, consoleError
   const { item, held } = storyKubeReview();
   const { window: win } = await relaunch({
     ...TALL,
-    viewport: { width: 1024, height: 520 },
     control: storyBoard([
       ...seedApprovals([item]),
       { channel: IPC.dbMcpPendingResponse, response: held },
@@ -69,5 +70,6 @@ plainTest('kubernetes approvals: held pod list', async ({ relaunch, consoleError
   const card = win.locator(`[data-testid="approval-item-${item.id}"]`);
   await expect(card).toContainText('Read result');
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expandApprovalsDialog(win);
   await shoot(win, 'studio-kube-review', consoleErrors);
 });

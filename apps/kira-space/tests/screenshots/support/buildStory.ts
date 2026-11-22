@@ -203,7 +203,8 @@ export function storyHandoverDraft(): HandoverFx {
     toStepId: 'impl',
     toStepName: 'Implement',
     body: HANDOVER_BODIES.plan,
-    updatedAt: 1,
+    createdAt: CAPTURE_NOW - 3_600_000,
+    updatedAt: CAPTURE_NOW - 3_600_000,
   };
 }
 

@@ -10,7 +10,7 @@ import {
   storyBoard,
   storyDbAudit,
 } from '../support/buildStory';
-import { shoot } from '../support/shoot';
+import { expandApprovalsDialog, shoot } from '../support/shoot';
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -28,6 +28,8 @@ test('build db prompt: approvals', async ({ relaunch, consoleErrors }) => {
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
   await expect(dialog).toContainText('29:59');
   await shoot(win, 'build-db-approval', consoleErrors);
+  await win.setViewportSize({ width: 1024, height: 1100 });
+  await expandApprovalsDialog(win);
   await shoot(win, 'build-db-statement', consoleErrors);
   await pushApprovals(win, [exemption]);
   await expect(dialog.locator(t('db-mcp-exemption-limit'))).toBeVisible();
@@ -37,6 +39,8 @@ test('build db prompt: approvals', async ({ relaunch, consoleErrors }) => {
 test('build db prompt: audit trail', async ({ relaunch, consoleErrors }) => {
   const { window: win } = await relaunch({
     ...STORY_LAUNCH,
+    // Taller, so the crop holds whole audit entries instead of cutting one at the window edge.
+    viewport: { width: 1024, height: 1100 },
     control: storyBoard([{ channel: IPC.adeTaskDbAudit, response: { entries: storyDbAudit() } }]),
   });
   await win.locator(t('ade-plan')).waitFor();

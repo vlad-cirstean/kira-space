@@ -33,3 +33,12 @@ export async function shoot(
     consoleErrors,
   });
 }
+
+/** Lets the approvals dialog grow to its content, so a crop shows header, card and actions whole.
+ *  The app pins the dialog at 640 px and scrolls the card; call on a viewport tall enough. */
+export async function expandApprovalsDialog(page: Page): Promise<void> {
+  await page.addStyleTag({
+    content:
+      '[data-testid="approvals-dialog"]{height:auto!important;max-height:none!important}[data-testid="approvals-dialog"] *{max-height:none!important}',
+  });
+}

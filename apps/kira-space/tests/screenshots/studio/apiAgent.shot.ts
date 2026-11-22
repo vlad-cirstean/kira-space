@@ -3,7 +3,7 @@ import { expect, test } from '../../ui/fixtures';
 import { seedApprovals } from '../../ui/support/approvals';
 import { IPC } from '../../ui/support/ipcChannels';
 import { STORY, storyBoard } from '../support/buildStory';
-import { shoot } from '../support/shoot';
+import { expandApprovalsDialog, shoot } from '../support/shoot';
 import {
   API_HOST,
   storyApiRequest,
@@ -35,6 +35,7 @@ test('agent api: request card', async ({ relaunch, consoleErrors }) => {
     )
     .toBeGreaterThan(3);
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expandApprovalsDialog(win);
   await shoot(win, 'build-api-request', consoleErrors);
 });
 
@@ -52,6 +53,7 @@ test('agent api: response review', async ({ relaunch, consoleErrors }) => {
     timeout: 15_000,
   });
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expandApprovalsDialog(win);
   await shoot(win, 'build-api-review', consoleErrors);
 });
 
@@ -65,6 +67,7 @@ test('agent api: typed values', async ({ relaunch, consoleErrors }) => {
   await win.locator(t('api-input-otp')).fill('482913');
   await win.locator(t('api-approval-input-replace')).click();
   await win.clock.setFixedTime(CAPTURE_NOW + 1000);
+  await expandApprovalsDialog(win);
   await shoot(win, 'studio-api-values', consoleErrors);
 });
 
