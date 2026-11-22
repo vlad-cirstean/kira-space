@@ -8,6 +8,7 @@ import { issueCategoryTone } from '../artifacts/status';
 import { taskPatch } from '../board/panelFacts';
 import {
   useAddLink,
+  useDismissFoundLink,
   useEditLink,
   useRemoveArtifact,
   useTaskArtifacts,
@@ -35,6 +36,7 @@ export function useTaskLinks(
   const update = useUpdateTask();
   const addLink = useAddLink();
   const editLink = useEditLink();
+  const dismissFoundLink = useDismissFoundLink();
   const removeArtifact = useRemoveArtifact();
   const openView = useOpenChangeRequest();
   const openRef = useOpenHostView();
@@ -93,7 +95,7 @@ export function useTaskLinks(
       }
       return;
     }
-    if (item.origin === 'detected') return;
+    if (item.origin === 'detected' || item.origin === 'found') return;
     await editLink.mutateAsync({
       taskId,
       slot: item.origin,
@@ -117,6 +119,18 @@ export function useTaskLinks(
         text: '',
         kind,
       }),
+    );
+  }
+
+  /** Files a found link as a main link, the way a paste would: `title url`, else the url. */
+  async function promote(item: LinkItem): Promise<void> {
+    const text = item.title && item.title !== item.url ? `${item.title} ${item.url}` : item.url;
+    await surface.run(() => addLink.mutateAsync({ taskId: toValue(task).id, text }));
+  }
+
+  async function dismiss(item: LinkItem): Promise<void> {
+    await surface.run(() =>
+      dismissFoundLink.mutateAsync({ taskId: toValue(task).id, url: item.url }),
     );
   }
 
@@ -158,7 +172,19 @@ export function useTaskLinks(
     return false;
   }
 
-  return { query, groups, gaps, error: surface.error, add, commit, remove, recategorise, openLink };
+  return {
+    query,
+    groups,
+    gaps,
+    error: surface.error,
+    add,
+    commit,
+    remove,
+    recategorise,
+    promote,
+    dismiss,
+    openLink,
+  };
 }
 
 export type TaskLinks = ReturnType<typeof useTaskLinks>;

@@ -85,3 +85,31 @@ describe('linkGroups order', () => {
     expect(labels(linkGroups(task, arts), 'misc')).toEqual(['Doc']);
   });
 });
+
+describe('linkGroups related', () => {
+  const foundPr = art({
+    kind: 'changeRequest',
+    title: 'api!21',
+    url: 'https://h.test/pr/21',
+    source: 'notes',
+    foundIn: [
+      { handoverId: 'h1', state: 'note', fromStep: 'Work', toStep: '', fromTask: '', createdAt: 1 },
+    ],
+  });
+  const foundDoc = art({ kind: 'doc', title: 'Spec', url: 'https://d.test/spec', source: 'notes' });
+
+  test('E: found links land in related whatever their kind, never in main', () => {
+    const g = linkGroups(mkTask({ id: 'T' }), [userCr, foundPr, foundDoc]);
+    expect(labels(g, 'related')).toEqual(['api!21', 'Spec']);
+    expect(labels(g, 'changeRequest')).toEqual(['user CR']);
+    expect(labels(g, 'misc')).toEqual([]);
+    const item = g.find((x) => x.id === 'related')?.items[0];
+    expect(item?.origin).toBe('found');
+    expect(item?.foundIn?.[0]?.handoverId).toBe('h1');
+  });
+
+  test('F: a found link whose URL is a slot is not shown', () => {
+    const task = mkTask({ id: 'T', hostUrl: 'https://h.test/pr/21' });
+    expect(labels(linkGroups(task, [foundPr]), 'related')).toEqual([]);
+  });
+});

@@ -7,6 +7,7 @@ const SOURCE_LABEL: Record<string, MessageKey> = {
   git: 'common.module.git.label',
   agent: 'common.origin.agent.label',
   user: 'common.picker.you.label',
+  notes: 'space.ade.links.source.notes.label',
 };
 
 /** An artifact source in words; an unknown source shows as sent. */

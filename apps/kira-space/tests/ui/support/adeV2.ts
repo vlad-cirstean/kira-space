@@ -232,6 +232,7 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskAddLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskEditLink, response: { filed: 'stored', kind: 'link', artifact: null } },
     { channel: IPC.adeTaskRemoveArtifact },
+    { channel: IPC.adeTaskDismissFoundLink },
     { channel: IPC.adeTaskDetailsDiskChanges, response: [] },
     { channel: IPC.adeTaskDetailsAcceptDisk },
     { channel: IPC.adeTaskDetailsDiscardDisk },
