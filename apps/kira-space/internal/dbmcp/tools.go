@@ -120,7 +120,7 @@ func isContainerPath(summary model.ConnectionSummary, path string) bool {
 // --- run_query (§4.5) ---
 
 const (
-	runQueryDefaultMaxRows = 200
+	runQueryDefaultMaxRows = 100
 	runQueryMaxMaxRows     = 2000
 )
 

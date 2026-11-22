@@ -7290,25 +7290,11 @@
           "body": "Sent to {agent} when it connects to the Studio MCP server."
         }
       },
-      "dbmcpToolApiRequestReview": {
-        "description": "Tells the agent that the user may hold an API response for review and what a withheld response means.",
-        "title": "API response review notice",
+      "dbmcpInstructionsScripts": {
+        "description": "Tells the agent how scripts save variables and what the script sandbox allows.",
+        "title": "Studio MCP scripts instructions",
         "usedBy": {
-          "body": "Always added to the api_request tool description."
-        }
-      },
-      "dbmcpToolApiRequestScripts": {
-        "description": "Tells the agent how to attach a prepare or transform script to api_request, and what the sandbox allows.",
-        "title": "API request scripts notice",
-        "usedBy": {
-          "body": "Added to the api_request tool description while agent scripts are on in the Studio MCP settings."
-        }
-      },
-      "dbmcpToolRunQueryScripts": {
-        "description": "Tells the agent how to attach a result script to run_query, what the sandbox allows and what it receives back.",
-        "title": "Query result scripts notice",
-        "usedBy": {
-          "body": "Added to the run_query tool description while agent scripts are on in the Studio MCP settings."
+          "body": "Added to the Studio MCP instructions while agent scripts are on in the Studio MCP settings."
         }
       },
       "headlessArtifactsHeader": {

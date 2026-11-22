@@ -375,6 +375,14 @@ func (s *Server) toolSetKey() toolSetKey {
 	return toolSetKey{api: s.apiEnabled(), scripts: s.scriptsOn()}
 }
 
+// scriptsInstructions is the instructions paragraph on scripts; empty while scripts are off.
+func (s *Server) scriptsInstructions() string {
+	if !s.scriptsOn() {
+		return ""
+	}
+	return " " + llmprompts.DbmcpInstructionsScripts.Text(s.prompts(), llmprompts.NoVars{})
+}
+
 // buildMCPServer constructs the mcp.Server (§4) — pure registration, no I/O of its own;
 // every handler closes over s and calls into s.cfg.Conns/Tree/Query through access.go's gates.
 func (s *Server) buildMCPServer() *mcp.Server {
@@ -382,7 +390,7 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Name:    "kira-studio",
 		Title:   "Kira Studio",
 		Version: serverVersion,
-	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{})})
+	}, &mcp.ServerOptions{Instructions: llmprompts.DbmcpInstructions.Text(s.prompts(), llmprompts.NoVars{}) + s.scriptsInstructions()})
 
 	src := s.prompts()
 	s.addListTool(srv, src)
@@ -396,13 +404,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 		Description: llmprompts.DbmcpToolBrowseTable.Text(src, llmprompts.NoVars{}),
 		InputSchema: browseTableSchema(src),
 	}, withPanicRecovery(s, "browse_table", s.browseTable))
-	scriptNote := ""
-	if s.scriptsOn() {
-		scriptNote = " " + llmprompts.DbmcpToolRunQueryScripts.Text(src, llmprompts.NoVars{})
-	}
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "run_query",
-		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}) + scriptNote,
+		Description: llmprompts.DbmcpToolRunQuery.Text(src, llmprompts.NoVars{}),
 		InputSchema: runQuerySchema(src, s.scriptsOn()),
 	}, withPanicRecovery(s, "run_query", s.runQuery))
 	if s.cfg.Kube != nil {
