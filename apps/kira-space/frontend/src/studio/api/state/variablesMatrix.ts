@@ -1,9 +1,9 @@
-import type { ApiVariableEdit } from '@shared/domain/apiConfig';
+import type { ApiUnlockResult, ApiVariableEdit } from '@shared/domain/apiConfig';
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { queryClient } from '@workbench/state/queryClient';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { useEditVariables } from './apiQueries';
+import { editVariables, unlockVariables } from './apiQueries';
 
 /** One cell's identity: the owner file's row id and the variable name. */
 export function cellKey(ownerId: string, name: string): string {
@@ -30,10 +30,34 @@ export const useVariablesMatrixStore = defineStore('variablesMatrix', () => {
   /** Bumped to move focus to the new-row name input. */
   const newRowFocus = ref(0);
   const surface = useTaskAction({ queryClient });
-  const editMutation = useEditVariables();
 
   async function edit(edits: ApiVariableEdit[]): Promise<boolean> {
-    return surface.run(() => editMutation.mutateAsync(edits));
+    // The task thunk is the mutation's variable; it hands the edits over once so the typed secret
+    // is not kept by the last mutation of this never-unmounting store.
+    let held: ApiVariableEdit[] | null = edits;
+    return surface.run(() => {
+      const mine = held ?? [];
+      held = null;
+      return editVariables(mine);
+    });
+  }
+
+  /** Unlocks through the reveal gate: asks once unconfirmed, and when the OS cannot authenticate
+   *  asks the user via `confirm` and sends again confirmed. False when nothing was unlocked. */
+  async function unlock(
+    edits: ApiVariableEdit[],
+    confirm: () => Promise<boolean>,
+  ): Promise<boolean> {
+    let outcome = 'done' as ApiUnlockResult['outcome'];
+    const attempt = (confirmed: boolean) =>
+      surface.run(async () => {
+        outcome = await unlockVariables(edits, confirmed);
+      });
+    if (!(await attempt(false))) return false;
+    if (outcome === 'confirmation-required' && (await confirm())) {
+      if (!(await attempt(true))) return false;
+    }
+    return outcome === 'done';
   }
 
   function startEditing(key: string): void {
@@ -62,6 +86,7 @@ export const useVariablesMatrixStore = defineStore('variablesMatrix', () => {
     dismissError: surface.reset,
     fail: surface.fail,
     edit,
+    unlock,
     startEditing,
     stopEditing,
     focusCollection,

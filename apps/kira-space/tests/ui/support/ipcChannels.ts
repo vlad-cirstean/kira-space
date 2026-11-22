@@ -472,6 +472,7 @@ export const IPC = {
   apiConfigSetSecret: 'kira:apiConfig:setSecret',
   apiConfigDeleteSecret: 'kira:apiConfig:deleteSecret',
   apiConfigEditVariables: 'kira:apiConfig:editVariables',
+  apiConfigUnlockVariables: 'kira:apiConfig:unlockVariables',
   apiConfigFile: 'kira:apiConfig:file',
   apiConfigSaveFile: 'kira:apiConfig:saveFile',
   apiConfigForm: 'kira:apiConfig:form',

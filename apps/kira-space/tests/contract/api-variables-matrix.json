@@ -184,6 +184,65 @@
       "reason": null
     }
   },
+  "EditVariables#lockShared": {
+    "dir": "<space>/config/api",
+    "files": [
+      {
+        "file": "orders-api.collection.yaml",
+        "kind": "collection",
+        "lastGood": false,
+        "name": "Orders API",
+        "path": "<space>/config/api/orders-api.collection.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "local.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Local",
+        "path": "<space>/config/api/local.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging-copy.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging copy",
+        "path": "<space>/config/api/staging-copy.environment.yaml",
+        "problem": null,
+        "skipped": []
+      },
+      {
+        "file": "staging.environment.yaml",
+        "kind": "environment",
+        "lastGood": false,
+        "name": "Staging",
+        "path": "<space>/config/api/staging.environment.yaml",
+        "problem": null,
+        "skipped": []
+      }
+    ],
+    "secrets": [
+      {
+        "name": "staging-copy.token",
+        "referenced": true,
+        "set": true
+      },
+      {
+        "name": "staging.host",
+        "referenced": true,
+        "set": true
+      }
+    ],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  },
   "EditVariables#rename": {
     "dir": "<space>/config/api",
     "files": [
@@ -307,60 +366,6 @@
       "reason": null
     }
   },
-  "EditVariables#unlock": {
-    "dir": "<space>/config/api",
-    "files": [
-      {
-        "file": "orders-api.collection.yaml",
-        "kind": "collection",
-        "lastGood": false,
-        "name": "Orders API",
-        "path": "<space>/config/api/orders-api.collection.yaml",
-        "problem": null,
-        "skipped": []
-      },
-      {
-        "file": "local.environment.yaml",
-        "kind": "environment",
-        "lastGood": false,
-        "name": "Local",
-        "path": "<space>/config/api/local.environment.yaml",
-        "problem": null,
-        "skipped": []
-      },
-      {
-        "file": "staging-copy.environment.yaml",
-        "kind": "environment",
-        "lastGood": false,
-        "name": "Staging copy",
-        "path": "<space>/config/api/staging-copy.environment.yaml",
-        "problem": null,
-        "skipped": []
-      },
-      {
-        "file": "staging.environment.yaml",
-        "kind": "environment",
-        "lastGood": false,
-        "name": "Staging",
-        "path": "<space>/config/api/staging.environment.yaml",
-        "problem": null,
-        "skipped": []
-      }
-    ],
-    "secrets": [
-      {
-        "name": "staging-copy.token",
-        "referenced": true,
-        "set": true
-      }
-    ],
-    "storage": {
-      "available": true,
-      "backend": "basic_text",
-      "insecureFallback": true,
-      "reason": null
-    }
-  },
   "EditVariables#unset": {
     "dir": "<space>/config/api",
     "files": [
@@ -400,6 +405,71 @@
       "reason": null
     }
   },
+  "UnlockVariables#cancelled": {
+    "outcome": "cancelled",
+    "view": null
+  },
+  "UnlockVariables#unconfirmed": {
+    "outcome": "confirmation-required",
+    "view": null
+  },
+  "UnlockVariables#unlock": {
+    "outcome": "done",
+    "view": {
+      "dir": "<space>/config/api",
+      "files": [
+        {
+          "file": "orders-api.collection.yaml",
+          "kind": "collection",
+          "lastGood": false,
+          "name": "Orders API",
+          "path": "<space>/config/api/orders-api.collection.yaml",
+          "problem": null,
+          "skipped": []
+        },
+        {
+          "file": "local.environment.yaml",
+          "kind": "environment",
+          "lastGood": false,
+          "name": "Local",
+          "path": "<space>/config/api/local.environment.yaml",
+          "problem": null,
+          "skipped": []
+        },
+        {
+          "file": "staging-copy.environment.yaml",
+          "kind": "environment",
+          "lastGood": false,
+          "name": "Staging copy",
+          "path": "<space>/config/api/staging-copy.environment.yaml",
+          "problem": null,
+          "skipped": []
+        },
+        {
+          "file": "staging.environment.yaml",
+          "kind": "environment",
+          "lastGood": false,
+          "name": "Staging",
+          "path": "<space>/config/api/staging.environment.yaml",
+          "problem": null,
+          "skipped": []
+        }
+      ],
+      "secrets": [
+        {
+          "name": "staging-copy.token",
+          "referenced": true,
+          "set": true
+        }
+      ],
+      "storage": {
+        "available": true,
+        "backend": "basic_text",
+        "insecureFallback": true,
+        "reason": null
+      }
+    }
+  },
   "args:ApiConfigService.EditVariables#copySecret": {
     "edits": [
       {
@@ -433,6 +503,16 @@
     "edits": [
       {
         "name": "token",
+        "op": "lock",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.EditVariables#lockShared": {
+    "edits": [
+      {
+        "name": "host",
         "op": "lock",
         "ownerId": "<id:1>",
         "scope": "environment"
@@ -486,10 +566,20 @@
       }
     ]
   },
-  "args:ApiConfigService.EditVariables#unlock": {
+  "args:ApiConfigService.EditVariables#unset": {
     "edits": [
       {
-        "confirmed": true,
+        "name": "page_size",
+        "op": "unset",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.UnlockVariables#cancelled": {
+    "confirmed": true,
+    "edits": [
+      {
         "name": "token",
         "op": "unlock",
         "ownerId": "<id:1>",
@@ -497,11 +587,23 @@
       }
     ]
   },
-  "args:ApiConfigService.EditVariables#unset": {
+  "args:ApiConfigService.UnlockVariables#unconfirmed": {
+    "confirmed": false,
     "edits": [
       {
-        "name": "page_size",
-        "op": "unset",
+        "name": "token",
+        "op": "unlock",
+        "ownerId": "<id:1>",
+        "scope": "environment"
+      }
+    ]
+  },
+  "args:ApiConfigService.UnlockVariables#unlock": {
+    "confirmed": true,
+    "edits": [
+      {
+        "name": "token",
+        "op": "unlock",
         "ownerId": "<id:1>",
         "scope": "environment"
       }

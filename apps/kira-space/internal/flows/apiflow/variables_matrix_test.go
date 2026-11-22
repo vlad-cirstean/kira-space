@@ -9,6 +9,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/testx"
 )
@@ -199,17 +200,46 @@ func TestApiVariablesMatrix(t *testing.T) {
 		t.Errorf("send in the copy = %q", got)
 	}
 
-	// Unlock needs the confirmation; confirmed, the value goes back to the file as plain text and the
-	// sealed value is released.
+	// Unlock reveals the value, so it goes through the reveal gate: the plain edit call refuses it, an
+	// unconfirmed call asks for the in-app confirmation, a declined OS prompt changes nothing, and the
+	// renderer's confirmed flag counts only where the OS cannot authenticate.
 	unlock := env(staging, apifiles.OpUnlock, "token")
-	if _, err := cfg.EditVariables(bridge.ApiEditVariablesArgs{Edits: []apifiles.VariableEdit{unlock}}); testx.AsIpcErr(t, err).Code != "E_BAD_REQUEST" {
-		t.Errorf("unlock without confirmation = %v, want E_BAD_REQUEST", err)
+	if _, err := cfg.EditVariables(bridge.ApiEditVariablesArgs{Edits: []apifiles.VariableEdit{unlock}}); testx.AsIpcErr(t, err).Code != "E_CONTRACT" {
+		t.Errorf("unlock through EditVariables = %v, want E_CONTRACT", err)
 	}
-	if !strings.Contains(fileText(staging.File), "${secret:staging.token}") {
-		t.Error("a refused unlock changed the file")
+	unlockFile := func(args bridge.ApiUnlockArgs, step string) bridge.ApiUnlockResult {
+		t.Helper()
+		app.Contract(t, sc, "args:ApiConfigService.UnlockVariables#"+step, args, mask, paths)
+		res, err := cfg.UnlockVariables(args)
+		if err != nil {
+			t.Fatalf("UnlockVariables %s: %v", step, err)
+		}
+		app.Contract(t, sc, "UnlockVariables#"+step, res, mask, paths)
+		return res
 	}
-	unlock.Confirmed = true
-	edit("unlock", unlock)
+	stillLocked := func(what string) {
+		t.Helper()
+		if !strings.Contains(fileText(staging.File), "${secret:staging.token}") {
+			t.Errorf("%s changed the file", what)
+		}
+	}
+	if res := unlockFile(bridge.ApiUnlockArgs{Edits: []apifiles.VariableEdit{unlock}}, "unconfirmed"); res.Outcome != bridge.UnlockConfirmationRequired || res.View != nil {
+		t.Errorf("unlock without confirmation = %+v, want confirmation-required", res)
+	}
+	stillLocked("an unconfirmed unlock")
+	app.OSAuth.Script(true, localauth.Cancelled)
+	if res := unlockFile(bridge.ApiUnlockArgs{Edits: []apifiles.VariableEdit{unlock}, Confirmed: true}, "cancelled"); res.Outcome != bridge.UnlockCancelled {
+		t.Errorf("unlock with a declined prompt = %+v, want cancelled", res)
+	}
+	stillLocked("a declined unlock")
+	if len(app.OSAuth.Prompts) != 1 {
+		t.Errorf("OS prompts = %d, want 1: confirmed must not skip an available prompt", len(app.OSAuth.Prompts))
+	}
+	app.OSAuth.Script(false, localauth.Granted)
+	unlocked := unlockFile(bridge.ApiUnlockArgs{Edits: []apifiles.VariableEdit{unlock}, Confirmed: true}, "unlock")
+	if unlocked.Outcome != bridge.UnlockDone || unlocked.View == nil {
+		t.Fatalf("confirmed unlock = %+v, want done", unlocked)
+	}
 	text = fileText(staging.File)
 	if strings.Contains(text, "secret:") || !strings.Contains(text, "value: sealed-token-2") {
 		t.Errorf("staging file after unlock:\n%s", text)
@@ -233,6 +263,14 @@ func TestApiVariablesMatrix(t *testing.T) {
 	text = fileText(staging.File)
 	if !strings.Contains(text, "description: API root") || !strings.Contains(text, "agent: true") {
 		t.Errorf("staging file after describe and share:\n%s", text)
+	}
+
+	// Locking a variable shared with agents drops the sharing: a shared secret needs allowed hosts the
+	// lock cannot invent.
+	edit("lockShared", env(staging, apifiles.OpLock, "host"))
+	text = fileText(staging.File)
+	if !strings.Contains(text, "secret: ${secret:staging.host}") || strings.Contains(text, "agent:") {
+		t.Errorf("staging file after locking a shared variable:\n%s", text)
 	}
 
 	// A broken file is refused whole and left as it is.

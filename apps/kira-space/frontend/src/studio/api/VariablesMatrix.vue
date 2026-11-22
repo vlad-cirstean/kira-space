@@ -130,15 +130,16 @@ async function toggleLock(name: string): Promise<void> {
     await matrix.edit(holders.map((o) => edit(o, name, 'lock')));
     return;
   }
-  const ok = await confirmDialogStore.confirm({
-    title: t('studio.api.variables.unlock.confirm.title'),
-    message: t('studio.api.variables.unlock.confirm.body', { name }),
-    confirmLabel: t('studio.api.variables.row.unlock.label'),
-    tone: 'danger',
-  });
-  if (ok) {
-    await matrix.edit(holders.map((o) => ({ ...edit(o, name, 'unlock'), confirmed: true })));
-  }
+  await matrix.unlock(
+    holders.map((o) => edit(o, name, 'unlock')),
+    () =>
+      confirmDialogStore.confirm({
+        title: t('studio.api.variables.unlock.confirm.title'),
+        message: t('studio.api.variables.unlock.confirm.body', { name }),
+        confirmLabel: t('studio.api.variables.row.unlock.label'),
+        tone: 'danger',
+      }),
+  );
 }
 
 async function commitRowEdit(name: string, value: string): Promise<void> {

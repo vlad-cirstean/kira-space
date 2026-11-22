@@ -117,5 +117,10 @@ export interface ApiVariableEdit {
   agent?: boolean;
   agentHosts?: string[];
   before?: string;
-  confirmed?: boolean;
+}
+
+/** What the reveal gate decided for ApiConfigService.UnlockVariables; `view` is set on `done`. */
+export interface ApiUnlockResult {
+  outcome: 'done' | 'cancelled' | 'confirmation-required';
+  view: ApiConfigView | null;
 }

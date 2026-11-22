@@ -2665,6 +2665,9 @@
         "changed": {
           "body": "This changed while Kira saved. Retry."
         },
+        "descriptionTooLong": {
+          "body": "A description is up to 64 kilobytes and holds no null character."
+        },
         "fileBroken": {
           "body": "Kira can’t save this change. Line {line} has an error. Fix it first."
         },
@@ -2688,6 +2691,9 @@
         },
         "secretUnset": {
           "body": "Secret {name} is not set. Set it in the secrets section of the environments tab."
+        },
+        "valueTooLong": {
+          "body": "A value is up to 64 kilobytes and holds no null character."
         },
         "variableBoth": {
           "body": "The variable {name} sets both value and secret. Set one."

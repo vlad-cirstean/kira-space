@@ -15,7 +15,12 @@
 //   - Imperative code after an `await` (a mutation continuing on, send(), the reconcilers below)
 //     reads `queryClient.getQueryData(key)` or awaits a `load*()` reader — never the observer ref.
 
-import type { ApiAgentEnvironment, ApiConfigView, ApiVariableEdit } from '@shared/domain/apiConfig';
+import type {
+  ApiAgentEnvironment,
+  ApiConfigView,
+  ApiUnlockResult,
+  ApiVariableEdit,
+} from '@shared/domain/apiConfig';
 import type {
   CollectionItemSummary,
   CollectionSummary,
@@ -26,7 +31,7 @@ import { grpcSavedRequestSchema, httpSavedRequestSchema } from '@shared/domain/c
 import type { ApiEnvironment, ApiVariable, VariableScope } from '@shared/domain/variables';
 import type { ApiDataChange } from '@shared/protocol/events';
 import type { QueryKey } from '@tanstack/vue-query';
-import { useMutation, useQueries, useQuery } from '@tanstack/vue-query';
+import { useQueries, useQuery } from '@tanstack/vue-query';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { KEEP_WHILE_OPEN, queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
@@ -352,25 +357,30 @@ export function useVariableMatrix(
   return { collection, environments };
 }
 
-/** One call for any number of cell, row and column edits. Refetches the files it touched; the
- *  secret values it carried are never kept in the mutation cache. */
-export function useEditVariables() {
-  return useMutation(
-    {
-      mutationKey: ['apiConfig', 'editVariables'],
-      mutationFn: (edits: ApiVariableEdit[]) => control.apiConfigEditVariables(edits),
-      gcTime: 0,
-      onSuccess: async (view: ApiConfigView, edits: ApiVariableEdit[]) => {
-        queryClient.setQueryData(apiConfigKey, view);
-        const owners = new Map(edits.map((e) => [`${e.scope}:${e.ownerId}`, e]));
-        await Promise.all([
-          ...[...owners.values()].map((e) =>
-            refreshApiQuery(apiVariablesKey(e.scope as VariableScope, e.ownerId)),
-          ),
-          refreshApiQuery(apiAgentAccessKey),
-        ]);
-      },
-    },
-    queryClient,
-  );
+/** Refreshes what a variable edit touched: the view and the files it named. */
+async function applyEditedView(view: ApiConfigView, edits: ApiVariableEdit[]): Promise<void> {
+  queryClient.setQueryData(apiConfigKey, view);
+  const owners = new Map(edits.map((e) => [`${e.scope}:${e.ownerId}`, e]));
+  await Promise.all([
+    ...[...owners.values()].map((e) =>
+      refreshApiQuery(apiVariablesKey(e.scope as VariableScope, e.ownerId)),
+    ),
+    refreshApiQuery(apiAgentAccessKey),
+  ]);
+}
+
+/** One call for any number of cell, row and column edits. Plain calls, not a mutation: the secret
+ *  values they carry must not sit in a mutation cache entry. */
+export async function editVariables(edits: ApiVariableEdit[]): Promise<void> {
+  await applyEditedView(await control.apiConfigEditVariables(edits), edits);
+}
+
+/** Unlock goes through the reveal gate; the outcome says whether it ran. */
+export async function unlockVariables(
+  edits: ApiVariableEdit[],
+  confirmed: boolean,
+): Promise<ApiUnlockResult['outcome']> {
+  const result = await control.apiConfigUnlockVariables(edits, confirmed);
+  if (result.outcome === 'done' && result.view) await applyEditedView(result.view, edits);
+  return result.outcome;
 }

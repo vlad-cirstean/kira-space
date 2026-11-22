@@ -148,6 +148,7 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 	type pending struct {
 		kind, file string
 		hash       string
+		before     string
 		out        []byte
 	}
 	var writes []pending
@@ -156,36 +157,70 @@ func (s *Store) editVariablesLocked(n int, next func(i int, run *editRun) (kind,
 		if err != nil {
 			return err
 		}
-		_, hash, err := s.readLocked(kind, file)
+		src, hash, err := s.readLocked(kind, file)
 		if err != nil {
 			return err
 		}
-		writes = append(writes, pending{kind: kind, file: file, hash: hash, out: out})
+		writes = append(writes, pending{kind: kind, file: file, hash: hash, before: string(src), out: out})
 	}
 
 	if len(run.puts) > 0 && !s.o.Secrets.Status().Available {
 		return ErrSecretStoreOff
 	}
+	// A failed call leaves nothing behind: files already written go back to their text, a secret
+	// that existed gets its old value back, and a new one is deleted unless a file still names it.
 	var sealed []string
-	undo := func() {
+	olds := map[string]string{}
+	undo := func(saved []pending, hashes []string) {
+		for i, w := range saved {
+			_, _ = s.saveLocked(w.kind, w.file, hashes[i], w.before)
+		}
+		_, referenced, err := s.secretNames()
+		if err != nil {
+			// References unknown: keep every new secret rather than drop one a file may name.
+			referenced = map[string]bool{}
+			for _, name := range sealed {
+				referenced[name] = true
+			}
+		}
 		for _, name := range sealed {
-			if !existing[name] {
+			switch old, had := olds[name]; {
+			case had:
+				_ = s.o.Secrets.Put(name, old)
+			case !existing[name] && !referenced[name]:
 				_ = s.o.Secrets.Delete(name)
 			}
 		}
 	}
 	for _, p := range run.puts {
+		if existing[p.name] {
+			if _, kept := olds[p.name]; !kept {
+				old, err := s.o.Secrets.Reveal(p.name)
+				if err != nil && !errors.Is(err, configfs.ErrSecretMissing) {
+					undo(nil, nil)
+					return fmt.Errorf("apifiles: read secret: %w", err)
+				}
+				if err == nil {
+					olds[p.name] = old
+				}
+			}
+		}
 		if err := s.o.Secrets.Put(p.name, p.value); err != nil {
-			undo()
+			undo(nil, nil)
 			return fmt.Errorf("apifiles: seal secret: %w", err)
 		}
 		sealed = append(sealed, p.name)
 	}
+	var saved []pending
+	var hashes []string
 	for _, w := range writes {
-		if _, err := s.saveLocked(w.kind, w.file, w.hash, string(w.out)); err != nil {
-			undo()
+		d, err := s.saveLocked(w.kind, w.file, w.hash, string(w.out))
+		if err != nil {
+			undo(saved, hashes)
 			return err
 		}
+		saved = append(saved, w)
+		hashes = append(hashes, d.Hash)
 	}
 	for key := range run.owners {
 		s.pend.variables(key.Scope, key.ID)
@@ -396,6 +431,9 @@ func (r *editRun) applyOne(root *yaml.Node, stem, kind string, e VariableEdit) e
 			r.put(name, val)
 		}
 		removeKey(v, "value")
+		// A shared secret needs allowed hosts the lock cannot invent; the user shares it again.
+		removeKey(v, "agent")
+		removeKey(v, "agentHosts")
 		return setValueKey(v, "secret", "${secret:"+name+"}")
 	case OpUnlock:
 		if !e.Confirmed {

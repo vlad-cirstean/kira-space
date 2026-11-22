@@ -22,6 +22,8 @@ const NOW = '2026-01-01T00:00:00Z';
 
 const args = (step: string) => contract(KEY, `args:ApiConfigService.EditVariables#${step}`);
 const view = (step: string) => contract(KEY, `EditVariables#${step}`);
+const unlockArgs = (step: string) => contract(KEY, `args:ApiConfigService.UnlockVariables#${step}`);
+const unlockResult = (step: string) => contract(KEY, `UnlockVariables#${step}`);
 
 const TREE = {
   collections: [
@@ -155,15 +157,47 @@ test('an unset secret cell takes a value, sealed by the backend', async ({ relau
   await expect.poll(() => edits(control)).toEqual([args('setSecret')]);
 });
 
-test('unlock asks first, then sends confirmed', async ({ relaunch }) => {
-  const { window: page, control } = await open(
-    relaunch,
-    { staging: [row('environment', STAGING, 'token', { isSecret: true, secretSet: true })] },
-    [{ channel: IPC.apiConfigEditVariables, args: args('unlock'), response: view('unlock') }],
-  );
+const unlocks = (control: Parameters<typeof calls>[0]) =>
+  calls(control, IPC.apiConfigUnlockVariables).map((c) => c.args);
+
+const UNLOCK_STAGING = {
+  staging: [row('environment', STAGING, 'token', { isSecret: true, secretSet: true })],
+};
+
+test('unlock goes through the reveal gate: unconfirmed first, then the in-app confirmation', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await open(relaunch, UNLOCK_STAGING, [
+    {
+      channel: IPC.apiConfigUnlockVariables,
+      args: unlockArgs('unconfirmed'),
+      response: unlockResult('unconfirmed'),
+    },
+    {
+      channel: IPC.apiConfigUnlockVariables,
+      args: unlockArgs('unlock'),
+      response: unlockResult('unlock'),
+    },
+  ]);
   await page.click('[data-testid="matrix-secret-token"]');
   await acceptConfirm(page);
-  await expect.poll(() => edits(control)).toEqual([args('unlock')]);
+  await expect
+    .poll(() => unlocks(control))
+    .toEqual([unlockArgs('unconfirmed'), unlockArgs('unlock')]);
+  expect(edits(control)).toEqual([]);
+});
+
+test('unlock stops when the OS prompt is declined', async ({ relaunch }) => {
+  const { window: page, control } = await open(relaunch, UNLOCK_STAGING, [
+    {
+      channel: IPC.apiConfigUnlockVariables,
+      args: unlockArgs('unconfirmed'),
+      response: unlockResult('cancelled'),
+    },
+  ]);
+  await page.click('[data-testid="matrix-secret-token"]');
+  await expect.poll(() => unlocks(control)).toEqual([unlockArgs('unconfirmed')]);
+  await expect(page.locator('[data-testid="confirm-dialog"]')).toHaveCount(0);
 });
 
 test('rename renames the name in every file, then offers Find usages', async ({ relaunch }) => {
