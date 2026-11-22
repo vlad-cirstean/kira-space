@@ -277,6 +277,17 @@ func (s *Store) Get(scope, name string) (Entry, bool) {
 	return it.entry(), true
 }
 
+// Meta is Get without the value: it copies nothing, for checks that need only the flags and id.
+func (s *Store) Meta(scope, name string) (Meta, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	it := s.byScope[scope][name]
+	if !s.live(it) {
+		return Meta{}, false
+	}
+	return it.meta, true
+}
+
 // ByID returns the live entry with that id.
 func (s *Store) ByID(id string) (Entry, bool) {
 	s.mu.Lock()

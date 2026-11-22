@@ -109,14 +109,19 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) 
 	return k, ""
 }
 
-// refuseSecretReads is the refusal text for a script that reads a temporary secret (as plain.x or secret.x), or writes a
-// name as the other kind than it is set as. "" is ok. Secrets are used in api_request as {{secret.x}}.
+// refuseSecretReads is the refusal text for a script that reads or deletes a temporary secret (as plain.x or
+// secret.x; delete secret.x is refused whether or not it is stored), or writes a name as the other kind than it is set as. "" is ok. Secrets are used in api_request as {{secret.x}}.
 func (k *keptRun) refuseSecretReads(tool string) string {
 	for _, stage := range scriptStages {
 		for _, st := range k.sites[stage] {
-			e, ok := k.lookup(st.Name)
+			if st.Kind == keptvars.KindSecret && st.Op == keptvars.OpDelete {
+				return fmt.Sprintf("secret.%s cannot be deleted: a script cannot delete a temporary secret. Remove the delete.", st.Name)
+			}
+			e, ok := k.lookupMeta(st.Name)
 			switch {
 			case !ok:
+			case st.Kind == keptvars.KindPlain && e.Secret && st.Op == keptvars.OpDelete:
+				return fmt.Sprintf("%q is secret; a script cannot delete a temporary secret. Remove the delete.", st.Name)
 			case st.Kind == keptvars.KindPlain && e.Secret && st.Op == keptvars.OpWrite:
 				return clashText(st.Name, true)
 			case st.Kind == keptvars.KindPlain && e.Secret && tool == "api_request":
@@ -171,6 +176,14 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 	}
 	u.Preview, u.PreviewTruncated = keptvars.Preview(e.Value, keptvars.PreviewBytes)
 	k.uses = append(k.uses, u)
+}
+
+// lookupMeta is lookup without copying the value, for checks that need the flags and id only.
+func (k *keptRun) lookupMeta(name string) (keptvars.Meta, bool) {
+	if keptvars.ValidName(name) != nil {
+		return keptvars.Meta{}, false
+	}
+	return k.store.Meta(k.scope, name)
 }
 
 func (k *keptRun) lookup(name string) (keptvars.Entry, bool) {
@@ -301,7 +314,7 @@ func (k *keptRun) checkSites(stage scriptStage, ch scriptChanges) string {
 		if !k.hasSite(stage, w.kind, w.name, keptvars.OpWrite) {
 			return fmt.Sprintf("%s.%s is not written literally in the script; write %s.%s = … so the user sees it.", w.kind, w.name, w.kind, w.name)
 		}
-		if e, ok := k.lookup(w.name); ok && e.Secret != (w.kind == keptvars.KindSecret) {
+		if e, ok := k.lookupMeta(w.name); ok && e.Secret != (w.kind == keptvars.KindSecret) {
 			return clashText(w.name, e.Secret)
 		}
 	}

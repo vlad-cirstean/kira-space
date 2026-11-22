@@ -12,6 +12,8 @@ import (
 // KeptStore is dbmcp's view of the kept variable store: *keptvars.Store.
 type KeptStore interface {
 	agentapi.KeptReader
+	// Meta is a live entry's metadata without its value.
+	Meta(scope, name string) (keptvars.Meta, bool)
 	List(scope string) []keptvars.Meta
 	// Put stores a value a script kept, after the response is final.
 	Put(p keptvars.Put) (keptvars.Meta, error)

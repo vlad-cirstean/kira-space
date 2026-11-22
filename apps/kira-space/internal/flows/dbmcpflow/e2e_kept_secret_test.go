@@ -191,6 +191,20 @@ func TestE2EKeptSecret(t *testing.T) {
 		}
 	})
 
+	t.Run("a script cannot delete a secret", func(t *testing.T) {
+		sent := len(srv.Requests())
+		for src, want := range map[string]string{
+			`delete secret.session_token; return request;`: "secret.session_token cannot be deleted",
+			`delete plain.session_token; return request;`:  `"session_token" is secret; a script cannot delete a temporary secret`,
+		} {
+			res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", map[string]any{"prepare": src}))
+			remember(text(res))
+			if !res.IsError || !strings.Contains(text(res), want) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
+				t.Fatalf("%s: result = %q, queue %d, want a refusal naming %q", src, text(res), f.queueLen(t), want)
+			}
+		}
+	})
+
 	t.Run("Settings lists the kinds", func(t *testing.T) {
 		list, err := f.app.W.KeptVars.List()
 		if err != nil {
