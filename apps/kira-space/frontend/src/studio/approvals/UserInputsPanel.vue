@@ -9,16 +9,16 @@ import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '../../state/settings';
 
-// The values the agent asked the person to type: one row each (label, masked field). Rows share one
+// The values the agent asked the person to type: one row each (name, masked field). Rows share one
 // grid, so the fields line up whatever the label. Every typed value is kept; one line under the rows
-// says for how long and opens the retention setting. Needed ones block Send; a stored one (held from
-// an earlier answer, same origin) may be replaced. A typed value lives only in the approvals store
+// says for how long and opens the retention setting. Needed ones block Send; stored ones (held from
+// an earlier answer, same origin) sit in one collapsed box and may be replaced. A typed value lives only in the approvals store
 // until the answer goes out.
 const props = defineProps<{ itemId: string; inputs: readonly ApiInput[] }>();
 
-// Trigger spans the row; the content joins the panel grid so its field lines up with the others.
-const STORED_ROW =
-  'col-span-full grid grid-cols-subgrid [&>[data-slot=collapsible-trigger]]:col-span-full [&>[data-slot=collapsible-content]]:col-span-full [&>[data-slot=collapsible-content]]:grid [&>[data-slot=collapsible-content]]:grid-cols-subgrid [&>[data-slot=collapsible-content]]:items-center';
+// Trigger spans the box; the content joins the panel grid so every field lines up with the needed ones.
+const STORED_BOX =
+  'col-span-full grid grid-cols-subgrid [&>[data-slot=collapsible-trigger]]:col-span-full [&>[data-slot=collapsible-content]]:col-span-full [&>[data-slot=collapsible-content]]:grid [&>[data-slot=collapsible-content]]:grid-cols-subgrid [&>[data-slot=collapsible-content]]:gap-y-2';
 
 const store = useApprovalsStore();
 const settings = useSettingsStore();
@@ -63,22 +63,30 @@ const fieldId = (name: string): string => `api-input-${props.itemId}-${name}`;
       />
     </div>
     <Disclosure
-      v-for="i in stored"
-      :key="i.name"
+      v-if="stored.length"
       meta
-      :class="STORED_ROW"
-      :label="t('studio.kept.input.replace.label', { label: i.name })"
-      :data-testid="`api-approval-input-replace-${i.name}`"
+      :class="STORED_BOX"
+      :label="t('studio.kept.input.replace.label', { count: stored.length })"
+      data-testid="api-approval-input-replace"
     >
-      <span aria-hidden="true" />
-      <SecretInput
-        :id="fieldId(i.name)"
-        class="min-w-0"
-        :model-value="typed(i.name)"
-        :aria-label="i.name"
-        :data-testid="`api-input-${i.name}`"
-        @update:model-value="(v: string) => onType(i.name, v)"
-      />
+      <div
+        v-for="i in stored"
+        :key="i.name"
+        class="col-span-full grid grid-cols-subgrid items-center"
+        :data-testid="`api-approval-input-${i.name}`"
+      >
+        <FieldLabel :for="fieldId(i.name)" class="max-w-48 break-words font-data">{{
+          i.name
+        }}</FieldLabel>
+        <SecretInput
+          :id="fieldId(i.name)"
+          class="min-w-0"
+          :model-value="typed(i.name)"
+          :placeholder="t('studio.kept.input.replace.placeholder')"
+          :data-testid="`api-input-${i.name}`"
+          @update:model-value="(v: string) => onType(i.name, v)"
+        />
+      </div>
     </Disclosure>
     <FieldDescription class="col-span-full">
       <Button

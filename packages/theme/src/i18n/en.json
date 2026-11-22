@@ -15789,7 +15789,8 @@
           "label": "Saved for {minutes} min"
         },
         "replace": {
-          "label": "Enter a new value: {label}"
+          "label": "Replace saved values ({count})",
+          "placeholder": "Type to replace; leave empty to keep"
         }
       },
       "kind": {
