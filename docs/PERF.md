@@ -365,8 +365,8 @@ asserted.
 the protocol above.** Once the wheel-handler fix (above) restored genuinely native trackpad momentum,
 a real-Mac run of this same protocol surfaced two further symptoms on very fast flicks: brief
 rendering gaps at the leading edge (content not yet painted where the compositor already scrolled to)
-and occasional dropped frames. Doubling `leadFramesOverride`/`maxLeadPxOverride` live from the
-console (since removed) — the first, most obvious lever — made no difference, which is itself a real finding: those
+and occasional dropped frames. Doubling `LEAD_FRAMES`/`MAX_LEAD_PX` live from the
+console (via temporary knobs `leadFramesOverride`/`maxLeadPxOverride`, removed in P729) — the first, most obvious lever — made no difference, which is itself a real finding: those
 two overrides govern how *wide* the target window is, not how much of that window's *newly-entering*
 portion a single synchronous SlickGrid `render()` call is allowed to build, and a fling landing in
 never-before-mounted territory has no `rowsCache` overlap either way — doubling the runway only
@@ -387,8 +387,8 @@ boundary unrelated to the display's own frame cadence.
 **The fix** (landed as four commits, `docs/HISTORY.md (v1.1 P22)`
 §5-§6): `KiraSlickGrid.getRenderedRange` now always returns the strictly-visible range in full — nothing
 on screen is ever deferred — and caps the *extra* runway per call at `MAX_NEW_CELLS_PER_RENDER = 600`
-cells (`columns.ts`, provisional like `LEAD_FRAMES`/`MAX_LEAD_PX`, overridable live via
-`maxNewCellsPerRenderOverride` until P729), independent of `CELL_BUDGET`'s total-window
+cells (`columns.ts`, provisional like `LEAD_FRAMES`/`MAX_LEAD_PX`; tuned with a temporary
+`maxNewCellsPerRenderOverride` knob, removed in P729), independent of `CELL_BUDGET`'s total-window
 cap. When the velocity-scaled target exceeds what the per-call budget allows, the shortfall is made up
 by a self-scheduled `requestAnimationFrame`-chained `render()` that converges on the full target over a
 handful of frames — turning "synchronous cost proportional to how far the fling jumped" into
