@@ -13292,11 +13292,11 @@
           "title": "No variables yet"
         },
         "footer": {
-          "counts": {
-            "status": "{variables} variables, {environments} environments"
+          "environments": {
+            "label": "{count} environment | {count} environments"
           },
           "missing": {
-            "status": "{count} values missing"
+            "status": "{count} value missing | {count} values missing"
           },
           "saved": {
             "hint": "Edits save to the files as you make them."
