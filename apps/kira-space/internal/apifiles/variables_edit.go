@@ -453,6 +453,8 @@ func (r *editRun) applyOne(root *yaml.Node, stem, kind string, e VariableEdit) e
 			r.release = append(r.release, ref)
 		}
 		removeKey(v, "secret")
+		// A plain shared value reaches every host; the user shares it again on purpose.
+		removeKey(v, "agent")
 		removeKey(v, "agentHosts")
 		if val != "" {
 			return setValueKey(v, "value", val)

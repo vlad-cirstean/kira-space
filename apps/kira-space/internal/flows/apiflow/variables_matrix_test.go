@@ -273,6 +273,35 @@ func TestApiVariablesMatrix(t *testing.T) {
 		t.Errorf("staging file after locking a shared variable:\n%s", text)
 	}
 
+	// Unlocking a secret shared with agents drops the sharing too: a plain shared value would reach
+	// every host, not only the allowed ones.
+	hostShare := env(staging, apifiles.OpShare, "host")
+	hostShare.Agent = ptr(true)
+	hostShare.AgentHosts = []string{"api.example.com"}
+	edit("shareSecret", hostShare)
+	if !strings.Contains(fileText(staging.File), "agentHosts:") {
+		t.Fatalf("staging file after sharing a secret:\n%s", fileText(staging.File))
+	}
+	app.OSAuth.Script(false, localauth.Granted)
+	if res := unlockFile(bridge.ApiUnlockArgs{Edits: []apifiles.VariableEdit{env(staging, apifiles.OpUnlock, "host")}, Confirmed: true}, "unlockShared"); res.Outcome != bridge.UnlockDone {
+		t.Fatalf("unlock of a shared secret = %+v, want done", res)
+	}
+	text = fileText(staging.File)
+	if strings.Contains(text, "agent:") || strings.Contains(text, "agentHosts:") {
+		t.Errorf("staging file after unlocking a shared secret:\n%s", text)
+	}
+	if envs, err := cfg.AgentAccess(); err != nil {
+		t.Fatal(err)
+	} else {
+		for _, e := range envs {
+			for _, v := range e.Variables {
+				if e.ID == staging.ID && v.Name == "host" {
+					t.Errorf("unlocked secret is still listed for agents: %+v", v)
+				}
+			}
+		}
+	}
+
 	// A broken file is refused whole and left as it is.
 	broken := "name: Local\nvariables:\n  - name: a\n    value: 1\n    secret: ${secret:x}\n"
 	app.WriteAPIFile(t, local.File, []byte(broken))
