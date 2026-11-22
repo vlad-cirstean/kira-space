@@ -29,6 +29,8 @@ before implementation starts.
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 | P728 | Approval prompts and scripts rework | Todo |
 | P729 | Removals, Variables tab and kube result views | Todo |
+| P730 | Switch, checkbox and radio on-state style | Todo |
+| P731 | Auto-extracted task links from notes and handovers | Todo |
 
 ## P716
 
@@ -739,5 +741,55 @@ Scope.
 - Refresh affected visual baselines. Flow and UI spec pairs where behaviour changes.
 
 Deliverable. Plan `plans/P729.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P730
+
+Runs after P728 and P729 land (they regenerate overlapping baselines); plan against the merged tree.
+
+Scope (user-approved from visual mock "M2").
+
+- Planner first lists every use of the `--kira-on` family with file:line, before changing anything.
+- Shared on-state look for switch, checkbox and radio (`packages/theme`: `--kira-on` and
+  `--kira-on-fg` tokens or new tokens, `Switch.vue`, `Checkbox.vue`, `RadioGroupItem.vue`):
+  - on: dark fill `#33333a`, light-grey border `#c4c4cc`, bright mark, knob and dot `#f4f4f5`;
+  - off: field fill, dark edge `#3e3e45`, dim knob `#6b6b73`.
+- Planner checks these values against existing tokens and contrast, and that a checked control with
+  keyboard focus (`--kira-focus` `#a1a1aa`) stays distinguishable.
+- Progress bar fill (`Progress.vue`, uses `bg-on` today) gets softer light grey `#b4b4bc`, not the
+  dark fill (unreadable on its track).
+- Not touched: segmented choices ("Ask me first / Read straight away" style); blue accent
+  (`--kira-accent`: primary and dialog-primary buttons, links); grey focus and selection tokens.
+- Regenerate every affected visual baseline once, locally, full `visual` project.
+
+Deliverable. Plan `plans/P730.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P731
+
+Stream C: independent of P728, P729, P730; runs parallel in its own worktree. Shared files (i18n
+catalogs, SPEC.md, docs) are listed in the plan's ownership table.
+
+Scope (user request).
+
+- Links found automatically in a task's notes and in its handovers are extracted and attached to the
+  task.
+- Link classes: a link the user provides manually (at task creation or added later) or the AI adds
+  is in the main category (related to the task, as today). Every automatically found link cannot be
+  classified, so it is added in the "related" category only, never promoted automatically.
+- Planner decides, after reading the current link model (`useTaskLinks.ts`, Go link/ADE task code,
+  `repos/adehandover.go`, ADE notes):
+  - where extraction runs (backend preferred);
+  - URL detection rules and recognised URL kinds;
+  - de-duplication against existing links (a URL already present as main stays main);
+  - behaviour on note/handover edit or delete (remove stale auto links vs keep);
+  - how auto links are marked in the UI;
+  - limits;
+  - security: only extract, never fetch.
+- Flow test plus UI spec pair per CLAUDE.md Tests.
+
+Deliverable. Plan `plans/P731.md`, Opus-authored, then Sonnet implementation.
 
 Result. Todo.
