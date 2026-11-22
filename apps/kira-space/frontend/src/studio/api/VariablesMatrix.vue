@@ -58,6 +58,18 @@ const columns = computed<MatrixOwner[]>(() =>
 );
 const activeId = computed(() => variablesStore.activeEnvironmentId);
 
+// Each environment column keeps at least this width; the grid scrolls sideways past it.
+const NAME_COL_REM = 14;
+const ENV_COL_MIN_REM = 11;
+const MENU_COL_REM = 2.5;
+const tableMinWidth = computed(
+  () => `${NAME_COL_REM + columns.value.length * ENV_COL_MIN_REM + MENU_COL_REM}rem`,
+);
+// Name column pinned while the rest scrolls: opaque fill, divider as a pseudo-element because
+// border-collapse drops a sticky cell's border.
+const pinnedName =
+  'sticky left-0 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border';
+
 // Where a new row's value lands: the active environment's column when shown, else the first column.
 const target = computed<MatrixOwner | null>(
   () => columns.value.find((c) => c.isActive) ?? columns.value[0] ?? null,
@@ -295,14 +307,25 @@ function onCellKeydown(e: KeyboardEvent): void {
       :model-value="activeId"
       @update:model-value="(id) => variablesStore.setActiveEnvironment(String(id))"
     >
-      <Table columns class="min-w-max" :aria-label="t('studio.api.variables.grid.aria')">
+      <Table
+        columns
+        class="table-fixed"
+        :style="{ minWidth: tableMinWidth }"
+        :aria-label="t('studio.api.variables.grid.aria')"
+      >
+        <colgroup>
+          <col class="w-56">
+          <col v-for="col in columns" :key="col.id">
+          <col class="w-10">
+        </colgroup>
         <TableHeader>
           <TableRow>
-            <TableHead class="w-56">{{ t('common.field.name.label') }}</TableHead>
+            <TableHead :class="[pinnedName, 'z-2 bg-elevated']">{{
+              t('common.field.name.label')
+            }}</TableHead>
             <TableHead
               v-for="col in columns"
               :key="col.id"
-              class="min-w-44"
               :data-testid="`matrix-col-${col.id}`"
               :data-broken="col.broken || undefined"
             >
@@ -362,12 +385,16 @@ function onCellKeydown(e: KeyboardEvent): void {
           <TableRow
             v-for="(name, r) in model.names.value"
             :key="name"
+            class="group/row"
             :data-testid="`matrix-row-${name}`"
             :data-lock="model.lockOf(name)"
           >
             <TableCell
               tabindex="0"
-              class="group/name focus-visible:focus-ring"
+              :class="[
+                pinnedName,
+                'z-1 group/name bg-bg group-hover/row:bg-field focus-visible:focus-ring',
+              ]"
               :data-testid="`matrix-name-${name}`"
               :data-name="name"
               :data-pos="`${r}:0`"
@@ -457,7 +484,7 @@ function onCellKeydown(e: KeyboardEvent): void {
             </TableCell>
           </TableRow>
           <TableRow class="hover:bg-transparent">
-            <TableCell>
+            <TableCell :class="[pinnedName, 'z-1 bg-bg']">
               <Input
                 ref="newNameInput"
                 v-model="newName"

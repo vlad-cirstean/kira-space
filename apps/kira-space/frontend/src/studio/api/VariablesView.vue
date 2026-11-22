@@ -285,9 +285,13 @@ function findUsages(): void {
         data-testid="matrix-footer"
       >
         <span data-testid="matrix-footer-counts">{{
-          t('studio.api.variables.footer.counts.status', {
-            variables: model.allNames.value.length,
-            environments: model.envOwners.value.length,
+          t('common.commaPair.label', {
+            first: t('studio.api.importReport.variables.label', {
+              count: model.allNames.value.length,
+            }),
+            second: t('studio.api.variables.footer.environments.label', {
+              count: model.envOwners.value.length,
+            }),
           })
         }}</span>
         <span

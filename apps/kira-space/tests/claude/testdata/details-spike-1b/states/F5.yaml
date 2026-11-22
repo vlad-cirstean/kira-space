@@ -1,9 +1,0 @@
-# Read-only. Kira rewrites this file. Change state only with Kira tools: branches, lease, cancel_operation, finish_step.
-rev: 7
-task: {id: t-1, kind: task, status: running, step: {id: implement, name: Implement, position: 3, of: 4}, workflow: default}
-repos:
-  - {repo: app, branches: [{name: feature/x, worktree: __WT__, setup: {state: running, note: installing dependencies}}]}
-leases: []
-operations: []
-runs: []
-pending: []

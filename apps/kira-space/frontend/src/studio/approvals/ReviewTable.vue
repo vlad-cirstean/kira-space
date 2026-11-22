@@ -18,10 +18,12 @@ import { useResizeObserver } from '@vueuse/core';
 import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import { useRowHeight } from '@workbench/lib/rowHeight';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { measureTextColumns } from '../views/shared/page/columns';
 
 // A held result as a grid, every row: click expands a row in place, its handle resizes it, a cell opens a
-// popover with Copy. Rows are virtualized. Whatever the MCP, the grid shows cells verbatim.
+// popover with Copy. Rows are virtualized. Whatever the MCP, the grid shows cells verbatim. Columns
+// start at their content width (capped), a header handle resizes one, and the table fills the width.
 interface ReviewColumn {
   label: string;
   title?: string;
@@ -34,6 +36,56 @@ const props = defineProps<{
   testid: string;
   maskHint?: string;
 }>();
+
+const MIN_COL = 64;
+const MAX_COL = 360;
+const MAX_RESIZED_COL = 1200;
+const CHEVRON_PX = 24;
+
+// Content widths: header plus the first rows. Re-measured when the result changes and once the fonts
+// are in, since the canvas measures with whatever font is loaded.
+const measured = ref<number[]>([]);
+function measure(): void {
+  measured.value = measureTextColumns(
+    props.columns.map((col) => col.label),
+    props.rows,
+    {
+      min: MIN_COL,
+      max: MAX_COL,
+      sampleRows: 200,
+      cellPadding: 32,
+      headerExtra: props.columns.map((col) => (col.masked ? 32 : 16)),
+    },
+  );
+}
+// A drag previews through `liveResize`; widths a drag set live in `resized` until the result changes.
+const resized = ref<Record<number, number>>({});
+const liveResize = ref<{ col: number; width: number } | null>(null);
+watch(
+  () => [props.columns, props.rows] as const,
+  () => {
+    measure();
+    resized.value = {};
+    liveResize.value = null;
+  },
+  { immediate: true },
+);
+onMounted(() => void document.fonts?.ready.then(measure));
+function widthFor(c: number): number {
+  if (liveResize.value?.col === c) return liveResize.value.width;
+  return resized.value[c] ?? measured.value[c] ?? MIN_COL;
+}
+function commitWidth(c: number, width: number): void {
+  resized.value = { ...resized.value, [c]: width };
+  liveResize.value = null;
+}
+function resetWidth(c: number): void {
+  const { [c]: _, ...rest } = resized.value;
+  resized.value = rest;
+}
+const tableMinWidth = computed(
+  () => CHEVRON_PX + props.columns.reduce((sum, _col, c) => sum + widthFor(c), 0),
+);
 
 const { single: rowHeight } = useRowHeight();
 // Heights a row's drag handle set; other rows keep the single height, or their natural one while expanded.
@@ -193,16 +245,26 @@ const padBottom = computed(() => {
 <template>
   <div class="flex flex-col gap-1.5" :data-testid="`${testid}-table`">
     <div ref="scrollRef" class="max-h-72 overflow-auto" @scroll.passive="onScroll">
-      <Table class="w-auto">
+      <Table class="table-fixed" :style="{ minWidth: `${tableMinWidth}px` }">
+        <colgroup>
+          <col class="w-6">
+          <col v-for="(_col, c) in columns" :key="c" :style="{ width: `${widthFor(c)}px` }">
+          <col>
+        </colgroup>
         <TableHeader class="static bg-transparent">
           <TableRow>
             <TableHead class="w-5 px-0" aria-hidden="true" />
-            <TableHead v-for="(col, c) in columns" :key="c" :data-testid="`${testid}-column`">
+            <TableHead
+              v-for="(col, c) in columns"
+              :key="c"
+              class="relative overflow-hidden"
+              :data-testid="`${testid}-column`"
+            >
               <Tooltip :disabled="!col.title && !col.masked">
                 <TooltipTrigger as-child>
-                  <span class="inline-flex items-center gap-1">
-                    {{ col.label }}
-                    <CodiconIcon v-if="col.masked" name="lock" :size="12" />
+                  <span class="inline-flex max-w-full items-center gap-1">
+                    <span class="truncate">{{ col.label }}</span>
+                    <CodiconIcon v-if="col.masked" name="lock" :size="12" class="shrink-0" />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -215,7 +277,21 @@ const padBottom = computed(() => {
                   />
                 </TooltipContent>
               </Tooltip>
+              <ResizeHandle
+                class="absolute inset-y-0 right-0 z-1"
+                draggable="false"
+                :label="t('studio.stream.resizeColumn.aria', { column: col.label })"
+                :size="widthFor(c)"
+                :min="MIN_COL"
+                :max="MAX_RESIZED_COL"
+                :data-testid="`${testid}-column-resize`"
+                @live="(w: number) => (liveResize = { col: c, width: w })"
+                @commit="(w: number) => commitWidth(c, w)"
+                @cancel="liveResize = null"
+                @dblclick.stop="resetWidth(c)"
+              />
             </TableHead>
+            <TableHead class="p-0" aria-hidden="true" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -225,7 +301,7 @@ const padBottom = computed(() => {
             class="border-0 hover:bg-transparent"
             :style="{ height: `${padTop}px` }"
           >
-            <TableCell :colspan="columns.length + 1" class="p-0" />
+            <TableCell :colspan="columns.length + 2" class="p-0" />
           </TableRow>
           <TableRow
             v-for="r in shownRows"
@@ -283,7 +359,7 @@ const padBottom = computed(() => {
               v-for="(cell, c) in rows[r]"
               :key="c"
               :data-col="c"
-              class="relative max-w-80 align-top font-data"
+              class="relative overflow-hidden align-top font-data"
               :data-null="cell === null ? '' : undefined"
             >
               <span v-if="cell === null" class="italic text-muted-foreground">{{
@@ -314,6 +390,7 @@ const padBottom = computed(() => {
                 @keydown.right.prevent="moveCell(r, c, 1)"
               />
             </TableCell>
+            <TableCell class="p-0" aria-hidden="true" />
           </TableRow>
           <TableRow
             v-if="padBottom > 0"
@@ -321,7 +398,7 @@ const padBottom = computed(() => {
             class="border-0 hover:bg-transparent"
             :style="{ height: `${padBottom}px` }"
           >
-            <TableCell :colspan="columns.length + 1" class="p-0" />
+            <TableCell :colspan="columns.length + 2" class="p-0" />
           </TableRow>
         </TableBody>
       </Table>

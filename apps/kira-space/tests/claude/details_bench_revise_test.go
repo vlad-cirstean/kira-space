@@ -411,8 +411,7 @@ func benchPassTable(recs []spikeRec, flows, arms []string) string {
 // second pass works over the first pass's state.
 func TestDetailsBenchReviseServes(t *testing.T) {
 	base := loadBenchBaseline(t)
-	spike1bOn, spikeFixtures1b = true, benchFixtures
-	defer func() { spike1bOn, spikeFixtures1b, benchSetup = false, "testdata/details-spike-1b", nil }()
+	defer func() { benchSetup = nil }()
 	for _, tc := range []struct{ flow, arm string }{{"F1b", "T"}, {"F3b", "T"}, {"F1b", "R"}, {"F3b", "R"}} {
 		t.Run(tc.flow+tc.arm, func(t *testing.T) {
 			benchSetup = benchArmSetups[tc.arm](t, base)

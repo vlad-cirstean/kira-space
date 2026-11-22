@@ -28,7 +28,7 @@ before implementation starts.
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 | P728 | Approval prompts and scripts rework | Done |
-| P729 | Removals, Variables tab and kube result views | Todo |
+| P729 | Removals, Variables tab and kube result views | Done |
 | P730 | Switch, checkbox and radio on-state style | Todo |
 | P731 | Auto-extracted task links from notes and handovers | Todo |
 
@@ -745,7 +745,7 @@ Scope.
 
 Deliverable. Plan `plans/P729.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Removals: `internal/pprofserve` and its `main.go` wiring (A1c); five grid tuning knobs in `kiraSlickGrid.ts`, `SlickGridHost.vue`, `columns.ts`, `debugHooks.ts` and `global.d.ts` (A1d); P643 spike code in `apps/kira-space/tests/claude` (spike, spike1b, metrics, report, stubs, frozen, state-accuracy, testdata) keeping only what the details bench needs (A2); `KIRA_SPIKE_DUMP` renamed `KIRA_BENCH_DUMP` (A3). DEV_ENVIRONMENT, PERF.md refs updated. Variables tab: `VariablesMatrix.vue` uses `table-fixed` with colgroup, env columns min 11rem, whole grid scrolls horizontally, Name column sticky with divider via `after:` classes; footer plurals through vue-i18n plural keys. Kube review: `ReviewTable.vue` sizes columns to content (canvas measure, `measureTextColumns` in `columns.ts`, cap 360px), resizable with `ResizeHandle` (double-click resets), fills dialog width via a trailing filler column; expand-row cell follows. Pod logs: `ReviewLog.vue` with `LogLines` (new opt-in `lineNumbers`, `levels`, `lineHeight` props, `logLevelOf`), monospace, no line gaps, dimmed timestamps, error and warn colors, Pinia `reviewLogStore` with toggles wrap (default on), timestamps (on), line numbers (off). Runs: golangci-lint v2.15.0 0 issues (root and nested module); `go vet`, `go build`, `go mod tidy -diff` clean in both modules; `bun run typecheck`, `bun run lint`, `bun run lint:dead` clean; free bench checks pass; real bench row F5,F6 12/12 runs pass (0.94 USD); targeted UI specs `api-variables-matrix`, `approvals-kube-review`, `dbmcp-preview` (13), approvals-prompt pass; full `visual` project 69 passed. Baselines regenerated: variables, kube-review, approvals-prompt shots plus new `variables-matrix-20-envs`. Fixed `dbmcp-preview.spec.ts` row assert (filler cell). Unverified: flow-test halves not added for the layout-only changes (no backend behavior changed); mobile specs and the rest of the `ui` project not run locally (PR CI).
 
 ## P730
 

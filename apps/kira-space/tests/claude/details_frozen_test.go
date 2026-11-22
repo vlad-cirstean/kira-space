@@ -1,13 +1,7 @@
 package claude
 
-import (
-	"encoding/json"
-	"os"
-	"path/filepath"
-)
-
-// Types and tool texts of the v0.3.13 tools the benchmark's frozen arm T and the P643 spike still
-// serve. agentmcp no longer has them; testdata/details-bench/tools-baseline.json holds their schemas.
+// Types and tool texts of the v0.3.13 tools the benchmark's frozen arm T still serves. agentmcp no longer has
+// them; testdata/details-bench/tools-baseline.json holds their schemas.
 
 type frozenListTasksArgs struct {
 	State string `json:"state,omitempty"`
@@ -52,28 +46,6 @@ type frozenTaskChainResult struct {
 	Rows []frozenChainRow `json:"rows"`
 	More bool             `json:"more,omitempty"`
 	Next string           `json:"next,omitempty"`
-}
-
-// frozenToolText is the v0.3.13 description of a kira-space tool, from the baseline fixture.
-func frozenToolText(name string) string {
-	raw, err := os.ReadFile(filepath.Join(benchFixtures, "tools-baseline.json"))
-	if err != nil {
-		panic(err)
-	}
-	var b benchBaseline
-	if err := json.Unmarshal(raw, &b); err != nil {
-		panic(err)
-	}
-	for _, servers := range b.Roles {
-		for _, tools := range servers {
-			for _, tl := range tools {
-				if tl.Name == name {
-					return tl.Description
-				}
-			}
-		}
-	}
-	panic("baseline has no tool " + name)
 }
 
 type frozenOutcomeQuery struct {

@@ -10,6 +10,7 @@ import { useFollowTail } from '../behaviour/followTail';
 import { splitMatches } from '../behaviour/match';
 import { useVirtualRows, VIRTUAL_ROW_CLASS } from '../behaviour/virtualRows';
 import { type AnsiSegment, parseAnsi } from '../lib/ansi';
+import { logLevelOf } from '../lib/logLevel';
 
 // The one log viewer (run logs, worktree setup, container logs): virtualized, ANSI-coloured,
 // follows the tail until the reader scrolls up. Text selects (body is select-none); rows outside the
@@ -33,6 +34,12 @@ const props = defineProps<{
   /** Wrap long lines (default); false keeps one row per line and scrolls sideways. */
   wrap?: boolean;
   showTimestamps?: boolean;
+  /** A gutter with each line's number; rows keep their wrapping and copy without it. */
+  lineNumbers?: boolean;
+  /** Colour a line that states an error or warning level; ANSI colours win. */
+  levels?: boolean;
+  /** Dense terminal look: this exact line box in px, text at the body size. */
+  lineHeight?: number;
   needle?: string;
 }>();
 
@@ -40,7 +47,7 @@ const scrollEl = useTemplateRef<HTMLElement>('scrollEl');
 const ESTIMATED_LINE_HEIGHT = 18;
 const { virtualizer, virtualItems, totalSize, onScroll } = useVirtualRows({
   count: () => props.lines.length,
-  rowHeight: () => ESTIMATED_LINE_HEIGHT,
+  rowHeight: () => props.lineHeight ?? ESTIMATED_LINE_HEIGHT,
   scrollElement: scrollEl,
 });
 // An explicit `v-model:follow` toggles following; left unbound, scrolling up pauses it and scrolling
@@ -109,6 +116,21 @@ function streamClass(stream: string): string {
   if (stream === 'stderr') return 'text-error';
   return stream === 'event' ? 'text-muted-foreground' : 'text-fg';
 }
+
+function lineClass(index: number): string {
+  const line = props.lines[index];
+  const level = props.levels && line ? logLevelOf(line.text) : null;
+  if (level) return level === 'error' ? 'text-error' : 'text-warn';
+  return streamClass(line?.stream ?? '');
+}
+
+// The gutter is a pseudo-element, so it never reaches a copied selection.
+const gutterDigits = computed(() => String(props.lines.length).length);
+const gutterStyle = computed(() =>
+  props.lineNumbers
+    ? { '--gutter': `${gutterDigits.value}ch`, paddingLeft: 'calc(var(--gutter) + 0.75rem)' }
+    : undefined,
+);
 </script>
 
 <template>
@@ -117,7 +139,8 @@ function streamClass(stream: string): string {
     :class="
       cn(
         cardVariants(),
-        'min-h-0 flex-1 cursor-text select-text gap-0 overflow-auto font-data text-kira-sm leading-relaxed',
+        'min-h-0 flex-1 cursor-text select-text gap-0 overflow-auto font-data',
+        lineHeight ? 'text-kira-md' : 'text-kira-sm leading-relaxed',
         !maxHeight && 'max-h-60',
       )
     "
@@ -141,12 +164,19 @@ function streamClass(stream: string): string {
             cn(
               VIRTUAL_ROW_CLASS,
               wrap === false ? 'whitespace-pre' : 'whitespace-pre-wrap break-words',
-              streamClass(lines[item.index]?.stream ?? ''),
+              lineClass(item.index),
+              lineNumbers &&
+                'before:absolute before:top-0 before:left-0 before:w-(--gutter) before:text-right before:text-subtle before:tabular-nums before:select-none before:content-[attr(data-n)]',
             )
           "
-          :style="{ transform: `translateY(${item.start}px)` }"
+          :style="{
+            transform: `translateY(${item.start}px)`,
+            ...(lineHeight && { lineHeight: `${lineHeight}px` }),
+            ...gutterStyle,
+          }"
           :data-testid="`${testid}-line`"
           :data-stream="lines[item.index]?.stream"
+          :data-n="lineNumbers ? item.index + 1 : undefined"
         >
           <span v-if="showTimestamps && lines[item.index]?.ts" class="mr-2 text-muted-foreground">{{
             lines[item.index]?.ts

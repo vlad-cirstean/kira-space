@@ -244,7 +244,7 @@ reachable from a dev build's View → Open DevTools (`internal/shell/menutemplat
    measurement of a macOS momentum scroll's velocity this repo has ever had) and the `scrollEvents`
    histogram (the direct, real-hardware test of the "at most one `scroll` per frame" premise above —
    if it's ever > 1, that premise is wrong on real WebKit and this section needs revisiting).
-5. `window.__kiraGridTuning.maxLeadPxOverride = 4000` (then flick, `stop()`), then `= 560` (today's
+5. Edit `MAX_LEAD_PX` in `columns.ts` to 4000 and rebuild (the live override is gone, P729) (then flick, `stop()`), then `= 560` (today's
    runway, flick again), then `.incrementalRows = false` (D4 off, flick again) — three traces, one
    build, no rebuild between them. If the lag visibly changes with the runway setting and
    `uncoveredPx` moves accordingly, that's the constraint; if not, compare `renderMs` instead.
@@ -268,14 +268,21 @@ on any platform here (Wails v3.0.0-beta.16 resolves no primary screen before `Ru
 
 ### 2.1c P22 spike — the SlickGrid A/B, and how to run it on real hardware
 
+**Knobs removed in P729:** `leadFramesOverride`, `maxLeadPxOverride`, `maxNewCellsPerRenderOverride`,
+`forceSyncScrollingOverride` and `maxNewLeadCellsPerRenderOverride` no longer exist. Rerun a variant by
+editing the constant (`LEAD_FRAMES`, `MAX_LEAD_PX`, `MAX_NEW_CELLS_PER_RENDER`,
+`MAX_NEW_LEAD_CELLS_PER_RENDER` in `columns.ts`; `forceSyncScrolling` in `SlickGridHost.vue`) and rebuilding.
+The `chaseQuietMsOverride`, `chaseFrameGateOverride` and `freshVelocitySampleOverride` console lines still work.
+Recorded numbers below stay as measured.
+
 **Superseded 2026-09 (P29 §3.1): the two-engine comparison below can no longer be run as written.**
 `window.__kiraGridEngine` and the incumbent `DataGrid.vue`/`@tanstack/vue-virtual` grid it switched
 away from are both deleted — the SlickGrid cutover this section's own A/B fed into is complete
 (`bd6c369`, `402f42e`), and there's exactly one grid engine in the tree now. The recorded numbers,
 the finding (SlickGrid's own wheel handler ate trackpad momentum), and the reasoning below stay as
 the evidence for that cutover; steps 1-5's two-engine comparison itself is history, not a protocol to
-re-run. Step 6's `window.__kiraGridTuning` A/B, and every A/B further down this section, still work
-standalone and are rewritten below to drop the now-dead engine-switch step. **Run any of them from a
+re-run. Step 6's A/B, and every A/B further down this section, still work
+standalone (via the constant-edit form in the note above) and are rewritten below to drop the now-dead engine-switch step. **Run any of them from a
 build where the hooks are actually compiled in** (P29 F1 gates `window.__kira*` behind
 `__KIRA_DEBUG_HOOKS__`): `bun run dev` (`wails3 task dev`)'s Vite dev server, or a native build via
 `build:dev`/`build:test` — **never** a packaged `.dmg`, where they're gone by design.
@@ -325,7 +332,7 @@ two-finger flick.
    answers the original report; the numbers are what keep that read honest (§9's own discipline,
    restated in the plan's own §7.4(b) header).
 6. **Still directly runnable today** (a live console line, no rebuild — the two-engine comparison
-   above isn't a prerequisite): `window.__kiraGridTuning.maxLeadPxOverride = 4000` (§7.3 step 6's
+   above isn't a prerequisite): edit `MAX_LEAD_PX` to 4000 and rebuild (§7.3 step 6's
    own cheap next experiment) is a five-minute test that costs nothing and separates "the renderer
    is too slow" from "the runway is too short" — see the plan's §7.4(b) INCONCLUSIVE branch for the
    full reasoning.
@@ -359,7 +366,7 @@ the protocol above.** Once the wheel-handler fix (above) restored genuinely nati
 a real-Mac run of this same protocol surfaced two further symptoms on very fast flicks: brief
 rendering gaps at the leading edge (content not yet painted where the compositor already scrolled to)
 and occasional dropped frames. Doubling `leadFramesOverride`/`maxLeadPxOverride` live from the
-console — the first, most obvious lever — made no difference, which is itself a real finding: those
+console (since removed) — the first, most obvious lever — made no difference, which is itself a real finding: those
 two overrides govern how *wide* the target window is, not how much of that window's *newly-entering*
 portion a single synchronous SlickGrid `render()` call is allowed to build, and a fling landing in
 never-before-mounted territory has no `rowsCache` overlap either way — doubling the runway only
@@ -381,7 +388,7 @@ boundary unrelated to the display's own frame cadence.
 §5-§6): `KiraSlickGrid.getRenderedRange` now always returns the strictly-visible range in full — nothing
 on screen is ever deferred — and caps the *extra* runway per call at `MAX_NEW_CELLS_PER_RENDER = 600`
 cells (`columns.ts`, provisional like `LEAD_FRAMES`/`MAX_LEAD_PX`, overridable live via
-`window.__kiraGridTuning.maxNewCellsPerRenderOverride`), independent of `CELL_BUDGET`'s total-window
+`maxNewCellsPerRenderOverride` until P729), independent of `CELL_BUDGET`'s total-window
 cap. When the velocity-scaled target exceeds what the per-call budget allows, the shortfall is made up
 by a self-scheduled `requestAnimationFrame`-chained `render()` that converges on the full target over a
 handful of frames — turning "synchronous cost proportional to how far the fling jumped" into
@@ -413,15 +420,15 @@ were found *during* an attempt to run that exact protocol):
    1's trace, report the same numbers, plus one sentence on whether the gap/drop was *perceptibly*
    different.
 3. **The A/B on `MAX_NEW_CELLS_PER_RENDER` itself**, batch cap live:
-   `window.__kiraGridTuning.maxNewCellsPerRenderOverride = 150` (small — more, cheaper chase frames),
-   then `= 2200` (equal to `CELL_BUDGET` — no capping at all, today's pre-fix behaviour in effect), same
+   edit `MAX_NEW_CELLS_PER_RENDER` to 150 and rebuild (small — more, cheaper chase frames),
+   then 2200 (equal to `CELL_BUDGET` — no capping at all, today's pre-fix behaviour in effect), same
    flick each time. If the gap/drop tracks this dial — worse at 2200, better at 150 — that's the
    direct, decisive real-hardware confirmation of the mechanism.
-4. **Isolate `forceSyncScrolling` from the batch cap**: `window.__kiraGridTuning.
-   forceSyncScrollingOverride` now toggles it live (`true`/`false`), so this no longer needs a
-   build-level A/B — compare both values against the same batch cap, same gesture.
+4. **Isolate `forceSyncScrolling` from the batch cap**: flip `forceSyncScrolling` in
+   `SlickGridHost.vue` (`true`/`false`) and rebuild — compare both values against the same batch cap,
+   same gesture.
 
-Report the three `summary` blocks (baseline, both-fixes, the `maxNewCellsPerRenderOverride` sweep),
+Report the three `summary` blocks (baseline, both-fixes, the `MAX_NEW_CELLS_PER_RENDER` sweep),
 this section's own `pxPerFrame`/`scrollEvents` context so the fling being compared is the same shape
 each time, and one sentence per step on whether the gap/drop was perceptible.
 
@@ -430,9 +437,8 @@ motion smoothness.** `forceSyncScrolling: true` (unconditional, `0865ef6`) coupl
 work to every native scroll-event tick during a fling — on real macOS hardware this produced visible
 stutter (the motion itself hitching), a less forgivable failure than the incumbent tanstack grid's own
 "content lags, motion stays smooth" gap symptom. `forceSyncScrolling` has been defaulted back to
-`false` (D2's batch cap alone) and made live-toggleable
-(`window.__kiraGridTuning.forceSyncScrollingOverride`), so step 4 above can be re-run from the console
-without a rebuild per variant. **Still open**: whether D2's batch cap alone (without D3) actually
+`false` (D2's batch cap alone) and was live-toggleable until P729, so step 4 above is re-run by
+editing the option and rebuilding. **Still open**: whether D2's batch cap alone (without D3) actually
 restores smooth motion, or the gap/drop symptom persists at `forceSyncScrolling: false` too — whoever
 runs the full A/B above should update this section with the real numbers and verdict.
 
@@ -540,14 +546,14 @@ different. The perceptual sentence is what answers the report; the numbers keep 
    `frameMs.stddev` tracks this dial, that's the direct, decisive confirmation of the mechanism —
    and whatever this step says is what re-sets `CHASE_QUIET_MS` (provisional, like every other
    runway constant before it).
-4. **The runway-growth-cap A/B:** `window.__kiraGridTuning.maxNewLeadCellsPerRenderOverride = 600`
-   (neutral/today's default), then `= 200`, then `= 100`. Read `frameMs.stddev` **and**
+4. **The runway-growth-cap A/B:** edit `MAX_NEW_LEAD_CELLS_PER_RENDER` to 600
+   (neutral/today's default), then 200, then 100, rebuilding each time. Read `frameMs.stddev` **and**
    `uncoveredPx` p95 *together* — this dial trades one against the other by design (smaller, more
    even runway steps vs. slower convergence), and a setting that lowers stddev while pushing
    `uncoveredPx` past the baseline isn't an improvement. Set `MAX_NEW_LEAD_CELLS_PER_RENDER` from
    whatever this step says, or leave it neutral (its shipped default) if it says nothing. Refuting
    reading (c) if `uncoveredPx` regresses materially anywhere in this pass.
-5. **Re-run this section's own step 4** (`forceSyncScrollingOverride` true/false) — the chase fix
+5. **Re-run this section's own step 4** (`forceSyncScrolling` true/false) — the chase fix
    changes what synchronous scrolling costs per frame, so the earlier verdict recorded above doesn't
    carry over.
 6. **A Safari Web Inspector Timeline recording alongside step 2**, same capture shape as the one that
@@ -654,13 +660,13 @@ whether the onset artifact is still there.
    reconsidered (do **not** simply delete it — a threshold shorter than a frame is wrong in
    principle whether or not this particular gesture exposes it).
 4. **Re-run steps 3 and 4 of the pacing protocol above** (`chaseQuietMsOverride`,
-   `maxNewLeadCellsPerRenderOverride`) *after* this pass. Both dials now sit behind a different
+   `MAX_NEW_LEAD_CELLS_PER_RENDER`) *after* this pass. Both dials now sit behind a different
    chase gate and a different runway input, so their earlier verdicts — which were never actually
    run — must not be inherited from the text above.
 5. **If the artifact survives step 2**, the next candidate is named and bounded: the per-call
    new-cell cap means the runway still takes roughly two budget-capped frames to converge from a
    standing start, and this fix removes the *wasted* first frame but not the cap itself. Raising
-   `maxNewCellsPerRenderOverride` for one run is the console-line experiment that says whether the
+   `MAX_NEW_CELLS_PER_RENDER` for one run is the constant-edit experiment that says whether the
    cap is the remaining term; **it trades directly against the single-frame batch cost the
    iter2-scroll-gaps pass existed to bound**, so a win there's a re-opened trade-off, not a free
    fix.
