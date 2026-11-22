@@ -127,11 +127,8 @@ func (s *Service) OpenWithCoalescedOutput(p OpenParams, windowKey, terminalID st
 			onExit()
 		}
 	}
-	sess, err := s.Registry.Open(p)
-	if err == nil {
-		s.Registry.trackOutput(terminalID, sess, coalescer)
-	}
-	return sess, err
+	p.out = coalescer
+	return s.Registry.Open(p)
 }
 
 // ---- the coalescing terminal-output push channel ----

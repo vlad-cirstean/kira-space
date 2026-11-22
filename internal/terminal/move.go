@@ -19,15 +19,6 @@ type AdoptResult struct {
 	Error     string `json:"error,omitempty"`
 }
 
-// trackOutput registers c as sess's output pump, unless the session already ended.
-func (r *Registry) trackOutput(id string, sess *Session, c *outputCoalescer) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.sessions[id] == sess {
-		r.outs[id] = c
-	}
-}
-
 // untrackOutput drops id's pump if it is still c.
 func (r *Registry) untrackOutput(id string, c *outputCoalescer) {
 	r.mu.Lock()

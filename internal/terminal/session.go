@@ -380,6 +380,9 @@ type OpenParams struct {
 	OnExit func(code int, err error)
 	// OnEnd, when set, runs once just before OnExit with why the session ended.
 	OnEnd func(code int, cause CloseCause)
+	// out is the output pump Open tracks under the lock that registers the session, so a session
+	// that exits at once cannot leave a finished pump behind.
+	out *outputCoalescer
 }
 
 // AgentSession is one live Claude Code launch's own wire-agnostic shape — Registry.AgentSessions'
@@ -519,6 +522,9 @@ func (r *Registry) Open(p OpenParams) (*Session, error) {
 	}
 
 	r.sessions[p.ID] = sess
+	if p.out != nil {
+		r.outs[p.ID] = p.out
+	}
 	if r.byWindow[p.WindowKey] == nil {
 		r.byWindow[p.WindowKey] = map[string]struct{}{}
 	}
