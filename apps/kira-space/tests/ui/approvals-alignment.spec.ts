@@ -3,6 +3,7 @@ import type { ApprovalItem } from '@shared/domain/approvals';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest, test } from './fixtures';
 import { FIXED_NOW, openPlan } from './support/adeV2';
+import { box, left, near, right, TOL } from './support/approvalGeometry';
 import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
@@ -10,19 +11,8 @@ import { IPC } from './support/ipcChannels';
 // Every kind of the approval dialog lines up on the same grid (P589 A1-A11): one left edge, one
 // content indent, one baseline per line 1, details on a fixed column. Each check is within 1px.
 
-const TOL = 1;
 const t = (id: string) => `[data-testid="${id}"]`;
 
-async function box(l: Locator) {
-  const b = await l.boundingBox();
-  if (!b) throw new Error(`no box for ${l}`);
-  return b;
-}
-const left = async (l: Locator) => (await box(l)).x;
-const right = async (l: Locator) => {
-  const b = await box(l);
-  return b.x + b.width;
-};
 const midY = async (l: Locator) => {
   const b = await box(l);
   return b.y + b.height / 2;
@@ -57,9 +47,6 @@ async function baseline(l: Locator): Promise<number> {
     rest.remove();
     return y;
   });
-}
-function near(actual: number, expected: number, what: string) {
-  expect(Math.abs(actual - expected), `${what}: ${actual} vs ${expected}`).toBeLessThanOrEqual(TOL);
 }
 
 const ORIGIN = { client: 'Claude Code 2.1.318', cwd: '~/shop', task: '', step: '', source: '' };
@@ -424,8 +411,20 @@ async function checkItem(page: Page) {
     // A2: content indent inside the body box (1px edge plus 12px padding)
     const body = item.locator(t('approval-body'));
     if (await body.count()) {
-      near((await box(body)).x, titleX, `${kind} body left`);
-      near(await left(body.locator(':scope > *').first()), titleX + 13, `${kind} body indent`);
+      // A kind with `sections` frames each section in its own box (P726); the rest, the body itself.
+      const framed =
+        (await body.getAttribute('data-sections')) === null
+          ? body
+          : body.locator('[data-approval-box]');
+      for (let i = 0; i < (await framed.count()); i++) {
+        const frame = framed.nth(i);
+        near((await box(frame)).x, titleX, `${kind} body box ${i} left`);
+        near(
+          await left(frame.locator(':scope > *').first()),
+          titleX + 13,
+          `${kind} body box ${i} indent`,
+        );
+      }
     }
     // A3: details rows share one pair of columns
     const toggle = item.locator(t('approval-details-toggle'));
@@ -505,13 +504,8 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     // A8: tabs right column
     async function checkTabs(it: Locator) {
       const tabs = it.locator('[data-slot="secondary-tabs"]');
-      near(
-        await right(tabs),
-        (await box(it.locator(t('approval-body')))).x +
-          (await box(it.locator(t('approval-body')))).width -
-          13,
-        'tabs right vs body inner right',
-      );
+      const framed = await box(it.locator('[data-approval-box]:has([data-slot="secondary-tabs"])'));
+      near(await right(tabs), framed.x + framed.width - 13, 'tabs right vs box inner right');
       const first = it
         .locator(
           '.view-line, [data-testid="db-mcp-preview-column"], [data-testid="kube-review-column"]',
@@ -608,10 +602,11 @@ studioTest.describe('approval dialog alignment (Studio)', () => {
     near(await left(scripted.locator(t('api-review-script'))), indent, 'api script x');
     near(
       await right(scripted.locator('[data-slot="secondary-tabs"]')),
-      (await box(scripted.locator(t('approval-body')))).x +
-        (await box(scripted.locator(t('approval-body')))).width -
+      (await box(scripted.locator('[data-approval-box]:has([data-slot="secondary-tabs"])'))).x +
+        (await box(scripted.locator('[data-approval-box]:has([data-slot="secondary-tabs"])')))
+          .width -
         13,
-      'api response tabs right vs body inner right',
+      'api response tabs right vs box inner right',
     );
     await checkFlush(scripted);
 

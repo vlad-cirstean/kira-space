@@ -37,7 +37,8 @@ test('contract: the card lists the script read and where the prepare script make
   await expect(card(page, it).locator('[data-testid="api-approval-kept"]')).toHaveText(
     'Uses kept: region',
   );
-  await expect(card(page, it).locator('[data-testid="api-approval-script-reads"]')).toBeVisible();
+  // The read is in prepare: the prepare block marks it, the transform block has no reads note.
+  await expect(card(page, it).locator('[data-testid="api-approval-script-reads"]')).toHaveCount(0);
 });
 
 test('contract: the kept.get and kept.set calls are marked in their scripts', async ({
