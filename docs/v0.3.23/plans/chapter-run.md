@@ -67,3 +67,17 @@ Base `c7534c9f0`; 8 findings (2 important, 6 nit), all real, all fixed. Commits 
 Run: typecheck, `lint`, `lint:dead`, `go vet ./...` (root and app), `go test` of `apifiles`, `bridge`, `appwire`,
 `localauth`, `apiflow`, i18n, `internal/terminal` and `windowflow` with `-race`; UI specs `api-variables-matrix`,
 `secret-reveal`, `tab-window-move`: 35 passed.
+
+## Review round 2
+
+- R2-F1: `unlock` removes `agent` with `agentHosts`, so an unlocked secret is no longer a plain value shared with every
+  host; the user shares it again on purpose. Flow steps `shareSecret` and `unlockShared` in `TestApiVariablesMatrix`
+  (contract `api-variables-matrix.json` regenerated). Not UI-observable, no UI spec.
+- R2-F2: the row lock button asks the danger confirm first on every unlock, then calls `UnlockVariables` with
+  `confirmed: true` (the OS gate still authenticates where available). Dropped the unconfirmed-first round trip. UI
+  spec cases: confirm then unlock, confirm declined (no call), OS prompt declined after confirm.
+- R2-F3: `waitExited` returns at once when the session is no longer `running`, so an exit event that beat the hold
+  reply costs no `terminalMoveSettle` wait. Timing only, no new UI spec; the existing exited-before-hold case still passes.
+
+Run: typecheck, `lint`, `lint:dead`, `go vet` and `go test` of `apifiles`, `bridge`, `apiflow`, `windowflow`; UI specs
+`api-variables-matrix`, `secret-reveal`, `tab-window-move`: 36 passed.
