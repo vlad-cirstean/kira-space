@@ -25,8 +25,13 @@ const SELECT = 'rgb(54, 54, 60)';
 const EDGE = 'rgb(113, 113, 122)';
 const HOVER = 'rgb(39, 39, 44)';
 const TEXT = 'rgb(69, 69, 77)';
-const ON = 'rgb(212, 212, 216)';
-const ON_FG = 'rgb(19, 19, 21)';
+// P730 (M2): toggles on = dark grey fill, light edge, bright mark; off = field, dim edge, grey knob.
+const ON = 'rgb(51, 51, 58)';
+const ON_EDGE = 'rgb(196, 196, 204)';
+const MARK = 'rgb(244, 244, 245)';
+const OFF_EDGE = 'rgb(62, 62, 69)';
+const KNOB = 'rgb(107, 107, 115)';
+const FOCUS = 'rgb(161, 161, 170)';
 const FIELD = 'rgb(39, 39, 44)';
 
 const head = (id: string) =>
@@ -105,7 +110,7 @@ studioTest(
 );
 
 studioTest(
-  'checked switches and checkboxes fill light grey with a chrome mark',
+  'checked switches and checkboxes fill dark grey with a light edge and bright mark',
   async ({ relaunch }) => {
     const { window: page } = await relaunch({
       control: [{ channel: IPC.connectionsList, response: [] }],
@@ -118,19 +123,19 @@ studioTest(
       .first();
     await expect(on).toBeVisible();
     await expect(on).toHaveCSS('background-color', ON);
-    await expect(on).toHaveCSS('border-top-color', ON);
+    await expect(on).toHaveCSS('border-top-color', ON_EDGE);
     const mark = on.locator('[data-slot="switch-thumb"], [data-slot="checkbox-indicator"]').first();
     const color = await mark.evaluate((el) => {
       const cs = getComputedStyle(el);
       return el.getAttribute('data-slot') === 'switch-thumb' ? cs.backgroundColor : cs.color;
     });
-    expect(color).toBe(ON_FG);
+    expect(color).toBe(MARK);
   },
 );
 
 // The environment radio sits under an `as-child` tooltip trigger that overwrites its `data-state`
 // with open/closed; the fill must key on aria-checked or the checked radio loses it.
-test('environment radios: checked is light filled with a chrome dot, unchecked has a grey edge', async ({
+test('environment radios: checked is dark filled with a light edge and bright dot, unchecked has a dim edge', async ({
   relaunch,
 }) => {
   const env = (id: string, name: string, sortOrder: number, isActive: boolean) => ({
@@ -155,19 +160,21 @@ test('environment radios: checked is light filled with a chrome dot, unchecked h
   });
   await openHttpMode(page);
   await page.click('[data-testid="api-environments"]');
-  const radios = page.locator('[data-testid="environment-active"]');
+  const radios = page.locator('[data-testid^="matrix-activate-"]');
   const checked = radios.nth(0);
   await expect(checked).toHaveAttribute('aria-checked', 'true');
   await expect(checked).toHaveCSS('background-color', ON);
-  await expect(checked).toHaveCSS('border-top-color', ON);
-  await expect(checked.locator('span span')).toHaveCSS('background-color', ON_FG);
+  await expect(checked).toHaveCSS('border-top-color', ON_EDGE);
+  await expect(checked.locator('span span')).toHaveCSS('background-color', MARK);
   const unchecked = radios.nth(1);
   await expect(unchecked).toHaveAttribute('aria-checked', 'false');
   await expect(unchecked).toHaveCSS('background-color', FIELD);
-  await expect(unchecked).toHaveCSS('border-top-color', EDGE);
+  await expect(unchecked).toHaveCSS('border-top-color', OFF_EDGE);
 });
 
-test('an unchecked switch keeps a visible grey edge on the field fill', async ({ relaunch }) => {
+test('an unchecked switch keeps a dim edge and grey knob on the field fill', async ({
+  relaunch,
+}) => {
   const { window: page } = await relaunch({
     control: [{ channel: IPC.connectionsList, response: [] }],
   });
@@ -178,10 +185,30 @@ test('an unchecked switch keeps a visible grey edge on the field fill', async ({
     .first();
   await expect(off).toBeVisible();
   await expect(off).toHaveCSS('background-color', FIELD);
-  await expect(off).toHaveCSS('border-top-color', EDGE);
+  await expect(off).toHaveCSS('border-top-color', OFF_EDGE);
+  await expect(off.locator('[data-slot="switch-thumb"]')).toHaveCSS('background-color', KNOB);
 });
 
-test('an unchecked checkbox keeps a visible grey edge on the field fill', async ({ relaunch }) => {
+test('a keyboard-focused checked switch rings 2px outside its edge', async ({ relaunch }) => {
+  const { window: page } = await relaunch({
+    control: [{ channel: IPC.connectionsList, response: [] }],
+  });
+  await openSettings(page);
+  await page.click('[data-testid="settings-section-Advanced"]');
+  const on = page
+    .locator('[data-testid="settings-dialog"] [data-slot="switch"][aria-checked="true"]:visible')
+    .first();
+  await expect(on).toBeVisible();
+  await on.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(on).toBeFocused();
+  await expect(on).toHaveCSS('outline-style', 'solid');
+  await expect(on).toHaveCSS('outline-offset', '2px');
+  await expect(on).toHaveCSS('outline-color', FOCUS);
+});
+
+test('an unchecked checkbox keeps a dim edge on the field fill', async ({ relaunch }) => {
   const [it] = contract<ApprovalItem[]>('ade-branch-adopt', 'ApprovalsService.List#adopt');
   if (!it) throw new Error('contract has no item');
   const { window: page } = await openPlan(relaunch, seedApprovals([liveItem(it, 1800, FIXED_NOW)]));
@@ -190,5 +217,5 @@ test('an unchecked checkbox keeps a visible grey edge on the field fill', async 
   await box.click();
   await expect(box).toHaveAttribute('aria-checked', 'false');
   await expect(box).toHaveCSS('background-color', FIELD);
-  await expect(box).toHaveCSS('border-top-color', EDGE);
+  await expect(box).toHaveCSS('border-top-color', OFF_EDGE);
 });
