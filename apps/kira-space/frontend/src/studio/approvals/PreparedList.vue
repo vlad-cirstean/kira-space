@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TruncatedText from '@theme/components/TruncatedText.vue';
+import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
 import type { PreparedValue } from './preparedValues';
 
@@ -22,6 +23,9 @@ defineProps<{ rows: readonly PreparedValue[]; testid: string }>();
         <span class="flex min-w-0 flex-1 text-syntax-string"
           ><TruncatedText :text="r.value" /></span
         >
+        <Badge v-if="r.secret" variant="warn" :data-testid="`${testid}-${r.key}-secret`">{{
+          t('common.secret.label')
+        }}</Badge>
       </li>
     </ul>
   </section>

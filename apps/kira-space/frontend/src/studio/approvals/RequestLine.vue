@@ -16,13 +16,16 @@ const props = defineProps<{
   kept: readonly KeptRange[];
   /** The keys a prepare script set (method, url, query); each marks its part and names it in `data-prepared`. */
   prepared?: readonly string[];
+  /** The write key (`plain.<n>`) of a saved value a prepare script wrote into the URL. */
+  writtenKey?: string;
 }>();
 
 const isPrepared = (key: string) => props.prepared?.includes(key) ?? false;
 const markOf = (key: string) => (isPrepared(key) ? key : undefined);
 const markClass = (key: string) => (isPrepared(key) ? PREPARED_MARK : undefined);
 // A query pair carries `query` when the script set it, else `url` when the script set the whole URL.
-const pairKey = computed(() => (isPrepared('query') ? 'query' : isPrepared('url') ? 'url' : ''));
+const urlKey = computed(() => (isPrepared('url') ? 'url' : props.writtenKey));
+const pairKey = computed(() => (isPrepared('query') ? 'query' : (urlKey.value ?? '')));
 
 const methodToken = computed(() => httpMethodToken(props.method));
 const tokens = computed(() => tokenizeRequestUrl(props.url));
@@ -73,8 +76,8 @@ function partsOf(tk: UrlToken) {
       }}</span
     ><span
       class="max-w-full break-all"
-      :class="markClass('url')"
-      :data-prepared="markOf('url')"
+      :class="urlKey && PREPARED_MARK"
+      :data-prepared="urlKey"
       data-testid="api-approval-url-origin"
       ><span
         v-for="(tk, i) in tokens.origin"
@@ -88,8 +91,8 @@ function partsOf(tk: UrlToken) {
       v-for="(seg, s) in tokens.segments"
       :key="`s${s}`"
       class="max-w-full break-all"
-      :class="markClass('url')"
-      :data-prepared="markOf('url')"
+      :class="urlKey && PREPARED_MARK"
+      :data-prepared="urlKey"
       data-testid="api-approval-url-segment"
       ><span v-for="(tk, i) in seg" :key="i" :class="classOf(tk, false)" :data-token="tk.kind"
         ><HighlightedText v-if="partsOf(tk)" :parts="partsOf(tk)!" :mark-class="KEPT_MARK_CLASS" />

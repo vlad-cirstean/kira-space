@@ -44,6 +44,7 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
         :kept="kept"
         :changed="changed"
         :prepared="prepared"
+        :writes="payload.script?.prepare?.writes ?? []"
       />
     </ApprovalBox>
     <ApprovalBox v-if="payload.inputs.length" testid="api-approval-box-inputs">

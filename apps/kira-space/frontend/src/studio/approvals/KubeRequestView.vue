@@ -9,7 +9,8 @@ import { kubePrepared } from './preparedValues';
 // The read as the agent sent it: the prepare script's result list, then the kubectl line built from the final
 // args (a discover read keeps its plain statement). Read-only, shared by the prompt and the review's Request section.
 const props = defineProps<{
-  payload: Pick<KubeReadPayload, 'operation' | 'request' | 'changed' | 'statement'>;
+  payload: Pick<KubeReadPayload, 'operation' | 'request' | 'changed' | 'statement'> &
+    Partial<Pick<KubeReadPayload, 'script'>>;
 }>();
 
 const prepared = computed(() => kubePrepared(props.payload));

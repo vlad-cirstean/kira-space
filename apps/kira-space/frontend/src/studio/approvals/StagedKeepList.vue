@@ -9,7 +9,7 @@ import KeptValueView from '../kept/KeptValueView.vue';
 import { keptTypeLabel } from '../kept/keptFormat';
 import { useDropStaged } from '../kept/keptQueries';
 
-// The values a script keeps once its held result is sent: not stored yet. A plain value shows its
+// The values a script saves, and the saved values it deletes, once its held result is sent: not stored yet. A plain value shows its
 // preview; a secret shows dots and Reveal, which reads it from the held result behind the OS gate.
 const props = defineProps<{ keep: readonly KeptStaged[]; testid: string; requestId: string }>();
 const drop = useDropStaged(() => props.requestId);
@@ -26,7 +26,12 @@ const drop = useDropStaged(() => props.requestId);
         :data-testid="`${testid}-${k.name}`"
       >
         <div class="flex items-center justify-between gap-2">
-          <KeptNameMark :name="k.name" :type="keptTypeLabel(k)" :secret="k.secret" />
+          <KeptNameMark
+            :class="k.deleted && 'line-through'"
+            :name="k.name"
+            :type="keptTypeLabel(k)"
+            :secret="k.secret"
+          />
           <TooltipIconButton
             :icon="ICON.close"
             :label="t('studio.kept.drop.tooltip')"
@@ -36,7 +41,16 @@ const drop = useDropStaged(() => props.requestId);
             @click="drop.mutate(k.name)"
           />
         </div>
+        <span
+          v-if="k.deleted"
+          class="text-kira-sm text-muted-foreground"
+          :data-testid="`${testid}-${k.name}-deleted`"
+          >{{
+            t('studio.kept.willKeep.deleted.status')
+          }}</span
+        >
         <KeptValueView
+          v-else
           :entry="{ ...k, id: '' }"
           staged
           :staged-reveal="{ requestId, name: k.name }"

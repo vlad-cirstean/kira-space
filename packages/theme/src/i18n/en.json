@@ -15860,6 +15860,9 @@
         "label": "Used in"
       },
       "willKeep": {
+        "deleted": {
+          "status": "Deletes the saved value when sent"
+        },
         "label": "Will save"
       }
     },

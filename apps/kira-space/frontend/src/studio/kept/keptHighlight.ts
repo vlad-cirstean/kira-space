@@ -14,6 +14,7 @@ export interface KeptRange {
 
 interface KeptRef extends KeptRange {
   name: string;
+  secret: boolean;
 }
 
 const KEPT_PREFIXES = ['plain.', 'secret.'] as const;
@@ -33,7 +34,7 @@ export function keptRefs(text: string): KeptRef[] {
     const prefix = KEPT_PREFIXES.find((p) => inner.startsWith(p));
     if (!prefix) continue;
     const name = inner.slice(prefix.length).split('|')[0]?.trim() ?? '';
-    out.push({ name, from: open, to: end + 2 });
+    out.push({ name, secret: prefix === 'secret.', from: open, to: end + 2 });
   }
   return out;
 }
