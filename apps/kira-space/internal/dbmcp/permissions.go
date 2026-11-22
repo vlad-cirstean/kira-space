@@ -270,11 +270,3 @@ func modeVerdict(c model.ConnectionSummary, mode string) string {
 	}
 	return "allow"
 }
-
-// maskedModeOf is the stored browse_table setting, inherit when unset.
-func maskedModeOf(c model.ConnectionSummary) string {
-	if c.McpMaskedMode == "" {
-		return model.McpMaskedInherit
-	}
-	return c.McpMaskedMode
-}
