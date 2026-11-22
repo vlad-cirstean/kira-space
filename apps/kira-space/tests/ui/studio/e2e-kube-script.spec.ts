@@ -55,7 +55,7 @@ test('contract: the logs card shows the kept read, the prepared line and both sc
   await expect(c.locator(t('kube-approval-script-prepare'))).toBeVisible();
   await page.click(t('approval-details-toggle'));
   const changed = c.locator(t('kube-approval-script-changed'));
-  await expect(changed).toContainText('pod');
+  await expect(changed).toContainText('name');
   await expect(changed).toContainText('tail');
   await expect(c.locator(t('kube-approval-detail-server'))).toBeVisible();
   await expect(page.locator('body')).not.toContainText(TOKEN);

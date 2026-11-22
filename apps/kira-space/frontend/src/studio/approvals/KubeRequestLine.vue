@@ -20,7 +20,7 @@ const verb = computed(() => (props.payload.operation === 'list' ? 'get' : props.
 const readClass = methodTextClass(httpMethodToken('GET'));
 const resource = computed(() => kubeResource(req.value?.kind ?? ''));
 const changed = (key: string) => props.payload.changed.includes(key);
-const NAME_KEY = computed(() => (props.payload.operation === 'logs' ? 'pod' : 'name'));
+const NAME_KEY = 'name';
 const nameText = computed(() =>
   props.payload.operation === 'logs' ? (req.value?.pod ?? '') : (req.value?.name ?? ''),
 );

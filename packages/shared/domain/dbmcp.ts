@@ -295,7 +295,7 @@ export const kubeListResultSchema = /*#__PURE__*/ z.object({
   columns: z.array(z.string()),
   rows: z.array(z.object({ name: z.string(), namespace: z.string(), cells: z.array(z.string()) })),
   rowCount: z.number(),
-  truncated: z.boolean(),
+  truncated: z.boolean().default(false),
 });
 export const kubeDescribeResultSchema = /*#__PURE__*/ z.object({
   kind: z.string(),
@@ -305,7 +305,7 @@ export const kubeDescribeResultSchema = /*#__PURE__*/ z.object({
 });
 export const kubeLogsResultSchema = /*#__PURE__*/ z.object({
   lines: z.array(z.object({ ts: z.string().optional(), text: z.string() })),
-  truncated: z.boolean(),
+  truncated: z.boolean().default(false),
 });
 
 // One param or env entry of a script request. A secret's value is always empty; saved says its value

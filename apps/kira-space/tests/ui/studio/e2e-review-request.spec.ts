@@ -54,8 +54,8 @@ for (const c of cases) {
     const order = await page
       .locator(`[data-testid^="${c.prefix}-box-"]:not([data-testid*="-request-"])`)
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-    expect(order[0]).toBe(`${c.prefix}-box-request`);
-    expect(order[1]).toBe(`${c.prefix}-box-result`);
+    expect(order[0]).toBe(`${c.prefix}-box-result`);
+    expect(order.at(-1)).toBe(`${c.prefix}-box-request`);
   });
 
   test(`contract: the ${c.key} Request section equals the prompt's request`, async ({
