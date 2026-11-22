@@ -37,7 +37,11 @@ withDefaults(defineProps<{ item: LinkItem; showKind?: boolean; as?: 'button' | '
     :data-url="item.url"
     :data-key="item.key"
   >
-    <TextTooltip v-if="item.origin === 'found'" :text="foundTooltip(item.foundIn ?? [])">
+    <TextTooltip
+      v-if="item.origin === 'found'"
+      :text="foundTooltip(item.foundIn ?? [])"
+      side="bottom"
+    >
       <span class="flex shrink-0" data-testid="ade-links-pill-found">
         <CodiconIcon name="note" :size="12" />
         <span class="sr-only">{{ t('space.ade.links.found.pill.aria') }}</span>

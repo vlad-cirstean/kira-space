@@ -123,7 +123,7 @@ function openTitle(e: MouseEvent): void {
     <div v-if="item.origin === 'found'" class="text-kira-sm" data-testid="ade-links-card-found">
       <div class="text-muted-foreground">{{ t('space.ade.links.found.title') }}</div>
       <ul class="m-0 list-none p-0">
-        <li v-for="f in item.foundIn" :key="f.handoverId" class="min-w-0 truncate">
+        <li v-for="(f, i) in item.foundIn" :key="`${f.handoverId}:${i}`" class="min-w-0 truncate">
           {{ foundSourceLabel(f) }}
         </li>
       </ul>
