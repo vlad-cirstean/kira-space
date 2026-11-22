@@ -1038,7 +1038,6 @@ Every name read or set in Go. "Set by" says who supplies it; "you" means set it 
 | `KIRA_DEV` | Overrides the production check on a non-`production` build (`kirapaths`) | you |
 | `KIRA_INSECURE_SECRETS` | `1` stores secrets unencrypted on Linux without a keyring. Dev only | you; IPC fixture harness |
 | `KIRA_NO_STARTUP_ALERT` | Skips the native startup-failure dialog; the failure is still logged (`startupfail`) | you, CI and headless runs |
-| `KIRA_PPROF` | `127.0.0.1:<port>` serves `net/http/pprof` and `/debug/metrics` (heap objects, total, goroutines) in the app. Loopback only, loopback `Host` header required (DNS rebinding); port `0` picks a free one (logged). Off when unset | you |
 | `KIRA_RAM_PROBE` | `1` runs `TestRAMProbeAgents` (flows/adeflow, P693 Go RAM probe); skipped when unset | you |
 | `KIRA_RAM_OUT` | Output dir of that probe (heap and goroutine profiles, `space-go.jsonl`). Relative paths resolve against the repo root. Default `apps/kira-space/perf-ram/go/<unix time>/` | you |
 | `KIRA_TERMINAL_ID`, `KIRA_AGENT_HOOK_SOCKET`, `KIRA_AGENT_HOOK_TOKEN` | Identify a terminal and its hook socket to the Claude hook shim | `terminal` on launch, `harness/claude/hooks` |
