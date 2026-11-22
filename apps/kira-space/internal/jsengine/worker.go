@@ -172,8 +172,7 @@ func (st *runState) readBack(bs []wireBinding) (map[string]ReadBack, *Error) {
 
 // invalidType names the JS type of a value that has no JSON form, or "".
 func invalidType(v goja.Value) string {
-	switch {
-	case v == nil || goja.IsUndefined(v):
+	if v == nil || goja.IsUndefined(v) {
 		return "undefined"
 	}
 	if _, ok := v.(*goja.Symbol); ok {

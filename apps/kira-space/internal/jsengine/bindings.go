@@ -92,46 +92,63 @@ func (st *runState) installBindings(bs []wireBinding) *Error {
 	global := st.vm.GlobalObject()
 	for _, b := range bs {
 		if b.Name == "kira" && b.Value == nil {
-			// Host methods join the sandbox's own kira object (parseJSON); freeze seals it afterwards.
-			kira := global.Get("kira").ToObject(st.vm)
-			for _, fn := range b.Funcs {
-				if fn == "parseJSON" || kira.Get(fn) != nil {
-					return newError(KindInput, "kira method %q is already defined", fn)
-				}
-				f := st.vm.ToValue(st.hostFunc(b.Name, fn))
-				_ = f.(*goja.Object).DefineDataProperty("name", st.vm.ToValue(fn), goja.FLAG_FALSE, goja.FLAG_TRUE, goja.FLAG_FALSE)
-				_ = kira.DefineDataProperty(fn, f, goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
+			if err := st.extendKira(global, b); err != nil {
+				return err
 			}
 			continue
 		}
 		if global.Get(b.Name) != nil {
 			return newError(KindInput, "binding name %q is already a global", b.Name)
 		}
-		var v goja.Value
-		if b.Value != nil {
-			var err error
-			if v, err = st.fromJSON(b.Value); err != nil {
-				return newError(KindInput, "binding %q: %v", b.Name, err)
-			}
-			if b.ReadBack {
-				if err := v.(*goja.Object).SetPrototype(nil); err != nil {
-					return newError(KindInternal, "binding %q: %v", b.Name, err)
-				}
-			}
-		} else {
-			obj := st.vm.NewObject()
-			for _, fn := range b.Funcs {
-				f := st.vm.ToValue(st.hostFunc(b.Name, fn))
-				_ = f.(*goja.Object).DefineDataProperty("name", st.vm.ToValue(fn), goja.FLAG_FALSE, goja.FLAG_TRUE, goja.FLAG_FALSE)
-				_ = obj.DefineDataProperty(fn, f, goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
-			}
-			v = obj
+		v, err := st.bindingValue(b)
+		if err != nil {
+			return err
 		}
 		if err := global.DefineDataProperty(b.Name, v, goja.FLAG_FALSE, goja.FLAG_FALSE, goja.FLAG_FALSE); err != nil {
 			return newError(KindInternal, "binding %q: %v", b.Name, err)
 		}
 	}
 	return nil
+}
+
+// extendKira joins host methods to the sandbox's own kira object (parseJSON); freeze seals it afterwards.
+func (st *runState) extendKira(global *goja.Object, b wireBinding) *Error {
+	kira := global.Get("kira").ToObject(st.vm)
+	for _, fn := range b.Funcs {
+		if fn == "parseJSON" || kira.Get(fn) != nil {
+			return newError(KindInput, "kira method %q is already defined", fn)
+		}
+		_ = kira.DefineDataProperty(fn, st.namedHostFunc(b.Name, fn), goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
+	}
+	return nil
+}
+
+// bindingValue builds a binding's value: decoded JSON, or an object of host functions.
+func (st *runState) bindingValue(b wireBinding) (goja.Value, *Error) {
+	if b.Value == nil {
+		obj := st.vm.NewObject()
+		for _, fn := range b.Funcs {
+			_ = obj.DefineDataProperty(fn, st.namedHostFunc(b.Name, fn), goja.FLAG_TRUE, goja.FLAG_TRUE, goja.FLAG_TRUE)
+		}
+		return obj, nil
+	}
+	v, err := st.fromJSON(b.Value)
+	if err != nil {
+		return nil, newError(KindInput, "binding %q: %v", b.Name, err)
+	}
+	if b.ReadBack {
+		if err := v.(*goja.Object).SetPrototype(nil); err != nil {
+			return nil, newError(KindInternal, "binding %q: %v", b.Name, err)
+		}
+	}
+	return v, nil
+}
+
+// namedHostFunc wraps hostFunc as a JS function whose name property is fn.
+func (st *runState) namedHostFunc(binding, fn string) goja.Value {
+	f := st.vm.ToValue(st.hostFunc(binding, fn))
+	_ = f.(*goja.Object).DefineDataProperty("name", st.vm.ToValue(fn), goja.FLAG_FALSE, goja.FLAG_TRUE, goja.FLAG_FALSE)
+	return f
 }
 
 // hostFunc is the worker-side trampoline: encode arguments, send a call line, wait for the reply
