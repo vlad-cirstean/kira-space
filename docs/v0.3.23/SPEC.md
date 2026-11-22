@@ -902,6 +902,12 @@ Scope (user feedback, final).
 - The "saved variables this request uses" box on the approval card (and the review box) takes too much space and its
   layout is inefficient: drop useless details (byte sizes, "Text, 14 B"), put the agent session in a tooltip, one
   tight line per variable. Same compact rows should be shared with the Settings pane where it fits.
+- Naming: "saved variables" is wrong (the values expire). User-facing wording becomes "Temporary variables";
+  card line "Available for N min" (not "Saved for N min"); the script-effect label "Will set (temporary)" or "Will
+  set"; agent-facing names (result fields `saved`, `notSaved`, `deleted`, the saved-variables section of the P733
+  `list` tool, tool texts, errors) also drop "saved" for "temporary"/"temp" wording; planner decides exact
+  words after reading the P733 end state. Unchanged: `plain`, `secret`, `{{plain.x}}`, `{{secret.x}}`, setting key
+  `dbMcp.keptRetentionMinutes`.
 - Flow test plus UI spec pair per CLAUDE.md Tests where behaviour changes; refresh visual baselines once.
 
 Deliverable. Plan `plans/P735.md`, Opus-authored, then Sonnet implementation.
