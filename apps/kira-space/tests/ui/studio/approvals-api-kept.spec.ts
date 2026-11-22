@@ -37,7 +37,7 @@ test('contract: the card lists the variable with its value, source and expiry', 
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = card(page, it);
-  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: ids');
   await expect(c.locator('[data-testid="api-approval-kept-expiring"]')).toHaveCount(0);
   const row = c.locator('[data-testid="api-approval-kept-ids"]');
   await expect(row).toContainText('ids');

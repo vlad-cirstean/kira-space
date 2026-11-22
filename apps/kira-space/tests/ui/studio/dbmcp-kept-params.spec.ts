@@ -44,7 +44,7 @@ test('contract: the card lists the variable with its value, source and where the
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = cardOf(page, it);
-  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: word');
+  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: word');
   await expect(c.locator('[data-testid="db-approval-kept-expiring"]')).toHaveCount(0);
   const row = c.locator('[data-testid="db-approval-kept-word"]');
   await expect(row).toContainText('Text');
@@ -94,7 +94,7 @@ test('contract: a lifted-limit request shows the same variables and marks', asyn
   await pushApprovals(page, [it]);
   const c = cardOf(page, it);
   await expect(c.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveCount(1);
-  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: n');
+  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: n');
   await expect(c.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   await expect(c.locator('[data-testid="db-mcp-approval-statement"] .kira-ed-kept')).toHaveCount(1);
 });

@@ -35,7 +35,7 @@ test('contract: the card lists the script read and where the prepare script make
   await expect(row.locator('[data-testid="kept-value-preview"]')).toHaveText('eu');
   await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Prepare script');
   await expect(card(page, it).locator('[data-testid="api-approval-kept"]')).toHaveText(
-    'Uses kept: region',
+    'Uses: region',
   );
   // The read is in prepare: the prepare block marks it, the transform block has no reads note.
   await expect(card(page, it).locator('[data-testid="api-approval-script-reads"]')).toHaveCount(0);
@@ -64,7 +64,7 @@ test('contract: the card names what the transform may keep', async ({ relaunch }
   await expect(c.locator('[data-testid="api-approval-may-keep"]')).toHaveText(
     /This script may keep:\s*idsPlain/,
   );
-  await expect(c.locator('[data-testid="api-approval-kept-writes"]')).toHaveText('May keep: ids');
+  await expect(c.locator('[data-testid="api-approval-kept-writes"]')).toHaveText('Keeps: ids');
 });
 
 test('a plain request shows none of the script kept notes', async ({ relaunch }) => {

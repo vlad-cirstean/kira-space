@@ -43,9 +43,7 @@ test('contract: the card shows the script next to the statement that runs', asyn
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const card = cardOf(page, it);
-  await expect(
-    card.locator('[data-testid="approval-fact"]').filter({ hasText: 'Runs a script' }),
-  ).toBeVisible();
+  await expect(card.locator('[data-testid="approval-fact"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-approval-may-keep"]')).toHaveCount(0);
   await expect(card.locator('[data-testid="db-mcp-approval-statement"]')).toBeVisible();
@@ -74,8 +72,8 @@ test('contract: a script that reads and keeps values marks both and lists what i
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const card = cardOf(page, it);
-  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: ids');
-  await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveText('May keep: n');
+  await expect(card.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
+  await expect(card.locator('[data-testid="db-approval-kept-writes"]')).toHaveText('Keeps: n');
   const row = card.locator('[data-testid="db-approval-kept-ids"]');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText(/1,\s*2/);
   await expect(row.locator('[data-testid="kept-used-in"]')).toHaveText('Transform script');

@@ -97,7 +97,7 @@ test('contract: the exemption shows the script and the kept param, Approve answe
   await pushApprovals(page, [liveItem(it)]);
   await expect(page.locator('[data-testid="db-mcp-exemption-limit"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="db-approval-script"]')).toBeVisible();
-  await expect(page.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(page.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
   await expect(page.locator('[data-testid="approval-chain"]')).toHaveCount(0);
   await approve(page, it);
   await expect

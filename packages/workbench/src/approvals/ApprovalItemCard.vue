@@ -202,7 +202,7 @@ const detailsOpen = ref(false);
             :variant="FACT_TONE[fact.tone]"
             class="h-control-lg gap-1.5 px-2 text-kira-md"
             :class="FACT_CLASS[fact.tone]"
-            data-testid="approval-fact"
+            :data-testid="fact.testid ?? 'approval-fact'"
           >
             <CodiconIcon :name="fact.icon" :size="13" />
             {{ fact.text }}

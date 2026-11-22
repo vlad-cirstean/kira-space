@@ -26,6 +26,8 @@ export interface ApprovalVerdict {
     tone: 'ok' | 'warn' | 'neutral' | 'caution';
     icon: string;
     tooltip?: string;
+    /** Replaces the default `approval-fact` testid. */
+    testid?: string;
   }[];
 }
 

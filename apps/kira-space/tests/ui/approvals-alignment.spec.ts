@@ -391,7 +391,9 @@ async function checkItem(page: Page) {
       near(await right(countdown), itemBox.x + itemBox.width, `${kind} countdown right`);
     // A4: badge row shares one baseline
     const base = await baseline(op);
-    const facts = item.locator(t('approval-fact'));
+    const facts = item.locator(
+      `${t('approval-fact')}, [data-testid$="-approval-kept"], [data-testid$="-approval-kept-writes"]`,
+    );
     for (let i = 0; i < (await facts.count()); i++) {
       near(await baseline(facts.nth(i)), base, `${kind} fact ${i} baseline`);
     }

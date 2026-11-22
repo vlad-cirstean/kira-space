@@ -5,7 +5,6 @@ import {
   apiRequestPayloadSchema,
   apiResponsePayloadSchema,
   type DbMcpApprovalPlan,
-  type DbQueryPayload,
   dbExemptionPayloadSchema,
   dbQueryPayloadSchema,
   dbResponsePayloadSchema,
@@ -84,14 +83,7 @@ function dbVerdict(item: ApprovalItem): ApprovalVerdict {
     item.payload,
   );
   const facts: Fact[] = [];
-  if ('script' in p && p.script) {
-    facts.push({
-      text: t('studio.dbMcp.approval.fact.scripts.status', { count: 1 }),
-      tone: 'warn',
-      icon: 'code',
-      tooltip: t('studio.dbMcp.approval.query.scriptResult.hint'),
-    });
-  }
+  facts.push(...keptFacts(p.kept, 'script' in p ? p.script : null, 'db-approval'));
   const cls = item.operation.class;
   if (cls === 'read') {
     const wording = readOnlyWording(p.enforcement, item.target.readOnly);
@@ -199,18 +191,13 @@ const DbTargetIcon: FunctionalComponent<{ item: ApprovalItem }> = (p) =>
 function apiVerdict(item: ApprovalItem): ApprovalVerdict {
   const p = apiRequestPayloadSchema.parse(item.payload);
   const facts: Fact[] = [];
-  const scripts = [
-    p.script?.prepare && t('studio.dbMcp.approval.api.scriptPrepare.hint'),
-    p.script?.transform && t('studio.dbMcp.approval.api.scriptTransform.hint'),
-  ].filter((x): x is string => !!x);
-  if (scripts.length > 0) {
-    facts.push({
-      text: t('studio.dbMcp.approval.fact.scripts.status', { count: scripts.length }),
-      tone: 'warn',
-      icon: 'code',
-      tooltip: scripts.join('\n'),
-    });
-  }
+  facts.push(
+    ...keptFacts(
+      p.kept.filter((u) => !u.pending),
+      p.script?.transform,
+      'api-approval',
+    ),
+  );
   // One badge names everything the request sends that the user did not write: shared secrets, then the values
   // typed on the card (once or kept). The card's rows carry no second list.
   const sent = [...new Set([...p.credentials.map((c) => c.name), ...p.inputs.map((i) => i.name)])];
@@ -327,11 +314,7 @@ function planRisks(plan: DbMcpApprovalPlan | null, withRows: boolean): ApprovalR
 
 function queryRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = dbQueryPayloadSchema.parse(item.payload);
-  const out = [
-    ...planRisks(p.plan, true),
-    ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
-    ...queryScriptRisks(p.script),
-  ];
+  const out = [...planRisks(p.plan, true), ...keptRisks(p.kept, item.expiresAt, 'db-approval')];
   // The statement looks less powerful than the mode the agent declared.
   if ((RANK[p.detected] ?? Infinity) < (RANK[p.mode] ?? Infinity)) {
     out.push({
@@ -375,7 +358,6 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
     ...out,
     ...planRisks(p.plan, !hasRowsLimit),
     ...keptRisks(p.kept, item.expiresAt, 'db-approval'),
-    ...queryScriptRisks(p.script),
   ];
 }
 
@@ -383,49 +365,48 @@ function exemptionRisks(item: ApprovalItem): ApprovalRisk[] {
 const mayKeepName = (m: { name: string; secret: boolean }): string =>
   m.secret ? t('studio.kept.risk.secretName.label', { name: m.name }) : m.name;
 
-// The tag naming what a transform script may keep; none when it keeps nothing.
-function mayKeepRisks(
-  script: { mayKeep: readonly { name: string; secret: boolean }[] } | null | undefined,
-  testid: string,
-): ApprovalRisk[] {
-  if (!script?.mayKeep.length) return [];
-  return [
-    {
-      text: t('studio.kept.risk.keeps.status', {
-        names: script.mayKeep.map(mayKeepName).join(', '),
-      }),
-      tone: 'neutral',
-      testid,
-    },
-  ];
-}
+type MayKeep = { mayKeep: readonly { name: string; secret: boolean }[] } | null | undefined;
 
-// The tags for a run_query result script: what it may keep and that the agent sees its output, not the rows.
-function queryScriptRisks(script: DbQueryPayload['script']): ApprovalRisk[] {
-  return mayKeepRisks(script, 'db-approval-kept-writes');
-}
-
-// The tags for the kept variables a request uses; the testids carry the surface's prefix.
-function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
-  if (kept.length === 0) return [];
-  const out: ApprovalRisk[] = [
-    {
-      text: t('studio.kept.risk.uses.status', { names: kept.map((u) => u.name).join(', ') }),
+// The chips for the kept variables a request uses and the ones its transform script may keep; the testids
+// carry the surface's prefix.
+function keptFacts(kept: readonly KeptUse[], script: MayKeep, prefix: string): Fact[] {
+  const out: Fact[] = [];
+  if (kept.length > 0) {
+    out.push({
+      text: t('studio.kept.chip.uses.status', { names: kept.map((u) => u.name).join(', ') }),
       tone: 'neutral',
+      icon: 'symbol-variable',
       testid: `${prefix}-kept`,
       tooltip: kept
         .map((u) => t('studio.kept.risk.source.label', { name: u.name, request: u.source.request }))
         .join('\n'),
-    },
-  ];
-  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    });
+  }
+  if (script?.mayKeep.length) {
     out.push({
-      text: t('studio.kept.risk.expiring.status'),
-      tone: 'warn',
-      testid: `${prefix}-kept-expiring`,
+      text: t('studio.kept.chip.keeps.status', {
+        names: script.mayKeep.map(mayKeepName).join(', '),
+      }),
+      tone: 'neutral',
+      icon: 'symbol-variable',
+      testid: `${prefix}-kept-writes`,
     });
   }
   return out;
+}
+
+// The tag for a kept variable that expires before the card does.
+function keptRisks(kept: readonly KeptUse[], expiresAt: number, prefix: string): ApprovalRisk[] {
+  if (expiresAt > 0 && kept.some((u) => Date.parse(u.expiresAt) < expiresAt)) {
+    return [
+      {
+        text: t('studio.kept.risk.expiring.status'),
+        tone: 'warn',
+        testid: `${prefix}-kept-expiring`,
+      },
+    ];
+  }
+  return [];
 }
 
 function isRead(method: string): boolean {
@@ -442,7 +423,6 @@ function apiRisks(item: ApprovalItem): ApprovalRisk[] {
       'api-approval',
     ),
   );
-  out.push(...mayKeepRisks(p.script?.transform, 'api-approval-kept-writes'));
   if (p.body?.truncated) {
     out.push({
       text: t('studio.dbMcp.approval.risk.bodyTruncated.status'),
@@ -476,13 +456,9 @@ function apiResponseRisks(item: ApprovalItem): ApprovalRisk[] {
 
 const KubeTargetIcon: FunctionalComponent = () => h(ClusterIcon, { size: 16 });
 
-// Every cluster read is a GET: one Read badge, a lock for the guarantee, and a fact for the scripts.
+// Every cluster read is a GET: one Read badge, a lock for the guarantee, and the kept variables it uses or keeps.
 function kubeVerdict(item: ApprovalItem): ApprovalVerdict {
   const p = kubeReadPayloadSchema.parse(item.payload);
-  const scripts = [
-    p.script?.prepare && t('studio.dbMcp.approval.kube.scriptPrepare.hint'),
-    p.script?.transform && t('studio.dbMcp.approval.kube.scriptTransform.hint'),
-  ].filter((x): x is string => !!x);
   return {
     label: t('studio.project.connectionDialog.mcp.read.label'),
     tone: 'ok',
@@ -490,25 +466,13 @@ function kubeVerdict(item: ApprovalItem): ApprovalVerdict {
     icon: 'eye',
     lock: true,
     tooltip: t('studio.dbMcp.approval.kube.readOnly.hint'),
-    facts: scripts.length
-      ? [
-          {
-            text: t('studio.dbMcp.approval.fact.scripts.status', { count: scripts.length }),
-            tone: 'warn',
-            icon: 'code',
-            tooltip: scripts.join('\n'),
-          },
-        ]
-      : [],
+    facts: keptFacts(p.kept, p.script?.transform, 'kube-approval'),
   };
 }
 
 function kubeRisks(item: ApprovalItem): ApprovalRisk[] {
   const p = kubeReadPayloadSchema.parse(item.payload);
-  const out = [
-    ...keptRisks(p.kept, item.expiresAt, 'kube-approval'),
-    ...mayKeepRisks(p.script?.transform, 'kube-approval-kept-writes'),
-  ];
+  const out = keptRisks(p.kept, item.expiresAt, 'kube-approval');
   if (p.operation === 'logs') {
     out.push({
       text: t('studio.dbMcp.approval.kube.logsUnmasked.status'),

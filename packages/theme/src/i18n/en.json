@@ -14363,11 +14363,9 @@
             "label": "Script input"
           },
           "scriptPrepare": {
-            "hint": "A script the agent sent built this request from its input.",
             "label": "Prepare script"
           },
           "scriptTransform": {
-            "hint": "The agent receives only what the transform script returns, not the response.",
             "label": "Transform script"
           },
           "sends": {
@@ -14431,9 +14429,6 @@
         "fact": {
           "checkedByKira": {
             "status": "Checked by Kira"
-          },
-          "scripts": {
-            "status": "Runs a script | Runs {count} scripts"
           }
         },
         "formatted": {
@@ -14463,12 +14458,6 @@
           },
           "rows": {
             "status": "Up to {count} rows"
-          },
-          "scriptPrepare": {
-            "hint": "A script the agent sent built this read from its args."
-          },
-          "scriptTransform": {
-            "hint": "The agent receives only what the transform script returns, not the result."
           },
           "secretBytes": {
             "status": "Secret values reach the agent as byte counts only"
@@ -14507,7 +14496,6 @@
             "aria": "Result views"
           },
           "scriptResult": {
-            "hint": "The agent receives only what the script returns, not the rows. The statement is what runs; the script can’t change it.",
             "label": "Result script"
           }
         },
@@ -15749,6 +15737,14 @@
       }
     },
     "kept": {
+      "chip": {
+        "keeps": {
+          "status": "Keeps: {names}"
+        },
+        "uses": {
+          "status": "Uses: {names}"
+        }
+      },
       "clear": {
         "tooltip": "Delete this kept value. A request that reads it stops"
       },
@@ -15798,9 +15794,6 @@
         "expiring": {
           "status": "Expires before you answer"
         },
-        "keeps": {
-          "status": "May keep: {names}"
-        },
         "secretName": {
           "label": "{name} (secret)"
         },
@@ -15810,9 +15803,6 @@
         "userValue": {
           "status": "Reads a secret value",
           "tooltip": "A script reads a secret kept value, such as one you supplied. Check what it returns before you send, because it goes to the agent"
-        },
-        "uses": {
-          "status": "Uses kept: {names}"
         }
       },
       "scriptReads": {

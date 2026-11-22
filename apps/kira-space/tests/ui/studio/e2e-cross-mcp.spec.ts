@@ -20,7 +20,7 @@ test('contract: a SQL write that binds an API list shows the API request that ke
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(c.locator('[data-testid="db-approval-kept"]')).toHaveText('Uses: ids');
   const row = c.locator('[data-testid="db-approval-kept-ids"]');
   await expect(row).toContainText('List of 2');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('9007199254740993');
@@ -35,7 +35,7 @@ test('contract: an API request that fills its body from SQL rows shows the state
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses kept: bodies');
+  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: bodies');
   const row = c.locator('[data-testid="api-approval-kept-bodies"]');
   await expect(row).toContainText('List of 3');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('hit');

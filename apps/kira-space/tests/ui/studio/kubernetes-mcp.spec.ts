@@ -154,8 +154,10 @@ test('contract: a Kubernetes read shows the cluster and answers by item id', asy
 
   await pushApprovals(page, [liveItem(item)]);
   await expect(loc(page, 'approval-target-name')).toHaveText(item.target.name);
-  await expect(loc(page, `approval-item-${item.id}`)).toContainText(item.target.location);
-  await expect(loc(page, 'approval-target-kind')).toContainText(payload.namespace);
+  await expect(loc(page, 'approval-target-kind')).toContainText(
+    item.target.location.split(' · ')[0],
+  );
+  await expect(loc(page, 'approval-target-chip')).toHaveText(payload.namespace);
   await expect(loc(page, 'kube-approval-line')).toContainText('pods');
   await expect(loc(page, 'kube-approval-line')).toContainText(payload.namespace);
 

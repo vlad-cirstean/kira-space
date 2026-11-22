@@ -26,14 +26,13 @@ test('contract: the list card marks the plain and the secret value its transform
   const { window: page, control } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = page.locator(t(`approval-item-${it.id}`));
-  await expect(c.locator(t('approval-fact')).filter({ hasText: 'Runs a script' })).toBeVisible();
   await expect(c.locator(t('kube-approval-line'))).toContainText('pods');
   const mayKeep = c.locator(t('kube-approval-may-keep'));
   await expect(mayKeep).toContainText('pod');
   await expect(mayKeep).toContainText('token');
   await expect(mayKeep.locator(t('kube-approval-may-keep-token-secret'))).toHaveText('Secret');
   await expect(mayKeep.locator(t('kube-approval-may-keep-pod-plain'))).toHaveText('Plain');
-  await expect(c.locator(t('kube-approval-kept-writes'))).toContainText('token (secret)');
+  await expect(c.locator(t('kube-approval-kept-writes'))).toHaveText('Keeps: pod, token (secret)');
   await page.click(t(`approval-approve-${it.id}`));
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
@@ -47,7 +46,7 @@ test('contract: the logs card shows the kept read, the prepared line and both sc
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = page.locator(t(`approval-item-${it.id}`));
-  await expect(c.locator(t('approval-fact')).filter({ hasText: 'Runs 2 scripts' })).toBeVisible();
+  await expect(c.locator(t('kube-approval-kept'))).toHaveText('Uses: pod');
   await expect(c.locator(t('kube-approval-kept-pod'))).toContainText('web-1');
   await expect(c.locator(t('kube-approval-kept-pod')).locator(t('kept-kind-plain'))).toBeVisible();
   const line = c.locator(t('kube-approval-line'));
@@ -58,7 +57,9 @@ test('contract: the logs card shows the kept read, the prepared line and both sc
   await expect(line.locator('[data-token="name"]')).toHaveClass(/decoration-dotted/);
   await expect(c.locator(t('kube-approval-script-prepare'))).toBeVisible();
   await page.click(t('approval-details-toggle'));
-  await expect(c.locator(t('kube-approval-script-changed'))).toHaveText('pod, tail');
+  const changed = c.locator(t('kube-approval-script-changed'));
+  await expect(changed).toContainText('pod');
+  await expect(changed).toContainText('tail');
   await expect(c.locator(t('kube-approval-detail-server'))).toBeVisible();
   await expect(page.locator('body')).not.toContainText(TOKEN);
 });

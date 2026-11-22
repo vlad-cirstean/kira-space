@@ -51,7 +51,7 @@ for (const [key, prefix, label] of [
     await expect(c.locator(`[data-testid="${prefix}-approval-kept-expiring"]`)).toHaveText(
       'Expires before you answer',
     );
-    await expect(c.locator(`[data-testid="${prefix}-approval-kept"]`)).toContainText('Uses kept:');
+    await expect(c.locator(`[data-testid="${prefix}-approval-kept"]`)).toContainText('Uses:');
   });
 
   test(`contract: ${label} shows no flag when the variable outlives the card`, async ({
@@ -78,7 +78,7 @@ test('contract: three cards wait on one variable, each names it, and the list dr
   await expect(dialog.locator('[data-testid="approvals-position"]')).toHaveText('1 of 3');
   const first = cards[0] as ApprovalItem;
   await expect(dialog.locator(`[data-testid="approval-item-${first.id}"]`)).toBeVisible();
-  await expect(dialog.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(dialog.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: ids');
   // The backend withdrew all three; the pushed list is empty and no card is left.
   await pushApprovals(page, []);
   await expect(dialog).toHaveCount(0);

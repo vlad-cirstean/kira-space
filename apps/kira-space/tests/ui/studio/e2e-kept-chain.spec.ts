@@ -40,7 +40,7 @@ test('contract: the card shows the kept list with its digits and marks the refer
   });
   await pushApprovals(page, [it]);
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses kept: ids');
+  await expect(c.locator('[data-testid="api-approval-kept"]')).toHaveText('Uses: ids');
   const row = c.locator('[data-testid="api-approval-kept-ids"]');
   await expect(row).toContainText('List of 2');
   await expect(row.locator('[data-testid="kept-value-preview"]')).toContainText('9007199254740993');
