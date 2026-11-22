@@ -42,8 +42,12 @@ export const SHOT_CAPTURE = {
   'build-db-approval': { kind: 'window' },
   'build-db-statement': { kind: 'region', selector: '[data-testid^="approval-item-db.query"]' },
   'build-db-exemption': { kind: 'region', selector: '[data-testid^="approval-item-db.exemption"]' },
-  'build-db-audit': { kind: 'region', selector: '[data-testid="ade-details-tab"]', padding: 0 },
-  'build-db-settings': { kind: 'region', selector: '[data-testid="settings-dialog"]', padding: 0 },
+  'build-db-audit': { kind: 'region', selector: '[data-testid="ade-details-tab"]', padding: 16 },
+  'studio-mcp-settings': {
+    kind: 'region',
+    selector: '[data-testid="settings-dialog"]',
+    padding: 0,
+  },
   'build-branches-panel': { kind: 'window' },
   'build-branches-add': { kind: 'floating', selector: '[data-testid="ade-add-popover"]' },
   'build-handover-dialog': { kind: 'floating', selector: '[data-testid="ade-stage-dialog"]' },
@@ -65,6 +69,50 @@ export const SHOT_CAPTURE = {
   'phone-needs': { kind: 'phone' },
   'phone-terminal': { kind: 'phone' },
   'phone-activity': { kind: 'phone' },
+  // Agent API requests (P734)
+  'build-api-request': {
+    kind: 'region',
+    selector: '[data-testid^="approval-item-api.request"]',
+    bottom: '[data-testid^="approval-item-api.request"] > :last-child',
+    padding: 6,
+  },
+  'build-api-review': {
+    kind: 'region',
+    selector: '[data-testid^="approval-item-api.response"]',
+    bottom: '[data-testid^="approval-item-api.response"] > :last-child',
+    padding: 6,
+  },
+  'studio-api-values': {
+    kind: 'region',
+    selector: '[data-testid^="approval-item-api.request"]',
+    bottom: '[data-testid^="approval-item-api.request"] > :last-child',
+    padding: 6,
+  },
+  'studio-saved-variables': {
+    kind: 'region',
+    selector: '[data-testid="settings-dialog"]',
+    padding: 0,
+  },
+  // Kubernetes, MongoDB and the Files window (P734)
+  'studio-kube-read': {
+    kind: 'region',
+    selector: '[data-testid^="approval-item-kube.read"]',
+    bottom: '[data-testid^="approval-item-kube.read"] > :last-child',
+    padding: 6,
+  },
+  'studio-kube-review': {
+    kind: 'region',
+    selector: '[data-testid^="approval-item-kube.response"]',
+    bottom: '[data-testid^="approval-item-kube.response"] > :last-child',
+    padding: 6,
+  },
+  'studio-kube-pods': { kind: 'window' },
+  'studio-kube-logs': {
+    kind: 'region',
+    selector: '[data-testid="kube-detail"][data-active="true"]',
+  },
+  'studio-mongo-documents': { kind: 'window' },
+  'space-files-window': { kind: 'window' },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;

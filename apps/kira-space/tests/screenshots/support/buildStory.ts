@@ -41,7 +41,7 @@ export const STORY_REPOS = [
 
 type Rec = Record<string, unknown>;
 
-function storyBoardFx() {
+export function storyBoardFx() {
   return adeBoard((board) => {
     const task = board.tasks.find((t) => t.id === STORY.taskId);
     if (!task) throw new Error('story task missing from the board fixture');

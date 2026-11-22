@@ -66,5 +66,5 @@ test('build db prompt: settings', async ({ relaunch, consoleErrors }) => {
   await win.click(t('open-settings'));
   await win.click(t('settings-section-Studio MCP'));
   await expect(win.locator(t('settings-db-mcp-focus'))).toBeVisible();
-  await shoot(win, 'build-db-settings', consoleErrors);
+  await shoot(win, 'studio-mcp-settings', consoleErrors);
 });
