@@ -58,9 +58,8 @@ type queryScriptOutcome struct {
 
 // queryScriptInput describes what the script read: metadata only, never a cell.
 type queryScriptInput struct {
-	Kind      string `json:"kind"`
-	RowCount  int    `json:"rowCount"`
-	Truncated bool   `json:"truncated"`
+	RowCount  int  `json:"rowCount"`
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 func queryScriptInputOf(raw string) queryScriptInput {
@@ -109,7 +108,6 @@ func (s *Server) transformQuery(ctx context.Context, rv queryResolution, raw str
 
 // queryScriptEnvelope is what the agent receives when a script ran.
 type queryScriptEnvelope struct {
-	Kind     string           `json:"kind"`
 	Output   json.RawMessage  `json:"output"`
 	Input    queryScriptInput `json:"input"`
 	Saved    []keptSummary    `json:"saved,omitempty"`
@@ -122,7 +120,7 @@ func (o *queryScriptOutcome) agentResult(saved []keptSummary, failed []keptFailu
 	if o.Failure != "" {
 		return errResult(o.Failure)
 	}
-	return jsonResult(queryScriptEnvelope{Kind: "script", Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
+	return jsonResult(queryScriptEnvelope{Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
 }
 
 // heldOf is the review entry of a scripted result: the envelope the agent gets on Send, the rendered result the

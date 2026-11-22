@@ -143,7 +143,7 @@ func maskedToolError(err error) (*mcp.CallToolResult, any, error) {
 	return nil, nil, err
 }
 
-// columnReviewView is list_connections' column review summary, from cached state only.
+// columnReviewView is list' column review summary, from cached state only.
 type columnReviewView struct {
 	On bool `json:"on"`
 	// Withheld is the columns results drop, capped at maskedColumnsMaxListed; More counts the rest.
@@ -177,7 +177,7 @@ func (s *Server) columnReviewViewOf(c model.ConnectionSummary) *columnReviewView
 // than an unbounded list for a connection with hundreds of masked columns.
 const maskedColumnsMaxListed = 50
 
-// maskedColumnsFor formats rules as list_connections' own "table.column: kind" strings, sorted,
+// maskedColumnsFor formats rules as list' own "table.column: kind" strings, sorted,
 // capped per maskedColumnsMaxListed.
 func maskedColumnsFor(rules []model.MaskRule) []string {
 	if len(rules) == 0 {
@@ -202,9 +202,8 @@ func maskedColumnsFor(rules []model.MaskRule) []string {
 // Query.Execute and this projection. ---
 
 type tabularColumn struct {
-	Name      string `json:"name"`
-	DataType  string `json:"dataType"`
-	TypeClass string `json:"typeClass"`
+	Name     string `json:"name"`
+	DataType string `json:"dataType"`
 }
 
 // planEnvelope is embedded in each result struct so `plan` inlines into the same JSON object the
@@ -219,6 +218,8 @@ type planEnvelope struct {
 	// this field existed.
 	AdditionalStatementResults int    `json:"additionalStatementResults,omitempty"`
 	Note                       string `json:"note,omitempty"`
+	// Hint names the next step when rows were cut at maxRows.
+	Hint string `json:"hint,omitempty"`
 }
 
 // setAdditionalStatementResultsNote is withAdditionalStatementResultsNote's own per-result setter,
@@ -236,8 +237,8 @@ type tabularResult struct {
 	Columns        []tabularColumn `json:"columns"`
 	Rows           [][]*string     `json:"rows"`
 	RowCount       int             `json:"rowCount"`
-	Returned       int             `json:"returned"`
-	TruncatedCells int             `json:"truncatedCells"`
+	Returned       int             `json:"returned,omitempty"`
+	TruncatedCells int             `json:"truncatedCells,omitempty"`
 	Truncated      bool            `json:"truncated,omitempty"`
 	// WithheldColumns names the result columns dropped because the user has not reviewed their masking
 	// (P534). Names only, never values.
@@ -255,7 +256,7 @@ type documentResult struct {
 	Kind      string          `json:"kind"`
 	Documents []documentEntry `json:"documents"`
 	RowCount  int             `json:"rowCount"`
-	Returned  int             `json:"returned"`
+	Returned  int             `json:"returned,omitempty"`
 	Truncated bool            `json:"truncated,omitempty"`
 	planEnvelope
 }
@@ -272,7 +273,7 @@ type keyValueResult struct {
 	MemoryBytes *int64          `json:"memoryBytes,omitempty"`
 	Entries     []keyValueEntry `json:"entries"`
 	RowCount    int             `json:"rowCount"`
-	Returned    int             `json:"returned"`
+	Returned    int             `json:"returned,omitempty"`
 	Truncated   bool            `json:"truncated,omitempty"`
 	planEnvelope
 }
@@ -289,7 +290,7 @@ type streamResult struct {
 	Kind      string          `json:"kind"`
 	Messages  []streamMessage `json:"messages"`
 	RowCount  int             `json:"rowCount"`
-	Returned  int             `json:"returned"`
+	Returned  int             `json:"returned,omitempty"`
 	Truncated bool            `json:"truncated,omitempty"`
 	planEnvelope
 }
@@ -777,7 +778,7 @@ func newMaskRiskySyntaxRefusedError(reason string) error {
 // FieldsAreColumns=false — a Redis list/set's synthetic display index, a stream entry id, a
 // generic console reply with no per-command shape) can never be checked against a mask rule at
 // all: RuleFor/ApplyColumn would never match, passing the real value straight through while
-// list_connections still reports the connection as protected. Same fail-closed posture as the
+// list still reports the connection as protected. Same fail-closed posture as the
 // document/stream page refusal above: refuse outright rather than silently skip masking.
 func newMaskColumnlessKeyValueRefusedError() error {
 	return &maskingRefusedError{msg: "this connection has PII masking rules, which cannot be applied to this result — it carries no real per-entry field name a mask rule's column could match (e.g. a list/set display index, a stream entry id, or a command reply with no per-command field shape); re-read it through a command whose reply names real fields (e.g. HGET/HMGET/HGETALL on a hash), or remove the rules in the connection's Privacy tab"}
@@ -812,6 +813,7 @@ func renderPage(p page.Page, maxRows int, plan *planSummary, mk *maskset, statem
 		}
 		r := renderTabularPage(pg, maxRows, mk)
 		r.Plan = plan
+		r.Hint = cutHint(r.Returned, maxRows)
 		return r, nil
 	case page.DocumentPage:
 		if mk != nil && !mk.Empty() {
@@ -819,6 +821,7 @@ func renderPage(p page.Page, maxRows int, plan *planSummary, mk *maskset, statem
 		}
 		r := renderDocumentPage(pg, maxRows)
 		r.Plan = plan
+		r.Hint = cutHint(r.Returned, maxRows)
 		return r, nil
 	case page.KeyValuePage:
 		if mk != nil && !mk.Empty() && !pg.FieldsAreColumns {
@@ -826,6 +829,7 @@ func renderPage(p page.Page, maxRows int, plan *planSummary, mk *maskset, statem
 		}
 		r := renderKeyValuePage(pg, maxRows, mk)
 		r.Plan = plan
+		r.Hint = cutHint(r.Returned, maxRows)
 		return r, nil
 	case page.StreamPage:
 		if mk != nil && !mk.Empty() {
@@ -833,6 +837,7 @@ func renderPage(p page.Page, maxRows int, plan *planSummary, mk *maskset, statem
 		}
 		r := renderStreamPage(pg, maxRows)
 		r.Plan = plan
+		r.Hint = cutHint(r.Returned, maxRows)
 		return r, nil
 	default:
 		// §5.2: "implement it rather than panicking on the fourth arm of a type switch" — reachable
@@ -875,6 +880,22 @@ func withAdditionalStatementResultsNote(rendered any, extraPages int) any {
 		// than panicking.
 		return rendered
 	}
+}
+
+// returnedIfCut is the returned count only when rows were cut; zero (omitted) otherwise.
+func returnedIfCut(rowCount, returned int) int {
+	if returned < rowCount {
+		return returned
+	}
+	return 0
+}
+
+// cutHint is the agent-facing next step after a maxRows cut.
+func cutHint(returned, maxRows int) string {
+	if returned == 0 {
+		return ""
+	}
+	return fmt.Sprintf("stopped at maxRows %d: raise maxRows (max %d), filter, or aggregate", maxRows, runQueryMaxMaxRows)
 }
 
 func cappedReturned(rowCount, maxRows int) int {
@@ -938,7 +959,7 @@ func renderTabularPage(pg page.TabularPage, maxRows int, mk *maskset) tabularRes
 	columns := make([]tabularColumn, len(keep))
 	for k, i := range keep {
 		c := pg.Columns[i]
-		columns[k] = tabularColumn{Name: c.Name, DataType: c.DataType, TypeClass: string(c.TypeClass)}
+		columns[k] = tabularColumn{Name: c.Name, DataType: c.DataType}
 	}
 	rules := columnRules(pg.Columns, mk)
 	var masker *mask.Masker
@@ -962,7 +983,7 @@ func renderTabularPage(pg page.TabularPage, maxRows int, mk *maskset) tabularRes
 	}
 	res := tabularResult{
 		Kind: "tabular", Columns: columns, Rows: rows,
-		RowCount: pg.RowCount, Returned: returned, TruncatedCells: pg.TruncatedCells,
+		RowCount: pg.RowCount, Returned: returnedIfCut(pg.RowCount, returned), TruncatedCells: pg.TruncatedCells,
 		Truncated: returned < pg.RowCount || pg.Position.Truncated,
 	}
 	if len(withheld) > 0 {
@@ -1028,7 +1049,7 @@ func renderDocumentPage(pg page.DocumentPage, maxRows int) documentResult {
 	for r := 0; r < returned; r++ {
 		docs[r] = documentEntry{ID: cellAt(pg.IDs, r), Body: cellAt(pg.Bodies, r)}
 	}
-	return documentResult{Kind: "document", Documents: docs, RowCount: pg.RowCount, Returned: returned, Truncated: returned < pg.RowCount || pg.Position.Truncated}
+	return documentResult{Kind: "document", Documents: docs, RowCount: pg.RowCount, Returned: returnedIfCut(pg.RowCount, returned), Truncated: returned < pg.RowCount || pg.Position.Truncated}
 }
 
 // renderKeyValuePage also masks: a Redis hash field or an S3 metadata key is column-shaped,
@@ -1050,7 +1071,7 @@ func renderKeyValuePage(pg page.KeyValuePage, maxRows int, mk *maskset) keyValue
 	}
 	return keyValueResult{
 		Kind: "keyvalue", RedisType: pg.RedisType, TTLMs: pg.TTLMs, MemoryBytes: pg.MemoryBytes,
-		Entries: entries, RowCount: pg.RowCount, Returned: returned, Truncated: returned < pg.RowCount || pg.Position.Truncated,
+		Entries: entries, RowCount: pg.RowCount, Returned: returnedIfCut(pg.RowCount, returned), Truncated: returned < pg.RowCount || pg.Position.Truncated,
 	}
 }
 
@@ -1063,5 +1084,5 @@ func renderStreamPage(pg page.StreamPage, maxRows int) streamResult {
 			Headers: cellAt(pg.Headers, r), Attrs: cellAt(pg.Attrs, r), Body: cellAt(pg.Bodies, r),
 		}
 	}
-	return streamResult{Kind: "stream", Messages: messages, RowCount: pg.RowCount, Returned: returned, Truncated: returned < pg.RowCount || pg.Position.Truncated}
+	return streamResult{Kind: "stream", Messages: messages, RowCount: pg.RowCount, Returned: returnedIfCut(pg.RowCount, returned), Truncated: returned < pg.RowCount || pg.Position.Truncated}
 }

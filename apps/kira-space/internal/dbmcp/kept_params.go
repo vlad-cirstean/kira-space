@@ -63,7 +63,7 @@ type keptChangedError struct {
 
 func (e *keptChangedError) Error() string {
 	if e.gone {
-		return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); nothing ran. Call list_saved_variables, produce it again, then repeat the query.", e.name)
+		return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); nothing ran. Call list (what: saved), produce it again, then repeat the query.", e.name)
 	}
 	return fmt.Sprintf("saved variable %q changed after the statement was checked; nothing ran. Produce it again, then repeat the query.", e.name)
 }
@@ -75,7 +75,7 @@ func noParamsText(summary model.ConnectionSummary) string {
 }
 
 func unknownKeptText(name string) string {
-	return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); call list_saved_variables", name)
+	return fmt.Sprintf("no saved variable %q (it may have expired or been cleared); call list (what: saved)", name)
 }
 
 // resolveParams checks params against the statement and snapshots the kept variables they name. It runs

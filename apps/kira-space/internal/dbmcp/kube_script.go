@@ -267,7 +267,7 @@ func setKubeField(in *kubeRequest, key string, raw json.RawMessage) error {
 // kubeScriptInput describes what the transform read: metadata only, never a row or a line.
 type kubeScriptInput struct {
 	RowCount  int  `json:"rowCount"`
-	Truncated bool `json:"truncated"`
+	Truncated bool `json:"truncated,omitempty"`
 }
 
 func kubeScriptInputOf(op, raw string) kubeScriptInput {

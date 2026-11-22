@@ -56,7 +56,7 @@ func (s *Server) reviewForMode(c model.ConnectionSummary, mode string) bool {
 	return s.dbReviewResolver()(c.McpReview.For(mode))
 }
 
-// reviewView is list_connections' reviewResults: which modes hold their results for the user.
+// reviewView is list' reviewResults: which modes hold their results for the user.
 type reviewView struct {
 	Read  bool `json:"read"`
 	Write bool `json:"write"`
@@ -212,7 +212,7 @@ func (a connectionAccess) of(mode string) modeAccess {
 }
 
 // accessOf is the one place a connection's permissions, read-only flag and kind become per-mode
-// access. list_connections reports it and every gate and refusal text reads it.
+// access. list reports it and every gate and refusal text reads it.
 func accessOf(c model.ConnectionSummary) connectionAccess {
 	m := modesOf(c)
 	one := func(mode, configured string) modeAccess {

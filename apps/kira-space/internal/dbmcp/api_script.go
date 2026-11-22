@@ -367,6 +367,9 @@ func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []
 	if o.Failure != "" {
 		return errResult(o.Failure)
 	}
+	if o.Raw.Truncated && !o.Raw.Binary {
+		o.Raw.Hint = fmt.Sprintf("body cut: raise maxResponseBytes (max %d) or use a transform", apiMaxResponseBytes)
+	}
 	extras := []struct {
 		key string
 		v   any
@@ -384,7 +387,7 @@ func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []
 		tail += `,"` + f.key + `":` + string(b)
 	}
 	if sc.hasTransform() {
-		return textResult(`{"result":` + string(o.Transformed) + tail + `}`)
+		return textResult(`{"output":` + string(o.Transformed) + tail + `}`)
 	}
 	if tail == "" {
 		return jsonResult(o.Raw)

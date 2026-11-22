@@ -24,7 +24,7 @@ import ReviewRequest from './ReviewRequest.vue';
 import ReviewTable from './ReviewTable.vue';
 import StagedKeepList from './StagedKeepList.vue';
 
-// The held kube_list_resources, kube_describe or kube_pod_logs result: the operation's own view first
+// The held kube_read result: the operation's own view first
 // (table, manifest, log lines), then the JSON the agent gets on Send. With a script, "Agent gets" comes first
 // and the operation's views show the result the script read, then the script and the values it keeps. Every
 // byte shown comes from the pending-response query, never from the item payload.

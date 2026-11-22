@@ -117,8 +117,8 @@ const footnote = computed(() => {
     return [t('studio.common.noRows.empty'), r.note].filter(Boolean).join(' · ');
   const parts: string[] = [];
   if (r.truncated) parts.push(t('studio.dbMcp.preview.truncated.status'));
-  if (r.kind === 'tabular' && r.truncatedCells > 0) {
-    parts.push(t('studio.dbMcp.preview.truncatedCells.status', { count: r.truncatedCells }));
+  if (r.kind === 'tabular' && (r.truncatedCells ?? 0) > 0) {
+    parts.push(t('studio.dbMcp.preview.truncatedCells.status', { count: r.truncatedCells ?? 0 }));
   }
   if (r.kind === 'keyvalue') {
     parts.push(t('studio.dbMcp.preview.redisType.status', { type: r.redisType }));

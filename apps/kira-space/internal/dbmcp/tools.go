@@ -17,7 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// resolveReadGated is list_children/describe's shared preamble:
+// resolveReadGated is describe/describe's shared preamble:
 // resolve the connection, then refuse if read mode denies. done is true whenever the caller should
 // return (res, out, err) immediately, same convention as resolveVerdict/awaitApproval below.
 //
@@ -305,7 +305,7 @@ func (s *Server) executeAndRender(ctx context.Context, args runQueryArgs, rv que
 		s.cfg.ColumnReview.MarkStale(args.ConnectionID)
 	}
 	if len(resp.Pages) == 0 {
-		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0, "returned": 0})
+		res, out, err = jsonResult(map[string]any{"kind": "empty", "rowCount": 0})
 		return res, out, err, set, true
 	}
 	if tp, ok := resp.Pages[0].(page.TabularPage); ok && set.known != nil {

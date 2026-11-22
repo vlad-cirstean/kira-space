@@ -87,7 +87,7 @@ func (s *Server) checkStatementTables(ctx context.Context, summary model.Connect
 		more = fmt.Sprintf(" and %d more", len(shown)-unlistedMaxShown)
 		shown = shown[:unlistedMaxShown]
 	}
-	return errResult(fmt.Sprintf("%s; not listed: %s%s. list_connections shows the tables field.", limitedPrefix(summary), strings.Join(shown, ", "), more))
+	return errResult(fmt.Sprintf("%s; not listed: %s%s. list shows the tables field.", limitedPrefix(summary), strings.Join(shown, ", "), more))
 }
 
 func tablesRefusal(summary model.ConnectionSummary, refusal string) string {
@@ -119,7 +119,7 @@ func allowedPath(summary model.ConnectionSummary, set *tableref.Set, path string
 		return ""
 	}
 	if !set.Allows(ref) {
-		return fmt.Sprintf("%s; not listed: %s. list_connections shows the tables field.", limitedPrefix(summary), tableref.Format(summary.Kind, ref))
+		return fmt.Sprintf("%s; not listed: %s. list shows the tables field.", limitedPrefix(summary), tableref.Format(summary.Kind, ref))
 	}
 	return ""
 }
@@ -176,7 +176,7 @@ func containerDepth(kind string) int {
 	return 1
 }
 
-// allowedTablesView is list_connections' tables field.
+// allowedTablesView is list' tables field.
 type allowedTablesView struct {
 	All   bool     `json:"all"`
 	Names []string `json:"names"`
@@ -204,7 +204,7 @@ func tablesView(summary model.ConnectionSummary) *allowedTablesView {
 }
 
 // filterMaskRules keeps the rules that do not name an unlisted table: a rule's table name is itself a table
-// name list_connections would otherwise show.
+// name list would otherwise show.
 func filterMaskRules(set *tableref.Set, rules []model.MaskRule) []model.MaskRule {
 	if set == nil {
 		return rules

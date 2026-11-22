@@ -43,7 +43,7 @@ type DbMcpService struct {
 	Scripts dbmcp.ScriptControl
 	// API backs the API request tools; nil leaves them unregistered.
 	API dbmcp.APIRequester
-	// Kept backs list_saved_variables and the approval wait on kept values; nil leaves them off.
+	// Kept backs list (what: saved) and the approval wait on kept values; nil leaves them off.
 	Kept dbmcp.KeptStore
 	// JS and ScriptOps run and record the scripts agents attach to API requests (P676); nil turns scripts off.
 	JS        dbmcp.ScriptEngine

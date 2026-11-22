@@ -82,7 +82,7 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 }
 
 // enforceScope refuses any bucket other than options.bucket: the tree honours the option, so
-// crafted paths (an MCP agent's list_children) must too.
+// crafted paths (an MCP agent's describe) must too.
 func enforceScope(scopedBucket, bucket string) error {
 	if scopedBucket != "" && bucket != scopedBucket {
 		return adapters.New(adapters.CodeNotFound, "bucket not found: "+bucket, nil)

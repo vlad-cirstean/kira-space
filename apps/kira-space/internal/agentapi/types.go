@@ -144,9 +144,11 @@ type Result struct {
 	Binary      bool        `json:"binary,omitempty"`
 	BodyBytes   int         `json:"bodyBytes"`
 	Truncated   bool        `json:"truncated"`
-	ElapsedMs   int         `json:"elapsedMs"`
-	FinalURL    string      `json:"finalUrl"`
-	Redirects   []Redirect  `json:"redirects"`
+	// Hint names the next step when Truncated; set by the MCP tool, empty elsewhere.
+	Hint      string     `json:"hint,omitempty"`
+	ElapsedMs int        `json:"elapsedMs"`
+	FinalURL  string     `json:"finalUrl"`
+	Redirects []Redirect `json:"redirects"`
 	// Inputs says what happened to each declared input; set by the caller that kept them.
 	Inputs []InputStatus `json:"inputs,omitempty"`
 

@@ -183,7 +183,7 @@ type ApprovalResponse struct {
 	// Script is the script that produced Text from Raw; nil without one.
 	Script *HeldScript
 	// Keep are the values the script will keep once the user sends the result: previews, never the
-	// agent's text. Empty without kira.storeValue.
+	// agent's text. Empty when the script writes no plain or secret value.
 	Keep []HeldKeep
 	// staged is the run that holds the values of Keep until the result is sent; only StagedSecret reads them.
 	staged *keptRun

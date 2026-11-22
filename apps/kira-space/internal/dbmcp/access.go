@@ -12,7 +12,7 @@ import (
 // if McpEnabled is true — deny by default.
 // A connection that exists but is not exposed
 // reports the exact same "no such connection" text an unknown id would: its existence is not an
-// AI client's business (the rule for list_connections, applied here to a client that names
+// AI client's business (the rule for list, applied here to a client that names
 // one directly instead of discovering it).
 func (s *Server) resolveEnabled(connectionID string) (model.ConnectionSummary, error) {
 	conns, err := s.cfg.Conns.List()

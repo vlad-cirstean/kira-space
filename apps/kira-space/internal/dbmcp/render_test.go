@@ -515,7 +515,7 @@ func TestWithAdditionalStatementResultsNoteAddsCountWithoutLosingFields(t *testi
 	if tr.Kind != "tabular" {
 		t.Fatalf("lost the original result's own fields: %+v", tr)
 	}
-	if tr.RowCount != 1 || tr.Returned != 1 {
+	if tr.RowCount != 1 || len(tr.Rows) != 1 {
 		t.Fatalf("lost the original result's own row fields: %+v", tr)
 	}
 	if tr.AdditionalStatementResults != 2 {

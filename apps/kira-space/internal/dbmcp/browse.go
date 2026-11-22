@@ -125,7 +125,7 @@ func checkBrowseShape(summary model.ConnectionSummary, args browseTableArgs) (br
 	p, err := model.DecodePath(summary.ID, args.Path)
 	ref, ok := tableref.FromPath(summary.Kind, p.Segments)
 	if err != nil || !ok || len(p.Segments) != browseDepth(summary.Kind) {
-		return sh, "browse_table needs a table path from list_children"
+		return sh, "browse_table needs a table path from describe"
 	}
 	sh.relation = relationOf(summary.Kind, ref)
 	return sh, ""
@@ -591,7 +591,7 @@ func (s *Server) describeRelation(ctx context.Context, summary model.ConnectionS
 	meta := desc.Meta
 	p, err := model.DecodePath(summary.ID, path)
 	if err != nil || len(p.Segments) == 0 {
-		return meta, adapters.Contract("browse_table needs a table path from list_children", err)
+		return meta, adapters.Contract("browse_table needs a table path from describe", err)
 	}
 	parent := model.EncodePath(p.Segments[:len(p.Segments)-1])
 	name := p.Segments[len(p.Segments)-1].Name

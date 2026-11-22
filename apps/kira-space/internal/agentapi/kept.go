@@ -527,7 +527,7 @@ func refKind(sp keptvars.RefSpan) string {
 func checkUndeclared(name string, sp keptvars.RefSpan, e keptvars.Entry, ok bool, origin string) error {
 	switch {
 	case !ok:
-		return keptErr("no saved variable %q (it may have expired or been cleared); call list_saved_variables"+inputsDeclHint, name)
+		return keptErr("no saved variable %q (it may have expired or been cleared); call list (what: saved)"+inputsDeclHint, name)
 	case e.Secret != sp.Secret:
 		return kindErr(name, e.Secret)
 	case e.Bound() && origin != "" && e.Origin != origin:

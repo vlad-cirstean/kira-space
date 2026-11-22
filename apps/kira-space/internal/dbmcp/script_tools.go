@@ -326,6 +326,9 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery, mode string) 
 		}
 		lines, cut := capLogBytes(log.Lines, q.FromEnd)
 		v.Lines, v.Truncated = lines, log.Truncated || cut || len(lines) < log.Matched
+		if v.Truncated {
+			v.Note = "output cut: narrow with lines or contains"
+		}
 		if q.Contains == "" {
 			v.LogLines = log.Matched
 		} else {

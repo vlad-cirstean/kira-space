@@ -53,14 +53,14 @@ const EphemeralPort = -1
 type TokenProvider func() (rec mcpauth.Record, plain string, minted bool, err error)
 
 // ConnectionsReader is dbmcp's own consumer-declared interface (A11) over *connections.Service —
-// only the three methods list_connections/access.go/run_query actually need.
+// only the three methods list/access.go/run_query actually need.
 type ConnectionsReader interface {
 	List() ([]model.ConnectionSummary, error)
 	StateOf(connectionID string) model.ConnectionState
 	ConnectContext(ctx context.Context, connectionID string) (model.ConnectionState, error)
 }
 
-// MetadataReader is dbmcp's own consumer-declared interface over *tree.Service — list_children/
+// MetadataReader is dbmcp's own consumer-declared interface over *tree.Service — describe/
 // describe's own backend.
 type MetadataReader interface {
 	Children(ctx context.Context, connectionID, path string, refresh bool) (tree.ChildrenResult, error)
@@ -105,7 +105,7 @@ type MaskRules interface {
 	// MaskSetFor is run_query's render path's own seam (§4.2/§4.3) — the folded, per-column-name
 	// rule map plus the connection's Masker.
 	MaskSetFor(connectionID string) (mask.Set, error)
-	// List is list_connections' own seam (§4.5) — the raw per-rule rows (table_name included,
+	// List is list' own seam (§4.5) — the raw per-rule rows (table_name included,
 	// unlike MaskSetFor's already-folded map) needed to report "table.column: kind" per rule.
 	List(connectionID string) ([]model.MaskRule, error)
 }
@@ -119,7 +119,7 @@ type ColumnReview interface {
 	// Recheck is For with a live column read of the statement's relations, for result columns the last check
 	// cannot vouch for.
 	Recheck(ctx context.Context, summary model.ConnectionSummary, req maskreview.Rescan) maskreview.Withheld
-	// Cached is the last state without any op, for list_connections.
+	// Cached is the last state without any op, for list.
 	Cached(connectionID string) (maskreview.Withheld, bool)
 	// MarkStale makes the next For check again, after an MCP write or DDL statement.
 	MarkStale(connectionID string)
@@ -176,7 +176,7 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
-	// Kept backs list_saved_variables and the approval wait on kept values; nil leaves the tool
+	// Kept backs list (what: saved) and the approval wait on kept values; nil leaves the tool
 	// unregistered and refuses every {{plain.*}} or {{secret.*}} reference.
 	Kept KeptStore
 	// JS and ScriptOps run and record the scripts agents attach; either nil turns scripts off.

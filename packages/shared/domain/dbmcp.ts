@@ -48,7 +48,7 @@ export const dbMcpPayloadModeSchema = /*#__PURE__*/ z.enum(['read', 'write', 'dd
 export type DbMcpEnforcement = 'session' | 'app' | 'none';
 
 // Mirror of internal/dbmcp/permissions.go: writeConsoleKinds, enforcementOf and accessOf. The flow
-// test's list_connections contract pins both sides.
+// test's list contract pins both sides.
 const WRITE_CONSOLE_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
   'postgres',
   'mysql',
@@ -69,7 +69,7 @@ export function enforcementOf(kind: string): DbMcpEnforcement {
 }
 
 // Mirror of internal/dbmcp/timeout.go timeoutEnforcementOf: what stops a statement past the
-// connection's statement timeout, per mode. The flow test's list_connections contract pins both sides.
+// connection's statement timeout, per mode. The flow test's list contract pins both sides.
 export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, DbMcpEnforcement> {
   const all = (e: DbMcpEnforcement): Record<DbMcpMode, DbMcpEnforcement> => ({
     read: e,
@@ -98,7 +98,7 @@ export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, D
 export type ExpensiveQueryCheck = 'plan' | 'off' | 'none';
 
 // Mirror of internal/dbmcp/expensive.go expensiveCheckOf: none (no row estimate), off (the connection's
-// MCP auto_explain switch is off) or plan. The flow test's list_connections contract pins both sides.
+// MCP auto_explain switch is off) or plan. The flow test's list contract pins both sides.
 export function expensiveQueryCheckOf(kind: string, autoExplain: boolean): ExpensiveQueryCheck {
   if (!ROW_ESTIMATE_KINDS.has(kind as ConnectionKind)) return 'none';
   return autoExplain ? 'plan' : 'off';
@@ -463,8 +463,9 @@ export type DbMcpPendingResponse = z.infer<typeof dbMcpPendingResponseSchema>;
 const nullableText = /*#__PURE__*/ z.string().nullable();
 const runQueryEnvelope = {
   rowCount: z.number(),
-  returned: z.number(),
+  returned: z.number().optional(),
   truncated: z.boolean().optional(),
+  hint: z.string().optional(),
   plan: z.unknown().optional(),
   additionalStatementResults: z.number().optional(),
   note: z.string().optional(),
@@ -473,9 +474,9 @@ export const dbMcpRunQueryResultSchema = /*#__PURE__*/ z.discriminatedUnion('kin
   z.object({
     ...runQueryEnvelope,
     kind: z.literal('tabular'),
-    columns: z.array(z.object({ name: z.string(), dataType: z.string(), typeClass: z.string() })),
+    columns: z.array(z.object({ name: z.string(), dataType: z.string() })),
     rows: z.array(z.array(nullableText)),
-    truncatedCells: z.number(),
+    truncatedCells: z.number().optional(),
   }),
   z.object({
     ...runQueryEnvelope,

@@ -76,7 +76,7 @@ func timeoutEnforcementOf(kind, mode string) string {
 	return ddl
 }
 
-// statementTimeoutView is list_connections' statementTimeout.
+// statementTimeoutView is list' statementTimeout.
 type statementTimeoutView struct {
 	Seconds     int               `json:"seconds"`
 	Enforcement map[string]string `json:"enforcement"`

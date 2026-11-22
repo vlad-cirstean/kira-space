@@ -265,7 +265,7 @@ func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 func (s *Server) addAPITools(srv *mcp.Server, src llmprompts.Source) {
 	limits := map[string]any{
 		"timeoutSeconds":   llmprompts.LimitVars{Default: 30, Max: 300},
-		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: 512 << 10},
+		"maxResponseBytes": llmprompts.LimitVars{Default: 64 << 10, Max: apiMaxResponseBytes},
 	}
 	sch := llmprompts.RequireNonEmpty(llmprompts.InputSchema[apiRequestArgs](src, llmprompts.DbmcpToolAPIRequest.ID(), limits), "method", "url")
 	fixScriptSchema(sch)
@@ -565,3 +565,6 @@ func displayedKept(uses []agentapi.KeptUse, body *apiBodyPayload) []agentapi.Kep
 	}
 	return out
 }
+
+// apiMaxResponseBytes mirrors agentapi's response cap, for the schema text and the cut hint.
+const apiMaxResponseBytes = 512 << 10
