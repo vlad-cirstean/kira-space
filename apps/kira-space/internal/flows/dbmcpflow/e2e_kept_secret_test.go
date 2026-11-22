@@ -181,6 +181,16 @@ func TestE2EKeptSecret(t *testing.T) {
 		f.app.Contract(t, secretKey, "result#otherOrigin", text(res), append(opts, flowharness.Replace(other, "http://localhost:<port>"))...)
 	})
 
+	t.Run("a script cannot read the secret", func(t *testing.T) {
+		sent := len(srv.Requests())
+		script := map[string]any{"prepare": `request.headers = [{name: "Authorization", value: "Bearer " + secret.session_token}]; return request;`}
+		res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", srv.URL+"/echo", script))
+		remember(text(res))
+		if !res.IsError || !strings.Contains(text(res), `"session_token" is secret; scripts cannot read secrets`) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
+			t.Fatalf("result = %q, queue %d, want a refusal naming the variable before any card or send", text(res), f.queueLen(t))
+		}
+	})
+
 	t.Run("Settings lists the kinds", func(t *testing.T) {
 		list, err := f.app.W.KeptVars.List()
 		if err != nil {
@@ -233,5 +243,9 @@ func TestDbMcpQueryScriptKeepSecret(t *testing.T) {
 	read := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.note_key;`))
 	if !read.IsError || !strings.Contains(text(read), `"note_key" is secret;`) {
 		t.Fatalf("read back = %s, want the secret refusal", text(read))
+	}
+	read = callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return secret.note_key;`))
+	if !read.IsError || !strings.Contains(text(read), `"note_key" is secret;`) {
+		t.Fatalf("secret read back = %s, want the secret refusal", text(read))
 	}
 }

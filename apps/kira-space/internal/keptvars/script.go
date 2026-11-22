@@ -12,7 +12,7 @@ type ScriptSite struct {
 	// Name is as written; it may not be a valid variable name (the run refuses it).
 	Name     string
 	Kind     string // "plain" or "secret"
-	Op       string // "read", "write" or "delete"; a secret mention is always a write
+	Op       string // "read", "write" or "delete"
 	From, To int
 }
 
@@ -48,9 +48,6 @@ func ScanScript(src string) []ScriptSite {
 		}
 		kind := src[m[2]:m[3]]
 		op := scriptOp(src, m[0], m[1])
-		if kind == KindSecret {
-			op = OpWrite
-		}
 		out = append(out, ScriptSite{
 			Name: src[start:end], Kind: kind, Op: op,
 			From: ToUTF16(src, m[0]), To: ToUTF16(src, m[1]),

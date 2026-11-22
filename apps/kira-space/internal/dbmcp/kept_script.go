@@ -109,7 +109,7 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) 
 	return k, ""
 }
 
-// refuseSecretReads is the refusal text for a script that mentions a temporary secret as plain.x, or writes a
+// refuseSecretReads is the refusal text for a script that reads a temporary secret (as plain.x or secret.x), or writes a
 // name as the other kind than it is set as. "" is ok. Secrets are used in api_request as {{secret.x}}.
 func (k *keptRun) refuseSecretReads(tool string) string {
 	for _, stage := range scriptStages {
@@ -125,6 +125,10 @@ func (k *keptRun) refuseSecretReads(tool string) string {
 				return fmt.Sprintf("%q is secret; secrets are used only in api_request, as {{secret.%s}}.", st.Name, st.Name)
 			case st.Kind == keptvars.KindSecret && !e.Secret:
 				return clashText(st.Name, false)
+			case st.Kind == keptvars.KindSecret && st.Op == keptvars.OpRead && tool == "api_request":
+				return fmt.Sprintf("%q is secret; scripts cannot read secrets. Write {{secret.%s}} in the request.", st.Name, st.Name)
+			case st.Kind == keptvars.KindSecret && st.Op == keptvars.OpRead:
+				return fmt.Sprintf("%q is secret; secrets are used only in api_request, as {{secret.%s}}.", st.Name, st.Name)
 			}
 		}
 	}
