@@ -1,17 +1,9 @@
 package claude
 
-// P643 Part 1 spike: does the planned file-based Details surface (arm F) cost about the same as
-// today's tools (arm T) for five typical agent flows? Opt-in, spends real tokens:
-//
-//	KIRA_SPIKE=run go test -count=1 -run TestDetailsSpike -timeout 3h .
-//
-// Knobs: KIRA_SPIKE_REPS (haiku runs per flow and arm, default 3); flows F1..F6, KIRA_SPIKE_SONNET=0 (skip the
-// sonnet round), KIRA_SPIKE_FLOWS (comma list, default F1..F5), KIRA_SPIKE_OUT (results file).
-// Gate and thresholds: docs/HISTORY.md (v0.3.14 P643).
+// Flows and run harness of the P714 details bench (details_bench_test.go); born as the P643 spike.
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -32,11 +24,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/llmprompts"
 )
 
-const (
-	spikeRunCap   = 0.25
-	spikeTotalCap = 6.0
-	spikeFixtures = "testdata/details-spike"
-)
+const spikeRunCap = 0.25
 
 type spikeRec struct {
 	Flow, Arm, Model string
@@ -60,16 +48,15 @@ type spikeRec struct {
 type spikeRun struct {
 	t       *testing.T
 	flow    string
-	arm     string // "T" or "F"
+	arm     string // "T" or "R"
 	root    string // run scratch
 	repo    string // claude cwd
-	tasks   string // tasks root (arm F)
+	tasks   string // tasks root
 	taskDir string
 	shot    string
 	wt      string
 	ready   time.Time
-	variant string    // Part 1b files arm: FF, FL or FC; empty in Part 1
-	lib     *spikeLib // Part 1b fixtures; nil in Part 1
+	lib     *spikeLib // fixtures
 
 	finishes []agentmcp.Finish
 	// pass and finishBase serve multi-pass benchmark flows: the pass number (1 for single-pass flows) and
@@ -78,7 +65,6 @@ type spikeRun struct {
 	afterPass        func() // runs between passes: promotes the pending edit, resets what the oracle reads
 	studio           *studioStub
 	space            *spikeSpace
-	fa               *filesArm
 	// realProof, set by the real-app arm R, reads the proof Kira stored (the pending edit when there is one).
 	realProof func() (*spikeProof, bool, string)
 }
@@ -86,7 +72,7 @@ type spikeRun struct {
 type spikeFlow struct {
 	id, name string
 	prompt   func(r *spikeRun) string
-	// seedT returns the proof the studio stub starts with; fixtures for arm F come from testdata.
+	// seedT returns the proof the studio stub starts with.
 	seedT  func(r *spikeRun) *spikeProof
 	oracle func(r *spikeRun, result string) (bool, string)
 }
@@ -137,34 +123,15 @@ func (r *spikeRun) folderLine() string {
 		}
 		return "\n\n" + llmprompts.HeadlessSpaceFiles.Text(llmprompts.Defaults(), v)
 	}
-	if r.arm != "F" {
-		return ""
-	}
-	if (r.variant == "FA" || r.variant == "FP") && r.flow == "F3" { // Part 1c A: Kira inlines the proof path
-		return "\n\nTask folder: " + r.taskDir + " (README.md there). Proof file: proofs/orders-match-ledger/proof.md."
-	}
-	return "\n\nTask folder: " + r.taskDir + " (README.md there)."
+	return ""
 }
 
-// finalProof reads the proof an arm-F run left in the task folder and whether a submit saw it.
+// finalProof reads the proof arm R's real app stored, and whether the run submitted it.
 func (r *spikeRun) finalProof() (*spikeProof, bool, string) {
 	if r.realProof != nil {
 		return r.realProof()
 	}
-	ents, _ := os.ReadDir(filepath.Join(r.taskDir, "proofs"))
-	for _, e := range ents {
-		dir := filepath.Join(r.taskDir, "proofs", e.Name())
-		p, _, err := readProof(dir)
-		if err != nil {
-			return nil, false, err.Error()
-		}
-		rel := filepath.Join("proofs", e.Name(), "proof.md")
-		r.fa.mu.Lock()
-		seen := r.fa.seen[rel] == fileSHA(filepath.Join(dir, "proof.md"))
-		r.fa.mu.Unlock()
-		return p, seen, ""
-	}
-	return nil, false, "no proof folder"
+	return nil, false, "no proof reader"
 }
 
 func hasImage(p *spikeProof) bool {
@@ -192,22 +159,11 @@ var spikeFlows = []spikeFlow{
 			if strings.TrimSpace(string(b)) != "hello, world" {
 				return false, "greeting.txt not changed"
 			}
-			if r.arm == "T" {
-				if len(r.finishes) == 0 || r.finishes[len(r.finishes)-1].Status != "done" {
-					return false, "finish_step done not called"
-				}
-				if !strings.Contains(strings.ToLower(r.finishes[len(r.finishes)-1].Summary), "greeting") {
-					return false, "handover summary does not name greeting.txt"
-				}
-				return true, ""
+			if len(r.finishes) == 0 || r.finishes[len(r.finishes)-1].Status != "done" {
+				return false, "finish_step done not called"
 			}
-			draft := filepath.Join(r.taskDir, "handovers", "draft-implement.md")
-			body, _ := os.ReadFile(draft)
-			if !strings.Contains(strings.ToLower(string(body)), "greeting") {
-				return false, "draft missing or does not name greeting.txt"
-			}
-			if len(r.fa.finish) == 0 || r.fa.finish[len(r.fa.finish)-1] != "done" {
-				return false, "finish_step done not accepted"
+			if !strings.Contains(strings.ToLower(r.finishes[len(r.finishes)-1].Summary), "greeting") {
+				return false, "handover summary does not name greeting.txt"
 			}
 			return true, ""
 		},
@@ -321,18 +277,12 @@ var spikeFlows = []spikeFlow{
 				repos                  []string
 			}
 			var kids []kid
-			if r.fa == nil { // arms T and R record the calls on the stub space
-				for _, a := range r.space.spawned {
-					k := kid{a.Title, a.Workflow, a.Brief, nil}
-					for _, rp := range a.Repos {
-						k.repos = append(k.repos, rp.Repo)
-					}
-					kids = append(kids, k)
+			for _, a := range r.space.spawned { // arms T and R record the calls on the stub space
+				k := kid{a.Title, a.Workflow, a.Brief, nil}
+				for _, rp := range a.Repos {
+					k.repos = append(k.repos, rp.Repo)
 				}
-			} else {
-				for _, c := range r.fa.kids {
-					kids = append(kids, kid{c.Title, c.Workflow, c.Brief, c.Repos})
-				}
+				kids = append(kids, k)
 			}
 			if len(kids) != 2 {
 				return false, fmt.Sprintf("%d children created, want 2", len(kids))
@@ -465,89 +415,17 @@ func (r *spikeRun) setup(t *testing.T, fl spikeFlow) (mcpConfig string, addDirs 
 	}
 	writeShot(t, r.shot)
 
-	if r.arm == "F" && r.lib != nil {
-		return r.setupFiles1b(t, fl)
-	}
-	if r.arm == "F" {
-		repl := map[string]string{"__WT__": r.wt}
-		copyTree(t, filepath.Join(spikeFixtures, "task"), r.taskDir, repl)
-		for _, d := range []string{"notes", "handovers"} {
-			_ = os.MkdirAll(filepath.Join(r.taskDir, d), 0o755)
-		}
-		flowDir := filepath.Join(spikeFixtures, "flows", fl.id)
-		if ents, err := os.ReadDir(flowDir); err == nil {
-			for _, e := range ents {
-				copyTree(t, filepath.Join(flowDir, e.Name()), filepath.Join(r.tasks, e.Name()), repl)
-			}
-		}
-		if fl.id == "F3" {
-			if err := os.WriteFile(filepath.Join(r.taskDir, "proofs", "orders-match-ledger", "shot.jpg"), mustRead(t, r.shot), 0o644); err != nil {
-				t.Fatal(err)
-			}
-		}
-		r.fa = newFilesArm(r.taskDir, "implement", r.wt, r.ready, fl.id == "F4")
-		cfg := filepath.Join(r.root, "mcp.json")
-		raw, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{"kira-space": map[string]any{"type": "http", "url": r.fa.srv.URL}}})
-		if err := os.WriteFile(cfg, raw, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		addDirs = []string{r.taskDir}
-		if fl.id == "F4" {
-			addDirs = append(addDirs, filepath.Join(r.tasks, "c-billing"), filepath.Join(r.tasks, "c-settings"))
-		}
-		return cfg, addDirs, r.fa.close
-	}
-
-	// Arm T: the real agentmcp.Server over stub backends, and the kira-studio proof stub.
 	var seed *spikeProof
 	if fl.seedT != nil {
 		seed = fl.seedT(r)
 	}
 	r.studio = newStudioStub(seed)
 	space := &spikeSpace{br: spikeBranch{Repo: "app", Branch: "feature/x", Worktree: r.wt, ReadyAt: r.ready}}
-	if fl.id == "F4" && r.lib != nil {
+	if fl.id == "F4" {
 		space.children, space.chain = r.lib.children(), r.lib.chains()
-	} else if fl.id == "F4" {
-		space.children = []frozenChildTaskInfo{
-			{ID: "c-billing", Title: "Billing API", Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:00:00Z",
-				LastHandover: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration."},
-			{ID: "c-settings", Title: "Settings UI", Kind: "task", Workflow: "default", Status: "running", Step: "review", CreatedAt: "2026-11-01T09:05:00Z",
-				LastHandover: "Replaced the nav bar with the new component. Accessibility audit still open."},
-		}
-		space.chain = map[string][]frozenChainRow{
-			"c-billing": {
-				{ID: "h2", From: "implement", To: "review", Source: "agent", State: "handed", CreatedAt: "2026-11-02T10:00:00Z",
-					Body: "Migrated 14 endpoints to v2. Two tests still flaky: test_refund, test_proration. Review should run the suite three times."},
-				{ID: "h1", From: "plan", To: "implement", Source: "agent", State: "handed", CreatedAt: "2026-11-01T10:00:00Z", Body: "Plan: migrate the billing endpoints to v2 one router at a time."},
-			},
-			"c-settings": {
-				{ID: "h4", From: "implement", To: "review", Source: "agent", State: "handed", CreatedAt: "2026-11-02T10:05:00Z",
-					Body: "Replaced the nav bar with the new component. Accessibility audit still open: keyboard focus order unchecked."},
-				{ID: "h3", From: "plan", To: "implement", Source: "agent", State: "handed", CreatedAt: "2026-11-01T10:05:00Z", Body: "Plan: swap the settings nav bar, then audit accessibility."},
-			},
-		}
 	}
 	r.space = space
-	if benchSetup != nil {
-		return benchSetup(t, r, fl)
-	}
-	srv := agentmcp.NewServer(agentmcp.Options{
-		Dir: filepath.Join(r.root, "mcp"), Space: space, Orchestrator: space,
-		OnFinish: func(_ string, f agentmcp.Finish) { r.finishes = append(r.finishes, f) },
-	})
-	claudeProv, ok := providers.New().Get("claude")
-	if !ok {
-		t.Fatal("no claude provider")
-	}
-	grant := agentmcp.Grant{RunID: "run-1", TaskID: "t-1", Space: true, Orchestrator: fl.id == "F4" || fl.id == "F6", Agent: claudeProv}
-	if fl.id == "F2" || fl.id == "F3" { // the proof tools exist only where the flow is about proofs
-		grant.Extra = []harness.MCPServer{{Name: "kira-studio", URL: r.studio.srv.URL, Headers: map[string]string{"X-Spike": "1"}}}
-	}
-	cfg, release, err := srv.Register(grant)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return cfg, nil, func() { release(); _ = srv.Close(); r.studio.close() }
+	return benchSetup(t, r, fl)
 }
 
 func mustRead(t *testing.T, p string) []byte {
@@ -578,15 +456,7 @@ type spikeResultLine struct {
 // execute runs one real claude -p and scores it.
 func execute(t *testing.T, home string, fl spikeFlow, arm, model string, rep int) spikeRec {
 	t.Helper()
-	label := arm
-	r := &spikeRun{t: t, flow: fl.id, arm: arm}
-	if spike1bOn { // Part 1b: realistic fixtures; files arms are the variants FF, FL, FC
-		r.lib = loadSpikeLib(t)
-		if arm != "T" && benchSetup == nil {
-			r.arm, r.variant = "F", arm
-		}
-	}
-	arm = label
+	r := &spikeRun{t: t, flow: fl.id, arm: arm, lib: loadSpikeLib(t)}
 	cfg, addDirs, done := r.setup(t, fl)
 	defer done()
 	return runClaude(t, home, r, fl, cfg, addDirs, arm, model, rep, "")
@@ -634,78 +504,4 @@ func runClaude(t *testing.T, home string, r *spikeRun, fl spikeFlow, cfg string,
 		rec.Pass, rec.Why = fl.oracle(r, res.Result)
 	}
 	return rec
-}
-
-func TestDetailsSpike(t *testing.T) {
-	if os.Getenv("KIRA_SPIKE") != "run" {
-		t.Skip("P643 spike spends up to 6 USD; run with KIRA_SPIKE=run (see the file comment)")
-	}
-	if _, err := exec.LookPath("claude"); err != nil {
-		t.Skip("no claude on PATH")
-	}
-	reps := 3
-	if v, err := strconv.Atoi(os.Getenv("KIRA_SPIKE_REPS")); err == nil && v > 0 {
-		reps = v
-	}
-	wanted := map[string]bool{}
-	for _, f := range strings.Split(os.Getenv("KIRA_SPIKE_FLOWS"), ",") {
-		if f = strings.TrimSpace(f); f != "" {
-			wanted[f] = true
-		}
-	}
-	out := os.Getenv("KIRA_SPIKE_OUT")
-	if out == "" {
-		out = filepath.Join(t.TempDir(), "P643-spike-results.md") // set KIRA_SPIKE_OUT to keep it
-	}
-
-	home := t.TempDir()
-	writeFile(t, filepath.Join(home, ".claude.json"), `{"hasCompletedOnboarding":true,"theme":"dark"}`)
-
-	type job struct {
-		fl         spikeFlow
-		arm, model string
-		rep        int
-	}
-	var jobs []job
-	for rep := 1; rep <= reps; rep++ {
-		for _, fl := range spikeFlows {
-			if len(wanted) > 0 && !wanted[fl.id] {
-				continue
-			}
-			for _, arm := range []string{"T", "F"} {
-				jobs = append(jobs, job{fl, arm, "haiku", rep})
-			}
-		}
-	}
-	if os.Getenv("KIRA_SPIKE_SONNET") != "0" {
-		for _, fl := range spikeFlows {
-			if len(wanted) > 0 && !wanted[fl.id] {
-				continue
-			}
-			for _, arm := range []string{"T", "F"} {
-				jobs = append(jobs, job{fl, arm, "sonnet", 1})
-			}
-		}
-	}
-
-	var recs []spikeRec
-	var spent float64
-	aborted := ""
-	for _, j := range jobs {
-		if spent+spikeRunCap > spikeTotalCap {
-			aborted = fmt.Sprintf("budget guard: spent %.4f USD, next run could add %.2f, total cap %.2f. Remaining runs skipped.", spent, spikeRunCap, spikeTotalCap)
-			break
-		}
-		rec := execute(t, home, j.fl, j.arm, j.model, j.rep)
-		spent += rec.Cost
-		recs = append(recs, rec)
-		t.Logf("%s %s %s #%d pass=%v cost=%.4f turns=%d %s", rec.Flow, rec.Arm, rec.Model, rec.Rep, rec.Pass, rec.Cost, rec.Turns, rec.Why)
-		if err := os.WriteFile(out, []byte(spikeReport(recs, spent, aborted, len(jobs))), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := os.WriteFile(out, []byte(spikeReport(recs, spent, aborted, len(jobs))), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("spike spend %.4f USD over %d runs; results in %s", spent, len(recs), out)
 }
