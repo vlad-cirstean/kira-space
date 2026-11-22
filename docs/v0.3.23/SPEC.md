@@ -33,6 +33,7 @@ before implementation starts.
 | P731 | Auto-extracted task links from notes and handovers | Done |
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Todo |
 | P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
+| P734 | Presentation site: screenshots of approvals, variables and other missing features | Todo |
 
 ## P716
 
@@ -847,5 +848,27 @@ Scope (user request).
   representative tasks before and after, flow test plus UI spec pairs for behaviour changes.
 
 Deliverable. Plan `plans/P733.md`, Opus-authored, then Sonnet implementation.
+
+Result. Todo.
+
+## P734
+
+Planning starts now in parallel. Implementation starts after P732 is Done (screenshots must show the final approval
+UI; P733 does not change visuals) and may run as its own stream (own worktree, `site/` plus screenshot tooling only).
+
+Scope (user request).
+
+- The presentation site (`site/`, Astro) has no images of the API prompts, the approval cards, variables and
+  environments and similar shipped features. Add screenshots where they fit.
+- Audit the site against the app for bigger features that are missing or under-shown (planner compares site
+  content with the module list, ARCHITECTURE and the history files; lists each gap with a verdict: add section,
+  add image, leave out). User asked for bigger gaps, not small ones.
+- Screenshots come from the existing site screenshot tooling if any (planner finds it; if none, the Playwright
+  tooling used for visual baselines with a fixed fixture), not hand-edited images; size and format follow the
+  site's existing images; light and dark if the site supports both.
+- Copy follows the site's own voice (the root README and site content are exempt from the terse style) and stays
+  factual about shipped behaviour only.
+
+Deliverable. Plan `plans/P734.md`, Opus-authored, then Sonnet implementation.
 
 Result. Todo.
