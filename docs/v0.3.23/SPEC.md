@@ -32,7 +32,7 @@ before implementation starts.
 | P730 | Switch, checkbox and radio on-state style | Done |
 | P731 | Auto-extracted task links from notes and handovers | Done |
 | P732 | Script variables `plain` and `secret`, formatted scripts, approval prompt polish | Done |
-| P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Todo |
+| P733 | Kira Studio MCP tools: efficient descriptions, fewer tools, leaner results | Done |
 | P734 | Presentation site: screenshots of approvals, variables and other missing features | Todo |
 | P735 | Saved variables polish: uses/sends wording, Settings variables pane, compact request list | Todo |
 
@@ -850,7 +850,18 @@ Scope (user request).
 
 Deliverable. Plan `plans/P733.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Tool list 10,426 to 3,995 tokens (17 to 8 tools): list (connections, clusters, environments, scripts,
+saved), describe (absorbs list_children), browse_table, run_query, kube_read (op discover, list, describe, logs), operations,
+run_script (`runId` reads a run), api_request. Hard cut, no aliases. Descriptions rewritten in `llmprompts` (rules once; scripts
+paragraph is its own entry appended while scripts are on). Results leaner: tabular drops `typeClass`, `returned` and
+`truncatedCells` only when rows were cut, hints name the fix, run_query default `maxRows` 100, script envelope
+`{output, input?{rowCount, truncated?}, saved?, notSaved?, deleted?}`, api_request `output` for `result`, cut bodies carry a
+hint. Guard `toollist_budget_test.go` (4,000 tokens, 300 chars per description). Stale `kira-studio` tool grants in smart
+scripts fail validation with the replacement named. Per-mode timeout enforcement and the expensive check are no longer in
+the agent view; flow tests pin them from `dbmcp.TimeoutEnforcementOf` and `ExpensiveCheckOf`. Flow tests, contracts (specific
+flows only) and UI specs follow; UI specs also fixed for earlier-phase drift (formatted scripts, request-last order, kube
+`name` key). Real claude rows green. Task calls (MCP/ToolSearch) before to after: sql 5-6/1-2 to 4-5/1, api 2/1 to 2/1-2,
+kube 3-4/1 to 3/1, hold 4-5/1 to 4/1, saved chain 3/1 to 3-4/1. Details and per-tool numbers in `plans/P733.md` Measurements.
 
 ## P734
 
