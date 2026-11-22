@@ -570,7 +570,9 @@ Specs run once, all passed: `data-view-column-search` (renamed from `data-view-c
 contract), `shortcut-hints`, `module-state`, `studio/data-view`, `studio/tooltips` (41 tests; one
 cold-start flake of "flips below the trigger" passed on rerun and four more runs). Typecheck, lint
 rules and hooks passed. `data-grid.png` (visual) not regenerated locally: the toolbar lost the field;
-regenerate in PR CI. Screenshots (dark default theme): session scratchpad `p725/`. Found, not
-fixed (outside scope): a drag reorder in the Columns menu commits `columnOrder` but the grid does not
-re-render the new order until its next page load (`SlickGridHost` only rebuilds on `pageVersion`), so
-the spec asserts the committed order in the menu, not grid headers.
+regenerate in PR CI. Screenshots (dark default theme): session scratchpad `p725/`. Pre-existing bug
+fixed: a drag reorder in the Columns menu committed `columnOrder` but the grid kept the old header
+order until its next page load. Confirmed on chapter head `d8a026f11` (before P725) with a temp
+spec: the swap showed in the menu, not in the headers. Fix: `SlickGridHost` watches
+`tab.state.columnOrder`, stages an open edit, clears the selection and calls `applyPageAndOrder`.
+The spec asserts the grid header order after the drag.

@@ -5,7 +5,7 @@ import { expect, studioTest as test } from '../fixtures';
 import { IPC } from '../support/ipcChannels';
 import { WIDE_TABLE_COLUMNS, WIDE_TABLE_ROWS } from './support/cellEditorCaptures';
 import { connectAndExpand, connectionCreateArgs } from './support/connect';
-import { headerCell } from './support/grid';
+import { headerCell, headerNames } from './support/grid';
 import {
   bigRowsFixture,
   postgresConnectionSummary,
@@ -200,7 +200,13 @@ test('contract: Columns menu search and scroll to column, display-only', async (
   await page.keyboard.press('Escape'); // clears the search text first
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-testid="columns-menu"]')).toHaveCount(0);
-  // The committed order keeps the swap relative to the full list (the grid re-reads it on its next load).
+  // The grid applies the new order at once; the menu keeps the swap relative to the full list.
+  await expect
+    .poll(async () => {
+      const order = await headerNames(page);
+      return order.indexOf(b) < order.indexOf(a);
+    })
+    .toBe(true);
   await page.click('[data-testid="toolbar-columns"]');
   await expect(rows).toHaveCount(NAMES.length);
   const full = await names();

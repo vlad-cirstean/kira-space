@@ -79,7 +79,7 @@ import {
 } from './focusRequest';
 import { buildMaskTagCache, createMaskPreviewTransform } from './maskPreview';
 import { cellMenu, type FkNavContext, headerMenu, rowMenu } from './menu';
-import { registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
+import { flushOpenEdit, registerOpenEditFlush, unregisterOpenEditFlush } from './openEdit';
 import { applyPastedCells, resolvePasteTarget } from './paste';
 import { usePendingChangesStore } from './pendingChanges';
 import { matchedRows, searchState } from './search';
@@ -2332,6 +2332,18 @@ function applyPageAndOrder(): boolean {
   refreshSearchLayer();
   return true;
 }
+
+// The Columns menu commits a drag reorder into tab state without reloading the page, so the grid
+// rebuilds its columns here. setColumns destroys an open inline editor (stage it first); display
+// column ranges would point at other columns afterwards.
+watch(
+  () => tab()?.state.columnOrder,
+  () => {
+    flushOpenEdit(props.tabId);
+    selectionModel?.setSelectedRanges([]);
+    applyPageAndOrder();
+  },
+);
 
 watch(
   () => pageVersion.n,
