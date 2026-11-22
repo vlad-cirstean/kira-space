@@ -125,7 +125,7 @@ U11 apps/kira-space/frontend/src/studio/approvals/KubeRequestLine.vue # verb and
 U62 packages/workbench/src/components/AutocompleteField.vue # accepting a suggestion restores focus and the caret on the real input
 U26 packages/workbench/src/components/OpLogPanel.vue # error log row wash at the shared /15 tint
 U36 packages/theme/src/components/VarText.vue # inline variable mark, not a content box
-U36 packages/workbench/src/approvals/ApprovalItemCard.vue # outlined focus box: Card draws no border, and the box must read as one frame around the request
+U36 packages/workbench/src/approvals/ApprovalBox.vue # outlined focus box: Card draws no border, and each section reads as its own frame
 # A (apps/kira-space)
 U100 apps/kira-space/frontend/src/studio/api/CopyAsCurlDialog.vue # read-only output fields, nothing to discard
 U34 apps/kira-space/frontend/src/studio/theme/EngineIcon.vue # engine brand marks are third-party logo colours

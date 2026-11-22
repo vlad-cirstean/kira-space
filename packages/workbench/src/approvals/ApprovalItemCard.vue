@@ -15,6 +15,7 @@ import { TONE_TEXT } from '@theme/lib/statusTone';
 import { useApprovalsStore } from '@workbench/state/approvals';
 import { computed, onErrorCaptured, ref, watch } from 'vue';
 import { logWarn } from '../bridge/log';
+import ApprovalBox from './ApprovalBox.vue';
 import ApprovalDetails from './ApprovalDetails.vue';
 import { approvalRequester } from './approvalFooter';
 import { type ApprovalRisk, type ApprovalVerdict, useApprovalKind } from './registry';
@@ -202,25 +203,30 @@ const detailsOpen = ref(false);
       </span>
     </div>
 
-    <div
-      v-if="def"
-      class="flex min-w-0 flex-col gap-2 rounded-kira-sm border border-border p-3"
-      data-testid="approval-body"
-    >
-      <p
-        v-if="bodyFailed"
-        class="text-kira-md text-muted-foreground"
-        data-testid="approval-body-failed"
-      >
-        {{ t('workbench.approvals.risk.unreadable.tooltip') }}
-      </p>
-      <component
-        :is="def.content"
-        v-else
-        :item="item"
-        @options="(v: unknown) => store.setOption(item.id, v)"
-      />
-    </div>
+    <template v-if="def">
+      <ApprovalBox v-if="bodyFailed || !def.sections" testid="approval-body">
+        <p
+          v-if="bodyFailed"
+          class="text-kira-md text-muted-foreground"
+          data-testid="approval-body-failed"
+        >
+          {{ t('workbench.approvals.risk.unreadable.tooltip') }}
+        </p>
+        <component
+          :is="def.content"
+          v-else
+          :item="item"
+          @options="(v: unknown) => store.setOption(item.id, v)"
+        />
+      </ApprovalBox>
+      <div v-else class="flex min-w-0 flex-col gap-2" data-testid="approval-body" data-sections>
+        <component
+          :is="def.content"
+          :item="item"
+          @options="(v: unknown) => store.setOption(item.id, v)"
+        />
+      </div>
+    </template>
 
     <ul
       v-if="risks.length"

@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
+import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed, ref, watch } from 'vue';
 import TabbedContent from './TabbedContent.vue';
 
 // One review of a held result, whatever the MCP: the views are tabs in one right-hand column, one slot
-// `view-<value>` each; a single view shows without tabs. Under them: the script that produced the result,
-// the masking note, then what the approval keeps.
+// `view-<value>` each; a single view shows without tabs. The views and the masking note share one box;
+// the script that produced the result and what the approval keeps follow in boxes of their own.
 const props = defineProps<{
+  testidPrefix: string;
   views: readonly SecondaryTabItem[];
   label: string;
   /** Height of a view's first line when it is not a code line, by view value (a table's row height). */
@@ -26,17 +28,19 @@ const active = computed(() => (props.views.some((v) => v.value === view.value) ?
 
 <template>
   <div class="flex flex-col gap-2">
-    <TabbedContent
-      v-model="view"
-      :tabs="views.length > 1"
-      :first-line="firstLines?.[active || (views[0]?.value ?? '')]"
-      :items="views"
-      :label="label"
-    >
-      <slot :name="`view-${active || views[0]?.value}`" />
-    </TabbedContent>
+    <ApprovalBox :testid="`${testidPrefix}-box-result`">
+      <TabbedContent
+        v-model="view"
+        :tabs="views.length > 1"
+        :first-line="firstLines?.[active || (views[0]?.value ?? '')]"
+        :items="views"
+        :label="label"
+      >
+        <slot :name="`view-${active || views[0]?.value}`" />
+      </TabbedContent>
+      <slot name="mask" />
+    </ApprovalBox>
     <slot name="script" />
-    <slot name="mask" />
     <slot name="after" />
   </div>
 </template>

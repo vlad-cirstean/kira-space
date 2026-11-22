@@ -31,7 +31,7 @@ export interface ApprovalVerdict {
 
 /**
  * What an app supplies for one approval kind. The card draws the target row from the target and
- * `where`, the badge row from `verdict` (`operation` when absent), `content` in a framed box,
+ * `where`, the badge row from `verdict` (`operation` when absent), `content` in a framed box (or its own boxes with `sections`),
  * `risks` as a warnings list under it, and `details` (label/value rows) behind Details.
  * `footerAction` is a control beside Deny and Approve. Every component takes `{ item }`;
  * `content` and `footerAction` may emit `options`.
@@ -49,6 +49,8 @@ export interface ApprovalKindDef {
   /** The "Asked by" row of Details; the origin (client, folder, task, step, source) when absent. */
   requester?: (item: ApprovalItem) => string;
   details?: Component;
+  /** `content` draws its own `ApprovalBox` per section; the card adds no frame. */
+  sections?: boolean;
   footerAction?: Component;
   /** The target is data (host, path): data font. */
   targetData?: boolean;

@@ -532,6 +532,7 @@ export function studioApprovalKinds(): ApprovalKinds {
   return {
     'db.query': {
       content: markRaw(DbQueryBody),
+      sections: true,
       details: markRaw(DbQueryDetails),
       monaco: true,
       footerAction: markRaw(ReviewResultOption),
@@ -549,6 +550,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.exemption': {
       content: markRaw(DbExemptionBody),
+      sections: true,
       monaco: true,
       details: markRaw(DbExemptionDetails),
       footerAction: markRaw(ReviewResultOption),
@@ -564,6 +566,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'db.response': {
       content: markRaw(DbResponseBody),
+      sections: true,
       monaco: true,
       details: markRaw(DbResponseDetails),
       operation: () => t('common.field.result.label'),
@@ -583,6 +586,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'kube.read': {
       content: markRaw(KubeReadBody),
+      sections: true,
       details: markRaw(KubeReadDetails),
       monaco: true,
       targetIcon: markRaw(KubeTargetIcon),
@@ -596,6 +600,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'kube.response': {
       content: markRaw(KubeResponseBody),
+      sections: true,
       monaco: true,
       operation: () => t('common.field.result.label'),
       verdict: () => resultVerdict(true, 'studio.dbMcp.approval.verdict.dbWriteResult.hint'),
@@ -614,6 +619,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'api.request': {
       content: markRaw(ApiRequestBody),
+      sections: true,
       monaco: true,
       details: markRaw(ApiRequestDetails),
       footerAction: markRaw(ReviewResultOption),
@@ -636,6 +642,7 @@ export function studioApprovalKinds(): ApprovalKinds {
     },
     'api.response': {
       content: markRaw(ApiResponseBody),
+      sections: true,
       monaco: true,
       details: markRaw(ApiResponseDetails),
       operation: () => t('common.field.result.label'),
