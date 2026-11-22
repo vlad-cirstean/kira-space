@@ -168,6 +168,8 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
     const exitWaiters = new Map<string, (() => void)[]>();
 
     function waitExited(tabId: string, ms: number): Promise<void> {
+      // The exit event often reaches the renderer before the hold reply; nothing left to wait for.
+      if (byTabId.get(tabId)?.status !== 'running') return Promise.resolve();
       let done: (() => void) | undefined;
       const exited = new Promise<void>((resolve) => {
         done = resolve;
