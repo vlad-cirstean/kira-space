@@ -55,7 +55,7 @@ test('contract: the held result shows as a table and Send answers by item id', a
   const rows = page.locator('[data-testid="db-mcp-preview-row"]');
   await expect(rows).toHaveCount(result.rows.length);
   for (const [i, row] of result.rows.entries()) {
-    await expect(rows.nth(i).locator('td:not(:first-child)')).toHaveText(
+    await expect(rows.nth(i).locator('td:not(:first-child):not(:last-child)')).toHaveText(
       row.map((cell) => cell ?? 'NULL'),
     );
   }
