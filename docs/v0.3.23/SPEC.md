@@ -28,7 +28,7 @@ before implementation starts.
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 | P728 | Approval prompts and scripts rework | Todo |
-| P729 | Review dialogs, Variables tab and removals | Todo |
+| P729 | Removals, Variables tab and kube result views | Todo |
 
 ## P716
 
@@ -706,8 +706,15 @@ Scope.
   the retention time. Retention stays configurable (`dbMcp.keptRetentionMinutes`, default 60, range
   5 to 240). Add a small grey line under the inputs, "Kept for N min" (follows the setting), linking
   to Settings > Studio MCP > Variables (same target as "Manage kept variables").
+- Review dialogs (API, SQL, kube): rename the "Agent gets" and "Response" tabs to "After" and
+  "Before" (After = what the agent gets, Before = raw response). Format toggles (Table, Manifest,
+  Logs, JSON) stay. Add a collapsible "Request" section (shadcn-vue `Collapsible`, collapsed by
+  default) showing the request box the approval prompt showed (SQL: query; kube: command or
+  manifest), reusing P728's restyled request components, above the result.
 - Refresh affected visual baselines. Flow and UI spec pairs per CLAUDE.md Tests where behaviour
   changes.
+
+Streams: P728 (Stream A) and P729 (Stream B) run in parallel, no ordering dependency; shared files (i18n catalogs, docs) are listed in each plan's ownership table.
 
 Deliverable. Plan `plans/P728.md`, Opus-authored, then Sonnet implementation.
 
@@ -715,15 +722,10 @@ Result. Todo.
 
 ## P729
 
-Depends on P728: runs after it, plans against its tree.
+Streams: P728 (Stream A) and P729 (Stream B) run in parallel, no ordering dependency; shared files (i18n catalogs, docs) are listed in each plan's ownership table.
 
 Scope.
 
-- Review dialogs (API, SQL, kube): rename the "Agent gets" and "Response" tabs to "After" and
-  "Before" (After = what the agent gets, Before = raw response). Format toggles (Table, Manifest,
-  Logs, JSON) stay. Add a collapsible "Request" section (shadcn-vue `Collapsible`, collapsed by
-  default) showing the request box the approval prompt showed (SQL: query; kube: command or
-  manifest), reusing P728's restyled request components, above the result.
 - Kube list result: columns size to content (capped), resizable, full dialog width; same fix for the
   expand-row cell. Pod logs: terminal-style monospace view, no line gaps, optional line numbers,
   dimmed timestamps, error and warn coloring, wrap toggle (default chosen by the planner: unwrapped
