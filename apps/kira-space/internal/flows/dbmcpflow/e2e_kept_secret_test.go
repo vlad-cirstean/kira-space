@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -86,7 +87,7 @@ func TestE2EKeptSecret(t *testing.T) {
 			t.Fatalf("kept store = %v before Send, want empty", names)
 		}
 		// The raw response carries a timing field whose digits vary, so its size does.
-		sized := append(opts[:len(opts):len(opts)], flowharness.Mask("rawBytes", "bytes"))
+		sized := slices.Concat(opts, []flowharness.ContractOption{flowharness.Mask("rawBytes", "bytes")})
 		f.app.Contract(t, secretKey, "ApprovalsService.List#review", []approvals.Item{h.req.Item}, sized...)
 		pinned := h.held
 		pinned.Text, pinned.Raw = stable(pinned.Text), stable(pinned.Raw)
@@ -151,7 +152,7 @@ func TestE2EKeptSecret(t *testing.T) {
 				t.Fatalf("account_id use = %+v, want plain with preview", k)
 			}
 		}
-		ro := append(opts[:len(opts):len(opts)], flowharness.Replace(f.keptID(t, externalScope, "session_token"), "kv_session_token"), flowharness.Replace(f.keptID(t, externalScope, "account_id"), "kv_account_id"))
+		ro := slices.Concat(opts, []flowharness.ContractOption{flowharness.Replace(f.keptID(t, externalScope, "session_token"), "kv_session_token"), flowharness.Replace(f.keptID(t, externalScope, "account_id"), "kv_account_id")})
 		f.app.Contract(t, secretKey, "ApprovalsService.List#followup", []approvals.Item{req.Item}, ro...)
 		f.app.Contract(t, secretKey, "args:ApprovalsService.Answer#followup", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answerItems(t, true, req.Item.ID)
@@ -205,7 +206,7 @@ func TestE2EKeptSecret(t *testing.T) {
 		if secretRow == nil || !secretRow.Secret || secretRow.Preview != "" || secretRow.Origin != srv.URL || plainRow == nil || plainRow.Secret || plainRow.Preview != `"acct_42"` {
 			t.Fatalf("list = %+v, want the secret without preview and the plain value with one", list.Entries)
 		}
-		ro := append(opts[:len(opts):len(opts)], flowharness.Replace(secretRow.ID, "kv_session_token"), flowharness.Replace(plainRow.ID, "kv_account_id"))
+		ro := slices.Concat(opts, []flowharness.ContractOption{flowharness.Replace(secretRow.ID, "kv_session_token"), flowharness.Replace(plainRow.ID, "kv_account_id")})
 		f.app.Contract(t, secretKey, "KeptVarsService.List#kinds", list, ro...)
 		f.app.Contract(t, secretKey, "args:KeptVarsService.Reveal#kinds", bridge.KeptRevealArgs{ID: "kv_session_token", Confirmed: true})
 		got, err := f.app.W.KeptVars.Reveal(bridge.KeptRevealArgs{ID: secretRow.ID, Confirmed: true})
