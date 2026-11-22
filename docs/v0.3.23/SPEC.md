@@ -18,12 +18,12 @@ before implementation starts.
 | P716 Part 3 | Agent awareness of kept variables, real `claude` test | Done |
 | P717 | Result review for every MCP tool that returns data | Done |
 | P718 | Kube MCP: JS script chaining, approval prompts like database and API | Done |
-| P719 | API MCP: one-time variable values typed in the approval prompt | Todo |
-| P720 | API module variables and environments: UX redesign | Todo |
+| P719 | API MCP: one-time variable values typed in the approval prompt | Done |
+| P720 | API module variables and environments: UX redesign | Done |
 | P721 | Remove development, debugging and validation leftovers | Todo |
-| P722 | Window tabs: tear off and re-attach, new-window button without text | Todo |
-| P723 | Remove the PR flake rerun workflow | Todo |
-| P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
+| P722 | Window tabs: tear off and re-attach, new-window button without text | Done |
+| P723 | Remove the PR flake rerun workflow | Done |
+| P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Done |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
