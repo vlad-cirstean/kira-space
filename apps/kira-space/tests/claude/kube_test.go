@@ -258,12 +258,16 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		if in.Script == nil || !storedName.MatchString(in.Script.Transform) {
 			continue
 		}
-		keptName = storedName.FindStringSubmatch(in.Script.Transform)[1]
+		name := storedName.FindStringSubmatch(in.Script.Transform)[1]
 		text, isErr, ok := toolResult(msgs, u.ID)
-		if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+keptName+`"`) || strings.Contains(text, crashPod) {
-			t.Fatalf("scripted kube_read list result = %q (ok=%v, error=%v), want the kept summary and no pod name", text, ok, isErr)
+		if strings.Contains(text, crashPod) {
+			t.Fatalf("scripted kube_read list result = %q, want no pod name", text)
 		}
-		kept = true
+		// A script the model got wrong (error, nothing saved) is its own retry, not a product fault.
+		if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+name+`"`) {
+			continue
+		}
+		keptName, kept = name, true
 	}
 	for _, u := range kubeReadUses(msgs, kubeRead, "logs") {
 		var in struct {

@@ -391,11 +391,15 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 		text, isErr, ok := toolResult(msgs, u.ID)
 		switch {
 		case in.Script != nil && storedName.MatchString(*in.Script):
-			keptName = storedName.FindStringSubmatch(*in.Script)[1]
-			if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+keptName+`"`) || strings.Contains(text, "[1,2]") {
-				t.Fatalf("scripted run_query result = %q (ok=%v, error=%v), want the kept summary and no ids", text, ok, isErr)
+			name := storedName.FindStringSubmatch(*in.Script)[1]
+			if strings.Contains(text, "[1,2]") {
+				t.Fatalf("scripted run_query result = %q, want no ids", text)
 			}
-			scripted = true
+			// A script the model got wrong (error, nothing saved) is its own retry, not a product fault.
+			if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+name+`"`) {
+				continue
+			}
+			keptName, scripted = name, true
 		case keptName != "" && len(in.Params) == 1 && in.Params[0] == keptName:
 			if !ok || isErr || !strings.Contains(text, "one") || !strings.Contains(text, "two") {
 				t.Fatalf("params run_query result = %q (ok=%v, error=%v), want both bodies", text, ok, isErr)
