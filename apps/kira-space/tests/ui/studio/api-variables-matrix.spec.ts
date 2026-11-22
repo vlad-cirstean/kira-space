@@ -370,3 +370,91 @@ test('an import report lists unset secrets and opens the Variables tab', async (
   await page.click('[data-testid="import-report-open-variables"]');
   await expect(page.locator('[data-testid="variables-matrix"]')).toBeVisible();
 });
+
+// 20 environments: each column keeps its minimum width, the whole grid scrolls sideways with the Name
+// column pinned, and the footer counts agree in number.
+const MIN_ENV_COL_PX = 176;
+const envId = (i: number) => uid(100 + i);
+
+function manyEnvironments(count: number, withoutToken: number, token = true): ControlSnapshot[] {
+  const envs = Array.from({ length: count }, (_, i) =>
+    env(envId(i), `Environment ${String(i + 1).padStart(2, '0')}`, i, i === 0),
+  );
+  return [
+    { channel: IPC.collectionsList, response: TREE },
+    { channel: IPC.variablesListEnvironments, response: envs },
+    list(COLLECTION, 'collection', [BASE_URL('collection', COLLECTION)]),
+    ...envs.map((e, i) =>
+      list(
+        e.id,
+        'environment',
+        i < withoutToken || !token
+          ? []
+          : [row('environment', e.id, 'token', { isSecret: true, secretSet: true })],
+      ),
+    ),
+  ];
+}
+
+async function openMany(
+  relaunch: Parameters<Parameters<typeof test>[2]>[0]['relaunch'],
+  count: number,
+  withoutToken: number,
+  token = true,
+) {
+  const app = await relaunch({ control: manyEnvironments(count, withoutToken, token) });
+  await openHttpMode(app.window);
+  await openVariablesTab(app.window);
+  await expect(app.window.locator('[data-testid="variables-matrix"]')).toBeVisible();
+  return app.window;
+}
+
+test('20 environments keep a minimum column width and scroll sideways with Name pinned', async ({
+  relaunch,
+}) => {
+  const page = await openMany(relaunch, 20, 0);
+  const scroller = page.locator('[data-testid="variables-matrix-scroll"]');
+  await expect(page.locator(`[data-testid="matrix-col-${envId(19)}"]`)).toBeAttached();
+  for (let i = 0; i < 20; i++) {
+    const box = await page.locator(`[data-testid="matrix-col-${envId(i)}"]`).boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(MIN_ENV_COL_PX - 1);
+  }
+  const overflow = await scroller.evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(overflow).toBeGreaterThan(0);
+
+  const name = page.locator('[data-testid="matrix-name-token"]');
+  const frame = await scroller.boundingBox();
+  const before = await name.boundingBox();
+  expect(before?.x).toBeCloseTo(frame?.x ?? -1, 0);
+  await scroller.evaluate((el) => {
+    el.scrollLeft = el.scrollWidth;
+  });
+  await expect.poll(async () => scroller.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  const after = await name.boundingBox();
+  expect(after?.x).toBeCloseTo(frame?.x ?? -1, 0);
+});
+
+test('the footer counts agree in number', async ({ relaunch }) => {
+  const one = await openMany(relaunch, 20, 1);
+  await expect(one.locator('[data-testid="matrix-footer-missing"]')).toContainText(
+    '1 value missing',
+  );
+  await expect(one.locator('[data-testid="matrix-footer-missing"]')).not.toContainText('values');
+  await expect(one.locator('[data-testid="matrix-footer-counts"]')).toHaveText(
+    '2 variables, 20 environments',
+  );
+});
+
+test('the footer says 2 values missing', async ({ relaunch }) => {
+  const page = await openMany(relaunch, 20, 2);
+  await expect(page.locator('[data-testid="matrix-footer-missing"]')).toContainText(
+    '2 values missing',
+  );
+});
+
+test('one variable and one environment read in the singular', async ({ relaunch }) => {
+  const page = await openMany(relaunch, 1, 0, false);
+  await expect(page.locator('[data-testid="matrix-footer-counts"]')).toHaveText(
+    '1 variable, 1 environment',
+  );
+});

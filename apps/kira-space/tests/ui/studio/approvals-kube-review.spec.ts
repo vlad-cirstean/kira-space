@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
 import { answeredOk, liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { expect, studioTest as test } from '../fixtures';
@@ -164,4 +165,88 @@ test('contract: a cluster that already reviews shows the option checked and lock
   const box = page.locator(t('kube-approval-review-result'));
   await expect(box).toHaveAttribute('data-state', 'checked');
   await expect(box).toBeDisabled();
+});
+
+// The list grid sizes its columns to content and fills the dialog width; a header handle resizes one
+// column, a double click restores it, and expanding a row leaves the other columns alone.
+async function columnWidths(page: Page): Promise<number[]> {
+  return page
+    .locator(t('kube-review-column'))
+    .evaluateAll((ths) => ths.map((th) => th.getBoundingClientRect().width));
+}
+
+test('list columns fill the dialog, resize by handle and keep width when a row expands', async ({
+  relaunch,
+}) => {
+  const { window: page } = await relaunch({ control: mocks('list') });
+  await pushApprovals(page, [liveItem(item('list'))]);
+  const frame = page.locator(`${t('kube-review-table')} > div`).first();
+  await expect(page.locator(t('kube-review-row'))).toHaveCount(3);
+  const [tableWidth, frameWidth] = await frame.evaluate((el) => [
+    el.querySelector('table')?.getBoundingClientRect().width ?? 0,
+    el.clientWidth,
+  ]);
+  expect(tableWidth).toBeGreaterThanOrEqual(frameWidth - 1);
+
+  const initial = await columnWidths(page);
+  expect(initial.every((w) => w >= 64)).toBe(true);
+
+  const handle = page.locator(t('kube-review-column-resize')).first();
+  const box = await handle.boundingBox();
+  if (!box) throw new Error('no resize handle');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => (await columnWidths(page))[0]).toBeGreaterThan(initial[0] + 40);
+
+  await handle.dblclick();
+  await expect.poll(async () => (await columnWidths(page))[0]).toBeCloseTo(initial[0], 0);
+
+  await page.locator(t('kube-review-row')).first().click();
+  await expect(page.locator(t('kube-review-row')).first()).toHaveAttribute('data-expanded', '');
+  expect(await columnWidths(page)).toEqual(initial);
+});
+
+test('a held log reads as terminal lines: dense, levelled, optional numbers, wrap toggle', async ({
+  relaunch,
+}) => {
+  const ts = '2026-01-02T03:04:05Z';
+  const text = JSON.stringify({
+    lines: [
+      { ts, text: 'INFO listening on :8080' },
+      { ts, text: 'ERROR connection refused' },
+      { ts, text: 'level=warn msg="slow upstream"' },
+    ],
+    truncated: false,
+  });
+  const { window: page } = await relaunch({ control: mocks('logs', text) });
+  await pushApprovals(page, [liveItem(item('logs'))]);
+  const lines = page.locator(t('kube-review-log-line'));
+  await expect(lines).toHaveCount(3);
+
+  const boxes = await Promise.all([0, 1, 2].map((i) => lines.nth(i).boundingBox()));
+  for (const [i, box] of boxes.entries()) {
+    expect(box?.height).toBeCloseTo(18, 0);
+    if (i > 0) expect((box?.y ?? 0) - (boxes[i - 1]?.y ?? 0)).toBeCloseTo(18, 0);
+  }
+  await expect(lines.nth(1)).toHaveClass(/text-error/);
+  await expect(lines.nth(2)).toHaveClass(/text-warn/);
+  await expect(lines.nth(0)).toHaveClass(/text-fg/);
+  await expect(lines.first().locator('span').first()).toHaveClass(/text-muted-foreground/);
+
+  await expect(lines.first()).not.toHaveAttribute('data-n', /.*/);
+  await page.click(t('kube-review-log-line-numbers'));
+  await expect(lines.nth(1)).toHaveAttribute('data-n', '2');
+  const gutter = await lines.nth(1).evaluate((el) => getComputedStyle(el, '::before').content);
+  expect(gutter).toBe('"2"');
+
+  await expect(page.locator(t('kube-review-log-wrap'))).toHaveAttribute('data-state', 'on');
+  await expect(lines.first()).toHaveClass(/whitespace-pre-wrap/);
+  await page.click(t('kube-review-log-wrap'));
+  await expect(lines.first()).toHaveClass(/whitespace-pre(?!-)/);
+  await page.click(t('kube-review-log-timestamps'));
+  await expect(lines.first()).not.toContainText(ts);
 });

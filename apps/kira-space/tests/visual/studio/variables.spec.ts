@@ -129,6 +129,52 @@ test('Variables tab narrow shows one column', async ({ relaunch }) => {
   );
 });
 
+test('Variables tab with 20 environments', async ({ relaunch }) => {
+  const envs = Array.from({ length: 20 }, (_, i) =>
+    env(
+      `env-${i}`,
+      `Environment ${String(i + 1).padStart(2, '0')}`,
+      i,
+      i === 0,
+      i % 2 ? 'blue' : 'green',
+    ),
+  );
+  const { window: page } = await relaunch({
+    control: [
+      ...CONTROL.filter(
+        (c) => c.channel !== IPC.variablesListEnvironments && c.channel !== IPC.variablesList,
+      ),
+      { channel: IPC.variablesListEnvironments, response: envs },
+      {
+        channel: IPC.variablesList,
+        args: { scope: 'collection', ownerId: COL },
+        response: [
+          row('collection', COL, 'base_url', { value: 'api.example.com' }),
+          row('collection', COL, 'page_size', { value: '20' }),
+        ],
+      },
+      ...envs.map((e, i) => ({
+        channel: IPC.variablesList,
+        args: { scope: 'environment', ownerId: e.id },
+        response: [
+          row('environment', e.id, 'base_url', { value: `env${i + 1}.example.com` }),
+          row('environment', e.id, 'token', { isSecret: true, secretSet: i % 3 !== 0 }),
+        ],
+      })),
+    ],
+  });
+  await openHttpMode(page);
+  await openVariablesTab(page);
+  await expect(page.locator('[data-testid="matrix-row-token"]')).toBeVisible();
+  // Scrolled to the middle, so the pinned Name column sits over scrolled environment columns.
+  await page.locator('[data-testid="variables-matrix-scroll"]').evaluate((el) => {
+    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+  });
+  await expect(page.locator('[data-testid="variables-matrix"]')).toHaveScreenshot(
+    'variables-matrix-20-envs.png',
+  );
+});
+
 test('request variables popover', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: CONTROL });
   await openHttpMode(page);
