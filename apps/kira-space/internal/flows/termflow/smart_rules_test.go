@@ -617,6 +617,13 @@ func TestSmartScriptRules(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "Choose at least one tool of this server") {
 			t.Errorf("no tools and no AllTools = %v", err)
 		}
+		_, err = app.W.CustomScripts.Create(bridge.CustomScriptsCreateArgs{Fields: scripts.CustomScriptFields{
+			Name: "stale", Kind: scripts.KindSmart, Command: "x", Color: "blue",
+			Smart: &scripts.Smart{MCP: []scripts.MCPChoice{{Server: "kira-studio", Tools: []string{"list_connections"}}}},
+		}})
+		if err == nil || !strings.Contains(err.Error(), "kira-studio has no tool list_connections; use list.") {
+			t.Errorf("stale kira-studio grant = %v", err)
+		}
 
 		var logs strings.Builder
 		page, err := app.W.ScriptRuns.ReadLog(scriptruns.ReadLogArgs{ID: id})

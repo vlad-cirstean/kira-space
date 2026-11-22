@@ -1179,6 +1179,9 @@
         "smartMcpNeedTool": {
           "body": "Choose at least one tool of this server, or set all_tools."
         },
+        "smartMcpStaleTool": {
+          "body": "{server} has no tool {tool}; use {use}."
+        },
         "smartMcpToolName": {
           "body": "This MCP tool name is not valid."
         },
