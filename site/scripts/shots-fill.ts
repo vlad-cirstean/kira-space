@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { SHOT_CAPTURE, type ShotId, shotFiles } from '../src/data/shotCapture';
 
 const OUT = join(import.meta.dir, '..', '..', 'screenshots');
-const KINDS = new Set(['window', 'floating', 'region']);
+const KINDS = new Set(['window', 'floating', 'region', 'phone']);
 
 const print = (line: string) => process.stderr.write(`${line}\n`);
 const arg = process.argv.indexOf('--fallback');

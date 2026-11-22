@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { captureShot } from '@workbench/testing/screenshots/capture';
 import { captureCrop } from '@workbench/testing/screenshots/crop';
+import { capturePhone } from '@workbench/testing/screenshots/phone';
 import {
   SHOT_CAPTURE,
   type ShotCapture,
@@ -16,6 +17,10 @@ export async function shoot(
   const capture: ShotCapture = SHOT_CAPTURE[id];
   if (capture.kind === 'window') {
     await captureShot(page, { id, consoleErrors });
+    return;
+  }
+  if (capture.kind === 'phone') {
+    await capturePhone(page, { id, consoleErrors });
     return;
   }
   await captureCrop(page, {

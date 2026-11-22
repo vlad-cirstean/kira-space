@@ -3,6 +3,8 @@
 
 export type ShotCapture =
   | { readonly kind: 'window' }
+  /** The phone app at iPhone 15 size, in rounded corners with a shadow. */
+  | { readonly kind: 'phone' }
   | { readonly kind: 'floating'; readonly selector: string; readonly padding?: number }
   | {
       readonly kind: 'region';
@@ -58,6 +60,11 @@ export const SHOT_CAPTURE = {
   'build-proof-diagram': { kind: 'region', selector: '[data-testid="proof-step"]' },
   'build-proof-compare': { kind: 'window' },
   'build-proof-chain': { kind: 'region', selector: '[data-testid="ade-task-chain"]' },
+  // Phone app (P734)
+  'phone-plan': { kind: 'phone' },
+  'phone-needs': { kind: 'phone' },
+  'phone-terminal': { kind: 'phone' },
+  'phone-activity': { kind: 'phone' },
 } as const satisfies Record<string, ShotCapture>;
 
 export type ShotId = keyof typeof SHOT_CAPTURE;
@@ -65,5 +72,6 @@ export type ShotId = keyof typeof SHOT_CAPTURE;
 /** Files under screenshots/ that one shot writes: the single source for site, fill script and cache. */
 export function shotFiles(id: ShotId): { main: string } {
   const capture: ShotCapture = SHOT_CAPTURE[id];
-  return { main: capture.kind === 'window' ? `framed/${id}.webp` : `crop/${id}.webp` };
+  if (capture.kind === 'window') return { main: `framed/${id}.webp` };
+  return { main: capture.kind === 'phone' ? `phone/${id}.webp` : `crop/${id}.webp` };
 }
