@@ -3,6 +3,7 @@ import { t } from '@theme/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { type Ref, reactive, toRefs } from 'vue';
+import { moveBlock } from '../behaviour/sortableReorder';
 import { TIMING } from '../behaviour/timing';
 import { logError } from '../bridge/log';
 import { useConfirmDialogStore } from './confirmDialog';
@@ -99,11 +100,15 @@ export interface TabsStoreActions<K extends string, R extends TabRecordLike> {
   closeTab(id: string): Promise<void>;
   /** System-initiated cleanup (a deleted connection's tabs): closes without the discard prompt. */
   dropTabs(ids: readonly string[]): void;
+  /** Closes several tabs with Close others' discard rules (pinned and unknown ids skipped). */
+  closeTabs(ids: readonly string[]): Promise<void>;
   closeOthers(id: string): Promise<void>;
   closeToTheRight(id: string): Promise<void>;
   closeAll(key: K): Promise<void>;
   activateTab(id: string): void;
   moveTab(fromId: string, toId: string): void;
+  /** Moves the ids as one block, strip order kept, to toId's slot (`moveBlock`'s rule). */
+  moveTabs(ids: readonly string[], toId: string): void;
   stepTab(key: K, delta: 1 | -1): void;
   isPreview(id: string): boolean;
   promoteTab(id: string): void;
@@ -117,14 +122,13 @@ export interface TabsStoreActions<K extends string, R extends TabRecordLike> {
   /** Cancels the debounce and resolves once every save queued so far, the current set included,
    *  settled. A tab move awaits it so no later save names the tab it just gave away. */
   settleSaves(): Promise<void>;
-  /** Asks the question closing the tab asks, when it holds unsaved work; false means keep it. */
-  confirmRelease(id: string): Promise<boolean>;
+  /** Asks the question closing these tabs asks, when any holds unsaved work; false means keep them. */
+  confirmRelease(ids: readonly string[]): Promise<boolean>;
   /** The tab's record as stored, `order` and `active` included; null for an unknown id. */
   serializeTab(id: string): R | null;
-  /** Removes a tab that moved to another window: closes it without the discard question and saves. */
-  removeMovedTab(id: string): void;
-  /** Adds a tab another window handed over, last and active. A tab already here is only activated. */
-  receiveTab(raw: R, meta: { incognito: boolean }): R;
+  /** Adds a tab another window handed over, last. `activate` false leaves it inactive. A tab
+   *  already here is only activated (when `activate`). */
+  receiveTab(raw: R, meta: { incognito: boolean; activate: boolean }): R;
 }
 
 export interface TabsHost<
@@ -564,6 +568,17 @@ export function createTabsStore<
       saveNow();
     }
 
+    async function closeTabs(ids: readonly string[]): Promise<void> {
+      const asked = new Set(
+        tabsState.tabs
+          .filter((t) => ids.includes(t.id) && !host.kinds[t.kind]?.pinned)
+          .map((t) => t.id),
+      );
+      if (asked.size === 0) return;
+      if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
+      dropTabs([...asked]);
+    }
+
     async function closeOthers(id: string): Promise<void> {
       const asked = othersToClose(id);
       if (dirtyCount(asked) > 0 && !(await confirmCloses(asked))) return;
@@ -630,9 +645,9 @@ export function createTabsStore<
       return enqueueSave(JSON.stringify(persistableTabs()));
     }
 
-    async function confirmRelease(id: string): Promise<boolean> {
-      const ids = new Set([id]);
-      return dirtyCount(ids) === 0 || (await confirmCloses(ids));
+    async function confirmRelease(ids: readonly string[]): Promise<boolean> {
+      const asked = new Set(ids);
+      return dirtyCount(asked) === 0 || (await confirmCloses(asked));
     }
 
     function serializeTab(id: string): R | null {
@@ -640,23 +655,18 @@ export function createTabsStore<
       return tab ? (JSON.parse(JSON.stringify(tab)) as R) : null;
     }
 
-    function removeMovedTab(id: string): void {
-      closeTabInternal(id);
-      saveNow();
-    }
-
-    function receiveTab(raw: R, meta: { incognito: boolean }): R {
+    function receiveTab(raw: R, meta: { incognito: boolean; activate: boolean }): R {
       const existing = tabsState.tabs.find((t) => t.id === raw.id);
       if (existing) {
-        activateTab(existing.id);
+        if (meta.activate) activateTab(existing.id);
         return existing;
       }
       const kind = host.kinds[raw.kind];
       const state = kind ? (kind.parseState(raw.state) ?? kind.defaultState()) : raw.state;
-      tabsState.tabs.push({ ...raw, state, order: tabsState.tabs.length, active: true });
+      tabsState.tabs.push({ ...raw, state, order: tabsState.tabs.length, active: false });
       const record = tabsState.tabs[tabsState.tabs.length - 1];
       host.onReceived?.(record, meta);
-      setActiveTabId(record.id, host.workspaceKeyOf(record));
+      if (meta.activate) setActiveTabId(record.id, host.workspaceKeyOf(record));
       host.onOpened?.(record, true);
       saveNow();
       return record;
@@ -689,6 +699,28 @@ export function createTabsStore<
       const [moved] = next.splice(fromIdx, 1);
       next.splice(toIdx, 0, moved);
       tabsState.tabs = next;
+      saveNow();
+    }
+
+    function moveTabs(ids: readonly string[], toId: string): void {
+      const toTab = tabsState.tabs.find((t) => t.id === toId);
+      if (!toTab || host.kinds[toTab.kind]?.pinned) return;
+      const key = host.workspaceKeyOf(toTab);
+      const moving = tabsState.tabs
+        .filter(
+          (t) =>
+            ids.includes(t.id) && host.workspaceKeyOf(t) === key && !host.kinds[t.kind]?.pinned,
+        )
+        .map((t) => t.id);
+      const order = moveBlock(
+        tabsState.tabs.map((t) => t.id),
+        moving,
+        toId,
+      );
+      if (moving.length === 0) return;
+      for (const id of moving) removeFromPreviewCohort(key, id);
+      const byId = new Map(tabsState.tabs.map((t) => [t.id, t]));
+      tabsState.tabs = order.map((id) => byId.get(id) as R);
       saveNow();
     }
 
@@ -764,11 +796,13 @@ export function createTabsStore<
       dropAllPagesForTab,
       closeTab,
       dropTabs,
+      closeTabs,
       closeOthers,
       closeToTheRight,
       closeAll,
       activateTab,
       moveTab,
+      moveTabs,
       stepTab,
       isPreview,
       promoteTab,
@@ -777,7 +811,6 @@ export function createTabsStore<
       settleSaves,
       confirmRelease,
       serializeTab,
-      removeMovedTab,
       receiveTab,
     };
 

@@ -1,9 +1,8 @@
 // UI half of windowflow.TestTabMove and TestTerminalMove (contracts tab-move, terminal-move): a tab
 // leaves the window by drag-out or menu through one TabsService.Move call, and a tab handed over by
 // another window arrives through the inbox. Runs terminals carry their screen and live output.
-import type { Locator, Page } from '@playwright/test';
-import type { ContractJson } from '@workbench/testing/ui/contract';
-import { boxCenter, dragTabOut } from '@workbench/testing/ui/drag';
+import type { Page } from '@playwright/test';
+import { dragTabOut } from '@workbench/testing/ui/drag';
 import { expect, filesTest, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { calls } from '../support/ipcCalls';
@@ -13,6 +12,7 @@ import { filesWindowControl } from '../support/repoFiles';
 import type { ControlSnapshot } from '../support/types';
 import { modeTab } from './support/apiMode';
 import { cancelConfirm } from './support/dialogs';
+import { dataTab, holdOutside, httpTab, lastSave, sentMoves } from './support/tabMove';
 import { tabLocator } from './support/tabs';
 
 const MOVE = 'tab-move';
@@ -24,7 +24,7 @@ const movedNew = contract<{ windowKey: string; created: boolean }>(
 );
 const dragOnly = contract(MOVE, 'TabsService.Capabilities:dragOut');
 const noDrag = contract(MOVE, 'TabsService.Capabilities');
-const inbound = contract<{ incognito: boolean; tab: Record<string, unknown> }[]>(
+const inbound = contract<{ incognito: boolean; focus: boolean; tab: Record<string, unknown> }[]>(
   MOVE,
   'TabsService.Inbound',
 );
@@ -35,41 +35,6 @@ const TARGETS = [
   { key: 'win-b', number: 2 },
   { key: 'win-c', number: 3 },
 ];
-
-function httpTab(id: string, order: number, active = false) {
-  return {
-    id,
-    connectionId: null,
-    path: 'request',
-    kind: 'http-request',
-    order,
-    active,
-    state: {
-      method: 'GET',
-      url: `https://api.example.com/${id}`,
-      headers: [],
-      bodyMode: 'none',
-      body: '',
-      requestPane: 'params',
-      responsePane: 'history',
-      responseView: 'pretty',
-      requestPaneHeight: 0,
-    },
-  };
-}
-
-// A restored data tab holds no pending edits, so it moves without the discard question.
-function dataTab(id: string, order: number, active = false) {
-  return {
-    id,
-    connectionId: 'conn-x',
-    path: `database:d/schema:s/table:${id}`,
-    kind: 'data',
-    order,
-    active,
-    state: {},
-  };
-}
 
 const ids = (page: Page) =>
   page
@@ -90,25 +55,6 @@ async function openApi(page: Page): Promise<void> {
   await expect(modeTab(page, 'api')).toHaveClass(/is-active/);
 }
 
-const sentMoves = (control: Parameters<typeof calls>[0]) =>
-  calls(control, IPC.tabsMove).map((e) => e.args as ContractJson);
-
-function lastSave(control: Parameters<typeof calls>[0]): string[] {
-  const saves = calls(control, IPC.tabsSave);
-  const last = saves[saves.length - 1]?.args as { tabs: { id: string }[] } | undefined;
-  return (last?.tabs ?? []).map((t) => t.id);
-}
-
-async function holdOutside(page: Page, chip: Locator): Promise<void> {
-  const box = await chip.boundingBox();
-  if (!box) throw new Error('chip has no box');
-  const from = boxCenter(box);
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(from.x + 10, from.y, { steps: 5 });
-  await page.mouse.move(-60, 200, { steps: 15 });
-}
-
 test('dragging a tab out of the window moves it with its drop point', async ({ relaunch }) => {
   const { window: page, control } = await relaunch({
     control: setup({
@@ -126,7 +72,7 @@ test('dragging a tab out of the window moves it with its drop point', async ({ r
   await expect(tabLocator(page, 'b')).toHaveCount(0);
   const [move] = sentMoves(control);
   expect(sentMoves(control)).toHaveLength(1);
-  expect(move.tab.id).toBe('b');
+  expect(move.tabs.map((e: { tab: { id: string } }) => e.tab.id)).toEqual(['b']);
   expect(move.drop.clientX).toBeLessThan(0);
   await expect(page.locator('[data-testid="tab"][data-active="true"]')).toHaveCount(1);
   await expect.poll(() => lastSave(control)).toEqual(['a', 'c']);
@@ -327,8 +273,8 @@ test('a live Runs terminal leaves with its screen and is never closed', async ({
     .filter((c) => c === IPC.terminalHold || c === IPC.tabsMove);
   expect(order).toEqual([IPC.terminalHold, IPC.tabsMove]);
   const [move] = sentMoves(control);
-  expect(move.terminal.snapshot).toContain('hello-moved');
-  expect(move.terminal.status).toBe('running');
+  expect(move.tabs[0].terminal.snapshot).toContain('hello-moved');
+  expect(move.tabs[0].terminal.status).toBe('running');
   expect(calls(control, IPC.terminalClose)).toHaveLength(0);
 });
 
@@ -391,6 +337,7 @@ test('a live Runs terminal arrives with snapshot, held bytes, then live output',
   control.respond(IPC.tabsInbound, [
     {
       incognito: false,
+      focus: true,
       tab: terminalTab('t1'),
       terminal: {
         snapshot: 'moved-screen\r\n',
@@ -429,6 +376,7 @@ test('an exited Runs terminal arrives with its stored status and adopts nothing'
   control.respond(IPC.tabsInbound, [
     {
       incognito: false,
+      focus: true,
       tab: terminalTab('t2'),
       terminal: {
         snapshot: 'done-screen\r\n',
@@ -473,11 +421,11 @@ test('a script-run tab moves by menu without terminal calls and arrives as a run
   await page.locator('[data-testid="menu-item-move-to-new-window"]').click();
   await expect(tabLocator(page, 'sr1')).toHaveCount(0);
   const [move] = sentMoves(control);
-  expect(move.tab.kind).toBe('script-run');
-  expect(move.terminal ?? null).toBeNull();
+  expect(move.tabs[0].tab.kind).toBe('script-run');
+  expect(move.tabs[0].terminal ?? null).toBeNull();
   expect(calls(control, IPC.terminalHold)).toHaveLength(0);
 
-  control.respond(IPC.tabsInbound, [{ incognito: false, tab: runTab('sr2') }]);
+  control.respond(IPC.tabsInbound, [{ incognito: false, focus: true, tab: runTab('sr2') }]);
   await emitWailsEvent(page, IPC.tabsInboundEvent, undefined);
   await expect(page.locator('[data-testid="script-run-view"]')).toBeVisible();
 });

@@ -3,12 +3,16 @@ import { computed } from 'vue';
 import { kindIcon } from './kinds';
 import type { KubeTab, useKubeTabsStore } from './tabs';
 
+/** The Kubernetes strip's multi-select scope (`TabStripHost.selectionScope`). */
+export const KUBE_TAB_SCOPE = 'kubernetes';
+
 /** The module's own tab strip: one tab per resource, so no duplicate action. */
 export function createKubeTabHost(
   store: ReturnType<typeof useKubeTabsStore>,
 ): TabStripHost<'kubernetes', KubeTab> {
   return {
     activeWorkspace: computed(() => 'kubernetes' as const),
+    selectionScope: KUBE_TAB_SCOPE,
     tabs: {
       get activeIdByWorkspace() {
         return { kubernetes: store.activeId };
@@ -21,7 +25,9 @@ export function createKubeTabHost(
       closeOthers: store.closeOthers,
       closeToTheRight: store.closeToTheRight,
       closeAll: () => store.closeAll(),
+      closeTabs: store.closeMany,
       moveTab: store.move,
+      moveTabs: store.moveMany,
     },
     kinds: {
       resource: { title: store.titleOf, menuExtras: () => [] },

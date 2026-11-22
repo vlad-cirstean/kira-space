@@ -18641,8 +18641,17 @@
       }
     },
     "tabStrip": {
+      "closeSelected": {
+        "label": "Close {count} tabs"
+      },
       "duplicate": {
         "label": "Duplicate tab"
+      },
+      "moveSelectedToNewWindow": {
+        "label": "Move {count} tabs to new window"
+      },
+      "moveSelectedToWindow": {
+        "label": "Move {count} tabs to window"
       },
       "moveToNewWindow": {
         "label": "Move to new window"
@@ -18651,8 +18660,14 @@
         "label": "Move to window",
         "option": "Window {number}"
       },
+      "selected": {
+        "status": "Selected"
+      },
       "tearOff": {
         "hint": "Release to move to another window."
+      },
+      "tearOffMany": {
+        "hint": "Release to move {count} tabs to another window."
       }
     },
     "terminal": {

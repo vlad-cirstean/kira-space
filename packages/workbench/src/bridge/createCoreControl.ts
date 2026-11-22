@@ -86,18 +86,22 @@ export interface TabTerminalPayload {
 
 export type TabMoveTo = { target: string } | { newWindow: true } | { drop: TabDrop };
 
-export interface TabMoveArgs<T> {
+/** One tab of a move. */
+export interface TabMoveEntry<T> {
   tab: T;
   incognito: boolean;
   terminal?: TabTerminalPayload;
+}
+
+/** Tabs of one move, source strip order. */
+export interface TabMoveArgs<T> {
+  tabs: TabMoveEntry<T>[];
   to: TabMoveTo;
 }
 
-/** A tab waiting in this window's inbox. */
-export interface TabInbound<T> {
-  tab: T;
-  incognito: boolean;
-  terminal?: TabTerminalPayload;
+/** A tab waiting in this window's inbox; exactly one entry per move has `focus`. */
+export interface TabInbound<T> extends TabMoveEntry<T> {
+  focus: boolean;
 }
 
 export interface TabWindowTarget {
@@ -135,12 +139,10 @@ export interface CoreBindings {
     Save(a: { windowKey: string; tabs: unknown }): Promise<void>;
     Move(a: {
       windowKey: string;
-      tab: unknown;
-      incognito: boolean;
+      tabs: { tab: unknown; incognito: boolean; terminal?: unknown; focus: boolean }[] | null;
       target: string;
       newWindow: boolean;
       drop: TabDrop | null;
-      terminal?: unknown;
     }): Promise<unknown>;
     Inbound(a: { windowKey: string }): Promise<unknown>;
     Targets(a: { windowKey: string }): Promise<unknown>;
@@ -400,16 +402,14 @@ export function createCoreControl<S, L, T, P, M>(
     tabsList: (): Promise<T[]> =>
       unwrap(b.tabs.List({ windowKey })).then((r) => trust<T[]>(r ?? [])),
     tabsSave: (tabs: T[]): Promise<void> => unwrap(b.tabs.Save({ windowKey, tabs })),
-    tabsMove: ({ tab, incognito, terminal, to }: TabMoveArgs<T>) =>
+    tabsMove: ({ tabs, to }: TabMoveArgs<T>) =>
       unwrap(
         b.tabs.Move({
           windowKey,
-          tab,
-          incognito,
+          tabs: tabs.map((e) => ({ ...e, terminal: e.terminal ?? null, focus: false })),
           target: 'target' in to ? to.target : '',
           newWindow: 'newWindow' in to,
           drop: 'drop' in to ? to.drop : null,
-          terminal: terminal ?? null,
         }),
       ).then((r) => trust<{ windowKey: string; created: boolean }>(r)),
     tabsInbound: (): Promise<TabInbound<T>[]> =>

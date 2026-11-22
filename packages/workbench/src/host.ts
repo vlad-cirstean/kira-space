@@ -65,6 +65,10 @@ export interface TabStripTabs<WK extends string, R extends TabLike> {
   closeAll?(key: WK): void;
   duplicateTab?(id: string): unknown;
   moveTab?(fromId: string, toId: string): void;
+  /** Closes the selected tabs together (multi-select). */
+  closeTabs?(ids: readonly string[]): void;
+  /** Moves the selected tabs as one block, strip order kept, to toId's slot (multi-select). */
+  moveTabs?(ids: readonly string[], toId: string): void;
 }
 
 /** Where a tab dropped outside the window landed, in client coordinates (CSS px). */
@@ -77,7 +81,7 @@ export interface TabDropPoint {
   innerHeight: number;
 }
 
-/** Moving a tab to another window (P722). A strip given none behaves as before. */
+/** Moving tabs to another window (P722, several since P727). A strip given none behaves as before. */
 export interface TabWindowMove<R extends TabLike> {
   /** Whether this tab may leave the window at all. */
   canMove(tab: R): boolean;
@@ -86,7 +90,7 @@ export interface TabWindowMove<R extends TabLike> {
   /** The other live windows, numbered as the tab menu names them. */
   readonly targets: Readonly<Ref<readonly { key: string; number: number }[]>>;
   move(
-    tab: R,
+    tabs: readonly R[],
     to: { newWindow: true } | { target: string } | { drop: TabDropPoint },
   ): Promise<void>;
 }
@@ -99,6 +103,8 @@ export interface TabStripHost<WK extends string, R extends TabLike> {
   readonly kinds: { readonly [kind: string]: TabStripKind<R> | undefined };
   iconFor(tab: R): TabIconRender;
   railColorFor(tab: R): string | undefined;
+  /** Names this strip's multi-select set (Cmd/Ctrl-click, Shift-click); absent turns it off. */
+  readonly selectionScope?: string;
   /** Tear-off and "Move to window"; absent hides both. */
   windowMove?: TabWindowMove<R>;
   /** A trailing mark after the tab title — Kira Studio's kind-supplied `badge()` member

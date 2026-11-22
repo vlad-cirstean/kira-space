@@ -1,5 +1,6 @@
 import { newUuid } from '@shared/ids';
 import { createTabsStore } from '@workbench/state/createTabsStore';
+import { useTabSelectionStore } from '@workbench/state/tabSelection';
 import { control } from '../bridge/control';
 import { studioTabsExtension, studioTabsHooks } from '../studio/state/studioTabs';
 import { restoreLegacyVariableTabs } from '../studio/state/tabKinds';
@@ -47,6 +48,9 @@ export interface OpenTabResult {
   id: string;
   reused: boolean;
 }
+
+/** The main workbench strip's multi-select scope (`TabStripHost.selectionScope`). */
+export const WORKBENCH_TAB_SCOPE = 'workbench';
 
 export const useTabsStore = createTabsStore({
   kinds: TAB_KINDS,
@@ -148,9 +152,14 @@ export const useTabsStore = createTabsStore({
       actions.stepTab(visibleWorkspace(), -1);
     }
 
+    // With the active tab in a selection of two or more, closes the selection (P727).
     function closeActiveTab(): void {
       const id = actions.activeIdByWorkspace.value[visibleWorkspace()];
-      if (id) actions.closeTab(id);
+      if (!id) return;
+      const selection = useTabSelectionStore();
+      if (selection.isMulti(WORKBENCH_TAB_SCOPE, id)) {
+        void actions.closeTabs(selection.selected(WORKBENCH_TAB_SCOPE));
+      } else void actions.closeTab(id);
     }
 
     return {
