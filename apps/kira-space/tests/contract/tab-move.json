@@ -8,6 +8,7 @@
   "TabsService.CloseEmptyWindow": true,
   "TabsService.Inbound": [
     {
+      "focus": true,
       "incognito": false,
       "tab": {
         "active": false,
@@ -47,35 +48,45 @@
       "innerHeight": 800,
       "innerWidth": 1000
     },
-    "incognito": false,
     "newWindow": false,
-    "tab": {
-      "active": true,
-      "id": "miss1",
-      "kind": "data",
-      "order": 0,
-      "path": "p/miss1",
-      "state": {},
-      "workspaceId": null
-    },
+    "tabs": [
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "miss1",
+          "kind": "data",
+          "order": 0,
+          "path": "p/miss1",
+          "state": {},
+          "workspaceId": null
+        }
+      }
+    ],
     "target": "",
     "windowKey": "<masked>"
   },
   "args:TabsService.Move:scriptRun": {
     "drop": null,
-    "incognito": false,
     "newWindow": false,
-    "tab": {
-      "active": true,
-      "id": "sr1",
-      "kind": "script-run",
-      "order": 0,
-      "path": "p/sr1",
-      "state": {
-        "runId": "run1"
-      },
-      "workspaceId": "automations"
-    },
+    "tabs": [
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "sr1",
+          "kind": "script-run",
+          "order": 0,
+          "path": "p/sr1",
+          "state": {
+            "runId": "run1"
+          },
+          "workspaceId": "automations"
+        }
+      }
+    ],
     "target": "B",
     "windowKey": "<masked>"
   }

@@ -82,8 +82,8 @@ func runsTab(id string) spacemodel.TabRecord {
 }
 
 func moveTerm(app *flowharness.App, id string, to bridge.TabsMoveArgs) (bridge.TabsMoveResult, error) {
-	to.WindowKey, to.Tab = "A", runsTab(id)
-	to.Terminal = &bridge.TabTerminal{Snapshot: "x", Cols: 80, Rows: 24, Status: "running", Shell: "/bin/sh"}
+	to.WindowKey = "A"
+	to.Tabs = []bridge.TabInbound{{Tab: runsTab(id), Terminal: &bridge.TabTerminal{Snapshot: "x", Cols: 80, Rows: 24, Status: "running", Shell: "/bin/sh"}}}
 	return app.W.Tabs.Move(to)
 }
 
@@ -122,8 +122,7 @@ func TestTerminalMove(t *testing.T) {
 			t.Fatalf("%d terminal events while held, want none", len(evs))
 		}
 
-		args := bridge.TabsMoveArgs{WindowKey: "A", Tab: runsTab("t1"), Target: "B",
-			Terminal: &bridge.TabTerminal{Snapshot: "x", Cols: 80, Rows: 24, Status: "running", Shell: "/bin/sh"}}
+		args := bridge.TabsMoveArgs{WindowKey: "A", Tabs: []bridge.TabInbound{{Tab: runsTab("t1"), Terminal: &bridge.TabTerminal{Snapshot: "x", Cols: 80, Rows: 24, Status: "running", Shell: "/bin/sh"}}}, Target: "B"}
 		app.Contract(t, termMoveScenario, "args:TabsService.Move:terminal", args, flowharness.Mask("windowKey"))
 		if _, err := moveTerm(app, "t1", bridge.TabsMoveArgs{Target: "B"}); err != nil {
 			t.Fatal(err)
@@ -132,7 +131,7 @@ func TestTerminalMove(t *testing.T) {
 			t.Fatalf("WindowOf = %q, %v, want B", w, ok)
 		}
 		in := inbound(t, app, "B")
-		if len(in) != 1 || in[0].Terminal == nil || in[0].Terminal.Snapshot != "x" {
+		if len(in) != 1 || !in[0].Focus || in[0].Terminal == nil || in[0].Terminal.Snapshot != "x" {
 			t.Fatalf("inbox %+v, want the terminal payload", in)
 		}
 		res, err := term.Adopt(terminal.AdoptArgs{TerminalID: "t1", WindowKey: "B"})

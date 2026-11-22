@@ -120,15 +120,18 @@ type TabTerminal struct {
 	Shell    string `json:"shell"`
 }
 
-// TabsMoveArgs moves one tab out of window WindowKey. Exactly one of Target, NewWindow, Drop.
+const (
+	maxMoveTabs          = 100
+	maxMoveSnapshotBytes = 16 << 20
+)
+
+// TabsMoveArgs moves tabs out of window WindowKey. Exactly one of Target, NewWindow, Drop.
 type TabsMoveArgs struct {
-	WindowKey string          `json:"windowKey"`
-	Tab       model.TabRecord `json:"tab"`
-	Incognito bool            `json:"incognito"`
-	Target    string          `json:"target"`
-	NewWindow bool            `json:"newWindow"`
-	Drop      *TabDrop        `json:"drop"`
-	Terminal  *TabTerminal    `json:"terminal,omitempty"`
+	WindowKey string       `json:"windowKey"`
+	Tabs      []TabInbound `json:"tabs"` // source strip order
+	Target    string       `json:"target"`
+	NewWindow bool         `json:"newWindow"`
+	Drop      *TabDrop     `json:"drop"`
 }
 
 // TabsMoveResult says where the tab now lives; the source key means nothing moved.
@@ -142,6 +145,9 @@ type TabInbound struct {
 	Tab       model.TabRecord `json:"tab"`
 	Incognito bool            `json:"incognito"`
 	Terminal  *TabTerminal    `json:"terminal,omitempty"`
+	// Focus marks the one entry of a move the target activates. Go sets it; a caller's value is
+	// ignored.
+	Focus bool `json:"focus"`
 }
 
 // TabWindowTarget is another live window a tab can move to; Number is 1-based by stored order
@@ -201,17 +207,35 @@ func (s *TabsService) validateMove(args TabsMoveArgs) error {
 	if args.Target == args.WindowKey {
 		return ipcerr.Contract("target window is the source window")
 	}
-	if err := args.Tab.Validate(); err != nil {
-		return ipcerr.Contract("%s", err.Error())
+	if len(args.Tabs) == 0 || len(args.Tabs) > maxMoveTabs {
+		return ipcerr.Contract("tabs: 1 to %d tabs per move", maxMoveTabs)
 	}
-	if !model.IsMovableTab(args.Tab) {
-		return ipcerr.Contract("tab kind %q cannot move between windows", args.Tab.Kind)
+	seen := make(map[string]bool, len(args.Tabs))
+	snapshots := 0
+	for _, e := range args.Tabs {
+		t := e.Tab
+		if err := t.Validate(); err != nil {
+			return ipcerr.Contract("%s", err.Error())
+		}
+		if seen[t.ID] {
+			return ipcerr.Contract("tab %s is repeated", t.ID)
+		}
+		seen[t.ID] = true
+		if !model.IsMovableTab(t) {
+			return ipcerr.Contract("tab %s: kind %q cannot move between windows", t.ID, t.Kind)
+		}
+		if e.Terminal != nil && t.Kind != "terminal" {
+			return ipcerr.Contract("tab %s: terminal payload on a %s tab", t.ID, t.Kind)
+		}
+		if t.Kind == "terminal" && s.Terminals.Reown == nil {
+			return ipcerr.Contract("this build cannot move terminals")
+		}
+		if e.Terminal != nil {
+			snapshots += len(e.Terminal.Snapshot)
+		}
 	}
-	if args.Terminal != nil && args.Tab.Kind != "terminal" {
-		return ipcerr.Contract("terminal payload on a %s tab", args.Tab.Kind)
-	}
-	if args.Tab.Kind == "terminal" && s.Terminals.Reown == nil {
-		return ipcerr.Contract("this build cannot move terminals")
+	if snapshots > maxMoveSnapshotBytes {
+		return ipcerr.Contract("terminal snapshots total over %d bytes", maxMoveSnapshotBytes)
 	}
 	if s.Windows.Geometry == nil || s.Windows.Open == nil {
 		return ipcerr.Contract("this build cannot open a window")
@@ -219,8 +243,8 @@ func (s *TabsService) validateMove(args TabsMoveArgs) error {
 	return nil
 }
 
-// Move re-keys a tab to another window: a named one, a new one, or the one under a drag-out drop.
-// One storage transaction; the target pulls the tab through Inbound.
+// Move re-keys tabs to another window: a named one, a new one, or the one under a drag-out drop.
+// One storage transaction, all or none; the target pulls the tabs through Inbound.
 func (s *TabsService) Move(args TabsMoveArgs) (TabsMoveResult, error) {
 	if err := s.validateMove(args); err != nil {
 		return TabsMoveResult{}, err
@@ -246,18 +270,31 @@ func (s *TabsService) Move(args TabsMoveArgs) (TabsMoveResult, error) {
 		}
 		created, dst = rec, rec.Key
 	}
-	persist := !args.Incognito && !model.IsSessionTabKind(args.Tab.Kind)
-	if err := appstorage.MoveWindowTab(s.Deps.Repos.Windows, s.Deps.Repos.Tabs, src, dst, args.Tab, persist); err != nil {
+	moves := make([]appstorage.TabMove[model.TabRecord], len(args.Tabs))
+	for i, e := range args.Tabs {
+		moves[i] = appstorage.TabMove[model.TabRecord]{Rec: e.Tab, Persist: !e.Incognito && !model.IsSessionTabKind(e.Tab.Kind)}
+	}
+	if err := appstorage.MoveWindowTabs(s.Deps.Repos.Windows, s.Deps.Repos.Tabs, src, dst, moves); err != nil {
 		if created != nil {
 			_ = s.Deps.Repos.Windows.Delete(created.Key)
 		}
 		return TabsMoveResult{}, err
 	}
-	if args.Tab.Kind == "terminal" {
-		// false: the session already ended; the snapshot and a held exit carry it.
-		s.Terminals.Reown(args.Tab.ID, src, dst)
+	focus := 0
+	for i, e := range args.Tabs {
+		if e.Tab.Active {
+			focus = i
+			break
+		}
 	}
-	s.inbox.push(dst, TabInbound{Tab: args.Tab, Incognito: args.Incognito, Terminal: args.Terminal})
+	for i, e := range args.Tabs {
+		if e.Tab.Kind == "terminal" {
+			// false: the session already ended; the snapshot and a held exit carry it.
+			s.Terminals.Reown(e.Tab.ID, src, dst)
+		}
+		e.Focus = i == focus
+		s.inbox.push(dst, e)
+	}
 	if created != nil {
 		s.Windows.Open(*created)
 	} else {
