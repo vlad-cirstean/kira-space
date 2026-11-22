@@ -215,48 +215,8 @@ func applyKubePrepared(op string, in kubeRequest, out jsengine.Result) (kubeRequ
 		if !ok {
 			continue
 		}
-		raw = bytes.TrimSpace(raw)
-		switch key {
-		case "previous", "timestamps":
-			var v bool
-			if string(raw) != "true" && string(raw) != "false" {
-				return in, nil, fmt.Errorf("%s must be true or false", key)
-			}
-			_ = json.Unmarshal(raw, &v)
-			if key == "previous" {
-				in.Previous = v
-			} else {
-				in.Timestamps = v
-			}
-		case "tail", "maxRows":
-			var v float64
-			if json.Unmarshal(raw, &v) != nil || raw[0] == '"' || v != math.Trunc(v) || math.Abs(v) > 1<<31 {
-				return in, nil, fmt.Errorf("%s must be a whole number", key)
-			}
-			if key == "tail" {
-				in.Tail = int(v)
-			} else {
-				in.MaxRows = int(v)
-			}
-		default:
-			var v string
-			if json.Unmarshal(raw, &v) != nil || raw[0] != '"' {
-				return in, nil, fmt.Errorf("%s must be a string", key)
-			}
-			switch key {
-			case "kind":
-				in.Kind = v
-			case "name":
-				in.Name = v
-			case "namespace":
-				in.Namespace = v
-			case "labelSelector":
-				in.LabelSelector = v
-			case "pod":
-				in.Pod = v
-			case "container":
-				in.Container = v
-			}
+		if err := setKubeField(&in, key, bytes.TrimSpace(raw)); err != nil {
+			return in, nil, err
 		}
 		changed = append(changed, key)
 	}
@@ -266,6 +226,52 @@ func applyKubePrepared(op string, in kubeRequest, out jsengine.Result) (kubeRequ
 		}
 	}
 	return kubeClamp(op, in), changed, nil
+}
+
+// setKubeField decodes one prepare-script value into the request field named key.
+func setKubeField(in *kubeRequest, key string, raw json.RawMessage) error {
+	switch key {
+	case "previous", "timestamps":
+		if string(raw) != "true" && string(raw) != "false" {
+			return fmt.Errorf("%s must be true or false", key)
+		}
+		v := string(raw) == "true"
+		if key == "previous" {
+			in.Previous = v
+		} else {
+			in.Timestamps = v
+		}
+	case "tail", "maxRows":
+		var v float64
+		if json.Unmarshal(raw, &v) != nil || raw[0] == '"' || v != math.Trunc(v) || math.Abs(v) > 1<<31 {
+			return fmt.Errorf("%s must be a whole number", key)
+		}
+		if key == "tail" {
+			in.Tail = int(v)
+		} else {
+			in.MaxRows = int(v)
+		}
+	default:
+		var v string
+		if json.Unmarshal(raw, &v) != nil || raw[0] != '"' {
+			return fmt.Errorf("%s must be a string", key)
+		}
+		switch key {
+		case "kind":
+			in.Kind = v
+		case "name":
+			in.Name = v
+		case "namespace":
+			in.Namespace = v
+		case "labelSelector":
+			in.LabelSelector = v
+		case "pod":
+			in.Pod = v
+		case "container":
+			in.Container = v
+		}
+	}
+	return nil
 }
 
 // kubeScriptInput describes what the transform read: metadata only, never a row or a line.

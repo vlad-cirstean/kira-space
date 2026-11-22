@@ -169,32 +169,9 @@ func (s *Server) kubeRun(ctx context.Context, call kubeCall, statement func(kube
 		Kept:    sc.keptUses(),
 		Origin:  originFrom(ctx), OfferReview: reviewable, ReviewOn: reviewable && s.kubeReviewFor(c),
 	}
-	var choice ApprovalChoice
-	// Fail closed: anything but "allow" asks.
-	if c.Mcp.Approval != "allow" {
-		wctx, stop := s.watchKept(ctx, sc.keptUses())
-		outcome, ch := s.cfg.Approvals.RequestChoice(wctx, areq)
-		cause := context.Cause(wctx)
-		stop()
-		if outcome != ApprovalApproved {
-			var gone *keptGoneError
-			if errors.As(cause, &gone) {
-				return errResult(gone.kubeText())
-			}
-			return approvalOutcomeError(outcome, fmt.Sprintf("Kubernetes read on %q", c.Context))
-		}
-		choice = ch
-		// The wait can last up to ApprovalTimeout: a cluster turned off meanwhile wins.
-		_, found, err = s.resolveCluster(ctx, call.clusterID)
-		if err != nil {
-			return toolError(err)
-		}
-		if !found {
-			return noClusterResult(call.clusterID)
-		}
-		if sc != nil && !s.scriptsOn() {
-			return errResult(apiScriptsOff + ". " + kubeNothingRead)
-		}
+	choice, exit := s.kubeApprove(ctx, call, c, areq, sc)
+	if exit != nil {
+		return exit.res, exit.out, exit.err
 	}
 
 	out, err := read(ctx, req)
@@ -205,6 +182,55 @@ func (s *Server) kubeRun(ctx context.Context, call kubeCall, statement func(kube
 	if err != nil || !reviewable {
 		return res, o, err
 	}
+	return s.kubeFinish(ctx, call, c, req, areq, choice, sc, res, o, err)
+}
+
+// kubeExit is a tool reply that ends kubeRun early.
+type kubeExit struct {
+	res *mcp.CallToolResult
+	out any
+	err error
+}
+
+func kubeExitOf(res *mcp.CallToolResult, out any, err error) *kubeExit {
+	return &kubeExit{res: res, out: out, err: err}
+}
+
+// kubeApprove asks the user to approve the read unless the cluster allows it outright. A non-nil exit ends
+// the call.
+func (s *Server) kubeApprove(ctx context.Context, call kubeCall, c kubernetes.Cluster, areq ApprovalRequest, sc *apiScripts) (ApprovalChoice, *kubeExit) {
+	var choice ApprovalChoice
+	// Fail closed: anything but "allow" asks.
+	if c.Mcp.Approval == "allow" {
+		return choice, nil
+	}
+	wctx, stop := s.watchKept(ctx, sc.keptUses())
+	outcome, ch := s.cfg.Approvals.RequestChoice(wctx, areq)
+	cause := context.Cause(wctx)
+	stop()
+	if outcome != ApprovalApproved {
+		var gone *keptGoneError
+		if errors.As(cause, &gone) {
+			return choice, kubeExitOf(errResult(gone.kubeText()))
+		}
+		return choice, kubeExitOf(approvalOutcomeError(outcome, fmt.Sprintf("Kubernetes read on %q", c.Context)))
+	}
+	// The wait can last up to ApprovalTimeout: a cluster turned off meanwhile wins.
+	_, found, err := s.resolveCluster(ctx, call.clusterID)
+	if err != nil {
+		return choice, kubeExitOf(toolError(err))
+	}
+	if !found {
+		return choice, kubeExitOf(noClusterResult(call.clusterID))
+	}
+	if sc != nil && !s.scriptsOn() {
+		return choice, kubeExitOf(errResult(apiScriptsOff + ". " + kubeNothingRead))
+	}
+	return ch, nil
+}
+
+// kubeFinish runs the transform script, the result review and the kept-value commit on a read result.
+func (s *Server) kubeFinish(ctx context.Context, call kubeCall, c kubernetes.Cluster, req kubeRequest, areq ApprovalRequest, choice ApprovalChoice, sc *apiScripts, res *mcp.CallToolResult, o any, err error) (*mcp.CallToolResult, any, error) {
 	var so *kubeScriptOutcome
 	if sc.hasTransform() {
 		so = s.transformKube(ctx, call, req, sc, resultText(res))
