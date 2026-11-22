@@ -25,6 +25,7 @@ before implementation starts.
 | P723 | Remove the PR flake rerun workflow | Todo |
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Todo |
+| P727 | Window tabs: select several tabs, close them or move them to another window | Todo |
 
 ## P716
 
@@ -556,3 +557,34 @@ Deliverable. One plan `plans/P725.md`, one Sonnet pass. UI spec rewritten
 (`data-view-column-search.spec.ts`), shortcut-hint and module-state specs updated, unit spec for the
 removed filter deleted, `data-grid.png` baseline regenerated in PR CI. Throwaway screenshots for the
 user at chapter end.
+
+## P727
+
+User, after P722: "For 722 it looks great. But i want the posibility to select multiple tabs and
+move them or close them. Make this possible as a followup".
+
+Follow-up to P722 (tab tear-off, `plans/P722.md`). Plan: `plans/P727.md`. One Sonnet pass.
+
+Scope.
+
+- Multi-select in every `TabStrip` whose host can close or move tabs: main workbench strip (Studio
+  data and API, Runs, Git, every module; ade review and opened-files windows share its host) and
+  the Kubernetes resource strip. Proof window strip (no close, no move) stays single.
+- Gestures, browser style: Cmd-click (macOS) or Ctrl-click (others) toggles, Shift-click selects
+  a range from the anchor, plain click clears and activates, Esc in the strip clears. Pinned tabs
+  never join. Selected chips use the neutral selection token (N18).
+- Selected set, from the tab menu: "Close N tabs" (dirty question once for the set, as Close
+  others), "Move N tabs to new window", "Move N tabs to window ▸ Window N". ⌘W closes the set when
+  the active tab is in it. No new chord.
+- Dragging a selected tab drags the set: out of the window moves all movable selected tabs; inside
+  the strip reorders them as one block. Sortable has no MultiDrag here (vue-draggable-plus bundles
+  Sortable without it and exports no class to mount it on); Sortable drags the grabbed chip, the
+  strip applies the set on drop.
+- Backend: `TabsService.Move` takes a list. One transaction re-keys every row; any refusal moves
+  nothing. Live Runs terminals: hold all, one move, re-own all, target adopts each; a failure
+  releases every hold. Target appends in source order; the source's active tab, if moved, else the
+  first, becomes active.
+
+Tests. Flow `TestTabMoveMany` (real PTY, two live terminals), P722 flow tests on the list shape, UI
+spec `tab-multi-select.spec.ts`, P722 UI spec on the list shape, one unit spec for block reorder.
+Throwaway screenshots for the user at chapter end; manual checklist for macOS, Windows, Linux X11.
