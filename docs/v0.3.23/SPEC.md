@@ -27,7 +27,7 @@ before implementation starts.
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
 | P727 | Window tabs: select several tabs, close them or move them to another window | Done |
-| P728 | Approval prompts and scripts rework | Todo |
+| P728 | Approval prompts and scripts rework | Done |
 | P729 | Removals, Variables tab and kube result views | Todo |
 | P730 | Switch, checkbox and radio on-state style | Todo |
 | P731 | Auto-extracted task links from notes and handovers | Todo |
@@ -720,7 +720,10 @@ Streams: P728 (Stream A) and P729 (Stream B) run in parallel, no ordering depend
 
 Deliverable. Plan `plans/P728.md`, Opus-authored, then Sonnet implementation.
 
-Result. Todo.
+Result. Done. Script kept API renamed to `kira.storeValue`, `storeSecret`, `getValue`; one-time typed values dropped, every typed value is kept. Approval cards: compact density, shared detail parts, kept rows with expiry, used in and delete (x), staged "Will keep" x (`KeptVarsService.DropStaged`, agent sees `keptNotSaved` "the user chose not to keep it"), variable chips "Uses: names" and "Keeps: names" replace the scripts chip, prepared values listed and marked (`PreparedList`, `data-prepared`), no invisible prepared value. Reviews: tabs After and Before, collapsed first Request box (`ReviewRequest`) fed by new `request`, `params`, `placeholders`, `kept`, `tool`, `changed` payload fields. Flow + UI pairs: `e2e-user-value`, `e2e-kept-delete`, `e2e-prepared-visible`, `e2e-review-request`; contracts regenerated. Visual baselines regenerated locally (fc-match = Inter): 13 changed, `approvals-api-input` added, once-input one removed.
+- Runs: affected UI specs (approvals, dbmcp, kube, e2e-, connection-mcp, http-request) 320 run, all pass after fixing the `approvals-sections` box order; visual approvals and kube-review 15 pass; Go `./apps/kira-space/internal/... ./internal/...` pass after fixes (llmprompts count 179, `e2e-mask-echo` kept-id replace); `adeflow` and `internal/fswatch` failed once under load, pass alone; `bun run typecheck:web` and hooks pass; real claude `bun run test:claude:db -count=1` passes (auth probe ok, 0.07 USD).
+- Deviations: `e2e-kept-delete` waiting-card case uses an API card; kept-row meta reuses existing keys; maxRows line reuses `kube.rows.status`; `ApiRequestView`, `DbRequestView`, `KubeRequestView`, `ReviewRequest` extracted. `go clean -cache` run once (disk full).
+- Not verified: full UI suites beyond the listed specs (PR CI).
 
 ## P729
 
