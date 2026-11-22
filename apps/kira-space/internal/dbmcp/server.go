@@ -387,14 +387,9 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	src := s.prompts()
 	s.addListTool(srv, src)
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "list_children",
-		Description: llmprompts.DbmcpToolListChildren.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[listChildrenArgs](src, llmprompts.DbmcpToolListChildren.ID(), nil), "connectionId"),
-	}, withPanicRecovery(s, "list_children", s.listChildren))
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "describe",
 		Description: llmprompts.DbmcpToolDescribe.Text(src, llmprompts.NoVars{}),
-		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeArgs](src, llmprompts.DbmcpToolDescribe.ID(), nil), "connectionId", "path"),
+		InputSchema: llmprompts.RequireNonEmpty(llmprompts.InputSchema[describeArgs](src, llmprompts.DbmcpToolDescribe.ID(), nil), "connectionId"),
 	}, withPanicRecovery(s, "describe", s.describe))
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "browse_table",

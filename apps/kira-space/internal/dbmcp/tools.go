@@ -51,50 +51,22 @@ func needsDatabasePath(summary model.ConnectionSummary, path string) string {
 	if err != nil || (len(p.Segments) > 0 && p.Segments[0].Kind == "database") {
 		return ""
 	}
-	return fmt.Sprintf("path is required for connection %q (%s): pass a database path from list_children with this connectionId", summary.Name, summary.Kind)
+	return fmt.Sprintf("path is required for connection %q (%s): pass a database path from describe with this connectionId", summary.Name, summary.Kind)
 }
 
-// --- list_children — replacing the fixed-name list_databases/list_schemas SPEC first named:
-// the adapter layer's metadata primitive is one lazy level (Adapter.Children), and the levels
-// differ per kind, so one tool that returns the node's own `kind` is strictly more
-// information than a pair of fixed names could carry. ---
-
-type listChildrenArgs struct {
-	ConnectionID string `json:"connectionId"`
-	Path         string `json:"path,omitempty"`
-	Refresh      bool   `json:"refresh,omitempty"`
-}
-
-func (s *Server) listChildren(ctx context.Context, _ *mcp.CallToolRequest, args listChildrenArgs) (*mcp.CallToolResult, any, error) {
-	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
-	if done {
-		return res, out, err
-	}
-	set, serr := allowListOf(summary)
-	if serr != nil {
-		return badListResult(summary)
-	}
-	if msg := allowedPath(summary, set, args.Path, false); msg != "" {
-		return errResult(msg)
-	}
-	result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
-	if err != nil {
-		return toolError(err)
-	}
-	return jsonResult(filterNodes(summary, set, result.Nodes))
-}
-
-// --- describe ---
+// --- describe walks the tree: the metadata primitive is one lazy level (Adapter.Children) and the levels
+// differ per kind, so the node's own `kind` says what a returned path is. ---
 
 type describeArgs struct {
 	ConnectionID string `json:"connectionId"`
-	Path         string `json:"path"`
+	Path         string `json:"path,omitempty"`
+	Columns      bool   `json:"columns,omitempty"`
 	Refresh      bool   `json:"refresh,omitempty"`
 }
 
-// describe answers for the node the path ends at: a database or schema returns the columns of its
-// relations, anything else returns that one node's structure. An adapter that cannot describe a node
-// answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis), surfaced verbatim by toolError.
+// describe answers for the node the path ends at. No path or a database or schema path: its children, or with
+// columns the columns of every relation under it. Any other path: that one node's structure. An adapter that
+// cannot describe a node answers E_UNSUPPORTED in its own words (kafka/s3/sqs/redis), surfaced verbatim by toolError.
 func (s *Server) describe(ctx context.Context, _ *mcp.CallToolRequest, args describeArgs) (*mcp.CallToolResult, any, error) {
 	summary, res, out, err, done := s.resolveReadGated(args.ConnectionID)
 	if done {
@@ -104,12 +76,26 @@ func (s *Server) describe(ctx context.Context, _ *mcp.CallToolRequest, args desc
 	if serr != nil {
 		return badListResult(summary)
 	}
-	if isContainerPath(summary, args.Path) {
+	container := isContainerPath(summary, args.Path)
+	if args.Columns && !container {
+		return errResult("columns applies to a database or schema path; drop it")
+	}
+	switch {
+	case container && args.Columns:
 		result, err := s.cfg.Tree.SchemaColumns(ctx, args.ConnectionID, args.Path, args.Refresh)
 		if err != nil {
 			return toolError(err)
 		}
 		return jsonResult(filterRelations(summary, set, args.Path, result.Relations))
+	case container || args.Path == "":
+		if msg := allowedPath(summary, set, args.Path, false); msg != "" {
+			return errResult(msg)
+		}
+		result, err := s.cfg.Tree.Children(ctx, args.ConnectionID, args.Path, args.Refresh)
+		if err != nil {
+			return toolError(err)
+		}
+		return jsonResult(filterNodes(summary, set, result.Nodes))
 	}
 	if msg := allowedPath(summary, set, args.Path, true); msg != "" {
 		return errResult(msg)

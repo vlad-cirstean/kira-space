@@ -776,34 +776,17 @@ var DbmcpToolList = define(Entry{
 
 var _ = arg(DbmcpToolList.id, "what", studioApp, NextCall, `Sections to return. Omit for all.`, NoVars{})
 
-// DbmcpToolListConnections describes the list_connections tool.
-var DbmcpToolListConnections = define(Entry{
-	ID: "dbmcp.tool.list_connections", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_connections",
-	Default: "List database connections exposed to MCP: kind, read-only flag, live status and, once connected, capabilities. `access` lists the modes run_query may use and which need approval; `access.masked` is browse_table's permission. `enforcement` says what backs mode read: session (the database refuses writes), app (Kira checks) or none. `tables` is all, or the only tables MCP may touch; others are refused. `expensiveQuery` gives rowsThreshold and check: plan, off or none. `columnReview.withheld` lists columns not yet reviewed for masking: results drop them and a query using one is refused. `reviewResults` true holds each result until the user sends it.",
-}, NoVars{})
-
-// DbmcpToolListChildren describes the list_children tool.
-var DbmcpToolListChildren = define(Entry{
-	ID: "dbmcp.tool.list_children", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list_children",
-	Default: "List one container's own children: databases, schemas, tables, keys, topics, buckets, whatever this connection's engine has at that level. Omit path for the top level. Tables outside the connection's allow list are hidden.",
-}, NoVars{})
-
-var (
-	_ = arg(DbmcpToolListChildren.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolListChildren.id, "path", studioApp, NextCall, `Encoded container path, exactly as list_children returned it. Omit for the top level.`, NoVars{})
-	_ = arg(DbmcpToolListChildren.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
-)
-
 // DbmcpToolDescribe describes the describe tool.
 var DbmcpToolDescribe = define(Entry{
 	ID: "dbmcp.tool.describe", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "describe",
-	Default: "Describe a table, view or collection: columns, primary key, foreign keys, indexes, row estimate. On a database or schema path: the columns of every table and view in it, in one call. Call it before querying.",
+	Default: "Structure of a connection. No path: top level. A container path: its children, or with columns every table's columns in one call. A table path: columns, keys, indexes, row estimate.",
 }, NoVars{})
 
 var (
-	_ = arg(DbmcpToolDescribe.id, "connectionId", studioApp, NextCall, `Connection id from list_connections.`, NoVars{})
-	_ = arg(DbmcpToolDescribe.id, "path", studioApp, NextCall, `Encoded path from list_children: a table, or a database or schema.`, NoVars{})
-	_ = arg(DbmcpToolDescribe.id, "refresh", studioApp, NextCall, `Bypass the cache and re-read from the server. Default false.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "connectionId", studioApp, NextCall, `From list.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "path", studioApp, NextCall, `A path from an earlier describe. Omit for the top level.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "columns", studioApp, NextCall, `On a database or schema path: every table's columns instead of its children.`, NoVars{})
+	_ = arg(DbmcpToolDescribe.id, "refresh", studioApp, NextCall, `Re-read instead of the cache.`, NoVars{})
 )
 
 // DbmcpToolBrowseTable describes the browse_table tool.
