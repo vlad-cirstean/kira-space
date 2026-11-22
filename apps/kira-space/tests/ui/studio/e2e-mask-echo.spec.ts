@@ -21,11 +21,11 @@ test('contract: the review shows only the reference for every echoed form', asyn
   await pushApprovals(page, [liveItem(it)]);
   const result = page.locator('[data-testid="api-review-result"]');
   for (const form of ['b64', 'b64url', 'json', 'path', 'query', 'raw']) {
-    await expect(result).toContainText(`"${form}": "{{kept.apikey}}"`);
+    await expect(result).toContainText(`"${form}": "{{secret.apikey}}"`);
   }
   await page.click('[data-testid="api-review-view-raw"]');
   await expect(page.locator('[data-testid="api-review-raw-body"]')).toContainText(
-    '"raw": "{{kept.apikey}}"',
+    '"raw": "{{secret.apikey}}"',
   );
   await expect(page.locator('body')).not.toContainText('e2e mask/echo+Q9=z');
 });

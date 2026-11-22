@@ -9,7 +9,7 @@ import { withTimes } from './support/keptTimes';
 
 // Contract e2e-kube-script. Backend half: dbmcpflow TestE2EKubeScript, the same scenario. A kube list keeps
 // a pod name and a token, the next logs call reads the pod in its prepare script, an API request reads it
-// with {{kept.pod}}, and a reviewed scripted read previews the plain keep and reveals the secret behind the
+// with {{plain.pod}}, and a reviewed scripted read previews the plain keep and reveals the secret behind the
 // fingerprint prompt.
 
 const SC = 'e2e-kube-script';
@@ -19,7 +19,7 @@ const item = (key: string) =>
 const reveal = (key: string) => contract<RevealResult>(SC, `KeptVarsService.${key}`);
 const t = (id: string) => `[data-testid="${id}"]`;
 
-test('contract: the list card marks the plain and the secret value its transform may keep', async ({
+test('contract: the list card marks the plain and the secret value its transform may save', async ({
   relaunch,
 }) => {
   const it = liveItem(item('list'));
@@ -27,12 +27,9 @@ test('contract: the list card marks the plain and the secret value its transform
   await pushApprovals(page, [it]);
   const c = page.locator(t(`approval-item-${it.id}`));
   await expect(c.locator(t('kube-approval-line'))).toContainText('pods');
-  const mayKeep = c.locator(t('kube-approval-may-keep'));
-  await expect(mayKeep).toContainText('pod');
-  await expect(mayKeep).toContainText('token');
-  await expect(mayKeep.locator(t('kube-approval-may-keep-token-secret'))).toHaveText('Secret');
-  await expect(mayKeep.locator(t('kube-approval-may-keep-pod-plain'))).toHaveText('Plain');
-  await expect(c.locator(t('kube-approval-kept-writes'))).toHaveText('Keeps: pod, token (secret)');
+  // The script marks its own tokens; no separate may-keep line.
+  await expect(c.locator(t('kube-approval-script-transform'))).toBeVisible();
+  await expect(c.locator(t('kube-approval-script-transform') + ' .kira-ed-kept')).toHaveCount(2);
   await page.click(t(`approval-approve-${it.id}`));
   await expect
     .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
@@ -104,7 +101,7 @@ test('contract: the scripted review shows the envelope, the raw table and both k
   await expect(page.locator(t('kube-review-script'))).toBeVisible();
 
   const block = page.locator(t('kube-review-keep'));
-  await expect(block).toContainText('Will keep');
+  await expect(block).toContainText('Will save');
   const secret = block.locator(t('kube-review-keep-token'));
   const plain = block.locator(t('kube-review-keep-pod'));
   await expect(secret.locator(t('kept-kind-secret'))).toHaveText('Secret');

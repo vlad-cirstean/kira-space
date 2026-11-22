@@ -20,7 +20,7 @@ const BODY_PREVIEW = 80;
 const quote = (s: string): string => (s === '' ? '""' : s);
 
 /** The key a saved-variable write carries in the list and in `data-prepared`: `plain.<n>` or `secret.<n>`. */
-export const writeKey = (w: Pick<KeptStaged, 'name' | 'secret'>): string =>
+const writeKey = (w: Pick<KeptStaged, 'name' | 'secret'>): string =>
   `${w.secret ? 'secret' : 'plain'}.${w.name}`;
 
 const writeRows = (writes: readonly KeptStaged[]): PreparedValue[] =>

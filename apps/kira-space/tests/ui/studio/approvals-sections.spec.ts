@@ -30,20 +30,15 @@ const userValue = (key: string) =>
 
 interface Input {
   name: string;
-  label: string;
   keepMinutes: number;
   origin: string;
   state: string;
 }
-const INPUT_SPECS: Pick<Input, 'name' | 'label' | 'keepMinutes'>[] = [
-  { name: 'pin', label: 'PIN', keepMinutes: 5 },
-  { name: 'otp', label: 'One-time code', keepMinutes: 60 },
-  {
-    name: 'partner_key',
-    label: 'Partner API key for the staging tenant',
-    keepMinutes: 5,
-  },
-  { name: 'key', label: 'Key', keepMinutes: 60 },
+const INPUT_SPECS: Pick<Input, 'name' | 'keepMinutes'>[] = [
+  { name: 'pin', keepMinutes: 5 },
+  { name: 'otp', keepMinutes: 60 },
+  { name: 'partner_key_for_the_staging_tenant', keepMinutes: 5 },
+  { name: 'key', keepMinutes: 60 },
 ];
 function inputsOf(count: number, state = 'needed'): Input[] {
   return INPUT_SPECS.slice(0, count).map((s) => ({
@@ -67,7 +62,7 @@ async function boxIds(c: Locator): Promise<string[]> {
 }
 
 for (const count of [1, 2, 3, 4]) {
-  test(`value rows align: ${count} row(s), mixed label lengths`, async ({ relaunch }) => {
+  test(`value rows align: ${count} row(s), mixed name lengths`, async ({ relaunch }) => {
     const it = withInputs(userValue('needed'), inputsOf(count));
     const { window: page } = await relaunch({ control: [] });
     await pushApprovals(page, [it]);
@@ -92,7 +87,6 @@ test('an opened stored row puts its field in the same column', async ({ relaunch
   const needed = inputsOf(2);
   const stored: Input = {
     name: 'saved',
-    label: 'Saved token for the production account',
     keepMinutes: 5,
     origin: 'http://127.0.0.1:1',
     state: 'stored',
@@ -101,12 +95,8 @@ test('an opened stored row puts its field in the same column', async ({ relaunch
   const { window: page } = await relaunch({ control: [] });
   await pushApprovals(page, [it]);
   const c = card(page, it);
-  await c
-    .locator(`${t('api-approval-input-replace-saved')} [data-slot="collapsible-trigger"]`)
-    .click();
-  const content = c.locator(
-    `${t('api-approval-input-replace-saved')} [data-slot="collapsible-content"]`,
-  );
+  await c.locator(`${t('api-approval-input-replace')} [data-slot="collapsible-trigger"]`).click();
+  const content = c.locator(`${t('api-approval-input-replace')} [data-slot="collapsible-content"]`);
   await expect(content).toBeVisible();
   expect(await content.evaluate((e) => getComputedStyle(e).display)).toBe('grid');
   const needField = c.locator(t(`api-input-${needed[0]?.name}`));
@@ -207,7 +197,7 @@ test('kube read: kept, request, prepare, transform boxes', async ({ relaunch }) 
   ]);
 });
 
-test('scripted kube review: request, result, script and Will keep boxes', async ({ relaunch }) => {
+test('scripted kube review: request, result, script and Will save boxes', async ({ relaunch }) => {
   const it = liveItem(
     contract<ApprovalItem[]>(KUBE, 'ApprovalsService.List#review')[0] as ApprovalItem,
   );
@@ -219,10 +209,10 @@ test('scripted kube review: request, result, script and Will keep boxes', async 
   const c = card(page, it);
   await expect(c.locator(t('kube-review-box-keep'))).toBeVisible();
   expect(await boxIds(c)).toEqual([
-    'kube-review-box-request',
     'kube-review-box-result',
     'kube-review-box-script',
     'kube-review-box-keep',
+    'kube-review-box-request',
   ]);
   await expect(
     c.locator(`${t('kube-review-box-result')} [data-slot="secondary-tabs"]`),

@@ -40,7 +40,7 @@ test('contract: the write card pairs ? 1 with the kept text, quote and statement
   const params = card.locator('[data-testid="db-approval-params"]');
   await expect(params.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   await expect(params.locator('[data-testid="db-approval-param-0-value"] mark')).toHaveText(
-    '{{kept.word}}',
+    '{{plain.word}}',
   );
 });
 

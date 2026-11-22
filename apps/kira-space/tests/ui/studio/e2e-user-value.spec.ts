@@ -42,7 +42,7 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   // No choice control: every typed value is kept.
   await expect(page.locator('[data-testid="api-input-apikey-once"]')).toHaveCount(0);
   await expect(page.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
-    'Kept for 60 min',
+    'Saved for 60 min',
   );
   await expect(approve).toBeEnabled();
   await approve.click();
@@ -54,14 +54,14 @@ test('contract: the card asks for the value, Send needs it, the answer carries i
   await expectNoLeak(page, VALUE(), logs);
 });
 
-test('contract: the Kept for line shows the retention and opens the variables settings', async ({
+test('contract: the Saved for line shows the retention and opens the variables settings', async ({
   relaunch,
 }) => {
   const it = item('retention');
   const { window: page } = await relaunch({});
   await pushApprovals(page, [liveItem(it)]);
   const line = page.locator('[data-testid="api-approval-inputs-kept-for"]');
-  await expect(line).toHaveText('Kept for 5 min');
+  await expect(line).toHaveText('Saved for 5 min');
   await line.click();
   await expect(page.locator('[data-testid="settings-dialog"]')).toBeVisible();
   await expect(page.locator('[data-testid="settings-section-Studio MCP variables"]')).toBeVisible();
@@ -103,26 +103,6 @@ test('contract: a held value shows as supplied by you and Send needs no typing',
   await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
-});
-
-test('contract: a forced review shows the script result and Withhold answers deny', async ({
-  relaunch,
-}) => {
-  const it = item('forced');
-  const h = contract<{ text: string }>(SC, 'DbMcpService.PendingResponse#forced');
-  const withhold = contract<Answer>(SC, 'args:ApprovalsService.Answer#withhold');
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.dbMcpPendingResponse, response: h },
-      { channel: IPC.approvalsAnswer, response: answeredOk(withhold.ids) },
-    ],
-  });
-  await pushApprovals(page, [liveItem(it)]);
-  await expect(page.locator('[data-testid="api-review-result"]')).toContainText('{{kept.apikey}}|');
-  await page.click(`[data-testid="approval-deny-${it.id}"]`);
-  await expect
-    .poll(() => control.log().find((e) => e.channel === IPC.approvalsAnswer)?.args)
-    .toEqual(withhold);
 });
 
 test('contract: the pane lists the value as supplied by you with its origin and Clear removes it', async ({

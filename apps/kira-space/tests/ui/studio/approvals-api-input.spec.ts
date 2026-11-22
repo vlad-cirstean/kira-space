@@ -38,13 +38,13 @@ test('contract: the card asks for the value, marks it and holds Send until it is
   const c = card(page, it);
   // One row: label, masked field. No heading, hint or warning repeats it.
   const row = c.locator('[data-testid="api-approval-input-apikey"]');
-  await expect(row).toContainText('API key');
+  await expect(row).toContainText('apikey');
   await expect(c.locator('[data-testid="api-approval-inputs"]')).not.toContainText(
     'Values you supply',
   );
   await expect(c.getByText('Needs a value from you')).toHaveCount(0);
   await expect(c.locator('[data-testid="api-approval-inputs-kept-for"]')).toHaveText(
-    'Kept for 60 min',
+    'Saved for 60 min',
   );
   const field = page.locator('[data-testid="api-input-apikey"]');
   await expect(field).toHaveAttribute('type', 'password');
@@ -57,7 +57,7 @@ test('contract: the card asks for the value, marks it and holds Send until it is
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
   // The reference is marked in the header, and no pending row lists a value that does not exist yet.
   await expect(c.locator('[data-testid="api-approval-headers"] mark')).toHaveText(
-    '{{kept.apikey}}',
+    '{{secret.apikey}}',
   );
   await expect(c.locator('[data-testid="api-approval-kept-panel"]')).toHaveCount(0);
 });
@@ -112,7 +112,9 @@ test('contract: a held value shows as supplied by you, Send needs no typing, a n
   await expect(row.locator('[data-testid="kept-supplied"]')).toHaveText('Supplied by you');
   await expect(row.locator('[data-testid="kept-value-secret"]')).toBeVisible();
   await expect(page.locator(`[data-testid="approval-approve-${it.id}"]`)).toBeEnabled();
-  await c.getByText('Enter a new value').click();
+  await c
+    .locator('[data-testid="api-approval-input-replace"] [data-slot="collapsible-trigger"]')
+    .click();
   await page.locator('[data-testid="api-input-apikey"]').fill(TYPED);
   await page.click(`[data-testid="approval-approve-${it.id}"]`);
   await expect

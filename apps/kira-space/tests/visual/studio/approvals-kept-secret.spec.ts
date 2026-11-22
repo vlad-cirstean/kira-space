@@ -20,7 +20,7 @@ test('login card marks secret and plain keeps', async ({ relaunch }) => {
   const { window: page } = await relaunch({ control: [] });
   await page.setViewportSize({ width: 1400, height: 900 });
   await pushApprovals(page, [liveItem(item('login'), 600, Date.now())]);
-  await expect(page.locator('[data-testid="api-approval-may-keep"]')).toBeVisible();
+  await expect(page.locator('[data-testid="api-approval-script-transform"]')).toBeVisible();
   await settleFonts(page);
   await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveScreenshot(
     'approvals-kept-login.png',

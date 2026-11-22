@@ -89,7 +89,7 @@ test('kube list read whose transform keeps a plain and a secret value', async ({
   const { window: page } = await relaunch({ control: [] });
   await page.setViewportSize({ width: 1400, height: 900 });
   await pushApprovals(page, [liveItem(kubeItem('list'), 600, Date.now())]);
-  await expect(page.locator('[data-testid="kube-approval-may-keep"]')).toBeVisible();
+  await expect(page.locator('[data-testid="kube-approval-script-transform"]')).toBeVisible();
   await settleFonts(page);
   await expect(page.locator('[data-testid="approvals-dialog"]')).toHaveScreenshot(
     'approvals-kube-read-list.png',

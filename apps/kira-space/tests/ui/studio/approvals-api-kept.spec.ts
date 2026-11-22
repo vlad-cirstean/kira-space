@@ -68,8 +68,8 @@ test('contract: a variable that expires before the card does is flagged', async 
 
 test('contract: URL and header references are marked', async ({ relaunch }) => {
   const it = withTimes(base(), 2880, (p) => {
-    const url = 'http://127.0.0.1:1/users/{{kept.ids}}?x=1';
-    const header = 'Bearer {{kept.ids}}';
+    const url = 'http://127.0.0.1:1/users/{{plain.ids}}?x=1';
+    const header = 'Bearer {{plain.ids}}';
     Object.assign(p, {
       url,
       body: null,
@@ -86,8 +86,8 @@ test('contract: URL and header references are marked', async ({ relaunch }) => {
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = card(page, it);
-  await expect(c.locator('[data-testid="api-approval-url"] mark')).toHaveText('{{kept.ids}}');
-  await expect(c.locator('[data-testid="api-approval-headers"] mark')).toHaveText('{{kept.ids}}');
+  await expect(c.locator('[data-testid="api-approval-url"] mark')).toHaveText('{{plain.ids}}');
+  await expect(c.locator('[data-testid="api-approval-headers"] mark')).toHaveText('{{plain.ids}}');
   await expect(c.locator('[data-testid="kept-used-in"]')).toHaveText(
     'Request URL, Header Authorization',
   );

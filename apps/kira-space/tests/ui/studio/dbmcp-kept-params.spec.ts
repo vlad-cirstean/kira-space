@@ -73,7 +73,7 @@ test('contract: the parameters block pairs each placeholder with its variable', 
   const params = cardOf(page, it).locator('[data-testid="db-approval-params"]');
   await expect(params.locator('[data-testid="db-approval-param-0-placeholder"]')).toHaveText('? 1');
   const value = params.locator('[data-testid="db-approval-param-0-value"]');
-  await expect(value.locator('mark')).toHaveText('{{kept.word}}');
+  await expect(value.locator('mark')).toHaveText('{{plain.word}}');
   await expect(value).toContainText('Text');
 });
 

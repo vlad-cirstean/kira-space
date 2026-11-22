@@ -8,7 +8,7 @@ import { openKeptPane } from './support/settings';
 
 // Contract e2e-held-writes-api. Backend half: dbmcpflow TestE2EHeldWritesAPI. A held response whose
 // script keeps a value stores it only on Send: before Send the pane is empty and the review lists it
-// under "Will keep"; Withhold stores nothing; after Send the pane lists it.
+// under "Will save"; Withhold stores nothing; after Send the pane lists it.
 
 const SC = 'e2e-held-writes-api';
 const item = () => contract<ApprovalItem[]>(SC, 'ApprovalsService.List#api')[0] as ApprovalItem;

@@ -18,7 +18,7 @@ const props = defineProps<{
 const rows = computed(() =>
   props.params.map((name, i) => ({
     placeholder: props.placeholders[i] ?? '',
-    ref: `{{kept.${name}}}`,
+    ref: `{{plain.${name}}}`,
     type: keptTypeLabel(
       props.kept.find((u) => u.name === name) ?? { type: 'null', items: 0, bytes: 0 },
     ),

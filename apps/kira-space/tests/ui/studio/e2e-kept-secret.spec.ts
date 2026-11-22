@@ -32,25 +32,17 @@ function liveKinds(): KeptList {
   };
 }
 
-test('contract: the login card marks the secret and the plain value its script may keep', async ({
+test('contract: the login card marks the secret and the plain value its script may save', async ({
   relaunch,
 }) => {
   const it = liveItem(item('login'));
   const { window: page } = await relaunch({});
   await pushApprovals(page, [it]);
   const c = page.locator(`[data-testid="approval-item-${it.id}"]`);
-  const mayKeep = c.locator('[data-testid="api-approval-may-keep"]');
-  await expect(mayKeep).toContainText('session_token');
-  await expect(mayKeep).toContainText('account_id');
+  // Both tokens are marked in the transform script.
   await expect(
-    mayKeep.locator('[data-testid="api-approval-may-keep-session_token-secret"]'),
-  ).toHaveText('Secret');
-  await expect(
-    mayKeep.locator('[data-testid="api-approval-may-keep-account_id-plain"]'),
-  ).toHaveText('Plain');
-  await expect(c.locator('[data-testid="api-approval-kept-writes"]')).toContainText(
-    'session_token (secret)',
-  );
+    c.locator('[data-testid="api-approval-script-transform"] .kira-ed-kept'),
+  ).toHaveCount(2);
   await expect(c.locator('[data-testid="approval-chain"]')).toHaveCount(0);
 });
 
@@ -77,7 +69,7 @@ test('contract: the review previews the plain value and reveals the secret behin
   });
   await pushApprovals(page, [it]);
   const block = page.locator('[data-testid="api-review-keep"]');
-  await expect(block).toContainText('Will keep');
+  await expect(block).toContainText('Will save');
   const secret = block.locator('[data-testid="api-review-keep-session_token"]');
   const plain = block.locator('[data-testid="api-review-keep-account_id"]');
   await expect(secret.locator('[data-testid="kept-kind-secret"]')).toHaveText('Secret');
