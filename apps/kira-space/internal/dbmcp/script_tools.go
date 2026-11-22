@@ -253,6 +253,9 @@ func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runS
 		}
 		return s.readScriptRun(ctx, a)
 	}
+	if a.From != "" || a.Lines != nil || a.Contains != "" {
+		return errResult("from, lines and contains apply when reading a run with runId; drop them")
+	}
 	es, found, err := s.exposedScript(a.ScriptID)
 	if err != nil {
 		return toolError(err)
@@ -326,9 +329,7 @@ func (s *Server) scriptRunResult(run ScriptRun, q *ScriptLogQuery, mode string) 
 		}
 		lines, cut := capLogBytes(log.Lines, q.FromEnd)
 		v.Lines, v.Truncated = lines, log.Truncated || cut || len(lines) < log.Matched
-		if v.Truncated {
-			v.Note = "output cut: narrow with lines or contains"
-		}
+		v.Note = logCutNote(*q, len(log.Lines) < log.Matched, cut, v.Truncated)
 		if q.Contains == "" {
 			v.LogLines = log.Matched
 		} else {
@@ -367,6 +368,28 @@ func (s *Server) readScriptRun(ctx context.Context, a runScriptArgs) (*mcp.CallT
 		q = &ScriptLogQuery{FromEnd: a.From != "head", Limit: n, Contains: a.Contains}
 	}
 	return s.waitedRun(ctx, run.ID, waitFor(a.WaitSeconds, es.mode() == scriptModeLong), q, es.mode())
+}
+
+// logCutNote says what to do next after a cut: a line limit cut is lifted with lines or from, a byte cut
+// only narrowed. "" when nothing was cut.
+func logCutNote(q ScriptLogQuery, lineCut, byteCut, truncated bool) string {
+	end, other := "last", "head"
+	if !q.FromEnd {
+		end, other = "first", "tail"
+	}
+	switch {
+	case lineCut && byteCut:
+		return fmt.Sprintf("output cut at the line limit (%d) and the %d KiB limit: narrow with contains, or read the other end with from: %q", q.Limit, scriptLogsMaxBytes>>10, other)
+	case lineCut && q.Limit < scriptLogsMax:
+		return fmt.Sprintf("showing the %s %d lines: raise lines (max %d), read the other end with from: %q, or filter with contains", end, q.Limit, scriptLogsMax, other)
+	case lineCut:
+		return fmt.Sprintf("showing the %s %d lines: read the other end with from: %q, or filter with contains", end, q.Limit, other)
+	case byteCut:
+		return fmt.Sprintf("output cut at %d KiB: narrow with lines or contains", scriptLogsMaxBytes>>10)
+	case truncated:
+		return "output cut: narrow with lines or contains"
+	}
+	return ""
 }
 
 // capLogBytes drops lines from the far end until the text fits scriptLogsMaxBytes: the oldest for a

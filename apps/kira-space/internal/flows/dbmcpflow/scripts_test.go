@@ -36,6 +36,7 @@ type scriptRunResult struct {
 	Truncated bool   `json:"truncated"`
 	Next      string `json:"next"`
 	Mode      string `json:"mode"`
+	Note      string `json:"note"`
 }
 
 func (f *fixture) createScript(t *testing.T, fields scripts.CustomScriptFields, secrets map[string]*string) scripts.CustomScript {
@@ -161,6 +162,12 @@ func TestDbMcpScriptRunAndLogs(t *testing.T) {
 	tail := logs(map[string]any{"lines": 2})
 	if !equalStrings(lineTexts(tail), []string{"two", "ERR three"}) || tail.LogLines != 3 || !tail.Truncated {
 		t.Fatalf("tail 2 = %+v, want two, ERR three of 3", tail)
+	}
+	if !strings.Contains(tail.Note, "raise lines") || !strings.Contains(tail.Note, `from: "head"`) {
+		t.Fatalf("tail 2 note = %q, want advice to raise lines or read the head", tail.Note)
+	}
+	if res := callTool(t, sess, "run_script", map[string]any{"scriptId": "fails", "lines": 2}); !res.IsError || !strings.Contains(text(res), "apply when reading a run with runId") {
+		t.Fatalf("start with lines = %q, want a refusal", text(res))
 	}
 	head := logs(map[string]any{"from": "head", "lines": 1})
 	if !equalStrings(lineTexts(head), []string{"one"}) {
