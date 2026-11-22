@@ -223,7 +223,7 @@ func TestStudioMcpTasksThroughClaude(t *testing.T) {
 		}
 	})
 
-	t.Run("saved variables chain", func(t *testing.T) {
+	t.Run("temporary variables chain", func(t *testing.T) {
 		app := newRealApp(t)
 		connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
 			seedNotes(t, dbFile, `CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT); INSERT INTO notes (body) VALUES ('one'),('two')`)

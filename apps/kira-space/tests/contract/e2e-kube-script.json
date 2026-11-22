@@ -404,6 +404,6 @@
     "name": "token",
     "requestId": "<masked>"
   },
-  "result#list": "{\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"rowCount\":3},\"saved\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
+  "result#list": "{\"output\":{\"first\":\"web-1\",\"count\":3},\"input\":{\"rowCount\":3},\"tempSet\":[{\"name\":\"pod\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":3600},{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":true,\"expiresInSeconds\":3600}]}",
   "result#logs": "{\"output\":2,\"input\":{\"rowCount\":2}}"
 }

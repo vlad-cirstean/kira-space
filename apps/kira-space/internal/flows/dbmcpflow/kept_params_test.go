@@ -204,7 +204,7 @@ func TestDbMcpKeptParamsRefusals(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		"unknown":          {f.paramsArgs("select ? as x", "read", "nope"), `no saved variable "nope"`},
+		"unknown":          {f.paramsArgs("select ? as x", "read", "nope"), `no temporary variable "nope"`},
 		"too few names":    {f.paramsArgs("select ?, ? as x", "read", "n"), "2 placeholders but params lists 1"},
 		"too many names":   {f.paramsArgs("select ? as x", "read", "n", "n"), "1 placeholders but params lists 2"},
 		"second statement": {f.paramsArgs("select ? as x; select 2", "read", "n"), "could not tell what this statement does"},
@@ -273,7 +273,7 @@ func TestDbMcpKeptParamsAllowVerdict(t *testing.T) {
 	f.keep(t, "session:other", "n", "1")
 	f.keep(t, externalScope, "mine", "2")
 
-	if res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "n")); !res.IsError || !strings.Contains(text(res), `no saved variable "n"`) {
+	if res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "n")); !res.IsError || !strings.Contains(text(res), `no temporary variable "n"`) {
 		t.Fatalf("other scope = %q, want not found", text(res))
 	}
 	res := callTool(t, sess, "run_query", f.paramsArgs("select body from notes where id = ?", "read", "mine"))
@@ -283,7 +283,7 @@ func TestDbMcpKeptParamsAllowVerdict(t *testing.T) {
 	if f.queueLen(t) != 0 {
 		t.Fatalf("queue %d, want none for an allowed read", f.queueLen(t))
 	}
-	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}}))
 	if !strings.Contains(list, `"mine"`) {
 		t.Fatalf("list = %s, want the variable", list)
 	}
@@ -305,7 +305,7 @@ func TestDbMcpKeptParamsToolSurface(t *testing.T) {
 			if merr != nil {
 				t.Fatal(merr)
 			}
-			haveList = strings.Contains(string(raw), `"saved"`)
+			haveList = strings.Contains(string(raw), `"temp"`)
 		case "run_query":
 			raw, merr := json.Marshal(tool.InputSchema)
 			if merr != nil {

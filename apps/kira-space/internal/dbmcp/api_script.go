@@ -108,7 +108,7 @@ func (s *Server) prepareAPI(ctx context.Context, in agentapi.Input, sc *apiScrip
 		return in, failure
 	}
 	sc.Changed = changed
-	// What prepare saved is what {{plain.x}} and {{secret.x}} in this request send.
+	// What prepare set is what {{plain.x}} and {{secret.x}} in this request send.
 	merged.Staged = sc.kept.stagedEntries()
 	return merged, ""
 }
@@ -273,7 +273,7 @@ func (s *Server) transformAPI(ctx context.Context, plan agentapi.Planned, sc *ap
 		URL    string `json:"url"`
 	}{plan.Method, plan.URL})
 	bindings := []jsengine.Binding{{Name: "response", Value: resp}, {Name: "request", Value: reqB}}
-	// Secret values the script saved leave its output too.
+	// Secret values the script set leave its output too.
 	mask := func(text string) string { return sc.kept.mask(s.maskText(raw, text)) }
 	total := len(resp) + len(reqB)
 	tail := fmt.Sprintf("The request was sent (HTTP %d); its response is not returned.", raw.Status)
@@ -334,7 +334,7 @@ func responseBinding(r agentapi.Result) (json.RawMessage, error) {
 }
 
 // deliverAPI is the one point where the agent-bound result is final: the response review runs first,
-// then the values the transform staged are saved. requested says the user asked for the review on the
+// then the values the transform staged are set. requested says the user asked for the review on the
 // approval card.
 func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts, o apiOutcome, requested bool) (*mcp.CallToolResult, any, error) {
 	res, out, err := apiAgentResult(sc, o, nil, nil, nil)
@@ -374,7 +374,7 @@ func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []
 		key string
 		v   any
 		n   int
-	}{{"inputs", o.Inputs, len(o.Inputs)}, {"saved", saved, len(saved)}, {"notSaved", failed, len(failed)}, {"deleted", deleted, len(deleted)}}
+	}{{"inputs", o.Inputs, len(o.Inputs)}, {"tempSet", saved, len(saved)}, {"tempNotSet", failed, len(failed)}, {"tempDeleted", deleted, len(deleted)}}
 	tail := ""
 	for _, f := range extras {
 		if f.n == 0 {
@@ -406,12 +406,12 @@ type apiPrepareView struct {
 	Changed        []string `json:"changed"`
 	Input          string   `json:"input"`
 	InputTruncated bool     `json:"inputTruncated"`
-	// Writes are the values the prepare script saved: they interpolate in this request and are stored
+	// Writes are the values the prepare script set: they interpolate in this request and are stored
 	// after the final response.
 	Writes []keepView `json:"writes"`
 }
 
-// keepView is a value a script saves (or a saved value it deletes) as the card shows it. Never a secret's value.
+// keepView is a value a script saves (or a temporary value it deletes) as the card shows it. Never a secret's value.
 type keepView struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
@@ -435,7 +435,7 @@ func keepViewsOf(in []HeldKeep) []keepView {
 type apiTransformView struct {
 	Source string `json:"source"`
 	Hash   string `json:"hash"`
-	// MayKeep are the saved variables the transform may write or delete, with their sites in Source.
+	// MayKeep are the temporary variables the transform may write or delete, with their sites in Source.
 	MayKeep []keptMayKeep `json:"mayKeep"`
 }
 

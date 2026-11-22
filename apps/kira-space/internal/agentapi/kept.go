@@ -14,7 +14,7 @@ import (
 	"golang.org/x/net/http/httpguts"
 )
 
-// maxKeptNames bounds the distinct saved variables one request may use.
+// maxKeptNames bounds the distinct temporary variables one request may use.
 const maxKeptNames = 16
 
 // Limits on the request once kept values are inserted.
@@ -42,7 +42,7 @@ type KeptSite struct {
 	To    int    `json:"to"`
 }
 
-// KeptUse is a saved variable a request uses, as it stood at plan time. The value is not part of it: only a
+// KeptUse is a temporary variable a request uses, as it stood at plan time. The value is not part of it: only a
 // preview, empty for a secret.
 type KeptUse struct {
 	ID     string          `json:"id"`
@@ -106,7 +106,7 @@ func inputKeptTexts(in Input) []keptText {
 	return keptTexts(in.URL, in.Headers, in.Query, in.Body, in.Form, in.ContentType)
 }
 
-// keptPlan is what the plan found out about the saved variables a request uses.
+// keptPlan is what the plan found out about the temporary variables a request uses.
 type keptPlan struct {
 	order   []string
 	entries map[string]keptvars.Entry
@@ -117,7 +117,7 @@ type keptPlan struct {
 
 func keptErr(format string, args ...any) error { return fmt.Errorf(format, args...) }
 
-// lookupStore finds the entry a reference names: a value this run's prepare script saved first, else the store.
+// lookupStore finds the entry a reference names: a value this run's prepare script set first, else the store.
 func (s *Service) lookupStore(in Input, name string) (keptvars.Entry, bool) {
 	if e, ok := in.Staged[name]; ok {
 		return e, true
@@ -153,7 +153,7 @@ func (s *Service) admit(kp *keptPlan, in Input, sp keptvars.RefSpan, decls map[s
 	return nil
 }
 
-// kindErr is the refusal for a reference whose kind differs from the saved value's.
+// kindErr is the refusal for a reference whose kind differs from the temporary value's.
 func kindErr(name string, isSecret bool) error {
 	if isSecret {
 		return keptErr("%q is secret; write {{secret.%s}}", name, name)
@@ -193,7 +193,7 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 	for _, t := range texts {
 		for _, sp := range keptvars.RefSpans(t.text) {
 			if sp.Pipeline {
-				return nil, keptErr("saved variables take no transforms; write {{%s.%s}}", refKind(sp), sp.Name)
+				return nil, keptErr("temporary variables take no transforms; write {{%s.%s}}", refKind(sp), sp.Name)
 			}
 			if e, seen := kp.entries[sp.Name]; seen {
 				if e.Secret != sp.Secret {
@@ -219,7 +219,7 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 		return kp, nil
 	}
 	if len(kp.order) > maxKeptNames {
-		return nil, errors.New("a request can use at most 16 saved variables")
+		return nil, errors.New("a request can use at most 16 temporary variables")
 	}
 	isJSON := isJSONType(requestContentType(in.ContentType, in.Headers))
 	for _, t := range texts {
@@ -254,7 +254,7 @@ func (kp *keptPlan) checkField(t keptText, isJSON bool) error {
 	}
 	if t.field == "url" {
 		if end := authorityEnd(t.text); spans[0].From < end {
-			return errors.New("a saved variable cannot be part of the URL's scheme, host or port")
+			return errors.New("a temporary variable cannot be part of the URL's scheme, host or port")
 		}
 	}
 	for _, sp := range spans {
@@ -271,9 +271,9 @@ func (kp *keptPlan) checkField(t keptText, isJSON bool) error {
 	}
 	switch {
 	case strings.ContainsAny(out, "\r\n"):
-		return keptErr("saved variable %q contains a line break; it cannot go in a header", spans[0].Name)
+		return keptErr("temporary variable %q contains a line break; it cannot go in a header", spans[0].Name)
 	case t.part == "name" && !httpguts.ValidHeaderFieldName(out), t.part == "value" && !httpguts.ValidHeaderFieldValue(out):
-		return keptErr("saved variable %q makes the header %s invalid", spans[0].Name, t.part)
+		return keptErr("temporary variable %q makes the header %s invalid", spans[0].Name, t.part)
 	}
 	return nil
 }
@@ -294,9 +294,9 @@ func authorityEnd(u string) int {
 func (kp *keptPlan) scalarOK(name string) error {
 	switch kp.entries[name].Type {
 	case "array":
-		return keptErr("saved variable %q is a list; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or save a joined string", name)
+		return keptErr("temporary variable %q is a list; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or set a joined string", name)
 	case "object":
-		return keptErr("saved variable %q is an object; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or save a joined string", name)
+		return keptErr("temporary variable %q is an object; only text, number or boolean values fit in a URL, header, query or form field. Use it in a JSON body, or set a joined string", name)
 	}
 	return nil
 }
@@ -319,7 +319,7 @@ func (kp *keptPlan) checkBody(text string, spans []keptvars.RefSpan, isJSON bool
 	}
 	b.WriteString(text[last:])
 	if !json.Valid([]byte(b.String())) {
-		return errors.New("body is not valid JSON once saved variables are inserted")
+		return errors.New("body is not valid JSON once temporary variables are inserted")
 	}
 	return nil
 }
@@ -367,7 +367,7 @@ func expandWith(text string, mode insertMode, lit func(string) string, value fun
 		b.WriteString(lit(text[last:sp.From]))
 		v, ok := value(sp.Name)
 		if !ok {
-			return "", keptErr("saved variable %q is not available", sp.Name)
+			return "", keptErr("temporary variable %q is not available", sp.Name)
 		}
 		piece, err := insertion(v, mode, strings.Contains(text[:sp.From], "?"), sp.Name)
 		if err != nil {
@@ -391,7 +391,7 @@ func insertion(v keptValue, mode insertMode, afterQuery bool, name string) (stri
 		return string(v.raw), nil
 	}
 	if v.typ == "array" || v.typ == "object" {
-		return "", keptErr("saved variable %q is a %s; it cannot go in a URL, header, query or form field", name, v.typ)
+		return "", keptErr("temporary variable %q is a %s; it cannot go in a URL, header, query or form field", name, v.typ)
 	}
 	text := scalarText(v)
 	if mode == insertURL {
@@ -454,7 +454,7 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	}
 }
 
-// checkKeptCurrent refuses a send whose saved variables changed since approved was planned.
+// checkKeptCurrent refuses a send whose temporary variables changed since approved was planned.
 func (p Planned) checkKeptCurrent(approved Planned) error {
 	now := map[string]string{}
 	for _, k := range p.Kept {
@@ -462,7 +462,7 @@ func (p Planned) checkKeptCurrent(approved Planned) error {
 	}
 	for _, k := range approved.Kept {
 		if now[k.Name] != k.ID {
-			return keptErr("saved variable %q changed while waiting for approval; nothing was sent. Produce it again, then repeat the request.", k.Name)
+			return keptErr("temporary variable %q changed while waiting for approval; nothing was sent. Produce it again, then repeat the request.", k.Name)
 		}
 	}
 	return nil
@@ -503,14 +503,14 @@ func (k *keptResolver) text(text string, mode insertMode, lit func(string) strin
 // checkFinal refuses a request whose inserted kept values broke a header or grew it past a limit.
 func checkFinal(req httpclient.Request) error {
 	if len(req.URL) > maxFinalURLBytes {
-		return errors.New("the url is longer than 64 KiB once saved variables are inserted")
+		return errors.New("the url is longer than 64 KiB once temporary variables are inserted")
 	}
 	if len(req.Body.Raw) > maxFinalBodyBytes {
-		return errors.New("the body is larger than 8 MiB once saved variables are inserted")
+		return errors.New("the body is larger than 8 MiB once temporary variables are inserted")
 	}
 	for _, h := range req.Headers {
 		if !httpguts.ValidHeaderFieldName(h.Name) || !httpguts.ValidHeaderFieldValue(h.Value) || len(h.Value) > maxHeaderBytes {
-			return errors.New("a saved variable made a header invalid")
+			return errors.New("a temporary variable made a header invalid")
 		}
 	}
 	return nil
@@ -523,16 +523,16 @@ func refKind(sp keptvars.RefSpan) string {
 	return keptvars.KindPlain
 }
 
-// checkUndeclared refuses a reference to a saved value that is missing, of the other kind or bound elsewhere.
+// checkUndeclared refuses a reference to a temporary value that is missing, of the other kind or bound elsewhere.
 func checkUndeclared(name string, sp keptvars.RefSpan, e keptvars.Entry, ok bool, origin string) error {
 	switch {
 	case !ok:
-		return keptErr("no saved variable %q (it may have expired or been cleared); call list (what: saved)"+inputsDeclHint, name)
+		return keptErr("no temporary variable %q (it may have expired or been cleared); call list (what: temp)"+inputsDeclHint, name)
 	case e.Secret != sp.Secret:
 		return kindErr(name, e.Secret)
 	case e.Bound() && origin != "" && e.Origin != origin:
 		if e.Source.Kind != keptvars.SourceUser {
-			return keptErr("the secret saved as %q belongs to %s and is not sent to %s", name, e.Origin, origin)
+			return keptErr("the temporary secret %q belongs to %s and is not sent to %s", name, e.Origin, origin)
 		}
 		return otherOriginError(name, e.Origin, origin)
 	}

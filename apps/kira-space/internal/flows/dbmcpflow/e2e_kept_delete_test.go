@@ -59,14 +59,14 @@ func TestE2EKeptDelete(t *testing.T) {
 
 		res := f.finish(t, h, true)
 		var out struct {
-			Kept     []struct{ Name string }        `json:"saved"`
-			NotSaved []struct{ Name, Error string } `json:"notSaved"`
+			Kept     []struct{ Name string }        `json:"tempSet"`
+			NotSaved []struct{ Name, Error string } `json:"tempNotSet"`
 		}
 		if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
 			t.Fatalf("result %q: %v", text(res), err)
 		}
 		if res.IsError || len(out.Kept) != 1 || out.Kept[0].Name != "token" ||
-			len(out.NotSaved) != 1 || out.NotSaved[0].Name != "account_id" || out.NotSaved[0].Error != "the user chose not to save it" {
+			len(out.NotSaved) != 1 || out.NotSaved[0].Name != "account_id" || out.NotSaved[0].Error != "the user chose not to set it" {
 			t.Fatalf("result = %q, want token kept and account_id reported as not kept by the user", text(res))
 		}
 		f.app.Contract(t, deleteKey, "result#send", expiresIn.ReplaceAllString(text(res), `"expiresInSeconds":0`), opts...)

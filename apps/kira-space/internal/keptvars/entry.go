@@ -36,7 +36,7 @@ const (
 	PreviewBytes = 2 << 10
 )
 
-// StagedIDPrefix starts the id of an entry that exists only for one run: a value a prepare script saved
+// StagedIDPrefix starts the id of an entry that exists only for one run: a value a prepare script set
 // and the same request interpolates before anything reaches the store.
 const StagedIDPrefix = "staged:"
 
@@ -80,14 +80,14 @@ type Entry struct {
 
 // Errors carry fixed text and never a value.
 var (
-	ErrName      = errors.New("a saved variable name starts with a letter and has at most 40 letters, digits or underscores")
-	ErrTooLarge  = errors.New("a saved value is larger than 1 MiB or nested deeper than 64 levels")
-	ErrScopeFull = errors.New("too many saved variables (64 per session); ask the user to clear some in the Saved variables view")
-	ErrStoreFull = errors.New("Kira holds too many saved variables; ask the user to clear some in the Saved variables view")
-	ErrNameTaken = errors.New("a saved variable of that name was supplied by the user and cannot be replaced")
-	ErrClosed    = errors.New("the saved variable store is closed")
-	errBadValue  = errors.New("a saved value must be valid JSON")
-	errBadScope  = errors.New("a saved variable needs a scope")
+	ErrName      = errors.New("a temporary variable name starts with a letter and has at most 40 letters, digits or underscores")
+	ErrTooLarge  = errors.New("a temporary value is larger than 1 MiB or nested deeper than 64 levels")
+	ErrScopeFull = errors.New("too many temporary variables (64 per session); ask the user to clear some in Settings > Studio MCP > Temporary variables")
+	ErrStoreFull = errors.New("Kira holds too many temporary variables; ask the user to clear some in Settings > Studio MCP > Temporary variables")
+	ErrNameTaken = errors.New("a temporary variable of that name was supplied by the user and cannot be replaced")
+	ErrClosed    = errors.New("the temporary variable store is closed")
+	errBadValue  = errors.New("a temporary value must be valid JSON")
+	errBadScope  = errors.New("a temporary variable needs a scope")
 	nameRE       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,39}$`)
 )
 

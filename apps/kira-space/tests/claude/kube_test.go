@@ -263,8 +263,8 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 		if strings.Contains(text, crashPod) {
 			t.Fatalf("scripted kube_read list result = %q, want no pod name", text)
 		}
-		// A script the model got wrong (error, nothing saved) is its own retry, not a product fault.
-		if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+name+`"`) {
+		// A script the model got wrong (error, nothing set) is its own retry, not a product fault.
+		if !ok || isErr || !strings.Contains(text, `"tempSet":[{"name":"`+name+`"`) {
 			continue
 		}
 		keptName, kept = name, true

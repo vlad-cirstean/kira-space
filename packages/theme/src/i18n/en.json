@@ -7294,7 +7294,7 @@
         }
       },
       "dbmcpInstructionsScripts": {
-        "description": "Tells the agent how scripts save variables and what the script sandbox allows.",
+        "description": "Tells the agent how scripts set temporary variables and what the script sandbox allows.",
         "title": "Studio MCP scripts instructions",
         "usedBy": {
           "body": "Added to the Studio MCP instructions while agent scripts are on in the Studio MCP settings."

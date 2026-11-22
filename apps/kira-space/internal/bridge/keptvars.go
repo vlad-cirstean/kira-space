@@ -28,7 +28,9 @@ func KeptRetention(settings *repos.SettingsRepo) func() time.Duration {
 	return func() time.Duration {
 		all, err := settings.GetAll()
 		if err != nil {
-			warn.Do(func() { slog.Warn("saved variables: read retention, using one hour", "scope", "keptvars", "err", err) })
+			warn.Do(func() {
+				slog.Warn("temporary variables: read retention, using one hour", "scope", "keptvars", "err", err)
+			})
 			return keptvars.DefaultTTL
 		}
 		return time.Duration(all.DbMcp.KeptRetentionMinutes) * time.Minute
@@ -147,16 +149,16 @@ func (s *KeptVarsService) Value(args KeptValueArgs) (KeptValue, error) {
 	}
 	e, ok := s.Store.ByID(args.ID)
 	if !ok {
-		return KeptValue{}, ipcerr.NotFoundNamed("saved variable")
+		return KeptValue{}, ipcerr.NotFoundNamed("temporary variable")
 	}
 	if e.Secret {
-		return KeptValue{}, ipcerr.Contract("a secret saved variable is not shown here")
+		return KeptValue{}, ipcerr.Contract("a secret temporary variable is not shown here")
 	}
 	return KeptValue{JSON: string(e.Value), Type: e.Type}, nil
 }
 
 // keptRevealReason is the OS prompt text (macOS prefixes it with "Kira Studio wants to").
-const keptRevealReason = "show a secret value kept for an agent request."
+const keptRevealReason = "show a secret temporary value an agent request set."
 
 // KeptRevealArgs names the entry to reveal. Confirmed is honoured only where the OS cannot authenticate.
 type KeptRevealArgs struct {
@@ -180,10 +182,10 @@ func (s *KeptVarsService) Reveal(args KeptRevealArgs) (KeptReveal, error) {
 	res, err := s.reveal(args.Confirmed, func() (*string, error) {
 		e, ok := s.Store.ByID(args.ID)
 		if !ok {
-			return nil, ipcerr.NotFoundNamed("saved variable")
+			return nil, ipcerr.NotFoundNamed("temporary variable")
 		}
 		if !e.Secret {
-			return nil, ipcerr.Contract("this saved variable is not secret; it is shown in the list")
+			return nil, ipcerr.Contract("this temporary variable is not secret; it is shown in the list")
 		}
 		text := keptvars.SecretText(e)
 		clear(e.Value)

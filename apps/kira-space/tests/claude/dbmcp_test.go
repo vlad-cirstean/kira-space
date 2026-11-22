@@ -395,8 +395,8 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 			if strings.Contains(text, "[1,2]") {
 				t.Fatalf("scripted run_query result = %q, want no ids", text)
 			}
-			// A script the model got wrong (error, nothing saved) is its own retry, not a product fault.
-			if !ok || isErr || !strings.Contains(text, `"saved":[{"name":"`+name+`"`) {
+			// A script the model got wrong (error, nothing set) is its own retry, not a product fault.
+			if !ok || isErr || !strings.Contains(text, `"tempSet":[{"name":"`+name+`"`) {
 				continue
 			}
 			keptName, scripted = name, true

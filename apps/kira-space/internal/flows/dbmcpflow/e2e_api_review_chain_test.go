@@ -75,7 +75,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 		if stored() {
 			t.Fatal("domains stored before Send")
 		}
-		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}})); strings.Contains(list, "domains") {
+		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}})); strings.Contains(list, "domains") {
 			t.Fatalf("agent listing = %s, want no domains while the review waits", list)
 		}
 		f.app.Contract(t, reviewChainKey, "ApprovalsService.List#review", []approvals.Item{h.req.Item}, opts...)
@@ -106,7 +106,7 @@ func TestE2EApiReviewChain(t *testing.T) {
 			t.Fatalf("result = %q (%v)", text(res), err)
 		}
 		_ = json.Unmarshal([]byte(heldText), &shown)
-		if agent.Output != shown.Output || agent.Output != 2 || !strings.Contains(text(res), `"saved":[{"name":"domains"`) {
+		if agent.Output != shown.Output || agent.Output != 2 || !strings.Contains(text(res), `"tempSet":[{"name":"domains"`) {
 			t.Fatalf("result = %q, held %q, want the held result plus a kept summary", text(res), heldText)
 		}
 		f.app.Contract(t, reviewChainKey, "result#send", expiresIn.ReplaceAllString(stable(text(res)), `"expiresInSeconds":0`), opts...)

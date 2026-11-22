@@ -23,7 +23,7 @@ import (
 const (
 	heldWritesAPIKey = "e2e-held-writes-api"
 	stageW           = `plain.w = [1, 2]; return 1;`
-	notSavedUser     = "a saved variable of that name was supplied by the user and cannot be replaced"
+	tempNotSetUser   = "a temporary variable of that name was supplied by the user and cannot be replaced"
 )
 
 func TestE2EHeldWritesAPI(t *testing.T) {
@@ -66,7 +66,7 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		f.app.Contract(t, heldWritesAPIKey, "KeptVarsService.List#beforeSend", listBefore, opts...)
 
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.HasPrefix(text(res), `{"output":1,"saved":[{"name":"w","type":"array","items":2`) {
+		if res.IsError || !strings.HasPrefix(text(res), `{"output":1,"tempSet":[{"name":"w","type":"array","items":2`) {
 			t.Fatalf("result = %q, want the result and the kept summary", text(res))
 		}
 		e, ok := f.keptValue(t, "w")
@@ -167,11 +167,11 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		}
 		h := f.startHeld(t, sess, script(`secret.w = "other"; return 1;`))
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+notSavedUser+`"}]`) {
-			t.Fatalf("result = %q, want the result and notSaved naming w", text(res))
+		if res.IsError || !strings.Contains(text(res), `"tempNotSet":[{"name":"w","error":"`+tempNotSetUser+`"}]`) {
+			t.Fatalf("result = %q, want the result and tempNotSet naming w", text(res))
 		}
-		if strings.Contains(text(res), `"saved":[`) {
-			t.Fatalf("result = %q, want no saved summary", text(res))
+		if strings.Contains(text(res), `"tempSet":[`) {
+			t.Fatalf("result = %q, want no tempSet summary", text(res))
 		}
 		now, ok := f.keptValue(t, "w")
 		if !ok || now.ID != user.ID || string(now.Value) != `"mine"` {
@@ -188,8 +188,8 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		before := f.keptNames(externalScope)
 		h := f.startHeld(t, sess, script(stageW))
 		res := f.finish(t, h, true)
-		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"too many saved variables (64 per session)`) {
-			t.Fatalf("result = %q, want notSaved for the full scope", text(res))
+		if res.IsError || !strings.Contains(text(res), `"tempNotSet":[{"name":"w","error":"too many temporary variables (64 per session)`) {
+			t.Fatalf("result = %q, want tempNotSet for the full scope", text(res))
 		}
 		if after := f.keptNames(externalScope); strings.Join(after, ",") != strings.Join(before, ",") {
 			t.Fatalf("kept changed from %d to %d names: something was evicted", len(before), len(after))
@@ -201,7 +201,7 @@ func TestE2EHeldWritesAPI(t *testing.T) {
 		fresh(t)
 		h := f.startHeld(t, sess, script(`plain.w = "x".repeat(1100000); return 1;`))
 		res := f.finish(t, h, true)
-		if !res.IsError || strings.Contains(text(res), `"saved"`) {
+		if !res.IsError || strings.Contains(text(res), `"temp"`) {
 			t.Fatalf("result = %q, want a failed script", text(res))
 		}
 		nothingStored(t)

@@ -75,7 +75,7 @@ func TestE2ECrossMcp(t *testing.T) {
 
 	t.Run("SQL to API: kept rows fill a request body", func(t *testing.T) {
 		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", crossKeep))
-		if keep.IsError || !strings.Contains(text(keep), `"saved":[{"name":"bodies"`) {
+		if keep.IsError || !strings.Contains(text(keep), `"tempSet":[{"name":"bodies"`) {
 			t.Fatalf("keep = %q", text(keep))
 		}
 		pending := callToolAsync(sess, "api_request", jsonPost(envID, echo, `{"b": {{plain.bodies}}}`))
@@ -114,7 +114,7 @@ func TestE2ECrossMcp(t *testing.T) {
 		before := f.notesBodies(t)
 		params := callTool(t, sess, "run_query", f.paramsArgs(crossWrite, "write", "tainted"))
 		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.tainted;`))
-		if !params.IsError || !strings.Contains(text(params), `saved variable "tainted" is secret`) {
+		if !params.IsError || !strings.Contains(text(params), `temporary variable "tainted" is secret`) {
 			t.Fatalf("params = %q, want the secret refusal", text(params))
 		}
 		if !script.IsError || !strings.Contains(text(script), `"tainted" is secret;`) {
@@ -137,7 +137,7 @@ func TestE2ECrossMcp(t *testing.T) {
 		before := f.notesBodies(t)
 		params := callTool(t, sess, "run_query", f.paramsArgs("select ? as x", "read", "apikey"))
 		script := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `return plain.apikey;`))
-		if !params.IsError || !strings.Contains(text(params), `saved variable "apikey" is secret`) {
+		if !params.IsError || !strings.Contains(text(params), `temporary variable "apikey" is secret`) {
 			t.Fatalf("params = %q, want the secret refusal", text(params))
 		}
 		if !script.IsError || !strings.Contains(text(script), `"apikey" is secret;`) {
@@ -148,8 +148,8 @@ func TestE2ECrossMcp(t *testing.T) {
 		f.noLeak(t, e2eTyped, agent...)
 
 		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `secret.apikey = "other-value"; return 1;`))
-		if keep.IsError || !strings.Contains(text(keep), `"notSaved":[{"name":"apikey","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) {
-			t.Fatalf("keep = %q, want notSaved naming the user entry", text(keep))
+		if keep.IsError || !strings.Contains(text(keep), `"tempNotSet":[{"name":"apikey","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) {
+			t.Fatalf("keep = %q, want tempNotSet naming the user entry", text(keep))
 		}
 		if e, ok := f.keptValue(t, "apikey"); !ok || e.ID != user.ID || string(e.Value) != `"`+e2eTyped+`"` {
 			t.Fatalf("apikey = %+v ok=%v, want the user entry untouched", e.Meta, ok)

@@ -168,13 +168,13 @@ func TestE2EConcurrency(t *testing.T) {
 			t.Fatalf("kinds = %s %s %s, want two held results and the pinned write", items[0].Kind, items[1].Kind, items[2].Kind)
 		}
 		f.answerItems(t, true, items[1].ID)
-		want(t, second, `"saved":[{"name":"ids"`)
+		want(t, second, `"tempSet":[{"name":"ids"`)
 		out := wait(t, pinned)
-		if !out.IsError || !strings.HasPrefix(text(out), `saved variable "ids" was replaced while waiting for approval; nothing ran.`) {
+		if !out.IsError || !strings.HasPrefix(text(out), `temporary variable "ids" was replaced while waiting for approval; nothing ran.`) {
 			t.Fatalf("pinned = %q, want it withdrawn as replaced", text(out))
 		}
 		f.answerItems(t, true, items[0].ID)
-		want(t, first, `"saved":[{"name":"ids"`)
+		want(t, first, `"tempSet":[{"name":"ids"`)
 		e, ok := f.keptValue(t, "ids")
 		if !ok || string(e.Value) != "[1]" || !strings.Contains(e.Source.Request, "order by id") || strings.Contains(e.Source.Request, "desc") {
 			t.Fatalf("ids = %s from %q ok=%v, want [1] from the statement delivered last", e.Value, e.Source.Request, ok)

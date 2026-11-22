@@ -104,7 +104,7 @@ func TestE2EDbParams(t *testing.T) {
 			t.Fatal(err)
 		}
 		res := callTool(t, sess, "run_query", f.paramsArgs("select ? as x", "read", "apikey"))
-		if !res.IsError || !strings.Contains(text(res), `saved variable "apikey" is secret`) {
+		if !res.IsError || !strings.Contains(text(res), `temporary variable "apikey" is secret`) {
 			t.Fatalf("typed value as param = %q, want an is-secret refusal", text(res))
 		}
 		f.noLeak(t, typed, text(res))

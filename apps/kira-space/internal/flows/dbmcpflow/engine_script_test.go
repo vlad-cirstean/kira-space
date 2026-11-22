@@ -93,7 +93,7 @@ func TestDbMcpEngineQueryScript(t *testing.T) {
 			}
 			if !sql {
 				res := scripted(e.read, "read", `plain.n = 1; return 1;`)
-				if res.IsError || !strings.Contains(text(res), `"saved":[{"name":"n"`) {
+				if res.IsError || !strings.Contains(text(res), `"tempSet":[{"name":"n"`) {
 					t.Fatalf("%s plain write = %q, want it kept", e.kind, text(res))
 				}
 				args := e.args(connID, e.sql(e.read, scratch), "read")

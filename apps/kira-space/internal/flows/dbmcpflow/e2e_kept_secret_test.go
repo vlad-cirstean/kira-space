@@ -126,10 +126,10 @@ func TestE2EKeptSecret(t *testing.T) {
 		if _, err := reveal(t, h.req.RequestID, "session_token", true); err == nil {
 			t.Fatal("staged reveal after Send succeeded, want a refusal")
 		}
-		list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
+		list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}}))
 		remember(list)
 		if !strings.Contains(list, `"name":"session_token","type":"string","items":0,"secret":true`) || strings.Contains(list, sessionToken) {
-			t.Fatalf("list (what: saved) = %s, want the secret by name and kind only", list)
+			t.Fatalf("list (what: temp) = %s, want the secret by name and kind only", list)
 		}
 	})
 
@@ -175,7 +175,7 @@ func TestE2EKeptSecret(t *testing.T) {
 		sent := len(srv.Requests())
 		res := callTool(t, sess, "api_request", apiArgs(envID, "GET", other+"/echo", "Authorization", "Bearer {{secret.session_token}}"))
 		remember(text(res))
-		if !res.IsError || !strings.Contains(text(res), `the secret saved as "session_token" belongs to `+srv.URL) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
+		if !res.IsError || !strings.Contains(text(res), `the temporary secret "session_token" belongs to `+srv.URL) || f.queueLen(t) != 0 || len(srv.Requests()) != sent {
 			t.Fatalf("result = %q, queue %d, want a refusal before any card", text(res), f.queueLen(t))
 		}
 		f.app.Contract(t, secretKey, "result#otherOrigin", text(res), append(opts, flowharness.Replace(other, "http://localhost:<port>"))...)

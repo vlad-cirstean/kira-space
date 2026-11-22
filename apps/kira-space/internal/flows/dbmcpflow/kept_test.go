@@ -143,7 +143,7 @@ func TestKeptVarsRefusals(t *testing.T) {
 		args map[string]any
 		want string
 	}{
-		"unknown":       {post("{{base_url}}/echo", `{"a": {{plain.nope}}}`), `no saved variable "nope"`},
+		"unknown":       {post("{{base_url}}/echo", `{"a": {{plain.nope}}}`), `no temporary variable "nope"`},
 		"host":          {apiArgs(envID, "GET", "http://{{plain.word}}/echo"), "scheme, host or port"},
 		"list in query": {apiArgs(envID, "GET", "{{base_url}}/echo?x={{plain.ids}}"), "is a list"},
 		"quoted":        {post("{{base_url}}/echo", `{"a": "{{plain.word}}"}`), "without quotes"},
@@ -168,10 +168,10 @@ func TestKeptVarsScope(t *testing.T) {
 	f.keep(t, externalScope, "mine", `"y"`)
 
 	res := callTool(t, sess, "api_request", apiArgs(envID, "GET", "{{base_url}}/echo?x={{secret.secretive}}"))
-	if !res.IsError || !strings.Contains(text(res), `no saved variable "secretive"`) {
+	if !res.IsError || !strings.Contains(text(res), `no temporary variable "secretive"`) {
 		t.Fatalf("other scope = %q, want not found", text(res))
 	}
-	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}}))
 	if !strings.Contains(list, `"mine"`) || strings.Contains(list, "secretive") {
 		t.Fatalf("list = %s, want only the caller's variable", list)
 	}
@@ -183,9 +183,9 @@ func TestKeptVarsListTool(t *testing.T) {
 	_, sess, _ := f.apiSetup(t, "127.0.0.1", false)
 	f.keep(t, externalScope, "ids", "[11,12,13]")
 
-	res := callTool(t, sess, "list", map[string]any{"what": []string{"saved"}})
+	res := callTool(t, sess, "list", map[string]any{"what": []string{"temp"}})
 	var out struct {
-		Saved []struct {
+		Temp []struct {
 			Name             string
 			Type             string
 			Items            int
@@ -196,9 +196,9 @@ func TestKeptVarsListTool(t *testing.T) {
 	if err := json.Unmarshal([]byte(text(res)), &out); err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Saved) != 1 || out.Saved[0].Name != "ids" || out.Saved[0].Type != "array" || out.Saved[0].Items != 3 ||
-		out.Saved[0].ExpiresInSeconds < 3500 || out.Saved[0].Source.Tool != "api_request" {
-		t.Fatalf("variables = %+v", out.Saved)
+	if len(out.Temp) != 1 || out.Temp[0].Name != "ids" || out.Temp[0].Type != "array" || out.Temp[0].Items != 3 ||
+		out.Temp[0].ExpiresInSeconds < 3500 || out.Temp[0].Source.Tool != "api_request" {
+		t.Fatalf("variables = %+v", out.Temp)
 	}
 	for _, leak := range []string{"11,12,13", "base_url", "claude-code"} {
 		if strings.Contains(text(res), leak) {

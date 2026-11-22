@@ -102,7 +102,7 @@ func TestUserInputSupplied(t *testing.T) {
 	if !ok || !e.Secret || e.Source.Kind != keptvars.SourceUser || e.Origin != srv.URL || string(e.Value) != `"`+typedSecret+`"` {
 		t.Fatalf("stored = %+v ok=%v, want a secret user entry bound to %s", e, ok, srv.URL)
 	}
-	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}}))
+	list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}}))
 	if !strings.Contains(list, `"apikey"`) || !strings.Contains(list, `"secret":true`) || strings.Contains(list, typedSecret) {
 		t.Fatalf("listing = %s, want the name and secret flag, no value", list)
 	}

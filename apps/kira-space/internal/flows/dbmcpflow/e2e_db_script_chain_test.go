@@ -54,7 +54,7 @@ func TestE2EDbScriptChain(t *testing.T) {
 		f.app.Contract(t, scriptChainKey, "args:ApprovalsService.Answer#review", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answer(t, true, req.RequestID)
 		res := wait(t, pending)
-		if res.IsError || !strings.Contains(text(res), `"saved":[{"name":"ids","type":"array","items":2,`) {
+		if res.IsError || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,`) {
 			t.Fatalf("sent = %q, want the kept summary", text(res))
 		}
 		if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != "[1,2]" {

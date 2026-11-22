@@ -67,7 +67,7 @@ func TestE2EHeldWritesDB(t *testing.T) {
 		f.app.Contract(t, heldKey, "args:ApprovalsService.Answer#send", approvals.AnswerArgs{IDs: []string{req.Item.ID}, Approve: true})
 		f.answer(t, true, req.RequestID)
 		res := wait(t, pending)
-		if res.IsError || !strings.Contains(text(res), `"saved":[{"name":"w","type":"array","items":2,`) {
+		if res.IsError || !strings.Contains(text(res), `"tempSet":[{"name":"w","type":"array","items":2,`) {
 			t.Fatalf("sent = %q, want the envelope and the kept summary", text(res))
 		}
 		e, ok := f.keptValue(t, "w")
@@ -156,8 +156,8 @@ func TestE2EHeldWritesDB(t *testing.T) {
 			t.Fatal(err)
 		}
 		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", `secret.w = "other"; return 1;`))
-		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) || strings.Contains(text(res), `"saved":[`) {
-			t.Fatalf("result = %q, want the output and notSaved naming the user entry", text(res))
+		if res.IsError || !strings.Contains(text(res), `"tempNotSet":[{"name":"w","error":"`+keptvars.ErrNameTaken.Error()+`"}]`) || strings.Contains(text(res), `"tempSet":[`) {
+			t.Fatalf("result = %q, want the output and tempNotSet naming the user entry", text(res))
 		}
 		if e, ok := f.keptValue(t, "w"); !ok || e.ID != user.ID || string(e.Value) != `"typed"` {
 			t.Fatalf("w = %+v ok=%v, want the user entry untouched", e, ok)
@@ -171,8 +171,9 @@ func TestE2EHeldWritesDB(t *testing.T) {
 			f.keep(t, externalScope, fmt.Sprintf("n%d", i), "1")
 		}
 		res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", dbStageW))
-		if res.IsError || !strings.Contains(text(res), `"notSaved":[{"name":"w","error":"`+keptvars.ErrScopeFull.Error()+`"}]`) {
-			t.Fatalf("result = %q, want notSaved naming the scope cap", text(res))
+		capMsg, _ := json.Marshal(keptvars.ErrScopeFull.Error())
+		if res.IsError || !strings.Contains(text(res), `"tempNotSet":[{"name":"w","error":`+string(capMsg)+`}]`) {
+			t.Fatalf("result = %q, want tempNotSet naming the scope cap", text(res))
 		}
 		if n := len(f.app.W.Kept.List(externalScope)); n != keptvars.MaxScopeEntries {
 			t.Fatalf("%d entries, want 64 and nothing evicted", n)

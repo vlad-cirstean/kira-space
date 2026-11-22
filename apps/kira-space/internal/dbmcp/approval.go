@@ -197,7 +197,7 @@ type HeldKeep struct {
 	Secret           bool
 	Preview          string
 	PreviewTruncated bool
-	// Deleted marks a saved value the script removes; the other fields describe the value it removes.
+	// Deleted marks a temporary value the script removes; the other fields describe the value it removes.
 	Deleted bool
 }
 

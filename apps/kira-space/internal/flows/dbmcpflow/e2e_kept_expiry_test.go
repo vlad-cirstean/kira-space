@@ -59,7 +59,7 @@ func e6ExpiryOf(t *testing.T, it approvals.Item) time.Time {
 
 func e6WantGone(t *testing.T, got, name, why, nothing string) {
 	t.Helper()
-	want := `saved variable "` + name + `" ` + why + ` while waiting for approval; ` + nothing
+	want := `temporary variable "` + name + `" ` + why + ` while waiting for approval; ` + nothing
 	if !strings.HasPrefix(got, want) {
 		t.Fatalf("result = %q, want it to start with %q", got, want)
 	}
@@ -104,10 +104,10 @@ func TestE2EKeptExpiry(t *testing.T) {
 
 	t.Run("the next chained call finds it gone", func(t *testing.T) {
 		res := callTool(t, sess, "run_query", f.paramsArgs(e6IDsStmt, "read", "ids"))
-		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list (what: saved)") {
-			t.Fatalf("read = %q, want the not-found text naming list (what: saved)", text(res))
+		if !res.IsError || !strings.Contains(text(res), `no temporary variable "ids" (it may have expired or been cleared);`) || !strings.Contains(text(res), "list (what: temp)") {
+			t.Fatalf("read = %q, want the not-found text naming list (what: temp)", text(res))
 		}
-		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"saved"}})); strings.Contains(list, `"ids"`) {
+		if list := text(callTool(t, sess, "list", map[string]any{"what": []string{"temp"}})); strings.Contains(list, `"ids"`) {
 			t.Fatalf("listing = %s, want ids gone", list)
 		}
 	})
@@ -136,12 +136,12 @@ func TestE2EKeptExpiry(t *testing.T) {
 	t.Run("a clear mid-chain refuses the next call and ends a waiting write", func(t *testing.T) {
 		before := f.notesBodies(t)
 		keep := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", keepIDsScript))
-		if keep.IsError || !strings.Contains(text(keep), `"saved":[{"name":"ids"`) {
+		if keep.IsError || !strings.Contains(text(keep), `"tempSet":[{"name":"ids"`) {
 			t.Fatalf("keep = %q, want ids kept", text(keep))
 		}
 		f.e6Clear(t, f.keptID(t, externalScope, "ids"))
 		res := callTool(t, sess, "run_query", f.paramsArgs(e6IDsStmt, "read", "ids"))
-		if !res.IsError || !strings.Contains(text(res), `no saved variable "ids"`) {
+		if !res.IsError || !strings.Contains(text(res), `no temporary variable "ids"`) {
 			t.Fatalf("read after clear = %q, want not found", text(res))
 		}
 

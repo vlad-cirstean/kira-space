@@ -70,7 +70,7 @@ func noValueKept(p agentapi.Planned) string {
 	if len(names) == 0 {
 		return ""
 	}
-	return "; no value was saved for " + strings.Join(names, ", ")
+	return "; no value was set for " + strings.Join(names, ", ")
 }
 
 // withNoValueKept appends the no-value note to a refusal result.
@@ -92,7 +92,7 @@ type inputKeepError struct {
 }
 
 func (e *inputKeepError) Error() string {
-	return fmt.Sprintf("the value for %q could not be saved (%s); nothing was sent", e.name, e.err)
+	return fmt.Sprintf("the value for %q could not be set (%s); nothing was sent", e.name, e.err)
 }
 
 // keepInputs settles the values the user typed: each is stored under its kept name, bound to the request's

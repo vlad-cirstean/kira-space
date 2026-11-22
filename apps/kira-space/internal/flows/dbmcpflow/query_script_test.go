@@ -166,7 +166,7 @@ func TestDbMcpQueryScriptReview(t *testing.T) {
 
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
-	if res.IsError || !strings.HasPrefix(text(res), strings.TrimSuffix(envelope, "}")) || !strings.Contains(text(res), `"saved":[{"name":"ids","type":"array","items":2,`) {
+	if res.IsError || !strings.HasPrefix(text(res), strings.TrimSuffix(envelope, "}")) || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,`) {
 		t.Fatalf("sent = %s, want the envelope and the kept summary", text(res))
 	}
 	if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != "[1,2]" {
@@ -226,7 +226,7 @@ func TestDbMcpQueryScriptKeep(t *testing.T) {
 	sess := f.session(t)
 
 	res := callTool(t, sess, "run_query", f.queryScriptArgs(scriptStmt, "read", keepIDsScript))
-	if res.IsError || !strings.Contains(text(res), `"output":{"count":2}`) || !strings.Contains(text(res), `"saved":[{"name":"ids","type":"array","items":2,"secret":false,"expiresInSeconds":`) {
+	if res.IsError || !strings.Contains(text(res), `"output":{"count":2}`) || !strings.Contains(text(res), `"tempSet":[{"name":"ids","type":"array","items":2,"secret":false,"expiresInSeconds":`) {
 		t.Fatalf("result = %s, want the count and the kept summary", text(res))
 	}
 	if strings.Contains(text(res), "[1,2]") || strings.Contains(text(res), "one") {

@@ -176,7 +176,7 @@ type Config struct {
 	// decides whether the tools are listed and whether a request waits for the user.
 	API         APIRequester
 	APISettings func() APISettings
-	// Kept backs list (what: saved) and the approval wait on kept values; nil leaves the tool
+	// Kept backs list (what: temp) and the approval wait on kept values; nil leaves the tool
 	// unregistered and refuses every {{plain.*}} or {{secret.*}} reference.
 	Kept KeptStore
 	// JS and ScriptOps run and record the scripts agents attach; either nil turns scripts off.

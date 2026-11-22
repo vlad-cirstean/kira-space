@@ -15,7 +15,7 @@ const (
 	inputsDeclHint = "; to ask the user for it, declare it in inputs"
 )
 
-// InputDecl is a value the agent asks the user for: the saved name, shown on the card as is. The value is
+// InputDecl is a value the agent asks the user for: the name, shown on the card as is. The value is
 // secret, so the request writes {{secret.<name>}}.
 type InputDecl struct {
 	Name string `json:"name"`
@@ -112,7 +112,7 @@ func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputU
 		return use, nil
 	}
 	if e.Source.Kind != keptvars.SourceUser {
-		return use, fmt.Errorf("%q is already a saved variable made by a script; choose another input name", d.Name)
+		return use, fmt.Errorf("%q is already a temporary variable made by a script; choose another input name", d.Name)
 	}
 	if e.Origin != origin {
 		return use, otherOriginError(d.Name, e.Origin, origin)
@@ -122,7 +122,7 @@ func judgeInput(d InputDecl, e keptvars.Entry, live bool, origin string) (InputU
 }
 
 func otherOriginError(name, supplied, now string) error {
-	return fmt.Errorf("the value saved as %q was supplied for %s; choose another input name for %s", name, supplied, now)
+	return fmt.Errorf("the value %q was supplied for %s; choose another input name for %s", name, supplied, now)
 }
 
 // checkRoom refuses a request whose missing inputs would not fit in the scope.

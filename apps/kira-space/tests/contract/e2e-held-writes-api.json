@@ -130,8 +130,8 @@
       }
     }
   },
-  "result#scopeFull": "{\"output\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"too many saved variables (64 per session); ask the user to clear some in the Saved variables view\"}]}",
+  "result#scopeFull": "{\"output\":1,\"tempNotSet\":[{\"name\":\"w\",\"error\":\"too many temporary variables (64 per session); ask the user to clear some in Settings \\u003e Studio MCP \\u003e Temporary variables\"}]}",
   "result#scriptsOff": "the GET 127.0.0.1 request was sent, but scripts are turned off in Kira Space's Studio MCP settings while its response was in review, so it was withheld.",
   "result#tooLarge": "transform script failed: script output error: result exceeds 65536 bytes. The request was sent (HTTP 200); its response is not returned. Return less, or raise maxResponseBytes (max 524288).",
-  "result#userEntry": "{\"output\":1,\"notSaved\":[{\"name\":\"w\",\"error\":\"a saved variable of that name was supplied by the user and cannot be replaced\"}]}"
+  "result#userEntry": "{\"output\":1,\"tempNotSet\":[{\"name\":\"w\",\"error\":\"a temporary variable of that name was supplied by the user and cannot be replaced\"}]}"
 }

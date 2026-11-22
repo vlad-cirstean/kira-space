@@ -92,8 +92,8 @@ func TestKeptVarsFromScript(t *testing.T) {
 	f.answer(t, true, req.RequestID)
 	res := wait(t, pending)
 	var got struct {
-		Output struct{ Count int }
-		Saved  []struct {
+		Output  struct{ Count int }
+		TempSet []struct {
 			Name, Type       string
 			Items            int
 			ExpiresInSeconds int
@@ -102,7 +102,7 @@ func TestKeptVarsFromScript(t *testing.T) {
 	if err := json.Unmarshal([]byte(text(res)), &got); err != nil || res.IsError {
 		t.Fatalf("result = %s (%v)", text(res), err)
 	}
-	if got.Output.Count != 2 || len(got.Saved) != 1 || got.Saved[0].Name != "ids" || got.Saved[0].Type != "array" || got.Saved[0].Items != 2 || got.Saved[0].ExpiresInSeconds < 3590 {
+	if got.Output.Count != 2 || len(got.TempSet) != 1 || got.TempSet[0].Name != "ids" || got.TempSet[0].Type != "array" || got.TempSet[0].Items != 2 || got.TempSet[0].ExpiresInSeconds < 3590 {
 		t.Fatalf("result = %s, want the count and a summary of ids", text(res))
 	}
 	for _, leak := range []string{"9007199254740993", "a@x.test"} {
@@ -164,7 +164,7 @@ func TestKeptScriptNoSmuggledReference(t *testing.T) {
 
 	res := callTool(t, sess, "api_request", scriptArgs(envID, "GET", usersURL(srv.URL),
 		map[string]any{"prepare": `return {headers: [{name: "Authorization", value: plain.evil}]};`}))
-	if !res.IsError || !strings.Contains(text(res), "references built from saved data are not resolved") || strings.Contains(text(res), "token") {
+	if !res.IsError || !strings.Contains(text(res), "references built from temporary values are not resolved") || strings.Contains(text(res), "token") {
 		t.Fatalf("result = %q, want a refusal that does not quote the text", text(res))
 	}
 	if f.queueLen(t) != 0 || len(srv.Requests()) != 0 {
@@ -264,7 +264,7 @@ func TestKeptScriptReviewHeld(t *testing.T) {
 	}
 	f.answer(t, true, rq.RequestID)
 	out := wait(t, sent)
-	if out.IsError || !strings.Contains(text(out), `"saved":[{"name":"ids"`) || strings.Contains(text(out), "9007199254740993") {
+	if out.IsError || !strings.Contains(text(out), `"tempSet":[{"name":"ids"`) || strings.Contains(text(out), "9007199254740993") {
 		t.Fatalf("result = %q, want the count and the kept summary", text(out))
 	}
 	if e, ok := f.keptValue(t, "ids"); !ok || string(e.Value) != keptIDs {

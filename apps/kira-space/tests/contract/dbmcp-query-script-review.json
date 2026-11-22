@@ -68,5 +68,5 @@
     ],
     "options": null
   },
-  "result": "{\"output\":{\"count\":2},\"input\":{\"rowCount\":2},\"saved\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}"
+  "result": "{\"output\":{\"count\":2},\"input\":{\"rowCount\":2},\"tempSet\":[{\"name\":\"ids\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":3600}]}"
 }

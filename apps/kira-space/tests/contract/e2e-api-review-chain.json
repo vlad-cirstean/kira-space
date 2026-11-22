@@ -259,5 +259,5 @@
     ],
     "options": null
   },
-  "result#send": "{\"output\":2,\"saved\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
+  "result#send": "{\"output\":2,\"tempSet\":[{\"name\":\"domains\",\"type\":\"array\",\"items\":2,\"secret\":false,\"expiresInSeconds\":0}]}"
 }

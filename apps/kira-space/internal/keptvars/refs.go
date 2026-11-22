@@ -6,7 +6,7 @@ import "strings"
 // whole span.
 type RefSpan struct {
 	Name string
-	// Secret is true for {{secret.name}}: the kind the request wrote, which must match the saved value's.
+	// Secret is true for {{secret.name}}: the kind the request wrote, which must match the temporary value's.
 	Secret bool
 	// Pipeline is true when the span carries a transform: {{plain.name | x}}.
 	Pipeline bool
@@ -18,12 +18,12 @@ const (
 	secretPrefix = KindSecret + "."
 )
 
-// IsKeptName reports whether a reference name (as apivars.Names returns it) is in the saved-variable namespace.
+// IsKeptName reports whether a reference name (as apivars.Names returns it) is in the temporary-variable namespace.
 func IsKeptName(name string) bool {
 	return strings.HasPrefix(name, plainPrefix) || strings.HasPrefix(name, secretPrefix)
 }
 
-// RefSpans lists the saved-variable references of text with the same grammar as the other {{name}}
+// RefSpans lists the temporary-variable references of text with the same grammar as the other {{name}}
 // references: from `{{` to the next `}}`, no nesting.
 func RefSpans(text string) []RefSpan {
 	var out []RefSpan

@@ -22,7 +22,7 @@ const (
 	listClusters     = "clusters"
 	listEnvironments = "environments"
 	listScripts      = "scripts"
-	listSaved        = "saved"
+	listTemp         = "temp"
 )
 
 type listArgs struct {
@@ -42,7 +42,7 @@ func (s *Server) listSections() []string {
 		out = append(out, listScripts)
 	}
 	if s.cfg.Kept != nil {
-		out = append(out, listSaved)
+		out = append(out, listTemp)
 	}
 	return out
 }
@@ -84,7 +84,7 @@ func paramSyntaxOf(kind string) string {
 	case "sqlite":
 		return "? in order; a list binds as JSON text (id IN (SELECT value FROM json_each(?)))." + values
 	case "clickhouse":
-		return "{name:Type} with the saved name, once each (id IN {ids:Array(UInt64)})." + values
+		return "{name:Type} with the temporary variable name, once each (id IN {ids:Array(UInt64)})." + values
 	}
 	return ""
 }
@@ -250,8 +250,8 @@ func (s *Server) scriptsListing() ([]listedScript, error) {
 	return out, nil
 }
 
-// savedListing names what the caller can use. Never a value, a preview or the request that made it.
-func (s *Server) savedListing(ctx context.Context) []keptListEntry {
+// tempListing names what the caller can use. Never a value, a preview or the request that made it.
+func (s *Server) tempListing(ctx context.Context) []keptListEntry {
 	list := s.cfg.Kept.List(keptScope(ctx))
 	out := make([]keptListEntry, 0, len(list))
 	for _, m := range list {
@@ -270,7 +270,7 @@ type listResult struct {
 	Clusters     []listedCluster     `json:"clusters,omitzero"`
 	Environments []listedEnvironment `json:"environments,omitzero"`
 	Scripts      []listedScript      `json:"scripts,omitzero"`
-	Saved        []keptListEntry     `json:"saved,omitzero"`
+	Temp         []keptListEntry     `json:"temp,omitzero"`
 }
 
 func (s *Server) list(ctx context.Context, _ *mcp.CallToolRequest, a listArgs) (*mcp.CallToolResult, any, error) {
@@ -300,8 +300,8 @@ func (s *Server) list(ctx context.Context, _ *mcp.CallToolRequest, a listArgs) (
 			out.Environments, err = s.environmentsListing()
 		case listScripts:
 			out.Scripts, err = s.scriptsListing()
-		case listSaved:
-			out.Saved = s.savedListing(ctx)
+		case listTemp:
+			out.Temp = s.tempListing(ctx)
 		}
 		if err != nil {
 			return toolError(err)

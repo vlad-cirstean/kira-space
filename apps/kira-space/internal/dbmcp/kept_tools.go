@@ -74,19 +74,19 @@ func (e *keptGoneError) why() string {
 
 func (e *keptGoneError) Error() string {
 	if e.user {
-		return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was sent. Repeat the request with the same inputs; the user will be asked again.", e.name, e.why())
+		return fmt.Sprintf("temporary variable %q %s while waiting for approval; nothing was sent. Repeat the request with the same inputs; the user will be asked again.", e.name, e.why())
 	}
-	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
+	return fmt.Sprintf("temporary variable %q %s while waiting for approval; nothing was sent. Produce it again, then repeat the request.", e.name, e.why())
 }
 
 // queryText is the wording for run_query, where a statement ran or did not.
 func (e *keptGoneError) queryText() string {
-	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
+	return fmt.Sprintf("temporary variable %q %s while waiting for approval; nothing ran. Produce it again, then repeat the query.", e.name, e.why())
 }
 
 // kubeText is the wording for a kube read, where nothing was read.
 func (e *keptGoneError) kubeText() string {
-	return fmt.Sprintf("saved variable %q %s while waiting for approval; nothing was read. Produce it again, then repeat the read.", e.name, e.why())
+	return fmt.Sprintf("temporary variable %q %s while waiting for approval; nothing was read. Produce it again, then repeat the read.", e.name, e.why())
 }
 
 // watchKept cancels the returned context when a kept variable of the plan leaves the store, so a card never

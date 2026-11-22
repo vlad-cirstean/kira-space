@@ -201,5 +201,5 @@
     "name": "account_id",
     "requestId": "<request>"
   },
-  "result#send": "{\"output\":{\"account\":\"acct_42\"},\"saved\":[{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":0}],\"notSaved\":[{\"name\":\"account_id\",\"error\":\"the user chose not to save it\"}]}"
+  "result#send": "{\"output\":{\"account\":\"acct_42\"},\"tempSet\":[{\"name\":\"token\",\"type\":\"string\",\"items\":0,\"secret\":false,\"expiresInSeconds\":0}],\"tempNotSet\":[{\"name\":\"account_id\",\"error\":\"the user chose not to set it\"}]}"
 }

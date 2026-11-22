@@ -72,7 +72,7 @@ func TestE2EScriptVars(t *testing.T) {
 		if last.Header.Get("X-Ts") != "t-eu" || !strings.Contains(last.Query, "sig=sig-eu") {
 			t.Fatalf("server saw %+v, want the staged values in the header and the query", last)
 		}
-		if strings.Contains(text(res), "sig-eu") || !strings.Contains(text(res), `"saved":[{"name":"ts"`) {
+		if strings.Contains(text(res), "sig-eu") || !strings.Contains(text(res), `"tempSet":[{"name":"ts"`) {
 			t.Fatalf("result = %q, want a saved summary and no secret", text(res))
 		}
 		if e, ok := f.keptValue(t, "sig"); !ok || !e.Secret || string(e.Value) != `"sig-eu"` {
@@ -111,7 +111,7 @@ func TestE2EScriptVars(t *testing.T) {
 		f.answerItems(t, true, req.Item.ID)
 		res := wait(t, pending)
 		out := text(res)
-		if res.IsError || !strings.Contains(out, `"saved":[`) || !strings.Contains(out, `"deleted":["old"]`) || strings.Contains(out, "tok-") {
+		if res.IsError || !strings.Contains(out, `"tempSet":[`) || !strings.Contains(out, `"tempDeleted":["old"]`) || strings.Contains(out, "tok-") {
 			t.Fatalf("result = %q, want saved and deleted lists and no token", out)
 		}
 		if _, ok := f.keptValue(t, "old"); ok {
@@ -137,7 +137,7 @@ func TestE2EScriptVars(t *testing.T) {
 		}
 		cases := []struct{ name, script, want string }{
 			{"bothKinds", `plain.x = 1; secret.x = 2; return 1;`, "both plain.x and secret.x"},
-			{"kindClashPlain", `secret.plainone = 1; return 1;`, `"plainone" is saved as a plain value`},
+			{"kindClashPlain", `secret.plainone = 1; return 1;`, `"plainone" is a plain temporary variable`},
 			{"kindClashSecret", `plain.sec = 1; return 1;`, `"sec" is`},
 			{"invalidName", `plain["1x"] = 1; return 1;`, "not a valid name"},
 			{"functionValue", `plain.f = function () {}; return 1;`, "is a function"},

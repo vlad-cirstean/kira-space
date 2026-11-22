@@ -108,11 +108,11 @@ func (s *Server) transformQuery(ctx context.Context, rv queryResolution, raw str
 
 // queryScriptEnvelope is what the agent receives when a script ran.
 type queryScriptEnvelope struct {
-	Output   json.RawMessage  `json:"output"`
-	Input    queryScriptInput `json:"input"`
-	Saved    []keptSummary    `json:"saved,omitempty"`
-	NotSaved []keptFailure    `json:"notSaved,omitempty"`
-	Deleted  []string         `json:"deleted,omitempty"`
+	Output      json.RawMessage  `json:"output"`
+	Input       queryScriptInput `json:"input"`
+	TempSet     []keptSummary    `json:"tempSet,omitempty"`
+	TempNotSet  []keptFailure    `json:"tempNotSet,omitempty"`
+	TempDeleted []string         `json:"tempDeleted,omitempty"`
 }
 
 // agentResult is the failure text, or the envelope with a summary of the values the script kept.
@@ -120,7 +120,7 @@ func (o *queryScriptOutcome) agentResult(saved []keptSummary, failed []keptFailu
 	if o.Failure != "" {
 		return errResult(o.Failure)
 	}
-	return jsonResult(queryScriptEnvelope{Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
+	return jsonResult(queryScriptEnvelope{Output: o.Output, Input: o.Input, TempSet: saved, TempNotSet: failed, TempDeleted: deleted})
 }
 
 // heldOf is the review entry of a scripted result: the envelope the agent gets on Send, the rendered result the

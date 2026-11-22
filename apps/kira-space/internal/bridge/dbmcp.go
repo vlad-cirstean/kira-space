@@ -43,7 +43,7 @@ type DbMcpService struct {
 	Scripts dbmcp.ScriptControl
 	// API backs the API request tools; nil leaves them unregistered.
 	API dbmcp.APIRequester
-	// Kept backs list (what: saved) and the approval wait on kept values; nil leaves them off.
+	// Kept backs list (what: temp) and the approval wait on kept values; nil leaves them off.
 	Kept dbmcp.KeptStore
 	// JS and ScriptOps run and record the scripts agents attach to API requests (P676); nil turns scripts off.
 	JS        dbmcp.ScriptEngine
@@ -427,7 +427,7 @@ type DbMcpPendingResponse struct {
 	Keep []DbMcpPendingKeep `json:"keep"`
 }
 
-// DbMcpPendingKeep is one value a held result will save, or one saved value it deletes.
+// DbMcpPendingKeep is one value a held result will set, or one temporary value it deletes.
 type DbMcpPendingKeep struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`

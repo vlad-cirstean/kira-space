@@ -32,13 +32,13 @@ type keptRun struct {
 	store KeptStore
 	scope string
 	sites map[scriptStage][]keptvars.ScriptSite
-	// uses are the saved plain variables the scripts mention, as they stood at plan time, with script sites.
+	// uses are the plain temporary variables the scripts mention, as they stood at plan time, with script sites.
 	uses []agentapi.KeptUse
 	// mayKeep are the names the scripts write or delete, with their sites in the source.
 	mayKeep []keptMayKeep
 
 	mu sync.Mutex
-	// prepareReads is set when the prepare script was handed saved values: it may copy one into the request.
+	// prepareReads is set when the prepare script was handed temporary values: it may copy one into the request.
 	prepareReads bool
 	// injected is what each stage's plain object held when it started: the baseline of the diff.
 	injected     map[scriptStage]map[string]json.RawMessage
@@ -61,8 +61,8 @@ type keptMayKeep struct {
 
 var scriptStages = []scriptStage{stagePrepare, stageTransform}
 
-// keptRunFor reads the scripts for plain and secret mentions and snapshots the saved values they may see. nil
-// without saved-variable support or without a mention. A non-empty string is the refusal text; nothing ran.
+// keptRunFor reads the scripts for plain and secret mentions and snapshots the temporary values they may see. nil
+// without temporary-variable support or without a mention. A non-empty string is the refusal text; nothing ran.
 // tool names the MCP tool, for the secret-read refusal.
 func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) (*keptRun, string) {
 	if s.cfg.Kept == nil || sc == nil {
@@ -90,7 +90,7 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) 
 		}
 	}
 	if len(mentions) > maxKeptScriptNames || len(writes) > maxKeptScriptNames {
-		return nil, fmt.Sprintf("a script can mention at most %d saved variables and save at most %d. %s", maxKeptScriptNames, maxKeptScriptNames, nothing)
+		return nil, fmt.Sprintf("a script can mention at most %d temporary variables and set at most %d. %s", maxKeptScriptNames, maxKeptScriptNames, nothing)
 	}
 	if text := k.refuseSecretReads(tool); text != "" {
 		return nil, text + " " + nothing
@@ -109,8 +109,8 @@ func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) 
 	return k, ""
 }
 
-// refuseSecretReads is the refusal text for a script that mentions a saved secret as plain.x, or writes a
-// name as the other kind than it is saved as. "" is ok. Secrets are used in api_request as {{secret.x}}.
+// refuseSecretReads is the refusal text for a script that mentions a temporary secret as plain.x, or writes a
+// name as the other kind than it is set as. "" is ok. Secrets are used in api_request as {{secret.x}}.
 func (k *keptRun) refuseSecretReads(tool string) string {
 	for _, stage := range scriptStages {
 		for _, st := range k.sites[stage] {
@@ -134,9 +134,9 @@ func (k *keptRun) refuseSecretReads(tool string) string {
 // clashText is the refusal for a name written as the other kind than the store holds it as.
 func clashText(name string, isSecret bool) string {
 	if isSecret {
-		return fmt.Sprintf("%q is saved as a secret; write secret.%s or use another name.", name, name)
+		return fmt.Sprintf("%q is a secret temporary variable; write secret.%s or use another name.", name, name)
 	}
-	return fmt.Sprintf("%q is saved as a plain value; write plain.%s or use another name.", name, name)
+	return fmt.Sprintf("%q is a plain temporary variable; write plain.%s or use another name.", name, name)
 }
 
 func (k *keptRun) addMayKeep(name string, site agentapi.KeptSite, secret bool) {
@@ -206,7 +206,7 @@ func (k *keptRun) bindings(stage scriptStage) ([]jsengine.Binding, string) {
 		}
 		e, ok := k.lookup(st.Name)
 		if !ok || e.ID != k.uses[i].ID {
-			return nil, fmt.Sprintf("no saved variable %q (it may have expired, been cleared or been replaced since approval)", st.Name)
+			return nil, fmt.Sprintf("no temporary variable %q (it may have expired, been cleared or been replaced since approval)", st.Name)
 		}
 		plain[st.Name] = e.Value
 	}
@@ -250,7 +250,7 @@ func diffGlobals(rb map[string]jsengine.ReadBack, inj map[string]json.RawMessage
 				return ch, fmt.Sprintf("%s[%q] is not a valid name: start with a letter, then letters, digits or _, at most 40.", kind, name)
 			}
 			if typ, bad := r.Invalid[name]; bad {
-				return ch, fmt.Sprintf("%s.%s is %s; save text, a number, true/false, null, a list or an object.", kind, name, invalidTypeText[typ])
+				return ch, fmt.Sprintf("%s.%s is %s; set text, a number, true/false, null, a list or an object.", kind, name, invalidTypeText[typ])
 			}
 			if kind == keptvars.KindSecret {
 				ch.secretKeys[name] = true
@@ -318,14 +318,14 @@ func (k *keptRun) checkLimits(ch scriptChanges) string {
 		}
 	}
 	if len(k.order)+added > maxKeptScriptNames {
-		return fmt.Sprintf("a script can save at most %d values per run", maxKeptScriptNames)
+		return fmt.Sprintf("a script can set at most %d values per run", maxKeptScriptNames)
 	}
 	for _, w := range ch.writes {
 		if len(w.value) > keptvars.MaxValueBytes {
-			return fmt.Sprintf("saved variable %q: %s", w.name, keptvars.ErrTooLarge)
+			return fmt.Sprintf("temporary variable %q: %s", w.name, keptvars.ErrTooLarge)
 		}
 		if _, _, _, err := keptvars.Describe(w.value); err != nil {
-			return fmt.Sprintf("saved variable %q: %s", w.name, err)
+			return fmt.Sprintf("temporary variable %q: %s", w.name, err)
 		}
 	}
 	return ""
@@ -463,8 +463,8 @@ func (k *keptRun) stagedEntries() map[string]keptvars.Entry {
 	return out
 }
 
-// stagedViews is what the review card shows under "Will save": a preview per value, none for a secret, and a
-// row per saved value the script deletes.
+// stagedViews is what the review card shows under "Will set": a preview per value, none for a secret, and a
+// row per temporary value the script deletes.
 func (k *keptRun) stagedViews() []HeldKeep {
 	if k == nil {
 		return nil
@@ -507,7 +507,7 @@ func (k *keptRun) stagedSecret(name string) (string, bool) {
 	return keptvars.SecretText(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: v}), true
 }
 
-// keptSummary is what the agent learns about a value it saved: never the value.
+// keptSummary is what the agent learns about a value it set: never the value.
 type keptSummary struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
@@ -517,7 +517,7 @@ type keptSummary struct {
 }
 
 // errUserDropped is the refusal text for a staged value the user removed before sending the result.
-const errUserDropped = "the user chose not to save it"
+const errUserDropped = "the user chose not to set it"
 
 // errDeleteChanged is the refusal text for a delete of a value that is not the one the script read.
 const errDeleteChanged = "changed since the script read it"
@@ -590,7 +590,7 @@ func (k *keptRun) mask(text string) string {
 }
 
 // checkPrepared refuses a prepare result that holds a {{...}} reference the user could not have read in the
-// script or the agent's request. Without it a saved value holding "{{token}}" would be resolved as a secret
+// script or the agent's request. Without it a temporary value holding "{{token}}" would be resolved as a secret
 // reference once the script copies it into the request. "" is ok. The refusal never quotes the text.
 func (k *keptRun) checkPrepared(orig, merged agentapi.Input, source string) string {
 	if k == nil {
@@ -605,7 +605,7 @@ func (k *keptRun) checkPrepared(orig, merged agentapi.Input, source string) stri
 	known := source + "\x00" + inputText(orig)
 	for _, span := range referenceSpans(inputText(merged)) {
 		if !strings.Contains(known, span) {
-			return "prepare script returned a {{...}} reference that is neither in its source nor in your request; references built from saved data are not resolved. Nothing was sent."
+			return "prepare script returned a {{...}} reference that is neither in its source nor in your request; references built from temporary values are not resolved. Nothing was sent."
 		}
 	}
 	return ""

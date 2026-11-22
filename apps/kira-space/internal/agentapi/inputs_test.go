@@ -134,7 +134,7 @@ func TestInputDeclarationRules(t *testing.T) {
 	}{
 		{"five", five, "at most 4 inputs"},
 		{"duplicate", []InputDecl{{Name: "a"}, {Name: "a"}}, "declared twice"},
-		{"bad name", []InputDecl{{Name: "1a"}}, "saved variable name"},
+		{"bad name", []InputDecl{{Name: "1a"}}, "temporary variable name"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

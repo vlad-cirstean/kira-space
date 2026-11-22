@@ -98,8 +98,8 @@ func TestKeptRefusals(t *testing.T) {
 		in   Input
 		want string
 	}{
-		{"unknown", get("http://h/{{plain.nope}}"), `no saved variable "nope"`},
-		{"other scope", Input{Method: "GET", URL: "http://h/{{plain.x}}", Scope: "session:1"}, `no saved variable "x"`},
+		{"unknown", get("http://h/{{plain.nope}}"), `no temporary variable "nope"`},
+		{"other scope", Input{Method: "GET", URL: "http://h/{{plain.x}}", Scope: "session:1"}, `no temporary variable "x"`},
 		{"host", get("https://{{plain.h}}/"), "scheme, host or port"},
 		{"port", get("https://a.com:{{plain.p}}/"), "scheme, host or port"},
 		{"scheme", get("{{plain.h}}://a.com/"), "scheme, host or port"},
