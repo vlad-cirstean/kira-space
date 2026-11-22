@@ -86,7 +86,7 @@ function clearAll(): void {
 
 <template>
   <div class="contents" v-show="active">
-    <FieldSet>
+    <FieldSet class="min-w-0">
       <div class="flex items-center justify-between gap-1">
         <FieldLegend>{{ t('common.temporaryVariables.label') }}</FieldLegend>
         <Button
@@ -112,7 +112,9 @@ function clearAll(): void {
             <li
               v-for="e in entries"
               :key="e.id"
-              :class="cn(rowVariants({ layout: 'double' }), 'items-center whitespace-normal')"
+              :class="
+                cn(rowVariants({ layout: 'double' }), 'min-w-0 items-center whitespace-normal')
+              "
               data-testid="settings-kept-entry"
             >
               <TempVarRow
