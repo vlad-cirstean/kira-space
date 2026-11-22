@@ -3,7 +3,6 @@ package repos
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -117,51 +116,82 @@ func (r *TabsRepo) Save(windowKey string, records []model.TabRecord) error {
 	})
 }
 
-// Move re-keys one tab from window src to window dst in one transaction. persist false deletes
-// src's row and writes none for dst: the tab is incognito or a session-only kind. The row lands
-// last in dst, inactive: dst activates it on receive and saves.
-func (r *TabsRepo) Move(src, dst string, rec model.TabRecord, persist bool) error {
-	if err := rec.Validate(); err != nil {
-		return fmt.Errorf("repos/tabs: move: %w", err)
+// Move re-keys tabs from window src to window dst in one transaction: all or none. A move with
+// Persist false deletes src's row and writes none for dst (incognito or session-only kind). Rows
+// land last in dst in list order, inactive: dst activates the focused one on receive and saves.
+func (r *TabsRepo) Move(src, dst string, moves []appstorage.TabMove[model.TabRecord]) error {
+	if len(moves) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(moves))
+	seen := make(map[string]bool, len(moves))
+	for _, m := range moves {
+		if err := m.Rec.Validate(); err != nil {
+			return fmt.Errorf("repos/tabs: move: %w", err)
+		}
+		if seen[m.Rec.ID] {
+			return fmt.Errorf("repos/tabs: tab %s: duplicate tab id: %w", m.Rec.ID, appstorage.ErrInvalidTab)
+		}
+		seen[m.Rec.ID] = true
+		ids = append(ids, m.Rec.ID)
 	}
 	c := kiraschema.Tabs
 	tx, err := r.DB.Begin()
 	if err != nil {
-		return fmt.Errorf("repos/tabs: move %s: begin: %w", rec.ID, err)
+		return fmt.Errorf("repos/tabs: move: begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	var owner string
-	sel := r.Dialect.Select(c.WindowKey).From(c.Table)
-	sel.Where(sel.Equal(c.ID, rec.ID))
-	switch err := sqlb.QueryRow(tx, sel).Scan(&owner); {
-	case errors.Is(err, sql.ErrNoRows):
-	case err != nil:
-		return fmt.Errorf("repos/tabs: move %s: owner: %w", rec.ID, err)
-	case owner != src:
-		return fmt.Errorf("repos/tabs: tab %s: %w", rec.ID, appstorage.ErrTabOwnedElsewhere)
+	sel := r.Dialect.Select(c.ID, c.WindowKey).From(c.Table)
+	sel.Where(sel.In(c.ID, sqlb.Args(ids)...))
+	rows, err := sqlb.Query(tx, sel)
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move: owners: %w", err)
+	}
+	var foreign string
+	for rows.Next() {
+		var id, owner string
+		if err := rows.Scan(&id, &owner); err != nil {
+			rows.Close() //nolint:errcheck
+			return fmt.Errorf("repos/tabs: move: owners: %w", err)
+		}
+		if owner != src && foreign == "" {
+			foreign = id
+		}
+	}
+	rows.Close() //nolint:errcheck
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("repos/tabs: move: owners: %w", err)
+	}
+	if foreign != "" {
+		return fmt.Errorf("repos/tabs: tab %s: %w", foreign, appstorage.ErrTabOwnedElsewhere)
 	}
 
 	del := r.Dialect.DeleteFrom(c.Table)
-	del.Where(del.Equal(c.ID, rec.ID), del.Equal(c.WindowKey, src))
+	del.Where(del.Equal(c.WindowKey, src), del.In(c.ID, sqlb.Args(ids)...))
 	if _, err := sqlb.Exec(tx, del); err != nil {
-		return fmt.Errorf("repos/tabs: move %s: delete: %w", rec.ID, err)
+		return fmt.Errorf("repos/tabs: move: delete: %w", err)
 	}
-	if persist {
-		order, err := sqlb.NextSortOrder(tx, r.Dialect, c.Table, c.SortOrder, func(sb *sqlbuilder.SelectBuilder) string {
-			return sb.Equal(c.WindowKey, dst)
-		})
-		if err != nil {
-			return fmt.Errorf("repos/tabs: move %s: %w", rec.ID, err)
+	order, err := sqlb.NextSortOrder(tx, r.Dialect, c.Table, c.SortOrder, func(sb *sqlbuilder.SelectBuilder) string {
+		return sb.Equal(c.WindowKey, dst)
+	})
+	if err != nil {
+		return fmt.Errorf("repos/tabs: move: %w", err)
+	}
+	for _, m := range moves {
+		if !m.Persist {
+			continue
 		}
+		rec := m.Rec
 		ib := r.Dialect.InsertInto(c.Table).Cols(append(append([]string{}, tabsColumns...), c.WindowKey)...).
 			Values(rec.ID, rec.ConnectionID, rec.Path, rec.Kind, string(rec.State), order, false, rec.WorkspaceID, dst)
 		if _, err := sqlb.Exec(tx, ib); err != nil {
 			return fmt.Errorf("repos/tabs: move %s: insert: %w", rec.ID, err)
 		}
+		order++
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("repos/tabs: move %s: commit: %w", rec.ID, err)
+		return fmt.Errorf("repos/tabs: move: commit: %w", err)
 	}
 	return nil
 }

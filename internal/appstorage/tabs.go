@@ -128,21 +128,26 @@ func mapTabErr(err error) error {
 	return ipcerr.Internal(err.Error())
 }
 
-// TabsMover is the one method MoveWindowTab needs from an app's own *repos.TabsRepo. persist
-// false removes the row from src and writes none for dst (incognito and session-only tabs).
-type TabsMover[T any] interface {
-	Move(src, dst string, rec T, persist bool) error
+// TabMove is one tab of a move. Persist false writes no row for dst (incognito, session kinds).
+type TabMove[T any] struct {
+	Rec     T
+	Persist bool
 }
 
-// MoveWindowTab re-keys one tab from window src to window dst in one repo transaction.
-func MoveWindowTab[T any](windows WindowExistsChecker, tabs TabsMover[T], src, dst string, rec T, persist bool) error {
+// TabsMover is the one method MoveWindowTabs needs from an app's own *repos.TabsRepo.
+type TabsMover[T any] interface {
+	Move(src, dst string, moves []TabMove[T]) error
+}
+
+// MoveWindowTabs re-keys tabs from window src to window dst in one repo transaction: all or none.
+func MoveWindowTabs[T any](windows WindowExistsChecker, tabs TabsMover[T], src, dst string, moves []TabMove[T]) error {
 	if err := CheckWindow(windows, src); err != nil {
 		return err
 	}
 	if err := CheckWindow(windows, dst); err != nil {
 		return err
 	}
-	return mapTabErr(tabs.Move(src, dst, rec, persist))
+	return mapTabErr(tabs.Move(src, dst, moves))
 }
 
 // ListWindowTabs is both apps' own bridge.TabsService.List (P113 G4): CheckWindow's guard, then the
