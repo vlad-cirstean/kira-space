@@ -71,6 +71,8 @@ test('contract: a scripted response shows the result, the raw response and the s
   await expect(page.locator('[data-testid="api-review-script"]')).toContainText(
     source.split('\n')[0] ?? '',
   );
+  await expect(page.locator('[data-testid="api-review-view-result"]')).toHaveText('After');
+  await expect(page.locator('[data-testid="api-review-view-raw"]')).toHaveText('Before');
   await page.click('[data-testid="api-review-view-raw"]');
   await expect(page.locator('[data-testid="api-review-raw-status"]')).toContainText('200');
   await expect(page.locator('[data-testid="api-review-raw-body"]')).toContainText('a@x.test');

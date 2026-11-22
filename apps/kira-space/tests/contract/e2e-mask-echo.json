@@ -30,6 +30,47 @@
         "method": "GET",
         "rawBytes": 517,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [
+            {
+              "masked": false,
+              "name": "X-Echo",
+              "value": "{{kept.apikey}}"
+            }
+          ],
+          "kept": [
+            {
+              "bytes": 20,
+              "createdAt": "<masked>",
+              "expiresAt": "<masked>",
+              "id": "kv_apikey",
+              "items": 0,
+              "name": "apikey",
+              "preview": "",
+              "previewTruncated": false,
+              "secret": true,
+              "sites": [
+                {
+                  "field": "header",
+                  "from": 0,
+                  "index": 0,
+                  "part": "value",
+                  "to": 15
+                }
+              ],
+              "source": {
+                "client": "Claude Code 2.1.318",
+                "kind": "user",
+                "mcp": "api",
+                "request": "GET http://127.0.0.1:<port>/forms",
+                "tool": "api_request"
+              },
+              "type": "string"
+            }
+          ],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

@@ -14,7 +14,9 @@ export const PREPARED_BOX = 'border-l-2 border-dotted border-warn pl-2';
 const BODY_PREVIEW = 80;
 const quote = (s: string): string => (s === '' ? '""' : s);
 
-export function kubePrepared(payload: KubeReadPayload): PreparedValue[] {
+export function kubePrepared(
+  payload: Pick<KubeReadPayload, 'request' | 'changed'>,
+): PreparedValue[] {
   const req = payload.request;
   if (!req) return [];
   return payload.changed.map((key) => {

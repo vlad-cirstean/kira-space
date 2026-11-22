@@ -3322,9 +3322,6 @@
     "agentCliNotFound": {
       "error": "{product}’s CLI isn’t available. Copy the command above and run it yourself once it is installed."
     },
-    "agentGets": {
-      "label": "Agent gets"
-    },
     "agentRegistered": {
       "description": "Registered with {product}."
     },
@@ -14347,9 +14344,6 @@
           "redirectsOn": {
             "status": "Follows redirects"
           },
-          "responseRaw": {
-            "label": "Response"
-          },
           "responseViews": {
             "aria": "Response views"
           },
@@ -14435,6 +14429,9 @@
           "option": "Formatted"
         },
         "kube": {
+          "beforeScript": {
+            "tooltip": "Before the script"
+          },
           "changedByScript": {
             "tooltip": "Set by the prepare script"
           },
@@ -14489,9 +14486,6 @@
           }
         },
         "query": {
-          "responseRaw": {
-            "label": "Rows read"
-          },
           "responseViews": {
             "aria": "Result views"
           },

@@ -408,6 +408,17 @@ type apiResponsePayload struct {
 	Reason      string         `json:"reason"`
 	// Masked names the secret variables the request masker hid in the held text; never a value.
 	Masked []string `json:"masked"`
+	// Request is the request as the prompt showed it, for the review's collapsed Request section.
+	Request apiRequestView `json:"request"`
+}
+
+// apiRequestView is the part of the prompt's payload a review repeats: the headers and body the request
+// carried, the variables it used and the kept values it read. The query rides in the URL.
+type apiRequestView struct {
+	Headers   []apiHeaderPayload `json:"headers"`
+	Body      *apiBodyPayload    `json:"body"`
+	Variables []agentapi.VarUse  `json:"variables"`
+	Kept      []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
@@ -426,6 +437,8 @@ func apiResponsePayloadOf(r ApprovalRequest) apiResponsePayload {
 		IsError: held.IsError, Scripted: held.Script != nil, Bytes: len(held.Text), RawBytes: len(held.Raw),
 		Class: "write", Reason: meta.Reason, Masked: maskedNames(p),
 	}
+	prompt := apiPayloadOf(p)
+	out.Request = apiRequestView{Headers: prompt.Headers, Body: prompt.Body, Variables: prompt.Variables, Kept: prompt.Kept}
 	if meta.Read {
 		out.Class = "read"
 	}

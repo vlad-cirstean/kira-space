@@ -8,6 +8,7 @@ import ApprovalCode from '@workbench/approvals/ApprovalCode.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
+import ApiRequestView from './ApiRequestView.vue';
 import ApiResponseView from './ApiResponseView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
@@ -34,12 +35,16 @@ const failed = computed(() => payload.value.isError);
 const views = computed(() => {
   const raw = {
     value: 'raw',
-    label: t('studio.dbMcp.approval.api.responseRaw.label'),
+    label: t('studio.http.diff.before.label'),
     testid: 'api-review-view-raw',
   };
   return payload.value.scripted
     ? [
-        { value: 'result', label: t('common.agentGets.label'), testid: 'api-review-view-result' },
+        {
+          value: 'result',
+          label: t('studio.http.diff.after.label'),
+          testid: 'api-review-view-result',
+        },
         raw,
       ]
     : [raw];
@@ -68,6 +73,16 @@ const parsedRaw = computed(() => {
         :views="views"
         :label="t('studio.dbMcp.approval.api.responseViews.aria')"
       >
+        <template #request>
+          <ApiRequestView
+            :method="payload.method"
+            :url="payload.url"
+            :headers="payload.request.headers"
+            :body="payload.request.body"
+            :variables="payload.request.variables"
+            :kept="payload.request.kept"
+          />
+        </template>
         <template #view-raw>
           <ApiResponseView
             v-if="parsedRaw"

@@ -30,6 +30,17 @@
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [
+            {
+              "masked": false,
+              "name": "X-Region",
+              "value": "eu"
+            }
+          ],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

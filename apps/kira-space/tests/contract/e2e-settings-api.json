@@ -204,6 +204,11 @@
         "method": "POST",
         "rawBytes": 0,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": false,
         "status": 200,
         "statusText": "OK",

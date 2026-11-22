@@ -11,7 +11,9 @@ import { PREPARED_MARK } from './preparedValues';
 
 // The read as a kubectl line built from the final args, never by parsing the statement: the verb in the read
 // colour, the resource, then one flag per line. An arg the prepare script set carries a dotted underline.
-const props = defineProps<{ payload: KubeReadPayload }>();
+const props = defineProps<{
+  payload: Pick<KubeReadPayload, 'operation' | 'request' | 'changed'>;
+}>();
 
 const req = computed(() => props.payload.request);
 const verb = computed(() => (props.payload.operation === 'list' ? 'get' : props.payload.operation));

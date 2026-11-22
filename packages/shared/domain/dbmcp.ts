@@ -213,6 +213,10 @@ export const dbResponsePayloadSchema = /*#__PURE__*/ z.object({
   // A script produced the held text from the raw result (P680); rawBytes sizes that raw result.
   scripted: z.boolean().default(false),
   rawBytes: z.number().default(0),
+  // What the prompt bound to the statement, for the review's Request section.
+  params: z.array(z.string()).default([]),
+  placeholders: z.array(z.string()).default([]),
+  kept: z.array(keptUseSchema).default([]),
   ...dbLocationShape,
 });
 export type DbResponsePayload = z.infer<typeof dbResponsePayloadSchema>;
@@ -230,6 +234,18 @@ const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
     .nullable(),
   transform: transformViewSchema.nullable(),
 });
+const kubeRequestSchema = /*#__PURE__*/ z.object({
+  kind: z.string(),
+  name: z.string(),
+  namespace: z.string(),
+  labelSelector: z.string(),
+  pod: z.string(),
+  container: z.string(),
+  previous: z.boolean(),
+  timestamps: z.boolean(),
+  tail: z.number(),
+  maxRows: z.number(),
+});
 export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   context: z.string(),
   server: z.string(),
@@ -241,21 +257,7 @@ export const kubeReadPayloadSchema = /*#__PURE__*/ z.object({
   // list, describe and logs reads: the tool, the final args (after the prepare script), the args the script
   // set, the kept variables the scripts read and the scripts themselves (P718).
   tool: z.string().default(''),
-  request: /*#__PURE__*/ z
-    .object({
-      kind: z.string(),
-      name: z.string(),
-      namespace: z.string(),
-      labelSelector: z.string(),
-      pod: z.string(),
-      container: z.string(),
-      previous: z.boolean(),
-      timestamps: z.boolean(),
-      tail: z.number(),
-      maxRows: z.number(),
-    })
-    .nullish()
-    .transform((v) => v ?? null),
+  request: kubeRequestSchema.nullish().transform((v) => v ?? null),
   changed: z.array(z.string()).default([]),
   kept: z
     .array(keptUseSchema)
@@ -279,6 +281,10 @@ export const kubeResponsePayloadSchema = /*#__PURE__*/ z.object({
   // A script produced the held text from the raw result of rawBytes.
   scripted: z.boolean().default(false),
   rawBytes: z.number().default(0),
+  // The prompt's final args and the ones the prepare script set, for the review's Request section.
+  tool: z.string().default(''),
+  request: kubeRequestSchema.nullish().transform((v) => v ?? null),
+  changed: z.array(z.string()).default([]),
 });
 export type KubeResponsePayload = z.infer<typeof kubeResponsePayloadSchema>;
 
@@ -337,6 +343,13 @@ export const apiInputSchema = /*#__PURE__*/ z.object({
 });
 export type ApiInput = z.infer<typeof apiInputSchema>;
 
+const apiBodySchema = /*#__PURE__*/ z.object({
+  contentType: z.string(),
+  text: z.string(),
+  truncated: z.boolean(),
+  form: z.array(apiPairSchema).nullable(),
+});
+
 export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   method: z.string(),
   url: z.string(),
@@ -345,14 +358,7 @@ export const apiRequestPayloadSchema = /*#__PURE__*/ z.object({
   query: z.array(apiPairSchema),
   headers: z.array(apiPairSchema.extend({ masked: z.boolean() })),
   auth: z.object({ scheme: z.string(), display: z.string() }).nullable(),
-  body: z
-    .object({
-      contentType: z.string(),
-      text: z.string(),
-      truncated: z.boolean(),
-      form: z.array(apiPairSchema).nullable(),
-    })
-    .nullable(),
+  body: apiBodySchema.nullable(),
   variables: z.array(z.object({ name: z.string(), value: z.string(), secret: z.boolean() })),
   credentials: z.array(z.object({ name: z.string(), hosts: z.array(z.string()) })),
   followRedirects: z.boolean(),
@@ -395,6 +401,18 @@ export const apiResponsePayloadSchema = /*#__PURE__*/ z.object({
   reason: z.string(),
   // Secret variables the request masker hid in the held text, by name.
   masked: z.array(z.string()).default([]),
+  // The request as the prompt showed it, for the review's Request section.
+  request: z
+    .object({
+      headers: z.array(apiPairSchema.extend({ masked: z.boolean() })),
+      body: apiBodySchema.nullable(),
+      variables: z.array(z.object({ name: z.string(), value: z.string(), secret: z.boolean() })),
+      kept: z
+        .array(keptUseSchema)
+        .nullish()
+        .transform((v) => v ?? []),
+    })
+    .default({ headers: [], body: null, variables: [], kept: [] }),
 });
 export type ApiResponsePayload = z.infer<typeof apiResponsePayloadSchema>;
 

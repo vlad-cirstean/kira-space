@@ -1,0 +1,397 @@
+{
+  "ApprovalsService.List#api": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.response:<id:3>",
+      "kind": "api.response",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 0,
+        "class": "write",
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "host": "127.0.0.1",
+        "isError": false,
+        "masked": [],
+        "method": "POST",
+        "rawBytes": 0,
+        "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [
+            {
+              "masked": false,
+              "name": "X-Trace",
+              "value": "t-1"
+            }
+          ],
+          "variables": []
+        },
+        "scripted": true,
+        "status": 200,
+        "statusText": "OK",
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b22746f6b656e223a22746f6b2d6532652d73657373696f6e2d375132784b222c226163636f756e74223a22616363745f3432222c226f7264657273223a5b31312c31325d7d"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#api-card": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "api.request:<id:1>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": null,
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<id:2>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Trace",
+            "value": "t-1"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "POST",
+        "query": [
+          {
+            "name": "ct",
+            "value": "application/json"
+          },
+          {
+            "name": "hex",
+            "value": "7b22746f6b656e223a22746f6b2d6532652d73657373696f6e2d375132784b222c226163636f756e74223a22616363745f3432222c226f7264657273223a5b31312c31325d7d"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": true,
+        "script": {
+          "prepare": null,
+          "transform": {
+            "hash": "58913e2544abe7bb79057130dc62c25071caf08d2cb45d88abde3f81d95986b6",
+            "mayKeep": [],
+            "source": "return {account: response.json.account};"
+          }
+        },
+        "timeoutSeconds": 30,
+        "url": "http://127.0.0.1:<port>/raw?ct=application%2Fjson&hex=7b22746f6b656e223a22746f6b2d6532652d73657373696f6e2d375132784b222c226163636f756e74223a22616363745f3432222c226f7264657273223a5b31312c31325d7d",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#db": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.response:<id:3>",
+      "kind": "db.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "alreadyRan": false,
+        "bytes": 0,
+        "connectionId": "<id:2>",
+        "host": "",
+        "isError": false,
+        "mode": "read",
+        "path": "/data/mcp.db",
+        "rawBytes": 0,
+        "requested": false,
+        "scripted": true,
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#db-card": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "db.query:<id:1>",
+      "kind": "db.query",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "connectionId": "<id:2>",
+        "detected": "read",
+        "enforcement": "session",
+        "host": "",
+        "mode": "read",
+        "path": "/data/mcp.db",
+        "plan": null,
+        "reviewOffered": true,
+        "reviewResult": true,
+        "script": {
+          "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
+          "mayKeep": [
+            {
+              "name": "ids",
+              "secret": false,
+              "sites": [
+                {
+                  "field": "script",
+                  "from": 0,
+                  "index": 0,
+                  "part": "transform",
+                  "to": 21
+                }
+              ]
+            }
+          ],
+          "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+        },
+        "statement": "select id, body from notes order by id"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "teal",
+        "kind": "sqlite",
+        "location": "/data/mcp.db",
+        "name": "notes db",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#kube": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "kube.response",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "bytes": 0,
+        "changed": [
+          "labelSelector",
+          "maxRows"
+        ],
+        "context": "kind-dev",
+        "isError": true,
+        "namespace": "default",
+        "operation": "list",
+        "rawBytes": 0,
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "app=web",
+          "maxRows": 5,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
+        "requested": false,
+        "scripted": true,
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default -l app=web --context kind-dev",
+        "tool": "kube_list_resources"
+      },
+      "reason": "preview",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#kube-card": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "changed": [
+          "labelSelector",
+          "maxRows"
+        ],
+        "context": "kind-dev",
+        "namespace": "default",
+        "operation": "list",
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "app=web",
+          "maxRows": 5,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "labelSelector",
+              "maxRows"
+            ],
+            "hash": "<masked>",
+            "input": "",
+            "inputTruncated": false,
+            "source": "return {labelSelector: \"app=web\", maxRows: 5};"
+          },
+          "transform": {
+            "hash": "<masked>",
+            "mayKeep": [],
+            "source": "return {first: result.items[0].metadata.name};"
+          }
+        },
+        "server": "<kube>",
+        "statement": "kubectl get pods -n default -l app=web --context kind-dev",
+        "tool": "kube_list_resources"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "DbMcpService.PendingResponse#api": {
+    "isError": false,
+    "keep": [],
+    "raw": "{\"status\":200,\"statusText\":\"OK\",\"headers\":[{\"name\":\"Content-Length\",\"value\":\"70\"},{\"name\":\"Content-Type\",\"value\":\"application/json\"},{\"name\":\"Date\",\"value\":\"<date>\"}],\"contentType\":\"application/json\",\"body\":\"{\\\"token\\\":\\\"tok-e2e-session-7Q2xK\\\",\\\"account\\\":\\\"acct_42\\\",\\\"orders\\\":[11,12]}\",\"bodyBytes\":70,\"truncated\":false,\"elapsedMs\":0,\"finalUrl\":\"http://127.0.0.1:<port>/raw?ct=application%2Fjson\\u0026hex=7b22746f6b656e223a22746f6b2d6532652d73657373696f6e2d375132784b222c226163636f756e74223a22616363745f3432222c226f7264657273223a5b31312c31325d7d\",\"redirects\":[]}",
+    "requestId": "<id:3>",
+    "script": {
+      "hash": "58913e2544abe7bb79057130dc62c25071caf08d2cb45d88abde3f81d95986b6",
+      "source": "return {account: response.json.account};"
+    },
+    "text": "{\"result\":{\"account\":\"acct_42\"}}"
+  },
+  "DbMcpService.PendingResponse#db": {
+    "isError": false,
+    "keep": [
+      {
+        "bytes": 0,
+        "items": 2,
+        "name": "ids",
+        "preview": "[1,2]",
+        "previewTruncated": false,
+        "secret": false,
+        "type": "array"
+      }
+    ],
+    "raw": "{\"kind\":\"tabular\",\"columns\":[{\"name\":\"id\",\"dataType\":\"INTEGER\",\"typeClass\":\"number\"},{\"name\":\"body\",\"dataType\":\"TEXT\",\"typeClass\":\"text\"}],\"rows\":[[\"1\",\"one\"],[\"2\",\"two\"]],\"rowCount\":2,\"returned\":2,\"truncatedCells\":0}",
+    "requestId": "<id:3>",
+    "script": {
+      "hash": "171fc0f978a742246fb70ccb33625aec421cf87a6ec3fd9f3773e1c0c5386510",
+      "source": "kira.storeValue(\"ids\", result.rows.map(r => Number(r[0]))); return {count: result.rows.length};"
+    },
+    "text": "{\"kind\":\"script\",\"output\":{\"count\":2},\"input\":{\"kind\":\"tabular\",\"rowCount\":2,\"truncated\":false}}"
+  },
+  "DbMcpService.PendingResponse#kube": {
+    "isError": true,
+    "keep": [],
+    "raw": "{\"columns\":[\"Name\",\"Ready\",\"Status\",\"Restarts\",\"Age\"],\"rowCount\":2,\"rows\":[{\"name\":\"web-1\",\"namespace\":\"default\",\"cells\":[\"web-1\",\"1/1\",\"Running\",\"0\",\"5m\"]},{\"name\":\"web-2\",\"namespace\":\"default\",\"cells\":[\"web-2\",\"1/1\",\"Running\",\"0\",\"5m\"]}],\"truncated\":false}",
+    "requestId": "<masked>",
+    "script": {
+      "hash": "<masked>",
+      "source": "return {first: result.items[0].metadata.name};"
+    },
+    "text": "script failed: script runtime error at line 1, column 28: TypeError: Cannot read property '0' of undefined. The read ran; its result is not returned."
+  }
+}

@@ -2,11 +2,13 @@
 import type { SecondaryTabItem } from '@theme/components/SecondaryTabs.vue';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed, ref, watch } from 'vue';
+import ReviewRequest from './ReviewRequest.vue';
 import TabbedContent from './TabbedContent.vue';
 
 // One review of a held result, whatever the MCP: the views are tabs in one right-hand column, one slot
 // `view-<value>` each; a single view shows without tabs. The views and the masking note share one box;
-// the script that produced the result and what the approval keeps follow in boxes of their own.
+// the request comes first, collapsed; the script that produced the result and what the approval keeps follow
+// in boxes of their own.
 const props = defineProps<{
   testidPrefix: string;
   views: readonly SecondaryTabItem[];
@@ -28,6 +30,9 @@ const active = computed(() => (props.views.some((v) => v.value === view.value) ?
 
 <template>
   <div class="flex flex-col gap-2">
+    <ReviewRequest v-if="$slots.request" :testid="`${testidPrefix}-box-request`">
+      <slot name="request" />
+    </ReviewRequest>
     <ApprovalBox :testid="`${testidPrefix}-box-result`">
       <TabbedContent
         v-model="view"

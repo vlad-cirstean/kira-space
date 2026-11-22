@@ -144,6 +144,10 @@ type responsePayload struct {
 	// Mode is the declared mode; Requested says the approver asked for this review rather than a setting.
 	Mode      string `json:"mode"`
 	Requested bool   `json:"requested"`
+	// Params, Placeholders and Kept repeat what the prompt bound to the statement, for the review's Request section.
+	Params       []string           `json:"params,omitempty"`
+	Placeholders []string           `json:"placeholders,omitempty"`
+	Kept         []agentapi.KeptUse `json:"kept,omitempty"`
 }
 
 type kubePayload struct {
@@ -180,6 +184,11 @@ type kubeResponsePayload struct {
 	// Scripted says a script produced the held text from the raw result; RawBytes sizes that raw result.
 	Scripted bool `json:"scripted"`
 	RawBytes int  `json:"rawBytes"`
+	// Tool, Request and Changed repeat the prompt's final args and the ones the prepare script set, for the
+	// review's Request section.
+	Tool    string              `json:"tool"`
+	Request *kubeRequestPayload `json:"request"`
+	Changed []string            `json:"changed"`
 }
 
 type valuePayload struct {
@@ -243,11 +252,19 @@ func itemOf(r ApprovalRequest) approvals.Item {
 		it.Reason = "preview"
 		it.Target = approvals.Target{Name: c.Context, Kind: "kubernetes", Location: kubeLocation(c)}
 		it.Operation = approvals.Operation{Class: "read", Tone: "neutral"}
-		it.Payload = mustJSON(kubeResponsePayload{
+		p := kubeResponsePayload{
 			Context: c.Context, Server: c.Server, Namespace: c.Namespace, Operation: c.Operation, Statement: r.Statement,
 			IsError: held.IsError, Bytes: len(held.Text), Requested: held.Requested,
-			Scripted: held.Script != nil, RawBytes: len(held.Raw),
-		})
+			Scripted: held.Script != nil, RawBytes: len(held.Raw), Tool: c.Tool, Changed: []string{},
+		}
+		if c.Operation != kubeDiscover {
+			req := kubeRequestPayloadOf(c.Request)
+			p.Request = &req
+		}
+		if c.Script != nil {
+			p.Changed = append(p.Changed, c.Script.Changed...)
+		}
+		it.Payload = mustJSON(p)
 	case approvals.KindScriptRun:
 		sc := r.Script
 		if sc == nil {
@@ -281,6 +298,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			IsError: held.IsError, Bytes: len(held.Text), Scripted: held.Script != nil, RawBytes: len(held.Raw),
 			AlreadyRan: r.Class != adapters.ClassRead,
 			Mode:       r.Mode, Requested: held.Requested,
+			Params: r.Params, Placeholders: r.Placeholders, Kept: r.Kept,
 		})
 	default:
 		it.Target, it.Operation = dbTarget(r)

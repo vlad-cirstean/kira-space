@@ -294,15 +294,29 @@
       },
       "payload": {
         "bytes": 0,
+        "changed": [],
         "context": "kind-dev",
         "isError": false,
         "namespace": "default",
         "operation": "list",
         "rawBytes": 0,
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 200,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "requested": false,
         "scripted": true,
         "server": "<kube>",
-        "statement": "kubectl get pods -n default --context kind-dev"
+        "statement": "kubectl get pods -n default --context kind-dev",
+        "tool": "kube_list_resources"
       },
       "reason": "preview",
       "target": {

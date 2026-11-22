@@ -4,8 +4,7 @@ import { dbExemptionPayloadSchema } from '@shared/domain/dbmcp';
 import { t } from '@theme/i18n';
 import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import { computed } from 'vue';
-import ApprovalStatement from './ApprovalStatement.vue';
-import DbParamsList from './DbParamsList.vue';
+import DbRequestView from './DbRequestView.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
 import TransformScriptBlock from './TransformScriptBlock.vue';
 
@@ -25,20 +24,14 @@ const payload = computed(() => dbExemptionPayloadSchema.parse(props.item.payload
       />
     </ApprovalBox>
     <ApprovalBox testid="db-approval-box-statement">
-      <div class="flex flex-col gap-1">
-        <ApprovalStatement
-          :kind="item.target.kind"
-          :statement="payload.statement"
-          :kept="payload.kept"
-          data-testid="db-mcp-exemption-body"
-        />
-        <DbParamsList
-          v-if="payload.params.length"
-          :params="payload.params"
-          :placeholders="payload.placeholders"
-          :kept="payload.kept"
-        />
-      </div>
+      <DbRequestView
+        :kind="item.target.kind"
+        :statement="payload.statement"
+        :kept="payload.kept"
+        :params="payload.params"
+        :placeholders="payload.placeholders"
+        statement-testid="db-mcp-exemption-body"
+      />
     </ApprovalBox>
     <ApprovalBox v-if="payload.script" testid="db-approval-box-transform">
       <TransformScriptBlock

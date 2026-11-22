@@ -123,6 +123,16 @@
         "method": "POST",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": {
+            "contentType": "application/json",
+            "form": null,
+            "text": "{\"items\":[{\"id\":1},{\"id\":2}]}",
+            "truncated": false
+          },
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -169,6 +179,16 @@
         "method": "POST",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": {
+            "contentType": "application/json",
+            "form": null,
+            "text": "{\"items\":[{\"id\":1},{\"id\":2}]}",
+            "truncated": false
+          },
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

@@ -149,6 +149,17 @@
         "method": "GET",
         "rawBytes": 644,
         "reason": "userValue",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": [
+            {
+              "name": "base_url",
+              "secret": false,
+              "value": "http://127.0.0.1:<port>"
+            }
+          ]
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

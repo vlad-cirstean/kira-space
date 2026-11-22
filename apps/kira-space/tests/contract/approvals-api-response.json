@@ -30,6 +30,11 @@
         "method": "GET",
         "rawBytes": 0,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": false,
         "status": 200,
         "statusText": "OK",
@@ -76,6 +81,11 @@
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -122,6 +132,11 @@
         "method": "GET",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",
@@ -168,6 +183,11 @@
         "method": "POST",
         "rawBytes": 747,
         "reason": "setting",
+        "request": {
+          "body": null,
+          "headers": [],
+          "variables": []
+        },
         "scripted": true,
         "status": 200,
         "statusText": "OK",

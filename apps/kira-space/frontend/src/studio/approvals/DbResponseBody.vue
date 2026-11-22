@@ -7,11 +7,13 @@ import ApprovalBox from '@workbench/approvals/ApprovalBox.vue';
 import QueryState from '@workbench/components/QueryState.vue';
 import { computed } from 'vue';
 import { indentJson } from '../beautify';
+import DbRequestView from './DbRequestView.vue';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import PendingResponse from './PendingResponse.vue';
 import { usePendingResponse } from './pendingResponse';
 import ResultReview from './ResultReview.vue';
+import ReviewRequest from './ReviewRequest.vue';
 import StagedKeepList from './StagedKeepList.vue';
 
 // The held run_query result. Without a script: the rows and the exact bytes the agent gets on Send. With one
@@ -31,12 +33,12 @@ const failed = computed(() => payload.value.isError);
 const views = computed(() => [
   {
     value: 'result',
-    label: t('common.agentGets.label'),
+    label: t('studio.http.diff.after.label'),
     testid: 'db-review-view-result',
   },
   {
     value: 'raw',
-    label: t('studio.dbMcp.approval.query.responseRaw.label'),
+    label: t('studio.http.diff.before.label'),
     testid: 'db-review-view-raw',
   },
 ]);
@@ -45,6 +47,15 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
 
 <template>
   <div class="flex flex-col gap-2" data-testid="db-mcp-preview-body">
+    <ReviewRequest v-if="!payload.scripted" testid="db-review-box-request">
+      <DbRequestView
+        :kind="item.target.kind"
+        :statement="payload.statement"
+        :kept="payload.kept"
+        :params="payload.params"
+        :placeholders="payload.placeholders"
+      />
+    </ReviewRequest>
     <ApprovalBox v-if="!payload.scripted" testid="db-review-box-result">
       <PendingResponse :request-id="requestId" :connection-id="payload.connectionId" />
     </ApprovalBox>
@@ -57,6 +68,15 @@ const resultJson = computed(() => (failed.value ? null : indentJson(text.value))
         :views="views"
         :label="t('studio.dbMcp.approval.query.responseViews.aria')"
       >
+        <template #request>
+          <DbRequestView
+            :kind="item.target.kind"
+            :statement="payload.statement"
+            :kept="payload.kept"
+            :params="payload.params"
+            :placeholders="payload.placeholders"
+          />
+        </template>
         <template #view-raw>
           <PendingResponse
             :request-id="requestId"

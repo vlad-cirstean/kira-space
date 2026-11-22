@@ -207,7 +207,7 @@ test('kube read: kept, request, prepare, transform boxes', async ({ relaunch }) 
   ]);
 });
 
-test('scripted kube review: result, script and Will keep boxes', async ({ relaunch }) => {
+test('scripted kube review: request, result, script and Will keep boxes', async ({ relaunch }) => {
   const it = liveItem(
     contract<ApprovalItem[]>(KUBE, 'ApprovalsService.List#review')[0] as ApprovalItem,
   );
@@ -219,6 +219,7 @@ test('scripted kube review: result, script and Will keep boxes', async ({ relaun
   const c = card(page, it);
   await expect(c.locator(t('kube-review-box-keep'))).toBeVisible();
   expect(await boxIds(c)).toEqual([
+    'kube-review-box-request',
     'kube-review-box-result',
     'kube-review-box-script',
     'kube-review-box-keep',

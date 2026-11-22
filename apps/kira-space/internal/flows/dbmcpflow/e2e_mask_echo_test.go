@@ -3,9 +3,11 @@ package dbmcpflow
 import (
 	"encoding/base64"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
@@ -83,7 +85,8 @@ func TestE2EMaskEcho(t *testing.T) {
 				t.Errorf("the held response holds the form %q", form)
 			}
 		}
-		f.app.Contract(t, maskEchoKey, "ApprovalsService.List#forms", []approvals.Item{testWait.req.Item}, opts...)
+		ro := append(slices.Clip(opts), flowharness.Replace(f.keptID(t, externalScope, "apikey"), "kv_apikey"))
+		f.app.Contract(t, maskEchoKey, "ApprovalsService.List#forms", []approvals.Item{testWait.req.Item}, ro...)
 		held := testWait.held
 		held.Text, held.Raw = stable(held.Text), stable(held.Raw)
 		f.app.Contract(t, maskEchoKey, "DbMcpService.PendingResponse#forms", held, opts...)

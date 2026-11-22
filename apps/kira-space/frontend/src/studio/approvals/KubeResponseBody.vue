@@ -15,9 +15,11 @@ import { computed } from 'vue';
 import { indentJson } from '../beautify';
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
+import KubeRequestView from './KubeRequestView.vue';
 import { usePendingResponse } from './pendingResponse';
 import ResultReview from './ResultReview.vue';
 import ReviewLog from './ReviewLog.vue';
+import ReviewRequest from './ReviewRequest.vue';
 import ReviewTable from './ReviewTable.vue';
 import StagedKeepList from './StagedKeepList.vue';
 
@@ -76,12 +78,35 @@ const first = computed(() => {
   if (logs.value) return { value: 'log', label: t('common.tab.logs.label') };
   return null;
 });
+// The operation's own views show what the script read, before it ran.
+const beforeScript = computed(() =>
+  scripted.value ? t('studio.dbMcp.approval.kube.beforeScript.tooltip') : undefined,
+);
 const views = computed(() => [
   ...(scripted.value
-    ? [{ value: 'result', label: t('common.agentGets.label'), testid: 'kube-review-view-result' }]
+    ? [
+        {
+          value: 'result',
+          label: t('studio.http.diff.after.label'),
+          testid: 'kube-review-view-result',
+        },
+      ]
     : []),
-  ...(first.value ? [{ ...first.value, testid: `kube-review-view-${first.value.value}` }] : []),
-  { value: 'json', label: t('common.copyFormat.json.label'), testid: 'kube-review-view-json' },
+  ...(first.value
+    ? [
+        {
+          ...first.value,
+          testid: `kube-review-view-${first.value.value}`,
+          tooltip: beforeScript.value,
+        },
+      ]
+    : []),
+  {
+    value: 'json',
+    label: t('common.copyFormat.json.label'),
+    testid: 'kube-review-view-json',
+    tooltip: beforeScript.value,
+  },
 ]);
 
 const footnote = computed(() => {
@@ -101,6 +126,9 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
       <QueryState :query="response" variant="inline" :is-empty="() => false" />
     </ApprovalBox>
     <QueryState v-else :query="response" variant="inline" :is-empty="() => false">
+      <ReviewRequest v-if="failed" testid="kube-review-box-request">
+        <KubeRequestView :payload="payload" />
+      </ReviewRequest>
       <ApprovalBox v-if="failed" testid="kube-review-box-result">
         <FieldError class="whitespace-pre-wrap" data-testid="kube-review-error">{{
           text
@@ -113,6 +141,9 @@ const secretNote = computed(() => described.value?.kind === 'Secret');
         :first-lines="firstLines"
         :label="t('studio.dbMcp.approval.query.responseViews.aria')"
       >
+        <template #request>
+          <KubeRequestView :payload="payload" />
+        </template>
         <template #view-result>
           <FieldError
             v-if="agentFailed"

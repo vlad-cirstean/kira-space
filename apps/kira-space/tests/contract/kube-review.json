@@ -18,15 +18,29 @@
       },
       "payload": {
         "bytes": 1748,
+        "changed": [],
         "context": "kind-dev",
         "isError": false,
         "namespace": "default",
         "operation": "describe",
         "rawBytes": 0,
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 0,
+          "name": "web-1",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "requested": false,
         "scripted": false,
         "server": "<kube>",
-        "statement": "kubectl describe pods web-1 -n default --context kind-dev"
+        "statement": "kubectl describe pods web-1 -n default --context kind-dev",
+        "tool": "kube_describe"
       },
       "reason": "preview",
       "target": {
@@ -57,15 +71,29 @@
       },
       "payload": {
         "bytes": 552,
+        "changed": [],
         "context": "kind-dev",
         "isError": false,
         "namespace": "default",
         "operation": "describe",
         "rawBytes": 0,
+        "request": {
+          "container": "",
+          "kind": "v1/secrets",
+          "labelSelector": "",
+          "maxRows": 0,
+          "name": "db-creds",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "requested": false,
         "scripted": false,
         "server": "<kube>",
-        "statement": "kubectl describe secrets db-creds -n default --context kind-dev"
+        "statement": "kubectl describe secrets db-creds -n default --context kind-dev",
+        "tool": "kube_describe"
       },
       "reason": "preview",
       "target": {
@@ -96,15 +124,29 @@
       },
       "payload": {
         "bytes": 338,
+        "changed": [],
         "context": "kind-dev",
         "isError": false,
         "namespace": "default",
         "operation": "list",
         "rawBytes": 0,
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "",
+          "maxRows": 200,
+          "name": "",
+          "namespace": "default",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
         "requested": false,
         "scripted": false,
         "server": "<kube>",
-        "statement": "kubectl get pods -n default --context kind-dev"
+        "statement": "kubectl get pods -n default --context kind-dev",
+        "tool": "kube_list_resources"
       },
       "reason": "preview",
       "target": {
@@ -135,15 +177,29 @@
       },
       "payload": {
         "bytes": 71,
+        "changed": [],
         "context": "kind-dev",
         "isError": false,
         "namespace": "default",
         "operation": "logs",
         "rawBytes": 0,
+        "request": {
+          "container": "app",
+          "kind": "",
+          "labelSelector": "",
+          "maxRows": 0,
+          "name": "",
+          "namespace": "default",
+          "pod": "web-1",
+          "previous": false,
+          "tail": 2,
+          "timestamps": false
+        },
         "requested": false,
         "scripted": false,
         "server": "<kube>",
-        "statement": "kubectl logs web-1 -n default -c app --tail 2 --context kind-dev"
+        "statement": "kubectl logs web-1 -n default -c app --tail 2 --context kind-dev",
+        "tool": "kube_pod_logs"
       },
       "reason": "preview",
       "target": {
