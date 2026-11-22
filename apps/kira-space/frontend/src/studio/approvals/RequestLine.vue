@@ -5,6 +5,7 @@ import TruncatedText from '@theme/components/TruncatedText.vue';
 import { methodTextClass } from '@theme/methodColor';
 import { computed } from 'vue';
 import { KEPT_MARK_CLASS, type KeptRange, keptParts } from '../kept/keptHighlight';
+import { PREPARED_MARK } from './preparedValues';
 import { tokenizeRequestUrl, type UrlToken, type UrlTokenKind } from './requestLine';
 
 // The request line, each part in its own colour. Origin and path on line 1, then one
@@ -13,7 +14,15 @@ const props = defineProps<{
   method: string;
   url: string;
   kept: readonly KeptRange[];
+  /** The keys a prepare script set (method, url, query); each marks its part and names it in `data-prepared`. */
+  prepared?: readonly string[];
 }>();
+
+const isPrepared = (key: string) => props.prepared?.includes(key) ?? false;
+const markOf = (key: string) => (isPrepared(key) ? key : undefined);
+const markClass = (key: string) => (isPrepared(key) ? PREPARED_MARK : undefined);
+// A query pair carries `query` when the script set it, else `url` when the script set the whole URL.
+const pairKey = computed(() => (isPrepared('query') ? 'query' : isPrepared('url') ? 'url' : ''));
 
 const methodToken = computed(() => httpMethodToken(props.method));
 const tokens = computed(() => tokenizeRequestUrl(props.url));
@@ -55,13 +64,18 @@ function partsOf(tk: UrlToken) {
   >
     <span
       class="mr-2 font-semibold"
-      :class="methodTextClass(methodToken)"
+      :class="[methodTextClass(methodToken), markClass('method')]"
+      :data-prepared="markOf('method')"
       data-token="method"
       :data-method="methodToken"
       >{{
         method
       }}</span
-    ><span class="max-w-full break-all" data-testid="api-approval-url-origin"
+    ><span
+      class="max-w-full break-all"
+      :class="markClass('url')"
+      :data-prepared="markOf('url')"
+      data-testid="api-approval-url-origin"
       ><span
         v-for="(tk, i) in tokens.origin"
         :key="i"
@@ -74,6 +88,8 @@ function partsOf(tk: UrlToken) {
       v-for="(seg, s) in tokens.segments"
       :key="`s${s}`"
       class="max-w-full break-all"
+      :class="markClass('url')"
+      :data-prepared="markOf('url')"
       data-testid="api-approval-url-segment"
       ><span v-for="(tk, i) in seg" :key="i" :class="classOf(tk, false)" :data-token="tk.kind"
         ><HighlightedText v-if="partsOf(tk)" :parts="partsOf(tk)!" :mark-class="KEPT_MARK_CLASS" />
@@ -83,6 +99,8 @@ function partsOf(tk: UrlToken) {
       v-for="(pair, p) in tokens.pairs"
       :key="`p${p}`"
       class="flex min-w-0 max-w-full basis-full pl-4"
+      :class="pairKey && PREPARED_MARK"
+      :data-prepared="pairKey || undefined"
       data-testid="api-approval-query-pair"
       ><span class="shrink-0 break-all"
         ><span

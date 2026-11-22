@@ -1,0 +1,227 @@
+{
+  "ApprovalsService.List#api": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "api.request",
+      "operation": {
+        "class": "request",
+        "tone": "caution"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "auth": null,
+        "body": {
+          "contentType": "application/json",
+          "form": null,
+          "text": "{\"items\":[1,2]}",
+          "truncated": false
+        },
+        "credentials": [],
+        "environment": {
+          "color": "green",
+          "id": "<masked>",
+          "name": "Dev"
+        },
+        "followRedirects": true,
+        "headers": [
+          {
+            "masked": false,
+            "name": "X-Prepared",
+            "value": "yes"
+          }
+        ],
+        "host": "127.0.0.1",
+        "inputs": [],
+        "method": "POST",
+        "query": [
+          {
+            "name": "a",
+            "value": "1"
+          },
+          {
+            "name": "q",
+            "value": "2"
+          }
+        ],
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "method",
+              "url",
+              "headers",
+              "query",
+              "body",
+              "contentType"
+            ],
+            "hash": "<masked>",
+            "input": "",
+            "inputTruncated": false,
+            "source": "return {method: \"POST\", url: \"<api>/echo?a=1\", headers: [{name: \"X-Prepared\", value: \"yes\"}], query: [{name: \"q\", value: \"2\"}], body: {items: [1, 2]}};"
+          },
+          "transform": null
+        },
+        "timeoutSeconds": 30,
+        "url": "<api>/echo?a=1&q=2",
+        "variables": []
+      },
+      "reason": "permission",
+      "target": {
+        "color": "green",
+        "kind": "http",
+        "location": "Dev",
+        "name": "127.0.0.1",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#list": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "changed": [
+          "namespace",
+          "labelSelector",
+          "maxRows"
+        ],
+        "context": "kind-dev",
+        "namespace": "kube-system",
+        "operation": "list",
+        "request": {
+          "container": "",
+          "kind": "v1/pods",
+          "labelSelector": "app=web",
+          "maxRows": 7,
+          "name": "",
+          "namespace": "kube-system",
+          "pod": "",
+          "previous": false,
+          "tail": 0,
+          "timestamps": false
+        },
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "namespace",
+              "labelSelector",
+              "maxRows"
+            ],
+            "hash": "<masked>",
+            "input": "",
+            "inputTruncated": false,
+            "source": "return {namespace: \"kube-system\", labelSelector: \"app=web\", maxRows: 7};"
+          },
+          "transform": null
+        },
+        "server": "<kube>",
+        "statement": "kubectl get pods -n kube-system -l app=web --context kind-dev",
+        "tool": "kube_list_resources"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · kube-system",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ],
+  "ApprovalsService.List#logs": [
+    {
+      "createdAt": 0,
+      "expiresAt": 0,
+      "id": "<masked>",
+      "kind": "kube.read",
+      "operation": {
+        "class": "read",
+        "tone": "neutral"
+      },
+      "origin": {
+        "client": "Claude Code 2.1.318",
+        "cwd": "<masked>",
+        "source": "",
+        "step": "",
+        "task": ""
+      },
+      "payload": {
+        "changed": [
+          "pod",
+          "container",
+          "previous",
+          "timestamps",
+          "tail"
+        ],
+        "context": "kind-dev",
+        "namespace": "default",
+        "operation": "logs",
+        "request": {
+          "container": "sidecar",
+          "kind": "",
+          "labelSelector": "",
+          "maxRows": 0,
+          "name": "",
+          "namespace": "default",
+          "pod": "web-1",
+          "previous": false,
+          "tail": 3,
+          "timestamps": true
+        },
+        "reviewOffered": true,
+        "reviewResult": false,
+        "script": {
+          "prepare": {
+            "changed": [
+              "pod",
+              "container",
+              "previous",
+              "timestamps",
+              "tail"
+            ],
+            "hash": "<masked>",
+            "input": "",
+            "inputTruncated": false,
+            "source": "return {pod: \"web-1\", container: \"sidecar\", tail: 3, previous: false, timestamps: true};"
+          },
+          "transform": null
+        },
+        "server": "<kube>",
+        "statement": "kubectl logs web-1 -n default -c sidecar --tail 3 --timestamps --context kind-dev",
+        "tool": "kube_pod_logs"
+      },
+      "reason": "permission",
+      "target": {
+        "color": "",
+        "kind": "kubernetes",
+        "location": "<kube> · default",
+        "name": "kind-dev",
+        "readOnly": false
+      }
+    }
+  ]
+}

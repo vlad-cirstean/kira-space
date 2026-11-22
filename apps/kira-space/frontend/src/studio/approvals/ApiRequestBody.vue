@@ -21,6 +21,8 @@ import {
 import FlushEditor from './FlushEditor.vue';
 import JsScriptBlock from './JsScriptBlock.vue';
 import KeptVariablesPanel from './KeptVariablesPanel.vue';
+import PreparedList from './PreparedList.vue';
+import { apiPrepared, PREPARED_BOX, PREPARED_MARK } from './preparedValues';
 import RequestLine from './RequestLine.vue';
 import TransformScriptBlock from './TransformScriptBlock.vue';
 import UserInputsPanel from './UserInputsPanel.vue';
@@ -34,6 +36,23 @@ const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload)
 // Every use marks its places in the request; a pending one (a value still to type) has no row to show.
 const kept = computed(() => payload.value.kept);
 const keptRows = computed(() => kept.value.filter((u) => !u.pending));
+
+const prepared = computed(() => apiPrepared(payload.value));
+const changed = computed(() => payload.value.script?.prepare?.changed ?? []);
+const isPrepared = (key: string) => changed.value.includes(key);
+// Content-Type shows as a header row whenever the body names one the headers do not: it is sent either way.
+const headerRows = computed(() => {
+  const rows = payload.value.headers.map((h) => ({ name: h.name, value: h.value }));
+  const ct = payload.value.body?.contentType;
+  if (ct && !rows.some((r) => r.name.toLowerCase() === 'content-type')) {
+    rows.push({ name: 'Content-Type', value: ct });
+  }
+  return rows;
+});
+const headerPrepared = (row: number) => {
+  if (row < payload.value.headers.length) return isPrepared('headers') ? 'headers' : undefined;
+  return isPrepared('contentType') ? 'contentType' : undefined;
+};
 
 const urlKept = computed(() => keptRanges(kept.value, 'url'));
 
@@ -72,13 +91,21 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
     </ApprovalBox>
     <ApprovalBox testid="api-approval-box-request">
       <div class="flex flex-col gap-1">
-        <RequestLine :method="payload.method" :url="payload.url" :kept="urlKept" />
+        <PreparedList v-if="prepared.length" :rows="prepared" testid="api-approval-prepared" />
+        <RequestLine
+          :method="payload.method"
+          :url="payload.url"
+          :kept="urlKept"
+          :prepared="changed"
+        />
         <template v-if="payload.body">
           <ApprovalPairs
             v-if="payload.body.form"
             :rows="payload.body.form"
             :highlight="formParts"
             :mark-class="KEPT_MARK_CLASS"
+            :prepared-of="() => (isPrepared('form') ? 'form' : undefined)"
+            :prepared-class="PREPARED_MARK"
             density="approval"
             testid="api-approval-form"
           />
@@ -89,21 +116,26 @@ const pairName = (field: 'header' | 'query' | 'form', index: number): string => 
             :range-highlights="kept.length ? keptEditorRanges(keptNames) : undefined"
             :hover-source="kept.length ? keptHover(kept) : undefined"
             data-testid="api-approval-body-text"
+            :class="isPrepared('body') && PREPARED_BOX"
+            :data-prepared="isPrepared('body') ? 'body' : undefined"
           />
-          <ApprovalCode v-else data-testid="api-approval-body-text"
+          <ApprovalCode
+            v-else
+            :class="isPrepared('body') && PREPARED_BOX"
+            :data-prepared="isPrepared('body') ? 'body' : undefined"
+            data-testid="api-approval-body-text"
             ><HighlightedText v-if="kept.length" :parts="bodyParts" :mark-class="KEPT_MARK_CLASS" />
             <template v-else>{{ payload.body.text }}</template></ApprovalCode
           >
         </template>
-        <ApprovalDetails v-if="payload.headers.length || payload.variables.length" class="py-1">
-          <ApprovalDetailItem
-            v-if="payload.headers.length"
-            :label="t('studio.http.pane.headers.label')"
-          >
+        <ApprovalDetails v-if="headerRows.length || payload.variables.length" class="py-1">
+          <ApprovalDetailItem v-if="headerRows.length" :label="t('studio.http.pane.headers.label')">
             <ApprovalPairs
-              :rows="payload.headers.map((h) => ({ name: h.name, value: h.value }))"
+              :rows="headerRows"
               :highlight="headerParts"
               :mark-class="KEPT_MARK_CLASS"
+              :prepared-of="headerPrepared"
+              :prepared-class="PREPARED_MARK"
               density="approval"
               testid="api-approval-headers"
             />

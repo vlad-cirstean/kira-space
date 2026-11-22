@@ -19,6 +19,9 @@ const props = withDefaults(
     ) => readonly { text: string; match: boolean }[] | null;
     markClass?: string;
     density?: 'default' | 'approval';
+    /** The prepared key of a row the script set, or none: marks the row (`data-prepared`) with `preparedClass`. */
+    preparedOf?: (row: number) => string | undefined;
+    preparedClass?: string;
   }>(),
   { density: 'default' },
 );
@@ -46,7 +49,11 @@ const hidden = computed(() => Math.max(0, props.rows.length - VISIBLE));
           />
           <template v-else>{{ row.name }}</template>
         </dt>
-        <dd class="font-data">
+        <dd
+          class="font-data"
+          :class="preparedOf?.(i) && preparedClass"
+          :data-prepared="preparedOf?.(i)"
+        >
           <HighlightedText
             v-if="highlight?.(i, 'value')"
             :parts="highlight(i, 'value') ?? []"
