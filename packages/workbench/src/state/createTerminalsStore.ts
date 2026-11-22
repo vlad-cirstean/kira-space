@@ -368,6 +368,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
      *  failure. */
     async function prepareTerminalMove(
       tabId: string,
+      opts?: { maxBytes?: number },
     ): Promise<{ payload: TabTerminalPayload; live: boolean }> {
       const sess = byTabId.get(tabId);
       if (!sess) throw new Error('terminal has no session');
@@ -379,7 +380,7 @@ export function createTerminalsStore(control: TerminalsControl, options: Termina
         if (live) await waitRouted(tabId, held.end, TIMING.terminalMoveSettle);
       }
       const renderer = await loadTerminalRenderer();
-      const shot = await renderer.serializeTerminal(tabId);
+      const shot = await renderer.serializeTerminal(tabId, opts?.maxBytes);
       const size = lastSize.get(tabId) ?? { cols: 80, rows: 24 };
       const status = live || sess.status === 'running' ? 'running' : sess.status;
       return {

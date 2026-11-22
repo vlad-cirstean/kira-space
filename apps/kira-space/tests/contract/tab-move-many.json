@@ -1,0 +1,159 @@
+{
+  "TabsService.Inbound": [
+    {
+      "focus": true,
+      "incognito": false,
+      "tab": {
+        "active": true,
+        "id": "d1",
+        "kind": "data",
+        "order": 0,
+        "path": "p/d1",
+        "state": {},
+        "workspaceId": null
+      }
+    },
+    {
+      "focus": false,
+      "incognito": false,
+      "tab": {
+        "active": false,
+        "id": "h1",
+        "kind": "http-request",
+        "order": 1,
+        "path": "p/h1",
+        "state": {},
+        "workspaceId": null
+      }
+    },
+    {
+      "focus": false,
+      "incognito": true,
+      "tab": {
+        "active": false,
+        "id": "x3",
+        "kind": "data",
+        "order": 3,
+        "path": "p/x3",
+        "state": {},
+        "workspaceId": null
+      }
+    }
+  ],
+  "TabsService.Move": {
+    "created": false,
+    "windowKey": "B"
+  },
+  "TabsService.Move:terminals": {
+    "created": false,
+    "windowKey": "B"
+  },
+  "args:TabsService.Move:many": {
+    "drop": null,
+    "newWindow": false,
+    "tabs": [
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "d1",
+          "kind": "data",
+          "order": 0,
+          "path": "p/d1",
+          "state": {},
+          "workspaceId": null
+        }
+      },
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": false,
+          "id": "h1",
+          "kind": "http-request",
+          "order": 1,
+          "path": "p/h1",
+          "state": {},
+          "workspaceId": null
+        }
+      },
+      {
+        "focus": false,
+        "incognito": true,
+        "tab": {
+          "active": false,
+          "id": "x3",
+          "kind": "data",
+          "order": 3,
+          "path": "p/x3",
+          "state": {},
+          "workspaceId": null
+        }
+      }
+    ],
+    "target": "B",
+    "windowKey": "<masked>"
+  },
+  "args:TabsService.Move:terminals": {
+    "drop": null,
+    "newWindow": false,
+    "tabs": [
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "tm1",
+          "kind": "terminal",
+          "order": 0,
+          "path": "p/tm1",
+          "state": {},
+          "workspaceId": "automations"
+        },
+        "terminal": {
+          "cols": 80,
+          "rows": 24,
+          "shell": "/bin/sh",
+          "snapshot": "x",
+          "status": "running"
+        }
+      },
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": false,
+          "id": "td1",
+          "kind": "data",
+          "order": 1,
+          "path": "p/td1",
+          "state": {},
+          "workspaceId": null
+        }
+      },
+      {
+        "focus": false,
+        "incognito": false,
+        "tab": {
+          "active": true,
+          "id": "tm2",
+          "kind": "terminal",
+          "order": 0,
+          "path": "p/tm2",
+          "state": {},
+          "workspaceId": "automations"
+        },
+        "terminal": {
+          "cols": 80,
+          "rows": 24,
+          "shell": "/bin/sh",
+          "snapshot": "x",
+          "status": "running"
+        }
+      }
+    ],
+    "target": "B",
+    "windowKey": "<masked>"
+  }
+}

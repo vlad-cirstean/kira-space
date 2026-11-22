@@ -1,6 +1,8 @@
 import type { PaletteCommand } from '@workbench/shortcuts/palette';
+import { useTabSelectionStore } from '@workbench/state/tabSelection';
 import { useModeStore } from '../state/mode';
 import { useTabsStore } from '../state/tabs';
+import { KUBE_TAB_SCOPE } from '../studio/kubernetes/tabHost';
 import { useKubeTabsStore } from '../studio/kubernetes/tabs';
 import { studioPaletteCommands } from '../studio/shortcuts/studioCommands';
 
@@ -19,8 +21,16 @@ export function prevTab(): void {
 }
 
 export function closeTab(): void {
-  if (kubernetesActive()) useKubeTabsStore().closeActive();
-  else useTabsStore().closeActiveTab();
+  if (!kubernetesActive()) {
+    useTabsStore().closeActiveTab();
+    return;
+  }
+  const kube = useKubeTabsStore();
+  const selection = useTabSelectionStore();
+  // The active tab inside a selection of two or more closes the selection (P727).
+  if (kube.activeId !== null && selection.isMulti(KUBE_TAB_SCOPE, kube.activeId)) {
+    kube.closeMany(selection.selected(KUBE_TAB_SCOPE));
+  } else kube.closeActive();
 }
 
 /** The palette holds only commands with no other entry point (no button, menu item or chord);

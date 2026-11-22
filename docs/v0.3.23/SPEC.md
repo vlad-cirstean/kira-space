@@ -26,6 +26,7 @@ before implementation starts.
 | P724 | Fix verify-packaging scanning built binaries; release v0.3.22 re-dispatch | Todo |
 | P725 | SQL data view: column search moves into the Columns menu, scroll-to-column button | Done |
 | P726 | Approval cards: aligned value rows, request, values and scripts in separate boxes | Done |
+| P727 | Window tabs: select several tabs, close them or move them to another window | Done |
 
 ## P716
 
@@ -612,3 +613,54 @@ alignment, `approvals-alignment.spec.ts` updated, affected approval visual basel
 Throwaway screenshots for the user at chapter end.
 
 Result. Done. `ApprovalBox.vue` (workbench) frames one section; the card uses it for the whole body unless the kind sets registry flag `sections` (`db.query`, `db.exemption`, `db.response`, `kube.read`, `kube.response`, `api.request`, `api.response`). Sectioned bodies draw their own boxes, 8px apart, a box only when it has content: API request kept, request (line, body, headers, variables), values, prepare, transform; DB statement (with Parameters) between kept and Result script; kube read kept, request, prepare, transform; reviews (`ResultReview` takes `testidPrefix`) result (tabs plus mask/footnote notes), script, Will keep, with loading and error state in one `-box-state` box. Existing headings are the box titles; no copy keys added. `script.run`, `proof.review`, Space and phone kinds keep the single `approval-body` box. `UserInputsPanel` rows share one 3-column grid (label up to `max-w-48`, field, choice) through subgrid rows; an opened stored row puts its field and choice in the same columns. Choice groups line up on the left; their right edges follow the label width ("Keep 5 min" vs "Keep 60 min"). `scripts/check-ui-primitives.sh` U36 exemption moved from the card to `ApprovalBox.vue`. Tests: new `studio/approvals-sections.spec.ts` (11: value-row alignment for 1 to 4 rows, opened stored row with computed `display: grid`, box order and 8px gaps for API, DB, kube read, kube review, unopted kinds), `approvals-alignment.spec.ts` (A2 and A8 measure per box; shared geometry in `support/approvalGeometry.ts`), and a stale assertion in `approvals-api-kept-script.spec.ts` fixed (the reads note shows only for a transform read; the contract item reads in prepare). Ran 161 approval UI specs (`approvals*`, `studio/approvals-*`, `dbmcp-approval*`, `kept-variables*`, `e2e-kept-*`, `e2e-user-value`, `e2e-kube-script`, `e2e-api-review-chain`, `ade-mobile-approval`): all pass after the fix. `fc-match sans-serif` printed Inter and unchanged baselines still matched, so nine baselines were regenerated locally: `approvals-api-input-once`, `approvals-kube-read-script`, `approvals-kube-read-list`, `approvals-kube-review-script`, `approvals-kept-login`, `approvals-kept-review`, `approvals-kept-review-revealed`, `approvals-kube-read-review-option`, `approvals-kube-review-list`; the four visual specs pass on rerun. Mobile `tests/mobile/approvals.spec.ts` not run (phone kinds untouched, not built for this pass).
+
+## P727
+
+User, after P722: "For 722 it looks great. But i want the posibility to select multiple tabs and
+move them or close them. Make this possible as a followup".
+
+Follow-up to P722 (tab tear-off, `plans/P722.md`). Plan: `plans/P727.md`. One Sonnet pass.
+
+Scope.
+
+- Multi-select in every `TabStrip` whose host can close or move tabs: main workbench strip (Studio
+  data and API, Runs, Git, every module; ade review and opened-files windows share its host) and
+  the Kubernetes resource strip. Proof window strip (no close, no move) stays single.
+- Gestures, browser style: Cmd-click (macOS) or Ctrl-click (others) toggles, Shift-click selects
+  a range from the anchor, plain click clears and activates, Esc in the strip clears. Pinned tabs
+  never join. Selected chips use the neutral selection token (N18).
+- Selected set, from the tab menu: "Close N tabs" (dirty question once for the set, as Close
+  others), "Move N tabs to new window", "Move N tabs to window ▸ Window N". ⌘W closes the set when
+  the active tab is in it. No new chord.
+- Dragging a selected tab drags the set: out of the window moves all movable selected tabs; inside
+  the strip reorders them as one block. Sortable has no MultiDrag here (vue-draggable-plus bundles
+  Sortable without it and exports no class to mount it on); Sortable drags the grabbed chip, the
+  strip applies the set on drop.
+- Backend: `TabsService.Move` takes a list. One transaction re-keys every row; any refusal moves
+  nothing. Live Runs terminals: hold all, one move, re-own all, target adopts each; a failure
+  releases every hold. Target appends in source order; the source's active tab, if moved, else the
+  first, becomes active.
+
+Tests. Flow `TestTabMoveMany` (real PTY, two live terminals), P722 flow tests on the list shape, UI
+spec `tab-multi-select.spec.ts`, P722 UI spec on the list shape, one unit spec for block reorder.
+Throwaway screenshots for the user at chapter end; manual checklist for macOS, Windows, Linux X11.
+
+Result. Done.
+
+- Backend: `TabsService.Move` takes a list (100 tabs, 16 MiB limits); `TabsRepo.Move` runs one
+  transaction, any refusal moves nothing. Several live terminals: hold all, one move, re-own all,
+  target adopts each; failure releases every hold.
+- Frontend: `tabSelection` Pinia store keyed by selection scope; Primary-modifier toggle, Shift
+  range, plain click and Esc clear; grey selection token; multi menu; ⌘W closes the set; one shared
+  dirty question, per-tab prompts for API tabs; drag applies the set on drop via pure `moveBlock`.
+  Kubernetes strip included.
+- Also fixed: 3 unit specs (repo-tab slots, tabs-save-serialized x2) failing on chapter HEAD. Cause:
+  spread copy of `control` in `state/tabs.ts`; now prototype delegation.
+- Tests run once at end: flow `TestTabMoveMany` and P722 flow tests with `-race`, contract
+  `tab-move-many.json`; 63 UI tests across `tab-multi-select`, `tab-window-move` and related P722
+  specs; `move-block.spec.ts`; unit suite 1426 pass, 0 fail; four typechecks; hooks pass.
+- Screenshots (throwaway, not committed): 6 PNGs in the session scratchpad `p727-final/`. Confirm
+  shot shows the API per-tab dialog.
+- Not covered: pinned-repo-tab UI case (plan 4.4 item 1).
+- Manual platform checklist (plan section 10, 8 items): unverified here. macOS, Windows, Linux X11
+  and Wayland checks remain for the user.

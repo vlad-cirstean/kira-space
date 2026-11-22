@@ -91,7 +91,7 @@ func TestTabMove(t *testing.T) {
 		h1 := tab("h1", "http-request", 1, false)
 		saveTabs(t, app, "A", tab("d1", "data", 0, true), h1)
 		mark := app.Events.Mark()
-		res, err := move(bridge.TabsMoveArgs{Tab: h1, Target: "B"})
+		res, err := move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: h1}}, Target: "B"})
 		if err != nil || res.WindowKey != "B" || res.Created {
 			t.Fatalf("Move = %+v, %v", res, err)
 		}
@@ -104,7 +104,7 @@ func TestTabMove(t *testing.T) {
 			t.Fatalf("B tabs %+v, want h1 inactive", b)
 		}
 		in := inbound(t, app, "B")
-		if len(in) != 1 || in[0].Tab.ID != "h1" || in[0].Incognito || in[0].Terminal != nil {
+		if len(in) != 1 || in[0].Tab.ID != "h1" || !in[0].Focus || in[0].Incognito || in[0].Terminal != nil {
 			t.Fatalf("inbox %+v", in)
 		}
 		app.Contract(t, tabMoveScenario, "TabsService.Inbound", in)
@@ -125,7 +125,7 @@ func TestTabMove(t *testing.T) {
 	t.Run("incognito", func(t *testing.T) {
 		x1 := tab("x1", "data", 0, true)
 		saveTabs(t, app, "A", x1)
-		if _, err := move(bridge.TabsMoveArgs{Tab: x1, Target: "B", Incognito: true}); err != nil {
+		if _, err := move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: x1, Incognito: true}}, Target: "B"}); err != nil {
 			t.Fatal(err)
 		}
 		for _, k := range []string{"A", "B"} {
@@ -146,16 +146,16 @@ func TestTabMove(t *testing.T) {
 		saveTabs(t, app, "C", owned)
 		other := "ws1"
 		cases := map[string]bridge.TabsMoveArgs{
-			"id owned by a third window": {Tab: owned, Target: "B"},
-			"terminal outside Runs":      {Tab: spacemodel.TabRecord{ID: "r1", Path: "p", Kind: "terminal", State: json.RawMessage(`{}`), WorkspaceID: &other}, Target: "B"},
-			"repo kind":                  {Tab: tab("f1", "repo-file", 0, false), Target: "B"},
-			"terminal payload on data":   {Tab: tab("d9", "data", 0, false), Target: "B", Terminal: &bridge.TabTerminal{Status: "running"}},
-			"unknown target":             {Tab: tab("d8", "data", 0, false), Target: "nope"},
-			"target is source":           {Tab: tab("d7", "data", 0, false), Target: "A"},
-			"two destinations":           {Tab: tab("d6", "data", 0, false), Target: "B", NewWindow: true},
-			"no destination":             {Tab: tab("d5", "data", 0, false)},
-			"ephemeral target":           {Tab: tab("d4", "data", 0, false), Target: "E"},
-			"no window key":              {WindowKey: "", Tab: tab("d3", "data", 0, false), Target: "B"},
+			"id owned by a third window": {Tabs: []bridge.TabInbound{{Tab: owned}}, Target: "B"},
+			"terminal outside Runs":      {Tabs: []bridge.TabInbound{{Tab: spacemodel.TabRecord{ID: "r1", Path: "p", Kind: "terminal", State: json.RawMessage(`{}`), WorkspaceID: &other}}}, Target: "B"},
+			"repo kind":                  {Tabs: []bridge.TabInbound{{Tab: tab("f1", "repo-file", 0, false)}}, Target: "B"},
+			"terminal payload on data":   {Tabs: []bridge.TabInbound{{Tab: tab("d9", "data", 0, false), Terminal: &bridge.TabTerminal{Status: "running"}}}, Target: "B"},
+			"unknown target":             {Tabs: []bridge.TabInbound{{Tab: tab("d8", "data", 0, false)}}, Target: "nope"},
+			"target is source":           {Tabs: []bridge.TabInbound{{Tab: tab("d7", "data", 0, false)}}, Target: "A"},
+			"two destinations":           {Tabs: []bridge.TabInbound{{Tab: tab("d6", "data", 0, false)}}, Target: "B", NewWindow: true},
+			"no destination":             {Tabs: []bridge.TabInbound{{Tab: tab("d5", "data", 0, false)}}},
+			"ephemeral target":           {Tabs: []bridge.TabInbound{{Tab: tab("d4", "data", 0, false)}}, Target: "E"},
+			"no window key":              {WindowKey: "", Tabs: []bridge.TabInbound{{Tab: tab("d3", "data", 0, false)}}, Target: "B"},
 		}
 		for name, args := range cases {
 			t.Run(name, func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestTabMove(t *testing.T) {
 		app.Contract(t, tabMoveScenario, "TabsService.Capabilities:dragOut", caps)
 		d1 := tab("hit1", "console", 0, true)
 		saveTabs(t, app, "A", d1)
-		args := bridge.TabsMoveArgs{Tab: d1, Drop: &bridge.TabDrop{ClientX: 1400, ClientY: 300, GrabX: 10, GrabY: 10, InnerWidth: 1000, InnerHeight: 800}}
+		args := bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: d1}}, Drop: &bridge.TabDrop{ClientX: 1400, ClientY: 300, GrabX: 10, GrabY: 10, InnerWidth: 1000, InnerHeight: 800}}
 		res, err := move(args)
 		if err != nil || res.WindowKey != "C" || res.Created {
 			t.Fatalf("drop into C = %+v, %v", res, err)
@@ -193,7 +193,7 @@ func TestTabMove(t *testing.T) {
 		inbound(t, app, "C")
 		d2 := tab("hit2", "console", 0, true)
 		saveTabs(t, app, "A", d2)
-		res, err = move(bridge.TabsMoveArgs{Tab: d2, Drop: &bridge.TabDrop{ClientX: 500, ClientY: 300, InnerWidth: 1000, InnerHeight: 800}})
+		res, err = move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: d2}}, Drop: &bridge.TabDrop{ClientX: 500, ClientY: 300, InnerWidth: 1000, InnerHeight: 800}})
 		if err != nil || res.WindowKey != "A" {
 			t.Fatalf("drop inside source = %+v, %v, want source key", res, err)
 		}
@@ -209,9 +209,9 @@ func TestTabMove(t *testing.T) {
 		m1 := tab("miss1", "data", 0, true)
 		saveTabs(t, app, "A", m1)
 		drop := &bridge.TabDrop{ClientX: -60, ClientY: 200, GrabX: 120, GrabY: 15, InnerWidth: 1000, InnerHeight: 800}
-		app.Contract(t, tabMoveScenario, "args:TabsService.Move:drop", bridge.TabsMoveArgs{WindowKey: "A", Tab: m1, Drop: drop}, flowharness.Mask("windowKey"))
+		app.Contract(t, tabMoveScenario, "args:TabsService.Move:drop", bridge.TabsMoveArgs{WindowKey: "A", Tabs: []bridge.TabInbound{{Tab: m1}}, Drop: drop}, flowharness.Mask("windowKey"))
 		before := len(app.WindowMgr.OpenedTorn)
-		res, err := move(bridge.TabsMoveArgs{Tab: m1, Drop: drop})
+		res, err := move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: m1}}, Drop: drop})
 		if err != nil || !res.Created || res.WindowKey == "A" {
 			t.Fatalf("drop miss = %+v, %v", res, err)
 		}
@@ -237,7 +237,7 @@ func TestTabMove(t *testing.T) {
 		n1 := tab("new1", "data", 0, true)
 		saveTabs(t, app, "A", n1)
 		before := len(app.WindowMgr.OpenedTorn)
-		res, err := move(bridge.TabsMoveArgs{Tab: n1, NewWindow: true})
+		res, err := move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: n1}}, NewWindow: true})
 		if err != nil || !res.Created {
 			t.Fatalf("NewWindow = %+v, %v", res, err)
 		}
@@ -251,8 +251,8 @@ func TestTabMove(t *testing.T) {
 		sr.State = json.RawMessage(`{"runId":"run1"}`)
 		auto := spacemodel.AutomationsWorkspaceID
 		sr.WorkspaceID = &auto
-		args := bridge.TabsMoveArgs{Tab: sr, Target: "B"}
-		app.Contract(t, tabMoveScenario, "args:TabsService.Move:scriptRun", bridge.TabsMoveArgs{WindowKey: "A", Tab: sr, Target: "B"}, flowharness.Mask("windowKey"))
+		args := bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: sr}}, Target: "B"}
+		app.Contract(t, tabMoveScenario, "args:TabsService.Move:scriptRun", bridge.TabsMoveArgs{WindowKey: "A", Tabs: []bridge.TabInbound{{Tab: sr}}, Target: "B"}, flowharness.Mask("windowKey"))
 		if _, err := move(args); err != nil {
 			t.Fatal(err)
 		}
@@ -309,7 +309,7 @@ func TestTabMove(t *testing.T) {
 		app.WindowMgr.SetGeometry(geom("A", 0, 0, 0, 1000, 800, 0), geom("B", 1, 1200, 0, 1000, 800, 1))
 		f1 := tab("fg1", "data", 0, true)
 		saveTabs(t, app, "A", f1)
-		if _, err := move(bridge.TabsMoveArgs{Tab: f1, Target: "B"}); err != nil {
+		if _, err := move(bridge.TabsMoveArgs{Tabs: []bridge.TabInbound{{Tab: f1}}, Target: "B"}); err != nil {
 			t.Fatal(err)
 		}
 		bridge.ForgetTabWindow(tabs, "B")
@@ -330,9 +330,9 @@ func TestTabMoveWayland(t *testing.T) {
 	app.Contract(t, tabMoveScenario, "TabsService.Capabilities", caps)
 	d1 := tab("w1", "data", 0, true)
 	saveTabs(t, app, "A", d1)
-	_, err := app.W.Tabs.Move(bridge.TabsMoveArgs{WindowKey: "A", Tab: d1, Drop: &bridge.TabDrop{ClientX: -10, InnerWidth: 1000, InnerHeight: 800}})
+	_, err := app.W.Tabs.Move(bridge.TabsMoveArgs{WindowKey: "A", Tabs: []bridge.TabInbound{{Tab: d1}}, Drop: &bridge.TabDrop{ClientX: -10, InnerWidth: 1000, InnerHeight: 800}})
 	wantContract(t, err)
-	if res, err := app.W.Tabs.Move(bridge.TabsMoveArgs{WindowKey: "A", Tab: d1, NewWindow: true}); err != nil || !res.Created {
+	if res, err := app.W.Tabs.Move(bridge.TabsMoveArgs{WindowKey: "A", Tabs: []bridge.TabInbound{{Tab: d1}}, NewWindow: true}); err != nil || !res.Created {
 		t.Fatalf("NewWindow on Wayland = %+v, %v", res, err)
 	}
 }

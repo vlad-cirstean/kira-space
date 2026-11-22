@@ -326,6 +326,7 @@ const SNAPSHOT_LIMIT_BYTES = 4 * 1024 * 1024;
  *  terminal. Waits for xterm to parse everything already written. */
 export async function serializeTerminal(
   tabId: string,
+  maxBytes: number = SNAPSHOT_LIMIT_BYTES,
 ): Promise<{ snapshot: string; cols: number; rows: number } | null> {
   const attached = byTabId.get(tabId);
   if (!attached) return null;
@@ -333,7 +334,7 @@ export async function serializeTerminal(
   await new Promise<void>((resolve) => term.write('', resolve));
   let scrollback = attached.scrollback;
   let snapshot = serialize.serialize({ scrollback });
-  while (encoder.encode(snapshot).length > SNAPSHOT_LIMIT_BYTES && scrollback > 0) {
+  while (encoder.encode(snapshot).length > maxBytes && scrollback > 0) {
     scrollback = Math.floor(scrollback / 2);
     snapshot = serialize.serialize({ scrollback });
   }

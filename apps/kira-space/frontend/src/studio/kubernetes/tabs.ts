@@ -1,4 +1,5 @@
 import { newUuid } from '@shared/ids';
+import { moveBlock } from '@workbench/behaviour/sortableReorder';
 import type { TabLike } from '@workbench/host';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -91,6 +92,18 @@ export const useKubeTabsStore = defineStore('kubeTabs', () => {
     }
   }
 
+  /** Closes every listed tab; the active one falls to its nearest surviving neighbour. */
+  function closeMany(ids: readonly string[]): void {
+    const activeAt = activeId.value === null ? -1 : indexOf(activeId.value);
+    const before = list.value.slice(0, Math.max(activeAt, 0)).filter((t) => !ids.includes(t.id));
+    list.value = list.value.filter((t) => !ids.includes(t.id));
+    if (previewId.value && indexOf(previewId.value) < 0) previewId.value = null;
+    if (activeId.value !== null && indexOf(activeId.value) < 0) {
+      const next = list.value[before.length] ?? list.value[before.length - 1];
+      activeId.value = next?.id ?? null;
+    }
+  }
+
   function keepOnly(keep: (index: number) => boolean, anchorId: string): void {
     list.value = list.value.filter((_, i) => keep(i));
     if (previewId.value && indexOf(previewId.value) < 0) previewId.value = null;
@@ -119,6 +132,17 @@ export const useKubeTabsStore = defineStore('kubeTabs', () => {
     if (from < 0 || to < 0 || from === to) return;
     const [tab] = list.value.splice(from, 1);
     if (tab) list.value.splice(to, 0, tab);
+  }
+
+  /** Moves the listed tabs as one block, strip order kept, to toId's slot. */
+  function moveMany(ids: readonly string[], toId: string): void {
+    const byId = new Map(list.value.map((t) => [t.id, t]));
+    const order = moveBlock(
+      list.value.map((t) => t.id),
+      ids,
+      toId,
+    );
+    list.value = order.map((id) => byId.get(id) as KubeTab);
   }
 
   /** A context left the kubeconfig: its tabs go. */
@@ -162,7 +186,9 @@ export const useKubeTabsStore = defineStore('kubeTabs', () => {
     closeOthers,
     closeToTheRight,
     closeAll,
+    closeMany,
     move,
+    moveMany,
     dropClusters,
     activateNext,
     activatePrev,

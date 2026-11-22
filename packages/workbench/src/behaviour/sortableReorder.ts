@@ -21,6 +21,25 @@ export function moveId(ids: readonly string[], fromId: string, toId: string): st
   return next;
 }
 
+/** Moves the `moving` ids as one block (kept in `ids` order) to `toId`'s slot: after it when `toId`
+ *  sits past the block's first item, else before it. A drop onto a block member or an unknown id
+ *  changes nothing. A block of one equals `moveId`. */
+export function moveBlock(
+  ids: readonly string[],
+  moving: readonly string[],
+  toId: string,
+): string[] {
+  const set = new Set(moving);
+  const block = ids.filter((id) => set.has(id));
+  const to = ids.indexOf(toId);
+  if (block.length === 0 || to < 0 || set.has(toId)) return [...ids];
+  const after = to > ids.indexOf(block[0]);
+  const rest = ids.filter((id) => !set.has(id));
+  const at = rest.indexOf(toId) + (after ? 1 : 0);
+  rest.splice(at, 0, ...block);
+  return rest;
+}
+
 // One drag at a time. Shared, not per list: the list a cross-list drop lands in never saw the
 // drag start, yet must honour an Esc pressed during it.
 let dragCancelled = false;
@@ -75,7 +94,12 @@ export function useSortableReorder(
   ids: () => readonly string[],
   onMove: (fromId: string, toId: string) => void,
   options: SortableReorderOptions,
-): { dragging: Readonly<Ref<boolean>>; outside: Readonly<Ref<boolean>> } {
+): {
+  dragging: Readonly<Ref<boolean>>;
+  outside: Readonly<Ref<boolean>>;
+  /** Id of the item being dragged, null between drags. */
+  draggedId: Readonly<Ref<string | null>>;
+} {
   const rowIds = shallowRef<string[]>([]);
   watch(
     ids,
@@ -91,8 +115,8 @@ export function useSortableReorder(
   let last = { x: 0, y: 0 };
   const canLeave = (id: string | null | undefined) =>
     !!id && !!options.onDropOutside && (options.canDropOutside?.(id) ?? true);
-  let draggedId: string | null = null;
-  const tearing = () => canLeave(draggedId);
+  const draggedId = shallowRef<string | null>(null);
+  const tearing = () => canLeave(draggedId.value);
   const idOf = (el: HTMLElement) => options.itemId?.(el) ?? el.dataset.tabId ?? null;
 
   const sortable = useDraggable(
@@ -117,7 +141,7 @@ export function useSortableReorder(
       onStart: (evt) => {
         dragging.value = true;
         dragCancelled = false;
-        draggedId = idOf(evt.item);
+        draggedId.value = idOf(evt.item);
         last = { x: grab.x, y: grab.y };
         // Keeps pointermove/pointerup flowing once the pointer leaves the viewport, so a drag always ends.
         try {
@@ -130,6 +154,7 @@ export function useSortableReorder(
         const wasOutside = outside.value;
         dragging.value = false;
         outside.value = false;
+        draggedId.value = null;
         // Sortable swallows the click after a fallback drag; a release outside the viewport makes
         // none, so spend it here or the next real click is eaten.
         if (isOutside(last.x, last.y))
@@ -229,5 +254,5 @@ export function useSortableReorder(
     { immediate: true, flush: 'post' },
   );
 
-  return { dragging, outside };
+  return { dragging, outside, draggedId };
 }
