@@ -60,9 +60,9 @@ func TestInputDecisionTable(t *testing.T) {
 		{"user same origin default port", []seed{user(originA)}, ref("A.example:443"), InputStored, ""},
 		{"user same origin unreferenced", []seed{user(originA)}, unref("a.example"), "", "declared but not used"},
 		{"user other origin referenced", []seed{user(originA)}, ref("b.example"), "", "supplied for https://a.example; choose another input name for https://b.example"},
-		{"user other origin unreferenced", []seed{user(originA)}, unref("b.example"), "", "supplied for https://a.example"},
+		{"user other origin unreferenced", []seed{user(originA)}, unref("b.example"), "", "declared but not used"},
 		{"script entry referenced", []seed{script}, ref("a.example"), "", "made by a script; choose another input name"},
-		{"script entry unreferenced", []seed{script}, unref("a.example"), "", "made by a script"},
+		{"script entry unreferenced", []seed{script}, unref("a.example"), "", "declared but not used"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -80,15 +80,6 @@ func TestInputDecisionTable(t *testing.T) {
 				t.Fatalf("missing = %d, kept = %+v", p.MissingInputs(), p.Kept)
 			}
 		})
-	}
-}
-
-func TestInputReadByScriptCountsAsUsed(t *testing.T) {
-	in := withInputs(unrefGet(), tokenDecl)
-	in.ScriptReads = []string{"token"}
-	p, err := inputSvc(t).Plan(in)
-	if err != nil || p.MissingInputs() != 1 {
-		t.Fatalf("plan: %v, missing %d", err, p.MissingInputs())
 	}
 }
 

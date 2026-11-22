@@ -80,7 +80,8 @@ export type KeptList = z.infer<typeof keptListSchema>;
 export const keptValueSchema = /*#__PURE__*/ z.object({ json: z.string(), type: z.string() });
 export type KeptValue = z.infer<typeof keptValueSchema>;
 
-// A value a held result will keep (bridge DbMcpPendingKeep): a preview, empty for a secret, never stored yet.
+// A value a script will save, or a saved value it deletes (bridge DbMcpPendingKeep): a preview, empty for a
+// secret, never stored yet. A deleted row describes the value it removes.
 export const keptStagedSchema = /*#__PURE__*/ z.object({
   name: z.string(),
   type: z.string(),
@@ -89,5 +90,6 @@ export const keptStagedSchema = /*#__PURE__*/ z.object({
   secret: z.boolean(),
   preview: z.string(),
   previewTruncated: z.boolean(),
+  deleted: z.boolean().default(false),
 });
 export type KeptStaged = z.infer<typeof keptStagedSchema>;

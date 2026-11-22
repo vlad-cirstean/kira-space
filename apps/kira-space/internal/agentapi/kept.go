@@ -117,16 +117,20 @@ type keptPlan struct {
 
 func keptErr(format string, args ...any) error { return fmt.Errorf(format, args...) }
 
-func (s *Service) lookupStore(scope, name string) (keptvars.Entry, bool) {
-	if s.Kept == nil || scope == "" || keptvars.ValidName(name) != nil {
+// lookupStore finds the entry a reference names: a value this run's prepare script saved first, else the store.
+func (s *Service) lookupStore(in Input, name string) (keptvars.Entry, bool) {
+	if e, ok := in.Staged[name]; ok {
+		return e, true
+	}
+	if s.Kept == nil || in.Scope == "" || keptvars.ValidName(name) != nil {
 		return keptvars.Entry{}, false
 	}
-	return s.Kept.Get(scope, name)
+	return s.Kept.Get(in.Scope, name)
 }
 
 // admit records the entry a reference names: a live entry, or the stand-in of a needed input.
 func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]InputDecl, origin string) error {
-	e, ok := s.lookupStore(in.Scope, name)
+	e, ok := s.lookupStore(in, name)
 	if d, declared := decls[name]; declared {
 		use, err := judgeInput(d, e, ok, origin)
 		if err != nil {
@@ -150,9 +154,8 @@ func (s *Service) admit(kp *keptPlan, in Input, name string, decls map[string]In
 	return nil
 }
 
-// admitUnreferenced judges the declared inputs the request text does not reference: each must be read by a
-// script, else the declaration is dead.
-func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]InputDecl, origin string) error {
+// admitUnreferenced refuses a declared input the request text does not reference: the declaration is dead.
+func (s *Service) admitUnreferenced(kp *keptPlan, in Input) error {
 	done := map[string]bool{}
 	for _, u := range kp.inputs {
 		done[u.Name] = true
@@ -161,15 +164,7 @@ func (s *Service) admitUnreferenced(kp *keptPlan, in Input, decls map[string]Inp
 		if done[d.Name] {
 			continue
 		}
-		e, ok := s.lookupStore(in.Scope, d.Name)
-		use, err := judgeInput(decls[d.Name], e, ok, origin)
-		if err != nil {
-			return err
-		}
-		if !slices.Contains(in.ScriptReads, d.Name) {
-			return keptErr("input %q is declared but not used; write {{kept.%s}} where the value goes", d.Name, d.Name)
-		}
-		kp.inputs = append(kp.inputs, use)
+		return keptErr("input %q is declared but not used; write {{kept.%s}} where the value goes", d.Name, d.Name)
 	}
 	// Declaration order, whatever order the references came in.
 	slices.SortStableFunc(kp.inputs, func(a, b InputUse) int {
@@ -201,10 +196,10 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 			}
 		}
 	}
-	if err := s.admitUnreferenced(kp, in, decls, origin); err != nil {
+	if err := s.admitUnreferenced(kp, in); err != nil {
 		return nil, err
 	}
-	if err := s.checkRoom(in.Scope, len(kp.pending)+missingUnreferenced(kp)); err != nil {
+	if err := s.checkRoom(in.Scope, len(kp.pending)); err != nil {
 		return nil, err
 	}
 	if len(kp.order) == 0 {
@@ -223,17 +218,6 @@ func (s *Service) checkKept(in Input) (*keptPlan, error) {
 		}
 	}
 	return kp, nil
-}
-
-// missingUnreferenced counts needed inputs that only a script reads (they are not in pending).
-func missingUnreferenced(kp *keptPlan) int {
-	n := 0
-	for _, u := range kp.inputs {
-		if u.State == InputNeeded && !kp.pending[u.Name] {
-			n++
-		}
-	}
-	return n
 }
 
 func requestContentType(contentType string, headers []NameValue) string {
@@ -444,6 +428,13 @@ func (kp *keptPlan) apply(p *Planned, withValues bool) {
 	}
 	for _, name := range kp.order {
 		e := kp.entries[name]
+		if strings.HasPrefix(e.ID, keptvars.StagedIDPrefix) {
+			// A value prepare saved is no use of the store: the card lists it with the prepare script.
+			if withValues {
+				p.keptValues[name] = keptValue{raw: e.Value, typ: e.Type, secret: e.Secret}
+			}
+			continue
+		}
 		use := NewKeptUse(e, sites[name])
 		use.Pending = kp.pending[name]
 		p.Kept = append(p.Kept, use)

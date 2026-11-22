@@ -36,6 +36,10 @@ const (
 	PreviewBytes = 2 << 10
 )
 
+// StagedIDPrefix starts the id of an entry that exists only for one run: a value a prepare script saved
+// and the same request interpolates before anything reaches the store.
+const StagedIDPrefix = "staged:"
+
 // Source says where an entry came from. Request is display text only: secrets stay {{name}}.
 type Source struct {
 	Kind      SourceKind `json:"kind"`

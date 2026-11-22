@@ -427,7 +427,7 @@ type DbMcpPendingResponse struct {
 	Keep []DbMcpPendingKeep `json:"keep"`
 }
 
-// DbMcpPendingKeep is one value a held result will keep.
+// DbMcpPendingKeep is one value a held result will save, or one saved value it deletes.
 type DbMcpPendingKeep struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
@@ -436,6 +436,7 @@ type DbMcpPendingKeep struct {
 	Secret           bool   `json:"secret"`
 	Preview          string `json:"preview"`
 	PreviewTruncated bool   `json:"previewTruncated"`
+	Deleted          bool   `json:"deleted"`
 }
 
 // DbMcpPendingScript is the script of a held result.

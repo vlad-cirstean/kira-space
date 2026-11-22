@@ -234,7 +234,7 @@ func (s *Server) kubeFinish(ctx context.Context, call kubeCall, c kubernetes.Clu
 	var so *kubeScriptOutcome
 	if sc.hasTransform() {
 		so = s.transformKube(ctx, call, req, sc, resultText(res))
-		res, o, err = so.agentResult(nil, nil)
+		res, o, err = so.agentResult(nil, nil, nil)
 	}
 	// Read after the read: the user may have changed the setting while it ran. A cluster that is gone now
 	// is held and withheld by the recheck.
@@ -249,9 +249,11 @@ func (s *Server) kubeFinish(ctx context.Context, call kubeCall, c kubernetes.Clu
 			return errResult(refusal)
 		}
 	}
-	if so != nil && so.Failure == "" && ctx.Err() == nil {
-		if saved, failed := sc.kept.commit(keptSourceOfKube(ctx, c, call.tool, areq.Statement), ""); len(saved)+len(failed) > 0 {
-			return so.agentResult(saved, failed)
+	if sc != nil && (so == nil || so.Failure == "") && ctx.Err() == nil {
+		saved, failed, deleted := sc.kept.commit(keptSourceOfKube(ctx, c, call.tool, areq.Statement), "")
+		// A prepare-only script has no envelope to report in: the agent wrote the writes itself.
+		if so != nil && len(saved)+len(failed)+len(deleted) > 0 {
+			return so.agentResult(saved, failed, deleted)
 		}
 	}
 	return res, o, err

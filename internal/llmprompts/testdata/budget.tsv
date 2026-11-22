@@ -78,7 +78,7 @@ dbmcp.tool.api_request.arg.script	82
 dbmcp.tool.api_request.arg.script.prepare	279
 dbmcp.tool.api_request.arg.script.input	49
 dbmcp.tool.api_request.arg.script.transform	395
-dbmcp.tool.api_request.scripts	1017
+dbmcp.tool.api_request.scripts	1167
 dbmcp.tool.api_request.reviewSuffix	183
 dbmcp.tool.list_children	222
 dbmcp.tool.list_children.arg.connectionId	36
@@ -149,7 +149,7 @@ dbmcp.tool.operations.arg.cancel	41
 dbmcp.tool.operations	228
 dbmcp.tool.run_query.arg.explain	75
 dbmcp.tool.run_query.arg.includeRaw	59
-dbmcp.tool.run_query.scripts	1460
+dbmcp.tool.run_query.scripts	1469
 dbmcp.tool.get_script_run.arg.contains	70
 dbmcp.tool.get_script_run.arg.from	50
 dbmcp.tool.get_script_run.arg.lines	42
@@ -168,7 +168,7 @@ headless.tool.state.action.remote.fetch	58
 headless.tool.state.action.branch.push	56
 headless.tool.state.action.review.reply	83
 headless.tool.state.action.step.finish	170
-dbmcp.tool.kube.scripts	1211
+dbmcp.tool.kube.scripts	1263
 dbmcp.tool.kube_list_resources.arg.script	79
 dbmcp.tool.kube_list_resources.arg.script.prepare	145
 dbmcp.tool.kube_list_resources.arg.script.transform	138

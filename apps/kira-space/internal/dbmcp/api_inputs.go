@@ -27,23 +27,6 @@ func inputDecls(in []apiInput) []agentapi.InputDecl {
 	return out
 }
 
-// scriptReads lists the names the scripts read by literal kira.getValue: a declared input one of them reads
-// counts as used.
-func scriptReads(a *apiScriptArgs) []string {
-	if a == nil {
-		return nil
-	}
-	var out []string
-	for _, src := range []string{a.Prepare, a.Transform} {
-		for _, st := range keptvars.ScanScript(src) {
-			if st.Op == "getValue" {
-				out = append(out, st.Name)
-			}
-		}
-	}
-	return out
-}
-
 // apiInputPayload is a declared input as the card shows it. Never a value.
 type apiInputPayload struct {
 	Name   string `json:"name"`

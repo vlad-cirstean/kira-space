@@ -230,6 +230,8 @@ const apiScriptPayloadSchema = /*#__PURE__*/ z.object({
       changed: z.array(z.string()),
       input: z.string(),
       inputTruncated: z.boolean(),
+      // Values the prepare script saves: this request interpolates them, the store takes them after the result.
+      writes: z.array(keptStagedSchema),
     })
     .nullable(),
   transform: transformViewSchema.nullable(),

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -18,85 +18,125 @@ import (
 	"github.com/kirathecat/kira-studio/internal/secrets"
 )
 
-// maxKeptScriptNames bounds the distinct names a script reads and the values it keeps per run.
+// maxKeptScriptNames bounds the distinct names a script mentions and the values it saves per run.
 const maxKeptScriptNames = 16
 
-// keptRun is the kept variables binding of one api_request. Reads are fixed at plan time (the card lists
-// them); writes are staged and reach the store only after the response is final.
+// kindVars marks a failure of the plain and secret globals (a refused write, a changed value): the text is
+// the whole message.
+const kindVars jsengine.Kind = "vars"
+
+// keptRun is the plain and secret globals of one script run (api_request, run_query, kube reads). Names are
+// read from the source at plan time (the card lists them); writes are staged and reach the store only after
+// the response is final.
 type keptRun struct {
 	store KeptStore
 	scope string
 	sites map[scriptStage][]keptvars.ScriptSite
-	// uses are the variables the scripts may read, as they stood at plan time, with script sites.
+	// uses are the saved plain variables the scripts mention, as they stood at plan time, with script sites.
 	uses []agentapi.KeptUse
-	// mayKeep are the names the transform declares, with their sites in its source.
+	// mayKeep are the names the scripts write or delete, with their sites in the source.
 	mayKeep []keptMayKeep
 
-	mu           sync.Mutex
+	mu sync.Mutex
+	// prepareReads is set when the prepare script was handed saved values: it may copy one into the request.
 	prepareReads bool
+	// injected is what each stage's plain object held when it started: the baseline of the diff.
+	injected     map[scriptStage]map[string]json.RawMessage
 	staged       map[string]json.RawMessage
 	order        []string
+	deleted      map[string]string // name -> the entry id the script saw
+	deletedOrder []string
 	userDropped  []string // staged values the user removed; commit reports them
-	// secretNames are the staged names a kira.storeSecret call wrote: secret whatever the script read.
+	// secretNames are the staged names a secret.x assignment wrote.
 	secretNames map[string]bool
-	// secretRead taints every value the run stages: it may have copied a secret.
-	secretRead  bool
 	secretForms []string
-	// sourceExpiry is the earliest expiry among the secret or bound values read.
-	sourceExpiry time.Time
-	// boundOrigin is the origin of the bound (user or user-derived) values the run read; mixedOrigins is set
-	// when it read bound values of two origins, so no single origin can own what it derives.
-	boundOrigin  string
-	mixedOrigins bool
 }
 
-// keptMayKeep is a name the transform script may keep, with where its source says so. Secret is set when a
-// kira.storeSecret call names it; a value may also turn secret at run time (the script read a secret).
+// keptMayKeep is a name the scripts may save or delete, with where the source says so.
 type keptMayKeep struct {
 	Name   string              `json:"name"`
 	Secret bool                `json:"secret"`
 	Sites  []agentapi.KeptSite `json:"sites"`
 }
 
-// keptRunFor reads the scripts for kira.getValue and kira.storeValue calls and snapshots what they may read. nil
-// without kept support or without a call. A non-empty string is the refusal text; nothing ran.
-func (s *Server) keptRunFor(scope string, sc *apiScripts, nothing string) (*keptRun, string) {
+var scriptStages = []scriptStage{stagePrepare, stageTransform}
+
+// keptRunFor reads the scripts for plain and secret mentions and snapshots the saved values they may see. nil
+// without saved-variable support or without a mention. A non-empty string is the refusal text; nothing ran.
+// tool names the MCP tool, for the secret-read refusal.
+func (s *Server) keptRunFor(scope string, sc *apiScripts, tool, nothing string) (*keptRun, string) {
 	if s.cfg.Kept == nil || sc == nil {
 		return nil, ""
 	}
-	k := &keptRun{store: s.cfg.Kept, scope: scope, sites: map[scriptStage][]keptvars.ScriptSite{}, staged: map[string]json.RawMessage{}, secretNames: map[string]bool{}}
+	k := &keptRun{
+		store: s.cfg.Kept, scope: scope, sites: map[scriptStage][]keptvars.ScriptSite{},
+		injected: map[scriptStage]map[string]json.RawMessage{},
+		staged:   map[string]json.RawMessage{}, secretNames: map[string]bool{}, deleted: map[string]string{},
+	}
 	k.sites[stagePrepare] = keptvars.ScanScript(sc.Prepare)
 	k.sites[stageTransform] = keptvars.ScanScript(sc.Transform)
-	if slices.ContainsFunc(k.sites[stagePrepare], func(st keptvars.ScriptSite) bool { return st.Op != "getValue" }) {
-		return nil, "kira.storeValue and kira.storeSecret are available in the transform script only. " + nothing
-	}
 	if len(k.sites[stagePrepare]) == 0 && len(k.sites[stageTransform]) == 0 {
 		return nil, ""
 	}
-	reads, sets := map[string]bool{}, map[string]bool{}
-	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
+	mentions, writes := map[string]bool{}, map[string]bool{}
+	for _, stage := range scriptStages {
 		for _, st := range k.sites[stage] {
-			if st.Op == "getValue" {
-				reads[st.Name] = true
-			} else {
-				sets[st.Name] = true
+			if st.Kind == keptvars.KindPlain {
+				mentions[st.Name] = true
+			}
+			if st.Op != keptvars.OpRead {
+				writes[st.Kind+"."+st.Name] = true
 			}
 		}
 	}
-	if len(reads) > maxKeptScriptNames || len(sets) > maxKeptScriptNames {
-		return nil, fmt.Sprintf("a script can read at most %d kept variables and keep at most %d. %s", maxKeptScriptNames, maxKeptScriptNames, nothing)
+	if len(mentions) > maxKeptScriptNames || len(writes) > maxKeptScriptNames {
+		return nil, fmt.Sprintf("a script can mention at most %d saved variables and save at most %d. %s", maxKeptScriptNames, maxKeptScriptNames, nothing)
 	}
-	for _, stage := range []scriptStage{stagePrepare, stageTransform} {
+	if text := k.refuseSecretReads(tool); text != "" {
+		return nil, text + " " + nothing
+	}
+	for _, stage := range scriptStages {
 		for _, st := range k.sites[stage] {
 			site := agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To}
-			if st.Op != "getValue" {
-				k.addMayKeep(st.Name, site, st.Op == "storeSecret")
-				continue
+			if st.Op != keptvars.OpRead {
+				k.addMayKeep(st.Name, site, st.Kind == keptvars.KindSecret)
 			}
-			k.addUse(st.Name, site)
+			if st.Kind == keptvars.KindPlain {
+				k.addUse(st.Name, site)
+			}
 		}
 	}
 	return k, ""
+}
+
+// refuseSecretReads is the refusal text for a script that mentions a saved secret as plain.x, or writes a
+// name as the other kind than it is saved as. "" is ok. Secrets are used in api_request as {{secret.x}}.
+func (k *keptRun) refuseSecretReads(tool string) string {
+	for _, stage := range scriptStages {
+		for _, st := range k.sites[stage] {
+			e, ok := k.lookup(st.Name)
+			switch {
+			case !ok:
+			case st.Kind == keptvars.KindPlain && e.Secret && st.Op == keptvars.OpWrite:
+				return clashText(st.Name, true)
+			case st.Kind == keptvars.KindPlain && e.Secret && tool == "api_request":
+				return fmt.Sprintf("%q is secret; scripts cannot read secrets. Write {{secret.%s}} in the request.", st.Name, st.Name)
+			case st.Kind == keptvars.KindPlain && e.Secret:
+				return fmt.Sprintf("%q is secret; secrets are used only in api_request, as {{secret.%s}}.", st.Name, st.Name)
+			case st.Kind == keptvars.KindSecret && !e.Secret:
+				return clashText(st.Name, false)
+			}
+		}
+	}
+	return ""
+}
+
+// clashText is the refusal for a name written as the other kind than the store holds it as.
+func clashText(name string, isSecret bool) string {
+	if isSecret {
+		return fmt.Sprintf("%q is saved as a secret; write secret.%s or use another name.", name, name)
+	}
+	return fmt.Sprintf("%q is saved as a plain value; write plain.%s or use another name.", name, name)
 }
 
 func (k *keptRun) addMayKeep(name string, site agentapi.KeptSite, secret bool) {
@@ -118,188 +158,205 @@ func (k *keptRun) addUse(name string, site agentapi.KeptSite) {
 		}
 	}
 	e, ok := k.lookup(name)
-	if !ok {
+	if !ok || e.Secret {
 		return
 	}
 	u := agentapi.KeptUse{
 		ID: e.ID, Name: name, Type: e.Type, Items: e.Items, Bytes: e.Bytes, Secret: e.Secret,
 		Source: e.Source, Origin: e.Origin, CreatedAt: e.CreatedAt, ExpiresAt: e.ExpiresAt, Sites: []agentapi.KeptSite{site},
 	}
-	if !e.Secret {
-		u.Preview, u.PreviewTruncated = keptvars.Preview(e.Value, keptvars.PreviewBytes)
-	}
+	u.Preview, u.PreviewTruncated = keptvars.Preview(e.Value, keptvars.PreviewBytes)
 	k.uses = append(k.uses, u)
 }
 
 func (k *keptRun) lookup(name string) (keptvars.Entry, bool) {
+	if keptvars.ValidName(name) != nil {
+		return keptvars.Entry{}, false
+	}
 	return k.store.Get(k.scope, name)
 }
 
-// rebind refreshes the uses of names after the store changed them (a user value was supplied or replaced): a use made at plan time holds the old entry id, or none for a value that
-// did not exist yet.
-func (k *keptRun) rebind(names []string) {
-	if k == nil {
-		return
-	}
-	for _, name := range names {
-		var sites []agentapi.KeptSite
-		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
-			sites = k.uses[i].Sites
-			k.uses = slices.Delete(k.uses, i, i+1)
-		} else {
-			for _, stage := range []scriptStage{stagePrepare, stageTransform} {
-				for _, st := range k.sites[stage] {
-					if st.Op == "getValue" && st.Name == name {
-						sites = append(sites, agentapi.KeptSite{Field: "script", Part: string(stage), From: st.From, To: st.To})
-					}
-				}
-			}
-		}
-		for _, site := range sites {
-			k.addUse(name, site)
-		}
-	}
-}
-
-// readsSecret reports whether a script reads a secret kept value (a user value, one derived from it, or any
-// other secret). A transform can reshape it past any mask, so the result always goes through review.
-func (k *keptRun) readsSecret() bool {
-	if k == nil {
-		return false
-	}
-	return slices.ContainsFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Secret || u.Bound() })
-}
-
-// declared reports whether the stage's source calls op with the literal name.
-func (k *keptRun) declared(stage scriptStage, op, name string) bool {
-	return slices.ContainsFunc(k.sites[stage], func(st keptvars.ScriptSite) bool { return st.Op == op && st.Name == name })
-}
-
-// Bindings is the kira global for stage, or none when its source makes no call (a script may use its own
-// variable named kira).
-func (k *keptRun) Bindings(stage scriptStage) []jsengine.Binding {
+// bindings are the plain and secret globals of stage: plain holds the current values of the names the stage
+// mentions, secret starts empty. none when the source mentions neither (a script may use its own variable
+// of that name). A non-empty string is the refusal text: a value changed since the plan.
+func (k *keptRun) bindings(stage scriptStage) ([]jsengine.Binding, string) {
 	if k == nil || len(k.sites[stage]) == 0 {
-		return nil
+		return nil, ""
 	}
-	funcs := map[string]jsengine.HostFunc{"getValue": k.get(stage)}
-	if stage == stageTransform {
-		funcs["storeValue"] = k.set(false)
-		funcs["storeSecret"] = k.set(true)
-	}
-	return []jsengine.Binding{{Name: "kira", Funcs: funcs}}
-}
-
-func hostArgs(args json.RawMessage, want int, usage string) ([]json.RawMessage, error) {
-	var a []json.RawMessage
-	if err := json.Unmarshal(args, &a); err != nil || len(a) != want {
-		return nil, errors.New(usage)
-	}
-	return a, nil
-}
-
-func (k *keptRun) get(stage scriptStage) jsengine.HostFunc {
-	return func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
-		a, err := hostArgs(args, 1, "kira.getValue takes a name")
-		if err != nil {
-			return nil, err
-		}
-		var name string
-		if json.Unmarshal(a[0], &name) != nil || !k.declared(stage, "getValue", name) {
-			return nil, errors.New("this kept variable is not listed in this script: call kira.getValue with a literal name")
-		}
-		planned := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name })
-		e, ok := k.lookup(name)
-		if planned < 0 || !ok || e.ID != k.uses[planned].ID {
-			return nil, fmt.Errorf("no kept variable %q (it may have expired, been cleared or been replaced since approval)", name)
-		}
-		if e.Secret {
-			if stage == stagePrepare {
-				return nil, fmt.Errorf("kept variable %q is secret; write {{kept.%s}} in the request instead of reading it in prepare", name, name)
-			}
-			k.noteSecret(e)
-		}
-		if e.Bound() {
-			k.noteBound(e.Origin, e.ExpiresAt)
-		}
-		k.mu.Lock()
-		k.prepareReads = k.prepareReads || stage == stagePrepare
-		k.mu.Unlock()
-		return e.Value, nil
-	}
-}
-
-// noteBound records the origin a read bound value ties the run's derived values to.
-func (k *keptRun) noteBound(origin string, expiresAt time.Time) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	k.noteExpiry(expiresAt)
-	switch {
-	case k.boundOrigin == "":
-		k.boundOrigin = origin
-	case k.boundOrigin != origin:
-		k.mixedOrigins = true
+	plain := map[string]json.RawMessage{}
+	for _, st := range k.sites[stage] {
+		if st.Kind != keptvars.KindPlain {
+			continue
+		}
+		if _, done := plain[st.Name]; done {
+			continue
+		}
+		if v, ok := k.staged[st.Name]; ok && !k.secretNames[st.Name] {
+			plain[st.Name] = bytes.Clone(v)
+			continue
+		}
+		if _, gone := k.deleted[st.Name]; gone {
+			continue
+		}
+		i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == st.Name })
+		if i < 0 {
+			continue
+		}
+		e, ok := k.lookup(st.Name)
+		if !ok || e.ID != k.uses[i].ID {
+			return nil, fmt.Sprintf("no saved variable %q (it may have expired, been cleared or been replaced since approval)", st.Name)
+		}
+		plain[st.Name] = e.Value
 	}
+	k.injected[stage] = maps.Clone(plain)
+	k.prepareReads = k.prepareReads || stage == stagePrepare && len(plain) > 0
+	plainJSON, _ := json.Marshal(plain)
+	return []jsengine.Binding{
+		{Name: keptvars.KindPlain, Value: plainJSON, ReadBack: true},
+		{Name: keptvars.KindSecret, Value: json.RawMessage("{}"), ReadBack: true},
+	}, ""
 }
 
-func (k *keptRun) noteSecret(e keptvars.Entry) {
+var invalidTypeText = map[string]string{
+	"function": "a function", "symbol": "a symbol", "undefined": "undefined", "accessor": "an accessor property",
+}
+
+// settle diffs the globals after a successful run and stages what changed: a plain key that is new or
+// changed is a write, one that is gone a delete, every secret key a write. A refusal fails the stage like
+// a thrown error; the text names the rule and never a value. "" is ok and everything was staged.
+func (k *keptRun) settle(stage scriptStage, rb map[string]jsengine.ReadBack) string {
+	if k == nil || len(rb) == 0 {
+		return ""
+	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	k.secretRead = true
-	k.noteExpiry(e.ExpiresAt)
-	// A string is masked by its text, so a quoted JSON string stays valid JSON; a structure by its leaves too.
-	k.secretForms = append(k.secretForms, keptvars.SecretTexts(e)...)
-}
-
-// noteExpiry keeps the earliest expiry of the secret or bound values the run read; a derived value never
-// outlives its source. The caller holds k.mu.
-func (k *keptRun) noteExpiry(at time.Time) {
-	if k.sourceExpiry.IsZero() || at.Before(k.sourceExpiry) {
-		k.sourceExpiry = at
+	type write struct {
+		kind, name string
+		value      json.RawMessage
 	}
-}
-
-// set stages a value for kira.storeValue, or for kira.storeSecret when secret; nothing reaches the store before commit.
-func (k *keptRun) set(secret bool) jsengine.HostFunc {
-	op, call := "storeValue", "kira.storeValue"
-	if secret {
-		op, call = "storeSecret", "kira.storeSecret"
-	}
-	return func(_ context.Context, args json.RawMessage) (json.RawMessage, error) {
-		a, err := hostArgs(args, 2, call+" takes a name and a value")
-		if err != nil {
-			return nil, err
-		}
-		var name string
-		if json.Unmarshal(a[0], &name) != nil || !k.declared(stageTransform, op, name) {
-			return nil, errors.New("this kept variable is not listed in this script: call " + call + " with a literal name")
-		}
-		if len(a[1]) > keptvars.MaxValueBytes {
-			return nil, fmt.Errorf("kept variable %q: %w", name, keptvars.ErrTooLarge)
-		}
-		typ, _, _, err := keptvars.Describe(a[1])
-		if err != nil {
-			return nil, fmt.Errorf("kept variable %q: %w", name, err)
-		}
-		k.mu.Lock()
-		defer k.mu.Unlock()
-		if _, seen := k.staged[name]; !seen {
-			if len(k.order) >= maxKeptScriptNames {
-				return nil, fmt.Errorf("a script can keep at most %d values per run", maxKeptScriptNames)
+	var writes []write
+	var deletes []string
+	inj := k.injected[stage]
+	plainKeys := map[string]bool{}
+	secretKeys := map[string]bool{}
+	for _, kind := range []string{keptvars.KindPlain, keptvars.KindSecret} {
+		r := rb[kind]
+		names := slices.Sorted(maps.Keys(r.JSON))
+		names = append(names, slices.Sorted(maps.Keys(r.Invalid))...)
+		for _, name := range names {
+			if err := keptvars.ValidName(name); err != nil {
+				return fmt.Sprintf("%s[%q] is not a valid name: start with a letter, then letters, digits or _, at most 40.", kind, name)
 			}
-			k.order = append(k.order, name)
+			if typ, bad := r.Invalid[name]; bad {
+				return fmt.Sprintf("%s.%s is %s; save text, a number, true/false, null, a list or an object.", kind, name, invalidTypeText[typ])
+			}
+			if kind == keptvars.KindSecret {
+				secretKeys[name] = true
+				writes = append(writes, write{kind, name, r.JSON[name]})
+				continue
+			}
+			plainKeys[name] = true
+			if old, had := inj[name]; !had || !bytes.Equal(old, r.JSON[name]) {
+				writes = append(writes, write{kind, name, r.JSON[name]})
+			}
 		}
-		k.staged[name] = bytes.Clone(a[1])
-		if secret {
-			k.secretNames[name] = true
-			// The agent never sees the value: mask it from the transform's result like a secret the script read.
-			k.secretForms = append(k.secretForms, keptvars.SecretTexts(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: a[1]})...)
-		}
-		return nil, nil
 	}
+	for _, name := range slices.Sorted(maps.Keys(inj)) {
+		if !plainKeys[name] {
+			deletes = append(deletes, name)
+		}
+	}
+	for _, w := range writes {
+		if w.kind == keptvars.KindPlain && secretKeys[w.name] {
+			return bothKindsText(w.name)
+		}
+	}
+	for _, name := range deletes {
+		if secretKeys[name] {
+			return bothKindsText(name)
+		}
+	}
+	for _, w := range writes {
+		if _, ok := k.staged[w.name]; ok && k.secretNames[w.name] != (w.kind == keptvars.KindSecret) {
+			return bothKindsText(w.name)
+		}
+	}
+	for _, w := range writes {
+		if !k.hasSite(stage, w.kind, w.name, keptvars.OpWrite) {
+			return fmt.Sprintf("%s.%s is not written literally in the script; write %s.%s = … so the user sees it.", w.kind, w.name, w.kind, w.name)
+		}
+		if e, ok := k.lookup(w.name); ok && e.Secret != (w.kind == keptvars.KindSecret) {
+			return clashText(w.name, e.Secret)
+		}
+	}
+	for _, name := range deletes {
+		if !k.hasSite(stage, keptvars.KindPlain, name, keptvars.OpDelete) {
+			return fmt.Sprintf("plain.%s is not deleted literally in the script; write delete plain.%s so the user sees it.", name, name)
+		}
+	}
+	// Every refusal comes before the first staging: a refusal leaves nothing half staged.
+	added := 0
+	for _, w := range writes {
+		if _, seen := k.staged[w.name]; !seen {
+			added++
+		}
+	}
+	if len(k.order)+added > maxKeptScriptNames {
+		return fmt.Sprintf("a script can save at most %d values per run", maxKeptScriptNames)
+	}
+	for _, w := range writes {
+		if len(w.value) > keptvars.MaxValueBytes {
+			return fmt.Sprintf("saved variable %q: %s", w.name, keptvars.ErrTooLarge)
+		}
+		if _, _, _, err := keptvars.Describe(w.value); err != nil {
+			return fmt.Sprintf("saved variable %q: %s", w.name, err)
+		}
+	}
+	for _, w := range writes {
+		if _, seen := k.staged[w.name]; !seen {
+			k.order = append(k.order, w.name)
+		}
+		k.staged[w.name] = bytes.Clone(w.value)
+		delete(k.deleted, w.name)
+		k.deletedOrder = slices.DeleteFunc(k.deletedOrder, func(n string) bool { return n == w.name })
+		if w.kind == keptvars.KindSecret {
+			k.secretNames[w.name] = true
+			typ, _, _, _ := keptvars.Describe(w.value)
+			// The agent never sees the value: mask it from the transform's result like any secret.
+			k.secretForms = append(k.secretForms, keptvars.SecretTexts(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: w.value})...)
+		} else {
+			delete(k.secretNames, w.name)
+		}
+	}
+	for _, name := range deletes {
+		if v, ok := k.staged[name]; ok {
+			clear(v)
+			delete(k.staged, name)
+			k.order = slices.DeleteFunc(k.order, func(n string) bool { return n == name })
+		}
+		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
+			if _, dup := k.deleted[name]; !dup {
+				k.deletedOrder = append(k.deletedOrder, name)
+			}
+			k.deleted[name] = k.uses[i].ID
+		}
+	}
+	return ""
 }
 
-// secretStaged reports whether the staged name will be stored as a secret. The caller holds k.mu.
-func (k *keptRun) secretStaged(name string) bool { return k.secretRead || k.secretNames[name] }
+func bothKindsText(name string) string {
+	return fmt.Sprintf("%q is written as both plain.%s and secret.%s; use one.", name, name, name)
+}
+
+// hasSite reports whether stage's source has a literal site of kind for name with op (a write also counts
+// for a read).
+func (k *keptRun) hasSite(stage scriptStage, kind, name, op string) bool {
+	return slices.ContainsFunc(k.sites[stage], func(st keptvars.ScriptSite) bool {
+		return st.Kind == kind && st.Name == name && st.Op == op
+	})
+}
 
 // drop forgets the staged values: the user withheld the response, or nothing completed.
 func (k *keptRun) drop() {
@@ -313,10 +370,11 @@ func (k *keptRun) drop() {
 	}
 	clear(k.staged)
 	clear(k.secretNames)
-	k.order = nil
+	clear(k.deleted)
+	k.order, k.deletedOrder = nil, nil
 }
 
-// dropName forgets one staged value the user chose not to keep. false for an unknown name.
+// dropName forgets one staged write or delete the user chose not to apply. false for an unknown name.
 func (k *keptRun) dropName(name string) bool {
 	if k == nil {
 		return false
@@ -324,32 +382,64 @@ func (k *keptRun) dropName(name string) bool {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	v, ok := k.staged[name]
-	if !ok {
+	_, wasDeleted := k.deleted[name]
+	if !ok && !wasDeleted {
 		return false
 	}
 	clear(v)
 	delete(k.staged, name)
 	delete(k.secretNames, name)
+	delete(k.deleted, name)
 	k.order = slices.DeleteFunc(k.order, func(n string) bool { return n == name })
+	k.deletedOrder = slices.DeleteFunc(k.deletedOrder, func(n string) bool { return n == name })
 	k.userDropped = append(k.userDropped, name)
 	return true
 }
 
-// stagedViews is what the review card shows under "Will keep": a preview per value, none for a secret (one
-// kira.storeSecret wrote, or one the run may have copied from a secret).
+// stagedEntries are the values the scripts staged so far, as entries a request can interpolate. Their ids
+// carry stagedIDPrefix; the values are copies.
+func (k *keptRun) stagedEntries() map[string]keptvars.Entry {
+	if k == nil {
+		return nil
+	}
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if len(k.staged) == 0 {
+		return nil
+	}
+	out := make(map[string]keptvars.Entry, len(k.staged))
+	for name, v := range k.staged {
+		typ, items, size, _ := keptvars.Describe(v)
+		out[name] = keptvars.Entry{
+			Meta:  keptvars.Meta{ID: keptvars.StagedIDPrefix + name, Scope: k.scope, Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretNames[name]},
+			Value: bytes.Clone(v),
+		}
+	}
+	return out
+}
+
+// stagedViews is what the review card shows under "Will save": a preview per value, none for a secret, and a
+// row per saved value the script deletes.
 func (k *keptRun) stagedViews() []HeldKeep {
 	if k == nil {
 		return nil
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	out := make([]HeldKeep, 0, len(k.order))
+	out := make([]HeldKeep, 0, len(k.order)+len(k.deletedOrder))
 	for _, name := range k.order {
 		v := k.staged[name]
 		typ, items, size, _ := keptvars.Describe(v)
-		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretStaged(name)}
+		h := HeldKeep{Name: name, Type: typ, Items: items, Bytes: size, Secret: k.secretNames[name]}
 		if !h.Secret {
 			h.Preview, h.PreviewTruncated = keptvars.Preview(v, keptvars.PreviewBytes)
+		}
+		out = append(out, h)
+	}
+	for _, name := range k.deletedOrder {
+		h := HeldKeep{Name: name, Deleted: true}
+		if i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == name }); i >= 0 {
+			h.Type, h.Items, h.Bytes = k.uses[i].Type, k.uses[i].Items, k.uses[i].Bytes
 		}
 		out = append(out, h)
 	}
@@ -365,14 +455,14 @@ func (k *keptRun) stagedSecret(name string) (string, bool) {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 	v, ok := k.staged[name]
-	if !ok || !k.secretStaged(name) {
+	if !ok || !k.secretNames[name] {
 		return "", false
 	}
 	typ, _, _, _ := keptvars.Describe(v)
 	return keptvars.SecretText(keptvars.Entry{Meta: keptvars.Meta{Type: typ}, Value: v}), true
 }
 
-// keptSummary is what the agent learns about a value it kept: never the value.
+// keptSummary is what the agent learns about a value it saved: never the value.
 type keptSummary struct {
 	Name             string `json:"name"`
 	Type             string `json:"type"`
@@ -381,11 +471,11 @@ type keptSummary struct {
 	ExpiresInSeconds int    `json:"expiresInSeconds"`
 }
 
-// errMixedOrigins is the refusal text for values derived from user values bound to different origins.
-const errMixedOrigins = "the script read user values supplied for different origins, so its values cannot be bound to one origin"
-
 // errUserDropped is the refusal text for a staged value the user removed before sending the result.
-const errUserDropped = "the user chose not to keep it"
+const errUserDropped = "the user chose not to save it"
+
+// errDeleteChanged is the refusal text for a delete of a value that is not the one the script read.
+const errDeleteChanged = "changed since the script read it"
 
 // keptFailure is a staged value the store refused.
 type keptFailure struct {
@@ -393,31 +483,36 @@ type keptFailure struct {
 	Error string `json:"error"`
 }
 
-// commit stores the staged values. A refusal names its cap or rule, never a value. secretOrigin is the origin a
-// kira.storeSecret value is bound to ("" binds none): the one its request went to, so the agent cannot send a
-// session token somewhere else.
-func (k *keptRun) commit(src keptvars.Source, secretOrigin string) ([]keptSummary, []keptFailure) {
+// commit stores the staged values and deletes the ones the script removed. A refusal names its cap or rule,
+// never a value. secretOrigin is the origin a secret.x value is bound to ("" binds none): the one its request
+// went to, so the agent cannot send a session token somewhere else.
+func (k *keptRun) commit(src keptvars.Source, secretOrigin string) (saved []keptSummary, failed []keptFailure, deleted []string) {
 	if k == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	var saved []keptSummary
-	var failed []keptFailure
 	for _, name := range k.userDropped {
 		failed = append(failed, keptFailure{Name: name, Error: errUserDropped})
 	}
 	k.userDropped = nil
-	for _, name := range k.order {
-		if k.mixedOrigins {
-			failed = append(failed, keptFailure{Name: name, Error: errMixedOrigins})
-			continue
+	for _, name := range k.deletedOrder {
+		e, ok := k.store.Get(k.scope, name)
+		switch {
+		case !ok:
+			deleted = append(deleted, name)
+		case e.ID != k.deleted[name]:
+			failed = append(failed, keptFailure{Name: name, Error: errDeleteChanged})
+		default:
+			k.store.Clear(e.ID)
+			deleted = append(deleted, name)
 		}
-		put := keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretStaged(name), Source: src, Origin: k.boundOrigin}
-		if put.Origin == "" && k.secretNames[name] {
+	}
+	for _, name := range k.order {
+		put := keptvars.Put{Scope: k.scope, Name: name, Value: k.staged[name], Secret: k.secretNames[name], Source: src}
+		if k.secretNames[name] {
 			put.Origin = secretOrigin
 		}
-		put.NotAfter = k.sourceExpiry
 		m, err := k.store.Put(put)
 		if err != nil {
 			failed = append(failed, keptFailure{Name: name, Error: err.Error()})
@@ -430,11 +525,12 @@ func (k *keptRun) commit(src keptvars.Source, secretOrigin string) ([]keptSummar
 	}
 	clear(k.staged)
 	clear(k.secretNames)
-	k.order = nil
-	return saved, failed
+	clear(k.deleted)
+	k.order, k.deletedOrder = nil, nil
+	return saved, failed, deleted
 }
 
-// mask removes the secret kept values the transform read from text bound for the agent.
+// mask removes the secret values the scripts wrote from text bound for the agent.
 func (k *keptRun) mask(text string) string {
 	if k == nil {
 		return text
@@ -449,7 +545,7 @@ func (k *keptRun) mask(text string) string {
 }
 
 // checkPrepared refuses a prepare result that holds a {{...}} reference the user could not have read in the
-// script or the agent's request. Without it a kept value holding "{{token}}" would be resolved as a secret
+// script or the agent's request. Without it a saved value holding "{{token}}" would be resolved as a secret
 // reference once the script copies it into the request. "" is ok. The refusal never quotes the text.
 func (k *keptRun) checkPrepared(orig, merged agentapi.Input, source string) string {
 	if k == nil {
@@ -464,7 +560,7 @@ func (k *keptRun) checkPrepared(orig, merged agentapi.Input, source string) stri
 	known := source + "\x00" + inputText(orig)
 	for _, span := range referenceSpans(inputText(merged)) {
 		if !strings.Contains(known, span) {
-			return "prepare script returned a {{...}} reference that is neither in its source nor in your request; references built from kept data are not resolved. Nothing was sent."
+			return "prepare script returned a {{...}} reference that is neither in its source nor in your request; references built from saved data are not resolved. Nothing was sent."
 		}
 	}
 	return ""

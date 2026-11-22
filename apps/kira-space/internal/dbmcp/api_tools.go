@@ -88,7 +88,7 @@ func (a apiRequestArgs) input(scope string) agentapi.Input {
 		EnvironmentID: a.EnvironmentID, Method: a.Method, URL: a.URL,
 		Headers: pairs(a.Headers), Query: pairs(a.Query), Body: a.Body, ContentType: a.ContentType, Form: pairs(a.Form),
 		TimeoutSeconds: a.TimeoutSeconds, MaxResponseBytes: a.MaxResponseBytes, FollowRedirects: a.FollowRedirects, Scope: scope,
-		Inputs: inputDecls(a.Inputs), ScriptReads: scriptReads(a.Script),
+		Inputs: inputDecls(a.Inputs),
 	}
 }
 
@@ -141,7 +141,7 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 		if sc, refusal = s.openScripts(ctx, a.Script); refusal != "" {
 			return errResult(refusal)
 		}
-		if sc.kept, refusal = s.keptRunFor(in.Scope, sc, "Nothing was sent."); refusal != "" {
+		if sc.kept, refusal = s.keptRunFor(in.Scope, sc, "api_request", "Nothing was sent."); refusal != "" {
 			return errResult(refusal)
 		}
 		if sc.Prepare != "" {
@@ -219,13 +219,6 @@ func (s *Server) settleInputs(ctx context.Context, in *agentapi.Input, plan agen
 	next, err := s.cfg.API.Plan(*in)
 	if err != nil {
 		return nil, plan, err.Error()
-	}
-	names := make([]string, len(plan.Inputs))
-	for i, u := range plan.Inputs {
-		names[i] = u.Name
-	}
-	if sc != nil {
-		sc.kept.rebind(names)
 	}
 	s.fillReused(ctx, statuses)
 	return statuses, next, ""

@@ -20,8 +20,8 @@ import (
 // A kube read's script has two stages. prepare runs before the card on the agent's args and returns a subset
 // of the tool's own args, through the same clamps and required checks, so the card shows the final read.
 // It never changes the cluster, the tool or the verb. transform runs after the read on the JSON the tool
-// returns. Kept values are read as plain values only: a cluster arg carries no credential, and a secret read
-// would force a review with no use.
+// returns. Scripts read saved values through plain only: a cluster arg carries no credential, and a secret
+// is never readable. A value prepare saves is only saved: kube args take no templates.
 const (
 	kubeScriptInputBytes  = maxHeldResultBytes
 	kubeScriptOutputBytes = 4 << 20
@@ -129,26 +129,9 @@ func (s *Server) openKubeScripts(ctx context.Context, tool string, a *kubeScript
 		}
 	}
 	sc := &apiScripts{Prepare: a.Prepare, Transform: a.Transform}
-	k, refusal := s.keptRunFor(keptScope(ctx), sc, kubeNothingRead)
+	k, refusal := s.keptRunFor(keptScope(ctx), sc, tool, kubeNothingRead)
 	if refusal != "" {
 		return nil, refusal
-	}
-	// A read that cannot resolve now would fail after the cluster was read, so it refuses here.
-	if k != nil {
-		for _, stage := range []scriptStage{stagePrepare, stageTransform} {
-			for _, st := range k.sites[stage] {
-				if st.Op != "getValue" {
-					continue
-				}
-				i := slices.IndexFunc(k.uses, func(u agentapi.KeptUse) bool { return u.Name == st.Name })
-				if i < 0 {
-					return nil, unknownKeptText(st.Name) + ". " + kubeNothingRead
-				}
-				if u := k.uses[i]; u.Secret || u.Bound() {
-					return nil, fmt.Sprintf(keptReadNotAllowed, st.Name, tool, kubeNothingRead)
-				}
-			}
-		}
 	}
 	sc.kept = k
 	return sc, ""
@@ -175,7 +158,7 @@ func (s *Server) prepareKube(ctx context.Context, call kubeCall, sc *apiScripts)
 	var changed []string
 	_, failure := s.execScript(ctx, scriptRun{
 		Stage: stagePrepare, Source: sc.Prepare,
-		Bindings: append([]jsengine.Binding{{Name: "request", Value: req}}, sc.kept.Bindings(stagePrepare)...),
+		Bindings: []jsengine.Binding{{Name: "request", Value: req}}, Vars: sc.kept,
 		Validate: func(out jsengine.Result) string {
 			var err error
 			if merged, changed, err = applyKubePrepared(call.op, in, out); err != nil {
@@ -317,10 +300,10 @@ func (s *Server) transformKube(ctx context.Context, call kubeCall, req kubeReque
 		o.Failure = "script failed: internal error. The read ran; its result is not returned."
 		return o
 	}
-	bindings := append([]jsengine.Binding{{Name: "result", Value: json.RawMessage(raw)}, {Name: "request", Value: reqJSON}}, sc.kept.Bindings(stageTransform)...)
+	bindings := []jsengine.Binding{{Name: "result", Value: json.RawMessage(raw)}, {Name: "request", Value: reqJSON}}
 	mask := sc.kept.mask
 	_, failure := s.execScript(ctx, scriptRun{
-		Stage: stageTransform, Source: sc.Transform, Bindings: bindings,
+		Stage: stageTransform, Source: sc.Transform, Bindings: bindings, Vars: sc.kept,
 		Limits: jsengine.Limits{InputBytes: kubeScriptInputBytes, OutputBytes: kubeScriptOutputBytes},
 		Validate: func(out jsengine.Result) string {
 			masked := json.RawMessage(mask(string(out.JSON)))
@@ -349,19 +332,20 @@ func (s *Server) transformKube(ctx context.Context, call kubeCall, req kubeReque
 
 // kubeScriptEnvelope is what the agent receives when a script ran.
 type kubeScriptEnvelope struct {
-	Kind         string          `json:"kind"`
-	Output       json.RawMessage `json:"output"`
-	Input        kubeScriptInput `json:"input"`
-	Kept         []keptSummary   `json:"kept,omitempty"`
-	KeptNotSaved []keptFailure   `json:"keptNotSaved,omitempty"`
+	Kind     string          `json:"kind"`
+	Output   json.RawMessage `json:"output"`
+	Input    kubeScriptInput `json:"input"`
+	Saved    []keptSummary   `json:"saved,omitempty"`
+	NotSaved []keptFailure   `json:"notSaved,omitempty"`
+	Deleted  []string        `json:"deleted,omitempty"`
 }
 
 // agentResult is the failure text, or the envelope with a summary of the values the script kept.
-func (o *kubeScriptOutcome) agentResult(saved []keptSummary, failed []keptFailure) (*mcp.CallToolResult, any, error) {
+func (o *kubeScriptOutcome) agentResult(saved []keptSummary, failed []keptFailure, deleted []string) (*mcp.CallToolResult, any, error) {
 	if o.Failure != "" {
 		return errResult(o.Failure)
 	}
-	return jsonResult(kubeScriptEnvelope{Kind: "script", Output: o.Output, Input: o.Input, Kept: saved, KeptNotSaved: failed})
+	return jsonResult(kubeScriptEnvelope{Kind: "script", Output: o.Output, Input: o.Input, Saved: saved, NotSaved: failed, Deleted: deleted})
 }
 
 // heldOf is the review entry of a scripted result: the envelope the agent gets on Send, the JSON the script

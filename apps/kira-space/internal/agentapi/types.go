@@ -12,6 +12,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apiaccess"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/apifiles"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 )
 
 // NameValue is one header, query or form entry.
@@ -41,8 +42,9 @@ type Input struct {
 	ScriptBodyBytes int
 	// Inputs are the values the agent asks the user for; each is used as {{kept.<name>}}.
 	Inputs []InputDecl
-	// ScriptReads names the kept variables the request's scripts read by literal kira.getValue.
-	ScriptReads []string
+	// Staged are the values a prepare script saved in this run, by name: {{plain.x}} and {{secret.x}} in the
+	// request send them. Their entry ids start with "staged:".
+	Staged map[string]keptvars.Entry
 }
 
 // MaxScriptBodyBytes bounds ScriptBodyBytes.

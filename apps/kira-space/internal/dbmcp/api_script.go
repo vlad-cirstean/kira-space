@@ -44,7 +44,7 @@ type apiScripts struct {
 	Prepare, Transform string
 	Input              json.RawMessage
 	Changed            []string // set by prepare: the request fields it returned
-	kept               *keptRun // nil unless a script calls kira.getValue or kira.storeValue
+	kept               *keptRun // nil unless a script mentions plain or secret
 }
 
 // apiOutcome is everything the final point needs: the raw masked response, and the transform output or failure.
@@ -93,7 +93,7 @@ func (s *Server) prepareAPI(ctx context.Context, in agentapi.Input, sc *apiScrip
 	var changed []string
 	_, failure := s.execScript(ctx, scriptRun{
 		Stage: stagePrepare, Source: sc.Prepare,
-		Bindings: append([]jsengine.Binding{{Name: "request", Value: req}, {Name: "input", Value: input}}, sc.kept.Bindings(stagePrepare)...),
+		Bindings: []jsengine.Binding{{Name: "request", Value: req}, {Name: "input", Value: input}}, Vars: sc.kept,
 		Validate: func(out jsengine.Result) string {
 			var err error
 			if merged, changed, err = applyPrepared(in, out); err != nil {
@@ -108,6 +108,8 @@ func (s *Server) prepareAPI(ctx context.Context, in agentapi.Input, sc *apiScrip
 		return in, failure
 	}
 	sc.Changed = changed
+	// What prepare saved is what {{plain.x}} and {{secret.x}} in this request send.
+	merged.Staged = sc.kept.stagedEntries()
 	return merged, ""
 }
 
@@ -270,13 +272,13 @@ func (s *Server) transformAPI(ctx context.Context, plan agentapi.Planned, sc *ap
 		Method string `json:"method"`
 		URL    string `json:"url"`
 	}{plan.Method, plan.URL})
-	bindings := append([]jsengine.Binding{{Name: "response", Value: resp}, {Name: "request", Value: reqB}}, sc.kept.Bindings(stageTransform)...)
-	// Secret kept values the script read leave its output too.
+	bindings := []jsengine.Binding{{Name: "response", Value: resp}, {Name: "request", Value: reqB}}
+	// Secret values the script saved leave its output too.
 	mask := func(text string) string { return sc.kept.mask(s.maskText(raw, text)) }
 	total := len(resp) + len(reqB)
 	tail := fmt.Sprintf("The request was sent (HTTP %d); its response is not returned.", raw.Status)
 	_, failure := s.execScript(ctx, scriptRun{
-		Stage: stageTransform, Source: sc.Transform, Bindings: bindings,
+		Stage: stageTransform, Source: sc.Transform, Bindings: bindings, Vars: sc.kept,
 		Limits: jsengine.Limits{InputBytes: transformInputBytes, OutputBytes: plan.MaxResponseBytes},
 		Validate: func(out jsengine.Result) string {
 			masked := json.RawMessage(mask(string(out.JSON)))
@@ -332,10 +334,10 @@ func responseBinding(r agentapi.Result) (json.RawMessage, error) {
 }
 
 // deliverAPI is the one point where the agent-bound result is final: the response review runs first,
-// then the values the transform staged are kept. requested says the user asked for the review on the
+// then the values the transform staged are saved. requested says the user asked for the review on the
 // approval card.
 func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts, o apiOutcome, requested bool) (*mcp.CallToolResult, any, error) {
-	res, out, err := apiAgentResult(sc, o, nil, nil)
+	res, out, err := apiAgentResult(sc, o, nil, nil, nil)
 	// Staged values are held until here; every way out but the final point drops them.
 	defer sc.dropKept()
 	// Read after the send: the user may change the setting while the request runs.
@@ -345,9 +347,9 @@ func (s *Server) deliverAPI(ctx context.Context, plan agentapi.Planned, sc *apiS
 		}
 	}
 	// Final point: the agent gets res, and the staged values are stored.
-	if o.Failure == "" && sc.hasTransform() && ctx.Err() == nil {
-		if saved, failed := sc.kept.commit(keptSourceOf(ctx, plan), plan.Origin); len(saved)+len(failed) > 0 {
-			return apiAgentResult(sc, o, saved, failed)
+	if o.Failure == "" && sc != nil && ctx.Err() == nil {
+		if saved, failed, deleted := sc.kept.commit(keptSourceOf(ctx, plan), plan.Origin); len(saved)+len(failed)+len(deleted) > 0 {
+			return apiAgentResult(sc, o, saved, failed, deleted)
 		}
 	}
 	return res, out, err
@@ -361,44 +363,37 @@ func (sc *apiScripts) dropKept() {
 
 // apiAgentResult is what the agent receives: the failure text, the transform's result with a summary of
 // the values it kept, or the masked response as is.
-func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []keptFailure) (*mcp.CallToolResult, any, error) {
-	switch {
-	case o.Failure != "":
+func apiAgentResult(sc *apiScripts, o apiOutcome, saved []keptSummary, failed []keptFailure, deleted []string) (*mcp.CallToolResult, any, error) {
+	if o.Failure != "" {
 		return errResult(o.Failure)
-	case sc.hasTransform():
-		text := `{"result":` + string(o.Transformed)
-		for _, f := range []struct {
-			key string
-			v   any
-			n   int
-		}{{"inputs", o.Inputs, len(o.Inputs)}, {"kept", saved, len(saved)}, {"keptNotSaved", failed, len(failed)}} {
-			if f.n == 0 {
-				continue
-			}
-			b, err := json.Marshal(f.v)
-			if err != nil {
-				continue
-			}
-			text += `,"` + f.key + `":` + string(b)
-		}
-		return textResult(text + `}`)
-	case len(o.Inputs) > 0:
-		return rawWithInputs(o)
 	}
-	return jsonResult(o.Raw)
-}
-
-// rawWithInputs is the masked response as is plus the inputs summary as one more key.
-func rawWithInputs(o apiOutcome) (*mcp.CallToolResult, any, error) {
+	extras := []struct {
+		key string
+		v   any
+		n   int
+	}{{"inputs", o.Inputs, len(o.Inputs)}, {"saved", saved, len(saved)}, {"notSaved", failed, len(failed)}, {"deleted", deleted, len(deleted)}}
+	tail := ""
+	for _, f := range extras {
+		if f.n == 0 {
+			continue
+		}
+		b, err := json.Marshal(f.v)
+		if err != nil {
+			continue
+		}
+		tail += `,"` + f.key + `":` + string(b)
+	}
+	if sc.hasTransform() {
+		return textResult(`{"result":` + string(o.Transformed) + tail + `}`)
+	}
+	if tail == "" {
+		return jsonResult(o.Raw)
+	}
 	body, err := json.Marshal(o.Raw)
 	if err != nil {
 		return nil, nil, fmt.Errorf("dbmcp: encode result: %w", err)
 	}
-	inputs, err := json.Marshal(o.Inputs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("dbmcp: encode result: %w", err)
-	}
-	return textResult(string(body[:len(body)-1]) + `,"inputs":` + string(inputs) + `}`)
+	return textResult(string(body[:len(body)-1]) + tail + `}`)
 }
 
 // apiPrepareView is the prepare script as the approval card shows it.
@@ -408,13 +403,36 @@ type apiPrepareView struct {
 	Changed        []string `json:"changed"`
 	Input          string   `json:"input"`
 	InputTruncated bool     `json:"inputTruncated"`
+	// Writes are the values the prepare script saved: they interpolate in this request and are stored
+	// after the final response.
+	Writes []keepView `json:"writes"`
+}
+
+// keepView is a value a script saves (or a saved value it deletes) as the card shows it. Never a secret's value.
+type keepView struct {
+	Name             string `json:"name"`
+	Type             string `json:"type"`
+	Items            int    `json:"items"`
+	Bytes            int    `json:"bytes"`
+	Secret           bool   `json:"secret"`
+	Preview          string `json:"preview"`
+	PreviewTruncated bool   `json:"previewTruncated"`
+	Deleted          bool   `json:"deleted"`
+}
+
+func keepViewsOf(in []HeldKeep) []keepView {
+	out := make([]keepView, len(in))
+	for i, h := range in {
+		out[i] = keepView(h)
+	}
+	return out
 }
 
 // apiTransformView is the transform script as the approval card shows it.
 type apiTransformView struct {
 	Source string `json:"source"`
 	Hash   string `json:"hash"`
-	// MayKeep are the kept variables the transform may write, with their sites in Source.
+	// MayKeep are the saved variables the transform may write or delete, with their sites in Source.
 	MayKeep []keptMayKeep `json:"mayKeep"`
 }
 
@@ -433,7 +451,7 @@ func apiScriptPayloadOf(sc *apiScripts) *apiScriptPayload {
 		input, cut := capUTF8(string(sc.Input), apiScriptInputDisplay)
 		out.Prepare = &apiPrepareView{
 			Source: sc.Prepare, Hash: jsengine.SourceHash(sc.Prepare), Changed: append([]string{}, sc.Changed...),
-			Input: input, InputTruncated: cut,
+			Input: input, InputTruncated: cut, Writes: keepViewsOf(sc.kept.stagedViews()),
 		}
 	}
 	if sc.Transform != "" {

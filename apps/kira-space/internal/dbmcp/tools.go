@@ -293,7 +293,7 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 	var o *queryScriptOutcome
 	if rv.script.hasTransform() && res != nil && !res.IsError && err == nil {
 		o = s.transformQuery(ctx, rv, resultText(res))
-		res, out, err = o.agentResult(nil, nil)
+		res, out, err = o.agentResult(nil, nil, nil)
 	}
 	return s.deliverQuery(ctx, args, rv, set, res, out, err, o)
 }
