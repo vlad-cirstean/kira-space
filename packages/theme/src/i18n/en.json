@@ -3752,6 +3752,9 @@
     "later": {
       "label": "Later"
     },
+    "left": {
+      "status": "{time} left"
+    },
     "logs": {
       "filter": {
         "placeholder": "Filter lines"
@@ -4142,6 +4145,9 @@
     },
     "task": {
       "label": "Task"
+    },
+    "temporaryVariables": {
+      "label": "Temporary variables"
     },
     "timeline": {
       "label": "Timeline"
@@ -14334,14 +14340,8 @@
     "dbMcp": {
       "approval": {
         "api": {
-          "credential": {
-            "label": "Uses credential {name} (hosts: {hosts})"
-          },
           "dontSend": {
             "label": "Don’t send"
-          },
-          "input": {
-            "label": "Sends the value you type for {name} (host: {host})"
           },
           "masked": {
             "status": "Secrets masked: {names}"
@@ -14372,6 +14372,15 @@
           },
           "sends": {
             "status": "Sends: {names}"
+          },
+          "sendsEnvironment": {
+            "label": "{name} to {hosts} (environment secret)"
+          },
+          "sendsTemporary": {
+            "label": "{name} to {hosts} (temporary secret)"
+          },
+          "sendsTyped": {
+            "label": "{name} to {hosts} (you type it)"
           },
           "timeout": {
             "status": "Timeout {seconds} s"
@@ -15744,27 +15753,27 @@
     "kept": {
       "chip": {
         "keeps": {
-          "status": "Saves: {names}"
+          "status": "Sets: {names}"
         },
         "uses": {
           "status": "Uses: {names}"
         }
       },
       "clear": {
-        "tooltip": "Delete this saved value. A request that reads it stops"
+        "tooltip": "Delete this value now. A request that uses it stops"
       },
       "drop": {
-        "tooltip": "Do not save this value. The agent is told you chose not to"
+        "tooltip": "Do not set this value. The agent is told you chose not to"
       },
       "expiresAt": {
         "status": "Expires at {time}"
       },
       "input": {
         "keptFor": {
-          "label": "Saved for {minutes} min"
+          "label": "Available for {minutes} min"
         },
         "replace": {
-          "label": "Replace saved values ({count})",
+          "label": "Replace earlier values ({count})",
           "placeholder": "Type to replace; leave empty to keep"
         }
       },
@@ -15773,22 +15782,17 @@
           "label": "Plain"
         }
       },
+      "lastSet": {
+        "label": "Last set {time}"
+      },
       "manage": {
-        "label": "Manage saved variables"
+        "label": "Manage"
       },
       "origin": {
         "label": "Goes only to {origin}"
       },
-      "panel": {
-        "query": {
-          "label": "Saved variables this query uses"
-        },
-        "title": {
-          "label": "Saved variables this request uses"
-        }
-      },
       "reveal": {
-        "body": "Show a secret value saved for an agent request."
+        "body": "Show a secret temporary value an agent request set."
       },
       "risk": {
         "expiring": {
@@ -15798,8 +15802,11 @@
           "label": "{name} (secret)"
         },
         "source": {
-          "label": "{name}, saved by {request}"
+          "label": "{name}, set by {request}"
         }
+      },
+      "setBy": {
+        "label": "Set by {request}"
       },
       "site": {
         "contentType": {
@@ -15816,7 +15823,7 @@
         }
       },
       "supplied": {
-        "status": "Supplied by you"
+        "status": "Typed by you"
       },
       "type": {
         "array": {
@@ -15827,19 +15834,16 @@
         },
         "object": {
           "status": "Object, {count} key | Object, {count} keys"
-        },
-        "string": {
-          "status": "Text, {size}"
         }
       },
       "usedIn": {
-        "label": "Used in"
+        "label": "Used in {sites}"
       },
       "willKeep": {
         "deleted": {
-          "status": "Deletes the saved value when sent"
+          "status": "Deleted when sent"
         },
-        "label": "Will save"
+        "label": "Will set"
       }
     },
     "keyValue": {
@@ -17731,19 +17735,19 @@
           "aria": "Clear {name}"
         },
         "clearAll": {
-          "body": "Every saved variable is removed now. Agents can use one again only after they save it anew.",
-          "title": "Clear all saved variables"
+          "body": "Every temporary variable is removed now. An agent can use one again only after it sets it anew.",
+          "title": "Clear all temporary variables"
         },
         "empty": {
-          "empty": "No saved variables. Values agents save appear here for up to {minutes} minutes"
+          "empty": "No temporary variables. Values agents set stay here for up to {minutes} minutes"
         },
-        "legend": {
-          "label": "Saved variables"
+        "intro": {
+          "description": "Values agents set, in memory only. The agent never sees one."
         },
         "retention": {
-          "description": "How long a saved variable lives. New values only; existing values keep their expiry.",
+          "description": "How long a temporary variable lives. New values only; existing values keep their expiry.",
           "error": "Enter minutes from {min} to {max}.",
-          "label": "Retention in minutes"
+          "label": "Lifetime in minutes"
         }
       },
       "nav": {
@@ -18411,9 +18415,6 @@
         "required": {
           "tooltip": "Enter {label} to send"
         }
-      },
-      "left": {
-        "status": "{time} left"
       },
       "risk": {
         "unreadable": {

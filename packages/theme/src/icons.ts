@@ -27,6 +27,7 @@ export const ICON = {
   reset: 'discard',
   settings: 'settings-gear',
   moreActions: 'ellipsis',
+  expand: 'unfold',
   back: 'arrow-left',
   stepPrevious: 'chevron-left',
   stepNext: 'chevron-right',

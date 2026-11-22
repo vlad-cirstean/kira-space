@@ -10,9 +10,9 @@ import KeptVariablesPanel from './KeptVariablesPanel.vue';
 import { apiPrepared } from './preparedValues';
 import UserInputsPanel from './UserInputsPanel.vue';
 
-// What the agent would send, one box per section: kept variables, the request (line, body, headers
+// What the agent would send, one box per section: temporary variables, the request (line, body, headers
 // and variables), values to type, prepare script, transform script. A credential's value never
-// reaches this view. Every place the request reads a kept variable is marked.
+// reaches this view. Every place the request reads a temporary variable is marked.
 const props = defineProps<{ item: ApprovalItem }>();
 
 const payload = computed(() => apiRequestPayloadSchema.parse(props.item.payload));

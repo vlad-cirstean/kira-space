@@ -16,12 +16,7 @@ const payload = computed(() => dbExemptionPayloadSchema.parse(props.item.payload
 <template>
   <div class="flex flex-col gap-2">
     <ApprovalBox v-if="payload.kept.length" testid="db-approval-box-kept">
-      <KeptVariablesPanel
-        :uses="payload.kept"
-        :pair-name="() => ''"
-        :title="t('studio.kept.panel.query.label')"
-        testid-prefix="db-approval"
-      />
+      <KeptVariablesPanel :uses="payload.kept" :pair-name="() => ''" testid-prefix="db-approval" />
     </ApprovalBox>
     <ApprovalBox testid="db-approval-box-statement">
       <DbRequestView
