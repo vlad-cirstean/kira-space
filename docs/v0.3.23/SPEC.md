@@ -866,6 +866,10 @@ Scope (user request).
 - Screenshots come from the existing site screenshot tooling if any (planner finds it; if none, the Playwright
   tooling used for visual baselines with a fixed fixture), not hand-edited images; size and format follow the
   site's existing images; light and dark if the site supports both.
+- Advertise the phone app on the site (user request): planner finds what the mobile app is and does today
+  (`dist-mobile`, `tsconfig.mobile.json`, mobile docs, ARCHITECTURE, history), how it is installed or reached, and
+  which of its screens can be shown; adds a section and screenshots at phone size; factual about shipped
+  behaviour only, no claim about unreleased stores or platforms.
 - Copy follows the site's own voice (the root README and site content are exempt from the terse style) and stays
   factual about shipped behaviour only.
 
