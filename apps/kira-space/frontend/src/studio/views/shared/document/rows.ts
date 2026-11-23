@@ -50,6 +50,8 @@ interface Parsed {
 
 interface TabRows {
   parseCache: Map<number, Parsed>;
+  /** Paths toggled from the scope's default: opened when the scope is closed by default, closed
+   *  when it opens nested fields by default. */
   expandedPaths: Map<number, Set<string>>;
   // `rowHeight`'s answer for an expanded row is a single
   // integer (the visible-line count) — a few bytes, against a whole DocNode tree in parseCache —
@@ -86,6 +88,8 @@ function countNodes(node: DocNode): number {
 export const useDocumentRowsStore = defineStore('documentRows', () => {
   const rowSources = new Map<string, RowSource>();
   const tabRows = new Map<string, TabRows>();
+  /** Scopes whose documents open with every nested field expanded (proof window). */
+  const openScopes = new Set<string>();
   let nextGeneration = 0;
 
   /** The only reactive thing in this module — bumped on every parse-cache/expansion-set change. */
@@ -98,12 +102,18 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
   /** Where `scope`'s rows come from — the document tab registers documents/page.ts's own
    *  documentRow on mount and unregisters on unmount; a console result set does the same with
    *  console/resultPages.ts's documentRow (P42 D11). */
-  function registerDocumentRows(scope: string, source: RowSource): void {
+  function registerDocumentRows(
+    scope: string,
+    source: RowSource,
+    opts?: { openNested?: boolean },
+  ): void {
     rowSources.set(scope, source);
+    if (opts?.openNested) openScopes.add(scope);
   }
 
   function unregisterDocumentRows(scope: string): void {
     rowSources.delete(scope);
+    openScopes.delete(scope);
   }
 
   function documentRow(
@@ -192,7 +202,7 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
   }
 
   function isPathExpanded(tabId: string, row: number, path: string): boolean {
-    return expandedPathsFor(tabId, row).has(path);
+    return openScopes.has(tabId) !== expandedPathsFor(tabId, row).has(path);
   }
 
   function togglePath(tabId: string, row: number, path: string): void {
@@ -280,6 +290,7 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
    *  lifetime is shorter than its tab's. */
   function dropRows(scope: string): void {
     tabRows.delete(scope);
+    openScopes.delete(scope);
     rowsVersion.n++;
   }
 
@@ -393,7 +404,8 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
    * Fills line counts from the worker for the rows from `from` on (`-1` is the raw-fallback
    * `null`), one batch of the page at a time. A row already
    * counted, or with nested paths expanded, keeps its own answer: the worker counts the first layer
-   * only. No-op when the page was replaced or the scope dropped since the request.
+   * only, so an open-nested scope is skipped (its exact `fillLineCounts` and the running mean
+   * cover it). No-op when the page was replaced or the scope dropped since the request.
    */
   function primeLineCounts(
     tabId: string,
@@ -402,7 +414,7 @@ export const useDocumentRowsStore = defineStore('documentRows', () => {
     counts: Int32Array,
   ): void {
     const entry = tabRows.get(tabId);
-    if (!entry || entry.generation !== generation) return;
+    if (!entry || entry.generation !== generation || openScopes.has(tabId)) return;
     let added = false;
     for (let i = 0; i < counts.length; i++) {
       const row = from + i;

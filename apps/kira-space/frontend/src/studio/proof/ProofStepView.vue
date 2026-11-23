@@ -182,6 +182,7 @@ onBeforeUnmount(() => {
               :connection-id="null"
               path=""
               :view-state="view.seed.value"
+              auto-expand
               @update:view-state="view.setResult"
               @ready="resultReady = true"
             />

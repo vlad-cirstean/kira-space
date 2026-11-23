@@ -64,7 +64,9 @@ export function buildProofPage(
 export function mountProofPage(key: string, page: Page): void {
   setPage(key, page);
   if (page.kind === 'document') {
-    useDocumentRowsStore().registerDocumentRows(key, (row) => documentRow(key, row));
+    useDocumentRowsStore().registerDocumentRows(key, (row) => documentRow(key, row), {
+      openNested: true,
+    });
   }
 }
 
