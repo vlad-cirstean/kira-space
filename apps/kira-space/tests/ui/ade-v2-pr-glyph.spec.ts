@@ -1,5 +1,6 @@
+import type { Locator } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { adeFixture, openPlan } from './support/adeV2';
+import { adeFixture, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import type { ControlSnapshot } from './support/types';
@@ -78,6 +79,46 @@ test('one tooltip lists every reported part, one line each', async ({ relaunch }
   await expect(tip.locator('[data-part="review"]')).toHaveText('Approved');
   await expect(tip.locator('[data-part="mergeable"]')).toHaveText('No conflicts');
   await expect(tip.locator('[data-part="autoMerge"]')).toHaveText('Auto-merge on');
+});
+
+/** Every line of the tooltip body sits under the one before it, left aligned. */
+async function expectStacked(tip: Locator, firstText: RegExp | string, min: number): Promise<void> {
+  const body = tip.locator(t('pr-glyph-tip'));
+  const lines = body.locator('> div');
+  await expect(lines.first()).toHaveText(firstText);
+  const boxes = await lines.evaluateAll((els) =>
+    els.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, bottom: r.bottom };
+    }),
+  );
+  expect(boxes.length).toBeGreaterThanOrEqual(min);
+  boxes.forEach((box, i) => {
+    const prev = boxes[i - 1];
+    if (!prev) return;
+    expect(box.top).toBeGreaterThanOrEqual(prev.bottom - 1);
+    expect(Math.abs(box.left - boxes[0]!.left)).toBeLessThanOrEqual(1);
+  });
+}
+
+test('the tooltip stacks title, state and parts, left aligned', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, control());
+  await page.locator(glyph('b_hooks')).hover();
+  const tip = page.locator('[data-slot="tooltip-content"]').first();
+  await expect(tip).toContainText('Outgoing webhooks');
+  await expectStacked(tip, 'Outgoing webhooks', 5);
+  await expect(tip.locator(t('pr-glyph-tip')).locator('> div').nth(1)).toHaveText(
+    /^Open into \S+$/,
+  );
+});
+
+test('the task view PR tooltip stacks its lines too', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, control());
+  await openTask(page, 'T_bill');
+  const line = page.locator(`${t('ade-task-branch-pr')}[data-branch-id="b_bill"]`);
+  await line.locator(t('ade-task-branch-pr-state')).hover();
+  const tip = page.locator('[data-slot="tooltip-content"]').first();
+  await expectStacked(tip, /^Open into \S+$/, 4);
 });
 
 test('the pending dot pulses, and stops pulsing under reduced motion while staying visible', async ({

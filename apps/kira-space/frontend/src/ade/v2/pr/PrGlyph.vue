@@ -40,6 +40,13 @@ const emit = defineEmits<{ open: [] }>();
 
 const model = computed(() => prGlyph(props.status));
 const text = computed(() => prStatusText(props.status));
+// Tooltips read "Open into main" (the host view header phrase); the inline text keeps the dotted pair.
+const tipStateLine = computed(() => {
+  const state = prStateLabel(props.status.state);
+  return props.baseRef
+    ? t('space.hostView.header.branches.label', { head: state, base: props.baseRef })
+    : state;
+});
 const stateLine = computed(() => {
   const state = prStateLabel(props.status.state);
   return props.baseRef
@@ -73,9 +80,11 @@ const attrs = computed(() => ({
     v-bind="attrs"
     @click.stop="emit('open')"
   >
-    <div v-if="title" class="font-medium">{{ title }}</div>
-    <div>{{ stateLine }}</div>
-    <PrStatusLines :lines="model.lines" as="div" />
+    <div class="flex flex-col items-start gap-0.5 text-left" data-testid="pr-glyph-tip">
+      <div v-if="title" class="font-medium">{{ title }}</div>
+      <div>{{ tipStateLine }}</div>
+      <PrStatusLines :lines="model.lines" as="div" />
+    </div>
     <template #badge>
       <StatusDot
         v-if="model.checks"
@@ -106,8 +115,10 @@ const attrs = computed(() => ({
       </span>
     </TooltipTrigger>
     <TooltipContent>
-      <div>{{ stateLine }}</div>
-      <PrStatusLines :lines="model.lines" as="div" />
+      <div class="flex flex-col items-start gap-0.5 text-left" data-testid="pr-glyph-tip">
+        <div>{{ tipStateLine }}</div>
+        <PrStatusLines :lines="model.lines" as="div" />
+      </div>
     </TooltipContent>
   </Tooltip>
   <span v-else class="flex min-w-0 items-start gap-2 text-kira-sm" v-bind="attrs">
