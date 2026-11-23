@@ -8,7 +8,7 @@ Code review at chapter end: 1 round.
 | # | Phase | Status |
 |---|-------|--------|
 | P736 | Proof data: auto-expanded, fits the Kira viewport, small screenshots, selectable text | Done |
-| P737 | Details panel: denser items, "see more" for long content | Todo |
+| P737 | Details panel: denser items, "see more" for long content | Done |
 | P738 | Task list and detail: border colors, spacing, stronger selected marking | Todo |
 | P739 | Code review window: speed for big PRs | Todo |
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Todo |
@@ -38,6 +38,15 @@ unchanged and green.
 
 Details panel shrinks items so far less scrolling finds a thing. Long content collapses; "see more"
 (or similar) expands it.
+
+## P737 Result
+
+New theme `ClampedContent` (first 6 lines, fade, Show more / Show less, no link when content fits;
+ARCHITECTURE bullet). Notes and handovers clamp to 6 lines, audit statements to 2; expansion lives in
+`adeDetailsList` store, survives tab switch. Dead "Show all" toggle on short statements gone.
+Padding: note body `flush` (no double inset), chain cards 6px/8px, tighter gaps, Details tab `gap-2
+px-3 py-2`. Proof entries untouched. Specs: two new in `ade-v2-notes`, `ade-v2-db-audit` reworked;
+110 ade-v2 UI specs and adeflow Go tests pass.
 
 ## P738
 
