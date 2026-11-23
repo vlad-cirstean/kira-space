@@ -79,6 +79,21 @@ async function openDetails(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 }
 
+async function expectLineUnderTitle(page: import('@playwright/test').Page): Promise<void> {
+  const [headBox, lineBox, titleBox, tabBox] = await Promise.all([
+    page.locator(t('ade-panel-head')).boundingBox(),
+    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
+    page.locator(t('ade-panel-title')).boundingBox(),
+    page.locator('[data-testid^="ade-panel-tab-"]').first().boundingBox(),
+  ]);
+  expect(lineBox?.height).toBe(3);
+  expect(
+    Math.abs((lineBox?.y ?? 0) + 3 - ((headBox?.y ?? 0) + (headBox?.height ?? 0))),
+  ).toBeLessThanOrEqual(1);
+  expect(lineBox?.y ?? 0).toBeGreaterThanOrEqual((titleBox?.y ?? 0) + (titleBox?.height ?? 0) - 1);
+  expect((tabBox?.y ?? 0) - ((lineBox?.y ?? 0) + 3)).toBeLessThanOrEqual(5);
+}
+
 test('the tabs are Main, Details and Sessions, Main first, and Files is an icon', async ({
   relaunch,
 }) => {
@@ -91,12 +106,14 @@ test('the tabs are Main, Details and Sessions, Main first, and Files is an icon'
   await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
   await expect(page.locator(t('ade-panel-tab-files'))).toHaveCount(0);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
-  const [headBox, lineBox] = await Promise.all([
-    page.locator(t('ade-panel-head')).boundingBox(),
-    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
-  ]);
-  expect(lineBox?.height).toBe(3);
-  expect(Math.abs((lineBox?.y ?? 0) - (headBox?.y ?? 99))).toBeLessThanOrEqual(1);
+  await expectLineUnderTitle(page);
+});
+
+test('branch panel: the task colour line sits under the title', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, panel());
+  await page.locator('[data-testid="ade-branch-row"][data-branch-id="b_cart"]').first().click();
+  await expect(page.locator(t('ade-branch-details'))).toBeVisible();
+  await expectLineUnderTitle(page);
 });
 
 test('Files is a header icon: no tab, no right-click or More entry', async ({ relaunch }) => {

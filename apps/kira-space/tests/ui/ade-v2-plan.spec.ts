@@ -396,7 +396,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a 1px edge and a 3px task colour top edge on the plan ground, 16px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a 1px task colour edge on the plan ground, 8px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -408,12 +408,13 @@ test('a card is a 6px rounded box with a 1px edge and a 3px task colour top edge
       top: s.borderTopWidth,
       left: s.borderLeftWidth,
       topColor: s.borderTopColor,
+      leftColor: s.borderLeftColor,
       bg: s.backgroundColor,
     };
   });
   expect({ radius: style.radius, top: style.top, left: style.left }).toEqual({
     radius: '6px',
-    top: '3px',
+    top: '1px',
     left: '1px',
   });
   const borderColor = await page.evaluate(() => {
@@ -424,6 +425,7 @@ test('a card is a 6px rounded box with a 1px edge and a 3px task colour top edge
     span.remove();
     return color;
   });
+  expect(style.topColor).toBe(style.leftColor);
   expect(style.topColor).not.toBe('rgba(0, 0, 0, 0)');
   expect(style.topColor).not.toBe(borderColor);
   const [chrome, plan] = await Promise.all([
@@ -450,7 +452,7 @@ test('a card is a 6px rounded box with a 1px edge and a 3px task colour top edge
       els.map((e) => e.getBoundingClientRect()).map((r) => ({ top: r.top, bottom: r.bottom })),
     );
   expect(rects.length).toBeGreaterThanOrEqual(2);
-  expect((rects[1]?.top ?? 0) - (rects[0]?.bottom ?? 0)).toBe(16);
+  expect((rects[1]?.top ?? 0) - (rects[0]?.bottom ?? 0)).toBe(8);
 });
 
 test('the task open in the panel is marked on its card, spans and branch rows', async ({
@@ -458,35 +460,30 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
 }) => {
   const { window: page } = await openPlan(relaunch);
   const marked = page.locator('[data-testid="ade-card"][aria-current="true"]');
-  const selectColor = await page.evaluate(() => {
-    const span = document.createElement('span');
-    span.style.color = 'var(--kira-select-edge)';
-    document.body.appendChild(span);
-    const color = getComputedStyle(span).color;
-    span.remove();
-    return color;
-  });
+  const frame = (loc: ReturnType<typeof card>) =>
+    loc.evaluate((el) => {
+      const c = getComputedStyle(el);
+      return {
+        width: c.outlineWidth,
+        style: c.outlineStyle,
+        color: c.outlineColor,
+        border: c.borderLeftColor,
+      };
+    });
 
   await card(page, 'T_search').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_search')).toHaveAttribute('aria-current', 'true');
   await expect(marked).toHaveCount(1);
-  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(
-    selectColor,
-  );
+  const searchFrame = await frame(card(page, 'T_search'));
+  expect(searchFrame.width).toBe('2px');
+  expect(searchFrame.style).toBe('solid');
+  expect(searchFrame.color).toBe(searchFrame.border);
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
-  const edge = await page.evaluate(() => {
-    const span = document.createElement('span');
-    span.style.color = 'var(--kira-border)';
-    document.body.appendChild(span);
-    const color = getComputedStyle(span).color;
-    span.remove();
-    return color;
-  });
-  expect(await card(page, 'T_search').evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(
-    edge,
-  );
+  const searchAfter = await frame(card(page, 'T_search'));
+  expect(searchAfter.style).toBe('none');
+  expect(searchAfter.border).toBe(searchFrame.border);
   await expect(card(page, 'T_search')).not.toHaveAttribute('aria-current', 'true');
 
   const row = card(page, 'T_push').locator('[data-testid="ade-branch-row"]').first();
@@ -499,6 +496,18 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   await span.click();
   await expect(card(page, taskId ?? '')).toHaveAttribute('aria-current', 'true');
   await expect(span).toHaveAttribute('data-selected', 'true');
+  const spanFrame = await span.evaluate((el) => {
+    const c = getComputedStyle(el);
+    return {
+      width: c.outlineWidth,
+      style: c.outlineStyle,
+      color: c.outlineColor,
+      border: c.borderLeftColor,
+    };
+  });
+  expect(spanFrame.width).toBe('2px');
+  expect(spanFrame.style).toBe('solid');
+  expect(spanFrame.color).toBe(spanFrame.border);
 });
 
 test('pressing a card shows no ring, border or outline; keyboard focus still rings', async ({
@@ -513,17 +522,14 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     span.remove();
     return color;
   });
-  const selectColor = await page.evaluate(() => {
-    const span = document.createElement('span');
-    span.style.color = 'var(--kira-select-edge)';
-    document.body.appendChild(span);
-    const color = getComputedStyle(span).color;
-    span.remove();
-    return color;
-  });
   const task = page.locator('[data-testid="ade-task"]').first();
   const cardEl = task.locator('[data-testid="ade-card"]');
   const head = task.locator('[data-testid="ade-card-head"]');
+  const cardFrame = () =>
+    cardEl.evaluate((el) => {
+      const c = getComputedStyle(el);
+      return { width: c.outlineWidth, style: c.outlineStyle, color: c.outlineColor };
+    });
   const state = () =>
     task.evaluate((el) => {
       const h = el.querySelector('[data-testid="ade-card-head"]');
@@ -549,6 +555,8 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     task.locator('[data-testid="ade-card-title"]'),
     task.locator('[data-testid="ade-branch-row"]').first(),
   ];
+  await head.click();
+  const before = await cardFrame();
   for (const target of targets) {
     await target.hover();
     await page.mouse.down();
@@ -556,7 +564,10 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
     await page.mouse.up();
     await expectQuiet();
   }
-  expect(await cardEl.evaluate((el) => getComputedStyle(el).borderLeftColor)).toBe(selectColor);
+  const after = await cardFrame();
+  expect(after).toEqual(before);
+  expect(after.width).toBe('2px');
+  expect(after.style).toBe('solid');
 
   await page.keyboard.press('Tab');
   await head.focus();
