@@ -145,6 +145,7 @@ onBeforeUnmount(() => {
         <template v-else>
           <DetailHeader
             wrap
+            class="select-text"
             :icon="proofViewIcon(data.view)"
             :title="data.description"
             title-testid="proof-step-description"

@@ -65,7 +65,7 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
     <PanelHeader class="bg-chrome">{{ t('studio.proof.change.title') }}</PanelHeader>
     <p
       v-if="pending.reason"
-      class="m-0 shrink-0 whitespace-pre-wrap p-3"
+      class="m-0 shrink-0 select-text whitespace-pre-wrap p-3"
       data-testid="proof-change-reason"
     >
       {{ pending.reason }}
@@ -100,7 +100,9 @@ const locked = computed(() => accept.isPending.value || reject.isPending.value);
           @click="select(row)"
         >
           <span :class="cn(rowMeta, 'w-6 shrink-0')">{{ `#${row.meta.ordinal}` }}</span>
-          <span class="min-w-0 flex-1 truncate">{{ row.meta.description }}</span>
+          <span class="min-w-0 flex-1 whitespace-normal break-words">{{
+            row.meta.description
+          }}</span>
           <Badge :variant="TONE_BADGE[CHANGE_TONE[row.meta.diff]]">{{
             DIFF_LABEL[row.meta.diff]()
           }}</Badge>
