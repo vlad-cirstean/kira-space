@@ -14,7 +14,7 @@ Code review at chapter end: 1 round.
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Done |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Done |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
-| P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
+| P743 | Task links: show at once, Jira details after; PR tooltip format | Done |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Todo |
 | P745 | Chapter close | Todo |
 
@@ -152,6 +152,20 @@ trimming duplicated default text); per the user's instruction `toolListTokenBudg
 - Links show immediately; Jira details fill in after. Today every link waits for Jira to load, which is
   slow. Links without Jira data render at once, Jira-backed fields (title, status) arrive when loaded.
 - PR tooltip in the task view is formatted badly. Fix its layout.
+
+## P743 Result
+
+`trackerSource.Artifacts` returns the stored issue row only: no acli call, no tracker gap (wire type
+unchanged). Jira title, status and reason come from `TaskIssue` (`useTaskIssue`). `AdeLinkStrip` no
+longer wraps pills in `QueryState`: slot pills (Jira, host) show on the first frame, artifact pills
+join when `Artifacts` answers, skeleton and empty state sit below. `useTaskLinks` marks the Jira item
+`pending` (pulsing muted dot, same 8px slot, no width jump) and adds the tracker gap from the issue
+query. PR tooltip body (button and tooltip variants) is a stacked, left-aligned column
+(`pr-glyph-tip`); state line reads `Open into main`, reusing `space.hostView.header.branches.label`
+(a new key failed catalog rule C4 as a near duplicate), so no `en.json` edit. Task-view PR glyph now
+passes `baseRef`. Tests: flow `TestTaskLinksBeforeJira` (contract `ade-issue-tracker`, `#held`),
+`TestTaskIssueTracker`, `TestTaskIssueFastLoading`, `TestTaskArtifacts` reworked; contracts (incl. `ade-details-links`, `ade-details-open`)
+regenerated; UI specs issue-tracker, links-strip, artifacts, pr-glyph, main-branches: 48 passed.
 
 ## P744
 
