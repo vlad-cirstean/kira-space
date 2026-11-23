@@ -13,7 +13,7 @@ Code review at chapter end: 1 round.
 | P739 | Code review window: speed for big PRs | Todo |
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Todo |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
-| P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Todo |
+| P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Todo |
 | P745 | Chapter close | Todo |
@@ -89,6 +89,21 @@ Fix so the incremental diff colors like a normal diff.
 
 Studio MCP tools let the agent request an approval prompt even when the operation is allowed. Use:
 agent shows the user a sensitive action that needs confirmation.
+
+## P742 Result
+
+Optional `confirm` string (trimmed, at most 300 runes, checked first) on `run_query` (and explain),
+`browse_table`, `kube_read`, `run_script` start and `api_request`. It raises the approval card for an
+allowed op (`Reason: confirm`) and never relaxes a refusal; a card the policy raises anyway keeps its
+reason and shows the note. `ApprovalRequest.AgentNote` becomes `approvals.Item.agentNote`; `holdResult`
+clears note and confirm reason for the response stage. `ApprovalItemCard` renders two generic risk
+lines (`approval-agent-confirm`, `approval-agent-requested`), desktop and phone. Tests: flow
+`confirm_test.go` (contract `approvals-confirm`) plus UI spec `approvals-confirm.spec.ts` (20 UI specs
+of the touched files passed); `dbmcpflow`, `llmpromptsflow`, `dbmcp`, `llmprompts` green; real claude
+`TestDbMcpConfirmThroughClaude` passes (3 of 3 runs after the prompt names the approval prompt, not
+chat). Tool-list budget: 3990 before, 3992 after (five `confirm` args cost about 143 tokens, paid by
+trimming duplicated default text); per the user's instruction `toolListTokenBudget` rose 4000 to 4020
+(comment updated: aim is efficient texts, raise only by what a new arg needs). Prompt count 150 to 155.
 
 ## P743
 

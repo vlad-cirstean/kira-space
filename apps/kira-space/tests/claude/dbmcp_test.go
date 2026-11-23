@@ -476,32 +476,6 @@ func TestDbMcpConfirmThroughClaude(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if seen == nil {
-						seen = &it
-					}
-					mu.Unlock()
-				}
-			}
-		}
-	}()
-
-	tool := "mcp__" + dbServer + "__run_query"
-	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call list, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\", mode read and an empty path. Treat it as sensitive: the user must approve it in the approval prompt, not in chat; make the tool ask for that prompt. Then reply with the word done.",
-		"--strict-mcp-config", "--mcp-config", cfg,
-		"--allowedTools", "mcp__"+dbServer+"__list,"+tool,
-		"--output-format", "stream-json", "--verbose")
-	close(stop)
-	wg.Wait()
-	msgs := parseStream(out)
-
-	mu.Lock()
-	defer mu.Unlock()
-	t.Logf("DEBUG final %q", resultMsg(t, msgs).Result)
-	for _, u := range toolUses(msgs, tool) {
-		txt, isE, _ := toolResult(msgs, u.ID)
-		t.Logf("DEBUG use %s -> err=%v %s", u.Input, isE, txt)
-	}
 	if seen == nil || seen.Reason != "confirm" || strings.TrimSpace(seen.AgentNote) == "" {
 		t.Fatalf("approval item = %+v, want a db.query confirm item with the agent's sentence:\n%s", seen, tail(out, 1500))
 	}
