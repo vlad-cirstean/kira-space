@@ -76,7 +76,10 @@ const editing = ref<string | null>(null);
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" data-testid="ade-task-chain">
+  <div
+    class="flex flex-col gap-1 *:data-[slot=card]:gap-1 *:data-[slot=card]:px-2 *:data-[slot=card]:py-1.5"
+    data-testid="ade-task-chain"
+  >
     <SectionHeading flush :label="t('space.ade.proof.chain.title')">
       <TextTooltip :text="t('space.ade.details.timeline.toggle.tooltip')">
         <Toggle

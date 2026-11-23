@@ -1,7 +1,9 @@
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import { defineStore } from 'pinia';
+import { reactive } from 'vue';
 
-// How the Details list renders. One preference for all tasks, kept per device.
+// How the Details list renders. Preferences are kept per device; which long entries are expanded
+// stays in memory only.
 export const useAdeDetailsListStore = defineStore('adeDetailsList', () => {
   /** Whether task events (creation, branches, stored artifacts) join the notes and proof. */
   const showTimeline = usePersistedState('kira.ade.details.timeline', false);
@@ -17,5 +19,25 @@ export const useAdeDetailsListStore = defineStore('adeDetailsList', () => {
     showTimeline.value = on;
   }
 
-  return { showTimeline, setShowTimeline, showDbAudit, setShowDbAudit };
+  // Survives the Details tab remounting on a tab switch, so kept scroll lands on the same layout.
+  const expanded = reactive(new Set<string>());
+
+  function isExpanded(key: string): boolean {
+    return expanded.has(key);
+  }
+
+  function setExpanded(key: string, on: boolean): void {
+    if (on) expanded.add(key);
+    else expanded.delete(key);
+  }
+
+  return {
+    showTimeline,
+    setShowTimeline,
+    showDbAudit,
+    setShowDbAudit,
+    expanded,
+    isExpanded,
+    setExpanded,
+  };
 });
