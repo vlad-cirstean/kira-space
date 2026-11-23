@@ -5,6 +5,7 @@ import (
 	"compress/flate"
 	"fmt"
 	"io"
+	"sync"
 )
 
 // ContentKind is one review_file row's own discriminant for what (if anything) its content column
@@ -33,10 +34,11 @@ const MaxSnapshotBytes = 1 << 20
 // CRC32 would add.
 func Compress(raw []byte) ([]byte, error) {
 	var buf bytes.Buffer
-	w, err := flate.NewWriter(&buf, flate.BestCompression)
+	w, err := getFlateWriter(&buf)
 	if err != nil {
-		return nil, fmt.Errorf("gitreview: flate writer: %w", err)
+		return nil, err
 	}
+	defer flateWriters.Put(w)
 	if _, err := w.Write(raw); err != nil {
 		return nil, fmt.Errorf("gitreview: flate write: %w", err)
 	}
@@ -44,6 +46,22 @@ func Compress(raw []byte) ([]byte, error) {
 		return nil, fmt.Errorf("gitreview: flate close: %w", err)
 	}
 	return buf.Bytes(), nil
+}
+
+// flateWriters reuses BestCompression writers: allocating one costs ~0.3 ms and dominated a
+// many-file review.markMany (P739). Reset yields the same output as a fresh writer.
+var flateWriters sync.Pool
+
+func getFlateWriter(dst io.Writer) (*flate.Writer, error) {
+	if w, ok := flateWriters.Get().(*flate.Writer); ok {
+		w.Reset(dst)
+		return w, nil
+	}
+	w, err := flate.NewWriter(dst, flate.BestCompression)
+	if err != nil {
+		return nil, fmt.Errorf("gitreview: flate writer: %w", err)
+	}
+	return w, nil
 }
 
 // Decompress flate-decodes compressed and checks the result's length against want (the row's own

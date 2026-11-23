@@ -300,21 +300,37 @@ func upsertSession(ctx context.Context, tx *sql.Tx, repoID, branch string, nowMi
 	return id, nil
 }
 
-// Put replaces one path's record and its ranges in one transaction, creating the session row if
+// PutItem is one record and its snapshot content for PutMany.
+type PutItem struct {
+	Rec     FileRecord
+	Content []byte
+}
+
+// Put replaces one path's record: PutMany of one item, the single write path.
+func (s *Store) Put(ctx context.Context, repoID, branch string, rec FileRecord, content []byte) error {
+	return s.PutMany(ctx, repoID, branch, []PutItem{{Rec: rec, Content: content}})
+}
+
+// PutMany replaces every item's record and ranges in one transaction, creating the session row if
 // this is its first record, and touching last_used_at either way. Ranges are normalized before
 // storing (the invariant is "in the snapshot's coordinates", never "however the caller happened to
-// list them").
-func (s *Store) Put(ctx context.Context, repoID, branch string, rec FileRecord, content []byte) error {
+// list them"). One commit and three prepared statements serve all items: a per-file transaction
+// made a whole-folder review.markMany cost seconds (P739).
+func (s *Store) PutMany(ctx context.Context, repoID, branch string, items []PutItem) error {
+	if len(items) == 0 {
+		return nil
+	}
 	db, err := s.conn()
 	if err != nil {
 		return err
 	}
 
-	var compressed []byte
-	if rec.ContentKind == ContentText {
-		compressed, err = Compress(content)
-		if err != nil {
-			return err
+	compressed := make([][]byte, len(items))
+	for i, it := range items {
+		if it.Rec.ContentKind == ContentText {
+			if compressed[i], err = Compress(it.Content); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -329,7 +345,7 @@ func (s *Store) Put(ctx context.Context, repoID, branch string, rec FileRecord, 
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, `
+	upsert, err := tx.PrepareContext(ctx, `
 		INSERT INTO review_file
 			(session_id, path, state, reviewed_at_sha, reviewed_at, blob_oid, content_kind, content_bytes, line_count, content)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -338,29 +354,40 @@ func (s *Store) Put(ctx context.Context, repoID, branch string, rec FileRecord, 
 			blob_oid = excluded.blob_oid, content_kind = excluded.content_kind,
 			content_bytes = excluded.content_bytes, line_count = excluded.line_count, content = excluded.content,
 			removal_checked = ''
-	`, id, rec.Path, rec.State, rec.ReviewedAtSHA, rec.ReviewedAt.UnixMilli(), rec.BlobOID,
-		string(rec.ContentKind), rec.ContentBytes, rec.LineCount, compressed); err != nil {
-		return fmt.Errorf("gitreview: upsert review_file: %w", err)
+	`)
+	if err != nil {
+		return fmt.Errorf("gitreview: prepare upsert review_file: %w", err)
 	}
+	defer upsert.Close()
+	clearRanges, err := tx.PrepareContext(ctx, `DELETE FROM review_range WHERE session_id = ? AND path = ?`)
+	if err != nil {
+		return fmt.Errorf("gitreview: prepare clear review_range: %w", err)
+	}
+	defer clearRanges.Close()
+	insert, err := tx.PrepareContext(ctx,
+		`INSERT INTO review_range (session_id, path, start_line, end_line) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("gitreview: prepare insert review_range: %w", err)
+	}
+	defer insert.Close()
 
-	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM review_range WHERE session_id = ? AND path = ?`, id, rec.Path,
-	); err != nil {
-		return fmt.Errorf("gitreview: clear review_range: %w", err)
-	}
-	for _, r := range Normalize(rec.Ranges) {
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO review_range (session_id, path, start_line, end_line) VALUES (?, ?, ?, ?)`,
-			id, rec.Path, r.Start, r.End,
-		); err != nil {
-			return fmt.Errorf("gitreview: insert review_range: %w", err)
+	for i, it := range items {
+		rec := it.Rec
+		if _, err := upsert.ExecContext(ctx, id, rec.Path, rec.State, rec.ReviewedAtSHA, rec.ReviewedAt.UnixMilli(),
+			rec.BlobOID, string(rec.ContentKind), rec.ContentBytes, rec.LineCount, compressed[i]); err != nil {
+			return fmt.Errorf("gitreview: upsert review_file: %w", err)
+		}
+		if _, err := clearRanges.ExecContext(ctx, id, rec.Path); err != nil {
+			return fmt.Errorf("gitreview: clear review_range: %w", err)
+		}
+		for _, r := range Normalize(rec.Ranges) {
+			if _, err := insert.ExecContext(ctx, id, rec.Path, r.Start, r.End); err != nil {
+				return fmt.Errorf("gitreview: insert review_range: %w", err)
+			}
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return tx.Commit()
 }
 
 // Delete removes one path's record (and its ranges, by cascade). The session row is left alone —

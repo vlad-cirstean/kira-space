@@ -13,6 +13,13 @@ func NameStatusArgs(from *string, to string) []string {
 	return appendRevPair(args, from, to)
 }
 
+// RangeNameStatusArgs is NameStatusArgs without copy detection (-C): a PR range lists a copy as
+// added, as GitHub does, and -C cost grows with added x modified files (P739).
+func RangeNameStatusArgs(from *string, to string) []string {
+	args := []string{"diff-tree", "-r", "--no-commit-id", "--name-status", "-M", "-z"}
+	return appendRevPair(args, from, to)
+}
+
 func appendRevPair(args []string, from *string, to string) []string {
 	if from == nil {
 		return append(args, "--root", to)

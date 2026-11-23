@@ -2,10 +2,12 @@ package gitflow_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
@@ -257,6 +259,97 @@ func TestReviewSession(t *testing.T) {
 	}
 	if list = call[gitsession.CommentListResult](t, again, "review.comment.list", gitrpc.ReviewCommentListParams{RepoID: id, Branch: "feat"}); len(list.Comments) != 0 {
 		t.Fatalf("comments after remove = %+v", list.Comments)
+	}
+}
+
+// Guards review.files listing a copy as added (no -C, as on GitHub) while a rename still reads renamed.
+func TestReviewFilesCopyIsAdded(t *testing.T) {
+	r := newRig(t)
+	repo := r.app.NewRepo("proj")
+	var src, mv strings.Builder
+	for i := range 40 {
+		fmt.Fprintf(&src, "source line %d\n", i)
+		fmt.Fprintf(&mv, "moving line %d\n", i)
+	}
+	repo.Commit("base", map[string]string{"src.txt": src.String(), "old-name.txt": mv.String()})
+	repo.Git("checkout", "-q", "-b", "feat")
+	repo.Commit("copy and edit", map[string]string{"copy.txt": src.String(), "src.txt": src.String() + "extra\n"})
+	repo.Rename("old-name.txt", "new-name.txt", "rename")
+	repo.Checkout("main")
+	id := r.open(repo.Dir).RepoID
+
+	files := call[gitsession.RangeFilesResult](t, r.gs, "review.files", gitrpc.ReviewFilesParams{RepoID: id, Branch: "feat", Base: "main"})
+	byPath := map[string]gitsession.ReviewFileEntry{}
+	for _, f := range files.Files {
+		byPath[f.Change.Path] = f
+	}
+	if c := byPath["copy.txt"].Change; c.Kind != "added" || c.OriginalPath != nil {
+		t.Fatalf("copy.txt = %+v, want added with no originalPath", c)
+	}
+	if c := byPath["src.txt"].Change; c.Kind != "modified" {
+		t.Fatalf("src.txt = %+v, want modified", c)
+	}
+	if c := byPath["new-name.txt"].Change; c.Kind != "renamed" || c.OriginalPath == nil || *c.OriginalPath != "old-name.txt" {
+		t.Fatalf("new-name.txt = %+v, want renamed from old-name.txt", c)
+	}
+}
+
+// Guards review.markMany's chunked batch (600 paths = three chunks) against a concurrent ranged
+// review.mark on one of them: both finish, no path is lost, the one contended path ends consistent.
+func TestReviewMarkManyChunksAndConcurrentMark(t *testing.T) {
+	r := newRig(t)
+	repo := r.app.NewRepo("proj")
+	repo.Commit("base", map[string]string{"keep.txt": "keep\n"})
+	repo.Git("checkout", "-q", "-b", "feat")
+	const n = 600
+	adds := make(map[string]string, n)
+	paths := make([]string, n)
+	for i := range n {
+		paths[i] = fmt.Sprintf("d%d/f%03d.txt", i%7, i)
+		adds[paths[i]] = "l1\nl2\nl3\n"
+	}
+	repo.Commit("many", adds)
+	repo.Checkout("main")
+	id := r.open(repo.Dir).RepoID
+	other := r.app.OpenGitStream()
+	openOn(t, other, repo.Dir)
+
+	contended := paths[n/2]
+	var wg sync.WaitGroup
+	var manyErr, markErr error
+	var many gitrpc.ReviewMarkManyResult
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		manyErr = r.gs.Request("review.markMany", gitrpc.ReviewMarkManyParams{RepoID: id, Branch: "feat", Paths: paths, Reviewed: true}, &many)
+	}()
+	go func() {
+		defer wg.Done()
+		var res gitrpc.ReviewMarkResult
+		markErr = other.Request("review.mark", gitrpc.ReviewMarkParams{
+			RepoID: id, Branch: "feat", Path: contended, Reviewed: false, Ranges: []gitreview.LineRange{{Start: 1, End: 1}},
+		}, &res)
+	}()
+	wg.Wait()
+	if manyErr != nil || markErr != nil {
+		t.Fatalf("markMany err = %v, mark err = %v", manyErr, markErr)
+	}
+	if len(many.Results) != n {
+		t.Fatalf("markMany returned %d results, want %d", len(many.Results), n)
+	}
+
+	files := call[gitsession.RangeFilesResult](t, r.gs, "review.files", gitrpc.ReviewFilesParams{RepoID: id, Branch: "feat", Base: "main"})
+	if len(files.Files) != n {
+		t.Fatalf("review.files lists %d files, want %d", len(files.Files), n)
+	}
+	for _, f := range files.Files {
+		// The contended path ends full (mark ran first) or partial (it ran after, leaving lines 2-3).
+		if f.Change.Path == contended && f.Review.Kind == "partial" {
+			continue
+		}
+		if f.Review.Kind != "full" {
+			t.Fatalf("%s review kind = %q, want full", f.Change.Path, f.Review.Kind)
+		}
 	}
 }
 
