@@ -1417,6 +1417,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - View or detail titles use DetailHeader (text-kira-lg font-medium); sections use SectionHeading (pane, panel, list, picker) or FieldSet + FieldLegend + FieldDescription (form, settings pane).
 - A hint paragraph is FieldDescription; an empty line is InlineState kind="empty" or EmptyState.
 - Identifiers (ids, shas, branches, refs, paths) use font-data and are shown through Identifier (short, copyable, split="path"); single-line overflow uses TruncatedText.
+- Multi-line overflow uses ClampedContent (first lines, fade, Show more / Show less; no link when content fits).
 - Show counts in a tab, section or row as plain rowMeta; use Badge count only for attention; never put "(n)" in label text.
 - Button ghost variant is used only for the DialogHeader close; text actions use the link variant.
 - Disclosure (built on reka Collapsible) replaces <details>.
