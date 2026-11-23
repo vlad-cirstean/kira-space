@@ -45,6 +45,15 @@ var assets embed.FS
 //go:embed all:frontend/dist-mobile
 var mobileAssets embed.FS
 
+// openProofWindow opens the proof window cascaded from the current window, at the proof size.
+func openProofWindow(app *application.App, winDeps shell.WindowOpenerDeps, rec shell.WindowRecord) {
+	rec.Bounds = shell.CascadeFrom(app.Window.Current())
+	if rec.Bounds != nil {
+		rec.Bounds.Width, rec.Bounds.Height = proof.WindowWidth, proof.WindowHeight
+	}
+	shell.OpenWindow(winDeps, rec)
+}
+
 // Startup order: the argv shims (askpass, js-worker) -> config.EnsureLayout ->
 // logging.Init/Sweep -> instance lock -> storage.Open -> configsync.Recover -> appwire.Build (every
 // service) -> application.New (bound services, git and engine streams) -> the menu -> the startup
@@ -195,13 +204,7 @@ func main() {
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N
 	// menu command below ties to.
-	wired.BindProofShell(func(rec shell.WindowRecord) {
-		rec.Bounds = shell.CascadeFrom(app.Window.Current())
-		if rec.Bounds != nil {
-			rec.Bounds.Width, rec.Bounds.Height = proof.WindowWidth, proof.WindowHeight
-		}
-		shell.OpenWindow(winDeps, rec)
-	})
+	wired.BindProofShell(func(rec shell.WindowRecord) { openProofWindow(app, winDeps, rec) })
 	wired.BindShell(appwire.ShellHooks{
 		OpenWindow: func(rec shell.WindowRecord) {
 			rec.Bounds = shell.CascadeFrom(app.Window.Current())
