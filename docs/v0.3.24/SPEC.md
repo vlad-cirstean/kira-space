@@ -12,7 +12,7 @@ Code review at chapter end: 1 round.
 | P738 | Task list and detail: border colors, spacing, stronger selected marking | Done |
 | P739 | Code review window: speed for big PRs | Todo |
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Done |
-| P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
+| P741 | Code review window: correct diff colors after a file is marked reviewed | Done |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Todo |
@@ -98,6 +98,18 @@ and `repo-workspace` UI specs rerun green.
 Diff against the base colors correctly. After a file is marked reviewed and new changes land, the
 shown changes are right but everything is green, new changes in a second shade ("added over added").
 Fix so the incremental diff colors like a normal diff.
+
+## P741 Result
+
+Root cause: `paint()` in `reviewDecorations.ts` tinted every reviewed line of a partly reviewed file with
+a whole-line `--kira-ok` green background, the same hue the diff editor uses for added lines. Since-review
+sides and hunks were already right (flow test pins them). Fix: the coverage is a gutter rail
+(`marginClassName`, `box-shadow: inset 3px 0 0 var(--kira-ok)` in `review-decorations.css`), never a content
+background; overview ruler and the fully-reviewed skip unchanged. Screenshot confirms the rail shows left of
+the line numbers and the right pane is neutral except `LINE2` and `line5`. Tests: flow `TestSinceReviewSides`
+(contract `git-review-since`); UI `ade-v2-review-since.spec.ts` (5: since-review side by side and inline,
+fully reviewed, uncommitted reviewed vs unreviewed, added file). `ade-v2-review`, `-working`, `-deleted`,
+`-rereview` UI specs and `reviewflow` (`-count=2`) green. ARCHITECTURE review-layer bullet updated.
 
 ## P742
 
