@@ -361,3 +361,37 @@ reviewTest(
     await expect(selected).toHaveCount(1);
   },
 );
+
+reviewTest(
+  'stepping between uncommitted files reopens a section collapsed on the first',
+  async ({ relaunch }) => {
+    const second = 'other.txt';
+    const first = working.files[0];
+    if (!first) throw new Error('contract has no working file');
+    const { window: page } = await relaunch({
+      control: [
+        ...control().filter((e) => e.channel !== IPC.adeTaskReviewWorking),
+        {
+          channel: IPC.adeTaskReviewWorking,
+          response: {
+            ...working,
+            worktree: target.worktree,
+            files: [...working.files, { ...first, path: second }],
+          },
+        },
+      ],
+      gitStream: GIT,
+    });
+    await page.locator(t('ade-review-window')).waitFor();
+    const header = page.locator(t('review-working-header'));
+    const rows = page.locator(`${t('review-working-tree')} ${t('file-tree-row')}`);
+    await rows.first().click();
+    await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
+    await header.click();
+    await expect(header).toHaveAttribute('aria-expanded', 'false');
+    // The cursor stays in the uncommitted section; stepping to its next file must reopen it.
+    await page.locator(t('review-next-unreviewed')).click();
+    await expect(header).toHaveAttribute('aria-expanded', 'true');
+    await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true');
+  },
+);

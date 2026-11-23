@@ -125,8 +125,8 @@ const workingChangedCount = computed(
 // Stepping or a centre-tab follow onto an uncommitted file must not land in a hidden list.
 const workingOpen = ref(true);
 watch(
-  () => props.cursor?.section,
-  (section) => {
+  () => [props.cursor?.section, props.cursor?.path] as const,
+  ([section]) => {
     if (section === 'working') workingOpen.value = true;
   },
 );
