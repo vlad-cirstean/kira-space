@@ -840,7 +840,7 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `Plan only, mode read.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: the raw plan text too.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "params", studioApp, NextCall, `Temporary variable names in placeholder order, never values. Syntax: the connection's paramSyntax in list.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it; it can set values for params. Global result {columns, rows of text cells or null, rowCount, truncated}; you get {output, input: {rowCount, truncated}}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it; it can set values for params. Global result {columns, rows of text cells or null, rowCount, truncated}. You get output (its return value) and input {rowCount, truncated}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal; the refusal says how.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `From the refusal.`, NoVars{})
@@ -901,7 +901,7 @@ var (
 	_ = arg(DbmcpToolAPIRequest.id, "script", studioApp, NextCall, `Optional. At least one of prepare or transform.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script.prepare", studioApp, NextCall, `Runs before approval. Globals request (your fields, references unresolved) and input. Returns fields that replace yours; a value it sets is what {{plain.name}} or {{secret.name}} here sends.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script.input", studioApp, NextCall, `Any JSON for prepare.`, NoVars{})
-	_ = arg(DbmcpToolAPIRequest.id, "script.transform", studioApp, NextCall, `Runs on the response. Globals response {status, headers [{name, value}], contentType, body (masked text), json, truncated, finalUrl} and request. You get {output}. Integers above 2^53 are BigInt; kira.parseJSON keeps exact numbers.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "script.transform", studioApp, NextCall, `Runs on the response. Globals response {status, headers [{name, value}], contentType, body (masked text), json, truncated, finalUrl} and request. You get output (its return value). Integers above 2^53 are BigInt; kira.parseJSON keeps exact numbers.`, NoVars{})
 )
 
 // DbmcpToolKubeRead describes the kube_read tool.
@@ -925,5 +925,5 @@ var (
 	_ = arg(DbmcpToolKubeRead.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "script", studioApp, NextCall, `At least one of prepare or transform.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "script.prepare", studioApp, NextCall, `Runs before approval on global request (your args); returns args that replace yours, never clusterId or op. Reads plain.name, not secret.name.`, NoVars{})
-	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on globals result (what op returns) and request; can set values for a later read. You get {output, input: {rowCount, truncated}}.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Globals request and result (op's reply; list: {columns, rows [{name, namespace, cells}], rowCount}). You get output (its return value) and input {rowCount, truncated}.`, NoVars{})
 )
