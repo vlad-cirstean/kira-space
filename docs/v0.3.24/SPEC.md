@@ -14,7 +14,8 @@ Code review at chapter end: 1 round.
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Todo |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Todo |
-| P743 | Chapter close | Todo |
+| P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
+| P744 | Chapter close | Todo |
 
 ## P736
 
@@ -89,5 +90,11 @@ Studio MCP tools let the agent request an approval prompt even when the operatio
 agent shows the user a sensitive action that needs confirmation.
 
 ## P743
+
+- Links show immediately; Jira details fill in after. Today every link waits for Jira to load, which is
+  slow. Links without Jira data render at once, Jira-backed fields (title, status) arrive when loaded.
+- PR tooltip in the task view is formatted badly. Fix its layout.
+
+## P744
 
 Chapter close per `CLAUDE.md` "Closing a chapter", by one Sonnet implementer, no plan.
