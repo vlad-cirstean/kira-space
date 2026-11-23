@@ -16,7 +16,8 @@ Code review at chapter end: 1 round.
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Done |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Done |
-| P745 | Chapter close | Todo |
+| P745 | Kube MCP: unambiguous transform script globals in the tool description | Todo |
+| P746 | Chapter close | Todo |
 
 ## P736
 
@@ -221,5 +222,18 @@ Not confirmed: live-session hook pickup. The implementer cannot see its own sess
 stays unconfirmed until a spawned session (P745) runs `git status` and gets the rtk form.
 
 ## P745
+
+Found while hardening a real `claude` test (review round 1 fixer): the kube MCP tool description
+reportedly says transform scripts get globals `result` and "You get {output, input}", while `result`
+is the output itself, so the model guessed `output`, `input`, `result.output` and failed 2 of 10 runs
+of `TestKubeMcpKeptChainThroughClaude` until the test prompt spelled it out.
+
+- Plan verifies the claim first (tool description text, token budget test, the script engine's real
+  globals). If the text is correct, close the phase as no change with the evidence in its Result.
+- If wrong or ambiguous: fix the description for every tool that shares the wording (DB, API, kube),
+  keep it terse, keep the tool-list budget test passing, then rerun the kube real-`claude` test 10
+  times with the original (pre-hardening) prompt to prove the description alone now suffices.
+
+## P746
 
 Chapter close per `CLAUDE.md` "Closing a chapter", by one Sonnet implementer, no plan.
