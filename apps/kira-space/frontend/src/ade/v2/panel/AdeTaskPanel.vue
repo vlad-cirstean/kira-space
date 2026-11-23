@@ -11,7 +11,6 @@ import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { errorText } from '@workbench/bridge/codedError';
-import ColorLine from '@workbench/components/ColorLine.vue';
 import { computed } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
@@ -112,6 +111,7 @@ const label = computed(() =>
 <template>
   <AdePanelFrame
     v-model="tab"
+    :color="card.color"
     :tabs="[
       { value: 'main', label: t('common.main.label') },
       { value: 'details', label: t('common.details.title') },
@@ -153,8 +153,7 @@ const label = computed(() =>
       />
     </template>
     <template #header>
-      <ColorLine data-testid="ade-task-line" variant="edge" :color="card.color" />
-      <DetailHeader @contextmenu="taskMenu.open">
+      <DetailHeader flush class="px-3 pt-2 pb-0.75" @contextmenu="taskMenu.open">
         <template #leading>
           <Badge v-if="card.parked" variant="default">{{ label }}</Badge>
           <AdeChip v-else :label="label" :color="card.status.color" />

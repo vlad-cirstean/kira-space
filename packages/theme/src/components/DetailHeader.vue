@@ -66,6 +66,6 @@ const titleClass = computed(() =>
     >
       <slot name="description" />
     </div>
-    <div v-if="$slots.default" class="mt-1 flex flex-col gap-1.5"><slot /></div>
+    <div v-if="$slots.default" class="mt-1 flex flex-col gap-1.5 empty:hidden"><slot /></div>
   </div>
 </template>

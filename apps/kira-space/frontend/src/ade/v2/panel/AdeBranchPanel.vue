@@ -17,7 +17,6 @@ import { changeRequestTone, type StatusTone, TONE_BADGE } from '@theme/lib/statu
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { useKeptScroll } from '@workbench/behaviour/viewState';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
-import ColorLine from '@workbench/components/ColorLine.vue';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
@@ -287,18 +286,16 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
 <template>
   <AdePanelFrame
     v-model="tab"
+    :color="card.review ? 'var(--kira-info)' : card.color"
     :tabs="[
       { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },
     ]"
   >
     <template #header>
-      <ColorLine
-        data-testid="ade-task-line"
-        variant="edge"
-        :color="card.review ? 'var(--kira-info)' : card.color"
-      />
       <DetailHeader
+        flush
+        class="px-3 pt-2 pb-0.75"
         data
         wrap
         title-testid="ade-panel-title"
