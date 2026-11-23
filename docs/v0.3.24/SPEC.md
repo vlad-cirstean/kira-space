@@ -15,7 +15,8 @@ Code review at chapter end: 1 round.
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Todo |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
-| P744 | Chapter close | Todo |
+| P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Todo |
+| P745 | Chapter close | Todo |
 
 ## P736
 
@@ -96,5 +97,21 @@ agent shows the user a sensitive action that needs confirmation.
 - PR tooltip in the task view is formatted badly. Fix its layout.
 
 ## P744
+
+Adopt [rtk](https://github.com/rtk-ai/rtk), a hook that filters shell command output before the agent
+reads it, the way CodeGraph is adopted.
+
+- Edition: `rtk-oss` (Apache-2.0 only). The default `rtk` edition bundles a BUSL-1.1 engine, which
+  fails the open-source-only rule in `docs/WORKING_AGREEMENT.md`. Plan re-checks the license at
+  package level and for each feature used.
+- Plan decides, from the rtk docs and a `--dry-run`: project-level vs global hook config, what is
+  committed (like `.mcp.json`), install via a script like `scripts/codegraph-setup.sh`, telemetry
+  stays off, no pipelines or proxy.
+- Plan checks interaction with repo rules: hooks and pre-push output, `git diff` in reviews (bypass
+  with `rtk bypass`), subagent verification greps, the CLI-credentials rule.
+- Doc the setup in `docs/DEV_ENVIRONMENT.md`; process rule in `CLAUDE.md` only if it is a standing
+  rule.
+
+## P745
 
 Chapter close per `CLAUDE.md` "Closing a chapter", by one Sonnet implementer, no plan.
