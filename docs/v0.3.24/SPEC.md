@@ -11,7 +11,7 @@ Code review at chapter end: 1 round.
 | P737 | Details panel: denser items, "see more" for long content | Done |
 | P738 | Task list and detail: border colors, spacing, stronger selected marking | Done |
 | P739 | Code review window: speed for big PRs | Todo |
-| P740 | Code review window: collapsible uncommitted changes, readable removed files | Todo |
+| P740 | Code review window: collapsible uncommitted changes, readable removed files | Done |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Todo |
@@ -78,6 +78,20 @@ measured cause.
 
 - Uncommitted changes section cannot be collapsed. Make it collapsible.
 - Removed files show an error, or read unreadably. Find which; fix so they read properly.
+
+## P740 Result
+
+Not a backend error: removed files rendered unreadably. Monaco's diff against an empty side paints
+the whole text as one char-level change plus a phantom added line and trailing removed line. A
+deleted file (head found, worktree missing; committed and uncommitted) now mounts one read-only
+editor of the old text with `.kira-diff-line-removed` tint (`useDiffEditor.isDeletion`, `deleted`,
+`codeEditor`), a `Deleted` badge, no layout toggle, Go to file or review layer; a file restored or
+deleted on disk re-mounts the right widget. Uncommitted section in `ReviewFilesPane.vue` is a
+shadcn-vue Collapsible (`workingOpen`, reopens when the cursor moves onto a working file; closed
+section shrinks to its header). Added files hit the same Monaco special case mirrored; left out of
+scope. Tests: flow `TestDeletedFileReads`, `TestReviewWorking` (`#deleted` contract); UI
+`ade-v2-review-deleted.spec.ts` (3), `ade-v2-review-working.spec.ts` (2 new). All pass; `ade-v2-review`
+and `repo-workspace` UI specs rerun green.
 
 ## P741
 
