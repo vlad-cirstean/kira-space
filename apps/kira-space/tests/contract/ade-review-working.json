@@ -68,6 +68,24 @@
       "text": "keep.txt\nunstaged edit\n"
     }
   },
+  "AdeTaskService.ReviewWorkingDiff#deleted": {
+    "contentHash": "absent",
+    "head": {
+      "bytes": 9,
+      "kind": "found",
+      "limitBytes": 8388608,
+      "oid": "<masked>",
+      "text": "gone.txt\n"
+    },
+    "language": "plaintext",
+    "path": "gone.txt",
+    "worktree": {
+      "bytes": 0,
+      "kind": "missing",
+      "limitBytes": 8388608,
+      "text": ""
+    }
+  },
   "args:AdeTaskService.ReviewWorking": {
     "branchId": "<id:1>"
   },
