@@ -175,135 +175,135 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
         />
       </AdeLinkAdd>
     </SectionHeading>
+    <p
+      v-if="links.gaps.value.length"
+      class="m-0 text-kira-sm text-warn"
+      data-testid="ade-links-gaps"
+    >
+      <span
+        v-for="(g, i) in links.gaps.value"
+        :key="`${g.source}:${g.repo}:${g.reason ?? ''}`"
+        data-testid="ade-links-gap"
+        >{{ gapText(g) }}{{ i < links.gaps.value.length - 1 ? ' ' : '' }}</span
+      >
+    </p>
+    <InlineState v-if="links.error.value" kind="error" data-testid="ade-links-error">{{
+      links.error.value
+    }}</InlineState>
+    <span
+      v-if="links.groups.value.length"
+      :id="hintId"
+      class="sr-only"
+      data-testid="ade-links-hint"
+      >{{
+        t('space.ade.links.pill.hint', { modifier })
+      }}</span
+    >
+    <RovingFocusGroup
+      orientation="horizontal"
+      loop
+      class="flex flex-col gap-0.5"
+      @keydown="onKeydown"
+    >
+      <div
+        v-for="g in links.groups.value"
+        :key="g.id"
+        class="flex min-h-6 items-start gap-1"
+        data-testid="ade-links-line"
+        :data-category="g.id"
+      >
+        <TextTooltip
+          :text="
+            t('space.ade.links.category.tooltip', {
+              category: t(CATEGORY_LABEL[g.id]),
+              count: g.items.length,
+            })
+          "
+        >
+          <span
+            class="flex min-h-6 w-5 shrink-0 items-center justify-center text-muted-foreground"
+            role="img"
+            :aria-label="
+              t('space.ade.links.category.tooltip', {
+                category: t(CATEGORY_LABEL[g.id]),
+                count: g.items.length,
+              })
+            "
+            :data-category="g.id"
+            data-testid="ade-links-category"
+          >
+            <CodiconIcon :name="CATEGORY_ICON[g.id]" :size="13" />
+          </span>
+        </TextTooltip>
+        <Collapsible v-slot="{ open }" class="flex min-w-0 flex-1 flex-wrap gap-1 py-[3px]">
+          <template v-for="(item, i) in g.items" :key="item.key">
+            <Popover
+              v-if="open || g.items.length <= OVER || i < SHOWN"
+              :open="openKey === item.key"
+              @update:open="(v: boolean) => setOpen(item.key, v)"
+            >
+              <RovingFocusItem as-child>
+                <PopoverAnchor as-child>
+                  <AdeLinkPill
+                    :item="item"
+                    :show-kind="g.id === 'misc'"
+                    aria-haspopup="dialog"
+                    :aria-expanded="openKey === item.key"
+                    :aria-describedby="hintId"
+                    :data-state="openKey === item.key ? 'open' : 'closed'"
+                    @click="openItem($event, item)"
+                    @contextmenu.prevent.stop="openCard(item)"
+                  />
+                </PopoverAnchor>
+              </RovingFocusItem>
+              <PopoverContent
+                align="start"
+                class="w-80"
+                data-testid="ade-links-card"
+                @close-auto-focus="onCardClose($event, item)"
+              >
+                <AdeLinkCard
+                  :task="task"
+                  :item="item"
+                  :mode="mode"
+                  :archived="archived"
+                  :editing="editingKey === item.key"
+                  :links="links"
+                  @edit="editingKey = item.key"
+                  @done="editingKey = null"
+                  @open-session="emit('openSession', $event)"
+                />
+              </PopoverContent>
+            </Popover>
+          </template>
+          <RovingFocusItem v-if="!open && g.items.length > OVER" as-child>
+            <CollapsibleTrigger as-child>
+              <button
+                type="button"
+                class="inline-flex h-control-sm items-center rounded-kira-sm bg-field px-1.5 text-kira-sm text-muted-foreground focus-visible:focus-ring"
+                data-testid="ade-links-more"
+              >
+                {{ t('common.more.label', { count: g.items.length - SHOWN }) }}
+              </button>
+            </CollapsibleTrigger>
+          </RovingFocusItem>
+        </Collapsible>
+      </div>
+    </RovingFocusGroup>
     <QueryState :query="links.query" variant="inline">
       <template #loading>
         <div class="flex min-h-6 items-center gap-1" data-testid="ade-links-loading">
           <Skeleton class="h-4 w-1/3" data-testid="ade-links-skeleton" />
         </div>
       </template>
-      <p
-        v-if="links.gaps.value.length"
-        class="m-0 text-kira-sm text-warn"
-        data-testid="ade-links-gaps"
-      >
-        <span
-          v-for="(g, i) in links.gaps.value"
-          :key="`${g.source}:${g.repo}:${g.reason ?? ''}`"
-          data-testid="ade-links-gap"
-          >{{ gapText(g) }}{{ i < links.gaps.value.length - 1 ? ' ' : '' }}</span
-        >
-      </p>
-      <InlineState v-if="links.error.value" kind="error" data-testid="ade-links-error">{{
-        links.error.value
-      }}</InlineState>
       <InlineState
-        kind="empty"
         v-if="links.groups.value.length === 0"
+        kind="empty"
         data-testid="ade-links-empty"
       >
         {{ t('space.ade.details.empty.body')
         }}<template v-if="canAdd()"> {{ t('space.ade.links.empty.hint') }}</template>
       </InlineState>
-      <span
-        v-if="links.groups.value.length"
-        :id="hintId"
-        class="sr-only"
-        data-testid="ade-links-hint"
-        >{{
-          t('space.ade.links.pill.hint', { modifier })
-        }}</span
-      >
-      <RovingFocusGroup
-        orientation="horizontal"
-        loop
-        class="flex flex-col gap-0.5"
-        @keydown="onKeydown"
-      >
-        <div
-          v-for="g in links.groups.value"
-          :key="g.id"
-          class="flex min-h-6 items-start gap-1"
-          data-testid="ade-links-line"
-          :data-category="g.id"
-        >
-          <TextTooltip
-            :text="
-              t('space.ade.links.category.tooltip', {
-                category: t(CATEGORY_LABEL[g.id]),
-                count: g.items.length,
-              })
-            "
-          >
-            <span
-              class="flex min-h-6 w-5 shrink-0 items-center justify-center text-muted-foreground"
-              role="img"
-              :aria-label="
-                t('space.ade.links.category.tooltip', {
-                  category: t(CATEGORY_LABEL[g.id]),
-                  count: g.items.length,
-                })
-              "
-              :data-category="g.id"
-              data-testid="ade-links-category"
-            >
-              <CodiconIcon :name="CATEGORY_ICON[g.id]" :size="13" />
-            </span>
-          </TextTooltip>
-          <Collapsible v-slot="{ open }" class="flex min-w-0 flex-1 flex-wrap gap-1 py-[3px]">
-            <template v-for="(item, i) in g.items" :key="item.key">
-              <Popover
-                v-if="open || g.items.length <= OVER || i < SHOWN"
-                :open="openKey === item.key"
-                @update:open="(v: boolean) => setOpen(item.key, v)"
-              >
-                <RovingFocusItem as-child>
-                  <PopoverAnchor as-child>
-                    <AdeLinkPill
-                      :item="item"
-                      :show-kind="g.id === 'misc'"
-                      aria-haspopup="dialog"
-                      :aria-expanded="openKey === item.key"
-                      :aria-describedby="hintId"
-                      :data-state="openKey === item.key ? 'open' : 'closed'"
-                      @click="openItem($event, item)"
-                      @contextmenu.prevent.stop="openCard(item)"
-                    />
-                  </PopoverAnchor>
-                </RovingFocusItem>
-                <PopoverContent
-                  align="start"
-                  class="w-80"
-                  data-testid="ade-links-card"
-                  @close-auto-focus="onCardClose($event, item)"
-                >
-                  <AdeLinkCard
-                    :task="task"
-                    :item="item"
-                    :mode="mode"
-                    :archived="archived"
-                    :editing="editingKey === item.key"
-                    :links="links"
-                    @edit="editingKey = item.key"
-                    @done="editingKey = null"
-                    @open-session="emit('openSession', $event)"
-                  />
-                </PopoverContent>
-              </Popover>
-            </template>
-            <RovingFocusItem v-if="!open && g.items.length > OVER" as-child>
-              <CollapsibleTrigger as-child>
-                <button
-                  type="button"
-                  class="inline-flex h-control-sm items-center rounded-kira-sm bg-field px-1.5 text-kira-sm text-muted-foreground focus-visible:focus-ring"
-                  data-testid="ade-links-more"
-                >
-                  {{ t('common.more.label', { count: g.items.length - SHOWN }) }}
-                </button>
-              </CollapsibleTrigger>
-            </RovingFocusItem>
-          </Collapsible>
-        </div>
-      </RovingFocusGroup>
     </QueryState>
   </div>
 </template>

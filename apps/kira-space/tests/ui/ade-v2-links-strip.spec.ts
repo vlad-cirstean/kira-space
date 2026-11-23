@@ -357,12 +357,21 @@ test('+ on a focused pill opens the add popover', async ({ relaunch }) => {
   await expect(page.locator(t('ade-links-paste'))).toBeFocused();
 });
 
-test('loading shows three skeleton pills, then the links', async ({ relaunch }) => {
+test('slot pills show while artifacts load, then the rest join', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] }, hold: true },
   ]);
   await openDetails(page);
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(1);
+  // The Jira and host slots come from the task, not from Artifacts.
+  const slots = page.locator(
+    `${t('ade-links-pill')}[data-origin="jira"], ${t('ade-links-pill')}[data-origin="host"]`,
+  );
+  await expect(slots.first()).toBeVisible();
+  await expect
+    .poll(async () => [await slots.count(), await page.locator(t('ade-links-pill')).count()])
+    .toEqual([expect.any(Number), expect.any(Number)]);
+  expect(await page.locator(t('ade-links-pill')).count()).toBe(await slots.count());
   control.release(IPC.adeTaskArtifacts);
   await expect(page.locator(t('ade-links-pill'))).toHaveCount(8);
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(0);

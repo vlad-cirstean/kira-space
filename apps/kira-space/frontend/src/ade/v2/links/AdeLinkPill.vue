@@ -51,7 +51,11 @@ withDefaults(defineProps<{ item: LinkItem; showKind?: boolean; as?: 'button' | '
     <span class="flex min-w-0" data-testid="ade-links-pill-label"
       ><TruncatedText :text="item.label" /></span
     >
-    <template v-if="item.tone">
+    <template v-if="item.pending">
+      <StatusDot tone="muted" pulse data-testid="ade-links-pill-dot-pending" />
+      <span class="sr-only">{{ t('common.state.loading.loading') }}</span>
+    </template>
+    <template v-else-if="item.tone">
       <StatusDot
         :tone="TONE_DOT[THEME_TONE[item.tone]]"
         :data-tone="THEME_TONE[item.tone]"
