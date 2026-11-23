@@ -16,7 +16,7 @@ Code review at chapter end: 1 round.
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Done |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Done |
-| P745 | Kube MCP: unambiguous transform script globals in the tool description | Todo |
+| P745 | Kube MCP: unambiguous transform script globals in the tool description | Done |
 | P746 | Chapter close | Todo |
 
 ## P736
@@ -233,6 +233,21 @@ of `TestKubeMcpKeptChainThroughClaude` until the test prompt spelled it out.
 - If wrong or ambiguous: fix the description for every tool that shares the wording (DB, API, kube),
   keep it terse, keep the tool-list budget test passing, then rerun the kube real-`claude` test 10
   times with the original (pre-hardening) prompt to prove the description alone now suffices.
+
+## P745 Result
+
+Verdict: ambiguous, not wrong. Globals were correct; "You get {output, input}" read as more globals,
+and kube "what op returns" was circular and gave no list shape.
+
+- Texts changed (`internal/llmprompts/registry.go`): `run_query` `script`, `api_request` `script.transform`,
+  `kube_read` `script.transform`. All say "You get output (its return value)"; kube also spells the
+  list shape and drops "can set values for a later read" (`dbmcp.instructions.scripts` covers it).
+- Tool-list tokens: 3992 before, 4016 after. Budget stays 4020 (kube text tightened, no raise).
+  `budget.tsv` rune counts: 256, 248, 167.
+- `TestKubeMcpKeptChainThroughClaude` with pre-hardening prompt (scratch, not committed): 9 of 10 before,
+  10 of 10 after.
+- Fixed text, once each: `TestDbMcpScriptThroughClaude`, `TestDbMcpKeptChainThroughClaude`,
+  `TestKubeMcpThroughClaude`, `TestKubeMcpKeptChainThroughClaude` all pass.
 
 ## P746
 
