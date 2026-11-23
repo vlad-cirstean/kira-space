@@ -893,7 +893,9 @@ per-message regardless of how the index got built. If a worktree was never provi
   and per-target SHA-256, no `curl | sh`. Refuses to overwrite a full-edition or foreign `rtk`. `$INSTALL_DIR`
   must come first on `PATH`.
 - Committed: `.claude/settings.json` `PreToolUse` hook (Bash) and `env`;
-  `.claude/hooks/rtk-pretooluse.sh` fails open (no `rtk`, or full edition: command runs unchanged).
+  `.claude/hooks/rtk-pretooluse.sh` fails open: no `rtk`, full edition, foreign or failing `rtk`, any non-zero exit or non-JSON
+  output exits 0 silently and the command runs unchanged. `sh scripts/rtk-hook-test.sh` proves it
+  with fake binaries (`RTK_REAL=<rtk-oss path>` adds a real rewrite check).
   Hook settings load at session start: a session started before setup needs a restart.
 - Raw output: `rtk bypass <cmd>`, or `RTK_DISABLED=1 <cmd>`; `rtk git diff --no-compact`;
   `rtk recall <hash>` restores an elided block. Never add a `Bash(rtk:*)` allow rule (allows
