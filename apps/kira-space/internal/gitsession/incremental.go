@@ -754,21 +754,25 @@ const (
 // markChunkPaths paths or markChunkBytes of snapshot content, one PutMany transaction each; the
 // first error stops the batch and earlier chunks stay written.
 //
-// Lock order: a chunk holds the per-path locks of all its paths, taken in sorted path order. Every
-// other holder (MarkFile, working review, removed-line capture) holds exactly one path lock and
-// takes no second, so a waiting chunk never closes a cycle.
+// Lock order: paths are processed in sorted order and a chunk takes each path's lock just before
+// preparing it, holding them until its write, so locks cover only consumed paths. Every other
+// holder (MarkFile, working review, removed-line capture) holds exactly one path lock and takes no
+// second, so a waiting chunk never closes a cycle.
 func (e *RepoEntry) MarkFiles(ctx context.Context, branch string, paths []string, reviewed bool) ([]gitreview.FileRecord, error) {
 	tip, err := e.branchTip(ctx, branch)
 	if err != nil {
 		return nil, err
 	}
 	recs := make(map[string]gitreview.FileRecord, len(paths))
-	for start := 0; start < len(paths); {
+	order := slices.Clone(paths)
+	slices.Sort(order)
+	order = slices.Compact(order)
+	for start := 0; start < len(order); {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		end := min(start+markChunkPaths, len(paths))
-		done, err := e.markChunk(ctx, tip, branch, paths[start:end], reviewed, recs)
+		end := min(start+markChunkPaths, len(order))
+		done, err := e.markChunk(ctx, tip, branch, order[start:end], reviewed, recs)
 		if err != nil {
 			return nil, err
 		}
@@ -782,21 +786,16 @@ func (e *RepoEntry) MarkFiles(ctx context.Context, branch string, paths []string
 }
 
 // markChunk prepares paths in order until the byte budget fills (at least one), writes them in one
-// PutMany and reports how many it consumed. paths must be a window of the caller's path list.
+// PutMany and reports how many it consumed. paths must be a sorted, unique window of the caller's
+// path list; each path's lock is taken just before it is prepared and held until return.
 func (e *RepoEntry) markChunk(ctx context.Context, tip, branch string, paths []string, reviewed bool, recs map[string]gitreview.FileRecord) (int, error) {
-	sorted := slices.Clone(paths)
-	slices.Sort(sorted)
-	sorted = slices.Compact(sorted)
-	for _, p := range sorted {
-		defer e.review.Lock(e.Summary.RepoID, branch, p)()
-	}
-
 	items := make([]gitreview.PutItem, 0, len(paths))
 	size, consumed := 0, 0
 	for _, path := range paths {
 		if err := ctx.Err(); err != nil {
 			return 0, err
 		}
+		defer e.review.Lock(e.Summary.RepoID, branch, path)()
 		item, err := e.prepareMark(ctx, tip, branch, path, reviewed, nil)
 		if err != nil {
 			return 0, err
