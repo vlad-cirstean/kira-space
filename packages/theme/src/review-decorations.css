@@ -42,6 +42,12 @@
   background-color: color-mix(in srgb, var(--kira-ok) 15%, transparent);
 }
 
+/* A deleted file's lines in its single-pane view (useDiffEditor.ts): one removed tint, the
+   counterpart of the diff editor's line background without its char layer. */
+.kira-diff-line-removed {
+  background-color: color-mix(in srgb, var(--kira-error) 15%, transparent);
+}
+
 /* The hunk mark lives in a zone's margin node; lift that layer over the line-number overlays so
    the button receives clicks. */
 .monaco-editor .margin-view-zones {

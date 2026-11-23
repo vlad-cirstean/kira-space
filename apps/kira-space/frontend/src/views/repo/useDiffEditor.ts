@@ -26,13 +26,20 @@ import { gitTransportFor } from '../../repo/git/transport';
 import { openRepoFileTab } from '../../state/repoTabs';
 import { useSettingsStore } from '../../state/settings';
 import { useDiffLayout } from './diffLayout';
-import { knownRead, registerDiffEditor, rememberRead, unmountEditor } from './editors';
+import {
+  knownRead,
+  registerDiffEditor,
+  registerEditor,
+  rememberRead,
+  unmountEditor,
+} from './editors';
 import { FULL_COMMIT_ID } from './fileContent';
 import { monacoLanguageFor } from './language';
 import {
   getOrCreateModel,
   KIRA_EDITOR_THEME,
   loadMonaco,
+  type MonacoModule,
   overflowWidgetsContainer,
   peekModel,
   repoDiffUris,
@@ -54,6 +61,12 @@ function toDiffSide(result: {
     bytes: result.bytes ?? 0,
     limitBytes: result.limitBytes ?? 0,
   };
+}
+
+/** A file that exists at the left side and is gone on the right: shown as its old text alone, since
+ *  Monaco's diff against an empty side paints a phantom change on both. */
+export function isDeletion(diff: { head: DiffSide; worktree: DiffSide }): boolean {
+  return diff.head.kind === 'found' && diff.worktree.kind === 'missing';
 }
 
 interface DiffSidesLoaded {
@@ -232,6 +245,10 @@ export interface DiffEditorHandle {
    *  wiring, both single-active-view concerns this composable deliberately stays out of (this
    *  file's own header comment), reach the live editor through it. */
   editor: Ref<import('monaco-editor').editor.IStandaloneDiffEditor | null>;
+  /** True when the file is deleted: `codeEditor` shows its old text and `editor` stays null. */
+  deleted: Ref<boolean>;
+  /** The single read-only editor of a deleted file. */
+  codeEditor: Ref<import('monaco-editor').editor.IStandaloneCodeEditor | null>;
   /** Hash of the uncommitted worktree text the models were filled from; the caller keeps it in
    *  step when it rewrites them. Undefined for a diff that is not an uncommitted review read. */
   contentHash: Ref<string | undefined>;
@@ -255,8 +272,51 @@ export function useDiffEditor(
   const errorMessage = ref('');
   const contentHash = ref<string | undefined>();
   const editor = shallowRef<import('monaco-editor').editor.IStandaloneDiffEditor | null>(null);
+  const deleted = ref(false);
+  const codeEditor = shallowRef<import('monaco-editor').editor.IStandaloneCodeEditor | null>(null);
   let goToFileImpl: (() => void) | null = null;
   let stopLayoutWatch: WatchStopHandle | null = null;
+
+  // One read-only editor over the old text; every content line tinted removed. Same model uri as
+  // the diff's left side, so a later diff mount of this tab reuses it.
+  function mountDeleted(
+    mod: MonacoModule,
+    host: HTMLElement,
+    uri: string,
+    text: string,
+    language: string,
+  ): void {
+    const settingsStore = useSettingsStore();
+    const model = getOrCreateModel(mod, uri, text, language);
+    const created = mod.editor.create(host, {
+      theme: KIRA_EDITOR_THEME,
+      model,
+      readOnly: true,
+      domReadOnly: true,
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      glyphMargin: false,
+      renderValidationDecorations: 'off',
+      fontFamily: settingsStore.appearance.fontFamily,
+      fontSize: settingsStore.appearance.fontSize,
+      fixedOverflowWidgets: true,
+      overflowWidgetsDomNode: overflowWidgetsContainer(),
+    });
+    // A trailing newline leaves an empty last line that was never a removed line.
+    const count = model.getLineCount();
+    const last = count > 1 && model.getLineLength(count) === 0 ? count - 1 : count;
+    created.createDecorationsCollection([
+      {
+        range: new mod.Range(1, 1, last, model.getLineMaxColumn(last)),
+        options: { isWholeLine: true, className: 'kira-diff-line-removed' },
+      },
+    ]);
+    registerEditor(params.editorKey, uri, created);
+    codeEditor.value = created;
+    deleted.value = true;
+    goToFileImpl = null;
+  }
 
   async function mount(): Promise<void> {
     const settingsStore = useSettingsStore();
@@ -314,6 +374,12 @@ export function useDiffEditor(
     if (!container.value || params.isCurrent?.() === false) return;
 
     const language = monacoLanguageFor(path);
+    if (isDeletion(diff)) {
+      mountDeleted(mod, container.value, headUri.toString(), diff.head.text, language);
+      contentHash.value = diff.contentHash;
+      state.value = 'found';
+      return;
+    }
     const original = getOrCreateModel(mod, headUri.toString(), diff.head.text, language);
     const modified = getOrCreateModel(mod, worktreeUri.toString(), diff.worktree.text, language);
     contentHash.value = diff.contentHash;
@@ -382,6 +448,8 @@ export function useDiffEditor(
     stopLayoutWatch?.();
     stopLayoutWatch = null;
     editor.value = null;
+    codeEditor.value = null;
+    deleted.value = false;
     unmountEditor(params.editorKey);
   }
 
@@ -389,5 +457,15 @@ export function useDiffEditor(
     goToFileImpl?.();
   }
 
-  return { state, errorMessage, editor, contentHash, mount, dispose, goToFile };
+  return {
+    state,
+    errorMessage,
+    editor,
+    deleted,
+    codeEditor,
+    contentHash,
+    mount,
+    dispose,
+    goToFile,
+  };
 }

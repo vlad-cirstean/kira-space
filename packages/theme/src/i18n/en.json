@@ -12236,6 +12236,9 @@
         "comment": {
           "placeholder": "Leave a review comment"
         },
+        "deletedFile": {
+          "label": "Deleted"
+        },
         "diffLayout": {
           "aria": "Diff layout"
         },
