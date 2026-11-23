@@ -17,7 +17,7 @@ Code review at chapter end: 1 round.
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Done |
 | P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Done |
 | P745 | Kube MCP: unambiguous transform script globals in the tool description | Done |
-| P746 | Chapter close | Todo |
+| P746 | Chapter close | Done |
 
 ## P736
 
@@ -252,3 +252,7 @@ and kube "what op returns" was circular and gave no list shape.
 ## P746
 
 Chapter close per `CLAUDE.md` "Closing a chapter", by one Sonnet implementer, no plan.
+
+## P746 Result
+
+Closed. 11 phases (P736 to P746) folded into `docs/history/07-v0.3.15.md`; chapter dir removed after. PR to follow.
