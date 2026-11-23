@@ -18417,6 +18417,12 @@
         }
       },
       "risk": {
+        "agentConfirm": {
+          "status": "Agent asks you to confirm: {note}"
+        },
+        "agentRequested": {
+          "status": "Your settings allow this; the agent asked for this prompt"
+        },
         "unreadable": {
           "status": "Request unreadable",
           "tooltip": "Request details couldn’t be read. Deny it or ask the agent to retry"

@@ -90,6 +90,20 @@ watch(broken, (v) => v && store.markBroken(props.item.id), { immediate: true });
 
 const risks = computed<ApprovalRisk[]>(() => {
   const out: ApprovalRisk[] = [];
+  if (props.item.agentNote) {
+    out.push({
+      text: t('workbench.approvals.risk.agentConfirm.status', { note: props.item.agentNote }),
+      tone: 'warn',
+      testid: 'approval-agent-confirm',
+    });
+  }
+  if (props.item.reason === 'confirm') {
+    out.push({
+      text: t('workbench.approvals.risk.agentRequested.status'),
+      tone: 'neutral',
+      testid: 'approval-agent-requested',
+    });
+  }
   if (def) out.push(...kindRisks.value.value);
   else out.push({ text: t('workbench.approvals.risk.unsupported.status'), tone: 'warn' });
   if (broken.value) {

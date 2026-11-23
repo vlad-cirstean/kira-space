@@ -76,6 +76,7 @@ function mk(
       target: { name: '', kind: '', color: '', readOnly: false, location: '', ...target },
       operation,
       reason: 'permission',
+      agentNote: '',
       payload,
     },
     seconds,

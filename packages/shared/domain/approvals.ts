@@ -29,6 +29,8 @@ export const approvalItemSchema = /*#__PURE__*/ z.object({
   }),
   operation: z.object({ class: z.string(), tone: approvalOperationToneSchema }),
   reason: z.string(),
+  // The agent's own sentence asking for this item; "" for none.
+  agentNote: z.string().default(''),
   payload: z.unknown(),
 });
 export type ApprovalItem = z.infer<typeof approvalItemSchema>;
