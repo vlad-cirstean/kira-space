@@ -93,7 +93,7 @@ const diffModeItems = computed(() =>
     tooltip: t(o.label),
   })),
 );
-const files = computed(() => props.reviewFiles.files.value.map((entry) => entry.change));
+const files = computed(() => props.reviewFiles.changes.value);
 
 const reviewStatesMap = computed<ReadonlyMap<string, ReviewFileStatus>>(() => {
   const map = new Map<string, ReviewFileStatus>();

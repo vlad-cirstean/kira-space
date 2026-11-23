@@ -1,4 +1,5 @@
 import type {
+  FileChange,
   FileChangeKind,
   LineRange,
   ResultOf,
@@ -41,6 +42,21 @@ export interface ReviewFilesTarget {
   readonly base: string;
 }
 
+function sameChanges(current: readonly FileChange[], next: readonly ReviewFileEntry[]): boolean {
+  return (
+    current.length === next.length &&
+    current.every((a, i) => {
+      const b = next[i].change;
+      return (
+        a.path === b.path &&
+        a.kind === b.kind &&
+        a.originalPath === b.originalPath &&
+        a.similarity === b.similarity
+      );
+    })
+  );
+}
+
 /**
  * The review sidebar's Files pane — `DetailState`'s own supersede-and-verify discipline,
  * applied to review.files/review.fileDiff/review.mark instead of commit.detail/commit.fileDiff.
@@ -50,6 +66,9 @@ export interface ReviewFilesTarget {
  */
 export class ReviewFilesState {
   readonly files: ShallowRef<readonly ReviewFileEntry[]> = shallowRef([]);
+  /** `files`' changes, replaced only when the list itself changes: a mark rewrites `files` for the
+   *  new review states and must not make the file tree fold again (P739). */
+  readonly changes: ShallowRef<readonly FileChange[]> = shallowRef([]);
   readonly loading: ShallowRef<boolean> = shallowRef(false);
   readonly loadError: ShallowRef<string | undefined> = shallowRef(undefined);
   // G13 D8/F15: kept, not discarded — the two shas editor.openRangeDiff's reshaped params need.
@@ -110,6 +129,7 @@ export class ReviewFilesState {
     this.#reloadTimer.stop();
     this.#target = target;
     this.files.value = [];
+    this.changes.value = [];
     this.#branchTip = undefined;
     this.#mergeBase = undefined;
     this.loadError.value = undefined;
@@ -144,6 +164,9 @@ export class ReviewFilesState {
       stillCurrent: () => this.#target === target,
       onResult: (result) => {
         this.files.value = result.files;
+        if (!sameChanges(this.changes.value, result.files)) {
+          this.changes.value = result.files.map((entry) => entry.change);
+        }
         this.#branchTip = result.branchTip;
         this.#mergeBase = result.mergeBase;
         this.loadError.value = undefined;
