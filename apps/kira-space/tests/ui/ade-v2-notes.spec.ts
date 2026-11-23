@@ -225,3 +225,69 @@ test('contract: Copy puts the stored note on the clipboard byte for byte; a sele
     )
     .toEqual([selected]);
 });
+
+test('contract: a long note shows its first lines; Show more expands it and the choice survives a tab switch', async ({
+  relaunch,
+}) => {
+  const note = contract<ChainFx & Record<string, unknown>>(
+    'ade-notes',
+    'AdeTaskService.AddNote#large',
+  );
+  const { window: page } = await openPlan(relaunch, [
+    {
+      channel: IPC.adeTaskHandovers,
+      response: { handovers: [{ ...note, id: 'h_big', taskId: 'T_alerts' }] },
+    },
+  ]);
+  await openDetails(page);
+  const more = page.locator(t('ade-handover-more'));
+  const box = page.locator(`${t('ade-handover-clamp')} [data-slot="clamped-content-box"]`);
+  await expect(more).toHaveText('Show more');
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  const sizes = () => box.evaluate((el) => ({ h: el.clientHeight, s: el.scrollHeight }));
+  const clamped = await sizes();
+  expect(clamped.h).toBeLessThan(200);
+  expect(clamped.s).toBeGreaterThan(clamped.h);
+  await more.click();
+  await expect(more).toHaveText('Show less');
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  const open = await sizes();
+  expect(open.s).toBeLessThanOrEqual(open.h + 1);
+  await page.locator(t('ade-panel-tab-main')).click();
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect(more).toHaveText('Show less');
+  await more.click();
+  await expect(more).toHaveText('Show more');
+});
+
+test('contract: short notes show in full with no Show more; entries sit close', async ({
+  relaunch,
+}) => {
+  const { window: page } = await openPlan(relaunch, [chainSnapshot('T_alerts')]);
+  await openDetails(page);
+  await expect(page.locator(t('ade-handover-more'))).toHaveCount(0);
+  const cards = page.locator(`${t('ade-task-chain')} [data-kind="handover"]`);
+  const first = cards.first();
+  const geometry = await first.evaluate((card) => {
+    const left = (el: Element | null) => (el ? el.getBoundingClientRect().left : Number.NaN);
+    const header = card.firstElementChild;
+    const body = card.querySelector('[data-testid="ade-handover-body"]');
+    return {
+      headerInset: left(header) - left(card),
+      bodyInset: left(body) - left(card),
+      paddingTop: getComputedStyle(card).paddingTop,
+    };
+  });
+  expect(Math.abs(geometry.bodyInset - geometry.headerInset)).toBeLessThanOrEqual(1);
+  expect(geometry.paddingTop).toBe('6px');
+  const boxes = await cards.evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom };
+    }),
+  );
+  for (let i = 1; i < boxes.length; i++) {
+    const gap = (boxes[i]?.top ?? 0) - (boxes[i - 1]?.bottom ?? 0);
+    expect(gap).toBeLessThanOrEqual(4);
+  }
+});

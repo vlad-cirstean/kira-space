@@ -107,13 +107,19 @@ test('statements show masked, can expand, and a withheld one says so', async ({ 
     e[2].statement = '';
     e[2].statementWithheld = true;
     e[2].statementLen = 42;
+    e[0].statement = Array.from(
+      { length: 6 },
+      (_, i) => `SELECT * FROM people WHERE email = '…' AND n = ${i}`,
+    ).join('\n');
   });
   const { window: page } = await openPlan(relaunch, snapshots(list));
   await openDetails(page);
   const first = page.locator(t('ade-details-dbaudit-statement')).first();
   await expect(first).toContainText("'…'");
   await expect(first).not.toContainText('@');
-  const expand = page.locator(t('ade-details-dbaudit-expand')).first();
+  const expand = page.locator(t('ade-details-dbaudit-expand'));
+  await expect(expand).toHaveCount(1);
+  await expect(expand).toHaveText('Show more');
   await expand.click();
   await expect(expand).toHaveText('Show less');
   await expect(page.locator(t('ade-details-dbaudit-withheld'))).toContainText(
