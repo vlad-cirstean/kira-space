@@ -243,7 +243,7 @@ export function adjacentInOrder(
   return at === -1 ? null : (order[dir === 'next' ? at + 1 : at - 1] ?? null);
 }
 
-/** §8's render cap page: 500 rows, then a "Show more" row, never a second virtualizer. */
+/** §8's render cap page for the `capped` FileTree (an unbounded parent): 500 rows, then a "Show more" row. */
 export const FILE_TREE_PAGE_SIZE = 500;
 
 /** `originalPath → path` with the common leading *directory* path truncated ("a file

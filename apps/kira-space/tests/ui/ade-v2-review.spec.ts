@@ -8,12 +8,15 @@ import { IPC } from './support/ipcChannels';
 import { emitWailsEvent } from './support/mockRuntime';
 import {
   boxOf,
+  change,
   GIT,
   HUNK_COMMENT,
   openDiffWindow,
   openHunkDiff,
+  REVIEW_FILES,
   renderedLine,
   reviewControl,
+  status,
   t,
   target,
 } from './support/reviewHunkDiff';
@@ -1349,5 +1352,39 @@ reviewTest(
     await expect
       .poll(async () => (await gitStreamParams(page, 'review.comment.add'))[0])
       .toMatchObject({ range: { start: 100, end: 100 }, body: 'from the menu' });
+  },
+);
+
+// P739: a PR-sized file list renders a window of rows; stepping reveals a row far past it.
+reviewTest(
+  'a 3000-file review list renders a window and steps to a far row',
+  async ({ relaunch }) => {
+    const paths = Array.from(
+      { length: 3000 },
+      (_, i) => `src/file-${String(i).padStart(4, '0')}.ts`,
+    );
+    const REVIEWED = 2500;
+    const page = await openDiffWindow(relaunch, paths, {
+      'review.files': {
+        ...REVIEW_FILES,
+        files: paths.map((path, i) => ({
+          change: change(path),
+          review: status(i < REVIEWED ? 'full' : 'none', false),
+        })),
+      },
+      'file.read': { kind: 'found', content: 'x\n' },
+    });
+    const tree = page.locator(t('review-files-tree'));
+    const rows = tree.locator(t('file-tree-row'));
+    await expect(rows.first()).toBeVisible();
+    expect(await rows.count()).toBeLessThan(100);
+
+    await page.locator(t('review-next-unreviewed')).click();
+    const far = rows.filter({ hasText: paths[REVIEWED].split('/')[1] });
+    await expect(far).toHaveAttribute('aria-selected', 'true');
+    const [rowBox, treeBox] = await Promise.all([boxOf(far), boxOf(tree)]);
+    expect(rowBox.y).toBeGreaterThanOrEqual(treeBox.y);
+    expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(treeBox.y + treeBox.height + 1);
+    expect(await rows.count()).toBeLessThan(100);
   },
 );
