@@ -701,7 +701,7 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 - **`bun run lint:go` needs `bun run build:mobile` once per checkout** (`main.go` embeds
   `frontend/dist-mobile`; absent, typecheck of the Go module fails).
 - **`ui-timing` needs an idle machine** (load below ~1, nothing else running). It is out of `bun run test:ui`
-  (P443); run `bun run test:ui:timing` alone (4 tests, about 70 s; CI runs the same `--no-deps` command). Check
+  (P443); run `bun run test:ui:timing` alone (4 specs' wall-clock tests plus `console-large-result.spec.ts`, about 150 s; CI runs the same `--no-deps` command). Check
   no `playwright`, `chrome` or `webkit` process is left before it starts. The WebKit sandbox is slow (measured 1.8x
   on JS and 2.9x on DOM work against Chromium on the same host); the open budget failures, if any, are in
   `ARCHITECTURE.md` Known open items.
