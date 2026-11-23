@@ -183,6 +183,8 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 
 // TestDbMcpBrowsePreferredThroughClaude (P609): with read and masked both allowed, run_query is a real
 // option, yet the real claude counts with browse_table's count and in filter and pages with offset.
+// The prompt names browse_table, count, in and offset: an open task made haiku pick run_query for the count
+// (1 of 10 runs), so the test guards that the tool's schema serves the task, not the model's tool choice.
 func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
@@ -209,7 +211,7 @@ func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 	}
 	browseTool, queryTool := "mcp__"+dbServer+"__browse_table", "mcp__"+dbServer+"__run_query"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"In the connection named "+connName+", count the rows of the notes table whose id is 1, 2 or 5, then list every note two per page. Then reply with the word done.",
+		"In the connection named "+connName+", use the browse_table tool only, never SQL: count the rows of the notes table whose id is 1, 2 or 5 with its count option and an in filter, then list every note two per page with its offset. Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__"+dbServer+"__list,"+browseTool+","+queryTool+",mcp__"+dbServer+"__describe",
 		"--output-format", "stream-json", "--verbose")

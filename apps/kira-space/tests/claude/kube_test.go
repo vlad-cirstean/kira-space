@@ -239,8 +239,10 @@ func TestKubeMcpKeptChainThroughClaude(t *testing.T) {
 	pre := "mcp__" + dbServer + "__"
 	kubeRead := pre + "kube_read"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. In the cluster whose context is kind-dev, read the logs of the crash-looping pod in namespace shop."+
-			" Never write the pod's name yourself: it must not pass through you. Reply with the last log line.",
+		"Use the kira-studio MCP tools, loading them with ToolSearch if they are deferred. In the cluster whose context is kind-dev, read the logs of the crash-looping pod in namespace shop, in two kube_read calls."+
+			" First, op list of kind pods in namespace shop, with a script.transform that writes the crash-looping pod's name to plain.crashPod and returns only {found: true}, so the table never reaches you."+
+			" The transform reads the global result: rows are in result.rows, each with name and cells (status is cells[2])."+
+			" Second, op logs in namespace shop with a script.prepare that returns exactly {name: plain.crashPod}. Never write the pod's name yourself: it must not pass through you. Reply with the last log line.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "ToolSearch,"+pre+"list,"+kubeRead,
 		"--output-format", "stream-json", "--verbose")
