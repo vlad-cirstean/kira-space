@@ -80,13 +80,13 @@ func TestDbMcpThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call the list tool once, then reply with the word done.",
+		"Call the MCP tool mcp__"+dbServer+"__list (it lists database connections) once, then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", "mcp__"+dbServer+"__list",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	uses := toolUses(msgs, "mcp__"+dbServer+"__list")
 	if len(uses) == 0 {
-		t.Fatalf("no list tool use in the stream:\n%s", tail(out, 1500))
+		t.Fatalf("no list tool use in the stream; result=%q", resultMsg(t, msgs).Result)
 	}
 	text, isErr, ok := toolResult(msgs, uses[0].ID)
 	if !ok || isErr {
