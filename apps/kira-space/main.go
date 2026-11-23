@@ -197,6 +197,9 @@ func main() {
 	// menu command below ties to.
 	wired.BindProofShell(func(rec shell.WindowRecord) {
 		rec.Bounds = shell.CascadeFrom(app.Window.Current())
+		if rec.Bounds != nil {
+			rec.Bounds.Width, rec.Bounds.Height = proof.WindowWidth, proof.WindowHeight
+		}
 		shell.OpenWindow(winDeps, rec)
 	})
 	wired.BindShell(appwire.ShellHooks{
