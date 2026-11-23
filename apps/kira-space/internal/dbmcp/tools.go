@@ -139,6 +139,8 @@ type runQueryArgs struct {
 	Params []string `json:"params,omitempty"`
 	// Script post-processes the result before the agent gets it (a function body, P675 engine).
 	Script string `json:"script,omitempty"`
+	// Confirm asks the user to approve the call even when the connection's policy allows it.
+	Confirm string `json:"confirm,omitempty"`
 }
 
 type exemptionArgs struct {
@@ -166,6 +168,11 @@ type exemptionArgs struct {
 // db.exemption approval in place of the db.query one, whatever the mode's verdict. Exec limits wrap the
 // execute step; one that trips refuses with a fresh id.
 func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args runQueryArgs) (*mcp.CallToolResult, any, error) {
+	confirm, refusal := confirmText(args.Confirm, queryScriptNothingRan)
+	if refusal != "" {
+		return errResult(refusal)
+	}
+	args.Confirm = confirm
 	if args.IncludeRaw && !args.Explain {
 		return errResult("includeRaw needs explain: true")
 	}
@@ -179,7 +186,7 @@ func (s *Server) runQuery(ctx context.Context, req *mcp.CallToolRequest, args ru
 		if args.Script != "" {
 			return errResult("script post-processes query results; it does not apply to explain")
 		}
-		return s.explainQuery(ctx, req, explainQueryArgs{ConnectionID: args.ConnectionID, SQL: args.SQL, Path: args.Path, IncludeRaw: args.IncludeRaw})
+		return s.explainQuery(ctx, req, explainQueryArgs{ConnectionID: args.ConnectionID, SQL: args.SQL, Path: args.Path, IncludeRaw: args.IncludeRaw, Confirm: args.Confirm})
 	}
 	sc, refusal := s.openQueryScript(ctx, args.Script)
 	if refusal != "" {
@@ -598,10 +605,11 @@ func (s *Server) planForCall(ctx context.Context, args runQueryArgs, rv *queryRe
 }
 
 // awaitApproval is the "at most one approval prompt per call" gate: a prompt verdict on the declared
-// mode asks once, with the plan evidence when a plan exists. A no-op (done false) for any other verdict.
+// mode, or a confirm from the agent, asks once, with the plan evidence when a plan exists. A no-op (done false) for any other verdict.
 // done is true whenever runQuery should return (res, out, err) immediately.
 func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *queryResolution, plan *queryplan.Plan) (res *mcp.CallToolResult, out any, err error, done bool) {
-	if rv.verdict != "prompt" {
+	policyAsks := rv.verdict == "prompt"
+	if !policyAsks && args.Confirm == "" {
 		return nil, nil, nil, false
 	}
 	if res, out, err, done := s.ensureReachable(ctx, rv.summary, rv.mode); done {
@@ -614,7 +622,7 @@ func (s *Server) awaitApproval(ctx context.Context, args runQueryArgs, rv *query
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
-		Statement: args.SQL, Reason: ApprovalReasonPermission,
+		Statement: args.SQL, Reason: confirmReason(policyAsks), AgentNote: args.Confirm,
 		Target: targetOf(rv.summary, args.Path),
 		Plan:   approvalPlanFrom(plan, rv.threshold), Origin: originFrom(ctx),
 		OfferReview: true, ReviewOn: s.reviewFor(rv.summary, rv.mode, rv.class),
@@ -690,6 +698,7 @@ type explainQueryArgs struct {
 	SQL          string
 	Path         string
 	IncludeRaw   bool
+	Confirm      string
 }
 
 // explainQueryResult embeds queryplan.Plan so its own fields inline directly into the result
@@ -728,7 +737,7 @@ func (s *Server) explainPreflight(args explainQueryArgs) (model.ConnectionSummar
 
 // awaitExplainApproval raises the explain approval once the connection answers. done is true when
 // the call ends here: an unreachable connection (no prompt raised) or a refused approval.
-func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs, summary model.ConnectionSummary) (resolved model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
+func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs, summary model.ConnectionSummary, reason ApprovalReason) (resolved model.ConnectionSummary, res *mcp.CallToolResult, out any, err error, done bool) {
 	if res, out, err, done := s.ensureReachable(ctx, summary, modeRead); done {
 		return summary, res, out, err, true
 	}
@@ -736,7 +745,7 @@ func (s *Server) awaitExplainApproval(ctx context.Context, args explainQueryArgs
 		ConnectionID: args.ConnectionID, ConnectionName: summary.Name, Kind: summary.Kind,
 		Class: adapters.ClassRead, Mode: modeRead, Enforcement: enforcementFor(summary, modeRead),
 		// The agent's SQL, not the composed EXPLAIN: the card labels it "Explain".
-		Statement: args.SQL, Explain: true, Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
+		Statement: args.SQL, Explain: true, Reason: reason, AgentNote: args.Confirm, Origin: originFrom(ctx),
 	})
 	if outcome != ApprovalApproved {
 		res, out, err = approvalOutcomeError(outcome, fmt.Sprintf("query against %q", summary.Name))
@@ -792,9 +801,16 @@ func (s *Server) explainQuery(ctx context.Context, _ *mcp.CallToolRequest, args 
 
 	switch verdict := verdictFor(m, adapters.ClassRead); verdict {
 	case "allow":
-		// fall through to Execute below.
+		if args.Confirm == "" {
+			break // fall through to Execute below.
+		}
+		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary, ApprovalReasonConfirm)
+		if done {
+			return res, out, err
+		}
+		summary = resolved
 	case "prompt":
-		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary)
+		resolved, res, out, err, done := s.awaitExplainApproval(ctx, args, summary, ApprovalReasonPermission)
 		if done {
 			return res, out, err
 		}

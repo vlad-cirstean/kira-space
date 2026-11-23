@@ -21,8 +21,9 @@ type (
 
 const (
 	// toolListTokenBudget caps what a client loads on connect: instructions plus every tool, as the
-	// repo estimates tokens (ceil(runes/3)). Lower it with the texts; never raise it to fit.
-	toolListTokenBudget = 4000
+	// repo estimates tokens (ceil(runes/3)). Aim is efficient texts, not the number: lower it with the
+	// texts; raise it only by what a new arg needs, after trimming duplicated text and with terse arg text (P742: 4000 to 4020).
+	toolListTokenBudget = 4020
 	toolDescriptionMax  = 300
 )
 

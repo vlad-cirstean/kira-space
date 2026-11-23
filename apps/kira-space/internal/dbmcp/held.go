@@ -57,6 +57,11 @@ func (c heldCall) suffix(msg string) string {
 func (s *Server) holdResult(ctx context.Context, req ApprovalRequest, held ApprovalResponse, c heldCall, recheck func() string) string {
 	req.Stage = ApprovalStageResponse
 	req.Response = &held
+	// The response stage is a review of the result, not the agent's request for the call.
+	req.AgentNote = ""
+	if req.Reason == ApprovalReasonConfirm {
+		req.Reason = ApprovalReasonPermission
+	}
 	outcome := s.cfg.Approvals.Request(ctx, req)
 	if outcome == ApprovalApproved {
 		if recheck == nil {

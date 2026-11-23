@@ -41,9 +41,11 @@ type Item struct {
 	Origin    Origin    `json:"origin"`
 	Target    Target    `json:"target"`
 	Operation Operation `json:"operation"`
-	// Reason is permission, heavy, preview, review, request or exemption.
-	Reason  string          `json:"reason"`
-	Payload json.RawMessage `json:"payload"`
+	// Reason is permission, heavy, preview, review, request, exemption or confirm.
+	Reason string `json:"reason"`
+	// AgentNote is the agent's own sentence asking for this item; "" for none.
+	AgentNote string          `json:"agentNote,omitempty"`
+	Payload   json.RawMessage `json:"payload"`
 	// Title is the prompt router title; the view never reads it.
 	Title string `json:"-"`
 }

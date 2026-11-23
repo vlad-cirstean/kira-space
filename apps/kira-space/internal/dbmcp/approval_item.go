@@ -226,7 +226,7 @@ func itemOf(r ApprovalRequest) approvals.Item {
 			Client: r.Origin.Client, Cwd: r.Origin.Cwd, Session: r.Origin.SessionID,
 			Task: r.Origin.TaskID, Step: r.Origin.StepID,
 		},
-		Reason: string(r.Reason), Title: promptTitle(r),
+		Reason: string(r.Reason), AgentNote: r.AgentNote, Title: promptTitle(r),
 	}
 	switch it.Kind {
 	case approvals.KindKubeRead:

@@ -73,6 +73,8 @@ type apiRequestArgs struct {
 	Script *apiScriptArgs `json:"script,omitempty"`
 	// Inputs are values only the user has; the user types them in the approval.
 	Inputs []string `json:"inputs,omitempty"`
+	// Confirm asks the user to approve the request even when the settings allow it.
+	Confirm string `json:"confirm,omitempty"`
 }
 
 func pairs(in []apiPair) []agentapi.NameValue {
@@ -99,6 +101,10 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	if !settings.Enabled {
 		return errResult(apiRequestsOff)
 	}
+	confirm, msg := confirmText(a.Confirm, "Nothing was sent.")
+	if msg != "" {
+		return errResult(msg)
+	}
 	in := a.input(keptScope(ctx))
 	var sc *apiScripts
 	if a.Script != nil {
@@ -122,9 +128,9 @@ func (s *Server) apiRequest(ctx context.Context, _ *mcp.CallToolRequest, a apiRe
 	}
 	var ap apiApproval
 	// A missing input forces the card whatever the rules say: the card is the only place the value is typed.
-	if needsAPIApproval(settings, plan) || plan.MissingInputs() > 0 {
+	if policyAsks := needsAPIApproval(settings, plan) || plan.MissingInputs() > 0; policyAsks || confirm != "" {
 		var res *mcp.CallToolResult
-		if ap, res, err = s.approveAPI(ctx, plan, sc); res != nil || err != nil {
+		if ap, res, err = s.approveAPI(ctx, plan, sc, confirmReason(policyAsks), confirm); res != nil || err != nil {
 			return res, nil, err
 		}
 		// The card may have waited a long time: the switches are read again before anything is sent.
@@ -240,12 +246,12 @@ type apiApproval struct {
 
 // approveAPI asks the user. A non-nil result stops the call; requested says the user ticked "review the
 // response" on the card and supplied holds the values the user typed.
-func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts) (apiApproval, *mcp.CallToolResult, error) {
+func (s *Server) approveAPI(ctx context.Context, plan agentapi.Planned, sc *apiScripts, reason ApprovalReason, note string) (apiApproval, *mcp.CallToolResult, error) {
 	ctx, stop := s.watchKept(ctx, keptUsesOf(plan, sc))
 	defer stop()
 	outcome, choice, supplied := s.cfg.Approvals.RequestInputs(ctx, ApprovalRequest{
 		Subject: approvals.KindAPIRequest, ConnectionName: plan.Host, Kind: "http", Class: adapters.ClassUnknown,
-		Statement: plan.Method + " " + plan.URL, Reason: ApprovalReasonPermission, Origin: originFrom(ctx), API: &plan, APIScript: sc,
+		Statement: plan.Method + " " + plan.URL, Reason: reason, AgentNote: note, Origin: originFrom(ctx), API: &plan, APIScript: sc,
 		OfferReview: true, KeepMinutes: s.keepMinutes(), ReviewOn: s.apiReviewSetting(plan.Env, apiReadClass(plan)), Inputs: approvalInputsOf(plan),
 	})
 	if outcome != ApprovalApproved {

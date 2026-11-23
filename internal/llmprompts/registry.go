@@ -765,7 +765,7 @@ var DbmcpInstructions = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructions.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructions.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructions.usedBy.body",
-	Default:    "Kira Studio: databases, Kubernetes clusters, HTTP environments and scripts the user exposed. Start with `list`. A call may wait up to 10 minutes for approval. The user may hold a result for review; a withheld result is an error that says what already ran: never repeat that call. Temporary variables carry values between calls without passing through you: a later call uses {{plain.name}} or {{secret.name}} in `api_request`, or `params` in `run_query`. Results list names, never values.",
+	Default:    "Kira Studio. Start with `list`. A call may wait up to 10 minutes for approval. The user may hold a result for review; a withheld result is an error that says what already ran: never repeat that call. Temporary variables carry values between calls without passing through you: a later call uses {{plain.name}} or {{secret.name}} in `api_request`, or `params` in `run_query`.",
 }, NoVars{})
 
 // DbmcpInstructionsScripts follows the instructions while agent scripts are on.
@@ -774,13 +774,13 @@ var DbmcpInstructionsScripts = define(Entry{
 	TitleKey:   "llmPrompts.entry.dbmcpInstructionsScripts.title",
 	PurposeKey: "llmPrompts.entry.dbmcpInstructionsScripts.description",
 	UsedByKey:  "llmPrompts.entry.dbmcpInstructionsScripts.usedBy.body",
-	Default:    "A script writes `plain.name = value` (the user can preview it) or `secret.name = value` (never readable, never shown to you); `delete plain.name` removes one; a later script reads `plain.name`. Values are set once the result is final; it lists `tempSet` and `tempDeleted` names. Scripts: a JavaScript function body ending in `return`; sandbox with no network, files, timers or `console`; UTC; 2 s, 256 MiB; the user sees it. Names are literal; never declare your own `plain` or `secret`; at most 16 writes per run, 1 MiB each. A script error does not undo a write: never rerun it.",
+	Default:    "A script writes `plain.name = value` (the user can preview it) or `secret.name = value` (never readable, never shown to you); `delete plain.name` removes one; a later script reads `plain.name`. Values are set once the result is final (`tempSet`, `tempDeleted`). Scripts: a JavaScript function body ending in `return`; sandbox with no network, files, timers or `console`; UTC; 2 s, 256 MiB; the user sees it. Names are literal; never declare your own `plain` or `secret`; at most 16 writes per run, 1 MiB each. A script error does not undo a write: never rerun it.",
 }, NoVars{})
 
 // DbmcpToolList describes the list tool.
 var DbmcpToolList = define(Entry{
 	ID: "dbmcp.tool.list", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "list",
-	Default: "Start here. Lists what the user exposed and what each allows: connections (databases), clusters (Kubernetes), environments (HTTP variables), scripts, temp variables.",
+	Default: "Lists what the user exposed and what each allows: connections (databases), clusters (Kubernetes), environments (HTTP variables), scripts, temp variables.",
 }, NoVars{})
 
 var _ = arg(DbmcpToolList.id, "what", studioApp, NextCall, `Sections to return. Omit for all.`, NoVars{})
@@ -819,15 +819,16 @@ var (
 	_ = arg(DbmcpToolBrowseTable.id, "limit", studioApp, NextCall, `Page size, 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 50, Max: 100})
 	_ = arg(DbmcpToolBrowseTable.id, "offset", studioApp, NextCall, `The previous nextOffset.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "count", studioApp, NextCall, `Count the matching rows instead of returning them.`, NoVars{})
+	_ = arg(DbmcpToolBrowseTable.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "exemption", studioApp, NextCall, `Only after a limit refusal; the refusal says how.`, NoVars{})
 	_ = arg(DbmcpToolBrowseTable.id, "exemption.id", studioApp, NextCall, `From the refusal.`, NoVars{})
-	_ = arg(DbmcpToolBrowseTable.id, "exemption.reason", studioApp, NextCall, `One sentence for the user, at most 300 characters.`, NoVars{})
+	_ = arg(DbmcpToolBrowseTable.id, "exemption.reason", studioApp, NextCall, `One sentence for the user.`, NoVars{})
 )
 
 // DbmcpToolRunQuery describes the run_query tool.
 var DbmcpToolRunQuery = define(Entry{
 	ID: "dbmcp.tool.run_query", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_query",
-	Default: "One statement for joins, grouped aggregates or expressions; plain reads go to browse_table. Declare the least mode that fits; a stronger statement is refused with the mode to use. Rows stop at maxRows; truncated says so. explain: true plans a SELECT without running it.",
+	Default: "One statement for joins, grouped aggregates or expressions; plain reads go to browse_table. Declare the least mode that fits; a stronger statement is refused with the mode to use. Rows stop at maxRows; truncated says so.",
 }, NoVars{})
 
 var (
@@ -839,16 +840,17 @@ var (
 	_ = arg(DbmcpToolRunQuery.id, "explain", studioApp, NextCall, `Plan only, mode read.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "includeRaw", studioApp, NextCall, `With explain: the raw plan text too.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "params", studioApp, NextCall, `Temporary variable names in placeholder order, never values. Syntax: the connection's paramSyntax in list.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it; it can set values for params: plain.name = value or secret.name = value. Global result {columns, rows of text cells or null, rowCount, truncated}; you get {output, input: {rowCount, truncated}}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "script", studioApp, NextCall, `Runs on the result before you get it; it can set values for params. Global result {columns, rows of text cells or null, rowCount, truncated}; you get {output, input: {rowCount, truncated}}. SQL numbers are text: use Number() or BigInt().`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption", studioApp, NextCall, `Only after a limit refusal; the refusal says how.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "exemption.id", studioApp, NextCall, `From the refusal.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user, at most 300 characters.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "exemption.reason", studioApp, NextCall, `One sentence for the user.`, NoVars{})
 )
 
 // DbmcpToolOperations describes the operations tool.
 var DbmcpToolOperations = define(Entry{
 	ID: "dbmcp.tool.operations", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "operations",
-	Default: "List running work: queries, reads, HTTP, Kubernetes and script runs. cancel stops one; a cancelled write rolls back.",
+	Default: "List running work. cancel stops one; a cancelled write rolls back.",
 }, NoVars{})
 
 var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id. Omit to list.`, NoVars{})
@@ -856,7 +858,7 @@ var _ = arg(DbmcpToolOperations.id, "cancel", studioApp, NextCall, `Operation id
 // DbmcpToolRunScript describes the run_script tool.
 var DbmcpToolRunScript = define(Entry{
 	ID: "dbmcp.tool.run_script", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "run_script",
-	Default: "Start a user script from list with scriptId, or read a run with runId: state, exit code, output tail. A short script waits up to waitSeconds; a long one returns at once and keeps running. Stop one with operations.",
+	Default: "Start a user script from list with scriptId, or read a run with runId: state, exit code, output tail. A short script waits up to waitSeconds; a long one returns at once and keeps running.",
 }, NoVars{})
 
 var (
@@ -867,12 +869,13 @@ var (
 	_ = arg(DbmcpToolRunScript.id, "lines", studioApp, NextCall, `Output lines, 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 50, Max: 500})
 	_ = arg(DbmcpToolRunScript.id, "contains", studioApp, NextCall, `Keep lines containing this text.`, NoVars{})
 	_ = arg(DbmcpToolRunScript.id, "from", studioApp, NextCall, `tail or head, default tail.`, NoVars{})
+	_ = arg(DbmcpToolRunScript.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 )
 
 // DbmcpToolAPIRequest describes the api_request tool.
 var DbmcpToolAPIRequest = define(Entry{
 	ID: "dbmcp.tool.api_request", Kind: KindTool, Apps: studioApp, Applies: NextCall, Name: "api_request",
-	Default: "Send one HTTP request. Use {{name}} (environment), {{plain.name}} or {{secret.name}} (temp) in url, headers, query, form or body; unquoted in a JSON body. A secret goes only to its allowed hosts. The response is capped and its secrets masked.",
+	Default: "Send one HTTP request. Use {{name}} (environment), {{plain.name}} or {{secret.name}} (temp) in url, headers, query, form or body; unquoted in a JSON body. A secret goes only to its allowed hosts.",
 }, NoVars{})
 
 var (
@@ -893,6 +896,7 @@ var (
 	_ = arg(DbmcpToolAPIRequest.id, "timeoutSeconds", studioApp, NextCall, `1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 30, Max: 300})
 	_ = arg(DbmcpToolAPIRequest.id, "maxResponseBytes", studioApp, NextCall, `Up to {{.Max}}, default {{.Default}}.`, LimitVars{Default: 65536, Max: 524288})
 	_ = arg(DbmcpToolAPIRequest.id, "followRedirects", studioApp, NextCall, `Default true.`, NoVars{})
+	_ = arg(DbmcpToolAPIRequest.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "inputs", studioApp, NextCall, `Names of values only the user has (token, password, code), at most 4. The user types them in the approval; write each as {{secret.name}}. Never ask for them in chat.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script", studioApp, NextCall, `Optional. At least one of prepare or transform.`, NoVars{})
 	_ = arg(DbmcpToolAPIRequest.id, "script.prepare", studioApp, NextCall, `Runs before approval. Globals request (your fields, references unresolved) and input. Returns fields that replace yours; a value it sets is what {{plain.name}} or {{secret.name}} here sends.`, NoVars{})
@@ -918,7 +922,8 @@ var (
 	_ = arg(DbmcpToolKubeRead.id, "previous", studioApp, NextCall, `logs: the previous instance.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "timestamps", studioApp, NextCall, `logs: prefix timestamps.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "tail", studioApp, NextCall, `logs: 1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 200, Max: 5000})
+	_ = arg(DbmcpToolKubeRead.id, "confirm", studioApp, NextCall, `Ask the user to approve anyway; say why.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "script", studioApp, NextCall, `At least one of prepare or transform.`, NoVars{})
 	_ = arg(DbmcpToolKubeRead.id, "script.prepare", studioApp, NextCall, `Runs before approval on global request (your args); returns args that replace yours, never clusterId or op. Reads plain.name, not secret.name.`, NoVars{})
-	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on globals result (what op returns) and request; can set values for a later read: plain.name = value. You get {output, input: {rowCount, truncated}}.`, NoVars{})
+	_ = arg(DbmcpToolKubeRead.id, "script.transform", studioApp, NextCall, `Runs on globals result (what op returns) and request; can set values for a later read. You get {output, input: {rowCount, truncated}}.`, NoVars{})
 )
