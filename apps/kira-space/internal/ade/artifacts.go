@@ -121,7 +121,7 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 	return adewire.ArtifactsResult{Artifacts: mergeArtifacts(all), Gaps: gaps}, nil
 }
 
-// mergeArtifacts dedups and sorts. The same non-empty URL, or the same (kind, repo, ref) when the URL
+// mergeArtifacts dedups and sorts (see artifactLess). The same non-empty URL, or the same (kind, repo, ref) when the URL
 // is empty, is one artifact. A detected artifact beats a stored one (its status is fresher), and both
 // beat a found link. Among
 // detected ones the first source wins, unless it has no status and a later one has.
@@ -144,17 +144,29 @@ func mergeArtifacts(all []adewire.Artifact) []adewire.Artifact {
 			out = append(out, a)
 		}
 	}
-	sort.SliceStable(out, func(i, j int) bool {
+	sort.SliceStable(out, artifactLess(out))
+	return out
+}
+
+// artifactLess is a total order, independent of source completion order: kind, then creation time,
+// then title, then the remaining fields. A deployment's CreatedAt is its last check time, not a
+// creation time, so it varies run to run; deployments order by title (env) instead.
+func artifactLess(out []adewire.Artifact) func(i, j int) bool {
+	return func(i, j int) bool {
 		a, b := out[i], out[j]
 		if ka, kb := artifactKindOrder[a.Kind], artifactKindOrder[b.Kind]; ka != kb {
 			return ka < kb
 		}
-		if a.CreatedAt != b.CreatedAt {
+		if a.Kind != model.AdeArtifactDeployment && a.CreatedAt != b.CreatedAt {
 			return a.CreatedAt < b.CreatedAt
 		}
-		return a.Title < b.Title
-	})
-	return out
+		for _, p := range [][2]string{{a.Title, b.Title}, {a.Repo, b.Repo}, {a.Ref, b.Ref}, {a.URL, b.URL}, {a.Source, b.Source}, {a.ID, b.ID}} {
+			if p[0] != p[1] {
+				return p[0] < p[1]
+			}
+		}
+		return false
+	}
 }
 
 // artifactPass orders the merge: detected first, then stored, then links found in notes, which never

@@ -70,24 +70,24 @@
         "id": "<masked>",
         "kind": "deployment",
         "ref": "<masked>",
-        "repo": "api",
-        "sessionId": "<masked>",
-        "source": "git",
-        "status": "deployed",
-        "title": "prod",
-        "url": ""
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "deployment",
-        "ref": "<masked>",
         "repo": "",
         "sessionId": "<masked>",
         "source": "agent",
         "status": "",
         "title": "Preview env",
         "url": "https://preview.example/1"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "deployment",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "<masked>",
+        "source": "git",
+        "status": "deployed",
+        "title": "prod",
+        "url": ""
       },
       {
         "createdAt": 0,
