@@ -110,7 +110,7 @@ test('contract: the chain mixes a note and a proof newest first', async ({ relau
   await openChain(page);
   await expect.poll(() => kinds(page)).toEqual(['handover', 'proof']);
   const entry = page.locator(t('ade-proof-entry'));
-  await expect(entry.locator(t('ade-proof-open'))).toHaveText('Login checks');
+  await expect(entry.locator(t('ade-proof-name'))).toHaveText('Login checks');
   await expect(entry.locator(t('ade-proof-path'))).toHaveText('proofs/login-checks');
   await expect(entry.locator(t('ade-proof-step'))).toHaveCount(2);
   await expect(entry.locator(`${t('ade-proof-step')}[data-view="table"]`)).toContainText(
@@ -129,8 +129,8 @@ test('the same time orders a diagram proof, then the note, then other proof', as
   ]);
   await openChain(page);
   await expect.poll(() => kinds(page)).toEqual(['proof', 'handover', 'proof']);
-  await expect(page.locator(t('ade-proof-open')).first()).toHaveText('Login checks');
-  await expect(page.locator(t('ade-proof-open')).last()).toHaveText('Perf checks');
+  await expect(page.locator(t('ade-proof-name')).first()).toHaveText('Login checks');
+  await expect(page.locator(t('ade-proof-name')).last()).toHaveText('Perf checks');
 });
 
 test('contract: the diagram step draws inline', async ({ relaunch }) => {
@@ -139,6 +139,50 @@ test('contract: the diagram step draws inline', async ({ relaunch }) => {
   const diagram = page.locator(`${t('ade-proof-diagram')} ${t('proof-diagram')}`);
   await expect(diagram).toHaveAttribute('data-diagram-type', 'flowchart');
   await expect(diagram.locator('svg text', { hasText: 'Check' }).first()).toBeVisible();
+});
+
+test('the diagram step draws at full height', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
+  await openChain(page);
+  const scroller = page.locator(`${t('ade-proof-diagram')} ${t('proof-diagram')} > div`);
+  await expect(scroller.locator('svg')).toBeVisible();
+  const fit = await scroller.evaluate((el) => ({
+    clipped: el.scrollHeight > el.clientHeight + 1,
+    overflowY: getComputedStyle(el).overflowY,
+    svg: el.querySelector('svg')?.getBoundingClientRect().height ?? 0,
+    height: el.getBoundingClientRect().height,
+  }));
+  expect(fit.clipped).toBe(false);
+  expect(fit.height).toBeGreaterThanOrEqual(fit.svg);
+  await expect(page.locator(t('ade-proof-diagram'))).not.toHaveCSS('overflow', 'hidden');
+});
+
+test('proof name, summary and step text select', async ({ relaunch }) => {
+  const long = 'A long step description that must wrap instead of ending in an ellipsis '.repeat(6);
+  const list = proofs().map((p) => ({
+    ...p,
+    summary: 'Summary of the login checks',
+    steps: p.steps.map((st) => (st.view === 'table' ? { ...st, description: long } : st)),
+  }));
+  const { window: page } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
+  await openChain(page);
+  const entry = page.locator(t('ade-proof-entry'));
+  const step = entry.locator(`${t('ade-proof-step')}[data-view="table"]`);
+  const description = step.locator('span.select-text').first();
+  for (const target of [
+    entry.locator(t('ade-proof-name')),
+    entry.locator('p.select-text'),
+    description,
+  ]) {
+    await target.click({ clickCount: 3 });
+    const text = ((await target.textContent()) ?? '').trim();
+    expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain(text);
+  }
+  const wrap = await description.evaluate((el) => ({
+    ellipsis: getComputedStyle(el).textOverflow === 'ellipsis',
+    clipped: el.scrollWidth > el.clientWidth + 1,
+  }));
+  expect(wrap).toEqual({ ellipsis: false, clipped: false });
 });
 
 test('the proof name opens the proof window of its task and folder', async ({ relaunch }) => {

@@ -7,7 +7,7 @@ Code review at chapter end: 1 round.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P736 | Proof data: auto-expanded, fits the Kira viewport, small screenshots, selectable text | Todo |
+| P736 | Proof data: auto-expanded, fits the Kira viewport, small screenshots, selectable text | Done |
 | P737 | Details panel: denser items, "see more" for long content | Todo |
 | P738 | Task list and detail: border colors, spacing, stronger selected marking | Todo |
 | P739 | Code review window: speed for big PRs | Todo |
@@ -25,6 +25,14 @@ takes.
   see. Preferred: shrink at capture time. If that is complex or error prone, keep the window size
   small enough instead. Plan states the choice and why.
 - Text in the proof view and in the proof tab is selectable and copyable.
+
+## P736 Result
+
+Window kept small (1024x640) instead of shrinking at capture time; reasons in `plans/P736.md`. Proof
+documents and nested fields open expanded, key-value rows grow to content (`autoExpand`). Proof view
+and proof tab text selectable; tab diagram draws at full height, steps wrap, open action is an icon
+button. Tabular cells stay one line (SlickGrid fixed row height). UI specs added; proofflow Go test
+unchanged and green.
 
 ## P737
 

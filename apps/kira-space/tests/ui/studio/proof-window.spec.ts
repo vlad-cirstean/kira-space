@@ -106,6 +106,89 @@ test('tabs follow step order and the data renders literally', async ({ relaunch,
   await expect(result.locator('[data-testid="console-result-kv-row"]')).toHaveCount(2);
 });
 
+test('documents and their nested fields open expanded', async ({ relaunch, uiServer }) => {
+  // The contract masks both ids to one value, which would share one expansion state.
+  const documents = [
+    { id: 'd1', body: { a: { nested: true }, z: 1 } },
+    { id: 'd2', body: { title: 'Second' } },
+  ];
+  const { window: page } = await relaunch({
+    control: proofControl([
+      stepSnapshot(SESSION_ID, 1, 1, 'table'),
+      stepSnapshot(SESSION_ID, 1, 2, 'document', { data: { documents } }),
+      stepSnapshot(SESSION_ID, 1, 3, 'keyvalue'),
+    ]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+  await page.locator('[data-testid="tab"]', { hasText: '#2 Doc hit' }).click();
+  const result = page.locator('[data-testid="proof-step-result"]');
+  await expect(result.locator('[data-testid="document-body"]')).toHaveCount(2);
+  await expect(
+    result.locator('[data-testid="document-tree-value"]', { hasText: /^true$/ }).first(),
+  ).toBeVisible();
+
+  await result.locator('[data-testid="document-toggle-expand"]').first().click();
+  await expect(result.locator('[data-testid="document-body"]')).toHaveCount(1);
+  await page.locator('[data-testid="tab"]', { hasText: '#1 Orders before' }).click();
+  await page.locator('[data-testid="tab"]', { hasText: '#2 Doc hit' }).click();
+  await expect(result.locator('[data-testid="document-body"]')).toHaveCount(2);
+});
+
+test('a long key-value value shows in full', async ({ relaunch, uiServer }) => {
+  const longValue = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
+  const { window: page } = await relaunch({
+    control: proofControl([
+      stepSnapshot(SESSION_ID, 1, 1, 'table'),
+      stepSnapshot(SESSION_ID, 1, 2, 'document'),
+      stepSnapshot(SESSION_ID, 1, 3, 'keyvalue', {
+        data: {
+          entries: [
+            { field: 'k', value: longValue },
+            { field: 'short', value: 'ok' },
+          ],
+        },
+      }),
+    ]),
+  });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+  await page.locator('[data-testid="tab"]', { hasText: '#3 Stats' }).click();
+  const rows = page.locator('[data-testid="console-result-kv-row"]');
+  await expect(rows).toHaveCount(2);
+  const first = rows.first().locator('.cell').nth(1);
+  await expect(first).toContainText('word59');
+  const fit = await first.evaluate((el) => el.scrollHeight <= el.clientHeight + 1);
+  expect(fit).toBe(true);
+  const heights = await rows.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  expect(heights[0]).toBeGreaterThan(heights[1] ?? 0);
+});
+
+test('proof text selects', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: explainedControl() });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+  const selectionOf = () => page.evaluate(() => window.getSelection()?.toString() ?? '');
+  for (const id of ['proof-summary', 'proof-step-description']) {
+    const target = page.locator(`[data-testid="${id}"]`);
+    await target.click({ clickCount: 3 });
+    expect(await selectionOf()).toContain(((await target.textContent()) ?? '').trim());
+  }
+});
+
+test('proof document text selects', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: proofControl(threeSteps()) });
+  await openProofWindow(page, uiServer.url);
+  await stepsReady(page);
+  await page.locator('[data-testid="tab"]', { hasText: '#2 Doc hit' }).click();
+  const value = page
+    .locator('[data-testid="proof-step-result"] [data-testid="document-tree-value"]')
+    .first();
+  await value.click({ clickCount: 3 });
+  const text = ((await value.textContent()) ?? '').trim();
+  expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain(text);
+});
+
 test('the header shows the proof folder; open, reveal and delete reach the backend', async ({
   relaunch,
   uiServer,
