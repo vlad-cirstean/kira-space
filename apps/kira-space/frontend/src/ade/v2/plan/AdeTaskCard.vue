@@ -50,6 +50,8 @@ import {
   HOVER_OVERLAY,
   TASK_ACTION_CELL,
   TASK_EDGE,
+  TASK_EDGE_RIPPLE,
+  TASK_EDGE_SELECTED,
   TASK_LEAD,
   TASK_STATUS_CELL,
   TASK_STEP_CELL,
@@ -122,12 +124,11 @@ const segClass = (state: string): string => {
   return p.value.bad ? 'bg-tone-red-solid' : 'bg-fg';
 };
 const boxClass = computed(() => {
-  const c = props.card;
   return [
-    'bg-chrome cursor-grab border',
+    'bg-chrome cursor-grab',
     TASK_EDGE,
     GROUND_CARD,
-    selected.value ? 'border-select-edge' : inRipple.value ? 'border-subtle/50' : 'border-border',
+    selected.value ? TASK_EDGE_SELECTED : inRipple.value ? TASK_EDGE_RIPPLE : '',
   ];
 });
 </script>
@@ -145,7 +146,7 @@ const boxClass = computed(() => {
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira"
       :class="boxClass"
-      :style="{ borderTopColor: card.color }"
+      :style="{ '--task-color': card.color }"
       :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"

@@ -8,7 +8,7 @@ import { useDraggable } from 'vue-draggable-plus';
 import type { TimelineBand } from '../board/timeline';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
 import AdeTaskCard from './AdeTaskCard.vue';
-import { TASK_EDGE } from './taskGrid';
+import { TASK_EDGE, TASK_EDGE_SELECTED } from './taskGrid';
 import type { BranchRowModel, CardModel } from './usePlanModel';
 
 // One day of the timeline: left day bar, date heading, history rows, overdue and overflow strips, the day's cards and
@@ -141,7 +141,7 @@ const ruleClass = computed(() => {
     <div
       class="box-border flex min-w-0 flex-1 flex-col gap-2 rounded-kira"
       :class="[
-        empty ? 'min-h-1' : 'pb-2 pt-1',
+        empty ? 'min-h-1' : 'pb-1.5',
         band.weekend
           ? 'bg-[repeating-linear-gradient(135deg,var(--color-elevated)_0_1px,transparent_1px_8px)]'
           : '',
@@ -194,7 +194,7 @@ const ruleClass = computed(() => {
           {{ overflowLabel }}
         </Button>
       </div>
-      <template v-for="(card, i) in cards" :key="card.task.id">
+      <template v-for="card in cards" :key="card.task.id">
         <div
           v-if="dropBefore === card.task.id"
           :class="slotClass"
@@ -202,7 +202,6 @@ const ruleClass = computed(() => {
           aria-hidden="true"
         />
         <AdeTaskCard
-          :class="i > 0 ? 'mt-2' : undefined"
           :card="card"
           @select="emit('select', card.task.id)"
           @force-push="(row) => emit('forcePush', row)"
@@ -219,9 +218,9 @@ const ruleClass = computed(() => {
         v-for="s in spans"
         :key="s.taskId"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-1.5 border border-border px-2 font-normal data-[selected]:bg-select"
-        :class="TASK_EDGE"
-        :style="{ borderTopColor: s.color }"
+        class="h-row w-auto justify-start gap-1.5 px-2 font-normal data-[selected]:bg-select"
+        :class="[TASK_EDGE, ui.selectedTaskId === s.taskId && TASK_EDGE_SELECTED]"
+        :style="{ '--task-color': s.color }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"
