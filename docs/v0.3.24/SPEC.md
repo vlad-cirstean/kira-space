@@ -15,7 +15,7 @@ Code review at chapter end: 1 round.
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Done |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
 | P743 | Task links: show at once, Jira details after; PR tooltip format | Done |
-| P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Todo |
+| P744 | Adopt rtk (OSS edition) for agent shell output, like CodeGraph | Done |
 | P745 | Chapter close | Todo |
 
 ## P736
@@ -182,6 +182,43 @@ reads it, the way CodeGraph is adopted.
   with `rtk bypass`), subagent verification greps, the CLI-credentials rule.
 - Doc the setup in `docs/DEV_ENVIRONMENT.md`; process rule in `CLAUDE.md` only if it is a standing
   rule.
+
+## P744 Result
+
+rtk-oss `1.2.1` (Apache-2.0) adopted. Pins re-verified against the downloaded release `checksums.txt`
+(all four match the plan). New `scripts/rtk-setup.sh` (pinned archive SHA-256, archive must hold exactly
+`rtk` and `LICENSE`, refuses a full-edition or foreign `rtk`, telemetry disabled and checked, no `rtk
+init`), called from `prepare-dev-environment.sh`. Project-level hook: `.claude/settings.json`
+`PreToolUse` (Bash) plus `env` (`RTK_TELEMETRY_DISABLED`, `RTK_SUPPRESS_HOOK_WARNING`), wrapper
+`.claude/hooks/rtk-pretooluse.sh` fails open. `CLAUDE.md` `## rtk` (bypass rule, never-list),
+`docs/DEV_ENVIRONMENT.md` "rtk" section. Diffs stay raw by the `rtk bypass` rule, no per-user config.
+
+Checks (isolated `HOME`/`RTK_INSTALL_DIR` in the scratchpad):
+
+- Setup twice: first install, second prints `already at`, same mtime and SHA-256 of the binary, exit 0
+  also with `HTTPS_PROXY=http://127.0.0.1:9` (no download). `git status --porcelain` clean of side
+  effects.
+- Fake `rtk` printing `rtk 9.9.9` (accepts `pipeline`) and one printing `something else`: both exit 1
+  with the not-oss message, fake untouched.
+- Hook payload pipe: `git status` yields `"command":"rtk git status"`; `gh auth token` and a `PATH`
+  without rtk print nothing, exit 0.
+- `RTK_TELEMETRY_DISABLED=1 rtk telemetry status`: `enabled: no`, env override blocked.
+
+Bytes, raw vs rtk (this worktree):
+
+| Command | Raw | rtk |
+| --- | --- | --- |
+| `git status` | 65 | 47 |
+| `git log -20` | 7,229 | 4,731 |
+| `git diff` since phase base (lossy) | 25,847 | 13,286 |
+| `go test -count=1 -v` (4 packages, 22 tests) | 2,402 | 33 |
+| `bun run lint` (clean) | 1,125 | 1,125 |
+| `go test` failing scratch module | 85 | 162 |
+
+Failing `go test` keeps `Sum() = 2, want 3`, exit 1 (tiny output: rtk adds a header, so larger).
+
+Not confirmed: live-session hook pickup. The implementer cannot see its own session reload hooks; it
+stays unconfirmed until a spawned session (P745) runs `git status` and gets the rtk form.
 
 ## P745
 
