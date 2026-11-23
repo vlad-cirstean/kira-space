@@ -1104,6 +1104,58 @@ checkpoints of every world sit inside the audit noise. `bun run test:ui:timing`:
 F3 edge change: `Broker.Output` returns early while recording is off, so a phone that attaches
 sees history from the moment access was turned on, not from process start.
 
+### 2.18 P739 review window
+
+Base `aecbc8faa` (probes at `b6aacc22d`); tip is the P739 close commit. Host: Linux 6.18.44, 4 vCPU, git
+2.43, go1.27, Playwright webkit-2370. Before numbers come from the profile pass (plan `P739.md`). The
+after runs shared the 4 CPUs with other streams (load1 12-20): UI times are the best of five runs and
+read high, ranges are given where runs spread. Probes (report-only, `docs/DEV_ENVIRONMENT.md` "Perf
+probes"): `KIRA_GIT_PERF=1 go test ./apps/kira-space/internal/flows/gitflow -run '^TestReviewPerf$'
+-count=1 -v` (3000 modified files of 200 lines, one 20,000-line file, 10 added, 10 commits; 3011 changed
+files) and, after `bun run build:test`, `bunx playwright test -c apps/kira-space/playwright.perf.config.ts
+--project=perf review-window` (WebKit, mocked git stream, `KIRA_REVIEW_FILES`, `KIRA_REVIEW_LINES`).
+
+Causes and fixes. (1) `FileTree` rendered up to 500 rows (about 9 elements each) and re-laid-out all of
+them on every file open: now a virtual window (`useTreeVirtualRows`, 37 rows at 3000 files), the 500-row
+cap kept only inside an expanded commit row. (2) `review.files` ran `diff-tree -M -C`; `-C` cost 201 of
+209 ms at 3011 files: now `-M` only (a copy lists as added, as on GitHub). (3) `review.markMany` wrote one
+transaction and one fresh flate writer per file: now chunks of 256 paths or 16 MiB, one `PutMany`
+transaction each, pooled writers. (4) A mark replaced `files` and refolded the tree: `changes` only
+changes when the list does.
+
+Go, ms (`REVIEWPERF`, two runs after):
+
+| call | before | after |
+|---|---|---|
+| `review.files`, 3011 files, cold | 218-321 | 43-45 |
+| `review.files`, warm | 209-247 | 20-27 |
+| `diff-tree --name-status -M -C` alone (the old spawn) | 201 | 214-342 (kept as the control) |
+| same spawn with `-M` only | 9.4 | 10 |
+| `review.markMany` 100 files | 175 | 69-79 |
+| `review.markMany` 1506 files | 2,156-8,246 | 778-902 |
+| `review.files` with 1506 records | 357-391 | 138-149 |
+| `review.mark` one file | 4.9 | 7-12 |
+
+Target `markMany` 1506 files under 600 ms: missed, 0.8-0.9 s. A CPU profile shows `MarkFiles` at 400 ms
+of CPU, 270 ms of it `PutMany` (compression at `BestCompression`); the rest of the wall time is the git
+reads each file needs (`readSnapshotSource`) and SQLite. Not tuned further. `review.mark` one file is
+noise at this scale (the same call as before).
+
+UI, WebKit, ms (`REVIEWUI`; open is click to diff lines shown, first / steady):
+
+| files (rows rendered) | open before | open after | mark before | mark after | folder mark before | after | filter before | after |
+|---|---|---|---|---|---|---|---|---|
+| 30 (60 / 37) | 1,437 / 585-878 | 1,239 / 672-946 | 255-289 | 193-271 | 239 | 218 | 265 | 226 |
+| 300 (500 / 37) | 3,993 / 1,641-1,997 | 1,638 / 609-1,103 | 281-330 | 174-278 | 248 | 195 | 500 | 250 |
+| 3000 (500 / 37) | 3,221-3,779 / 1,406-1,771 | 1,357-1,432 / 524-816 (best runs) | 256-547 | 201-216 | 243-355 | 192 | 1,060-1,188 | 345-380 |
+| 3000, 20k-line file each side | 3,462 / 1,772-1,966 | 1,514 / 754-915 | | 309-376 | | 181 | | 423 |
+
+Loaded runs (load1 about 20) read first open 2.3-3.8 s, steady 0.7-2.4 s, filter up to 860 ms at 3000
+files; the unloaded runs are the rows above. DOM at 3000 files: 4,480 elements before, 492 after.
+Targets at 3000 files: steady open under 800 ms met in the best runs (524-816); filter under 500 ms met
+(345-455) outside the loaded runs; `review.files` warm under 30 ms met (20-27). Boot to first row is
+unchanged (about 2 s), as it was not a cause.
+
 ## 3. Manual procedures (macOS, packaged build)
 
 Not yet run — no macOS hardware here. Run these once on macOS 26+ arm64 and record the results
