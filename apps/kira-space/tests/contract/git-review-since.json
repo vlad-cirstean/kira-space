@@ -1,0 +1,102 @@
+{
+  "git:file.read#left": {
+    "content": "line1\nline2\nline3\nline4\n",
+    "kind": "found"
+  },
+  "git:file.read#right": {
+    "content": "line1\nLINE2\nline3\nline4\nline5\n",
+    "kind": "found"
+  },
+  "git:review.fileDiff#sinceReview": {
+    "body": {
+      "hunks": [
+        {
+          "heading": "",
+          "lines": [
+            {
+              "kind": "context",
+              "newLine": 1,
+              "noNewlineAtEof": false,
+              "oldLine": 1,
+              "text": "line1"
+            },
+            {
+              "kind": "del",
+              "noNewlineAtEof": false,
+              "oldLine": 2,
+              "text": "line2"
+            },
+            {
+              "kind": "add",
+              "newLine": 2,
+              "noNewlineAtEof": false,
+              "text": "LINE2"
+            },
+            {
+              "kind": "context",
+              "newLine": 3,
+              "noNewlineAtEof": false,
+              "oldLine": 3,
+              "text": "line3"
+            },
+            {
+              "kind": "context",
+              "newLine": 4,
+              "noNewlineAtEof": false,
+              "oldLine": 4,
+              "text": "line4"
+            },
+            {
+              "kind": "add",
+              "newLine": 5,
+              "noNewlineAtEof": false,
+              "text": "line5"
+            }
+          ],
+          "newLines": 5,
+          "newStart": 1,
+          "oldLines": 4,
+          "oldStart": 1
+        }
+      ],
+      "kind": "text"
+    },
+    "deltaSource": "fast",
+    "lineCount": 5,
+    "path": "a.txt",
+    "reviewedAtSha": "<masked>",
+    "reviewedRanges": [
+      {
+        "end": 1,
+        "start": 1
+      },
+      {
+        "end": 4,
+        "start": 3
+      }
+    ]
+  },
+  "git:review.files": {
+    "branchTip": "<masked>",
+    "files": [
+      {
+        "change": {
+          "kind": "modified",
+          "path": "a.txt"
+        },
+        "review": {
+          "changedSinceReview": true,
+          "kind": "full",
+          "reviewedAt": 0,
+          "reviewedAtSha": "<masked>"
+        }
+      }
+    ],
+    "mergeBase": "<masked>"
+  },
+  "git:review.snapshot": {
+    "kind": "text",
+    "reviewedAtSha": "<masked>",
+    "text": "line1\nline2\nline3\nline4\n"
+  }
+}
