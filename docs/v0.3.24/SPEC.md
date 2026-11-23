@@ -9,7 +9,7 @@ Code review at chapter end: 1 round.
 |---|-------|--------|
 | P736 | Proof data: auto-expanded, fits the Kira viewport, small screenshots, selectable text | Done |
 | P737 | Details panel: denser items, "see more" for long content | Done |
-| P738 | Task list and detail: border colors, spacing, stronger selected marking | Todo |
+| P738 | Task list and detail: border colors, spacing, stronger selected marking | Done |
 | P739 | Code review window: speed for big PRs | Todo |
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Todo |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Todo |
@@ -55,6 +55,17 @@ px-3 py-2`. Proof entries untouched. Specs: two new in `ade-v2-notes`, `ade-v2-d
 - Drop the gap between the title and the task tabs.
 - Plan tab: remove the several extra gaps.
 - Selected task gets clearer marking than the white highlight alone, using the new borders.
+
+## P738 Result
+
+Cards and span rows: 1px border in the task colour (`--task-color`), top bar gone. Selected: grey
+fill plus 2px task-colour outline flush with the border (no reflow); ripple cards get a dashed
+border. Task and branch panels: colour line moved under the title (`AdePanelFrame` `color` prop,
+`ColorLine under`), `DetailHeader` flush with `pb-0.75`, empty default-slot wrapper hidden (title to
+tabs about 18px down to 7px). Plan gaps: same-day cards 8px apart (was 16px), drop area padding
+and Plan body top padding trimmed. Specs updated: plan, task-row, task-panel (new branch-panel
+line test), selection-colour; targeted UI run 96 passed. Visual baselines and screenshots update in
+PR CI.
 
 ## P739
 

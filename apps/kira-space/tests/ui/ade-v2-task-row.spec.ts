@@ -179,7 +179,7 @@ test('a task card wears its colour as its 1px edge, on the plan ground', async (
           topStyle: cs.borderTopStyle,
           topColor: cs.borderTopColor,
           inline: (e as HTMLElement).style.getPropertyValue('--task-color'),
-          outline: cs.outlineWidth,
+          outline: cs.outlineStyle === 'none' ? 'none' : cs.outlineWidth,
           leftColor: cs.borderLeftColor,
           bg: cs.backgroundColor,
           marks: head?.querySelectorAll('[data-testid="ade-task-line"]').length ?? 0,
@@ -209,7 +209,7 @@ test('a task card wears its colour as its 1px edge, on the plan ground', async (
   const after = (await read()).find((c) => c.id === 'T_bill');
   expect(after?.topColor).toBe(before?.topColor);
   expect(after?.leftColor).toBe(before?.leftColor);
-  expect(before?.outline).toBe('0px');
+  expect(before?.outline).toBe('none');
   expect(after?.outline).toBe('2px');
 });
 
