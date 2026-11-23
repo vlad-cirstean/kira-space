@@ -882,6 +882,38 @@ needs its own run of `scripts/codegraph-setup.sh`; a `.codegraph/` missing there
 per-message regardless of how the index got built. If a worktree was never provisioned with
 `scripts/codegraph-setup.sh` (a manual clone, say), run it by hand once before relying on the index.
 
+## rtk — filtered shell output (P744)
+
+- What: rtk-oss `1.2.1`, the Apache-2.0 edition. Default `rtk` links BUSL-1.1 `rtk-engine`; never
+  install it. Licence check: release archive holds only `rtk` and `LICENSE`; `cargo tree
+  --no-default-features` at the tag has no `rtk-engine`. Not used: `rtk init`, `rtk llm-proxy`,
+  `rtk-proxy`, pipelines. crates.io has an unrelated `rtk`; never `cargo install rtk`.
+- Setup: `sh scripts/rtk-setup.sh`, once per machine (binary in `${RTK_INSTALL_DIR:-$HOME/.local/bin}`,
+  shared by worktrees; hook per repo). `scripts/prepare-dev-environment.sh` runs it. Pinned version
+  and per-target SHA-256, no `curl | sh`. Refuses to overwrite a full-edition or foreign `rtk`. `$INSTALL_DIR`
+  must come first on `PATH`.
+- Committed: `.claude/settings.json` `PreToolUse` hook (Bash) and `env`;
+  `.claude/hooks/rtk-pretooluse.sh` fails open (no `rtk`, or full edition: command runs unchanged).
+  Hook settings load at session start: a session started before setup needs a restart.
+- Raw output: `rtk bypass <cmd>`, or `RTK_DISABLED=1 <cmd>`; `rtk git diff --no-compact`;
+  `rtk recall <hash>` restores an elided block. Never add a `Bash(rtk:*)` allow rule (allows
+  `rtk bypass <anything>`).
+- Expect: `git diff`/`git show` lossy (`... N additions truncated`); `grep -rn` caps 25 matches per
+  file (`grep -c` and `| wc -l` stay exact); `cat` byte-identical; passing `git commit` prints
+  `ok <sha>`, failing hook output kept in full; failing `go test`/`bun test` keep decisive lines;
+  exit codes preserved. Not rewritten: `gh auth status|token`, `env`, `az`, `sh <script>`, file
+  redirects. Clean `bun run lint` passes unchanged.
+- Permissions: allow rules in settings files are honoured; CLI or `create_session` allow rules are
+  invisible to rtk, so in `default` mode a rewritten command can prompt.
+- Credentials: rtk runs `gh` and filters stdout; it never reads `hosts.yml` or tokens.
+- Telemetry: off three ways: `env` in project settings, the wrapper's export, `rtk telemetry disable`
+  in setup. Never `rtk telemetry enable`. Verify: `RTK_TELEMETRY_DISABLED=1 rtk telemetry status`
+  prints `enabled: no`. Local data `~/.local/share/rtk` (command names, token counts, elided
+  output); stays on the machine. `RTK_SUPPRESS_HOOK_WARNING=1` silences rtk's "no hook installed"
+  nag (it only probes `~/.claude/settings.json`).
+- Upgrade: bump `RTK_VERSION` and the four pins in `scripts/rtk-setup.sh` from the release
+  `checksums.txt`; recheck licence and the edition probe (`rtk pipeline --help` must fail).
+
 ## CodeGraph duplicate finder — `scripts/codegraph-duplicates.ts`
 
 Runnable form of the ad-hoc sweeps P107/P113/P115 ran against `.codegraph/codegraph.db` (they were
