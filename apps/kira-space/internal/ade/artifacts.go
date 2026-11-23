@@ -55,7 +55,7 @@ type ArtifactScope struct {
 	Task     model.AdeTask
 	Rows     []model.AdeTaskBranch
 	Archived bool
-	// Quick asks for local data only: no host, git or tracker call, so the list is fast and has no
+	// Quick asks for local data only: no host or git call, so the list is fast and has no
 	// gaps. The agent's finish reply uses it; the UI panel does not.
 	Quick bool
 }
@@ -65,7 +65,7 @@ var artifactKindOrder = map[string]int{
 	model.AdeArtifactDeployment: 3, model.AdeArtifactDoc: 4, model.AdeArtifactLink: 5,
 }
 
-// builtinArtifactSources is the registration order: task links, repos, one per issue tracker, stored rows, links found in notes.
+// builtinArtifactSources is the registration order: task links, repos, one per issue tracker (the stored issue row only, no tracker call), stored rows, links found in notes.
 func (b *TaskBoard) builtinArtifactSources() []ArtifactSource {
 	out := []ArtifactSource{taskLinkSource{b}, repoSource{b}}
 	for _, p := range b.deps.Trackers.All() {

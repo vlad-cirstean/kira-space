@@ -16,7 +16,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
-	"github.com/kirathecat/kira-studio/internal/testx"
 )
 
 // P417 Jira through acli. Contract ade-issue-tracker: tests/ui/ade-v2-issue-tracker.spec.ts reads these.
@@ -86,10 +85,10 @@ func TestTaskIssueTracker(t *testing.T) {
 	f.start(t, itBranch)
 	waitRun(t, app, f.taskID, "one", "done")
 
-	// 1. Issue row; the only PR is the task's own, from the host. A title match elsewhere does not show.
+	// 1. Issue row (the stored link; title and status come from TaskIssue); the only PR is the task's own, from the host. A title match elsewhere does not show.
 	res := artifactsOf(t, app, f.taskID)
-	issue, ok := findArtifact(res, "issue", "Add the thing")
-	if !ok || issue.Source != "jira" || issue.Status != "In Review" || issue.Ref != "KIRA-12" || issue.URL != "https://"+itSite+"/browse/KIRA-12" {
+	issue, ok := findArtifact(res, "issue", "KIRA-12")
+	if !ok || issue.Source != "jira" || issue.Status != "" || issue.Ref != "KIRA-12" || issue.URL != "https://"+itSite+"/browse/KIRA-12" {
 		t.Fatalf("issue = %+v in %+v", issue, res.Artifacts)
 	}
 	prs := map[string]adewire.Artifact{}
@@ -122,12 +121,12 @@ func TestTaskIssueTracker(t *testing.T) {
 	}
 	app.Contract(t, "ade-issue-tracker", "IssueTrackerService.TaskIssue", ti)
 
-	// 3. A second listing inside the cache window does not call acli again.
+	// 3. Listings never call acli: the one read is TaskIssue's.
 	views := acli.Count("view:")
 	artifactsOf(t, app, f.taskID)
 	issueOf(t, app, f.taskID)
 	if acli.Count("view:") != views || views != 1 {
-		t.Fatalf("acli views = %d (was %d), want one cached read", acli.Count("view:"), views)
+		t.Fatalf("acli views = %d (was %d), want the one TaskIssue read", acli.Count("view:"), views)
 	}
 
 	// 4. The finishing reply lists no jira gap.
@@ -138,34 +137,28 @@ func TestTaskIssueTracker(t *testing.T) {
 		}
 	}
 
-	// 5. A slow acli leaves the static row and a timeout gap inside the 5 s budget; the detached fetch
-	// finishes and the next listing has the title.
+	// 5. A held acli never delays the listing; TaskIssue has the title once acli answers.
 	slow := createTask(t, app, "Slow", "flow")
 	setLink(t, app, slow.ID, "KIRA-60", "")
 	acli.SetIssue("KIRA-60", fakeacli.IssueJSON("KIRA-60", "Slow thing", "To Do", "new", 0))
 	release := acli.Hold()
 	t.Cleanup(release)
-	began := time.Now()
 	res = artifactsOf(t, app, slow.ID)
-	if took := time.Since(began); took > 8*time.Second {
-		t.Fatalf("listing took %v, want the 5 s source budget", took)
-	}
 	if a, ok := findArtifact(res, "issue", "KIRA-60"); !ok || a.Source != "jira" || a.Status != "" {
 		t.Fatalf("static row = %+v in %+v", a, res.Artifacts)
 	}
-	if g, ok := gapOf(res, "jira"); !ok || g.Reason != "timeout" {
-		t.Fatalf("gaps = %+v, want timeout", res.Gaps)
+	if acli.Count("view:KIRA-60") != 0 {
+		t.Fatalf("listing read acli %d times, want none", acli.Count("view:KIRA-60"))
+	}
+	if g, ok := gapOf(res, "jira"); ok {
+		t.Fatalf("gap %+v, want none", g)
 	}
 	release()
-	testx.WaitUntil(t, waitFor, func() bool {
-		_, ok := findArtifact(artifactsOf(t, app, slow.ID), "issue", "Slow thing")
-		return ok
-	})
+	if ti := issueOf(t, app, slow.ID); ti.Title != "Slow thing" {
+		t.Fatalf("TaskIssue after release = %+v", ti)
+	}
 	if acli.Count("view:KIRA-60") != 1 {
 		t.Fatalf("slow issue read %d times, want once", acli.Count("view:KIRA-60"))
-	}
-	if g, ok := gapOf(artifactsOf(t, app, slow.ID), "jira"); ok {
-		t.Fatalf("gap %+v after a count of 0", g)
 	}
 
 	// 6. Reasons: signed out, not installed, no such issue, another site.
@@ -181,9 +174,6 @@ func TestTaskIssueTracker(t *testing.T) {
 	for _, c := range []struct {
 		task, reason string
 	}{{gone.ID, "notFound"}, {other.ID, "otherSite"}} {
-		if g, ok := gapOf(artifactsOf(t, app, c.task), "jira"); !ok || g.Reason != c.reason {
-			t.Fatalf("task %s gap = %+v, want %s", c.task, g, c.reason)
-		}
 		if r := issueOf(t, app, c.task).Reason; r != c.reason {
 			t.Fatalf("TaskIssue reason = %q, want %s", r, c.reason)
 		}
@@ -192,9 +182,6 @@ func TestTaskIssueTracker(t *testing.T) {
 	setLink(t, app, signedOut.ID, "KIRA-72", "")
 	acli.SetLoggedIn(false)
 	tools()
-	if g, ok := gapOf(artifactsOf(t, app, signedOut.ID), "jira"); !ok || g.Reason != "unauthenticated" {
-		t.Fatalf("signed out gap = %+v", g)
-	}
 	if ti := issueOf(t, app, signedOut.ID); ti.Reason != "unauthenticated" || ti.Key != "KIRA-72" {
 		t.Fatalf("signed out TaskIssue = %+v", ti)
 	}
@@ -241,6 +228,40 @@ func TestTaskIssueTracker(t *testing.T) {
 	}
 }
 
+// P743 the backend half of ade-v2-issue-tracker.spec.ts "links show while Jira loads": a held acli never
+// delays the link list, and the Jira details arrive through TaskIssue once acli answers.
+func TestTaskLinksBeforeJira(t *testing.T) {
+	acli := fakeacli.New(itSite)
+	app := flowharness.New(t, flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli}))
+	saveWorkflow(t, app, "flow", flowYAML("flow", agentStep("one", "")))
+	task := createTask(t, app, "Links first", "flow")
+	setLink(t, app, task.ID, "KIRA-12", "https://"+itSite+"/browse/KIRA-12")
+	acli.SetIssue("KIRA-12", fakeacli.IssueJSON("KIRA-12", "Add the thing", "In Review", "indeterminate", 2))
+	release := acli.Hold()
+	t.Cleanup(release)
+
+	began := time.Now()
+	res := artifactsOf(t, app, task.ID)
+	if took := time.Since(began); took > time.Second {
+		t.Fatalf("listing took %v while acli was held, want it at once", took)
+	}
+	if a, ok := findArtifact(res, "issue", "KIRA-12"); !ok || a.Source != "jira" || a.Status != "" {
+		t.Fatalf("issue row = %+v in %+v", a, res.Artifacts)
+	}
+	if g, ok := gapOf(res, "jira"); ok {
+		t.Fatalf("jira gap = %+v, want none", g)
+	}
+	if acli.Count("view:") != 0 {
+		t.Fatalf("listing called acli %d times, want none", acli.Count("view:"))
+	}
+	app.Contract(t, "ade-issue-tracker", "AdeTaskService.Artifacts#held", res, artMask)
+
+	release()
+	if ti := issueOf(t, app, task.ID); ti.Title != "Add the thing" || ti.Status != "In Review" || ti.Reason != "" {
+		t.Fatalf("TaskIssue = %+v", ti)
+	}
+}
+
 // stepClock is the jira provider's clock, moved by hand.
 type stepClock struct {
 	mu sync.Mutex
@@ -283,9 +304,9 @@ func TestTaskIssueFastLoading(t *testing.T) {
 	}
 	app.Contract(t, "ade-issue-tracker", "IssueTrackerService.TaskIssue#stale", stale)
 
-	// 2. The Details artifacts, inside their budget, list the issue row with its title and no gap.
+	// 2. The artifacts list the stored issue row at once, with no gap.
 	res := artifactsOf(t, app, task.ID)
-	if a, ok := findArtifact(res, "issue", "Add the thing"); !ok || a.Status != "In Review" {
+	if a, ok := findArtifact(res, "issue", "KIRA-12"); !ok || a.Status != "" {
 		t.Fatalf("issue row = %+v in %+v", a, res.Artifacts)
 	}
 	if g, ok := gapOf(res, "jira"); ok {

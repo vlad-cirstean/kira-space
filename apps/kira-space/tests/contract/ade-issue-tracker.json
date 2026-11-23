@@ -21,8 +21,8 @@
         "repo": "",
         "sessionId": "<masked>",
         "source": "jira",
-        "status": "In Review",
-        "title": "Add the thing",
+        "status": "",
+        "title": "KIRA-12",
         "url": "https://acme.atlassian.net/browse/KIRA-12"
       },
       {
@@ -36,6 +36,23 @@
         "status": "pushed",
         "title": "feat/KIRA-12-login",
         "url": "https://forge.test/acme/api/-/tree/feat/KIRA-12-login"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.Artifacts#held": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "issue",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "jira",
+        "status": "",
+        "title": "KIRA-12",
+        "url": "https://acme.atlassian.net/browse/KIRA-12"
       }
     ],
     "gaps": []

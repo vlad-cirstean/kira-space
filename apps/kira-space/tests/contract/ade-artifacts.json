@@ -102,13 +102,7 @@
         "url": ""
       }
     ],
-    "gaps": [
-      {
-        "reason": "unavailable",
-        "repo": "",
-        "source": "jira"
-      }
-    ]
+    "gaps": []
   },
   "AdeTaskService.Artifacts#archived": {
     "artifacts": [
@@ -189,11 +183,6 @@
       {
         "repo": "api",
         "source": "host"
-      },
-      {
-        "reason": "unavailable",
-        "repo": "",
-        "source": "jira"
       }
     ]
   },
@@ -288,13 +277,24 @@
       {
         "repo": "api",
         "source": "host"
-      },
-      {
-        "reason": "unavailable",
-        "repo": "",
-        "source": "jira"
       }
     ]
+  },
+  "IssueTrackerService.TaskIssue#unavailable": {
+    "key": "KIRA-12",
+    "label": "Jira",
+    "provider": "jira",
+    "reason": "unavailable",
+    "status": "",
+    "statusCategory": "",
+    "summary": {
+      "count": 0,
+      "known": false,
+      "providers": [],
+      "state": ""
+    },
+    "title": "",
+    "url": "https://jira.test/browse/KIRA-12"
   },
   "args:AdeTaskService.AddLink": {
     "taskId": "<id:1>",
