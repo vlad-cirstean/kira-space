@@ -10,7 +10,7 @@ Code review at chapter end: 1 round.
 | P736 | Proof data: auto-expanded, fits the Kira viewport, small screenshots, selectable text | Done |
 | P737 | Details panel: denser items, "see more" for long content | Done |
 | P738 | Task list and detail: border colors, spacing, stronger selected marking | Done |
-| P739 | Code review window: speed for big PRs | Todo |
+| P739 | Code review window: speed for big PRs | Done |
 | P740 | Code review window: collapsible uncommitted changes, readable removed files | Done |
 | P741 | Code review window: correct diff colors after a file is marked reviewed | Done |
 | P742 | Studio MCP tools: agent can force an approval prompt for an allowed operation | Done |
@@ -73,6 +73,22 @@ PR CI.
 
 Code review window is slow for big PRs. Plan profiles first (diff load, tree, render), then fixes the
 measured cause.
+
+## P739 Result
+
+Four measured causes fixed. (1) `FileTree` is a virtual window (`useTreeVirtualRows`, rows in
+`useFileTreeRows.ts`): 37 rows and 492 DOM elements at 3000 files (was 500 rows, 4,480); the 500-row
+cap stays only for the expanded commit row (`capped`, so its catalog key and cap announce stay).
+(2) `review.files` drops `-C` (`RangeNameStatusArgs`): warm 209-247 to 20-27 ms. (3) `review.markMany`
+writes chunks of 256 paths or 16 MiB in one `PutMany` transaction, pooled flate writers: 1506 files
+2.2-8.2 s to 0.78-0.90 s (target 600 ms missed; remaining time is per-file git reads and compression).
+(4) `ReviewFilesState.changes` keeps the tree input stable across marks. UI at 3000 files, best runs:
+steady open 1,406-1,771 to 524-816 ms, first open 3.2-3.8 s to 1.4 s, filter 1.1 s to 0.35-0.45 s
+(runs under load1 12-20 read up to 2x higher). Tests: flow `TestReviewFilesCopyIsAdded`,
+`TestReviewMarkManyChunksAndConcurrentMark` (`-race`, three runs; whole gitflow package `-race`
+green), UI "file tree renders a window of 1100 files" (replaces Show more) and "a 3000-file review
+list renders a window and steps to a far row"; `ade-v2-review-follow` scrolls to rows below the
+window first. 158 UI specs of the tree-touching files green. Numbers: `docs/PERF.md` section 2.18.
 
 ## P740
 
