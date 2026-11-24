@@ -7,7 +7,7 @@ Code review at chapter end: 1 round.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P747 | Run restarted after app restart: fresh script timeout | Todo |
+| P747 | Run restarted after app restart: fresh script timeout | Done |
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Todo |
 | P749 | Proof window: images fit the window, larger default size | Todo |
 | P750 | Details panel and proofs: auto-update on disk changes | Todo |
@@ -18,6 +18,16 @@ Code review at chapter end: 1 round.
 A run restarted after an app restart fails at once with the script timeout. Restart counts as a new
 run: reset its timeout clock (and any other elapsed-time state) so the full timeout applies again.
 Plan finds where the original start time survives the restart.
+
+Result: no stored start time feeds any timeout; every restore, resume and restart path arms a fresh
+timer at launch. Fixed the two real defects that give a restart-shaped timeout. A: claude, opencode
+and gitprepare runners read the parent ctx deadline as the run's own timeout; they now report timed
+out only when the parent ctx is live (`&& ctx.Err() == nil`), else cancelled. B: a restore-issued
+terminal launch token aged from the restore click and expired after `LaunchTTL` (60 s) before a later
+tab opened; `Restore` tokens now live `RestoreLaunchTTL` (30 min), fresh `Start` keeps 60 s. Tests:
+termflow `TestRunsRestoreRestartedSmartFreshTimeout`, `TestRunsStopUnderTimeoutIsCancelled`,
+`TestRunsRestoreTerminalTokenOutlivesLaunchTTL`; adeflow `TestResumeAfterRestartFreshTimeout`; UI spec
+"each restored terminal script opens with its own token" (all pass). ARCHITECTURE.md updated.
 
 ## P748
 
