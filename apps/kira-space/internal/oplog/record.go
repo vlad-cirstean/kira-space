@@ -5,7 +5,6 @@ const (
 	CategoryGit     = "git"
 	CategorySession = "session"
 	CategoryMCP     = "mcp"
-	CategoryTracker = "tracker"
 	CategoryDB      = "db"
 	CategoryAgent   = "agent"
 )

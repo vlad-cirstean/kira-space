@@ -40,7 +40,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/github"
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
@@ -121,9 +120,6 @@ type Options struct {
 	MobileNow func() time.Time
 	// GitHosts are the registered code-host providers; nil means GitHub and Azure Repos with their real CLIs.
 	GitHosts *githost.Registry
-	// IssueTracker seams the Jira provider's acli locator, runner and clock; the zero value is production's
-	// (a flow-test seam). Its ChangeRequests is set by the wiring.
-	IssueTracker jira.Options
 	// TrackerGrace is how long the ADE tracker waits before it reads a spawned TUI session as
 	// stopped; zero means the tracker default.
 	TrackerGrace time.Duration
@@ -371,7 +367,6 @@ func Build(opts Options) (*Wired, error) {
 	}
 	w.RepoConfig = wireRepoConfig(repositories, hosts)
 	git := wireGit(repositories, opts.Locator, hosts, opts.ChangeRequestSync, w.RepoConfig)
-	git.trackers = wireTrackers(git.opLog, opts.IssueTracker)
 	w.Git, w.CredentialRelay = git, credentialRelay
 
 	// The tap feeds every window-wide event to the phone event hub, which drops what is not allowlisted.

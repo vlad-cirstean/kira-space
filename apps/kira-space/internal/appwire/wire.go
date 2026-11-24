@@ -26,9 +26,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitrpc"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
-	trackerproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/jsengine"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/mobileterm"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
@@ -82,20 +79,10 @@ type gitWired struct {
 	askpassBroker *gitaskpass.Broker
 	router        *gitrpc.Router
 	opLog         *oplog.Log
-	trackers      *issuetracker.Registry
 }
 
 // Registry is the shared git session registry; flow tests acquire repo entries through it.
 func (g gitWired) Registry() *gitsession.Registry { return g.registry }
-
-// wireTrackers builds the issue tracker registry.
-func wireTrackers(opLog *oplog.Log, o jira.Options) *issuetracker.Registry {
-	if o.Runner == nil {
-		o.Runner = jira.NewExecRunner()
-	}
-	o.Runner = oplog.NewRecordingToolRunner(o.Runner, opLog, jira.ProviderLabel)
-	return trackerproviders.New(o)
-}
 
 // wireTracker constructs and starts the ade.Tracker and the harness.Hooks hub it drives, wired
 // together before any window exists so Compose never races an unset hooks func with a real launch.
