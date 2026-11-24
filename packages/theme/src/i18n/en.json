@@ -12173,7 +12173,7 @@
         }
       },
       "cliTools": {
-        "description": "Kira runs local command line tools for pull requests and issues. The tools keep your credentials; Kira never sees them. Install and sign in with the commands below.",
+        "description": "Kira runs local command line tools for pull requests. The tools keep your credentials; Kira never sees them. Install and sign in with the commands below.",
         "docs": {
           "label": "Open documentation"
         },

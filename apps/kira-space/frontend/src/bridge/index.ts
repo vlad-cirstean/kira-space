@@ -133,7 +133,7 @@ import type {
 } from '../repo/state/repoConfigTypes';
 import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { AppInfo } from '../state/appInfoDomain';
-import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
+import type { CliToolsResult } from '../state/cliToolsDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
@@ -669,9 +669,7 @@ const spaceControl = {
     unwrap(AdeTaskService.MarkTrackedSeen(args)),
   onAdeTaskUpdates: (cb: () => void): (() => void) => on(CHANNEL.adeTaskUpdates, cb),
   cliTools: (refresh: boolean): Promise<CliToolsResult> =>
-    unwrap(IssueTrackerService.Tools({ refresh })).then((r) => trust<CliToolsResult>(r)),
-  issueTrackers: (): Promise<IssueTrackers> =>
-    unwrap(IssueTrackerService.Trackers()).then((r) => trust<IssueTrackers>(r)),
+    unwrap(GitHostService.Tools({ refresh })).then((r) => trust<CliToolsResult>(r)),
   adeTaskAddLink: (args: V2.AddLinkArgs): Promise<V2.LinkResult> =>
     unwrap(AdeTaskService.AddLink(args)).then((r) => trust<V2.LinkResult>(r)),
   adeTaskEditLink: (args: V2.EditLinkArgs): Promise<V2.LinkResult> =>

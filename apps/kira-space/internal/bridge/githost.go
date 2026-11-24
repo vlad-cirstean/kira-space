@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/url"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -50,4 +52,46 @@ func (s *GitHostService) Providers() githost.Providers {
 		hosts = s.Deps.GitRegistry.Hosts.Registry
 	}
 	return githost.Providers{Providers: hosts.Infos()}
+}
+
+// Tools probes every code host CLI, concurrently, and returns each with its setup steps. Refresh
+// bypasses the cached probes.
+func (s *GitHostService) Tools(ctx context.Context, args ToolsArgs) (ToolsResult, error) {
+	var hosts *githost.Registry
+	if s.Deps.GitRegistry != nil {
+		hosts = s.Deps.GitRegistry.Hosts.Registry
+	}
+	var tools []Tool
+	var probes []func()
+	for _, p := range hosts.All() {
+		cs, ok := p.(githost.CLISetup)
+		if !ok {
+			continue
+		}
+		t := p.Terms()
+		i := len(tools)
+		tools = append(tools, Tool{Kind: ToolKindHost, Provider: p.ID(), Label: t.Label, CLI: t.CLI, Setup: cs.Setup()})
+		probes = append(probes, func() {
+			st := cs.CLIStatus(ctx, args.Refresh)
+			tools[i].Status = ToolStatus{
+				Kind: st.Kind, Path: st.Path, Version: st.Version, Account: st.Account, Site: st.Site, Reason: st.Reason, Probed: nonNil(st.Probed),
+			}
+		})
+	}
+	var g errgroup.Group
+	for _, probe := range probes {
+		g.Go(func() error { probe(); return nil })
+	}
+	_ = g.Wait() // a probe reports failure in its Status
+	if tools == nil {
+		tools = []Tool{}
+	}
+	return ToolsResult{Tools: tools}, nil
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }

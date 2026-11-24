@@ -1,5 +1,5 @@
 {
-  "IssueTrackerService.Tools#azure-no-defaults": {
+  "GitHostService.Tools#azure-no-defaults": {
     "tools": [
       {
         "cli": "GitHub CLI (gh)",
@@ -76,46 +76,10 @@
           "site": "",
           "version": ""
         }
-      },
-      {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
-        "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
-          "steps": [
-            {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
-              "purpose": "install"
-            },
-            {
-              "command": "acli jira auth login --web",
-              "purpose": "login"
-            },
-            {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "acli jira auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "unauthenticated",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "not logged in to Jira: run `acli jira auth login --web`",
-          "site": "",
-          "version": "1.3.4"
-        }
       }
     ]
   },
-  "IssueTrackerService.Tools#azure-no-extension": {
+  "GitHostService.Tools#azure-no-extension": {
     "tools": [
       {
         "cli": "GitHub CLI (gh)",
@@ -192,50 +156,10 @@
           "site": "",
           "version": "2.91.0"
         }
-      },
-      {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
-        "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
-          "steps": [
-            {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
-              "purpose": "install"
-            },
-            {
-              "command": "acli jira auth login --web",
-              "purpose": "login"
-            },
-            {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "acli jira auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "notFound",
-          "path": "<masked>",
-          "probed": [
-            "acli (on PATH)",
-            "/opt/homebrew/bin/acli",
-            "/usr/local/bin/acli"
-          ],
-          "reason": "acli is not installed",
-          "site": "",
-          "version": ""
-        }
       }
     ]
   },
-  "IssueTrackerService.Tools#azure-ready": {
+  "GitHostService.Tools#azure-ready": {
     "tools": [
       {
         "cli": "GitHub CLI (gh)",
@@ -312,29 +236,73 @@
           "site": "https://dev.azure.com/acme",
           "version": "2.91.0 (azure-devops 1.0.10)"
         }
-      },
+      }
+    ]
+  },
+  "GitHostService.Tools#not-installed": {
+    "tools": [
       {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
+        "cli": "GitHub CLI (gh)",
+        "kind": "host",
+        "label": "GitHub",
+        "provider": "github",
         "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
+          "docsUrl": "https://cli.github.com",
           "steps": [
             {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
+              "command": "brew install gh",
               "purpose": "install"
             },
             {
-              "command": "acli jira auth login --web",
+              "command": "gh auth login",
               "purpose": "login"
             },
             {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
+              "command": "gh auth status",
+              "purpose": "check"
+            }
+          ]
+        },
+        "status": {
+          "account": "octocat",
+          "kind": "ok",
+          "path": "<masked>",
+          "probed": [],
+          "reason": "",
+          "site": "",
+          "version": "2.42.0"
+        }
+      },
+      {
+        "cli": "Azure CLI (az)",
+        "kind": "host",
+        "label": "Azure Repos",
+        "provider": "azure",
+        "setup": {
+          "docsUrl": "https://learn.microsoft.com/azure/devops/cli/",
+          "steps": [
+            {
+              "command": "brew install azure-cli",
+              "purpose": "install"
+            },
+            {
+              "command": "az extension add --name azure-devops",
+              "purpose": "extension"
+            },
+            {
+              "command": "az login",
+              "purpose": "login"
+            },
+            {
+              "command": "az devops login --organization https://dev.azure.com/<your-org>",
               "purpose": "loginToken"
             },
             {
-              "command": "acli jira auth status",
+              "command": "az devops configure --defaults organization=https://dev.azure.com/<your-org> project=<your-project>",
+              "purpose": "defaults"
+            },
+            {
+              "command": "az devops project list --top 1",
               "purpose": "check"
             }
           ]
@@ -344,18 +312,18 @@
           "kind": "notFound",
           "path": "<masked>",
           "probed": [
-            "acli (on PATH)",
-            "/opt/homebrew/bin/acli",
-            "/usr/local/bin/acli"
+            "az (on PATH)",
+            "/opt/homebrew/bin/az",
+            "/usr/local/bin/az"
           ],
-          "reason": "acli is not installed",
+          "reason": "Azure CLI is unavailable — install `az` to see Azure Repos pull requests",
           "site": "",
           "version": ""
         }
       }
     ]
   },
-  "IssueTrackerService.Tools#not-installed": {
+  "GitHostService.Tools#signed-out": {
     "tools": [
       {
         "cli": "GitHub CLI (gh)",
@@ -428,301 +396,17 @@
           "kind": "unauthenticated",
           "path": "<masked>",
           "probed": [],
-          "reason": "set a default organization: `az devops configure --defaults organization=https://dev.azure.com/<org>`",
-          "site": "",
-          "version": ""
-        }
-      },
-      {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
-        "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
-          "steps": [
-            {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
-              "purpose": "install"
-            },
-            {
-              "command": "acli jira auth login --web",
-              "purpose": "login"
-            },
-            {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "acli jira auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "notFound",
-          "path": "<masked>",
-          "probed": [
-            "acli (on PATH)",
-            "/opt/homebrew/bin/acli",
-            "/usr/local/bin/acli"
-          ],
-          "reason": "acli is not installed",
-          "site": "",
+          "reason": "Sign in with `az login`, or `az devops login --organization https://dev.azure.com/acme` with a PAT",
+          "site": "https://dev.azure.com/acme",
           "version": ""
         }
       }
     ]
   },
-  "IssueTrackerService.Tools#ready": {
-    "tools": [
-      {
-        "cli": "GitHub CLI (gh)",
-        "kind": "host",
-        "label": "GitHub",
-        "provider": "github",
-        "setup": {
-          "docsUrl": "https://cli.github.com",
-          "steps": [
-            {
-              "command": "brew install gh",
-              "purpose": "install"
-            },
-            {
-              "command": "gh auth login",
-              "purpose": "login"
-            },
-            {
-              "command": "gh auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "octocat",
-          "kind": "ok",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "",
-          "site": "",
-          "version": "2.42.0"
-        }
-      },
-      {
-        "cli": "Azure CLI (az)",
-        "kind": "host",
-        "label": "Azure Repos",
-        "provider": "azure",
-        "setup": {
-          "docsUrl": "https://learn.microsoft.com/azure/devops/cli/",
-          "steps": [
-            {
-              "command": "brew install azure-cli",
-              "purpose": "install"
-            },
-            {
-              "command": "az extension add --name azure-devops",
-              "purpose": "extension"
-            },
-            {
-              "command": "az login",
-              "purpose": "login"
-            },
-            {
-              "command": "az devops login --organization https://dev.azure.com/<your-org>",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "az devops configure --defaults organization=https://dev.azure.com/<your-org> project=<your-project>",
-              "purpose": "defaults"
-            },
-            {
-              "command": "az devops project list --top 1",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "unauthenticated",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "set a default organization: `az devops configure --defaults organization=https://dev.azure.com/<org>`",
-          "site": "",
-          "version": ""
-        }
-      },
-      {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
-        "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
-          "steps": [
-            {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
-              "purpose": "install"
-            },
-            {
-              "command": "acli jira auth login --web",
-              "purpose": "login"
-            },
-            {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "acli jira auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "me@acme.test",
-          "kind": "ok",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "",
-          "site": "acme.atlassian.net",
-          "version": "1.3.4"
-        }
-      }
-    ]
-  },
-  "IssueTrackerService.Tools#signed-out": {
-    "tools": [
-      {
-        "cli": "GitHub CLI (gh)",
-        "kind": "host",
-        "label": "GitHub",
-        "provider": "github",
-        "setup": {
-          "docsUrl": "https://cli.github.com",
-          "steps": [
-            {
-              "command": "brew install gh",
-              "purpose": "install"
-            },
-            {
-              "command": "gh auth login",
-              "purpose": "login"
-            },
-            {
-              "command": "gh auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "octocat",
-          "kind": "ok",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "",
-          "site": "",
-          "version": "2.42.0"
-        }
-      },
-      {
-        "cli": "Azure CLI (az)",
-        "kind": "host",
-        "label": "Azure Repos",
-        "provider": "azure",
-        "setup": {
-          "docsUrl": "https://learn.microsoft.com/azure/devops/cli/",
-          "steps": [
-            {
-              "command": "brew install azure-cli",
-              "purpose": "install"
-            },
-            {
-              "command": "az extension add --name azure-devops",
-              "purpose": "extension"
-            },
-            {
-              "command": "az login",
-              "purpose": "login"
-            },
-            {
-              "command": "az devops login --organization https://dev.azure.com/<your-org>",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "az devops configure --defaults organization=https://dev.azure.com/<your-org> project=<your-project>",
-              "purpose": "defaults"
-            },
-            {
-              "command": "az devops project list --top 1",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "unauthenticated",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "set a default organization: `az devops configure --defaults organization=https://dev.azure.com/<org>`",
-          "site": "",
-          "version": ""
-        }
-      },
-      {
-        "cli": "Atlassian CLI (acli)",
-        "kind": "tracker",
-        "label": "Jira",
-        "provider": "jira",
-        "setup": {
-          "docsUrl": "https://developer.atlassian.com/cloud/acli/guides/introduction/",
-          "steps": [
-            {
-              "command": "brew tap atlassian/homebrew-acli && brew trust --formula atlassian/acli/acli && brew install acli",
-              "purpose": "install"
-            },
-            {
-              "command": "acli jira auth login --web",
-              "purpose": "login"
-            },
-            {
-              "command": "acli jira auth login --site <your-site>.atlassian.net --email <you@example.com> --token < token.txt",
-              "purpose": "loginToken"
-            },
-            {
-              "command": "acli jira auth status",
-              "purpose": "check"
-            }
-          ]
-        },
-        "status": {
-          "account": "",
-          "kind": "unauthenticated",
-          "path": "<masked>",
-          "probed": [],
-          "reason": "not logged in to Jira: run `acli jira auth login --web`",
-          "site": "",
-          "version": "1.3.4"
-        }
-      }
-    ]
-  },
-  "IssueTrackerService.Trackers": {
-    "trackers": [
-      {
-        "id": "jira",
-        "issue": "Work item",
-        "label": "Jira"
-      }
-    ]
-  },
-  "args:IssueTrackerService.Tools": {
+  "args:GitHostService.Tools": {
     "refresh": true
   },
-  "args:IssueTrackerService.Tools#azure-refresh": {
-    "refresh": true
-  },
-  "args:IssueTrackerService.Tools#refresh": {
+  "args:GitHostService.Tools#azure-refresh": {
     "refresh": true
   }
 }
