@@ -16,7 +16,7 @@ Code review at chapter end: 1 round.
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Proof window shows that its proof is stale | Done |
 | P754 | Checkboxes and toggles: blue checked state | Done |
-| P755 | Chapter close | Todo |
+| P755 | Chapter close | Done |
 
 ## P747
 
@@ -146,3 +146,10 @@ blue status dot. UI spec `on-state-colour.spec.ts`; visual baselines update in P
 ## P755
 
 Chapter close, by hand per `CLAUDE.md` "Closing a chapter".
+
+Result: before the close, `go test -race` on `internal/adeflow/...` passed and on `internal/taskfiles`
+`TestChangedBudget` failed (44 ms vs 25 ms budget) the same way on v0.3.24, so race overhead, not a
+regression; the budget now scales by 3 under `-race` (test-only build-tagged constants), passes with and
+without `-race`. History block appended by hand to `docs/history/07-v0.3.15.md`, index range extended to
+v0.3.25, `docs/v0.3.25/` removed, branch pushed. Code review round 1 findings were fixed in-chapter
+(idle watcher checks grants, skips own writes and archived folders).
