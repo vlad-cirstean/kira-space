@@ -141,7 +141,7 @@ func (osRunner) Run(ctx context.Context, spec Spec) (Result, error) {
 	<-tickerExited
 	collector.flush()
 
-	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded)
+	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil
 	cancelled := !timedOut && ctx.Err() != nil
 
 	if (timedOut || cancelled) && cmd.Process != nil {

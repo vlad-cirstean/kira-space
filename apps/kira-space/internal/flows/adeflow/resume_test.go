@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
@@ -203,5 +204,33 @@ func TestResumeOneOfThreeInterrupted(t *testing.T) {
 				t.Fatalf("task %s has a done run %+v after the restart", task.ID, r)
 			}
 		}
+	}
+}
+
+// A resumed run is a new attempt: its step timeout arms at resume, not at the original start.
+func TestResumeAfterRestartFreshTimeout(t *testing.T) {
+	hold := filepath.Join(t.TempDir(), "hold")
+	step := "  - id: one\n    name: one\n    kind: agent\n    runs_on: each repo\n    timeout: 2s\n    prompt: work on {branch} in {repo}\n"
+	f := newRunFixture(t, []fakeagent.Action{{WaitFile: hold}, {Name: "done", WaitBefore: hold}}, step)
+	f.start(t, "feat/api-fresh-timeout")
+	waitRun(t, f.app, f.taskID, "one", "running")
+	testx.WaitUntil(t, waitFor, func() bool { _, err := os.Stat(filepath.Join(f.app.FakeDir, "api-1.args")); return err == nil })
+	time.Sleep(1500 * time.Millisecond)
+	f.app.Restart()
+	stuck := waitRun(t, f.app, f.taskID, "one", "stuck")
+
+	if err := f.app.W.AdeTask.ResumeRun(ctx, adewire.RunArgs{RunID: stuck.ID}); err != nil {
+		t.Fatalf("ResumeRun: %v", err)
+	}
+	waitRun(t, f.app, f.taskID, "one", "running")
+	time.Sleep(1500 * time.Millisecond)
+	if r := waitRun(t, f.app, f.taskID, "one", "running"); r.Outcome != nil && r.Outcome.Source == "timeout" {
+		t.Fatalf("resumed run = %+v, want still live", r)
+	}
+	if err := os.WriteFile(hold, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := waitRun(t, f.app, f.taskID, "one", "done"); r.Attempt != 2 {
+		t.Fatalf("resumed run = %+v, want done at attempt 2", r)
 	}
 }
