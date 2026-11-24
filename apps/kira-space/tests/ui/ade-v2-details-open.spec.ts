@@ -1,9 +1,9 @@
 import { expect, test } from './fixtures';
-import { adeBoard, openDetails, openPlan } from './support/adeV2';
+import { openDetails, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
-import { openCard, pill } from './support/links';
+import { linkSnapshots, openCard, pill } from './support/links';
 
 // Details links open in the system browser: a button per link card and per timeline artifact, through
 // LinkService.OpenExternal. Contract ade-details-open; backend half: flows/adeflow TestDetailsOpenExternal.
@@ -30,22 +30,11 @@ interface OpenArgs {
 const links = contract<Links>(S, 'Task#links');
 const openArgs = (key: string) => contract<OpenArgs>(S, `args:LinkService.OpenExternal#${key}`);
 
-const listed = (): ArtifactFx[] =>
-  contract<{ artifacts: ArtifactFx[] }>(S, 'AdeTaskService.Artifacts').artifacts.map((a, i) => ({
-    ...a,
-    id: a.source === 'user' ? `a_${i}` : '',
-  }));
-
-function snapshots() {
-  const board = adeBoard((b) => {
-    Object.assign(b.tasks.find((x) => x.id === 'T_alerts') ?? {}, links);
-  });
-  return [
-    { channel: IPC.adeTaskBoard, response: board },
-    { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] } },
-    { channel: IPC.linkOpenExternal, response: null },
-  ];
-}
+const snapshots = () =>
+  linkSnapshots(
+    links,
+    contract<{ artifacts: ArtifactFx[] }>(S, 'AdeTaskService.Artifacts').artifacts,
+  );
 
 test('contract: each link card opens in the browser', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, snapshots());
