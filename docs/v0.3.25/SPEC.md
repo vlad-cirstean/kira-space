@@ -15,7 +15,7 @@ Code review at chapter end: 1 round.
 | P751 Part 2 | Drop acli support and the issue tracker | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Proof window shows that its proof is stale | Todo |
-| P754 | Checkboxes and toggles: blue checked state | Todo |
+| P754 | Checkboxes and toggles: blue checked state | Done |
 | P755 | Chapter close | Todo |
 
 ## P747
@@ -118,6 +118,13 @@ border and the faint background tint stay, only the hue changes to blue. Plan in
 control and the color tokens it uses today, changes the shared shadcn-vue primitives and theme tokens
 once (no per-screen overrides), checks light and dark themes and contrast. UI spec asserts the checked
 color of each control kind; visual baselines update in PR CI.
+
+Result: on-state tokens `--kira-toggle-on` (20% accent tint) and `--kira-toggle-on-edge` (info blue,
+5.57:1 on field) retargeted from grey to blue; checkbox, switch, radio, radio card, pressed toolbar
+toggles, segmented and choice buttons, `Toggle` and Monaco find toggles follow; selection and focus stay
+grey. Guard N18 now requires the on-state tokens to alias the blue accent and keeps selection neutral
+(45 spec tests pass). Title-bar toggles unchanged. Keep awake on state: blue coffee icon plus a small
+blue status dot. UI spec `on-state-colour.spec.ts`; visual baselines update in PR CI. Plan: `plans/P754.md`.
 
 ## P755
 
