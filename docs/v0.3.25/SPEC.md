@@ -11,7 +11,8 @@ Code review at chapter end: 1 round.
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Done |
 | P749 | Proof window: images fit the window, larger default size | Done |
 | P750 | Details panel and proofs: auto-update on disk changes | Done |
-| P751 | Drop issue and change request viewer windows and acli support | Todo |
+| P751 Part 1 | Drop the issue and change request viewer windows; links open in the browser | Todo |
+| P751 Part 2 | Drop acli support and the issue tracker | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Chapter close | Todo |
 
@@ -68,6 +69,9 @@ spec under contract `ade-details-autoupdate`. Open: an open proof window can sti
 accepted agent edit (no `kira:proof:changed`). Plan: `plans/P750.md`.
 
 ## P751
+
+Split in two (about 10,800 lines deleted, about 60 files edited): Part 1 drops the viewers, Part 2 drops
+acli and the issue tracker. Part 1 lands first. One plan, `plans/P751.md`, holds ordered sub-steps per part.
 
 Drop the in-app issue viewer and the in-app change request viewer, and drop acli support. Their
 implementation is not what the owner wants.
