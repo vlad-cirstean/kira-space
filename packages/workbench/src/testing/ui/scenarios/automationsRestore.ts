@@ -220,4 +220,44 @@ export function registerRestoreScenarios(env: Env, options: Options): void {
     );
     await expect(dialog(page)).toBeVisible();
   });
+
+  // P747: a second restored terminal script mounts when its tab is opened, later than the first. Backend
+  // half: termflow TestRunsRestoreTerminalTokenOutlivesLaunchTTL (a restore-issued token outlives LaunchTTL).
+  test('each restored terminal script opens with its own token when its tab is opened', async ({
+    relaunch,
+  }) => {
+    const plain = named('plain');
+    const param = named('param');
+    const outcome = (item: ScriptRunRestoreItem, token: string) => ({
+      runId: item.runId,
+      started: { runId: '', terminal: { token, cwd: item.cwd } },
+    });
+    const { window: page, control } = await relaunch({
+      control: [
+        ...base(state(), state(), { items: [] }),
+        {
+          channel: IPC.scriptRunsRestore,
+          response: { items: [outcome(plain, 'tok-plain'), outcome(param, 'tok-param')] },
+        },
+      ],
+    });
+    await openDialog(page);
+    await row(page, named('smart').runId).locator('[data-slot="checkbox"]').click();
+    await expect(page.locator('[data-testid="restore-selection"]')).toHaveText('2 of 3 selected');
+    await page.locator('[data-testid="restore-submit"]').click();
+    await expect(dialog(page)).toHaveCount(0);
+
+    const tabs = page.locator('[data-testid="tab-strip-wrapper"] [data-testid="tab"]');
+    await expect(tabs).toHaveCount(2);
+    const opened = () =>
+      calls(control, IPC.terminalOpen).map((c) => {
+        const a = c.args as { scriptId?: string; scriptLaunchToken?: string };
+        return [a.scriptId, a.scriptLaunchToken];
+      });
+    await tabs.filter({ hasText: 'plain' }).click();
+    await expect.poll(opened).toContainEqual([plain.scriptId, 'tok-plain']);
+    await tabs.filter({ hasText: 'param' }).click();
+    await expect.poll(opened).toContainEqual([param.scriptId, 'tok-param']);
+    await expect(page.getByText('This run expired')).toHaveCount(0);
+  });
 }

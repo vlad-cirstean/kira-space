@@ -1,9 +1,12 @@
 package termflow_test
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
@@ -240,4 +243,92 @@ func TestRunsRestore(t *testing.T) {
 			t.Fatalf("state after a second restart = %+v, want empty", st.Items)
 		}
 	})
+}
+
+// A restored run is a new run: its smart timeout arms at restore, not at the original start.
+func TestRunsRestoreRestartedSmartFreshTimeout(t *testing.T) {
+	app := flowharness.New(t, flowharness.WithSmartTimeout(2*time.Second))
+	hold := filepath.Join(t.TempDir(), "hold")
+	app.Scenario(scenario(fakeagent.Action{Name: "sleep"}, fakeagent.Action{Name: "done", WaitBefore: hold}))
+	rec := newSmart(t, app, "go", nil)
+	id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
+	waitSmart(t, app, id, "running")
+	time.Sleep(1500 * time.Millisecond)
+
+	app.Restart()
+	waitSmart(t, app, id, "failed")
+	it := restoreItem(t, restoreState(t, app), "ask")
+	res, err := app.W.ScriptRuns.Restore(scriptruns.RestoreArgs{Items: []scriptruns.RestoreChoice{choice(it)}})
+	if err != nil || len(res.Items) != 1 || res.Items[0].Started == nil || res.Items[0].Started.RunID == "" {
+		t.Fatalf("Restore = %+v, %v", res, err)
+	}
+	newID := res.Items[0].Started.RunID
+	waitSmart(t, app, newID, "running")
+	time.Sleep(1500 * time.Millisecond)
+	waitSmart(t, app, newID, "running")
+	if err := os.WriteFile(hold, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := waitSmart(t, app, newID, "done"); r.Outcome != nil && r.Outcome.Source == "timeout" {
+		t.Fatalf("restored run ended = %+v, want not a timeout", r.Outcome)
+	}
+}
+
+// Stopping a run under a smart timeout reports a cancel, never "timed out".
+func TestRunsStopUnderTimeoutIsCancelled(t *testing.T) {
+	app := flowharness.New(t, flowharness.WithSmartTimeout(2*time.Second))
+	app.Scenario(scenario(fakeagent.Action{Name: "sleep"}))
+	rec := newSmart(t, app, "go", nil)
+	id, _ := startSmart(t, app, scriptruns.RunArgs{ScriptID: rec.ID})
+	waitSmart(t, app, id, "running")
+	if err := app.W.ScriptRuns.Stop(scriptruns.IDArgs{ID: id}); err != nil {
+		t.Fatal(err)
+	}
+	if r := waitSmart(t, app, id, "cancelled"); r.Outcome.Source != "user" || strings.Contains(r.Outcome.Reason, "timed out") {
+		t.Fatalf("Stop outcome = %+v", r.Outcome)
+	}
+}
+
+// A token Restore issues waits for its tab to open, which can be long after the click; a fresh
+// Start's token keeps the short LaunchTTL.
+func TestRunsRestoreTerminalTokenOutlivesLaunchTTL(t *testing.T) {
+	app := flowharness.New(t)
+	rec := newScript(t, app, scripts.CustomScriptFields{Name: "plain", Command: "sleep 60"})
+	openScript(t, app, "w1", "t1", rec.ID)
+	waitRun(t, app, "t1", "running")
+	app.Restart()
+
+	oldTTL, oldRestore := scriptruns.LaunchTTL, scriptruns.RestoreLaunchTTL
+	scriptruns.LaunchTTL, scriptruns.RestoreLaunchTTL = 50*time.Millisecond, 5*time.Second
+	t.Cleanup(func() { scriptruns.LaunchTTL, scriptruns.RestoreLaunchTTL = oldTTL, oldRestore })
+
+	it := restoreItem(t, restoreState(t, app), "plain")
+	res, err := app.W.ScriptRuns.Restore(scriptruns.RestoreArgs{Items: []scriptruns.RestoreChoice{choice(it)}})
+	if err != nil || res.Items[0].Started == nil || res.Items[0].Started.Terminal == nil {
+		t.Fatalf("Restore = %+v, %v", res, err)
+	}
+	args := scriptruns.RunArgs{ScriptID: rec.ID}
+	pv, err := app.W.ScriptRuns.Preview(args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	openWithToken(t, app, "t2", rec.ID, res.Items[0].Started.Terminal.Token)
+	waitRun(t, app, "t2", "running")
+	if err := app.W.Terminal.Close(terminal.CloseArgs{TerminalID: "t2"}); err != nil {
+		t.Fatal(err)
+	}
+	waitRun(t, app, "t2", "cancelled")
+
+	started, err := app.W.ScriptRuns.Start(scriptruns.StartArgs{RunArgs: args, Hash: pv.Hash})
+	if err != nil || started.Terminal == nil {
+		t.Fatalf("Start = %+v, %v", started, err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	_, err = app.W.Terminal.Open(terminal.OpenArgs{
+		TerminalID: "t3", WindowKey: "w1", Cols: 80, Rows: 24, LaunchKind: terminal.LaunchKindScript, ScriptID: rec.ID, ScriptLaunchToken: started.Terminal.Token,
+	})
+	if err == nil || !strings.Contains(err.Error(), "This run expired.") {
+		t.Fatalf("a fresh Start token after the TTL = %v, want expired", err)
+	}
 }

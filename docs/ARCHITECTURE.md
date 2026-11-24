@@ -874,7 +874,7 @@ api_grpc_history(id, item_id, tab_id, scope_key, called_at, target, method, stre
 - scriptruns.ADE is the seam to the task board, implemented by ade.TaskBoard; Studio leaves it nil and refuses a taskId with "tasks exist only in Kira Space".
 - A script with use_ade_dir runs in the branch worktree; ClaimWorktree creates a missing worktree and holds a claim keyed by branch id under the board's runMu.
 - The worktree claim blocks both ways: a step run on a claimed branch is held with note "waiting for automation <name>" until release (and after a restart); a rebase is refused with "automation X is running in <branch>"; StartBranch is refused; a script start is refused while a step run or rebase works on the branch.
-- Lease silence and the tracker's silent-tool ceiling count running time only (`leases.Options.Elapsed`, `TrackerDeps.Elapsed`: monotonic, derived from `Now` when nil), so a sleeping laptop expires no lease. `Entry.Seen` stays wall time for display. Step and script timeouts are Go context timers on the runtime's monotonic clock, which does not tick through suspend on Linux, macOS or Windows; no wall-clock timeout exists.
+- Lease silence and the tracker's silent-tool ceiling count running time only (`leases.Options.Elapsed`, `TrackerDeps.Elapsed`: monotonic, derived from `Now` when nil), so a sleeping laptop expires no lease. `Entry.Seen` stays wall time for display. Step and script timeouts are Go context timers on the runtime's monotonic clock, which does not tick through suspend on Linux, macOS or Windows; no wall-clock timeout exists. A restarted, restored or resumed run is a new run: its step or script timeout arms at launch, never from a stored start time. Only the run's own timer reports timed out; a parent ctx ending first reports cancelled.
 - A workflow step may name smart_script plus params instead of a prompt (planSmartStep, smartOutcome, supervised by superviseAgent).
 - agentnotify.HandleScriptRun posts for smart runs only: failed under Enabled, blocked under OnNeedsInput, done under OnRunEnded, cancelled never.
 - Kira Space order is ade, automations, studio, api, docker, kubernetes, git (P666: Git last). Space opens new windows in git (WindowModes.Default). ModeDef.tabStrip: false hides the tab strip for modules without tabs (Docker).
@@ -2286,6 +2286,7 @@ The agent CLI sits behind one interface, so a second provider needs no caller ch
   `ScriptLauncher.BeginAgent` checks it against the command and returns the env, a stale or mismatched
   token is the `backend.core.scriptRun.expired.body` conflict. `SessionID` is `""` when the agent assigns it
   after launch.
+- A normal script's terminal launch token (`Start`) lives `LaunchTTL` (60 s). One `Restore` issues lives `RestoreLaunchTTL` (30 min): its tab mounts when the person opens it, which can be long after the restore click. Both are single-use and in memory.
 - Hook events carry a neutral `harness.EventKind` (`SessionStart`, `SessionEnd`, `UserPromptSubmit`,
   `PreToolUse`, `PostToolUse`, `Notification`, `Stop`); the values equal the wire strings, so the bridge
   and frontend see no change. The provider maps its own names (Claude: table in `claude/hooks/http.go`,
