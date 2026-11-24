@@ -15,7 +15,8 @@ Code review at chapter end: 1 round.
 | P751 Part 2 | Drop acli support and the issue tracker | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Proof window shows that its proof is stale | Todo |
-| P754 | Chapter close | Todo |
+| P754 | Checkboxes and toggles: blue checked state | Todo |
+| P755 | Chapter close | Todo |
 
 ## P747
 
@@ -110,5 +111,14 @@ edit, or a revision compare on the board push) and states the cost. Flow test as
 spec asserts marker and reload.
 
 ## P754
+
+Checkboxes, toggles (switches) and the same-family controls (radio, segmented or toggle buttons, option
+toggles such as search options) show their on and checked state in blue. Keep the current design: the
+border and the faint background tint stay, only the hue changes to blue. Plan inventories every
+control and the color tokens it uses today, changes the shared shadcn-vue primitives and theme tokens
+once (no per-screen overrides), checks light and dark themes and contrast. UI spec asserts the checked
+color of each control kind; visual baselines update in PR CI.
+
+## P755
 
 Chapter close, by hand per `CLAUDE.md` "Closing a chapter".
