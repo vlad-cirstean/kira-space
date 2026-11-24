@@ -14,7 +14,7 @@ Code review at chapter end: 1 round.
 | P751 Part 1 | Drop the issue and change request viewer windows; links open in the browser | Done |
 | P751 Part 2 | Drop acli support and the issue tracker | Done |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
-| P753 | Proof window shows that its proof is stale | Todo |
+| P753 | Proof window shows that its proof is stale | Done |
 | P754 | Checkboxes and toggles: blue checked state | Done |
 | P755 | Chapter close | Todo |
 
@@ -119,6 +119,13 @@ clear stale marker and an action to reload; it does not reload on its own, so wh
 screenshots never changes underneath. Plan picks the signal (a proof changed event on every accepted
 edit, or a revision compare on the board push) and states the cost. Flow test asserts the signal, UI
 spec asserts marker and reload.
+
+Result: an accepted proof edit, accepted delete and dropped pending edit now emit `kira:proof:changed`;
+`proof.Detail` carries a `version` (current rev, pending rev, updated time) that only content writes
+move. The proof window compares versions on the event and shows a warn strip with a Refresh button (or
+"removed"); it never reloads by itself and the marker is frozen during a screenshot capture, with the
+button left out of the capture. Flow tests, contract `proof-stale` and a 5-test UI spec. Plan:
+`plans/P753.md`.
 
 ## P754
 
