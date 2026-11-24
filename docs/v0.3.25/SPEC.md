@@ -8,7 +8,7 @@ Code review at chapter end: 1 round.
 | # | Phase | Status |
 |---|-------|--------|
 | P747 | Run restarted after app restart: fresh script timeout | Done |
-| P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Todo |
+| P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Done |
 | P749 | Proof window: images fit the window, larger default size | Todo |
 | P750 | Details panel and proofs: auto-update on disk changes | Todo |
 | P751 | Drop issue and change request viewer windows and acli support | Todo |
@@ -37,6 +37,12 @@ termflow `TestRunsRestoreRestartedSmartFreshTimeout`, `TestRunsStopUnderTimeoutI
 - Restore the proofs title link in task details that opens the proof window.
 - Proofs default to collapsed: only title and main description show. Reverses P736's auto-expand for
   the details panel; plan states what stays auto-expanded in the proof window.
+
+Result: proof window grids get a stronger line colour (`--kira-grid-line`, `lined` prop on the console
+grids); the proof name in task details is the link that opens the window again; each proof entry is a
+shadcn-vue `Collapsible`, collapsed by default (title and summary show; steps and diagrams unmount),
+with the state kept for the session. The proof window keeps P736's auto-expand. UI specs only; baseline
+updates left to PR CI. Plan: `plans/P748.md`.
 
 ## P749
 
