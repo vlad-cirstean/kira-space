@@ -36,7 +36,7 @@ const oldProofs = () => {
   };
 };
 
-/** The proof after the agent's edit: same rev (accepted edits rewrite it in place), one step. */
+/** The proof after the agent's edit: rev bumped (an accepted edit inserts the next rev), one step. */
 const editedProofs = () => {
   const fx = contract<{ proofs: ProofFx[] }>(SCENARIO, 'AdeTaskService.TaskProofs#edited');
   return {
@@ -118,9 +118,7 @@ test('a board push for another task does not refetch this task proofs', async ({
   expect(calls(control, IPC.adeTaskProofs).length).toBe(before);
 });
 
-test('a board push refetches the open diagram step: an accepted edit keeps the rev', async ({
-  relaunch,
-}) => {
+test('a board push moves an open diagram step to the bumped rev', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskProofs, response: oldProofs() },
     {
@@ -132,7 +130,10 @@ test('a board push refetches the open diagram step: an accepted edit keeps the r
   await page.locator(t('ade-panel-tab-details')).click();
   await expandProof(page);
   await expect(page.locator(t('ade-proof-diagram'))).toBeVisible();
-  const before = calls(control, IPC.proofStep).length;
+  const stepRevs = () => calls(control, IPC.proofStep).map((c) => (c.args as { rev: number }).rev);
+  expect(stepRevs()).not.toContain(2);
+  const bumped = oldProofs();
+  control.respond(IPC.adeTaskProofs, { proofs: bumped.proofs.map((p) => ({ ...p, rev: 2 })) });
   await emitWailsEvent(page, IPC.adeTaskBoardChanged, board('event:kira:adetask:board#proofEdit'));
-  await expect.poll(() => calls(control, IPC.proofStep).length).toBeGreaterThan(before);
+  await expect.poll(stepRevs).toContain(2);
 });

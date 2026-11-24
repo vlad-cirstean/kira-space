@@ -111,7 +111,7 @@ func TestDetailsAutoUpdateIdleSave(t *testing.T) {
 }
 
 // An agent's accepted edit of the newest proof raises one proof event and the board push; the rev bumps.
-// The Details panel refetches the proofs and each open step; an open proof window checks its version.
+// The Details panel refetches the proofs, whose new rev moves each open step; an open proof window checks its version.
 func TestDetailsAutoUpdateAgentProofEdit(t *testing.T) {
 	gate := dwHold(t)
 	f := newBRFixture(t, []fakeagent.Action{{WaitFile: gate, Name: "done"}}, onceStepYML, false)

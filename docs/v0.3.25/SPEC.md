@@ -65,8 +65,8 @@ Flow test asserts the event, UI spec asserts the refresh.
 
 Result: two broken links fixed. Backend: nothing watched a task folder unless an agent ran on it; an idle
 watcher on the task files root now pushes the board for any save, skipping tasks with a live agent
-watcher. Frontend: a board push never refreshed proofs; it now invalidates the task proofs and open
-proof steps (an accepted edit keeps `rev`, so steps are invalidated by prefix). Flow tests plus a UI
+watcher. Frontend: a board push never refreshed proofs; it now invalidates the task proofs (an accepted edit bumps `rev`, so the
+refetched list yields new step keys). Flow tests plus a UI
 spec under contract `ade-details-autoupdate`. Open: an open proof window can still go stale after an
 accepted agent edit (no `kira:proof:changed`). Plan: `plans/P750.md`.
 

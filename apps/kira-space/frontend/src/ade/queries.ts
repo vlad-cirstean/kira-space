@@ -29,9 +29,6 @@ import { trackedUpdatesKey } from './v2/updates/queries';
 
 const reviewAgentPrefix = ['adetask', 'reviewAgent'] as const;
 
-// Key prefix of studio/proof/queries.ts `proofKey.step`.
-const proofStepPrefix = ['proof', 'step'] as const;
-
 /** Called once from `main.ts`, app lifetime, no teardown. The shared read upkeep is
  *  `installAdeReadSignals`; on top, an open-session push selects that session, an agent hook event
  *  feeds the dialog turn watchers, a repos push re-reads the repo settings (the shared code repo
@@ -88,8 +85,6 @@ export function installAdeSignals(
     invalidateTaskFamily(queryClient, artifactsPrefix, change);
     invalidateTaskFamily(queryClient, diskPrefix, change);
     invalidateTaskFamily(queryClient, proofsPrefix, change);
-    // Step keys carry no task: refetch every open step.
-    void queryClient.invalidateQueries({ queryKey: proofStepPrefix });
   });
   // A proof session closing, attaching or deleting changes a task's chain.
   studioControl.onProofChanged(() => {
