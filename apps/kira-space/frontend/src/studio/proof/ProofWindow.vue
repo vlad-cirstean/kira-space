@@ -9,22 +9,28 @@ import { cn } from '@theme/lib/utils';
 import { usePersistedState } from '@workbench/behaviour/persisted';
 import QueryState from '@workbench/components/QueryState.vue';
 import TabStrip from '@workbench/components/TabStrip.vue';
-import { computed, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import ProofChangePanel from './ProofChangePanel.vue';
 import ProofCompare from './ProofCompare.vue';
 import ProofHeader from './ProofHeader.vue';
 import ProofScreenshotMenu from './ProofScreenshotMenu.vue';
 import ProofShotStatus from './ProofShotStatus.vue';
+import ProofStaleStrip from './ProofStaleStrip.vue';
 import ProofStepView from './ProofStepView.vue';
-import { useProofSession, useProofSync } from './queries';
+import { type ProofStaleState, useProofSession, useProofStale } from './queries';
 import { useProofWindowStore } from './state';
 import { createProofTabHost, type ProofTab, proofTabId } from './tabHost';
 
 // One proof per window: the step tabs (centre) and, for a pending edit, the change panel (right).
 const store = useProofWindowStore();
 const centre = useTemplateRef<HTMLElement>('centre');
-useProofSync();
 const session = useProofSession(() => store.sessionId);
+const fresh = useProofStale(() => store.sessionId, session);
+// A capture batch keeps the marker state from its start, so every image of it agrees.
+const staleShown = ref<ProofStaleState | null>(fresh.state.value);
+watch([fresh.state, () => store.capturing], ([state, capturing]) => {
+  if (!capturing) staleShown.value = state;
+});
 const detail = computed(() => session.data.value ?? null);
 
 const side = computed(() => store.side ?? (detail.value?.pending ? 'pending' : 'current'));
@@ -100,6 +106,12 @@ const right = useLiveSize(
         :aria-label="t('studio.proof.session.aria')"
         data-testid="proof-centre"
       >
+        <ProofStaleStrip
+          v-if="staleShown"
+          :state="staleShown"
+          :disabled="store.capturing"
+          @reload="fresh.reload()"
+        />
         <QueryState v-if="store.sessionId" :query="session">
           <template #default="{ data }">
             <p

@@ -160,7 +160,14 @@ export function useProofScreenshot(source: Source) {
 
   async function run(mode: Mode): Promise<void> {
     if (action.pending.value) return;
-    if (await action.run(mode)) return;
+    store.capturing = true;
+    let ok = false;
+    try {
+      ok = await action.run(mode);
+    } finally {
+      store.capturing = false;
+    }
+    if (ok) return;
     const message = t('studio.proof.shot.failed.error', { error: action.error.value ?? '' });
     if (mode !== 'copy') store.setShotResult({ kind: 'error', message });
     announceApp(message);

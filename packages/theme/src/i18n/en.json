@@ -17142,6 +17142,14 @@
           "error": "Saved {count} of {total} screenshots before failing: {error}"
         }
       },
+      "stale": {
+        "changed": {
+          "status": "This proof changed after the window loaded it. Refresh to see the new version"
+        },
+        "removed": {
+          "status": "This proof was deleted after the window loaded it"
+        }
+      },
       "summary": {
         "aria": "Proof summary"
       },

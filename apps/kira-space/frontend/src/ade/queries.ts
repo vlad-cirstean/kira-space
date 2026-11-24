@@ -88,7 +88,7 @@ export function installAdeSignals(
     invalidateTaskFamily(queryClient, artifactsPrefix, change);
     invalidateTaskFamily(queryClient, diskPrefix, change);
     invalidateTaskFamily(queryClient, proofsPrefix, change);
-    // An accepted edit rewrites a proof step in place under the same rev, and step keys carry no task.
+    // Step keys carry no task: refetch every open step.
     void queryClient.invalidateQueries({ queryKey: proofStepPrefix });
   });
   // A proof session closing, attaching or deleting changes a task's chain.

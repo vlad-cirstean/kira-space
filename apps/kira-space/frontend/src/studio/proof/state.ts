@@ -23,6 +23,8 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
   const ready = ref<Record<string, true>>({});
 
   const shotResult = ref<ShotResult | null>(null);
+  /** True while a screenshot copy or save runs: the stale marker holds still and Reload is off. */
+  const capturing = ref(false);
 
   function setShotResult(result: ShotResult): void {
     shotResult.value = result;
@@ -54,6 +56,7 @@ export const useProofWindowStore = defineStore('proofWindow', () => {
     activeId,
     ready,
     shotResult,
+    capturing,
     setShotResult,
     clearShotResult,
     selectSession,
