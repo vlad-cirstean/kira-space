@@ -19,8 +19,6 @@ import { control } from './bridge/control';
 import { captureItemKey } from './capture/queries';
 import { useCaptureWindowStore } from './capture/state';
 import { configSyncWindowKey } from './configsync/queries';
-import { hostViewTargetKey } from './hostview/queries';
-import { useHostViewWindowStore } from './hostview/state';
 import { openedFilesWindowKey } from './openedfiles/queries';
 import { gitWindowReady } from './repo/git/boundGit';
 import { useAdeLayoutStore } from './state/adeLayout';
@@ -90,7 +88,6 @@ async function mountShell(): Promise<void> {
   const workspaceStore = useWorkspaceStore(pinia);
   const reviewWindowStore = useAdeReviewWindowStore(pinia);
   const filesWindowStore = useAdeFilesWindowStore(pinia);
-  const hostViewStore = useHostViewWindowStore(pinia);
   const captureStore = useCaptureWindowStore(pinia);
   const openedFilesWindowStore = useOpenedFilesWindowStore(pinia);
   const configSyncWindowStore = useConfigSyncWindowStore(pinia);
@@ -183,13 +180,6 @@ async function mountShell(): Promise<void> {
   });
   if (captureItem) captureStore.item = captureItem;
 
-  // A host view window (ephemeral, one change request) answers with its target; any other gets null.
-  const hostViewTarget = await queryClient.query({
-    queryKey: hostViewTargetKey(windowKey),
-    queryFn: () => control.hostViewWindowTarget({ windowKey }),
-  });
-  if (hostViewTarget) hostViewStore.target = hostViewTarget;
-
   // A review window (ephemeral, one branch) answers with its target; any other window gets null.
   const reviewTarget = await queryClient.query({
     queryKey: reviewTargetKey(windowKey),
@@ -211,8 +201,7 @@ async function mountShell(): Promise<void> {
   // themselves — ensureWorkspaceShell's own doc comment calls for running it once per restored repo
   // right here, after hydrateTabs, since hydrateTabs itself never calls back into it (avoiding a
   // third link in that module pair's existing two-way call graph).
-  const workbenchWindow =
-    !reviewTarget && !hostViewTarget && !captureItem && !filesWindow && !taskFilesTarget;
+  const workbenchWindow = !reviewTarget && !captureItem && !filesWindow && !taskFilesTarget;
   if (workbenchWindow) for (const repoId of workspaceStore.openRepos) ensureWorkspaceShell(repoId);
   // Falls forward onto the last active repo (persisted per window), else the first restored one,
   // so a relaunch with open repositories skips the empty GitStart screen. `activateWorkspace`

@@ -30,21 +30,14 @@ const isPrState = (state: string): state is PrState => state in PR_STATE_GLYPH;
 export const prStateLabel = (state: string): string =>
   isPrState(state) ? t(PR_STATE_GLYPH[state].label) : state;
 
-export type CheckKey =
-  | 'success'
-  | 'failure'
-  | 'error'
-  | 'pending'
-  | 'expected'
-  | 'skipped'
-  | 'neutral';
+type CheckKey = 'success' | 'failure' | 'error' | 'pending' | 'expected' | 'skipped' | 'neutral';
 type DotTone = 'ok' | 'error' | 'warn';
 
 /**
  * One CI state. `icon`, `tone` and `label` draw a single check row; `rollup` and `dot` draw the
  * glyph's checks part (no `rollup` or `dot`: the state is not worth a badge).
  */
-export const CHECK_GLYPH: Record<
+const CHECK_GLYPH: Record<
   CheckKey,
   { icon: string; tone: StatusTone; label: MessageKey; rollup?: MessageKey; dot?: DotTone }
 > = {
@@ -97,7 +90,7 @@ function checkKey(raw: string | undefined): CheckKey | null {
   return key in CHECK_GLYPH ? (key as CheckKey) : null;
 }
 
-export type ReviewKey =
+type ReviewKey =
   | 'approved'
   | 'changesRequested'
   | 'reviewRequired'
@@ -106,10 +99,7 @@ export type ReviewKey =
   | 'pending';
 
 /** One review state, for a single reviewer or for the whole change request. */
-export const REVIEW_GLYPH: Record<
-  ReviewKey,
-  { icon: string; tone: StatusTone; label: MessageKey }
-> = {
+const REVIEW_GLYPH: Record<ReviewKey, { icon: string; tone: StatusTone; label: MessageKey }> = {
   approved: {
     icon: ICON.success,
     tone: 'ok',

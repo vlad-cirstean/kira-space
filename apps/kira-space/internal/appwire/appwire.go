@@ -241,7 +241,6 @@ type Wired struct {
 	GitSvc          *bridge.GitService
 	GitCredential   *bridge.GitCredentialService
 	GitHost         *bridge.GitHostService
-	HostView        *bridge.HostViewService
 	Capture         *bridge.CaptureService
 	IssueTracker    *bridge.IssueTrackerService
 	Link            *bridge.LinkService
@@ -461,10 +460,6 @@ func Build(opts Options) (*Wired, error) {
 	w.GitSvc = bridge.NewGitService(w.GitWindows)
 	w.detachGitCred = bridge.AttachGitCredentialPush(w.GitCredential)
 	w.GitHost = &bridge.GitHostService{Deps: deps, Browser: opts.Browser}
-	w.HostView = &bridge.HostViewService{Deps: deps, Windows: repositories.Windows, Targets: &bridge.HostViewTargets{}, Trackers: git.trackers}
-	if opts.Clock != nil {
-		w.HostView.Now = opts.Clock.Now
-	}
 	w.Capture = &bridge.CaptureService{Deps: deps, Trackers: git.trackers, Windows: repositories.Windows}
 	w.Link = &bridge.LinkService{Browser: opts.Browser}
 	w.Settings = &bridge.SettingsService{Deps: deps}
@@ -683,9 +678,6 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.AdeTask.CloseWindow = closeWindow
 	w.AdeTask.FocusWindow = focusWindow
 	w.AdeTask.SetWindowTitle = setTitle
-	w.HostView.OpenWindow = h.OpenWindow
-	w.HostView.FocusWindow = focusWindow
-	w.HostView.SetWindowTitle = setTitle
 	w.WindowsSvc.OpenNewWindow = h.OpenNewWindow
 	w.OpenedFiles.OpenWindow = h.OpenNewWindowKeyed
 	w.OpenedFiles.FocusWindow = focusWindow
@@ -744,7 +736,7 @@ func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
-		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.HostView), application.NewService(w.IssueTracker), application.NewService(w.Link),
+		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.IssueTracker), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
 		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.SessionRestore), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),

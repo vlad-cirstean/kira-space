@@ -53,7 +53,7 @@ function openCard(item: LinkItem): void {
 }
 
 // Opens the link, else its card: nothing is left to do for a link with no target.
-function openItem(e: MouseEvent | KeyboardEvent, item: LinkItem): void {
+function openItem(item: LinkItem): void {
   if (!links.openLink(item)) openCard(item);
 }
 
@@ -118,7 +118,7 @@ function onKeydown(e: KeyboardEvent): void {
   if (!item) return;
   if (e.key === 'Enter') {
     e.preventDefault();
-    openItem(e, item);
+    openItem(item);
   } else if (e.key === ' ') {
     e.preventDefault();
     openCard(item);
@@ -244,7 +244,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
                     :aria-expanded="openKey === item.key"
                     :aria-describedby="hintId"
                     :data-state="openKey === item.key ? 'open' : 'closed'"
-                    @click="openItem($event, item)"
+                    @click="openItem(item)"
                     @contextmenu.prevent.stop="openCard(item)"
                   />
                 </PopoverAnchor>

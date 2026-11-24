@@ -44,7 +44,7 @@ const text = computed(() => prStatusText(props.status));
 const tipStateLine = computed(() => {
   const state = prStateLabel(props.status.state);
   return props.baseRef
-    ? t('space.hostView.header.branches.label', { head: state, base: props.baseRef })
+    ? t('space.ade.pr.branches.label', { head: state, base: props.baseRef })
     : state;
 });
 const stateLine = computed(() => {

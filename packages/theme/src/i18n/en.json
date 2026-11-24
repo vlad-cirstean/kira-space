@@ -2089,17 +2089,6 @@
         },
         "notLink": {
           "error": "Not a {links}."
-        },
-        "view": {
-          "notChangeRequest": {
-            "body": "The PR view opens a {changeRequests} only."
-          },
-          "unavailable": {
-            "body": "The pull request view is not available."
-          },
-          "window": {
-            "title": "{short} #{number} · {repo}"
-          }
         }
       },
       "gitrpc": {
@@ -2159,44 +2148,6 @@
         },
         "unknownMethod": {
           "body": "Git doesn’t support {method}."
-        }
-      },
-      "hostView": {
-        "compose": {
-          "badReply": {
-            "body": "That reply target isn’t valid."
-          },
-          "badText": {
-            "body": "The comment has characters that can’t be posted."
-          },
-          "empty": {
-            "body": "Write a comment first."
-          },
-          "noWindow": {
-            "body": "This window can’t post comments."
-          },
-          "posting": {
-            "body": "A comment is already being posted."
-          },
-          "replyUnsupported": {
-            "body": "Issues have no replies."
-          },
-          "tooLong": {
-            "body": "A comment can be at most {max}."
-          }
-        }
-      },
-      "issueTracker": {
-        "view": {
-          "notIssue": {
-            "body": "This view opens a {issues} only."
-          },
-          "notViewable": {
-            "body": "This view opens a {changeRequests} or a {issues}."
-          },
-          "window": {
-            "title": "{key} · {label}"
-          }
         }
       },
       "menu": {
@@ -9969,6 +9920,11 @@
           "label": "Written"
         }
       },
+      "pr": {
+        "branches": {
+          "label": "{head} into {base}"
+        }
+      },
       "progress": {
         "barTipRun": {
           "label": "{nick} {state}"
@@ -11681,211 +11637,6 @@
     "gitCredential": {
       "dialog": {
         "title": "Git credentials"
-      }
-    },
-    "hostView": {
-      "assignees": {
-        "empty": {
-          "empty": "No assignees"
-        },
-        "heading": {
-          "title": "Assignees"
-        }
-      },
-      "checks": {
-        "empty": {
-          "empty": "No checks"
-        },
-        "heading": {
-          "title": "Checks"
-        },
-        "truncated": {
-          "hint": "Some checks are not shown."
-        }
-      },
-      "compose": {
-        "body": {
-          "placeholder": "Write a comment"
-        },
-        "heading": {
-          "title": "Add a comment"
-        },
-        "mayHavePosted": {
-          "hint": "The host may have posted this comment. Refresh to check before posting again."
-        },
-        "mode": {
-          "aria": "Write or preview"
-        },
-        "preview": {
-          "empty": "Nothing to preview"
-        }
-      },
-      "conversation": {
-        "commentsTruncated": {
-          "hint": "Older comments in this thread are not shown."
-        },
-        "empty": {
-          "empty": "No comments yet"
-        },
-        "heading": {
-          "title": "Conversation"
-        },
-        "outdated": {
-          "status": "Outdated"
-        },
-        "resolved": {
-          "status": "Resolved"
-        },
-        "toggle": {
-          "aria": "Show or hide this thread"
-        },
-        "truncated": {
-          "hint": "Older threads are not shown. Open on the host for the rest."
-        }
-      },
-      "description": {
-        "empty": {
-          "empty": "No description"
-        }
-      },
-      "gone": {
-        "body": "This pull request is not available."
-      },
-      "header": {
-        "branches": {
-          "label": "{head} into {base}"
-        },
-        "opened": {
-          "label": "{author} opened {when}"
-        }
-      },
-      "issue": {
-        "assignee": {
-          "none": {
-            "empty": "Unassigned"
-          }
-        },
-        "attachments": {
-          "heading": {
-            "title": "Attachments"
-          },
-          "truncated": {
-            "hint": "More attachments exist. Open on {label} for the rest."
-          }
-        },
-        "comments": {
-          "edited": {
-            "status": "Revised"
-          },
-          "omitted": {
-            "hint": "Comments are too large to load here. Open on {label} to read them."
-          },
-          "open": {
-            "tooltip": "Open comment on {label}"
-          },
-          "truncated": {
-            "hint": "Older comments are not shown. Open on {label} for the rest."
-          }
-        },
-        "components": {
-          "empty": {
-            "empty": "No components"
-          },
-          "heading": {
-            "title": "Components"
-          }
-        },
-        "date": {
-          "due": {
-            "label": "Due"
-          },
-          "updated": {
-            "label": "Last updated"
-          }
-        },
-        "field": {
-          "assignee": {
-            "label": "Assignee"
-          },
-          "priority": {
-            "label": "Priority"
-          },
-          "reporter": {
-            "label": "Reporter"
-          },
-          "resolution": {
-            "label": "Resolution"
-          }
-        },
-        "header": {
-          "created": {
-            "label": "Created {when}"
-          },
-          "reported": {
-            "label": "{author} reported {when}"
-          }
-        },
-        "parent": {
-          "heading": {
-            "title": "Parent"
-          }
-        },
-        "pullRequests": {
-          "heading": {
-            "title": "Pull requests"
-          }
-        },
-        "reporter": {
-          "none": {
-            "empty": "No reporter"
-          }
-        },
-        "stale": {
-          "failed": {
-            "hint": "Saved copy from {when}. Couldn’t update it: {reason}."
-          },
-          "hint": "Saved copy from {when}. Updating."
-        }
-      },
-      "labels": {
-        "empty": {
-          "empty": "No labels"
-        },
-        "heading": {
-          "title": "Applied labels"
-        }
-      },
-      "markdown": {
-        "alert": {
-          "caution": {
-            "title": "Caution"
-          },
-          "important": {
-            "title": "Important"
-          },
-          "note": {
-            "title": "Note"
-          },
-          "tip": {
-            "title": "Tip"
-          },
-          "warning": {
-            "title": "Warning"
-          }
-        }
-      },
-      "reviewers": {
-        "empty": {
-          "empty": "No reviewers"
-        },
-        "heading": {
-          "title": "Reviewers"
-        }
-      },
-      "stats": {
-        "summary": {
-          "label": "{commits} commits, {files} files, +{additions} -{deletions}"
-        }
       }
     },
     "mobilePairing": {

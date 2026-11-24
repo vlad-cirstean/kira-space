@@ -10,7 +10,6 @@ export const OWNERSHIP_MODULES: readonly (readonly [prefix: string, namespace: s
   ['apps/kira-space/frontend/src/ade/', 'space'],
   ['apps/kira-space/frontend/src/repo/', 'space'],
   ['apps/kira-space/frontend/src/views/', 'space'],
-  ['apps/kira-space/frontend/src/hostview/', 'space'],
   ['apps/kira-space/frontend/src/capture/', 'space'],
   ['apps/kira-space/frontend/src/configsync/', 'space'],
   ['apps/kira-space/frontend/src/openedfiles/', 'space'],
