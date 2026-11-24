@@ -11,7 +11,9 @@ Code review at chapter end: 1 round.
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Todo |
 | P749 | Proof window: images fit the window, larger default size | Todo |
 | P750 | Details panel and proofs: auto-update on disk changes | Todo |
-| P751 | Chapter close | Todo |
+| P751 | Drop issue and change request viewer windows and acli support | Todo |
+| P752 | Task detail: title no longer overlaps the colored bar | Todo |
+| P753 | Chapter close | Todo |
 
 ## P747
 
@@ -48,5 +50,26 @@ watch and invalidation path (file watcher, bridge event, TanStack Query) and fix
 Flow test asserts the event, UI spec asserts the refresh.
 
 ## P751
+
+Drop the in-app issue viewer and the in-app change request viewer, and drop acli support. Their
+implementation is not what the owner wants.
+
+- Viewers: the windows that show a Jira issue or a GitHub pull request. A link to either opens in the
+  browser directly, like any other link. The same applies to Azure DevOps if it has such a viewer.
+- Stays: the change request tracker inside the task (`gh`-driven state, review state, updates).
+- acli: remove the Jira provider that drives `acli`, its settings, UI, docs and guard G5's `issuetracker/`
+  coverage that only it needs. Plan lists every dependent first (task issue line, updates, add-by-key
+  popover, `parseJira`) and states what each becomes: a plain stored link, never half-removed.
+- Stored data and settings for removed features: plan states the cleanup; no legacy code across a
+  minor bump, but this is a patch, so a migration step must keep existing installs clean.
+- Run after P750 lands: it touches task link and detail code that P748 and P750 also touch.
+
+## P752
+
+The task detail title overlaps the colored bar right after it. Fix the layout so they never overlap,
+at every title length and window width. Plan finds the cause (fixed height, missing wrap or clamp,
+negative margin) and the fix in Tailwind utilities. UI spec asserts no overlap with a long title.
+
+## P753
 
 Chapter close, by hand per `CLAUDE.md` "Closing a chapter".
