@@ -111,9 +111,9 @@ func isDocURL(u *url.URL, codeHost bool) bool {
 
 // Where a classified link files.
 const (
-	linkOriginNone    = ""
-	linkOriginTracker = "tracker"
-	linkOriginHost    = "host"
+	linkOriginNone = ""
+	linkOriginJira = "jira"
+	linkOriginHost = "host"
 )
 
 // linkClass is the recognised kind of a line.
@@ -125,16 +125,16 @@ type linkClass struct {
 	Title  string // the given title, else "" (the caller names the row)
 }
 
-// localLinkKind applies the rules that need no ctx and no network: tracker ref, Jira-host key, code
+// localLinkKind applies the rules that need no ctx and no network: Jira ref, Jira-host key, code
 // host issue or change request. classifyLink and the notes source share it.
 func (b *TaskBoard) localLinkKind(task model.AdeTask, raw string, u *url.URL) (linkClass, bool) {
-	if _, ref, ok := b.deps.Trackers.ParseRef(raw); ok {
-		return linkClass{Kind: model.AdeArtifactIssue, Ref: ref.Key, Origin: linkOriginTracker}, true
+	if ref, ok := ParseJiraRef(raw); ok {
+		return linkClass{Kind: model.AdeArtifactIssue, Ref: ref.Key, Origin: linkOriginJira}, true
 	}
 	if task.JiraURL != "" {
 		if ju, ok := httpURL(task.JiraURL); ok && ju.Host == u.Host {
 			if key := jiraKeyInURLRe.FindString(u.Path + "?" + u.RawQuery); key != "" {
-				return linkClass{Kind: model.AdeArtifactIssue, Ref: key, Origin: linkOriginTracker}, true
+				return linkClass{Kind: model.AdeArtifactIssue, Ref: key, Origin: linkOriginJira}, true
 			}
 		}
 	}
@@ -148,8 +148,8 @@ func (b *TaskBoard) localLinkKind(task model.AdeTask, raw string, u *url.URL) (l
 // that are no issue key.
 func (b *TaskBoard) classifyLink(ctx context.Context, task model.AdeTask, p parsedLink) (linkClass, string) {
 	if p.URL == "" {
-		if _, ref, ok := b.deps.Trackers.ParseRef(p.Words); ok {
-			return linkClass{Kind: model.AdeArtifactIssue, Ref: ref.Key, Origin: linkOriginTracker}, ""
+		if ref, ok := ParseJiraRef(p.Words); ok {
+			return linkClass{Kind: model.AdeArtifactIssue, Ref: ref.Key, Origin: linkOriginJira}, ""
 		}
 		return linkClass{}, linkErrNotLink
 	}

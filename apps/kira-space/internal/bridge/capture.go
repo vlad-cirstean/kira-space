@@ -9,9 +9,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/ids"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
@@ -54,11 +54,10 @@ type windowRows interface {
 // CaptureService is the clipboard capture popup: the global hotkey reads the clipboard once, the
 // popup shows what it holds, Confirm adds it as a task.
 type CaptureService struct {
-	Deps     appcore.Deps
-	Tasks    *AdeTaskService
-	Trackers *issuetracker.Registry
-	Windows  windowRows
-	Binding  *shell.HotkeyBinding
+	Deps    appcore.Deps
+	Tasks   *AdeTaskService
+	Windows windowRows
+	Binding *shell.HotkeyBinding
 
 	// Seams filled by appwire.BindShell.
 	Clipboard   func() (string, bool)
@@ -343,9 +342,9 @@ func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) capt
 			return e
 		}
 	}
-	if p, ref, ok := s.Trackers.ParseRef(text); ok {
+	if ref, ok := ade.ParseJiraRef(text); ok {
 		e.item.Kind = CaptureKindIssue
-		e.item.Label = p.Terms().Label + " " + ref.Key
+		e.item.Label = "Jira " + ref.Key
 		e.jira = &adewire.Jira{Key: ref.Key, URL: ref.URL}
 	}
 	return e

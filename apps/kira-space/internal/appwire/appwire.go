@@ -460,7 +460,7 @@ func Build(opts Options) (*Wired, error) {
 	w.GitSvc = bridge.NewGitService(w.GitWindows)
 	w.detachGitCred = bridge.AttachGitCredentialPush(w.GitCredential)
 	w.GitHost = &bridge.GitHostService{Deps: deps, Browser: opts.Browser}
-	w.Capture = &bridge.CaptureService{Deps: deps, Trackers: git.trackers, Windows: repositories.Windows}
+	w.Capture = &bridge.CaptureService{Deps: deps, Windows: repositories.Windows}
 	w.Link = &bridge.LinkService{Browser: opts.Browser}
 	w.Settings = &bridge.SettingsService{Deps: deps}
 	w.Layout = &bridge.LayoutService{Deps: deps}
