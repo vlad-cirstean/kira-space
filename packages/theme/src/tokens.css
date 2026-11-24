@@ -13,15 +13,19 @@
   --kira-fg-subtle: #8e8e97;
   --kira-border: #323237; /* the one line: input edge, secondary button, floating edge, grid cell, resize, menu separator */
   --kira-focus: #a1a1aa; /* keyboard focus ring only (P710): neutral zinc-400, 7.24:1 on chrome */
-  --kira-accent: #3b6ed1; /* primary action and on-state controls; never selection or focus (P710) */
+  --kira-accent: #3b6ed1; /* primary action; on-state controls tint from it via --kira-toggle-on; never selection or focus (P710) */
   --kira-accent-fg: #ffffff;
   --kira-accent-hover: #355dad;
   --kira-select: #36363c; /* selected row, cell, list item, chip, card head (P710: neutral grey) */
   --kira-select-edge: #71717a; /* selection frame, ring, underline, drop target (zinc-500) */
   --kira-control-edge: var(--kira-select-edge); /* progress track tint */
   --kira-select-text: #45454d; /* selected text: ::selection, Monaco, xterm */
-  --kira-toggle-on: #33333a; /* on fill: switch track, checkbox, radio (P730) */
-  --kira-toggle-on-edge: #c4c4cc; /* on border (P730) */
+  --kira-toggle-on: color-mix(
+    in srgb,
+    var(--kira-accent) 20%,
+    transparent
+  ); /* on fill: faint accent tint, any surface (P754) */
+  --kira-toggle-on-edge: var(--kira-info); /* on border, 5.57:1 on field (P754) */
   --kira-toggle-mark: #f4f4f5; /* check, dash, radio dot, on knob (P730) */
   --kira-toggle-off-edge: #3e3e45; /* off border; 1.4:1 on field, user choice (P730) */
   --kira-toggle-knob: #6b6b73; /* off switch knob (P730) */
