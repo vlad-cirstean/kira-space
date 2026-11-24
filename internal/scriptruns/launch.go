@@ -13,6 +13,10 @@ import (
 // LaunchTTL is how long a normal script's launch token stays valid; a var so a flow test can shorten it.
 var LaunchTTL = 60 * time.Second
 
+// RestoreLaunchTTL is LaunchTTL for a token Restore issues: its tab opens when the person opens it,
+// not at the restore click. A var so a flow test can shorten it.
+var RestoreLaunchTTL = 30 * time.Minute
+
 // launch is what Start resolved for a normal script, waiting for its terminal tab to open.
 type launch struct {
 	scriptID string
@@ -21,6 +25,7 @@ type launch struct {
 	env      []string
 	params   []RunParam
 	created  time.Time
+	ttl      time.Duration
 	trigger  Trigger
 	ade      *RunADE
 	mask     *secrets.Masker
@@ -45,24 +50,28 @@ func (s *Service) startTerminal(p *planned) (Started, error) {
 		s.launches = map[string]launch{}
 	}
 	for t, l := range s.launches {
-		if now.Sub(l.created) > LaunchTTL {
+		if now.Sub(l.created) > l.ttl {
 			delete(s.launches, t)
 		}
 	}
+	ttl := LaunchTTL
+	if p.restored {
+		ttl = RestoreLaunchTTL
+	}
 	s.launches[token] = launch{
-		scriptID: p.script.ID, dir: p.dir, command: p.script.Command, env: p.envList, params: p.params, created: now,
+		scriptID: p.script.ID, dir: p.dir, command: p.script.Command, env: p.envList, params: p.params, created: now, ttl: ttl,
 		trigger: runTrigger(p), ade: p.preview.ADE, mask: p.mask,
 	}
 	return Started{Terminal: &TerminalStart{Token: token, Cwd: p.dir.Path}}, nil
 }
 
-// takeLaunch consumes a token: it works once, for the script it was made for, within LaunchTTL.
+// takeLaunch consumes a token: it works once, for the script it was made for, within its ttl.
 func (s *Service) takeLaunch(token, scriptID string) (launch, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	l, ok := s.launches[token]
 	delete(s.launches, token)
-	if !ok || l.scriptID != scriptID || time.UnixMilli(s.now()).Sub(l.created) > LaunchTTL {
+	if !ok || l.scriptID != scriptID || time.UnixMilli(s.now()).Sub(l.created) > l.ttl {
 		return launch{}, false
 	}
 	return l, true

@@ -294,7 +294,7 @@ func (s *Service) restoreOne(c RestoreChoice) (Started, error) {
 		if len(names) > 0 {
 			return Started{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.core.scriptRun.resumeMissing.body", map[string]string{"names": strings.Join(names, ", ")})
 		}
-		started, err = s.Start(StartArgs{RunArgs: args, Hash: c.Hash})
+		started, err = s.start(StartArgs{RunArgs: args, Hash: c.Hash}, true)
 	}
 	if err != nil {
 		return Started{}, err

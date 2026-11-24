@@ -125,6 +125,8 @@ type planned struct {
 	// timeout and timeoutText bound a headless normal run.
 	timeout     time.Duration
 	timeoutText string
+	// restored says Restore issued the run, so a terminal launch token lives RestoreLaunchTTL.
+	restored bool
 }
 
 // planOpts tunes plan: claimed says the caller already holds the worktree claim, so the busy
@@ -388,13 +390,17 @@ func (s *Service) Preview(args RunArgs) (Preview, error) {
 }
 
 // Start runs what Preview showed. A script that changed since the preview is refused.
-func (s *Service) Start(args StartArgs) (Started, error) {
+func (s *Service) Start(args StartArgs) (Started, error) { return s.start(args, false) }
+
+// start is Start; restored marks a Restore's run, whose terminal token outlives LaunchTTL.
+func (s *Service) start(args StartArgs, restored bool) (Started, error) {
 	s.startMu.Lock()
 	defer s.startMu.Unlock()
 	p, err := s.plan(s.lifeCtx(), args.RunArgs, planOpts{})
 	if err != nil {
 		return Started{}, err
 	}
+	p.restored = restored
 	var taskID, branchID string
 	if a := p.preview.ADE; a != nil {
 		taskID, branchID = a.TaskID, a.BranchID
@@ -427,7 +433,11 @@ func (s *Service) claimWorktree(p *planned, keep bool) (*planned, error) {
 	}
 	if !keep {
 		release()
-		return s.plan(s.lifeCtx(), p.args, p.opts)
+		np, err := s.plan(s.lifeCtx(), p.args, p.opts)
+		if np != nil {
+			np.restored = p.restored
+		}
+		return np, err
 	}
 	o := p.opts
 	o.claimed = true
@@ -436,7 +446,7 @@ func (s *Service) claimWorktree(p *planned, keep bool) (*planned, error) {
 		release()
 		return nil, err
 	}
-	np.release, np.trigger = release, p.trigger
+	np.release, np.trigger, np.restored = release, p.trigger, p.restored
 	return np, nil
 }
 
