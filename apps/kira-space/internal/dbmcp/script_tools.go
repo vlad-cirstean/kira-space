@@ -116,6 +116,8 @@ type runScriptArgs struct {
 	From        string         `json:"from,omitempty"`
 	Lines       *int           `json:"lines,omitempty"`
 	Contains    string         `json:"contains,omitempty"`
+	// Confirm asks the user to approve the start even when the script's policy allows it.
+	Confirm string `json:"confirm,omitempty"`
 }
 
 // scriptRunView carries output lines once the run has ended, or when a read filters them.
@@ -219,10 +221,10 @@ func planProblem(name string, p ScriptPlan) string {
 
 // approveScript asks the user to approve the run and re-checks exposure once they answered: the
 // wait can last two minutes, so a hidden script wins. A non-nil result stops the call.
-func (s *Server) approveScript(ctx context.Context, es ExposedScript, plan ScriptPlan) (*mcp.CallToolResult, error) {
+func (s *Server) approveScript(ctx context.Context, es ExposedScript, plan ScriptPlan, reason ApprovalReason, note string) (*mcp.CallToolResult, error) {
 	outcome := s.cfg.Approvals.Request(ctx, ApprovalRequest{
 		Subject: approvals.KindScriptRun, ConnectionID: es.ID, ConnectionName: es.Name, Kind: "script", Class: adapters.ClassUnknown,
-		Statement: plan.Command, Reason: ApprovalReasonPermission, Origin: originFrom(ctx),
+		Statement: plan.Command, Reason: reason, AgentNote: note, Origin: originFrom(ctx),
 		Script: &ApprovalScript{
 			ScriptID: es.ID, Name: es.Name, Description: es.Description, Command: plan.Command, Cwd: plan.Cwd,
 			Params: plan.Params, Env: plan.Env,
@@ -251,10 +253,17 @@ func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runS
 		if len(a.Params) > 0 {
 			return errResult("params applies when starting a run with scriptId; drop it")
 		}
+		if strings.TrimSpace(a.Confirm) != "" {
+			return errResult("confirm applies when starting a run with scriptId; drop it")
+		}
 		return s.readScriptRun(ctx, a)
 	}
 	if a.From != "" || a.Lines != nil || a.Contains != "" {
 		return errResult("from, lines and contains apply when reading a run with runId; drop them")
+	}
+	confirm, msg := confirmText(a.Confirm, "Nothing ran.")
+	if msg != "" {
+		return errResult(msg)
 	}
 	es, found, err := s.exposedScript(a.ScriptID)
 	if err != nil {
@@ -274,8 +283,8 @@ func (s *Server) runScript(ctx context.Context, req *mcp.CallToolRequest, a runS
 	if problem := planProblem(es.Name, plan); problem != "" {
 		return errResult(problem)
 	}
-	if es.Run != "allow" {
-		if res, err := s.approveScript(ctx, es, plan); res != nil || err != nil {
+	if policyAsks := es.Run != "allow"; policyAsks || confirm != "" {
+		if res, err := s.approveScript(ctx, es, plan, confirmReason(policyAsks), confirm); res != nil || err != nil {
 			return res, nil, err
 		}
 	}

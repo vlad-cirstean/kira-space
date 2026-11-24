@@ -62,13 +62,7 @@
         "url": "https://docs.google.com/document/d/abc/edit"
       }
     ],
-    "gaps": [
-      {
-        "reason": "unavailable",
-        "repo": "",
-        "source": "jira"
-      }
-    ]
+    "gaps": []
   },
   "Task#links": {
     "hostLink": {

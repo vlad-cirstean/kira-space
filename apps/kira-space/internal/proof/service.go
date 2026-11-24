@@ -19,6 +19,12 @@ import (
 // WindowKeyPrefix marks the proof window's key.
 const WindowKeyPrefix = "proof-"
 
+// WindowWidth and WindowHeight: proof window opens compact so its screenshots stay small and readable.
+const (
+	WindowWidth  = 1024
+	WindowHeight = 640
+)
+
 // IsWindowKey reports whether key names a proof window.
 func IsWindowKey(key string) bool { return strings.HasPrefix(key, WindowKeyPrefix) }
 

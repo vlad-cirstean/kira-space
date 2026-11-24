@@ -46,6 +46,8 @@ type kubeCall struct {
 	tool, op, clusterID string
 	req                 kubeRequest
 	script              *kubeScriptArgs
+	// confirm is the agent's trimmed confirm sentence; non-empty forces the approval card.
+	confirm string
 }
 
 // kubePrepareKeys are the args a prepare script may return, per operation, in the order the card lists them.

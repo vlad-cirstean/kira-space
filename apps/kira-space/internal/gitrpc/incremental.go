@@ -202,7 +202,7 @@ func (r *Router) handleReviewMarkMany(ctx context.Context, c *gitsession.Conn, p
 		},
 		func(ctx context.Context, entry *gitsession.RepoEntry, p ReviewMarkManyParams) (ReviewMarkManyResult, error) {
 			paths := dedupePaths(p.Paths)
-			// Each file's record is independent: a mid-batch error keeps earlier writes.
+			// Records write in chunked transactions: a mid-batch error keeps earlier chunks.
 			recs, err := entry.MarkFiles(ctx, p.Branch, paths, p.Reviewed)
 			if err != nil {
 				return ReviewMarkManyResult{}, mapDetailError(err)

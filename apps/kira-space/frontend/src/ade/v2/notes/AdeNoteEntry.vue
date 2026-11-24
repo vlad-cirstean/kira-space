@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import ClampedContent from '@theme/components/ClampedContent.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
@@ -13,6 +14,7 @@ import { computed, ref, watch } from 'vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
 import { useUpdateHandover } from '../queries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
+import { useAdeDetailsListStore } from '../state/adeDetailsList';
 import { useAdeStageDialogStore } from '../state/adeStageDialog';
 import type { Handover } from '../wire';
 import AdeNoteBody from './AdeNoteBody.vue';
@@ -40,6 +42,8 @@ const emit = defineEmits<{ edit: []; done: []; openSession: [sessionId: string] 
 const stage = useAdeStageDialogStore();
 const update = useUpdateHandover();
 const boardUi = useAdeBoardUiStore();
+const list = useAdeDetailsListStore();
+const clampKey = computed(() => `handover:${props.handover.id}`);
 const child = computed(() => childOf(props.handover));
 const author = computed(() => noteAuthor(props.handover));
 
@@ -181,13 +185,21 @@ function time(h: Handover): string {
         t('space.ade.notes.childFinishedEmpty.label')
       }}</span
     >
-    <AdeNoteBody
+    <ClampedContent
       v-else
-      :key="`view-${handover.id}`"
-      :body="handover.body"
-      :hard-breaks="author !== 'user'"
-      data-testid="ade-handover-body"
-    />
+      :expanded="list.isExpanded(clampKey)"
+      toggle-testid="ade-handover-more"
+      data-testid="ade-handover-clamp"
+      @update:expanded="list.setExpanded(clampKey, $event)"
+    >
+      <AdeNoteBody
+        :key="`view-${handover.id}`"
+        :body="handover.body"
+        :hard-breaks="author !== 'user'"
+        flush
+        data-testid="ade-handover-body"
+      />
+    </ClampedContent>
     <div v-if="handover.state === 'draft' && !readonly && !editing" class="flex justify-end">
       <Button
         variant="toolbar"

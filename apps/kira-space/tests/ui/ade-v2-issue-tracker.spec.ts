@@ -6,7 +6,7 @@ import { IPC } from './support/ipcChannels';
 import { openCard, openIn, pill } from './support/links';
 
 // The linked issue in the Jira link's card in the Details tab: title, status and the PR count from the tracker. Contract
-// ade-issue-tracker; backend half: flows/adeflow TestTaskIssueTracker and TestTaskIssueFastLoading (issuetracker_test.go).
+// ade-issue-tracker; backend half: flows/adeflow TestTaskIssueTracker, TestTaskIssueFastLoading and TestTaskLinksBeforeJira (issuetracker_test.go).
 
 const t = (id: string) => `[data-testid="${id}"]`;
 
@@ -44,6 +44,38 @@ test('contract: the Details tab shows the issue title, status and PR count', asy
   );
   await expect.poll(() => calls(control, IPC.adeTaskIssue)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskIssue)[0]?.args).toEqual({ taskId: 'T_alerts' });
+});
+
+test('contract: links show while Jira loads, details fill in after', async ({ relaunch }) => {
+  const listed = contract<{ artifacts: { kind: string; source: string; status: string }[] }>(
+    'ade-issue-tracker',
+    'AdeTaskService.Artifacts#held',
+  );
+  expect(listed.artifacts.some((a) => a.kind === 'issue' && a.status === '')).toBe(true);
+  const { window: page, control } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskArtifacts, response: { ...listed, gaps: [] } },
+    { channel: IPC.adeTaskIssue, response: issue('IssueTrackerService.TaskIssue'), hold: true },
+  ]);
+  await openTask(page, 'T_alerts');
+  await page.locator(t('ade-panel-tab-details')).click();
+  // Artifacts answered, TaskIssue is held: every link shows, the Jira pill has a pending dot.
+  const pills = page.locator(t('ade-links-pill'));
+  await expect(pills.first()).toBeVisible();
+  const jira = pill(page, 'PAY-130');
+  await expect(jira.locator(t('ade-links-pill-dot-pending'))).toHaveCount(1);
+  await expect(jira.locator(t('ade-links-pill-dot'))).toHaveCount(0);
+  await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(0);
+  const count = await pills.count();
+  expect(count).toBeGreaterThan(1);
+  const before = (await jira.boundingBox())?.width ?? 0;
+  expect(before).toBeGreaterThan(0);
+
+  control.release(IPC.adeTaskIssue);
+  await expect(jira.locator(t('ade-links-pill-dot'))).toHaveAttribute('data-tone', 'info');
+  await expect(jira.locator(t('ade-links-pill-dot-pending'))).toHaveCount(0);
+  await expect(pills).toHaveCount(count);
+  const after = (await jira.boundingBox())?.width ?? 0;
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
 });
 
 test('contract: a stale issue line shows at once and refreshes in place', async ({ relaunch }) => {

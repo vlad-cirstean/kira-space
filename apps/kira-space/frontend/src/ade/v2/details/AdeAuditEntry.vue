@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import CodiconIcon from '@theme/CodiconIcon.vue';
+import ClampedContent from '@theme/components/ClampedContent.vue';
 import InlineState from '@theme/components/InlineState.vue';
 import Spinner from '@theme/components/Spinner.vue';
 import { Badge } from '@theme/components/ui/badge';
-import { Button } from '@theme/components/ui/button';
 import { t } from '@theme/i18n';
 import { type StatusTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { formatDuration, formatRelative } from '@workbench/behaviour/format';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import AdeRow from '../panel/AdeRow.vue';
+import { useAdeDetailsListStore } from '../state/adeDetailsList';
 import type { DbAuditApproval, DbAuditEntry } from '../wire';
 import AdeOriginSession from './AdeOriginSession.vue';
 
@@ -17,7 +18,7 @@ import AdeOriginSession from './AdeOriginSession.vue';
 const props = defineProps<{ entry: DbAuditEntry; taskId: string; archived?: boolean }>();
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
-const expanded = ref(false);
+const list = useAdeDetailsListStore();
 const STATUS_VARIANT = {
   running: 'info',
   ok: 'ok',
@@ -116,22 +117,19 @@ const outcomeVariant = (a: DbAuditApproval) => TONE_BADGE[OUTCOME_TONE[a.outcome
           entry.error
         }}</InlineState
       >
-      <div v-if="hasStatement" class="flex flex-col items-start gap-1">
+      <ClampedContent
+        v-if="hasStatement"
+        :lines="2"
+        class="w-full"
+        :expanded="list.isExpanded(`audit:${entry.id}`)"
+        toggle-testid="ade-details-dbaudit-expand"
+        @update:expanded="list.setExpanded(`audit:${entry.id}`, $event)"
+      >
         <pre
           class="m-0 max-w-full whitespace-pre-wrap break-all font-data text-kira-sm"
-          :class="expanded ? '' : 'line-clamp-2'"
           data-testid="ade-details-dbaudit-statement"
         >{{ entry.statement }}{{ entry.statementTruncated ? '…' : '' }}</pre>
-        <Button
-          variant="link"
-          size="inline"
-          data-testid="ade-details-dbaudit-expand"
-          @click="expanded = !expanded"
-          >{{
-            expanded ? t('common.action.showLess.label') : t('common.action.showAll.label')
-          }}</Button
-        >
-      </div>
+      </ClampedContent>
       <div
         v-else-if="entry.statementWithheld"
         class="text-subtle"

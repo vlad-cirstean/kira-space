@@ -15,7 +15,7 @@ const store = useAdeStageDialogStore();
 
 // The dialog opens once, with the text and link strip in its first frame. The board snapshot can
 // trail the prompt, so the draft comes from the DB-only handovers read. Artifacts can be slow
-// (issue tracker): wait for them only briefly, never fail on them. Only that first open waits for
+// (host and git reads): wait for them only briefly, never fail on them. Only that first open waits for
 // fresh data: a later board push refetches the reads and must not close and reseed the dialog
 // under the user's typed notes.
 const handovers = useHandovers(() => props.entry.ref);

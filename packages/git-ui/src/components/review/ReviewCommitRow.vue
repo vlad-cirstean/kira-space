@@ -255,6 +255,7 @@ function onOpenFile(index: number, pinned: boolean): void {
         :list-mode="listMode"
         :filter="filter"
         :show-toolbar="false"
+        capped
         :parents="expansion.detail.detail.value.parents"
         :parent-index="expansion.detail.parentIndex.value"
         :store="store"

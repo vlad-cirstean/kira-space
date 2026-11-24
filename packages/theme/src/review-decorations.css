@@ -35,11 +35,17 @@
   background-color: color-mix(in srgb, var(--kira-info) 15%, transparent);
 }
 
-/* Whole-line background for a reviewed range (reviewedType's native equivalent, §7.4). A subtle
-   tint of --kira-ok rather than a second token — this app has one fixed dark theme (monaco.ts's
-   own doc comment), so no light-mode counterpart is needed. */
-.kira-review-line-reviewed {
-  background-color: color-mix(in srgb, var(--kira-ok) 15%, transparent);
+/* Partly reviewed file: a rail at the gutter's left edge on each reviewed line
+   (reviewDecorations.ts, marginClassName). Never a content background: green there means "added"
+   in the diff editor (P741). */
+.monaco-editor .margin-view-overlays .kira-review-line-reviewed {
+  box-shadow: inset 3px 0 0 var(--kira-ok);
+}
+
+/* A deleted file's lines in its single-pane view (useDiffEditor.ts): one removed tint, the
+   counterpart of the diff editor's line background without its char layer. */
+.kira-diff-line-removed {
+  background-color: color-mix(in srgb, var(--kira-error) 15%, transparent);
 }
 
 /* The hunk mark lives in a zone's margin node; lift that layer over the line-number overlays so

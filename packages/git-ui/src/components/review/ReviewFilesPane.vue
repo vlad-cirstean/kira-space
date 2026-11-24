@@ -25,9 +25,14 @@ import InlineState from '@theme/components/InlineState.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@theme/components/ui/collapsible';
 import { type MessageKey, t } from '@theme/i18n';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ACTION_ICONS } from '../../icons/index.ts';
 import { markOnToggle, reviewAttention } from '../../lib/reviewAttention.ts';
 import type { FileListMode } from '../../state/detail.ts';
@@ -88,7 +93,7 @@ const diffModeItems = computed(() =>
     tooltip: t(o.label),
   })),
 );
-const files = computed(() => props.reviewFiles.files.value.map((entry) => entry.change));
+const files = computed(() => props.reviewFiles.changes.value);
 
 const reviewStatesMap = computed<ReadonlyMap<string, ReviewFileStatus>>(() => {
   const map = new Map<string, ReviewFileStatus>();
@@ -116,6 +121,14 @@ const workingChangedCount = computed(
     workingFiles.value.filter(
       (f) => reviewAttention(props.working?.reviewStates.get(f.path)) === 'changed',
     ).length,
+);
+// Stepping or a centre-tab follow onto an uncommitted file must not land in a hidden list.
+const workingOpen = ref(true);
+watch(
+  () => [props.cursor?.section, props.cursor?.path] as const,
+  ([section]) => {
+    if (section === 'working') workingOpen.value = true;
+  },
 );
 const workingSelected = computed(() =>
   props.cursor?.section === 'working'
@@ -291,56 +304,64 @@ function onToggleWorkingReviewed(path: string): void {
           emptyNote
         }}</p
       >
-      <section
+      <Collapsible
         v-if="workingFiles.length > 0"
+        v-model:open="workingOpen"
+        as="section"
         class="flex flex-col min-h-0"
-        :class="committed ? 'max-h-[40%] shrink-0' : 'flex-auto'"
+        :class="!workingOpen ? 'shrink-0' : committed ? 'max-h-[40%] shrink-0' : 'flex-auto'"
         data-testid="review-working"
       >
-        <div
-          class="flex items-center gap-1.5 px-2 py-1 text-graph-sm font-medium"
-          data-testid="review-working-header"
-        >
-          <CodiconIcon name="edit" :size="13" class="text-warn" />
-          <span>{{ t('common.changes.uncommitted.label') }}</span>
-          <span
-            v-if="workingChangedCount > 0"
-            class="text-warn font-normal"
-            data-testid="review-working-changed-count"
-            >{{
-              t('git.review.changedCount.label', { count: workingChangedCount })
-            }}</span
+        <CollapsibleTrigger as-child>
+          <button
+            type="button"
+            class="flex w-full shrink-0 items-center gap-1.5 px-2 py-1 text-left text-graph-sm font-medium"
+            data-testid="review-working-header"
           >
-          <span class="ml-auto text-muted-foreground font-normal">{{
-            t('git.review.reviewedCount.label', {
-              reviewed: workingReviewedCount,
-              total: workingFiles.length,
-            })
-          }}</span>
-        </div>
-        <p class="px-2 pb-1 text-muted-foreground text-graph-sm">{{
-          t('git.review.working.hint')
-        }}</p>
-        <FileTree
-          data-testid="review-working-tree"
-          class="flex-auto min-h-0 overflow-auto"
-          :files="workingFiles"
-          :selected-file="workingSelected"
-          :list-mode="listMode"
-          :filter="filter"
-          :show-toolbar="false"
-          :parents="[]"
-          :parent-index="0"
-          :store="store"
-          :actions="actions"
-          :review-states="working?.reviewStates"
-          @open-file="onOpenWorkingIndex"
-          @toggle-reviewed="onToggleWorkingReviewed"
-          @toggle-reviewed-folder="
-            (paths, reviewed) => working?.onToggleReviewedFolder(paths, reviewed)
-          "
-        />
-      </section>
+            <CodiconIcon :name="workingOpen ? 'chevron-down' : 'chevron-right'" :size="12" />
+            <CodiconIcon name="edit" :size="13" class="text-warn" />
+            <span>{{ t('common.changes.uncommitted.label') }}</span>
+            <span
+              v-if="workingChangedCount > 0"
+              class="text-warn font-normal"
+              data-testid="review-working-changed-count"
+              >{{
+                t('git.review.changedCount.label', { count: workingChangedCount })
+              }}</span
+            >
+            <span class="ml-auto text-muted-foreground font-normal">{{
+              t('git.review.reviewedCount.label', {
+                reviewed: workingReviewedCount,
+                total: workingFiles.length,
+              })
+            }}</span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent class="flex min-h-0 flex-auto flex-col">
+          <p class="px-2 pb-1 text-muted-foreground text-graph-sm">{{
+            t('git.review.working.hint')
+          }}</p>
+          <FileTree
+            data-testid="review-working-tree"
+            class="flex-auto min-h-0 overflow-auto"
+            :files="workingFiles"
+            :selected-file="workingSelected"
+            :list-mode="listMode"
+            :filter="filter"
+            :show-toolbar="false"
+            :parents="[]"
+            :parent-index="0"
+            :store="store"
+            :actions="actions"
+            :review-states="working?.reviewStates"
+            @open-file="onOpenWorkingIndex"
+            @toggle-reviewed="onToggleWorkingReviewed"
+            @toggle-reviewed-folder="
+              (paths, reviewed) => working?.onToggleReviewedFolder(paths, reviewed)
+            "
+          />
+        </CollapsibleContent>
+      </Collapsible>
       <InlineState v-if="reviewFiles.loading.value && files.length === 0" kind="loading">
         {{ t('common.state.loading.loading') }}
       </InlineState>

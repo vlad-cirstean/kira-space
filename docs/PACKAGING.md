@@ -367,7 +367,7 @@ only through a PR). Only the four aggregates (`ui (Linux)`, `go (Linux)`, `test-
 |---|---|---|
 | `checks (macOS)` | `macos-26` (pinned, not `macos-latest`) | cgo-aware `go vet`/build (catches darwin build-tag breaks) and the darwin&&cgo-only test packages; `bun run verify:packaging` (S18 runs the source-only scan under macOS grep) |
 | `checks (Linux)` | `ubuntu-latest` | lint, typecheck, frontend builds, `lint:dead`, `verify:packaging` and the bun unit tests |
-| `ui (Linux, shard N/8)` | `ubuntu-latest` | Playwright `ui` project in 8 shards, fail-fast off |
+| `ui (Linux, shard N/10)` | `ubuntu-latest` | Playwright `ui` project in 10 shards, fail-fast off |
 | `ui (Linux)` | `ubuntu-24.04` | Aggregate: fails unless every shard passed. The required-check name for ui |
 | `ui-extra (Linux)` | `ubuntu-latest` | ipc-frontend and ui-clipboard, then ui-timing alone on an idle machine |
 | `visual (Linux)` | `ubuntu-latest` | Playwright `visual` project (webkit) |

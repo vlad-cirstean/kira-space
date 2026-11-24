@@ -120,7 +120,12 @@ async function onAddRepo(id: string): Promise<void> {
         :data-branch-id="row.id"
       >
         <template #lead>
-          <PrGlyph variant="tooltip" :status="pr" testid="ade-task-branch-pr-state" />
+          <PrGlyph
+            variant="tooltip"
+            :status="pr"
+            :base-ref="pr.baseRef"
+            testid="ade-task-branch-pr-state"
+          />
         </template>
         <a
           :href="pr.url"

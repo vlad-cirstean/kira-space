@@ -100,20 +100,23 @@ const MANY_FILES = Array.from({ length: 1100 }, (_, i) => ({
   similarity: undefined,
 }));
 
-test('file tree: Show more reveals the next 500 rows', async ({ relaunch }) => {
+test('file tree renders a window of 1100 files', async ({ relaunch }) => {
   const page = await openPortGraph(relaunch, {
     chunks: singleRowChunks([rootRow(SHA_A, COMMIT_DETAIL.subject)]),
     results: { 'commit.detail': { ...COMMIT_DETAIL, files: MANY_FILES } },
   });
   await gridRow(page).click();
-  const rows = page.locator('[data-testid="file-tree"] [data-testid="file-tree-row"]');
-  await expect(rows).toHaveCount(500);
+  const tree = page.locator('[data-testid="file-tree"]');
+  const rows = tree.locator('[data-testid="file-tree-row"]');
+  await expect(rows.first()).toBeVisible();
+  expect(await rows.count()).toBeLessThan(100);
+  await expect(tree.getByRole('button', { name: /^Show more/ })).toHaveCount(0);
 
-  await page
-    .locator('[data-testid="file-tree"]')
-    .getByRole('button', { name: /^Show more/ })
-    .click();
-  await expect(rows).toHaveCount(1000);
+  await tree.getByRole('tree').evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  await expect(rows.filter({ hasText: 'file-1099.ts' })).toBeVisible();
+  expect(await rows.count()).toBeLessThan(100);
 });
 
 test('graph keys: Ctrl+R does nothing, F5 refreshes', async ({ relaunch }) => {

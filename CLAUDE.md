@@ -152,3 +152,14 @@ not the `codegraph` CLI.
 - `scripts/codegraph-setup.sh` installs the `codegraph` binary and builds/syncs index once per
   worktree, before a Claude session is spawned into it (not a session hook; setup in
   `docs/DEV_ENVIRONMENT.md`). That is build tooling, not navigation.
+
+## rtk
+
+- `PreToolUse` hook in `.claude/settings.json` rewrites Bash commands through rtk-oss (Apache-2.0);
+  output arrives filtered. Setup: `docs/DEV_ENVIRONMENT.md`.
+- Raw output where every line counts: code review diffs, verifying a subagent's claim, a failure the
+  filtered output does not explain. Run `rtk bypass <cmd>`. Count with `grep -c` or `| wc -l`, never
+  by reading a listing (rtk caps it per file).
+- Reviewer and verifier prompts restate the bypass rule; CLAUDE.md on disk does not make a subagent
+  follow it.
+- Never `rtk init`, `rtk telemetry enable`, `rtk llm-proxy`, `rtk-proxy`, or the default (BUSL) `rtk`.

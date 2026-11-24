@@ -75,6 +75,8 @@ type browseTableArgs struct {
 	Count bool `json:"count,omitempty"`
 	// Exemption asks the user to lift the limits of an earlier refusal for this exact call.
 	Exemption *exemptionArgs `json:"exemption,omitempty"`
+	// Confirm asks the user to approve the call even when the connection's policy allows it.
+	Confirm string `json:"confirm,omitempty"`
 }
 
 // browseOps maps each filter op to the number of values it takes: 0 none, 1 one, -1 several.
@@ -472,13 +474,18 @@ func literalPreview(kind string, v any) string {
 // browseCall is the call the exemption, limit and approval seams see: the preview stands in for the
 // statement, so an exemption binds to this exact spec.
 func browseCall(args browseTableArgs, preview string) runQueryArgs {
-	return runQueryArgs{ConnectionID: args.ConnectionID, SQL: preview, Path: args.Path, Mode: modeMasked, Exemption: args.Exemption}
+	return runQueryArgs{ConnectionID: args.ConnectionID, SQL: preview, Path: args.Path, Mode: modeMasked, Exemption: args.Exemption, Confirm: args.Confirm}
 }
 
 // browseTable is the browse_table handler. Gate order: resolve, kind, masked verdict, spec shape, table
 // allow list, connect, describe, mask state, column rules, exemption claim, EXPLAIN check, limits, one
 // approval, re-check, execute, render, result review.
 func (s *Server) browseTable(ctx context.Context, _ *mcp.CallToolRequest, args browseTableArgs) (*mcp.CallToolResult, any, error) {
+	confirm, msg := confirmText(args.Confirm, queryScriptNothingRan)
+	if msg != "" {
+		return errResult(msg)
+	}
+	args.Confirm = confirm
 	rv, sh, res, out, err, done := s.resolveBrowse(args)
 	if done {
 		return res, out, err

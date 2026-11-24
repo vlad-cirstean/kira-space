@@ -45,30 +45,14 @@ type trackerSource struct {
 
 func (s trackerSource) Name() string { return s.p.ID() }
 
-// Artifacts never returns an error: a tracker failure keeps the static row and adds a gap naming why.
-func (s trackerSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.Artifact, []adewire.ArtifactGap, error) {
+// Artifacts lists the stored link only: no tracker call, no gap. Title, status and failure reason come
+// from TaskIssue, the UI's own query, so the link list never waits on the tracker CLI.
+func (s trackerSource) Artifacts(_ context.Context, sc ArtifactScope) ([]adewire.Artifact, []adewire.ArtifactGap, error) {
 	ref, ok := trackerRef(s.p, sc.Task)
 	if !ok {
 		return nil, nil, nil
 	}
-	if sc.Quick {
-		return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)}, nil, nil
-	}
-	iss, err := s.p.Issue(ctx, ref, false)
-	if err != nil {
-		return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)},
-			[]adewire.ArtifactGap{{Source: s.p.ID(), Reason: issuetracker.Reason(err)}}, nil
-	}
-	id := s.p.ID()
-	title := iss.Title
-	if title == "" {
-		title = iss.Ref.Key
-	}
-	out := []adewire.Artifact{{
-		Kind: model.AdeArtifactIssue, Title: title, URL: iss.Ref.URL, Ref: iss.Ref.Key, Status: iss.Status,
-		Source: id, CreatedAt: sc.Task.CreatedAt,
-	}}
-	return out, nil, nil
+	return []adewire.Artifact{staticIssueArtifact(s.p, sc.Task, ref)}, nil, nil
 }
 
 // TaskIssue reads the issue the task links. A tracker failure comes back as Reason, not as an error;

@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
+	"github.com/kirathecat/kira-studio/internal/approvals"
 	"github.com/kirathecat/kira-studio/internal/harness"
 	"github.com/kirathecat/kira-studio/internal/harness/claude/mcpinstall"
 	"github.com/kirathecat/kira-studio/internal/loginshell"
@@ -77,13 +80,13 @@ func TestDbMcpThroughClaude(t *testing.T) {
 	}
 
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"Call the list tool once, then reply with the word done.",
+		"Call the MCP tool mcp__"+dbServer+"__list (it lists database connections) once, then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg, "--allowedTools", "mcp__"+dbServer+"__list",
 		"--output-format", "stream-json", "--verbose")
 	msgs := parseStream(out)
 	uses := toolUses(msgs, "mcp__"+dbServer+"__list")
 	if len(uses) == 0 {
-		t.Fatalf("no list tool use in the stream:\n%s", tail(out, 1500))
+		t.Fatalf("no list tool use in the stream; result=%q", resultMsg(t, msgs).Result)
 	}
 	text, isErr, ok := toolResult(msgs, uses[0].ID)
 	if !ok || isErr {
@@ -180,6 +183,8 @@ func TestDbMcpBrowseThroughClaude(t *testing.T) {
 
 // TestDbMcpBrowsePreferredThroughClaude (P609): with read and masked both allowed, run_query is a real
 // option, yet the real claude counts with browse_table's count and in filter and pages with offset.
+// The prompt names browse_table, count, in and offset: an open task made haiku pick run_query for the count
+// (1 of 10 runs), so the test guards that the tool's schema serves the task, not the model's tool choice.
 func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 	app := newRealApp(t)
 	connName, url, helper := enableDbMcp(t, app, func(f *model.ConnectionFields, dbFile string) {
@@ -206,7 +211,7 @@ func TestDbMcpBrowsePreferredThroughClaude(t *testing.T) {
 	}
 	browseTool, queryTool := "mcp__"+dbServer+"__browse_table", "mcp__"+dbServer+"__run_query"
 	out, _ := app.claudeP(t, t.TempDir(), nil,
-		"In the connection named "+connName+", count the rows of the notes table whose id is 1, 2 or 5, then list every note two per page. Then reply with the word done.",
+		"In the connection named "+connName+", use the browse_table tool only, never SQL: count the rows of the notes table whose id is 1, 2 or 5 with its count option and an in filter, then list every note two per page with its offset. Then reply with the word done.",
 		"--strict-mcp-config", "--mcp-config", cfg,
 		"--allowedTools", "mcp__"+dbServer+"__list,"+browseTool+","+queryTool+",mcp__"+dbServer+"__describe",
 		"--output-format", "stream-json", "--verbose")
@@ -409,5 +414,85 @@ func TestDbMcpKeptChainThroughClaude(t *testing.T) {
 	}
 	if !scripted || !bound {
 		t.Fatalf("scripted call = %v, params call = %v, want both:\n%s", scripted, bound, tail(out, 2500))
+	}
+}
+
+// TestDbMcpConfirmThroughClaude has the real claude run a read the connection allows while asked to have
+// the user confirm it first (P742): the agent sets confirm, the user sees a confirm item with the agent's
+// sentence, and approving it lets the query run.
+func TestDbMcpConfirmThroughClaude(t *testing.T) {
+	app := newRealApp(t)
+	connName, url, helper := enableDbMcp(t, app)
+	cfg := filepath.Join(t.TempDir(), "mcp.json")
+	raw, err := json.Marshal(map[string]any{"mcpServers": map[string]any{
+		dbServer: map[string]any{"type": "http", "url": url, "headersHelper": loginshell.Quote(helper)},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfg, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var seen *approvals.Item
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(200 * time.Millisecond):
+			}
+			items, err := app.W.ApprovalsSvc.List()
+			if err != nil {
+				continue
+			}
+			for _, it := range items {
+				if it.Kind != approvals.KindDbQuery {
+					continue
+				}
+				if _, err := app.W.ApprovalsSvc.Answer(approvals.AnswerArgs{IDs: []string{it.ID}, Approve: true}); err == nil {
+					mu.Lock()
+					if seen == nil {
+						seen = &it
+					}
+					mu.Unlock()
+				}
+			}
+		}
+	}()
+
+	tool := "mcp__" + dbServer + "__run_query"
+	out, _ := app.claudeP(t, t.TempDir(), nil,
+		"Call list, then call run_query once on the connection named "+connName+" with sql \"SELECT 1 AS n\", mode read and an empty path. Treat it as sensitive: the user must approve it in the approval prompt, not in chat; make the tool ask for that prompt. Then reply with the word done.",
+		"--strict-mcp-config", "--mcp-config", cfg,
+		"--allowedTools", "mcp__"+dbServer+"__list,"+tool,
+		"--output-format", "stream-json", "--verbose")
+	close(stop)
+	wg.Wait()
+	msgs := parseStream(out)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if seen == nil || seen.Reason != "confirm" || strings.TrimSpace(seen.AgentNote) == "" {
+		t.Fatalf("approval item = %+v, want a db.query confirm item with the agent's sentence:\n%s", seen, tail(out, 1500))
+	}
+	uses := toolUses(msgs, tool)
+	if len(uses) == 0 {
+		t.Fatalf("no run_query tool use in the stream:\n%s", tail(out, 1500))
+	}
+	var in struct {
+		Confirm string `json:"confirm"`
+	}
+	if err := json.Unmarshal(uses[len(uses)-1].Input, &in); err != nil || strings.TrimSpace(in.Confirm) == "" {
+		t.Fatalf("run_query input = %s (%v), want a confirm sentence", uses[len(uses)-1].Input, err)
+	}
+	text, isErr, ok := toolResult(msgs, uses[len(uses)-1].ID)
+	if !ok || isErr || !strings.Contains(text, "\"n\"") {
+		t.Fatalf("run_query result = %q (ok=%v, error=%v), want the n column", text, ok, isErr)
 	}
 }

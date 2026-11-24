@@ -1,0 +1,25 @@
+{
+  "git:file.read#left": {
+    "content": "line1\nline2\nline3\n",
+    "kind": "found"
+  },
+  "git:file.read#right": {
+    "kind": "missing"
+  },
+  "git:review.files": {
+    "branchTip": "<masked>",
+    "files": [
+      {
+        "change": {
+          "kind": "deleted",
+          "path": "a.txt"
+        },
+        "review": {
+          "changedSinceReview": false,
+          "kind": "none"
+        }
+      }
+    ],
+    "mergeBase": "<masked>"
+  }
+}

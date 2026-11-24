@@ -53,6 +53,7 @@ type kubeReadArgs struct {
 	Timestamps    bool            `json:"timestamps,omitempty"`
 	Tail          int             `json:"tail,omitempty"`
 	Script        *kubeScriptArgs `json:"script,omitempty"`
+	Confirm       string          `json:"confirm,omitempty"`
 }
 
 type kubeKindView struct {
@@ -140,7 +141,7 @@ func (s *Server) kubeRun(ctx context.Context, call kubeCall, statement func(kube
 	reviewable := kubeReviewable(call.op)
 	areq := ApprovalRequest{
 		ConnectionID: c.ID, ConnectionName: c.Context, Kind: "kubernetes",
-		Class: adapters.ClassRead, Statement: statement(c, req), Reason: ApprovalReasonPermission,
+		Class: adapters.ClassRead, Statement: statement(c, req), Reason: confirmReason(c.Mcp.Approval != "allow"), AgentNote: call.confirm,
 		Cluster: &ApprovalCluster{Context: c.Context, Server: c.Server, Namespace: req.Namespace, Operation: call.op, Tool: call.tool, Request: req, Script: sc},
 		Kept:    sc.keptUses(),
 		Origin:  originFrom(ctx), OfferReview: reviewable, ReviewOn: reviewable && s.kubeReviewFor(c),
@@ -172,12 +173,12 @@ func kubeExitOf(res *mcp.CallToolResult, out any, err error) *kubeExit {
 	return &kubeExit{res: res, out: out, err: err}
 }
 
-// kubeApprove asks the user to approve the read unless the cluster allows it outright. A non-nil exit ends
-// the call.
+// kubeApprove asks the user to approve the read unless the cluster allows it outright and the agent did not
+// confirm. A non-nil exit ends the call.
 func (s *Server) kubeApprove(ctx context.Context, call kubeCall, c kubernetes.Cluster, areq ApprovalRequest, sc *apiScripts) (ApprovalChoice, *kubeExit) {
 	var choice ApprovalChoice
 	// Fail closed: anything but "allow" asks.
-	if c.Mcp.Approval == "allow" {
+	if c.Mcp.Approval == "allow" && call.confirm == "" {
 		return choice, nil
 	}
 	wctx, stop := s.watchKept(ctx, sc.keptUses())
@@ -255,7 +256,11 @@ func (s *Server) holdKube(ctx context.Context, req ApprovalRequest, c kubernetes
 
 // kubeRead is the one kube tool: it checks op, then runs the read through kubeRun.
 func (s *Server) kubeRead(ctx context.Context, _ *mcp.CallToolRequest, a kubeReadArgs) (*mcp.CallToolResult, any, error) {
-	call := kubeCall{tool: "kube_read", op: a.Op, clusterID: a.ClusterID, script: a.Script}
+	confirm, msg := confirmText(a.Confirm, kubeNothingRead)
+	if msg != "" {
+		return errResult(msg)
+	}
+	call := kubeCall{tool: "kube_read", op: a.Op, clusterID: a.ClusterID, script: a.Script, confirm: confirm}
 	switch a.Op {
 	case kubeDiscover:
 		if a.Script != nil {

@@ -295,9 +295,14 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 	openLaunch(t, app, second)
 	waitSession(t, app, second.SessionID, "running")
-	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 2 || gaps[0].Source != "host" || gaps[0].Repo != "api" || gaps[1].Source != "jira" {
-		t.Fatalf("panel gaps = %+v, want a host gap for api and the jira gap", gaps)
+	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 1 || gaps[0].Source != "host" || gaps[0].Repo != "api" {
+		t.Fatalf("panel gaps = %+v, want one host gap for api (the tracker gap comes from TaskIssue)", gaps)
 	}
+	ti, err := app.W.IssueTracker.TaskIssue(ctx, adewire.TaskIssueArgs{TaskID: f.taskID})
+	if err != nil || ti.Reason != "unavailable" {
+		t.Fatalf("TaskIssue = %+v, %v, want reason unavailable", ti, err)
+	}
+	app.Contract(t, "ade-artifacts", "IssueTrackerService.TaskIssue#unavailable", ti)
 	if err := os.WriteFile(hold2, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}

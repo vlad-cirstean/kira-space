@@ -38,6 +38,8 @@ const scrollTree = (page: Page, to: 'top' | 'bottom') =>
 
 reviewTest('next and previous change reveal the file in the list', async ({ relaunch }) => {
   const page = await open(relaunch, ['a', 'b', 'a']);
+  // The tree is virtual: the rows below the filler are not mounted until scrolled to.
+  await scrollTree(page, 'bottom');
   await row(page, 'a.txt').click();
   await row(page, 'zz').click();
   await expect(row(page, 'zz')).toHaveAttribute('aria-expanded', 'false');
@@ -66,6 +68,7 @@ reviewTest('next and previous change reveal the file in the list', async ({ rela
 
 reviewTest('a tab click moves the list to its file without opening a tab', async ({ relaunch }) => {
   const page = await open(relaunch, ['a', 'b', 'a', 'b', 'a']);
+  await scrollTree(page, 'bottom');
   await row(page, 'a.txt').dblclick();
   await row(page, 'b.txt').dblclick();
   const tabs = page.locator(t('ade-review-tabs')).locator(t('tab'));

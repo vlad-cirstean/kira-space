@@ -61,6 +61,8 @@ const props = defineProps<{
   /** Opt-in view-state persistence (the proof window): restored on mount, reported on every
    *  scroll, click and expansion. `undefined` for the console, which keeps none. */
   viewState?: ResultViewState | null;
+  /** Proof window: every document opens expanded on mount and key-value rows grow to their content. */
+  autoExpand?: boolean;
 }>();
 const emit = defineEmits<{
   'update:viewState': [state: ResultViewState];
@@ -207,18 +209,26 @@ watch(hasExpandedDocs, () => fillWindowLineCounts(docVirtual.virtualItems.value)
 // exposed the same way goToMatch already is (ConsoleView.vue calls through this ref) — its
 // toolbar lives one level up since these two buttons only make sense while the active result is
 // document-shaped, a fact ConsoleView.vue's own getPage(activeKey) check decides, not this panel.
-function expandAll(): void {
+function openAllDocs(): void {
   consoleViewStore.setAllResultDocsExpanded(
     props.tabId,
     props.pageKey,
     rowIndices.value.flatMap((row) => documentId(props.pageKey, row) ?? []),
     true,
   );
+}
+function expandAll(): void {
+  openAllDocs();
   emitViewState();
 }
 function collapseAll(): void {
   consoleViewStore.setAllResultDocsExpanded(props.tabId, props.pageKey, [], false);
   emitViewState();
+}
+
+// Dynamic-height key-value rows (autoExpand): the virtualizer measures each rendered row.
+function measureKvRow(el: unknown): void {
+  if (el instanceof HTMLElement) kvVirtual.virtualizer.value.measureElement(el);
 }
 
 function kvRowAt(row: number) {
@@ -234,10 +244,13 @@ const selected = ref<{ row: number; col: number } | null>(null);
 // Restoring a saved state: expansion goes into the console store before the first row renders; the
 // highlighted row is a local ref, so it is set here too. Scroll is applied once mounted (below).
 const saved = props.viewState;
+if (props.autoExpand && page.value?.kind === 'document') openAllDocs();
 if (saved) {
-  for (const id of saved.expanded) {
-    if (!consoleViewStore.isResultDocExpanded(props.tabId, props.pageKey, id)) {
-      consoleViewStore.toggleResultDocExpanded(props.tabId, props.pageKey, id);
+  if (!props.autoExpand) {
+    for (const id of saved.expanded) {
+      if (!consoleViewStore.isResultDocExpanded(props.tabId, props.pageKey, id)) {
+        consoleViewStore.toggleResultDocExpanded(props.tabId, props.pageKey, id);
+      }
     }
   }
   if (saved.selectedRow !== null) selected.value = { row: saved.selectedRow, col: 0 };
@@ -266,12 +279,7 @@ function isSelected(row: number, col: number): boolean {
   return selected.value?.row === row && selected.value?.col === col;
 }
 
-// Unlike DataGrid.vue's rt.selection, this panel's "selection" is only ever
-// the last click, held in the local `selected` ref above — a row index into a page that has been
-// replaced (a new result chip swapping `pageKey` on this same mounted instance, or the same result
-// reloading) identifies nothing. Clearing rather than republishing is
-// the honest operation: there is no persistent selection concept here to republish against a new
-// page in the first place.
+// `selected` is only the last click: a row index into a replaced page identifies nothing, so clear it.
 // Page identity, not the counter every console tab's load/close bumps.
 watch([() => props.pageKey, page], () => {
   selected.value = null;
@@ -346,15 +354,8 @@ function selectKeyValueRow(row: number): void {
   });
 }
 
-// Same closure-per-render problem DataGrid.vue found first — a template
-// handler that calls out with the v-for's row/column index can never be cached by Vue's compiler
-// (hasScopeRef), so every visible row got a fresh wrapper closure on every render, scroll
-// included. This recovers the row index from a data-* attribute on the element the event
-// fired on instead, so the template can bind a stable, module-scope function. The document-row
-// branch below is left as-is: DocumentRow.vue's `toggle`/`select` emits carry no native Event
-// (defineEmits<{ toggle: []; select: [] }>()), so there is no currentTarget to read a data-*
-// attribute off without also changing that shared component's public contract (which
-// DocumentView.vue also depends on, outside this fix's scope).
+// Reads the row index from a data-* attribute so the template binds a stable module-scope handler
+// (a v-for closure is never cached by Vue's compiler). DocumentRow's emits carry no native Event.
 function selectKeyValueRowFromEvent(e: MouseEvent): void {
   const r = datasetNumber(e.currentTarget, 'row');
   if (r !== null) selectKeyValueRow(r);
@@ -498,7 +499,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
           <template #body>
             <div
               v-if="consoleViewStore.isResultDocExpanded(tabId, pageKey, view.id)"
-              class="flex-1 min-h-0 bg-elevated overflow-hidden"
+              class="flex-1 min-h-0 bg-elevated overflow-hidden select-text"
               data-testid="document-body"
             >
               <DocumentTree
@@ -533,7 +534,13 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
           data-testid="console-result-kv-row"
           :data-row="rowIndices[vi.index]"
           :class="VIRTUAL_ROW_CLASS"
-          :style="{ height: `${vi.size}px`, transform: `translateY(${vi.start}px)` }"
+          :ref="autoExpand ? measureKvRow : undefined"
+          :data-index="vi.index"
+          :style="
+            autoExpand
+              ? { transform: `translateY(${vi.start}px)` }
+              : { height: `${vi.size}px`, transform: `translateY(${vi.start}px)` }
+          "
           role="option"
           v-bind="kvNav.rowProps(String(rowIndices[vi.index]))"
           :tabindex="kvNav.tabindexFor(String(rowIndices[vi.index]))"
@@ -551,7 +558,8 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
                   selected: isSelected(rowIndices[vi.index]!, 0),
                   muted: true,
                 }),
-                'w-52 select-text overflow-hidden text-ellipsis px-2',
+                'w-52 select-text px-2',
+                autoExpand ? 'whitespace-pre-wrap break-words' : 'overflow-hidden text-ellipsis',
                 {
                   'search-match bg-search-match': isSearchMatch(rowIndices[vi.index]!, 0),
                   'search-match-current bg-search-match-current': isCurrentSearchMatch(
@@ -570,7 +578,8 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
             :class="
               cn(
                 rowVariants({ layout: 'tree', selected: isSelected(rowIndices[vi.index]!, 1) }),
-                'flex-1 select-text overflow-hidden whitespace-pre-wrap break-words px-2',
+                'flex-1 select-text whitespace-pre-wrap break-words px-2',
+                !autoExpand && 'overflow-hidden',
                 {
                   'search-match bg-search-match': isSearchMatch(rowIndices[vi.index]!, 1),
                   'search-match-current bg-search-match-current text-bg': isCurrentSearchMatch(

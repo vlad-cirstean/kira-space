@@ -22,7 +22,6 @@ import { IPC } from './support/ipcChannels';
 // P710: selection is one neutral grey (--kira-select #36363c, edge #71717a, text #45454d), hover
 // stays --kira-bg-input. Computed colours only. Renderer styling: no IPC, no backend half.
 const SELECT = 'rgb(54, 54, 60)';
-const EDGE = 'rgb(113, 113, 122)';
 const HOVER = 'rgb(39, 39, 44)';
 const TEXT = 'rgb(69, 69, 77)';
 // P730 (M2): toggles on = dark grey fill, light edge, bright mark; off = field, dim edge, grey knob.
@@ -37,7 +36,7 @@ const FIELD = 'rgb(39, 39, 44)';
 const head = (id: string) =>
   `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`;
 
-test('a selected plan card paints the grey fill and edge, hover is lighter than idle', async ({
+test('a selected plan card paints the grey fill and a task colour frame, hover is lighter than idle', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -49,10 +48,10 @@ test('a selected plan card paints the grey fill and edge, hover is lighter than 
   await page.mouse.move(5, 5);
   const selected = page.locator(head('T_search'));
   await expect(selected).toHaveCSS('background-color', SELECT);
-  await expect(page.locator('[data-testid="ade-card"][data-task-id="T_search"]')).toHaveCSS(
-    'border-left-color',
-    EDGE,
-  );
+  const box = page.locator('[data-testid="ade-card"][data-task-id="T_search"]');
+  await expect(box).toHaveCSS('outline-width', '2px');
+  const edge = await box.evaluate((el) => getComputedStyle(el).borderLeftColor);
+  await expect(box).toHaveCSS('outline-color', edge);
   const other = page.locator(head('T_auth'));
   await other.hover();
   await expect(other).toHaveCSS('background-color', HOVER);

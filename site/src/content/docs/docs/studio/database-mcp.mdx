@@ -133,6 +133,8 @@ When a limit rejects a statement, the AI client can ask you to lift that limit f
 
 You can review each query result before the AI client gets it. The app-wide switch is in Settings, under Studio MCP. A connection's MCP tab sets Read, Write and DDL results on their own: inherit the app setting, always review, or always send. The tab explains which setting applies.
 
+The AI client can also ask you to confirm a call your settings allow, for a sensitive action. The dialog shows its sentence and says your settings allow the call. It cannot lift a refusal this way.
+
 A permission prompt also has a checkbox, "Review the result before the AI gets it". Check it to review the result of that one call, even when review is off. Limit exemption prompts have it too.
 
 A held result shows as a table with the masking already applied. Send gives the AI client that exact result. Withhold gives it an error with no data. A write has already run when its result shows, so withholding hides the result and does not undo the change. Each result is approved on its own.

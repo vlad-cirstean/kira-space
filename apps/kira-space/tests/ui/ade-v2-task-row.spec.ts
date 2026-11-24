@@ -153,7 +153,7 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
 
 const heads = (page: Page) => page.locator(`${t('ade-card')} ${t('ade-card-head')}`);
 
-test('a task card wears its colour as a 3px top edge, on the plan ground', async ({ relaunch }) => {
+test('a task card wears its colour as its 1px edge, on the plan ground', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     {
       channel: IPC.adeTaskBoard,
@@ -178,7 +178,8 @@ test('a task card wears its colour as a 3px top edge, on the plan ground', async
           top: cs.borderTopWidth,
           topStyle: cs.borderTopStyle,
           topColor: cs.borderTopColor,
-          inlineTop: (e as HTMLElement).style.borderTopColor,
+          inline: (e as HTMLElement).style.getPropertyValue('--task-color'),
+          outline: cs.outlineStyle === 'none' ? 'none' : cs.outlineWidth,
           leftColor: cs.borderLeftColor,
           bg: cs.backgroundColor,
           marks: head?.querySelectorAll('[data-testid="ade-task-line"]').length ?? 0,
@@ -190,8 +191,9 @@ test('a task card wears its colour as a 3px top edge, on the plan ground', async
   expect(cards.length).toBeGreaterThan(0);
   for (const c of cards) {
     expect(c.left).toBe('1px');
-    expect(c.top).toBe('3px');
-    expect(c.inlineTop).not.toBe('');
+    expect(c.top).toBe('1px');
+    expect(c.topColor).toBe(c.leftColor);
+    expect(c.inline).not.toBe('');
     expect(c.bg).toBe(planBg);
     expect(c.marks).toBe(0);
     expect(c.swatches).toBe(0);
@@ -206,7 +208,9 @@ test('a task card wears its colour as a 3px top edge, on the plan ground', async
   await expect(page.locator(card('T_bill'))).toHaveAttribute('aria-current', 'true');
   const after = (await read()).find((c) => c.id === 'T_bill');
   expect(after?.topColor).toBe(before?.topColor);
-  expect(after?.leftColor).not.toBe(before?.leftColor);
+  expect(after?.leftColor).toBe(before?.leftColor);
+  expect(before?.outline).toBe('none');
+  expect(after?.outline).toBe('2px');
 });
 
 test('card head buttons stay inside the card with the panel open', async ({ relaunch }) => {

@@ -22,16 +22,13 @@ const parsed = computed(() => {
 </script>
 
 <template>
-  <div
-    class="h-64 overflow-hidden rounded-kira-sm border"
-    :data-ordinal="ordinal"
-    data-testid="ade-proof-diagram"
-  >
+  <div class="rounded-kira-sm border" :data-ordinal="ordinal" data-testid="ade-proof-diagram">
     <ProofDiagram
       v-if="parsed"
       :payload="parsed"
       :description="description"
       :seed="{ top: 0, left: 0 }"
+      fit="content"
     />
     <FieldDescription v-else-if="step.error.value" class="p-2">
       {{ errorText(step.error.value) }}

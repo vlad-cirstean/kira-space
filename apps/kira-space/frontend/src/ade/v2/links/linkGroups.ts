@@ -28,6 +28,8 @@ export interface LinkItem {
   sessionId: string;
   status?: string;
   tone?: Tone;
+  /** Jira details (status) still loading. */
+  pending?: boolean;
 }
 
 const norm = (url: string): string => url.trim().replace(/\/+$/, '');

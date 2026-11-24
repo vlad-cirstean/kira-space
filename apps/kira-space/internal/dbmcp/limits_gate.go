@@ -147,7 +147,7 @@ func (s *Server) awaitExemption(ctx context.Context, args runQueryArgs, rv *quer
 	outcome, choice := s.cfg.Approvals.RequestChoice(ctx, ApprovalRequest{
 		Subject: approvals.KindDbExemption, ConnectionID: args.ConnectionID, ConnectionName: rv.summary.Name, Kind: rv.summary.Kind,
 		Class: rv.class, Mode: rv.mode, Enforcement: enforcementFor(rv.summary, rv.mode),
-		Statement: args.SQL, Reason: ApprovalReasonExemption,
+		Statement: args.SQL, Reason: ApprovalReasonExemption, AgentNote: args.Confirm,
 		Target:    targetOf(rv.summary, args.Path),
 		Plan:      approvalPlanFrom(plan, rv.threshold),
 		Exemption: &ApprovalExemption{Reason: ex.reason, Hits: ex.hits}, Origin: originFrom(ctx),

@@ -145,6 +145,7 @@ onBeforeUnmount(() => {
         <template v-else>
           <DetailHeader
             wrap
+            class="select-text"
             :icon="proofViewIcon(data.view)"
             :title="data.description"
             title-testid="proof-step-description"
@@ -182,6 +183,7 @@ onBeforeUnmount(() => {
               :connection-id="null"
               path=""
               :view-state="view.seed.value"
+              auto-expand
               @update:view-state="view.setResult"
               @ready="resultReady = true"
             />

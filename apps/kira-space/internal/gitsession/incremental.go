@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -556,7 +557,7 @@ func (e *RepoEntry) rangeFilesRecords(ctx context.Context, base, branch string) 
 		return RangeFilesResult{}, nil, ErrUnrelatedHistories
 	}
 
-	changes, err := e.fileChanges(ctx, porcelain.NameStatusArgs(&mb, tip))
+	changes, err := e.fileChanges(ctx, porcelain.RangeNameStatusArgs(&mb, tip))
 	if err != nil {
 		return RangeFilesResult{}, nil, err
 	}
@@ -742,48 +743,106 @@ func (e *RepoEntry) MarkFile(ctx context.Context, branch, path string, reviewed 
 	return e.markFileAt(ctx, tip, branch, path, reviewed, ranges)
 }
 
+// Chunk bounds for MarkFiles: one transaction per chunk, raw snapshot content held only per chunk.
+const (
+	markChunkPaths = 256
+	markChunkBytes = 16 << 20
+)
+
 // MarkFiles is whole-file MarkFile over several paths: the branch tip resolves once, so every file
-// shares one reviewedAtSha. Returns records in path order; the first error stops the batch.
+// shares one reviewedAtSha. Returns records in path order. Work runs in chunks of at most
+// markChunkPaths paths or markChunkBytes of snapshot content, one PutMany transaction each; the
+// first error stops the batch and earlier chunks stay written.
+//
+// Lock order: paths are processed in sorted order and a chunk takes each path's lock just before
+// preparing it, holding them until its write, so locks cover only consumed paths. Every other
+// holder (MarkFile, working review, removed-line capture) holds exactly one path lock and takes no
+// second, so a waiting chunk never closes a cycle.
 func (e *RepoEntry) MarkFiles(ctx context.Context, branch string, paths []string, reviewed bool) ([]gitreview.FileRecord, error) {
 	tip, err := e.branchTip(ctx, branch)
 	if err != nil {
 		return nil, err
 	}
-	recs := make([]gitreview.FileRecord, 0, len(paths))
-	for _, path := range paths {
+	recs := make(map[string]gitreview.FileRecord, len(paths))
+	order := slices.Clone(paths)
+	slices.Sort(order)
+	order = slices.Compact(order)
+	for start := 0; start < len(order); {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		rec, err := e.markFileLocked(ctx, tip, branch, path, reviewed)
+		end := min(start+markChunkPaths, len(order))
+		done, err := e.markChunk(ctx, tip, branch, order[start:end], reviewed, recs)
 		if err != nil {
 			return nil, err
 		}
-		recs = append(recs, rec)
+		start += done
 	}
-	return recs, nil
+	out := make([]gitreview.FileRecord, len(paths))
+	for i, p := range paths {
+		out[i] = recs[p]
+	}
+	return out, nil
 }
 
-func (e *RepoEntry) markFileLocked(ctx context.Context, tip, branch, path string, reviewed bool) (gitreview.FileRecord, error) {
-	unlock := e.review.Lock(e.Summary.RepoID, branch, path)
-	defer unlock()
-	return e.markFileAt(ctx, tip, branch, path, reviewed, nil)
+// markChunk prepares paths in order until the byte budget fills (at least one), writes them in one
+// PutMany and reports how many it consumed. paths must be a sorted, unique window of the caller's
+// path list; each path's lock is taken just before it is prepared and held until return.
+func (e *RepoEntry) markChunk(ctx context.Context, tip, branch string, paths []string, reviewed bool, recs map[string]gitreview.FileRecord) (int, error) {
+	items := make([]gitreview.PutItem, 0, len(paths))
+	size, consumed := 0, 0
+	for _, path := range paths {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		defer e.review.Lock(e.Summary.RepoID, branch, path)()
+		item, err := e.prepareMark(ctx, tip, branch, path, reviewed, nil)
+		if err != nil {
+			return 0, err
+		}
+		items = append(items, item)
+		consumed++
+		if size += len(item.Content); size >= markChunkBytes {
+			break
+		}
+	}
+	if err := e.review.PutMany(ctx, e.Summary.RepoID, branch, items); err != nil {
+		return 0, err
+	}
+	for _, it := range items {
+		recs[it.Rec.Path] = it.Rec
+	}
+	return consumed, nil
 }
 
 func (e *RepoEntry) markFileAt(ctx context.Context, tip, branch, path string, reviewed bool, ranges []gitreview.LineRange) (gitreview.FileRecord, error) {
+	item, err := e.prepareMark(ctx, tip, branch, path, reviewed, ranges)
+	if err != nil {
+		return gitreview.FileRecord{}, err
+	}
+	if err := e.review.Put(ctx, e.Summary.RepoID, branch, item.Rec, item.Content); err != nil {
+		return gitreview.FileRecord{}, err
+	}
+	return item.Rec, nil
+}
+
+// prepareMark does everything markFileAt does short of the write: the caller holds path's lock and
+// stores the returned item.
+func (e *RepoEntry) prepareMark(ctx context.Context, tip, branch, path string, reviewed bool, ranges []gitreview.LineRange) (gitreview.PutItem, error) {
 	// currentOID comes straight off readSnapshotSource's own return now, instead of a second,
 	// separately-spawned blobOID call for the identical tip:path — readCurrentContent's own doc
 	// comment explains why the OID was already sitting there for free.
 	contentKind, content, snapshotLineCount, currentOID, err := e.readSnapshotSource(ctx, tip, path)
 	if err != nil {
-		return gitreview.FileRecord{}, err
+		return gitreview.PutItem{}, err
 	}
 	if ranges != nil && contentKind != gitreview.ContentText {
-		return gitreview.FileRecord{}, ErrRangedMarkOnNonText
+		return gitreview.PutItem{}, ErrRangedMarkOnNonText
 	}
 
 	existingRec, snapshot, found, err := e.review.Record(ctx, e.Summary.RepoID, branch, path)
 	if err != nil {
-		return gitreview.FileRecord{}, err
+		return gitreview.PutItem{}, err
 	}
 
 	currentLineCount := snapshotLineCount
@@ -791,11 +850,11 @@ func (e *RepoEntry) markFileAt(ctx context.Context, tip, branch, path string, re
 	if found {
 		delta, derr := e.FileDelta(ctx, branch, path, existingRec, snapshot, tip)
 		if derr != nil {
-			return gitreview.FileRecord{}, derr
+			return gitreview.PutItem{}, derr
 		}
 		// Capture before Put overwrites the snapshot: reviewed lines the delta deletes are lost after.
 		if err := e.captureCommitted(ctx, branch, existingRec, snapshot, delta.Hunks, delta.CurrentOID == "", unparsedBody(delta.Body)); err != nil {
-			return gitreview.FileRecord{}, err
+			return gitreview.PutItem{}, err
 		}
 		existing = gitreview.ProjectRanges(recordRanges(existingRec), delta.Hunks, delta.CurrentLineCount)
 		if contentKind == gitreview.ContentText {
@@ -838,8 +897,5 @@ func (e *RepoEntry) markFileAt(ctx context.Context, tip, branch, path string, re
 		BlobOID: currentOID, ContentKind: contentKind, ContentBytes: len(content),
 		LineCount: currentLineCount, Ranges: storedRanges,
 	}
-	if err := e.review.Put(ctx, e.Summary.RepoID, branch, rec, content); err != nil {
-		return gitreview.FileRecord{}, err
-	}
-	return rec, nil
+	return gitreview.PutItem{Rec: rec, Content: content}, nil
 }

@@ -102,13 +102,7 @@
         "url": "https://wiki.example/x"
       }
     ],
-    "gaps": [
-      {
-        "reason": "unavailable",
-        "repo": "",
-        "source": "jira"
-      }
-    ]
+    "gaps": []
   },
   "AdeTaskService.EditLink": {
     "artifact": {

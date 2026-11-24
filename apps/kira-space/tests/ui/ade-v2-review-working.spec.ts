@@ -316,3 +316,82 @@ reviewTest('a comment jump to an uncommitted file highlights its row', async ({ 
   expect(row.y).toBeGreaterThanOrEqual(area.y - 1);
   expect(row.y + row.height).toBeLessThanOrEqual(area.y + area.height + 1);
 });
+
+reviewTest('the uncommitted section collapses and reopens', async ({ relaunch }) => {
+  const { window: page } = await relaunch({ control: control(), gitStream: GIT });
+  await page.locator(t('ade-review-window')).waitFor();
+  const header = page.locator(t('review-working-header'));
+  const committed = page.locator(t('review-files-tree'));
+  await expect(header).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator(t('review-working-tree'))).toBeVisible();
+  const before = await committed.boundingBox();
+  await header.click();
+  await expect(header).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator(t('review-working-tree'))).toHaveCount(0);
+  await expect(committed).toBeVisible();
+  // The header keeps its counts and the committed tree takes the freed height.
+  await expect(header).toContainText('Uncommitted');
+  await expect
+    .poll(async () => (await committed.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(before?.height ?? Number.POSITIVE_INFINITY);
+  await header.click();
+  await expect(header).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator(t('review-working-tree'))).toBeVisible();
+});
+
+reviewTest(
+  'stepping onto an uncommitted file reopens a collapsed section',
+  async ({ relaunch }) => {
+    const { window: page } = await relaunch({ control: control(), gitStream: GIT });
+    await page.locator(t('ade-review-window')).waitFor();
+    const header = page.locator(t('review-working-header'));
+    await header.click();
+    await expect(header).toHaveAttribute('aria-expanded', 'false');
+    const selected = page.locator(
+      `${t('review-working-tree')} ${t('file-tree-row')}[aria-selected="true"]`,
+    );
+    const next = page.locator(t('review-next-unreviewed'));
+    await page
+      .locator(`${t('review-files-tree')} ${t('file-tree-row')}`, { hasText: 'pending.ts' })
+      .click();
+    for (let i = 0; i < 6 && (await selected.count()) === 0; i++) {
+      await next.click();
+    }
+    await expect(header).toHaveAttribute('aria-expanded', 'true');
+    await expect(selected).toHaveCount(1);
+  },
+);
+
+reviewTest(
+  'stepping between uncommitted files reopens a section collapsed on the first',
+  async ({ relaunch }) => {
+    const second = 'other.txt';
+    const first = working.files[0];
+    if (!first) throw new Error('contract has no working file');
+    const { window: page } = await relaunch({
+      control: [
+        ...control().filter((e) => e.channel !== IPC.adeTaskReviewWorking),
+        {
+          channel: IPC.adeTaskReviewWorking,
+          response: {
+            ...working,
+            worktree: target.worktree,
+            files: [...working.files, { ...first, path: second }],
+          },
+        },
+      ],
+      gitStream: GIT,
+    });
+    await page.locator(t('ade-review-window')).waitFor();
+    const header = page.locator(t('review-working-header'));
+    const rows = page.locator(`${t('review-working-tree')} ${t('file-tree-row')}`);
+    await rows.first().click();
+    await expect(rows.first()).toHaveAttribute('aria-selected', 'true');
+    await header.click();
+    await expect(header).toHaveAttribute('aria-expanded', 'false');
+    // The cursor stays in the uncommitted section; stepping to its next file must reopen it.
+    await page.locator(t('review-next-unreviewed')).click();
+    await expect(header).toHaveAttribute('aria-expanded', 'true');
+    await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true');
+  },
+);

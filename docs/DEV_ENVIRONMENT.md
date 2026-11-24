@@ -558,7 +558,7 @@ Opt-in tests that run the real `claude` CLI and spend tokens. Never in CI, pre-c
 | Agent sandbox: `internal/agentsandbox/**`, `apps/kira-space/internal/ade/sandbox.go` | `bun run test:claude -run 'TestAdeSandbox\|TestAdeSandboxReadOnly' -count=1`. Linux checks the second layer (flags, note, `enforced 0`); the macOS half is in the Mac checklist below. |
 | Details on disk benchmark (P643): `internal/taskfiles/**`, the Space tools of `internal/agentmcp/**`, `tests/claude/details_bench_test.go`, `tests/claude/testdata/details-bench/**` | Free harness check: `bun run test:claude -run TestDetailsBenchFrozenServes`. Round: `KIRA_BENCH_OUT=/tmp/bench.md KIRA_BENCH_FLOWS=F4,F5,F6,F1 KIRA_BENCH_BUDGET=2.2 KIRA_BENCH_DUMP=<scratch dir> bun run test:claude:details` (flows F1 to F6; sonnet, 3 reps per flow and arm, `KIRA_BENCH_BUDGET` caps the round, `KIRA_BENCH_DUMP` keeps each run's transcript). 24 runs cost about 1.9 USD (P714: 1.89); the guard reserves the dearest run seen, and the 0.5 USD cap for the first, so the 1.5 default stops near 18 runs, 2 reps per cell, too few for a verdict. A gated round needs the dumps (an inconclusive verdict gets an Opus review of them); never commit them. `KIRA_BENCH_ARMS=R` runs one arm (first-run reserve is 0.5, so budget at least 0.6). Arm R's prompt names the draft, as Kira does on a continuing route. F5 and F6 prompts of both arms end with a finish clause and both oracles need a done finish (arm T finishes like a real step); 12 runs of F5 and F6 cost about 0.93 USD, guard 1.2. The report gates R over T per flow: cost 1.2 (F1 1.35, F6 1.40, P714 recalibration), context 1.05 on F1 to F4, 1.0 on F5, 1.08 on F6 (`benchCostBound`, `benchCtxBound`). `KIRA_BENCH_OUT` is required, never a path under `docs/`. Arm T serves the frozen `tools-baseline.json`; arm R is the real `agentmcp.Server` (state, create_task for an orchestrator) over the task folder with `states-r/` fixtures. Fixtures seed through `SyncTaskFiles`; prompts name no submit call: Kira applies saves and the finish flush files the rest (P695, P703). Opt-in, never in hooks or CI. |
 | Smart scripts: `internal/{agentmcp,mcpcall,scriptruns,scripts}/**` (incl. `scheduler.go`, `confirm.go`), `internal/harness/claude/headless.go`, `apps/kira-space/internal/ade/automation.go` | `bun run test:claude -run 'TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db -run TestSmartScriptRun` |
-| DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440; `TestStudioMcpTasksThroughClaude` covers the lean tool surface, P733; `TestKubeMcpKeptChainThroughClaude` covers a kept pod name chained from a list into the logs prepare script, P718; `TestDbMcpKeptChainThroughClaude` covers `run_query` `script` and `params` schemas and a chain by name, P686) |
+| DB MCP: `apps/kira-space/internal/dbmcp/**`, `apps/kira-space/internal/kubernetes/**`, `apps/kira-space/internal/bridge/dbmcp.go`, `apps/kira-space/internal/proof/**`, `apps/kira-space/internal/bridge/proof.go` | `bun run test:claude:db` (`TestKubeMcpThroughClaude` covers the kube tools, P440; `TestStudioMcpTasksThroughClaude` covers the lean tool surface, P733; `TestKubeMcpKeptChainThroughClaude` covers a kept pod name chained from a list into the logs prepare script, P718; `TestDbMcpKeptChainThroughClaude` covers `run_query` `script` and `params` schemas and a chain by name, P686; `TestDbMcpConfirmThroughClaude` covers the `confirm` arg raising a prompt for an allowed read, P742) |
 | Prompt registry, store, templates: `internal/llmprompts/**` (after a default rewrite run the whole row; regenerate goldens with `go test ./internal/llmprompts -run TestGolden -update` and contracts with `KIRA_CONTRACT=write`) | ADE, smart scripts and DB MCP rows above: `test:claude -run 'TestAdeHeadlessRun\|TestAdeStepResults\|TestAdeManualSession\|TestAdeAdHocSession\|TestAdeRebaseRun\|TestAdeResumeRun\|TestAdeResumeLost\|TestAdeRestoreSessionContinue\|TestAdeRestoreRunResumeOnly\|TestAdeSandbox\|TestSmartScriptRun\|TestSmartScriptResume'` and `bun run test:claude:db` |
 | Agent context: `internal/agentctx/**`, `ContextFile` in `internal/harness/claude/{interactive,headless}.go`, `apps/kira-space/internal/ade/{tracker,runs}.go`, `internal/scriptruns/{smart_run,resume}.go` | `bun run test:claude -run TestAgentContextHeadless -count=1` (one haiku smart run, about 10 s, a cent) |
 | Any other `internal/harness/**` change | `bun run test:claude` |
@@ -701,7 +701,7 @@ The sandbox (P287) enforces on macOS only. The sandbox session cannot run Seatbe
 - **`bun run lint:go` needs `bun run build:mobile` once per checkout** (`main.go` embeds
   `frontend/dist-mobile`; absent, typecheck of the Go module fails).
 - **`ui-timing` needs an idle machine** (load below ~1, nothing else running). It is out of `bun run test:ui`
-  (P443); run `bun run test:ui:timing` alone (4 tests, about 70 s; CI runs the same `--no-deps` command). Check
+  (P443); run `bun run test:ui:timing` alone (4 specs' wall-clock tests plus `console-large-result.spec.ts`, about 150 s; CI runs the same `--no-deps` command). Check
   no `playwright`, `chrome` or `webkit` process is left before it starts. The WebKit sandbox is slow (measured 1.8x
   on JS and 2.9x on DOM work against Chromium on the same host); the open budget failures, if any, are in
   `ARCHITECTURE.md` Known open items.
@@ -882,6 +882,40 @@ needs its own run of `scripts/codegraph-setup.sh`; a `.codegraph/` missing there
 per-message regardless of how the index got built. If a worktree was never provisioned with
 `scripts/codegraph-setup.sh` (a manual clone, say), run it by hand once before relying on the index.
 
+## rtk — filtered shell output (P744)
+
+- What: rtk-oss `1.2.1`, the Apache-2.0 edition. Default `rtk` links BUSL-1.1 `rtk-engine`; never
+  install it. Licence check: release archive holds only `rtk` and `LICENSE`; `cargo tree
+  --no-default-features` at the tag has no `rtk-engine`. Not used: `rtk init`, `rtk llm-proxy`,
+  `rtk-proxy`, pipelines. crates.io has an unrelated `rtk`; never `cargo install rtk`.
+- Setup: `sh scripts/rtk-setup.sh`, once per machine (binary in `${RTK_INSTALL_DIR:-$HOME/.local/bin}`,
+  shared by worktrees; hook per repo). `scripts/prepare-dev-environment.sh` runs it. Pinned version
+  and per-target SHA-256, no `curl | sh`. Refuses to overwrite a full-edition or foreign `rtk`. `$INSTALL_DIR`
+  must come first on `PATH`.
+- Committed: `.claude/settings.json` `PreToolUse` hook (Bash) and `env`;
+  `.claude/hooks/rtk-pretooluse.sh` fails open: no `rtk`, full edition, foreign or failing `rtk`, any non-zero exit or non-JSON
+  output exits 0 silently and the command runs unchanged. `sh scripts/rtk-hook-test.sh` proves it
+  with fake binaries (`RTK_REAL=<rtk-oss path>` adds a real rewrite check).
+  Hook settings load at session start: a session started before setup needs a restart.
+- Raw output: `rtk bypass <cmd>`, or `RTK_DISABLED=1 <cmd>`; `rtk git diff --no-compact`;
+  `rtk recall <hash>` restores an elided block. Never add a `Bash(rtk:*)` allow rule (allows
+  `rtk bypass <anything>`).
+- Expect: `git diff`/`git show` lossy (`... N additions truncated`); `grep -rn` caps 25 matches per
+  file (`grep -c` and `| wc -l` stay exact); `cat` byte-identical; passing `git commit` prints
+  `ok <sha>`, failing hook output kept in full; failing `go test`/`bun test` keep decisive lines;
+  exit codes preserved. Not rewritten: `gh auth status|token`, `env`, `az`, `sh <script>`, file
+  redirects. Clean `bun run lint` passes unchanged.
+- Permissions: allow rules in settings files are honoured; CLI or `create_session` allow rules are
+  invisible to rtk, so in `default` mode a rewritten command can prompt.
+- Credentials: rtk runs `gh` and filters stdout; it never reads `hosts.yml` or tokens.
+- Telemetry: off three ways: `env` in project settings, the wrapper's export, `rtk telemetry disable`
+  in setup. Never `rtk telemetry enable`. Verify: `RTK_TELEMETRY_DISABLED=1 rtk telemetry status`
+  prints `enabled: no`. Local data `~/.local/share/rtk` (command names, token counts, elided
+  output); stays on the machine. `RTK_SUPPRESS_HOOK_WARNING=1` silences rtk's "no hook installed"
+  nag (it only probes `~/.claude/settings.json`).
+- Upgrade: bump `RTK_VERSION` and the four pins in `scripts/rtk-setup.sh` from the release
+  `checksums.txt`; recheck licence and the edition probe (`rtk pipeline --help` must fail).
+
 ## CodeGraph duplicate finder — `scripts/codegraph-duplicates.ts`
 
 Runnable form of the ad-hoc sweeps P107/P113/P115 ran against `.codegraph/codegraph.db` (they were
@@ -1001,6 +1035,7 @@ flick). Add a view by copying a probe and calling `measureFlick` over `FLICK_LAD
   (prints `GORAM` lines, heap and goroutine profiles, process-table PSS per class).
 - P693 Part 2 probe changes: `ade-agents` `stopped4` emits `IPC.terminal` exit events before the sessions push (a stop without them leaves the ptys looking alive and over-reads ArrayBuffer by 8 MB); `ade-agents` prints an `ADEDOM` JSON line (DOM nodes per region, `.xterm` hosts and rows, canvases, `<style>` count and size, font faces, Chromium DOM counters) at `board`, `launch4`, `panes2`, `switch10`, `final`, and takes Pass B snapshots at `board`, `launch4`, `switch10`, `final`. Pass B costs about 0.9 GB of snapshots per pass; free disk first. The probe waits for `load1 <= 1.0`: a wrapper that gates with `pgrep -f 'playwright test'` matches its own command line, put the run in a script file.
 - ADE retention spec: `bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui-heap` (`tests/ui/ade-v2-retention.spec.ts`, Chromium, forces GC over CDP; part of `test:ui` and PR CI). It asserts the ADE shell is collected after leaving ADE and DOM nodes on return stay within 810 of the `task` checkpoint.
+- Review window probes (P739), report-only: Go `KIRA_GIT_PERF=1 go test ./apps/kira-space/internal/flows/gitflow -run '^TestReviewPerf$' -count=1 -v` prints `REVIEWPERF` lines (real git, 3011-file branch; `KIRA_REVIEW_PERF_FILES` sizes it). UI `bunx playwright test -c apps/kira-space/playwright.perf.config.ts --project=perf review-window` prints `REVIEWUI` lines (boot, five opens, marks, folder mark, filter; `KIRA_REVIEW_FILES`, `KIRA_REVIEW_LINES`). Build first (`bun run build:test`). Results: `docs/PERF.md` §2.18.
 - Engine is Playwright WebKit. Linux runs the WPE port: software rendering, no GPU process.
 - fps = 1000 / frame ms. Compare views to each other, not to 16 ms.
 - RSS comes from `ps`. On macOS it omits CoreAnimation/IOSurface graphics memory, the dominant

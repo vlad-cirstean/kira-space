@@ -239,6 +239,7 @@ test('script runs and proof reviews keep the single approval-body box', async ({
       target,
       operation,
       reason: 'permission',
+      agentNote: '',
       payload,
     });
   const items = [

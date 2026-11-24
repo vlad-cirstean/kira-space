@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Titles of every test with a real-millisecond wall-clock assertion: budgets.spec.ts's and
-// perf.spec.ts's own single test each, plus slick-grid.spec.ts's two "150ms sandbox gate" tests.
+// perf.spec.ts's own single test each, plus slick-grid.spec.ts's two "150ms sandbox gate" tests and
+// console-large-result.spec.ts's frame-gap budget tests (500 ms gaps; sharded `ui` CPU contention
+// pushed them to 500-720 ms).
 // `ui-timing` selects exactly these by title, not by file: slick-grid.spec.ts also holds 15 tests
 // with no wall-clock assertion that gain nothing from running serially. `ui` excludes them the
 // same way, so nothing runs twice.
-const wallClockBudgetTitles = /150ms sandbox gate|interaction budgets|perf tripwires/;
+const wallClockBudgetTitles =
+  /150ms sandbox gate|interaction budgets|perf tripwires|stays responsive|cancels on Stop without a freeze/;
 
 // One config for the one app. Every project runs against the same test build (`bun run build:test`)
 // or the same `-tags server` binary. Databases-module specs live in `studio/` subfolders of the
@@ -67,7 +70,12 @@ export default defineConfig({
     {
       name: 'ui-timing',
       testDir: './tests/ui',
-      testMatch: ['studio/budgets.spec.ts', 'studio/perf.spec.ts', 'studio/slick-grid.spec.ts'],
+      testMatch: [
+        'studio/budgets.spec.ts',
+        'studio/perf.spec.ts',
+        'studio/slick-grid.spec.ts',
+        'studio/console-large-result.spec.ts',
+      ],
       grep: wallClockBudgetTitles,
       use: { browserName: 'webkit' },
       fullyParallel: false,

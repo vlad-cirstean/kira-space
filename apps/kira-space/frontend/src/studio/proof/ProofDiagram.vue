@@ -2,6 +2,7 @@
 import type { ProofDiagramPayload } from '@shared/domain/proof';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
+import { cn } from '@theme/lib/utils';
 import { computedAsync, useScroll } from '@vueuse/core';
 import { errorText } from '@workbench/bridge/codedError';
 import { nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -14,6 +15,8 @@ const props = defineProps<{
   payload: ProofDiagramPayload;
   description: string;
   seed: { top: number; left: number };
+  /** `pane` fills its parent; `content` takes the height of the drawing (the Details tab). */
+  fit?: 'pane' | 'content';
 }>();
 const emit = defineEmits<{ 'update:scroll': [top: number, left: number]; ready: [] }>();
 
@@ -53,7 +56,11 @@ watch(failure, (err) => {
 </script>
 
 <template>
-  <div v-if="failure" class="flex size-full min-h-0 flex-col" data-testid="proof-diagram-error">
+  <div
+    v-if="failure"
+    :class="cn('flex min-h-0 flex-col', fit !== 'content' && 'size-full')"
+    data-testid="proof-diagram-error"
+  >
     <EmptyState
       icon="warning"
       :title="t('studio.proof.diagram.invalid.title')"
@@ -64,7 +71,7 @@ watch(failure, (err) => {
       "
     />
     <div
-      class="min-h-0 flex-1"
+      :class="fit === 'content' ? 'h-48' : 'min-h-0 flex-1'"
       :aria-label="t('studio.proof.diagram.source.label')"
       data-testid="proof-diagram-source"
     >
@@ -73,12 +80,19 @@ watch(failure, (err) => {
   </div>
   <figure
     v-else
-    class="m-0 size-full min-h-0"
+    class="m-0 min-h-0"
+    :class="fit !== 'content' && 'size-full'"
     :aria-label="t('studio.proof.diagram.region.aria', { description })"
     data-testid="proof-diagram"
     :data-diagram-type="payload.type"
   >
     <!-- svg is sanitized twice: mermaid strict mode, then a private DOMPurify pass (diagramRender.ts). -->
-    <div ref="scroller" class="size-full overflow-auto p-3" v-html="svg"></div>
+    <div
+      ref="scroller"
+      :class="
+        cn('select-text p-3', fit === 'content' ? 'overflow-x-auto' : 'size-full overflow-auto')
+      "
+      v-html="svg"
+    ></div>
   </figure>
 </template>

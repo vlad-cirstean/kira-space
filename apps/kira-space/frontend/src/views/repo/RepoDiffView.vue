@@ -10,7 +10,7 @@ import { useTimeoutFn } from '@vueuse/core';
 import { TIMING } from '@workbench/behaviour/timing';
 import ViewToolbar from '@workbench/components/ViewToolbar.vue';
 import { registerCommand } from '@workbench/shortcuts/commands';
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
 import { useHostLineComment } from '../../ade/v2/review/useHostLineComment';
 import { useReviewWorkingDiff } from '../../ade/v2/review/useReviewWorking';
 import { useAdeReviewWindowStore } from '../../ade/v2/state/adeReviewWindow';
@@ -36,7 +36,7 @@ import { attachDiffNavigation, type DiffNavigation } from './diffNavigation';
 import { loadMonaco } from './monaco';
 import { attachReviewDecorations, type ReviewDecorationsHandle } from './reviewDecorations';
 import { committedReviewSource, workingReviewSource } from './reviewSource';
-import { useDiffEditor } from './useDiffEditor';
+import { isDeletion, useDiffEditor } from './useDiffEditor';
 
 const props = defineProps<{ tab: RepoDiffTabRecord }>();
 
@@ -63,6 +63,8 @@ let unregisterGoToFile: (() => void) | null = null;
 let reviewDecorations: ReviewDecorationsHandle | null = null;
 // True once the review layer (glyphs, context-menu actions, first load) is attached and loaded.
 const reviewReady = ref(false);
+// A deleted file shows as its old text in one editor: no diff, so no review layer or change cursor.
+const deleted = ref(false);
 
 const navigation = useReviewNavigationStore();
 const diffNavigation = shallowRef<DiffNavigation | null>(null);
@@ -166,10 +168,20 @@ async function mount(): Promise<void> {
   const arrival = repoId ? navigation.takeArrival(repoId, props.tab.path) : null;
   await handle.mount();
   if (diffEditor !== handle) return; // Unmounted while mount() awaited.
+  deleted.value = handle.deleted.value;
   state.value = handle.state.value;
   errorMessage.value = handle.errorMessage.value;
   navTick.value++;
   if (state.value !== 'found') return;
+
+  const codeEditor = handle.codeEditor.value;
+  if (deleted.value && codeEditor) {
+    unregisterFind = registerCommand('view.find', () => {
+      codeEditor.focus();
+      void codeEditor.getAction('actions.find')?.run();
+    });
+    return;
+  }
 
   const editor = handle.editor.value;
   if (!editor) return;
@@ -240,15 +252,32 @@ async function mount(): Promise<void> {
 const workingDiff = workingBranchId ? useReviewWorkingDiff(workingBranchId, props.tab.path) : null;
 watch(
   () => workingDiff?.data.value,
-  (diff) => {
-    const models = diffEditor?.editor.value?.getModel();
-    if (!diff || !models || diff.head.kind === 'binary' || diff.worktree.kind === 'binary') return;
+  async (diff) => {
+    if (!diff || !diffEditor || diff.head.kind === 'binary' || diff.worktree.kind === 'binary') {
+      return;
+    }
+    if (state.value === 'found' && isDeletion(diff) !== deleted.value) {
+      // Deleted after the tab opened, or restored on disk: the other widget is needed.
+      teardown();
+      state.value = 'loading';
+      await nextTick();
+      await mount();
+      return;
+    }
+    if (deleted.value) {
+      const model = diffEditor.codeEditor.value?.getModel();
+      if (model && model.getValue() !== diff.head.text) model.setValue(diff.head.text);
+      diffEditor.contentHash.value = diff.contentHash;
+      return;
+    }
+    const models = diffEditor.editor.value?.getModel();
+    if (!models) return;
     if (models.original.getValue() !== diff.head.text) models.original.setValue(diff.head.text);
     if (models.modified.getValue() !== diff.worktree.text) {
       models.modified.setValue(diff.worktree.text);
     }
     // The hash travels with the text it was read with, never ahead of what the editor shows.
-    if (diffEditor) diffEditor.contentHash.value = diff.contentHash;
+    diffEditor.contentHash.value = diff.contentHash;
     reviewDecorations?.reload();
   },
 );
@@ -257,18 +286,22 @@ onMounted(() => void mount());
 
 // A mere tab switch away — the widget disposes, the models survive in editors.ts until an actual
 // close calls TAB_KINDS['repo-diff'].dropResources.
-onUnmounted(() => {
+function teardown(): void {
   unregisterFind?.();
   unregisterFind = null;
   unregisterGoToFile?.();
   unregisterGoToFile = null;
   reviewDecorations?.dispose();
   reviewDecorations = null;
+  reviewReady.value = false;
   diffNavigation.value?.dispose();
   diffNavigation.value = null;
   diffEditor?.dispose();
   diffEditor = null;
-});
+  deleted.value = false;
+}
+
+onUnmounted(teardown);
 </script>
 
 <template>
@@ -299,7 +332,7 @@ onUnmounted(() => {
         <CodiconIcon name="arrow-down" :size="13" />
       </Button>
       <Button
-        v-if="state === 'found' && !workingBranchId"
+        v-if="state === 'found' && !workingBranchId && !deleted"
         variant="toolbar"
         size="kira"
         data-testid="repo-diff-go-to-file"
@@ -308,11 +341,14 @@ onUnmounted(() => {
         <CodiconIcon name="go-to-file" :size="13" />
         {{ t('common.goToFile.label') }}
       </Button>
+      <Badge v-if="deleted" variant="error" data-testid="repo-diff-deleted">
+        {{ t('space.repo.view.deletedFile.label') }}
+      </Badge>
       <Badge v-if="workingBranchId" variant="warn" data-testid="repo-diff-uncommitted">
         {{ t('common.changes.uncommitted.label') }}
       </Badge>
       <SecondaryTabs
-        v-if="state === 'found'"
+        v-if="state === 'found' && !deleted"
         class="ml-auto"
         variant="segmented"
         :aria-label="t('space.repo.view.diffLayout.aria')"

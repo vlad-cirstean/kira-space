@@ -13,8 +13,13 @@ export const BRANCH_GRID =
 export const SLOT = 'flex w-control shrink-0 items-center justify-center';
 /** Row ground for a hover overlay: the card sets it, a hovered or selected row overrides it. */
 export const GROUND_CARD = '[--row-ground:var(--color-chrome)]';
-/** Task colour on a card or span row: its top border, coloured inline. */
-export const TASK_EDGE = 'border-t-3';
+/** Task colour on a card or span row: its 1px border. The row sets `--task-color` inline. */
+export const TASK_EDGE = 'border border-(--task-color)';
+/** Selected card or span row: 2px outline in the task colour flush with the border, so the frame
+ *  reads 3px without reflow. */
+export const TASK_EDGE_SELECTED = 'outline-2 outline-offset-0 outline-(--task-color)';
+/** Card whose branches must rebase when the selected task merges. */
+export const TASK_EDGE_RIPPLE = 'border-dashed';
 export const GROUND_ROW = 'bg-(--row-ground) hover:[--row-ground:var(--color-field)]';
 export const GROUND_SELECTED = 'bg-(--row-ground) [--row-ground:var(--color-select)]';
 /** Hover actions laid over the end of the text cell: no reflow when they appear. */

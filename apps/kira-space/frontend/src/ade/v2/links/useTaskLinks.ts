@@ -18,7 +18,7 @@ import {
 import { useChangeRequests } from '../readQueries';
 import { useMarkTrackedSeen } from '../updates/queries';
 import { useTaskUpdates } from '../updates/useTaskUpdates';
-import type { Artifact, Task } from '../wire';
+import type { Artifact, ArtifactGap, Task } from '../wire';
 import { type LinkCategory, type LinkItem, linkGroups } from './linkGroups';
 
 export interface LinkGroup {
@@ -68,8 +68,10 @@ export function useTaskLinks(
       .map((g) => ({
         ...g,
         items: g.items.map((item) => {
+          if (item.origin !== 'jira') return item;
+          if (issue.isPending.value) return { ...item, pending: true };
           const i = issue.data.value;
-          if (item.origin !== 'jira' || !i?.title) return item;
+          if (!i?.title) return item;
           return {
             ...item,
             status: i.status || undefined,
@@ -78,7 +80,15 @@ export function useTaskLinks(
         }),
       })),
   );
-  const gaps = computed(() => query.data.value?.gaps ?? []);
+  // The tracker's reason comes from the issue query, not from Artifacts (same rule as the card's issue line).
+  const gaps = computed<ArtifactGap[]>(() => {
+    const i = issue.data.value;
+    const tracker: ArtifactGap[] =
+      i && i.reason !== 'noTracker' && i.reason
+        ? [{ source: i.provider, repo: '', reason: i.reason }]
+        : [];
+    return [...(query.data.value?.gaps ?? []), ...tracker];
+  });
   const surface = useTaskAction();
 
   /** Saves one link's edit; an empty text removes it. A failure throws, so the editor stays open. */

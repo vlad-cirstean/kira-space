@@ -84,16 +84,16 @@ jobs:
       - run: bun run verify:packaging
       - run: bun run test:unit
 
-  # Playwright `ui` project of the one config, in 8 shards over one test build.
+  # Playwright `ui` project of the one config, in 10 shards over one test build.
   # fail-fast off: a red shard must not hide the others.
   ui-shard:
-    name: ui (Linux, shard ${{ matrix.shard }}/8)
+    name: ui (Linux, shard ${{ matrix.shard }}/10)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -107,7 +107,7 @@ jobs:
         run: sh scripts/retry.sh 2 180 sh scripts/playwright-install.sh webkit
         timeout-minutes: 7
       - run: bun run build:test
-      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/8
+      - run: bunx playwright test --config=apps/kira-space/playwright.config.ts --project=ui --shard=${{ matrix.shard }}/10
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

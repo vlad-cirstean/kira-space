@@ -72,9 +72,8 @@ test('contract: the Details tab lists every link with kind and status', async ({
   const storedCard = await openCard(page, 'Design notes');
   await expect(storedCard.locator(t('ade-links-card-remove'))).toHaveCount(1);
   await page.keyboard.press('Escape');
-  const gap = page.locator(t('ade-links-gap'));
-  await expect(gap).toHaveCount(1);
-  await expect(gap).toContainText('The Jira command line tool isn’t installed');
+  // The tracker's reason comes from the issue query, not from Artifacts: the list has no gap.
+  await expect(page.locator(t('ade-links-gap'))).toHaveCount(0);
 });
 
 test('contract: submitting a link line sends AddLink with the text as typed', async ({
@@ -115,13 +114,19 @@ test('contract: remove on a stored row sends RemoveArtifact; detected rows have 
 
 test('contract: a failed source shows a warning above the list', async ({ relaunch }) => {
   const res = withIds(recorded('AdeTaskService.Artifacts#gap'));
-  expect(res.gaps).toHaveLength(2);
-  const { window: page } = await openPlan(relaunch, [snapshot(res)]);
+  expect(res.gaps).toHaveLength(1);
+  const { window: page } = await openPlan(relaunch, [
+    snapshot(res),
+    {
+      channel: IPC.adeTaskIssue,
+      response: contract('ade-artifacts', 'IssueTrackerService.TaskIssue#unavailable'),
+    },
+  ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
   const gaps = page.locator(t('ade-links-gap'));
   await expect(gaps).toHaveCount(2);
-  const host = res.gaps.find((g) => !g.reason);
+  const host = res.gaps[0];
   await expect(gaps.first()).toContainText(`Couldn’t read ${host?.source} for ${host?.repo}`);
   await expect(gaps.nth(1)).toContainText('The Jira command line tool isn’t installed');
   await expect(gaps.nth(1)).toContainText('under CLI tools');

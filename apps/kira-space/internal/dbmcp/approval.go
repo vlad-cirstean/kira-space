@@ -157,6 +157,8 @@ const (
 	ApprovalReasonPermission ApprovalReason = "permission"
 	// ApprovalReasonExemption is an agent asking to lift limits for one statement.
 	ApprovalReasonExemption ApprovalReason = "exemption"
+	// ApprovalReasonConfirm is an agent asking for a prompt on an operation its policy allows.
+	ApprovalReasonConfirm ApprovalReason = "confirm"
 )
 
 // ApprovalStage says what the human is asked: whether a statement may run (query) or whether the
@@ -282,8 +284,11 @@ type ApprovalRequest struct {
 	Response   *ApprovalResponse
 	EnqueuedAt time.Time
 	ExpiresAt  time.Time
-	// Reason is "permission" for a mode's prompt verdict, "exemption" for a limit exemption request.
+	// Reason is "permission" for a mode's prompt verdict, "exemption" for a limit exemption request and
+	// "confirm" for an agent's confirm on an allowed operation.
 	Reason ApprovalReason
+	// AgentNote is the agent's confirm sentence; set on pre-run items only.
+	AgentNote string
 	// Plan is the query-plan evidence (M3 §6.1/§6.2), nil when no plan was made (the check is off, or
 	// the statement was not explainable).
 	Plan *ApprovalPlan
