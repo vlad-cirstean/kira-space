@@ -21,7 +21,8 @@ const fixture = (
     | 'proof-explained'
     | 'proof-chart'
     | 'proof-diagram'
-    | 'proof-image',
+    | 'proof-image'
+    | 'proof-stale',
   key: string,
 ): Json => contract(name, key) as Json;
 
@@ -63,6 +64,14 @@ export const CLOSED_AT = Date.UTC(2026, 0, 2, 3, 4, 5);
 
 export const session = (): Json => ({
   ...fixture('proof', 'ProofService.Session'),
+  id: SESSION_ID,
+  taskId: TASK_ID,
+  closedAt: CLOSED_AT,
+});
+/** The proof a window loaded (`loaded`) or the one an accepted edit made of it (`changed`);
+ *  tests/contract/proof-stale.json. */
+export const staleSession = (key: 'loaded' | 'changed'): Json => ({
+  ...fixture('proof-stale', `ProofService.Session#${key}`),
   id: SESSION_ID,
   taskId: TASK_ID,
   closedAt: CLOSED_AT,

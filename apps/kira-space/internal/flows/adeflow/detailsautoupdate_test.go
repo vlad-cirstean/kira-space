@@ -110,9 +110,8 @@ func TestDetailsAutoUpdateIdleSave(t *testing.T) {
 	}
 }
 
-// An agent's accepted edit of the newest proof raises no proof event: only the board push tells the
-// Details panel. An accepted edit rewrites the proof's current rev in place, so the rev stays and the
-// panel must refetch the proofs and each open step.
+// An agent's accepted edit of the newest proof raises one proof event and the board push; the rev bumps.
+// The Details panel refetches the proofs and each open step; an open proof window checks its version.
 func TestDetailsAutoUpdateAgentProofEdit(t *testing.T) {
 	gate := dwHold(t)
 	f := newBRFixture(t, []fakeagent.Action{{WaitFile: gate, Name: "done"}}, onceStepYML, false)
@@ -146,8 +145,8 @@ func TestDetailsAutoUpdateAgentProofEdit(t *testing.T) {
 	})
 	ev := app.Events.WaitAfter(t, mark, adewire.ChannelBoard, duNamesTask(t, f.task.ID), waitFor)
 	app.Contract(t, duScenario, "event:kira:adetask:board#proofEdit", ev.Data, opts...)
-	if got := app.Events.Since(mark, proof.ChannelChanged); len(got) != 0 {
-		t.Fatalf("proof events = %+v, want none for a silent accept", got)
+	if got := app.Events.Since(mark, proof.ChannelChanged); len(got) != 1 {
+		t.Fatalf("proof events = %+v, want one for an accepted edit", got)
 	}
 	app.Contract(t, duScenario, "AdeTaskService.TaskProofs#edited", adewire.TaskProofsResult{Proofs: taskProofs(t, app, f.task.ID)}, opts...)
 	_ = os.WriteFile(gate, nil, 0o644)

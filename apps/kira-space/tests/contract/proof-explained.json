@@ -48,7 +48,8 @@
     "slug": "explained",
     "summary": "Checkout rejects an expired card. The orders table shows declined and no charge row.",
     "taskId": "<id:2>",
-    "taskTitle": "Login form"
+    "taskTitle": "Login form",
+    "version": "<masked>"
   },
   "ProofService.Step#table": {
     "bytes": 209,

@@ -102,7 +102,8 @@
     "slug": "login-page",
     "summary": "",
     "taskId": "<id:2>",
-    "taskTitle": "Login form"
+    "taskTitle": "Login form",
+    "version": "<masked>"
   },
   "ProofService.Step#jpeg": {
     "bytes": 144,
