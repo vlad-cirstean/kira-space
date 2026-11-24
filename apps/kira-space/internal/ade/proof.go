@@ -25,6 +25,7 @@ type ProofLinks interface {
 	RaiseReady(id string)
 	RaiseReview(id string)
 	WithdrawReview(id string)
+	NotifyChanged(id string)
 	SetOnEditResolved(fn func(sessionID string, accepted bool) error)
 	SetOnDelete(fn func(taskID, slug string) error)
 }
@@ -119,6 +120,14 @@ func (e detailsEvents) ProofReview(_ context.Context, taskID, slug string, pendi
 		links.RaiseReview(id)
 	} else {
 		links.WithdrawReview(id)
+	}
+	return nil
+}
+
+// ProofChanged tells the proof windows that a proof's content changed (taskfiles.ProofEvents).
+func (e detailsEvents) ProofChanged(_ context.Context, sessionID string) error {
+	if links := e.b.proofLinks(); links != nil {
+		links.NotifyChanged(sessionID)
 	}
 	return nil
 }
