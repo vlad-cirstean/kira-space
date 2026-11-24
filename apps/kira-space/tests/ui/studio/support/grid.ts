@@ -1,4 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
+import { DB_PATH, ORDERS_PATH, SCHEMA_PATH } from '../../../screenshots/studio/support/acme';
+import { expect } from '../../fixtures';
+import { connectionRow, expandRow, findRow, openRowMenu } from './tree';
 
 // The grid locator helpers every grid-touching spec used to redefine locally,
 // resolved once for the SlickGrid DOM shape (the only grid engine this app has — the user's own
@@ -173,4 +176,20 @@ export function mutationsForScroll(
     },
     { deltaPx, quietFrames, timeoutMs },
   );
+}
+
+/** Connect the ACME connection, expand to the orders table and open its grid. */
+export async function openGrid(page: Page): Promise<void> {
+  const row = connectionRow(page);
+  await expect(row).toBeVisible();
+  await openRowMenu(page, '');
+  await page.click('[data-testid="menu-item-connect"]');
+  await expect(row.locator('.status-dot')).toHaveAttribute('data-status', 'connected', {
+    timeout: 10_000,
+  });
+  await expandRow(page, '');
+  await expandRow(page, DB_PATH);
+  await expandRow(page, SCHEMA_PATH);
+  await (await findRow(page, ORDERS_PATH)).dblclick();
+  await expect(page.locator('[data-testid="grid-row"]').first()).toBeVisible({ timeout: 15_000 });
 }
