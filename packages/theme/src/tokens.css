@@ -26,6 +26,7 @@
   --kira-toggle-off-edge: #3e3e45; /* off border; 1.4:1 on field, user choice (P730) */
   --kira-toggle-knob: #6b6b73; /* off switch knob (P730) */
   --kira-progress-fill: #b4b4bc; /* progress indicator (P730) */
+  --kira-grid-line: #4a4a52; /* proof window grids: cell and row lines that read apart (P748) */
   --kira-scrollbar: var(--kira-border);
   --kira-scrollbar-hover: var(--kira-fg-subtle);
   --kira-scrollbar-active: var(--kira-fg-subtle);

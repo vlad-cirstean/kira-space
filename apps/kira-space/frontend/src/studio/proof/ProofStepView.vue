@@ -184,6 +184,7 @@ onBeforeUnmount(() => {
               path=""
               :view-state="view.seed.value"
               auto-expand
+              lined
               @update:view-state="view.setResult"
               @ready="resultReady = true"
             />

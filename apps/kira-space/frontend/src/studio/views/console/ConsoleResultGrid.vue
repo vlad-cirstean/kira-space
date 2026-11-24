@@ -8,7 +8,7 @@ import { ICON } from '@theme/icons';
 import { rowVariants } from '@theme/lib/rowVariants';
 import { cn } from '@theme/lib/utils';
 import { useListNavigation } from '@workbench/behaviour/listNavigation';
-import { useVirtualRows, VIRTUAL_ROW_CLASS } from '@workbench/behaviour/virtualRows';
+import { useVirtualRows } from '@workbench/behaviour/virtualRows';
 import { useRowHeight } from '@workbench/lib/rowHeight';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, watch } from 'vue';
@@ -34,6 +34,7 @@ import {
   setVisibleWindow,
 } from './resultPages';
 import type { ResultViewState } from './resultViewState';
+import { kvRowClass, virtualRowClass } from './rowLines';
 import { type Match, matchedRows, searchState } from './search';
 import { useConsoleViewStore } from './state';
 import { useDocumentResultHeights } from './useDocumentResultHeights';
@@ -61,8 +62,10 @@ const props = defineProps<{
   /** Opt-in view-state persistence (the proof window): restored on mount, reported on every
    *  scroll, click and expansion. `undefined` for the console, which keeps none. */
   viewState?: ResultViewState | null;
-  /** Proof window: every document opens expanded on mount and key-value rows grow to their content. */
+  /** Proof window: every document opens expanded on mount, key-value rows grow to their content. */
   autoExpand?: boolean;
+  /** Proof window: visible row and cell lines. */
+  lined?: boolean;
 }>();
 const emit = defineEmits<{
   'update:viewState': [state: ResultViewState];
@@ -230,19 +233,16 @@ function collapseAll(): void {
 function measureKvRow(el: unknown): void {
   if (el instanceof HTMLElement) kvVirtual.virtualizer.value.measureElement(el);
 }
-
 function kvRowAt(row: number) {
   return keyValueRow(props.pageKey, row) ?? { field: '', value: '' };
 }
 
-// Local to this one result panel (highlight only) — the actual cross-view selection lives in
-// cellSelectionState.current (cellSelection.ts), which this publishes into. Two different
-// result panels can each show their own last-clicked cell highlighted at once; only whichever
-// published most recently is what the cell editor panel displays.
+// Local highlight only: the cross-view selection lives in cellSelectionState.current
+// (cellSelection.ts), which this publishes into; the latest publisher feeds the cell editor panel.
 const selected = ref<{ row: number; col: number } | null>(null);
 
-// Restoring a saved state: expansion goes into the console store before the first row renders; the
-// highlighted row is a local ref, so it is set here too. Scroll is applied once mounted (below).
+// Restore saved state: expansion into the console store before the first row renders, the
+// highlighted row into the local ref. Scroll is applied once mounted (below).
 const saved = props.viewState;
 if (props.autoExpand && page.value?.kind === 'document') openAllDocs();
 if (saved) {
@@ -460,6 +460,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
       :tab-id="tabId"
       :connection-id="connectionId"
       :path="path"
+      :lined="lined"
       class="flex-1 min-h-0"
       :view-state="viewState"
       @copy-error="onCopyError"
@@ -476,12 +477,11 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
       @scroll="onDocScroll"
     >
       <div class="relative" :style="{ height: `${docVirtual.totalSize.value}px` }">
-        <!-- P48 F10-F12: this read-only copy of DocumentRow (no edit/delete affordance) wants no
-             pointer cursor outside its head; DocumentRow.vue itself doesn't opt into that. -->
+        <!-- P48 F10-F12: read-only DocumentRow copy, no pointer cursor outside its head. -->
         <DocumentRow
           v-for="{ vi, view } in visibleDocRows"
           :key="String(vi.key)"
-          :class="[VIRTUAL_ROW_CLASS, 'cursor-default']"
+          :class="virtualRowClass(lined, 'cursor-default')"
           data-testid="console-result-doc-row"
           :data-row="view.index"
           :view="view"
@@ -533,7 +533,7 @@ function onKeyValueRowContextMenuFromEvent(e: MouseEvent): void {
           class="flex w-(--total-width)"
           data-testid="console-result-kv-row"
           :data-row="rowIndices[vi.index]"
-          :class="VIRTUAL_ROW_CLASS"
+          :class="kvRowClass(lined)"
           :ref="autoExpand ? measureKvRow : undefined"
           :data-index="vi.index"
           :style="
