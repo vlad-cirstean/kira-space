@@ -10,7 +10,7 @@ Code review at chapter end: 1 round.
 | P747 | Run restarted after app restart: fresh script timeout | Done |
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Done |
 | P749 | Proof window: images fit the window, larger default size | Done |
-| P750 | Details panel and proofs: auto-update on disk changes | Todo |
+| P750 | Details panel and proofs: auto-update on disk changes | Done |
 | P751 | Drop issue and change request viewer windows and acli support | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Chapter close | Todo |
@@ -59,6 +59,13 @@ checks the cascade wrap at the proof size. Plan: `plans/P749.md`.
 Details panel, and the proofs inside it, do not refresh when files change on disk. Plan traces the
 watch and invalidation path (file watcher, bridge event, TanStack Query) and fixes the broken link.
 Flow test asserts the event, UI spec asserts the refresh.
+
+Result: two broken links fixed. Backend: nothing watched a task folder unless an agent ran on it; an idle
+watcher on the task files root now pushes the board for any save, skipping tasks with a live agent
+watcher. Frontend: a board push never refreshed proofs; it now invalidates the task proofs and open
+proof steps (an accepted edit keeps `rev`, so steps are invalidated by prefix). Flow tests plus a UI
+spec under contract `ade-details-autoupdate`. Open: an open proof window can still go stale after an
+accepted agent edit (no `kira:proof:changed`). Plan: `plans/P750.md`.
 
 ## P751
 
