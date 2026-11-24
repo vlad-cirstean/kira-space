@@ -295,7 +295,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
     <template #header>
       <DetailHeader
         flush
-        class="px-3 pt-2 pb-0.75"
+        class="px-3 pt-2 pb-1"
         data
         wrap
         title-testid="ade-panel-title"
