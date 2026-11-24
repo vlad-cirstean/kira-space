@@ -14,7 +14,8 @@ Code review at chapter end: 1 round.
 | P751 Part 1 | Drop the issue and change request viewer windows; links open in the browser | Todo |
 | P751 Part 2 | Drop acli support and the issue tracker | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
-| P753 | Chapter close | Todo |
+| P753 | Proof window shows that its proof is stale | Todo |
+| P754 | Chapter close | Todo |
 
 ## P747
 
@@ -99,5 +100,15 @@ and the task title input uses a new `fluid` size (min height, ellipsis). UI spec
 at two widths and two font sizes. Plan: `plans/P752.md`.
 
 ## P753
+
+An open proof window shows when its proof is stale: the proof changed after the window loaded it (an
+agent's accepted edit of the newest proof raises no `kira:proof:changed`, only a board push; found in
+P749's and P750's plans, `taskfiles/proofunit.go` `unitApply` accepted branch). The window shows a
+clear stale marker and an action to reload; it does not reload on its own, so what the owner reads or
+screenshots never changes underneath. Plan picks the signal (a proof changed event on every accepted
+edit, or a revision compare on the board push) and states the cost. Flow test asserts the signal, UI
+spec asserts marker and reload.
+
+## P754
 
 Chapter close, by hand per `CLAUDE.md` "Closing a chapter".
