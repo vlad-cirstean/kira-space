@@ -6,7 +6,6 @@ import InlineState from '@theme/components/InlineState.vue';
 import KeyValueList from '@theme/components/KeyValueList.vue';
 import SectionHeading from '@theme/components/SectionHeading.vue';
 import TextTooltip from '@theme/components/TextTooltip.vue';
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
 import { Badge } from '@theme/components/ui/badge';
 import { Button } from '@theme/components/ui/button';
@@ -22,7 +21,6 @@ import Identifier from '@workbench/components/Identifier.vue';
 import { useContextMenuStore } from '@workbench/state/contextMenu';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { control } from '../../../bridge/control';
-import { useOpenChangeRequest } from '../../../hostview/queries';
 import { useRepos } from '../../../repo/state/reposQueries';
 import AdeForcePushDialog from '../AdeForcePushDialog.vue';
 import { useRunAutomation } from '../automation/useRunAutomation';
@@ -71,7 +69,6 @@ const contextMenu = useContextMenuStore();
 const surface = useTaskAction();
 const setupError = surface.error;
 const forcePush = ref(false);
-const openView = useOpenChangeRequest();
 
 const branch = computed(() => props.row.branch);
 const graph = computed(() => props.model.view.graph);
@@ -196,12 +193,9 @@ watch(
   },
   { immediate: true },
 );
-function viewChangeRequest(url: string): void {
-  markItemSeen(`cr:${props.row.id}`);
-  fireAndForget(openView.mutateAsync(url), 'hostView.open');
-}
 function open(url: string, e: MouseEvent): void {
   e.preventDefault();
+  markItemSeen(`cr:${props.row.id}`);
   fireAndForget(control.openExternal(url), 'ade.branch');
 }
 
@@ -461,13 +455,6 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
               >#{{ changeRequest.number }}</a
             >
             <span class="min-w-0 flex-1 truncate text-kira-md">{{ changeRequest.title }}</span>
-            <TooltipIconButton
-              icon="eye"
-              :label="t('space.ade.link.view.tooltip', { label: words.changeRequestShort })"
-              class="shrink-0"
-              data-testid="ade-pr-view"
-              @click="viewChangeRequest(changeRequest.url)"
-            />
             <CopyIconButton
               :text="changeRequest.url"
               :label="t('space.ade.link.copy.tooltip', { label: words.changeRequestShort })"

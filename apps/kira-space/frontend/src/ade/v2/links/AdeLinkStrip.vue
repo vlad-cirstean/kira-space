@@ -10,7 +10,6 @@ import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
 import { useEventListener } from '@vueuse/core';
 import QueryState from '@workbench/components/QueryState.vue';
-import { isPrimaryModifier, primaryModifierName } from '@workbench/shortcuts/keys';
 import { RovingFocusGroup, RovingFocusItem } from 'reka-ui';
 import { nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 import { gapText } from '../artifacts/gapText';
@@ -22,8 +21,7 @@ import { CATEGORY_ICON, CATEGORY_LABEL, type LinkItem } from './linkGroups';
 import { useTaskLinks } from './useTaskLinks';
 
 // The task's links as one strip: a line per non-empty category (Issues, Change requests, Misc, Related) of 18px
-// pills. A pill click opens the link in the app (host view) where it can, else in the browser;
-// the primary modifier plus click opens it in the browser. Right-click, Space or Alt+Down open its card; the `+` opens the add popover. `edit` changes links (Details), `add` only
+// pills. A pill click opens the link in the browser. Right-click, Space or Alt+Down open its card; the `+` opens the add popover. `edit` changes links (Details), `add` only
 // adds (handoff dialogs), `view` is read-only. Pills share one tab stop; arrows move between them.
 const props = defineProps<{
   task: Task;
@@ -45,7 +43,6 @@ const openKey = ref<string | null>(null);
 const editingKey = ref<string | null>(null);
 const addOpen = ref(false);
 const hintId = useId();
-const modifier = primaryModifierName();
 
 const canAdd = () => props.mode !== 'view';
 const canEdit = (item: LinkItem) =>
@@ -57,11 +54,7 @@ function openCard(item: LinkItem): void {
 
 // Opens the link, else its card: nothing is left to do for a link with no target.
 function openItem(e: MouseEvent | KeyboardEvent, item: LinkItem): void {
-  const opened = links.openLink(item, {
-    external: isPrimaryModifier(e),
-    onRefused: () => openCard(item),
-  });
-  if (!opened) openCard(item);
+  if (!links.openLink(item)) openCard(item);
 }
 
 // No trigger returns focus on close: put it back on the pill, unless a pointer outside closed it.
@@ -196,7 +189,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
       class="sr-only"
       data-testid="ade-links-hint"
       >{{
-        t('space.ade.links.pill.hint', { modifier })
+        t('space.ade.links.pill.hint')
       }}</span
     >
     <RovingFocusGroup

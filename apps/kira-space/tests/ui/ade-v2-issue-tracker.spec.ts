@@ -114,33 +114,17 @@ test('contract: a stale issue line shows at once and refreshes in place', async 
   expect(calls(control, IPC.adeTaskIssue)).toHaveLength(2);
 });
 
-test('contract: View issue opens the issue view for the task link', async ({ relaunch }) => {
+test('contract: clicking the Jira pill opens the link in the browser', async ({ relaunch }) => {
   const fx = issue('IssueTrackerService.TaskIssue');
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskIssue, response: fx },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-x', opened: true } },
-  ]);
-  await openTask(page, 'T_alerts');
-  await page.locator(t('ade-panel-tab-details')).click();
-  await openCard(page, 'PAY-130');
-  await page.locator(t('ade-task-issue-view')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({
-    url: 'https://acme.atlassian.net/browse/PAY-130',
-  });
-});
-
-test('contract: clicking the Jira pill opens the issue view', async ({ relaunch }) => {
-  const fx = issue('IssueTrackerService.TaskIssue');
-  const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskIssue, response: fx },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-x', opened: true } },
+    { channel: IPC.linkOpenExternal, response: null },
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
   await openIn(page, 'PAY-130');
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({
     url: 'https://acme.atlassian.net/browse/PAY-130',
   });
   await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
@@ -161,7 +145,7 @@ test('clicking the Jira pill marks its pending issue update seen', async ({ rela
       response: { updates: [{ ...update, taskId: 'T_alerts', itemKey: 'issue', branchId: '' }] },
     },
     { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-x', opened: true } },
+    { channel: IPC.linkOpenExternal, response: null },
   ]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();

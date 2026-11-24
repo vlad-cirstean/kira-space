@@ -587,7 +587,7 @@ test('agent-made branches carry a sparkle', async ({ relaunch }) => {
   await expect(page.locator('[data-testid="ade-panel-agent"]')).toBeVisible();
 });
 
-test('a change request link opens the in-app PR view', async ({ relaunch }) => {
+test('a change request link opens in the browser', async ({ relaunch }) => {
   const url = 'https://github.com/acme/web-app/pull/7';
   const board = adeBoard((b) => {
     const task = b.tasks.find((x) => x.id === 'T_bill');
@@ -598,14 +598,14 @@ test('a change request link opens the in-app PR view', async ({ relaunch }) => {
   });
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: board },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-1', opened: true } },
+    { channel: IPC.linkOpenExternal, response: null },
   ]);
   await openTask(page, 'T_bill');
   await page.locator('[data-testid="ade-panel-tab-details"]').click();
   const card = await openCard(page, 'acme/web-app#7');
   await card.locator('[data-testid="ade-links-card-title"]').click();
   await expect
-    .poll(() => control.log().filter((e) => e.channel === IPC.hostViewOpen))
+    .poll(() => control.log().filter((e) => e.channel === IPC.linkOpenExternal))
     .toHaveLength(1);
-  expect(control.log().find((e) => e.channel === IPC.hostViewOpen)?.args).toEqual({ url });
+  expect(control.log().find((e) => e.channel === IPC.linkOpenExternal)?.args).toEqual({ url });
 });

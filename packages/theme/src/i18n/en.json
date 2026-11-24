@@ -9240,9 +9240,6 @@
       "link": {
         "copy": {
           "tooltip": "Copy {label} link"
-        },
-        "view": {
-          "tooltip": "View {label} in Kira"
         }
       },
       "links": {
@@ -9278,7 +9275,7 @@
           "aria": "Link kind"
         },
         "pill": {
-          "hint": "Enter opens the link. {modifier}+Enter opens it in the browser. Space shows its details."
+          "hint": "Enter opens the link in the browser. Space shows its details."
         },
         "source": {
           "notes": {
@@ -11848,9 +11845,6 @@
             "hint": "Saved copy from {when}. Couldn’t update it: {reason}."
           },
           "hint": "Saved copy from {when}. Updating."
-        },
-        "view": {
-          "tooltip": "View issue"
         }
       },
       "labels": {

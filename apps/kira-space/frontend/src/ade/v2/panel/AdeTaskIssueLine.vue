@@ -1,22 +1,16 @@
 <script setup lang="ts">
-import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
 import { issueTone, TONE_BADGE } from '@theme/lib/statusTone';
 import { cn } from '@theme/lib/utils';
-import { fireAndForget } from '@workbench/bridge/fireAndForget';
 import { computed } from 'vue';
-import { useOpenHostView } from '../../../hostview/queries';
 import { gapText } from '../artifacts/gapText';
 import { useTaskIssue } from '../queries';
-import { useMarkTrackedSeen } from '../updates/queries';
-import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { ArtifactGap } from '../wire';
 import { rowMeta } from './adeRow';
 
-// The linked issue as its tracker reports it, inline in the Jira link card: title, status, Jira's PR count and a view
-// button.
+// The linked issue as its tracker reports it, inline in the Jira link card: title, status and Jira's PR count.
 // The tracker CLI owns the credentials; a failure reads as a line of text, never an error toast.
 const props = defineProps<{ taskId: string; link: string }>();
 const query = useTaskIssue(
@@ -36,19 +30,6 @@ const gap = computed<ArtifactGap | null>(() => {
   const source = i.provider;
   return i.reason ? { source, repo: '', reason: i.reason } : null;
 });
-
-const openView = useOpenHostView();
-
-const { pending } = useTaskUpdates();
-const markSeen = useMarkTrackedSeen();
-
-function viewIssue(): void {
-  if (pending(props.taskId, 'issue'))
-    markSeen.mutate({ taskId: props.taskId, itemKeys: ['issue'] });
-  // link is `<key> <url>`; the view takes the link when there is one, else the key.
-  const [key = '', url = ''] = props.link.trim().split(/\s+/);
-  fireAndForget(openView.mutateAsync(url || key), 'ade.taskIssue');
-}
 </script>
 
 <template>
@@ -86,14 +67,6 @@ function viewIssue(): void {
             : t('space.ade.taskTab.issueLine.prsNone.label')
         }}
       </span>
-      <TooltipIconButton
-        v-if="issue.title && !issue.reason"
-        icon="eye"
-        :label="t('space.hostView.issue.view.tooltip')"
-        class="shrink-0"
-        data-testid="ade-task-issue-view"
-        @click="viewIssue"
-      />
       <span v-if="gap" class="basis-full text-kira-sm text-warn" data-testid="ade-task-issue-gap">{{
         gapText(gap)
       }}</span>

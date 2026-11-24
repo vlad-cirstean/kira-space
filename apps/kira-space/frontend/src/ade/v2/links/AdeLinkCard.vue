@@ -7,7 +7,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
 import { TONE_BADGE } from '@theme/lib/statusTone';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
-import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import {
   artifactKindLabel,
   artifactStatusLabel,
@@ -52,10 +51,10 @@ const kindItems = KINDS.map((k) => ({
 function onKind(value: string): void {
   void props.links.recategorise(props.item, value as Artifact['kind']);
 }
-// The title opens like its pill: primary-modifier click opens the browser.
+// The title opens like its pill.
 function openTitle(e: MouseEvent): void {
   e.preventDefault();
-  props.links.openLink(props.item, { external: isPrimaryModifier(e) });
+  props.links.openLink(props.item);
 }
 </script>
 

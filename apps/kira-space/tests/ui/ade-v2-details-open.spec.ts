@@ -44,7 +44,6 @@ function snapshots() {
     { channel: IPC.adeTaskBoard, response: board },
     { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] } },
     { channel: IPC.linkOpenExternal, response: null },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-1', opened: true } },
   ];
 }
 
@@ -64,27 +63,15 @@ test('contract: each link card opens in the browser', async ({ relaunch }) => {
     await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(i + 1);
     expect(calls(control, IPC.linkOpenExternal)[i]?.args).toEqual(openArgs(key));
   }
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(0);
 });
 
-test('the change request title still opens the in-app view', async ({ relaunch }) => {
+test('the change request title opens the browser', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, snapshots());
   await openDetails(page);
   const card = await openCard(page, 'api!8');
   await card.locator(t('ade-links-card-title')).click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({ url: links.hostUrl });
-  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(0);
-});
-
-test('Cmd-click on the change request title opens the browser', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, snapshots());
-  await openDetails(page);
-  const card = await openCard(page, 'api!8');
-  await card.locator(t('ade-links-card-title')).click({ modifiers: ['Meta'] });
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
   expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: links.hostUrl });
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(0);
 });
 
 test('a link without a URL has no open button', async ({ relaunch }) => {

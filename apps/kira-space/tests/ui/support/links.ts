@@ -20,13 +20,9 @@ export async function openCard(scope: Page | Locator, text: string): Promise<Loc
   return card;
 }
 
-/** Clicks the pill; `external` holds the primary modifier (Meta: the UI harness runs a macOS UA). */
-export async function openIn(
-  scope: Page | Locator,
-  text: string,
-  opts: { external?: boolean } = {},
-): Promise<void> {
-  await pill(scope, text).click(opts.external ? { modifiers: ['Meta'] } : undefined);
+/** Clicks the pill: opens the link in the browser. */
+export async function openIn(scope: Page | Locator, text: string): Promise<void> {
+  await pill(scope, text).click();
 }
 
 /** Opens the add popover with `+`, types the text and presses Enter. */
