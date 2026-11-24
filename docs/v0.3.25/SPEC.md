@@ -12,7 +12,7 @@ Code review at chapter end: 1 round.
 | P749 | Proof window: images fit the window, larger default size | Todo |
 | P750 | Details panel and proofs: auto-update on disk changes | Todo |
 | P751 | Drop issue and change request viewer windows and acli support | Todo |
-| P752 | Task detail: title no longer overlaps the colored bar | Todo |
+| P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Chapter close | Todo |
 
 ## P747
@@ -69,6 +69,12 @@ implementation is not what the owner wants.
 The task detail title overlaps the colored bar right after it. Fix the layout so they never overlap,
 at every title length and window width. Plan finds the cause (fixed height, missing wrap or clamp,
 negative margin) and the fix in Tailwind utilities. UI spec asserts no overlap with a long title.
+
+Result: the colored line is absolutely positioned and took no space; the header's 3px bottom padding
+equalled its height, so the title sat flush on it, and the fixed-height title input overflowed at
+larger app fonts. The header wrapper now reserves the line's space, task and branch headers pad 4px,
+and the task title input uses a new `fluid` size (min height, ellipsis). UI spec measures the gap
+at two widths and two font sizes. Plan: `plans/P752.md`.
 
 ## P753
 
