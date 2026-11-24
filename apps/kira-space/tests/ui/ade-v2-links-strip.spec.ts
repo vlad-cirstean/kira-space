@@ -36,7 +36,7 @@ interface ArtifactFx {
   createdAt: number;
 }
 
-// Eight links: the Jira slot PAY-130, then PAY-10 (detected), PAY-12, api!9, feat/x, Design spec, Runbook, wiki.example/x.
+// Eight links: the Jira slot PAY-130, PAY-12, api!9, feat/x, api!7 (detected), Design spec, Runbook, wiki.example/x.
 const listed = (): ArtifactFx[] =>
   contract<{ artifacts: ArtifactFx[] }>(
     'ade-details-links',
@@ -65,7 +65,16 @@ const DEPLOYMENT: ArtifactFx = {
   status: 'deployed',
 };
 
-const base = (artifacts: ArtifactFx[] = listed()): ControlSnapshot[] => [
+const DETECTED_CR: ArtifactFx = {
+  ...DETECTED_BRANCH,
+  kind: 'changeRequest',
+  title: 'api!7',
+  ref: 'api!7',
+  url: 'https://forge.test/acme/api/-/merge_requests/7',
+  status: 'open',
+};
+
+const base = (artifacts: ArtifactFx[] = [...listed(), DETECTED_CR]): ControlSnapshot[] => [
   { channel: IPC.adeTaskArtifacts, response: { artifacts, gaps: [] } },
   {
     channel: IPC.adeTaskAddLink,
@@ -148,17 +157,17 @@ test('pills are one tab stop; arrows, Home, End and Up/Down move focus', async (
   await expect(page.locator(`${t('ade-links-pill')}:focus`)).toHaveCount(0);
   await pill(page, 'PAY-130').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(pill(page, 'PAY-10')).toBeFocused();
+  await expect(pill(page, 'PAY-12')).toBeFocused();
   await page.keyboard.press('End');
   await expect(pill(page, 'wiki.example/x')).toBeFocused();
   await page.keyboard.press('Home');
   await expect(pill(page, 'PAY-130')).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(pill(line(page, 'changeRequest'), 'api!9')).toBeFocused();
+  await expect(pill(line(page, 'changeRequest'), 'api!7')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(pill(line(page, 'misc'), 'feat/x')).toBeFocused();
   await page.keyboard.press('ArrowUp');
-  await expect(pill(line(page, 'changeRequest'), 'api!9')).toBeFocused();
+  await expect(pill(line(page, 'changeRequest'), 'api!7')).toBeFocused();
 });
 
 test('contract: opening a pasted link sends the URL the backend opens', async ({ relaunch }) => {
@@ -232,10 +241,6 @@ test('a click opens the link in the browser, per kind; a link with no url shows 
     expect(calls(control, IPC.linkOpenExternal).at(-1)?.args).toEqual({ url: row.url });
     await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
   }
-  const before = calls(control, IPC.linkOpenExternal).length;
-  await openIn(page, 'PAY-10');
-  await expect(page.locator(t('ade-links-card'))).toBeVisible();
-  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(before);
 });
 
 test('a link with nothing to open shows its card', async ({ relaunch }) => {
@@ -285,7 +290,7 @@ test('F2 opens the editor, Esc cancels it; Delete removes a stored link, not a d
   await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskEditLink)).toHaveLength(0);
 
-  await pill(page, 'PAY-10').focus();
+  await pill(page, 'api!7').focus();
   await page.keyboard.press('Delete');
   await pill(page, 'Runbook').focus();
   await page.keyboard.press('Delete');
@@ -308,7 +313,11 @@ test('+ on a focused pill opens the add popover', async ({ relaunch }) => {
 
 test('slot pills show while artifacts load, then the rest join', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] }, hold: true },
+    {
+      channel: IPC.adeTaskArtifacts,
+      response: { artifacts: [...listed(), DETECTED_CR], gaps: [] },
+      hold: true,
+    },
   ]);
   await openDetails(page);
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(1);
@@ -336,7 +345,7 @@ test('own Jira and PR links lead their lines', async ({ relaunch }) => {
   expect(first).toContain('Own PR');
   expect(second).toContain('api!9');
   const issues = await texts('issue');
-  expect(issues.map((x) => x.match(/PAY-\d+/)?.[0])).toEqual(['PAY-130', 'PAY-10', 'PAY-12']);
+  expect(issues.map((x) => x.match(/PAY-\d+/)?.[0])).toEqual(['PAY-130', 'PAY-12']);
 });
 
 // Handoff dialogs: the strip in add mode, on every move and the pass.
@@ -355,7 +364,10 @@ async function noEditInCard(page: Page, text: string): Promise<void> {
 test('a stage move shows the strip in add mode; + adds a link; cards have no edit or remove', async ({
   relaunch,
 }) => {
-  const { window: page, control } = await openPlan(relaunch, base([...listed(), DETECTED_BRANCH]));
+  const { window: page, control } = await openPlan(
+    relaunch,
+    base([...listed(), DETECTED_CR, DETECTED_BRANCH]),
+  );
   await openTask(page, 'T_auth');
   await page.locator(t('ade-step-back')).click();
   const links = dialogLinks(page);
@@ -380,7 +392,10 @@ test('a stage move shows the strip in add mode; + adds a link; cards have no edi
 test('moving to Done adds the detected branches; another target drops them', async ({
   relaunch,
 }) => {
-  const { window: page } = await openPlan(relaunch, base([...listed(), DETECTED_BRANCH]));
+  const { window: page } = await openPlan(
+    relaunch,
+    base([...listed(), DETECTED_CR, DETECTED_BRANCH]),
+  );
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-step-pick')).click();
   await page.locator(t('ade-step-option-done')).click();

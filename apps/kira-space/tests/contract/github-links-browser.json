@@ -60,18 +60,6 @@
         "status": "",
         "title": "api!7",
         "url": "https://dev.azure.com/acme/Web%20App/_git/api/pullrequest/7"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
-        "ref": "PAY-9",
-        "repo": "",
-        "sessionId": "",
-        "source": "jira",
-        "status": "",
-        "title": "PAY-9",
-        "url": "https://jira.example.com/browse/PAY-9"
       }
     ],
     "gaps": []

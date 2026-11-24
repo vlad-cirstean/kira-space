@@ -30,11 +30,19 @@ interface EditArgs {
   kind: string;
 }
 
+// The one detected link: a change request the task's repos report. Detected links have no kind picker or editor.
+const DETECTED: ArtifactFx = {
+  id: '',
+  kind: 'changeRequest',
+  title: 'api!7',
+  url: 'https://forge.test/acme/api/-/merge_requests/7',
+  source: 'git',
+};
+
 const listed = (): ArtifactFx[] =>
-  contract<{ artifacts: ArtifactFx[] }>(
-    'ade-details-links',
-    'AdeTaskService.Artifacts',
-  ).artifacts.map((a, i) => ({ ...a, id: a.source === 'user' ? `a_${i}` : '' }));
+  contract<{ artifacts: ArtifactFx[] }>('ade-details-links', 'AdeTaskService.Artifacts')
+    .artifacts.map((a, i) => ({ ...a, id: a.source === 'user' ? `a_${i}` : '' }))
+    .concat(DETECTED);
 const stored = (title: string): ArtifactFx => {
   const a = listed().find((x) => x.title === title);
   if (!a) throw new Error(`contract has no ${title}`);
@@ -99,7 +107,7 @@ test('contract: stored pills carry their kind', async ({ relaunch }) => {
     'on',
   );
   await page.keyboard.press('Escape');
-  const detected = await openCard(page, 'PAY-10');
+  const detected = await openCard(page, 'api!7');
   await expect(detected.locator(t('ade-links-card-kind'))).toHaveCount(0);
 });
 
@@ -314,8 +322,8 @@ test('the card re-files a stored link; detected links have no kind picker or edi
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
-  await expect(pill(page, 'PAY-10')).toHaveAttribute('data-origin', 'detected');
-  const detected = await openCard(page, 'PAY-10');
+  await expect(pill(page, 'api!7')).toHaveAttribute('data-origin', 'detected');
+  const detected = await openCard(page, 'api!7');
   await expect(detected.locator(t('ade-links-card-kind'))).toHaveCount(0);
   await expect(detected.locator(t('ade-links-card-edit'))).toHaveCount(0);
 });

@@ -67,8 +67,7 @@ var artifactKindOrder = map[string]int{
 
 // builtinArtifactSources is the registration order: task links, repos, stored rows, links found in notes.
 func (b *TaskBoard) builtinArtifactSources() []ArtifactSource {
-	out := []ArtifactSource{taskLinkSource{b}, repoSource{b}}
-	return append(out, storedSource{b}, notesSource{b})
+	return []ArtifactSource{taskLinkSource{b}, repoSource{b}, storedSource{b}, notesSource{b}}
 }
 
 // TaskArtifacts lists the task's artifacts (archived tasks included), merged, deduped and sorted. A

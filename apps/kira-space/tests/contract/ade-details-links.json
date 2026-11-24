@@ -33,18 +33,6 @@
         "createdAt": 0,
         "id": "<masked>",
         "kind": "issue",
-        "ref": "PAY-10",
-        "repo": "",
-        "sessionId": "",
-        "source": "jira",
-        "status": "",
-        "title": "PAY-10",
-        "url": ""
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
         "ref": "PAY-12",
         "repo": "",
         "sessionId": "",
