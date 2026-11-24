@@ -11,6 +11,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 )
 
+var _ githost.ChangeRequestLinks = (*Provider)(nil)
+
 var linkNamePattern = regexp.MustCompile(`^[\w.-]+$`)
 
 // pullTabs are the tabs GitHub serves under a pull request; true when the tab takes sub-paths
@@ -129,4 +131,13 @@ func (p *Provider) ChangeRequestHead(ctx context.Context, r githost.Repo, number
 
 func (p *Provider) ChangeRequestRef(number int) string {
 	return fmt.Sprintf("refs/pull/%d/head", number)
+}
+
+// ParseChangeRequestLink reads a pull request link; issue and tree links miss.
+func (p *Provider) ParseChangeRequestLink(ctx context.Context, raw string) (githost.Repo, int, bool) {
+	l, ok := p.ParseBranchLink(ctx, raw)
+	if !ok || l.Number <= 0 || l.Issue {
+		return githost.Repo{}, 0, false
+	}
+	return l.Repo, l.Number, true
 }

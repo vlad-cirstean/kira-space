@@ -465,7 +465,7 @@ func Build(opts Options) (*Wired, error) {
 	if opts.Clock != nil {
 		w.HostView.Now = opts.Clock.Now
 	}
-	w.Capture = &bridge.CaptureService{Deps: deps, HostView: w.HostView, Windows: repositories.Windows}
+	w.Capture = &bridge.CaptureService{Deps: deps, Trackers: git.trackers, Windows: repositories.Windows}
 	w.Link = &bridge.LinkService{Browser: opts.Browser}
 	w.Settings = &bridge.SettingsService{Deps: deps}
 	w.Layout = &bridge.LayoutService{Deps: deps}

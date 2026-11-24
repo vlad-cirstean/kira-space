@@ -51,6 +51,7 @@ var (
 
 	_ githost.ChangeRequestReviews      = (*Forge)(nil)
 	_ githost.ChangeRequestDetails      = (*Forge)(nil)
+	_ githost.ChangeRequestLinks        = (*Forge)(nil)
 	_ githost.ChangeRequestComments     = (*Forge)(nil)
 	_ githost.ChangeRequestLineComments = (*Forge)(nil)
 	_ githost.CLISetup                  = (*Forge)(nil)

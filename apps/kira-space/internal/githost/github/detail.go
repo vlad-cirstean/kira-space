@@ -146,15 +146,6 @@ type detailData struct {
 	RateLimit gqlRateLimit `json:"rateLimit"`
 }
 
-// ParseChangeRequestLink reads a pull request link; issue and tree links miss.
-func (p *Provider) ParseChangeRequestLink(ctx context.Context, raw string) (githost.Repo, int, bool) {
-	l, ok := p.ParseBranchLink(ctx, raw)
-	if !ok || l.Number <= 0 || l.Issue {
-		return githost.Repo{}, 0, false
-	}
-	return l.Repo, l.Number, true
-}
-
 // ChangeRequestDetail reads one pull request with one GraphQL call.
 func (p *Provider) ChangeRequestDetail(ctx context.Context, r githost.Repo, number int) (githost.ChangeRequestDetail, githost.Status) {
 	repo := Repo(r)

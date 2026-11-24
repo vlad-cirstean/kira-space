@@ -212,6 +212,13 @@ type BranchLinks interface {
 	ChangeRequestRef(number int) string
 }
 
+// ChangeRequestLinks is optional: a provider that recognises a pasted change request web link.
+type ChangeRequestLinks interface {
+	// ParseChangeRequestLink reads repo and number from a change request web link (tabs, query and
+	// fragment ignored). No host call beyond Claims.
+	ParseChangeRequestLink(ctx context.Context, raw string) (Repo, int, bool)
+}
+
 // ChangeRequestPage is one page of a ChangeRequestSync.Page walk.
 type ChangeRequestPage struct {
 	Items     []ChangeRequest

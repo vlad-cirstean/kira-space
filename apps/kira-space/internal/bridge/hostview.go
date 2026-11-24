@@ -159,12 +159,21 @@ func (l hostViewLink) repoIdentity() string {
 	return l.p.ID() + "|" + l.repo.Host + "|" + l.repo.Owner + "|" + l.repo.Name
 }
 
+func resolveHostViewLink(ctx context.Context, hosts *githost.Registry, raw string) (hostViewLink, bool) {
+	p, repo, n, ok := hosts.ParseChangeRequestLink(ctx, raw)
+	if !ok {
+		return hostViewLink{}, false
+	}
+	d, ok := p.(githost.ChangeRequestDetails)
+	return hostViewLink{p: p, details: d, repo: repo, number: n}, ok
+}
+
 func (s *HostViewService) parse(ctx context.Context, raw string) (hostViewLink, error) {
 	hosts := s.hosts()
 	raw = strings.TrimSpace(raw)
 	if len(raw) <= maxHostViewURLBytes && hosts != nil {
-		if p, d, repo, n, ok := hosts.ParseChangeRequestLink(ctx, raw); ok {
-			return hostViewLink{p: p, details: d, repo: repo, number: n}, nil
+		if l, ok := resolveHostViewLink(ctx, hosts, raw); ok {
+			return l, nil
 		}
 	}
 	return hostViewLink{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.space.gitHost.view.notChangeRequest.body",
@@ -177,8 +186,8 @@ func (s *HostViewService) Open(ctx context.Context, args HostViewOpenArgs) (Host
 	raw := strings.TrimSpace(args.URL)
 	if len(raw) <= maxHostViewURLBytes {
 		if hosts := s.hosts(); hosts != nil {
-			if p, d, repo, n, ok := hosts.ParseChangeRequestLink(ctx, raw); ok {
-				return s.open(hostViewLink{p: p, details: d, repo: repo, number: n})
+			if l, ok := resolveHostViewLink(ctx, hosts, raw); ok {
+				return s.open(l)
 			}
 		}
 		if p, ref, ok := s.issueProvider(raw); ok {

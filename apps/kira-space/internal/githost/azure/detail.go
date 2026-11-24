@@ -112,15 +112,6 @@ type rawThreads struct {
 	Threads []rawThread `json:"threads"`
 }
 
-// ParseChangeRequestLink reads a pull request link; work item and branch links miss.
-func (p *Provider) ParseChangeRequestLink(ctx context.Context, raw string) (githost.Repo, int, bool) {
-	l, ok := p.ParseBranchLink(ctx, raw)
-	if !ok || l.Number <= 0 || l.Issue {
-		return githost.Repo{}, 0, false
-	}
-	return l.Repo, l.Number, true
-}
-
 // ChangeRequestDetail reads the pull request, its policy evaluations and its threads concurrently.
 func (p *Provider) ChangeRequestDetail(ctx context.Context, r githost.Repo, number int) (githost.ChangeRequestDetail, githost.Status) {
 	org, project, ok := split(r)
