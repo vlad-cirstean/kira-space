@@ -150,20 +150,6 @@ func (r *Registry) ParseChangeRequestLink(ctx context.Context, raw string) (Prov
 	return nil, Repo{}, 0, false
 }
 
-// ChangeRequestViewLabels joins "<label> <short> link" per detail provider with " or ", in
-// registration order: "GitHub PR link or Azure Repos PR link".
-func (r *Registry) ChangeRequestViewLabels() string {
-	var labels []string
-	for _, p := range r.All() {
-		if _, ok := p.(ChangeRequestDetails); !ok {
-			continue
-		}
-		t := p.Terms()
-		labels = append(labels, t.Label+" "+t.ChangeRequestShort+" link")
-	}
-	return strings.Join(labels, " or ")
-}
-
 // IsChangeRequestURL is true when any provider accepts u.
 func (r *Registry) IsChangeRequestURL(ctx context.Context, u *url.URL) bool {
 	for _, p := range r.All() {

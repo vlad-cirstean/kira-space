@@ -250,17 +250,10 @@ func TestDetailCacheRules(t *testing.T) {
 	if d := get(true); d.Stale || reads.Load() != 2 {
 		t.Fatalf("fresh=true: stale %v reads %d", d.Stale, reads.Load())
 	}
-	if err := p.PostIssueComment(ctx, detailRef, "hi"); err != nil {
-		t.Fatal(err)
-	}
-	get(false)
-	if reads.Load() != 3 {
-		t.Fatalf("after post reads %d, want 3", reads.Load())
-	}
 	clk.advance(detailKeepFor + time.Second)
 	get(false)
-	if reads.Load() != 4 {
-		t.Fatalf("past keep window reads %d, want 4", reads.Load())
+	if reads.Load() != 3 {
+		t.Fatalf("past keep window reads %d, want 3", reads.Load())
 	}
 	r.full = func() ([]byte, error) { reads.Add(1); return nil, errors.New("boom") }
 	clk.advance(detailKeepFor + time.Second)
@@ -269,8 +262,8 @@ func TestDetailCacheRules(t *testing.T) {
 	}
 	r.full = func() ([]byte, error) { reads.Add(1); return readTestdata(t, "issue-detail.json"), nil }
 	get(false)
-	if reads.Load() != 6 {
-		t.Fatalf("error was cached: reads %d, want 6", reads.Load())
+	if reads.Load() != 5 {
+		t.Fatalf("error was cached: reads %d, want 5", reads.Load())
 	}
 }
 
@@ -296,34 +289,5 @@ func TestDetailOverflowParallel(t *testing.T) {
 	got, err := p.IssueDetail(context.Background(), detailRef, true)
 	if err != nil || len(got.Comments) != 2 {
 		t.Fatalf("%+v %v", got.Comments, err)
-	}
-}
-
-func TestDetailInFlightReadDoesNotSaveAcrossPost(t *testing.T) {
-	r := newDetailRunner(t)
-	var reads atomic.Int32
-	started, release := make(chan struct{}), make(chan struct{})
-	d := readTestdata(t, "issue-detail.json")
-	r.full = func() ([]byte, error) {
-		if reads.Add(1) == 1 {
-			close(started)
-			<-release
-		}
-		return d, nil
-	}
-	p, _ := newTestProvider(r)
-	ctx := context.Background()
-	done := make(chan error, 1)
-	go func() { _, err := p.IssueDetail(ctx, detailRef, true); done <- err }()
-	<-started
-	if err := p.PostIssueComment(ctx, detailRef, "hi"); err != nil {
-		t.Fatal(err)
-	}
-	close(release)
-	if err := <-done; err != nil {
-		t.Fatal(err)
-	}
-	if got, err := p.IssueDetail(ctx, detailRef, false); err != nil || got.Stale || reads.Load() != 2 {
-		t.Fatalf("pre-post copy was saved: reads %d err %v", reads.Load(), err)
 	}
 }

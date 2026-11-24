@@ -251,7 +251,7 @@ func TestIssueCacheRules(t *testing.T) {
 	failing.Store(false)
 	clk.advance(resultErrTTL + time.Second)
 	key := cacheKey(ref)
-	p.client.saveDetail(key, issuetracker.IssueDetail{Ref: ref, Title: "From detail", Status: "Done"}, p.client.detailGeneration(key))
+	p.client.saveDetail(key, issuetracker.IssueDetail{Ref: ref, Title: "From detail", Status: "Done"})
 	n := r.views.Load()
 	if iss, err := read(false); err != nil || iss.Stale || iss.Title != "From detail" || r.views.Load() != n {
 		t.Fatalf("after saveDetail %+v %v", iss, err)

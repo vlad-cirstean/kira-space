@@ -59,13 +59,11 @@ type client struct {
 	noSearchTo time.Time
 	// details holds the last issue view per key, see detail.
 	details map[string]detailEntry
-	// detailGen counts forgetDetail calls per key; a read that began before one must not save.
-	detailGen map[string]uint64
-	sf        singleflight.Group
+	sf      singleflight.Group
 }
 
 func newClient(d *discovery, r Runner, c Clock) *client {
-	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}, detailGen: map[string]uint64{}}
+	return &client{disc: d, runner: r, clock: c, bound: fetchBound, cache: map[string]resultEntry{}, dev: map[string]devInfo{}, details: map[string]detailEntry{}}
 }
 
 type fetched struct {
@@ -188,13 +186,6 @@ func (c *client) ready(ctx context.Context, ref issuetracker.Ref) (issuetracker.
 }
 
 func cacheKey(ref issuetracker.Ref) string { return strings.ToLower(ref.Site) + "|" + ref.Key }
-
-// forget drops the cached result of key.
-func (c *client) forget(key string) {
-	c.mu.Lock()
-	delete(c.cache, key)
-	c.mu.Unlock()
-}
 
 func (c *client) fetch(ctx context.Context, ref issuetracker.Ref) (issuetracker.Issue, error) {
 	st, err := c.ready(ctx, ref)

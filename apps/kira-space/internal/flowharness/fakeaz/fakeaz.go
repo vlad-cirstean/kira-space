@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/azure"
 	"github.com/kirathecat/kira-studio/internal/toolexec"
 )
 
@@ -26,38 +25,12 @@ import (
 type Reviewer struct {
 	Vote     int
 	Required bool
-	// Name, Login and Team print in the detail projection only.
-	Name, Login string
-	Team        bool
 }
 
 // Policy is one policy evaluation. Type is the policy type's display name ("Build", "Status",
 // "Minimum number of reviewers"); Status is queued, running, approved, rejected, notApplicable or broken.
 type Policy struct {
 	Type, Status string
-	// Name, Blocking and BuildID print in the detail projection only.
-	Name     string
-	Blocking bool
-	BuildID  int
-}
-
-// ThreadComment is one comment of a thread. Type is text, system or codeChange; "" means text.
-type ThreadComment struct {
-	ID                    int
-	Author, Login, Body   string
-	Type                  string
-	Deleted               bool
-	Published, LastUpdate string // RFC 3339
-}
-
-// Thread is one pull request discussion. Status is active, fixed, wontFix, closed, byDesign or pending.
-// A Path marks a code thread, with Right its line.
-type Thread struct {
-	ID       int
-	Status   string
-	Path     string
-	Right    int
-	Comments []ThreadComment
 }
 
 // PR is one pull request. Src and Dst are branch names without refs/heads/. ForkRepo and
@@ -79,11 +52,6 @@ type PR struct {
 	// MergeStatus (succeeded | conflicts) and AutoComplete (who set it) print in every read.
 	MergeStatus  string
 	AutoComplete string
-	// Description, AuthorName, Labels and Threads print in the detail reads only.
-	Description string
-	AuthorName  string
-	Labels      []string
-	Threads     []Thread
 }
 
 // Key names one repository: "<org>/<project>/<repo>".
@@ -105,7 +73,6 @@ type Az struct {
 	votes      map[int][]string
 	threads    map[int][]string
 	contexts   map[int][]ThreadContext
-	replies    map[int][]Reply
 	calls      []string
 	violations []string
 }
@@ -115,7 +82,6 @@ func New() *Az {
 	return &Az{
 		installed: true, extension: true, loggedIn: true, account: "me@acme.test",
 		repos: map[string]*repoState{}, votes: map[int][]string{}, threads: map[int][]string{}, contexts: map[int][]ThreadContext{},
-		replies: map[int][]Reply{},
 	}
 }
 
@@ -206,16 +172,9 @@ func (a *Az) ThreadContexts(id int) []ThreadContext {
 	return slices.Clone(a.contexts[id])
 }
 
-// Replies returns the comments posted into existing threads of pull request id, in order.
-func (a *Az) Replies(id int) []Reply {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return slices.Clone(a.replies[id])
-}
-
 // Calls returns every recorded call, in order: "version", "defaults", "project-list", "account",
 // "pr-list:<repo key>:<status>", "pr-probe:<repo key>", "pr-show:<id>", "policy:<id>", "vote:<id>:<vote>",
-// "invoke:<resource>:<repo key>", "invoke:GET:pullRequestThreads:<id>".
+// "invoke:<resource>:<repo key>".
 func (a *Az) Calls() []string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -503,38 +462,7 @@ func (a *Az) prShow(args []string) ([]byte, error) {
 	if !ok {
 		return nil, fail(prMissing)
 	}
-	if flagValue(args, "--query") == azure.PRDetailQuery {
-		return marshal(detailProject(p, key[strings.LastIndex(key, "/")+1:]))
-	}
 	return marshal(project(p, key[strings.LastIndex(key, "/")+1:]))
-}
-
-type detailReviewer struct {
-	Vote     int    `json:"vote"`
-	Required bool   `json:"required"`
-	Name     string `json:"name"`
-	Login    string `json:"login"`
-	Team     bool   `json:"team"`
-}
-
-// detailProjection mirrors the azure package's PRDetailQuery.
-type detailProjection struct {
-	projection
-	AuthorName  string           `json:"authorName"`
-	Description string           `json:"description"`
-	Labels      []string         `json:"labels"`
-	Reviewers   []detailReviewer `json:"reviewers"`
-}
-
-func detailProject(p PR, repoName string) detailProjection {
-	out := detailProjection{
-		projection: project(p, repoName), AuthorName: p.AuthorName, Description: p.Description,
-		Labels: p.Labels, Reviewers: []detailReviewer{},
-	}
-	for _, r := range p.Reviewers {
-		out.Reviewers = append(out.Reviewers, detailReviewer{Vote: r.Vote, Required: r.Required, Name: r.Name, Login: r.Login, Team: r.Team})
-	}
-	return out
 }
 
 func (a *Az) policyList(args []string) ([]byte, error) {
@@ -543,26 +471,6 @@ func (a *Az) policyList(args []string) ([]byte, error) {
 	p, _, ok := a.find(id)
 	if !ok {
 		return nil, fail(prMissing)
-	}
-	if flagValue(args, "--query") == azure.PolicyDetailQuery {
-		type detailEval struct {
-			Status     string `json:"status"`
-			Type       string `json:"type"`
-			Name       string `json:"name"`
-			StatusName string `json:"statusName"`
-			Build      string `json:"build"`
-			Blocking   bool   `json:"blocking"`
-			BuildID    *int   `json:"buildId"`
-		}
-		rows := make([]detailEval, 0, len(p.Policies))
-		for _, pol := range p.Policies {
-			row := detailEval{Status: pol.Status, Type: pol.Type, Name: pol.Name, Blocking: pol.Blocking}
-			if pol.BuildID > 0 {
-				row.BuildID = &pol.BuildID
-			}
-			rows = append(rows, row)
-		}
-		return marshal(rows)
 	}
 	type eval struct {
 		Status string `json:"status"`
@@ -617,8 +525,6 @@ func (a *Az) invoke(args []string) ([]byte, error) {
 		return nil, a.unsupported(args)
 	}
 	switch flagValue(args, "--http-method") {
-	case "GET":
-		return a.invokeGet(args, resource, rp)
 	case "POST":
 	default:
 		return nil, a.unsupported(args)
@@ -631,8 +537,6 @@ func (a *Az) invoke(args []string) ([]byte, error) {
 	case "pullrequestquery":
 		a.calls = append(a.calls, "invoke:pullRequestQuery:"+key)
 		return a.pullRequestQuery(key, body)
-	case "pullrequestthreadcomments":
-		return a.threadReply(key, rp, body)
 	case "pullrequestthreads":
 		id, _ := strconv.Atoi(rp["pullRequestId"])
 		a.calls = append(a.calls, "invoke:pullRequestThreads:"+key)
@@ -666,105 +570,6 @@ func (a *Az) invoke(args []string) ([]byte, error) {
 		return []byte(`{"id":1,"status":"active","continuation_token":null}`), nil
 	}
 	return nil, a.unsupported(args)
-}
-
-// Reply is one comment posted into an existing thread.
-type Reply struct {
-	ThreadID, ParentCommentID int
-	Content                   string
-}
-
-func (a *Az) threadReply(key string, rp map[string]string, body []byte) ([]byte, error) {
-	id, _ := strconv.Atoi(rp["pullRequestId"])
-	thread, err := strconv.Atoi(rp["threadId"])
-	if err != nil {
-		a.violations = append(a.violations, "pullRequestThreadComments without threadId")
-		return nil, fail("ERROR: fakeaz: missing threadId")
-	}
-	a.calls = append(a.calls, "invoke:pullRequestThreadComments:"+key+":"+rp["threadId"])
-	var c struct {
-		Content         string `json:"content"`
-		ParentCommentID int    `json:"parentCommentId"`
-		CommentType     int    `json:"commentType"`
-	}
-	if json.Unmarshal(body, &c) != nil || c.Content == "" {
-		return nil, fail("ERROR: fakeaz: bad comment body")
-	}
-	if _, _, ok := a.find(id); !ok {
-		return nil, fail(prMissing)
-	}
-	a.replies[id] = append(a.replies[id], Reply{ThreadID: thread, ParentCommentID: c.ParentCommentID, Content: c.Content})
-	return []byte(`{"id":2}`), nil
-}
-
-// invokeGet answers the threads read. A GET sends no body and must project with azure.ThreadsQuery,
-// or the real call could exceed the 1 MiB output cap.
-func (a *Az) invokeGet(args []string, resource string, rp map[string]string) ([]byte, error) {
-	id, _ := strconv.Atoi(rp["pullRequestId"])
-	if !strings.EqualFold(resource, "pullRequestThreads") || flagValue(args, "--in-file") != "" ||
-		flagValue(args, "--query") != azure.ThreadsQuery {
-		a.violations = append(a.violations, strings.Join(args, " "))
-		return nil, fail("ERROR: fakeaz: bad GET " + resource)
-	}
-	a.calls = append(a.calls, "invoke:GET:pullRequestThreads:"+strconv.Itoa(id))
-	p, _, ok := a.find(id)
-	if !ok {
-		return nil, fail(prMissing)
-	}
-	type comment struct {
-		ID        int    `json:"id"`
-		Author    string `json:"author"`
-		Login     string `json:"login"`
-		Body      string `json:"body"`
-		Type      string `json:"type"`
-		Deleted   bool   `json:"deleted"`
-		Published string `json:"published"`
-		Updated   string `json:"updated"`
-	}
-	type thread struct {
-		ID       int       `json:"id"`
-		Status   string    `json:"status"`
-		Deleted  bool      `json:"deleted"`
-		Path     *string   `json:"path"`
-		Right    *int      `json:"right"`
-		Left     *int      `json:"left"`
-		Comments []comment `json:"comments"`
-	}
-	threads := []thread{}
-	next := 0
-	for _, t := range p.Threads {
-		next = max(next, t.ID)
-		th := thread{ID: t.ID, Status: t.Status, Comments: []comment{}}
-		if t.Path != "" {
-			th.Path = &t.Path
-		}
-		if t.Right > 0 {
-			th.Right = &t.Right
-		}
-		for _, c := range t.Comments {
-			typ := c.Type
-			if typ == "" {
-				typ = "text"
-			}
-			th.Comments = append(th.Comments, comment{
-				ID: c.ID, Author: c.Author, Login: c.Login, Body: c.Body, Type: typ, Deleted: c.Deleted,
-				Published: c.Published, Updated: c.LastUpdate,
-			})
-		}
-		threads = append(threads, th)
-	}
-	for i, body := range a.threads[id] {
-		stamp := p.Created.Add(time.Duration(i+1) * time.Hour).UTC().Format(time.RFC3339)
-		threads = append(threads, thread{
-			ID: next + i + 1, Status: "active",
-			Comments: []comment{{ID: 1, Author: a.account, Login: a.account, Body: body, Type: "text", Published: stamp, Updated: stamp}},
-		})
-	}
-	total := len(threads)
-	if len(threads) > azure.ThreadsRead {
-		threads = threads[len(threads)-azure.ThreadsRead:]
-	}
-	return marshal(map[string]any{"total": total, "threads": threads})
 }
 
 func (a *Az) pullRequestQuery(key string, body []byte) ([]byte, error) {

@@ -14,10 +14,10 @@ func TestCascadeSized(t *testing.T) {
 		work *application.Rect
 		want WindowBounds
 	}{
-		{"large work area", rect(100, 100, 1024, 640), ptr(rect(0, 0, 2560, 1415)), WindowBounds{124, 124, 1152, 720}},
-		{"proof size overflows where source fits", rect(400, 200, 1024, 640), ptr(rect(0, 25, 1440, 875)), WindowBounds{0, 25, 1152, 720}},
-		{"small work area clamps and wraps", rect(50, 0, 1024, 640), ptr(rect(0, 0, 1100, 700)), WindowBounds{0, 0, 1060, 660}},
-		{"nil work area", rect(100, 100, 1024, 640), nil, WindowBounds{124, 124, 1152, 720}},
+		{"large work area", rect(100, 100, 1024, 640), ptr(rect(0, 0, 2560, 1415)), WindowBounds{X: 124, Y: 124, Width: 1152, Height: 720}},
+		{"proof size overflows where source fits", rect(400, 200, 1024, 640), ptr(rect(0, 25, 1440, 875)), WindowBounds{X: 0, Y: 25, Width: 1152, Height: 720}},
+		{"small work area clamps and wraps", rect(50, 0, 1024, 640), ptr(rect(0, 0, 1100, 700)), WindowBounds{X: 0, Y: 0, Width: 1060, Height: 660}},
+		{"nil work area", rect(100, 100, 1024, 640), nil, WindowBounds{X: 124, Y: 124, Width: 1152, Height: 720}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
