@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { openDetails, openPlan, openTask } from './support/adeV2';
 import { contract } from './support/contract';
@@ -48,6 +49,13 @@ const editedProofs = () => {
   };
 };
 
+// Proofs start collapsed: steps and diagrams render only after the toggle opens the entry.
+async function expandProof(page: Page): Promise<void> {
+  const toggle = page.locator(t('ade-proof-toggle')).first();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+}
+
 test('contract: an outside save shows in the disk banner without focus or Refresh', async ({
   relaunch,
 }) => {
@@ -79,6 +87,7 @@ test('contract: a board push refetches the task proofs and redraws the edited pr
   await openTask(page, TASK);
   await page.locator(t('ade-panel-tab-details')).click();
   await expect(page.locator(t('ade-task-chain'))).toBeVisible();
+  await expandProof(page);
   const steps = page.locator(`${t('ade-task-chain')} ${t('ade-proof-step')}`);
   await expect(steps).toHaveCount(2);
   await expect(page.locator(`${t('ade-proof-step')}[data-view="diagram"]`)).toHaveCount(1);
@@ -101,6 +110,7 @@ test('a board push for another task does not refetch this task proofs', async ({
   ]);
   await openTask(page, TASK);
   await page.locator(t('ade-panel-tab-details')).click();
+  await expandProof(page);
   await expect(page.locator(`${t('ade-task-chain')} ${t('ade-proof-step')}`)).toHaveCount(2);
   const before = calls(control, IPC.adeTaskProofs).length;
   await emitWailsEvent(page, IPC.adeTaskBoardChanged, { refs: false, taskIds: ['T_other'] });
@@ -120,6 +130,7 @@ test('a board push refetches the open diagram step: an accepted edit keeps the r
   ]);
   await openTask(page, TASK);
   await page.locator(t('ade-panel-tab-details')).click();
+  await expandProof(page);
   await expect(page.locator(t('ade-proof-diagram'))).toBeVisible();
   const before = calls(control, IPC.proofStep).length;
   await emitWailsEvent(page, IPC.adeTaskBoardChanged, board('event:kira:adetask:board#proofEdit'));
