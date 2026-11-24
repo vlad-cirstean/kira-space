@@ -573,7 +573,7 @@ export function useHandovers(taskId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** The proof sessions attached to a task, newest closed first; a proof push refetches it. */
+/** The proof sessions attached to a task, newest closed first; a proof or board push refetches it. */
 export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: [...proofsPrefix, taskId] as const,
