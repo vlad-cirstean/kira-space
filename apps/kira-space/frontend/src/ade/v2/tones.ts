@@ -40,12 +40,3 @@ export const THEME_TONE: Record<Tone, StatusTone> = {
   purple: 'ok',
   grey: 'neutral',
 };
-
-// Board pastel for an RS.1 tone.
-export const PASTEL: Record<StatusTone, Tone> = {
-  ok: 'green',
-  warn: 'amber',
-  error: 'red',
-  info: 'blue',
-  neutral: 'grey',
-};

@@ -174,7 +174,7 @@ func scan(t *testing.T, root, rel string) []finding {
 	inAdapters := strings.HasSuffix(filepath.ToSlash(filepath.Dir(rel)), "internal/adapters")
 	inHTTPClient := strings.HasSuffix(filepath.ToSlash(filepath.Dir(rel)), "internal/httpclient")
 	dir := filepath.ToSlash(filepath.Dir(rel))
-	inHostAdapters := strings.HasPrefix(dir, "apps/kira-space/internal/githost") || strings.HasPrefix(dir, "apps/kira-space/internal/issuetracker") ||
+	inHostAdapters := strings.HasPrefix(dir, "apps/kira-space/internal/githost") ||
 		dir == "apps/kira-space/internal/configsync"
 	inDocker := dir == "internal/docker"
 	inClaudeOnly := dir == "internal/harness/claude" || strings.HasPrefix(dir, "internal/harness/claude/")
@@ -368,7 +368,7 @@ const g5Rule = "; Kira never touches a driven CLI's credentials (docs/ARCHITECTU
 // credentialLiteral names why a string literal in a host adapter touches a CLI credential, or "".
 func credentialLiteral(v string) string {
 	for _, bad := range []string{"get-access-token", "--show-token", "hosts.yml", ".config/gh", ".azure/", "azureProfile",
-		"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "AZURE_DEVOPS_EXT_PAT", "JIRA_API_TOKEN", "net/http"} {
+		"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "AZURE_DEVOPS_EXT_PAT", "net/http"} {
 		if strings.Contains(v, bad) {
 			return "literal " + strconv.Quote(bad)
 		}

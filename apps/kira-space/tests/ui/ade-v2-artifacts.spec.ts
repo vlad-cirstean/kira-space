@@ -55,7 +55,7 @@ test('contract: the Details tab lists every link with kind and status', async ({
 
   const rows = page.locator(t('ade-links-pill'));
   const nonBranch = res.artifacts.filter((a) => a.kind !== 'branch').length;
-  // Jira PAY-130 is the task's own link; the tracker row KIRA-12 stays in its group.
+  // Jira PAY-130 is the task's own link slot, one row beside the artifacts.
   await expect(rows).toHaveCount(nonBranch + 1);
   const pr = line(page, 'changeRequest').locator(t('ade-links-pill'), { hasText: 'Fix login' });
   await expect(pr).toHaveAttribute('data-kind', 'changeRequest');
@@ -65,14 +65,12 @@ test('contract: the Details tab lists every link with kind and status', async ({
   await expect(prCard.locator(t('ade-links-card-remove'))).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(rows.filter({ hasText: 'prod' })).toContainText('Deployed');
-  await expect(rows.filter({ hasText: 'KIRA-12' })).toHaveCount(1);
 
   const stored = res.artifacts.filter((a) => a.id).length;
   await expect(page.locator(`${t('ade-links-pill')}[data-origin="stored"]`)).toHaveCount(stored);
   const storedCard = await openCard(page, 'Design notes');
   await expect(storedCard.locator(t('ade-links-card-remove'))).toHaveCount(1);
   await page.keyboard.press('Escape');
-  // The tracker's reason comes from the issue query, not from Artifacts: the list has no gap.
   await expect(page.locator(t('ade-links-gap'))).toHaveCount(0);
 });
 
@@ -115,21 +113,13 @@ test('contract: remove on a stored row sends RemoveArtifact; detected rows have 
 test('contract: a failed source shows a warning above the list', async ({ relaunch }) => {
   const res = withIds(recorded('AdeTaskService.Artifacts#gap'));
   expect(res.gaps).toHaveLength(1);
-  const { window: page } = await openPlan(relaunch, [
-    snapshot(res),
-    {
-      channel: IPC.adeTaskIssue,
-      response: contract('ade-artifacts', 'IssueTrackerService.TaskIssue#unavailable'),
-    },
-  ]);
+  const { window: page } = await openPlan(relaunch, [snapshot(res)]);
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-panel-tab-details')).click();
   const gaps = page.locator(t('ade-links-gap'));
-  await expect(gaps).toHaveCount(2);
+  await expect(gaps).toHaveCount(1);
   const host = res.gaps[0];
   await expect(gaps.first()).toContainText(`Couldn’t read ${host?.source} for ${host?.repo}`);
-  await expect(gaps.nth(1)).toContainText('The Jira command line tool isn’t installed');
-  await expect(gaps.nth(1)).toContainText('under CLI tools');
   await expect(page.locator(t('ade-links-pill'))).not.toHaveCount(0);
 });
 

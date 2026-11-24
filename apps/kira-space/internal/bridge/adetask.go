@@ -166,7 +166,7 @@ func adeTaskError(err error) error {
 
 const adeTaskMaxItemKeys = 64
 
-var adeTrackedItemKeyRe = regexp.MustCompile(`^(issue|cr:[A-Za-z0-9_-]{1,64}|branch:[A-Za-z0-9_-]{1,64})$`)
+var adeTrackedItemKeyRe = regexp.MustCompile(`^(cr:[A-Za-z0-9_-]{1,64}|branch:[A-Za-z0-9_-]{1,64})$`)
 
 var adeWorkflowIDRe = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
 

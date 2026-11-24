@@ -17,7 +17,6 @@ import {
   dbAuditPrefix,
   diskPrefix,
   handoversPrefix,
-  issuePrefix,
   proofsPrefix,
   reviewStepPrefix,
   stepYamlKey,
@@ -85,7 +84,7 @@ export function installAdeSignals(
     invalidateTaskFamily(queryClient, handoversPrefix, change);
     invalidateTaskFamily(queryClient, artifactsPrefix, change);
     invalidateTaskFamily(queryClient, diskPrefix, change);
-    invalidateTaskFamily(queryClient, issuePrefix, change);
+    invalidateTaskFamily(queryClient, proofsPrefix, change);
   });
   // A proof session closing, attaching or deleting changes a task's chain.
   studioControl.onProofChanged(() => {

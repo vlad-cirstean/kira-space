@@ -28,6 +28,7 @@
   --color-fg: var(--kira-fg);
   --color-subtle: var(--kira-fg-subtle);
   --color-focus: var(--kira-focus);
+  --color-grid-line: var(--kira-grid-line);
   --color-resize: var(--kira-resize);
   --color-resize-hover: var(--kira-resize-hover);
   --color-resize-active: var(--kira-resize-active);

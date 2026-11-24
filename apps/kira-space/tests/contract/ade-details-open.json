@@ -29,18 +29,6 @@
         "createdAt": 0,
         "id": "<masked>",
         "kind": "issue",
-        "ref": "PAY-9",
-        "repo": "",
-        "sessionId": "",
-        "source": "jira",
-        "status": "",
-        "title": "PAY-9",
-        "url": "https://jira.example.com/browse/PAY-9"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
         "ref": "PAY-20",
         "repo": "",
         "sessionId": "",

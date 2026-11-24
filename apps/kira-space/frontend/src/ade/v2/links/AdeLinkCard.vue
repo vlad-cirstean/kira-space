@@ -7,7 +7,6 @@ import { Badge } from '@theme/components/ui/badge';
 import { t } from '@theme/i18n';
 import { TONE_BADGE } from '@theme/lib/statusTone';
 import CopyIconButton from '@workbench/components/CopyIconButton.vue';
-import { isPrimaryModifier } from '@workbench/shortcuts/keys';
 import {
   artifactKindLabel,
   artifactStatusLabel,
@@ -16,7 +15,6 @@ import {
 } from '../artifacts/status';
 import AdeLinkOpenExternal from '../details/AdeLinkOpenExternal.vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
-import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import { THEME_TONE } from '../tones';
 import type { Artifact, Task } from '../wire';
 import AdeLinkEdit from './AdeLinkEdit.vue';
@@ -52,10 +50,10 @@ const kindItems = KINDS.map((k) => ({
 function onKind(value: string): void {
   void props.links.recategorise(props.item, value as Artifact['kind']);
 }
-// The title opens like its pill: primary-modifier click opens the browser.
+// The title opens like its pill.
 function openTitle(e: MouseEvent): void {
   e.preventDefault();
-  props.links.openLink(props.item, { external: isPrimaryModifier(e) });
+  props.links.openLink(props.item);
 }
 </script>
 
@@ -88,7 +86,7 @@ function openTitle(e: MouseEvent): void {
         }}</span
       >
       <Badge
-        v-if="item.status && item.origin !== 'jira'"
+        v-if="item.status"
         :variant="TONE_BADGE[THEME_TONE[artifactStatusTone(item.status)]]"
         >{{
           artifactStatusLabel(item.status)
@@ -128,11 +126,6 @@ function openTitle(e: MouseEvent): void {
         </li>
       </ul>
     </div>
-    <AdeTaskIssueLine
-      v-if="item.origin === 'jira'"
-      :task-id="task.id"
-      :link="`${item.label} ${item.url}`"
-    />
     <SecondaryTabs
       v-if="canEdit() && item.origin === 'stored'"
       :model-value="item.kind"

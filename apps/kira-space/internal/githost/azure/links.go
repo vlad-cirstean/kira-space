@@ -10,6 +10,8 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 )
 
+var _ githost.ChangeRequestLinks = (*Provider)(nil)
+
 // repoPath is "https://dev.azure.com/{org}/{project}/_git/{repo}".
 func repoPath(r githost.Repo) string {
 	org, project, ok := split(r)
@@ -150,4 +152,13 @@ func (p *Provider) ChangeRequestHead(ctx context.Context, r githost.Repo, number
 // ChangeRequestRef is the merge preview ref: Azure serves no head ref for a pull request.
 func (p *Provider) ChangeRequestRef(number int) string {
 	return "refs/pull/" + strconv.Itoa(number) + "/merge"
+}
+
+// ParseChangeRequestLink reads a pull request link; work item and branch links miss.
+func (p *Provider) ParseChangeRequestLink(ctx context.Context, raw string) (githost.Repo, int, bool) {
+	l, ok := p.ParseBranchLink(ctx, raw)
+	if !ok || l.Number <= 0 || l.Issue {
+		return githost.Repo{}, 0, false
+	}
+	return l.Repo, l.Number, true
 }

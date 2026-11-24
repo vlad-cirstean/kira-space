@@ -1,8 +1,0 @@
-{
-  "key": "KIRA-15",
-  "fields": {
-    "summary": "Short form",
-    "status": { "name": "In Progress", "statusCategory": { "key": "indeterminate" } },
-    "customfield_10000": "{pullrequest={dataType=pullrequest, state=MERGED, stateCount=1}}"
-  }
-}

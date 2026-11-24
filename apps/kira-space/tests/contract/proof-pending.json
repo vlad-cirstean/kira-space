@@ -99,6 +99,7 @@
     "slug": "edit-me",
     "summary": "",
     "taskId": "<id:1>",
-    "taskTitle": "Login form"
+    "taskTitle": "Login form",
+    "version": "<masked>"
   }
 }

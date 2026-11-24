@@ -1636,42 +1636,8 @@ type ArtifactFound struct {
 
 // ArtifactGap names a source that failed or timed out; the list is partial.
 type ArtifactGap struct {
-	Source string `json:"source"` // host | git | a tracker id
+	Source string `json:"source"` // host | git
 	Repo   string `json:"repo"`   // '' when not repo-bound
-	// Reason names why a tracker source is partial: unavailable | unauthenticated | notFound | otherSite |
-	// timeout | failed. '' for the other sources.
-	Reason string `json:"reason,omitempty"`
-}
-
-// TaskIssue is the issue tracker's view of a task's linked issue.
-type TaskIssue struct {
-	Provider       string       `json:"provider"`
-	Label          string       `json:"label"` // provider display name, e.g. Jira
-	Key            string       `json:"key"`
-	URL            string       `json:"url"`
-	Title          string       `json:"title"`
-	Status         string       `json:"status"`
-	StatusCategory string       `json:"statusCategory"` // new | indeterminate | done | ''
-	Summary        IssueSummary `json:"summary"`
-	// Reason is why the issue could not be read ('' when it was): a tracker reason word, or noTracker when
-	// no registered tracker recognises the task's link.
-	Reason string `json:"reason"`
-	// Stale marks a kept copy older than the tracker's fresh window; a fresh read may follow.
-	Stale bool `json:"stale,omitempty"`
-}
-
-// TaskIssueArgs asks for a task's linked issue; Fresh skips the kept copy.
-type TaskIssueArgs struct {
-	TaskID string `json:"taskId"`
-	Fresh  bool   `json:"fresh,omitempty"`
-}
-
-// IssueSummary is the tracker's own count of change requests linked to the issue.
-type IssueSummary struct {
-	Known     bool     `json:"known"`
-	Count     int      `json:"count"`
-	State     string   `json:"state"`
-	Providers []string `json:"providers"`
 }
 
 type ArtifactsResult struct {
@@ -1719,9 +1685,9 @@ type DismissFoundLinkArgs struct {
 type TrackedUpdate struct {
 	TaskID    string         `json:"taskId"`
 	ItemKey   string         `json:"itemKey"`
-	Kind      string         `json:"kind"`     // changeRequest | issue | branch
-	BranchID  string         `json:"branchId"` // '' for an issue
-	Label     string         `json:"label"`    // "#12", "KIRA-12", a branch name
+	Kind      string         `json:"kind"` // changeRequest | branch
+	BranchID  string         `json:"branchId"`
+	Label     string         `json:"label"` // "#12", a branch name
 	Concepts  []string       `json:"concepts"`
 	Counts    map[string]int `json:"counts"` // commentAdded -> new comments
 	ChangedAt int64          `json:"changedAt"`

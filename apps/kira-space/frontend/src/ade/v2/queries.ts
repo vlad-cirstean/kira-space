@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/vue-query';
 import { optimisticUpdate } from '@workbench/behaviour/optimistic';
 import { queryClient } from '@workbench/state/queryClient';
 import type { MaybeRefOrGetter } from 'vue';
-import { toValue, watch } from 'vue';
+import { toValue } from 'vue';
 import { control } from '../../bridge/control';
 import { control as studioControl } from '../../studio/bridge/control';
 import { withShelved } from './board/shelf';
@@ -106,7 +106,6 @@ export const proofsPrefix = ['adetask', 'proofs'] as const;
 export const dbAuditPrefix = ['adetask', 'dbAudit'] as const;
 export const artifactsPrefix = ['adetask', 'artifacts'] as const;
 export const diskPrefix = ['adetask', 'details-disk'] as const;
-export const issuePrefix = ['adetask', 'issue'] as const;
 export const reviewTargetKey = (windowKey: string) =>
   ['adetask', 'reviewTarget', windowKey] as const;
 export const filesWindowTargetKey = (windowKey: string) =>
@@ -573,7 +572,7 @@ export function useHandovers(taskId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** The proof sessions attached to a task, newest closed first; a proof push refetches it. */
+/** The proof sessions attached to a task, newest closed first; a proof or board push refetches it. */
 export function useTaskProofs(taskId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: [...proofsPrefix, taskId] as const,
@@ -603,44 +602,6 @@ export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
     queryKey: [...artifactsPrefix, taskId] as const,
     queryFn: () => control.adeTaskArtifacts({ taskId: toValue(taskId) }),
   });
-}
-
-/**
- * The issue a task links, as its tracker reports it. The host answers a kept copy at once (marked
- * stale) and refreshes in the background; a stale answer of a normal read starts one fresh read, and
- * the line keeps showing the copy meanwhile. A fresh answer that is still stale (the refresh failed)
- * starts nothing, so the pair never loops. A board push refetches it.
- */
-export function useTaskIssue(
-  taskId: MaybeRefOrGetter<string>,
-  link: MaybeRefOrGetter<string>,
-  enabled: MaybeRefOrGetter<boolean> = true,
-) {
-  let nextFresh = false;
-  let lastFresh = false;
-  const query = useQuery(() => ({
-    queryKey: [...issuePrefix, toValue(taskId), toValue(link)] as const,
-    queryFn: () => {
-      lastFresh = nextFresh;
-      nextFresh = false;
-      return control.adeTaskIssue(
-        lastFresh ? { taskId: toValue(taskId), fresh: true } : { taskId: toValue(taskId) },
-      );
-    },
-    staleTime: 60_000,
-    enabled: toValue(enabled),
-  }));
-  watch(
-    () => query.data.value,
-    (issue) => {
-      // A refresh another reader of this key already started is not restarted.
-      if (!issue?.stale || lastFresh || query.isFetching.value) return;
-      nextFresh = true;
-      void query.refetch();
-    },
-    { immediate: true },
-  );
-  return query;
 }
 
 const refetchArtifacts = () => queryClient.invalidateQueries({ queryKey: artifactsPrefix });

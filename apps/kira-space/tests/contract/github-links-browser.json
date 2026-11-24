@@ -1,0 +1,97 @@
+{
+  "AdeTaskService.Artifacts": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#12",
+        "repo": "",
+        "sessionId": "",
+        "source": "task",
+        "status": "",
+        "title": "api#12",
+        "url": "https://github.com/acme/api/pull/12/changes"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#13",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#13",
+        "url": "https://github.com/acme/api/pull/13/files/abc..def"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#14",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#14",
+        "url": "https://github.com/acme/api/pull/14/commits/abc123"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api#15",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api#15",
+        "url": "https://github.com/acme/api/pull/15"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "api!7",
+        "repo": "",
+        "sessionId": "",
+        "source": "user",
+        "status": "",
+        "title": "api!7",
+        "url": "https://dev.azure.com/acme/Web%20App/_git/api/pullrequest/7"
+      }
+    ],
+    "gaps": []
+  },
+  "Task#links": {
+    "hostLink": {
+      "kind": "changeRequest",
+      "provider": "github",
+      "ref": "api#12"
+    },
+    "hostUrl": "https://github.com/acme/api/pull/12/changes",
+    "jira": {
+      "key": "PAY-9",
+      "url": "https://jira.example.com/browse/PAY-9"
+    }
+  },
+  "args:LinkService.OpenExternal#azure": {
+    "url": "https://dev.azure.com/acme/Web%20App/_git/api/pullrequest/7"
+  },
+  "args:LinkService.OpenExternal#jira": {
+    "url": "https://jira.example.com/browse/PAY-9"
+  },
+  "args:LinkService.OpenExternal#pr12": {
+    "url": "https://github.com/acme/api/pull/12/changes"
+  },
+  "args:LinkService.OpenExternal#pr13": {
+    "url": "https://github.com/acme/api/pull/13/files/abc..def"
+  },
+  "args:LinkService.OpenExternal#pr14": {
+    "url": "https://github.com/acme/api/pull/14/commits/abc123"
+  },
+  "args:LinkService.OpenExternal#pr15": {
+    "url": "https://github.com/acme/api/pull/15"
+  }
+}

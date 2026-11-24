@@ -22,10 +22,8 @@ func TestGraphQLDocumentsValidate(t *testing.T) {
 		t.Fatalf("load schema: %v", err)
 	}
 	for name, doc := range map[string]string{
-		"detailQuery":         detailQuery,
-		"syncPageQuery":       syncPageQuery,
-		"syncChecksQuery":     syncChecksQuery,
-		"replyThreadMutation": replyThreadMutation,
+		"syncPageQuery":   syncPageQuery,
+		"syncChecksQuery": syncChecksQuery,
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, errs := gqlparser.LoadQuery(schema, doc); len(errs) > 0 {

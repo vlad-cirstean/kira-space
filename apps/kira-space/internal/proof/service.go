@@ -19,10 +19,11 @@ import (
 // WindowKeyPrefix marks the proof window's key.
 const WindowKeyPrefix = "proof-"
 
-// WindowWidth and WindowHeight: proof window opens compact so its screenshots stay small and readable.
+// WindowWidth and WindowHeight: proof window default, a step above the 1024x640 window floor, room
+// for fitted images, screenshots still small (P749).
 const (
-	WindowWidth  = 1024
-	WindowHeight = 640
+	WindowWidth  = 1152
+	WindowHeight = 720
 )
 
 // IsWindowKey reports whether key names a proof window.
@@ -84,6 +85,9 @@ func (s *Service) emit(sessionID string) {
 		s.d.Emit(ChannelChanged, Changed{SessionID: sessionID})
 	}
 }
+
+// NotifyChanged announces an accepted change of the proof's files.
+func (s *Service) NotifyChanged(id string) { s.emit(id) }
 
 func promptID(sessionID string) string { return prompts.ID(prompts.KindProof, sessionID) }
 
@@ -219,6 +223,8 @@ type Detail struct {
 	Current   Revision   `json:"current"`
 	Pending   *Revision  `json:"pending"`
 	Removed   []StepMeta `json:"removed"`
+	// Version changes with every content write; a window compares it to tell its copy is stale.
+	Version string `json:"version"`
 }
 
 func notFound() error {
@@ -249,6 +255,14 @@ func (s *Service) revision(id string, rev int) (Revision, error) {
 	return Revision{Rev: rev, Reason: row.Reason, CreatedAt: row.CreatedAt, Steps: meta(steps)}, nil
 }
 
+func version(row repos.ProofSessionRow) string {
+	var pend int
+	if row.PendingRev != nil {
+		pend = *row.PendingRev
+	}
+	return fmt.Sprintf("%d.%d.%d", *row.CurrentRev, pend, row.UpdatedAt)
+}
+
 // Session returns one closed session.
 func (s *Service) Session(id string) (Detail, error) {
 	row, ok, err := s.d.Repo.Session(id)
@@ -270,7 +284,7 @@ func (s *Service) Session(id string) (Detail, error) {
 	if err != nil {
 		return Detail{}, err
 	}
-	d := Detail{ID: row.ID, TaskTitle: title, TaskID: taskID, Slug: slug, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}}
+	d := Detail{ID: row.ID, TaskTitle: title, TaskID: taskID, Slug: slug, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}, Version: version(row)}
 	if row.PendingRev == nil {
 		return d, nil
 	}

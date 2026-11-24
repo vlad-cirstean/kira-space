@@ -44,7 +44,7 @@ func sameLinkURL(a, b string) bool {
 // autoLinkTitle names a link the user gave no title.
 func (b *TaskBoard) autoLinkTitle(c linkClass) string {
 	switch {
-	case c.Origin == linkOriginTracker && c.Ref != "":
+	case c.Origin == linkOriginJira && c.Ref != "":
 		return c.Ref
 	case c.Kind == artifactBranch && c.Ref != "":
 		return c.Ref
@@ -90,7 +90,7 @@ func (b *TaskBoard) AddLink(ctx context.Context, args adewire.AddLinkArgs) (adew
 func (b *TaskBoard) fileLinkLocked(tc *taskCtx, c linkClass) (adewire.LinkResult, error) {
 	t := tc.task
 	switch c.Origin {
-	case linkOriginTracker:
+	case linkOriginJira:
 		if t.JiraKey == c.Ref {
 			return adewire.LinkResult{Filed: linkFiledKnown, Kind: c.Kind}, nil
 		}
@@ -105,7 +105,7 @@ func (b *TaskBoard) fileLinkLocked(tc *taskCtx, c linkClass) (adewire.LinkResult
 			return b.setSlotLocked(t.ID, linkFiledHost, c)
 		}
 	}
-	if c.Origin == linkOriginTracker && c.Ref != "" {
+	if c.Origin == linkOriginJira && c.Ref != "" {
 		others, err := b.deps.Tasks.Artifacts(t.ID)
 		if err != nil {
 			return adewire.LinkResult{}, err
@@ -202,7 +202,7 @@ func (b *TaskBoard) EditLink(ctx context.Context, args adewire.EditLinkArgs) (ad
 	case linkSlotStored:
 		return b.editStoredLocked(tc, args, p, c)
 	case linkSlotJira:
-		if c.Origin == linkOriginTracker {
+		if c.Origin == linkOriginJira {
 			return b.setSlotLocked(tc.task.ID, linkFiledJira, c)
 		}
 	case linkSlotHost:
@@ -253,7 +253,7 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 	switch {
 	case args.Kind != "":
 		kind = args.Kind
-	case p.URL == "" && c.Origin == linkOriginTracker:
+	case p.URL == "" && c.Origin == linkOriginJira:
 		if err := b.refuseTakenLink(tc, row.ID, c, ""); err != nil {
 			return adewire.LinkResult{}, err
 		}
@@ -293,7 +293,7 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 // would otherwise hide the edited row behind.
 func (b *TaskBoard) refuseTakenLink(tc *taskCtx, rowID string, c linkClass, url string) error {
 	t := tc.task
-	if c.Origin == linkOriginTracker && c.Ref != "" && t.JiraKey == c.Ref {
+	if c.Origin == linkOriginJira && c.Ref != "" && t.JiraKey == c.Ref {
 		return linkRefusal(linkErrAlreadyUsed)
 	}
 	if url != "" && (t.HostURL != "" && sameLinkURL(t.HostURL, url) || t.JiraURL != "" && sameLinkURL(t.JiraURL, url)) {

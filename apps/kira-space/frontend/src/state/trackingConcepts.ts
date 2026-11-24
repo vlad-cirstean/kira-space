@@ -20,17 +20,6 @@ export const TRACKED_KINDS = [
     ],
   },
   {
-    kind: 'issue',
-    concepts: [
-      { id: 'statusChanged', default: true },
-      { id: 'commentAdded', default: true },
-      { id: 'assigneeChanged', default: false },
-      { id: 'priorityChanged', default: false },
-      { id: 'titleChanged', default: false },
-      { id: 'linkedChangeRequests', default: false },
-    ],
-  },
-  {
     kind: 'branch',
     concepts: [
       { id: 'remoteCommits', default: true },

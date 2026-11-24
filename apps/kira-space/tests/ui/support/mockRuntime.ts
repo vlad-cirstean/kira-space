@@ -34,11 +34,6 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   gitHostOpenChangeRequestUrl: 'GitHostService.OpenChangeRequestURL',
   gitHostProviders: 'GitHostService.Providers',
   gitResetWindow: 'GitService.ResetWindow',
-  hostViewOpen: 'HostViewService.Open',
-  hostViewWindowTarget: 'HostViewService.WindowTarget',
-  hostViewChangeRequest: 'HostViewService.ChangeRequest',
-  hostViewIssue: 'HostViewService.Issue',
-  hostViewPostComment: 'HostViewService.PostComment',
   linkOpenExternal: 'LinkService.OpenExternal',
   captureWindowItem: 'CaptureService.WindowItem',
   captureConfirm: 'CaptureService.Confirm',
@@ -275,11 +270,9 @@ const FQN_SUFFIX_BY_IPC_KEY: Record<string, string> = {
   adeTaskUpdateHandover: 'AdeTaskService.UpdateHandover',
   adeTaskDismissHandover: 'AdeTaskService.DismissHandover',
   adeTaskArtifacts: 'AdeTaskService.Artifacts',
-  adeTaskIssue: 'IssueTrackerService.TaskIssue',
   adeTaskTrackedUpdates: 'AdeTaskService.TrackedUpdates',
   adeTaskMarkTrackedSeen: 'AdeTaskService.MarkTrackedSeen',
-  cliTools: 'IssueTrackerService.Tools',
-  issueTrackers: 'IssueTrackerService.Trackers',
+  cliTools: 'GitHostService.Tools',
   adeTaskAddLink: 'AdeTaskService.AddLink',
   adeTaskEditLink: 'AdeTaskService.EditLink',
   adeTaskRemoveArtifact: 'AdeTaskService.RemoveArtifact',
@@ -701,8 +694,7 @@ const WILDCARD_DEFAULTS: Readonly<Record<string, string>> = Object.freeze({
   // Every boot calls TerminalService.AgentSessions (createAgentSessionsStore's own initAgentSessions);
   // no committed fixture will ever snapshot it.
   [IPC.terminalAgentSessions]: JSON.stringify({ sessions: [] }),
-  // main.ts asks every window whether it is a host view or review window; none of the specs' windows is one.
-  [IPC.hostViewWindowTarget]: 'null',
+  // main.ts asks every window whether it is a review window; none of the specs' windows is one.
   [IPC.captureWindowItem]: 'null',
   [IPC.captureStatus]: JSON.stringify({ state: 'active', accelerator: 'CmdOrCtrl+Shift+K' }),
   [IPC.adeTaskReviewWindowTarget]: 'null',

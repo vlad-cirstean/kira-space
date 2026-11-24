@@ -107,6 +107,8 @@ const props = defineProps<{
   /** Opt-in view-state persistence (the proof window): restored on mount, reported on every
    *  scroll, selection and column resize. `undefined` for the console, which keeps none. */
   viewState?: ResultViewState | null;
+  /** Proof window: stronger cell lines. */
+  lined?: boolean;
 }>();
 const emit = defineEmits<{
   copyError: [message: string];
@@ -873,7 +875,10 @@ watch(
        never depends on a data tab having been opened first. -->
   <div
     class="slick-grid-host relative h-full font-data text-kira-md text-fg"
-    :class="{ 'kira-grid--row-coloring': settingsStore.appearance.rowColoring }"
+    :class="{
+      'kira-grid--row-coloring': settingsStore.appearance.rowColoring,
+      'kira-grid--lined': lined,
+    }"
   >
     <div ref="rootRef" class="slick-grid-mount h-full w-full"></div>
   </div>

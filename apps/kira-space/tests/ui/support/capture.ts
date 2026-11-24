@@ -9,7 +9,7 @@ import { type ControlMockHandle, installControlMocks } from './mockRuntime';
 import type { ControlSnapshot } from './types';
 
 // A capture popup is ready once its root renders; it has no status bar. installMocks is a reduced
-// copy of fixtures.ts's, same as hostView.ts.
+// copy of fixtures.ts's.
 const DIST_DIR = resolve(__dirname, '../../../frontend/dist');
 
 const installMocks = async (

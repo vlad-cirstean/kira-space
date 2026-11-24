@@ -1,12 +1,11 @@
 // Package updates decides which changes to a tracked item count as updates. A tracked item (a
-// change request, an issue, a branch) keeps a seen snapshot and a current one; Diff names the
+// change request, a branch) keeps a seen snapshot and a current one; Diff names the
 // concepts that differ. Which concepts the user wants flagged is a setting, applied by the renderer.
 package updates
 
 // Item kinds.
 const (
 	KindChangeRequest = "changeRequest"
-	KindIssue         = "issue"
 	KindBranch        = "branch"
 )
 
@@ -39,14 +38,6 @@ var Catalog = []KindConcepts{
 		{"newCommits", false},
 		{"titleChanged", false},
 		{"assigneeChanged", false},
-	}},
-	{KindIssue, []Concept{
-		{"statusChanged", true},
-		{"commentAdded", true},
-		{"assigneeChanged", false},
-		{"priorityChanged", false},
-		{"titleChanged", false},
-		{"linkedChangeRequests", false},
 	}},
 	{KindBranch, []Concept{
 		{"remoteCommits", true},

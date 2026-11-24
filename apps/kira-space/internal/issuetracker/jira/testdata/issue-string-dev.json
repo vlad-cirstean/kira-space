@@ -1,9 +1,0 @@
-{
-  "key": "KIRA-12",
-  "fields": {
-    "summary": "Add the thing",
-    "status": { "name": "In Review", "statusCategory": { "key": "indeterminate" } },
-    "customfield_10010": "not it",
-    "customfield_10000": "{pullrequest={dataType=pullrequest, state=OPEN, stateCount=3}, json={\"cachedValue\":{\"errors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":3,\"lastUpdated\":\"2026-10-01T10:00:00.000+0000\",\"stateCount\":3,\"state\":\"OPEN\",\"dataType\":\"pullrequest\",\"open\":true},\"byInstanceType\":{\"GitHub\":{\"count\":3,\"name\":\"GitHub\"}}}}},\"isStale\":false}}"
-  }
-}

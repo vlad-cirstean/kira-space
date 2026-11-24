@@ -6,19 +6,21 @@ import type {
   ProofViewState,
   ProofViewStateEntry,
 } from '@shared/domain/proof';
-import { useMutation, useQuery } from '@tanstack/vue-query';
+import { type UseQueryReturnType, useMutation, useQuery } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { announceApp } from '@workbench/behaviour/liveRegion';
+import { toCodedError } from '@workbench/bridge/codedError';
 import { queryClient } from '@workbench/state/queryClient';
-import { type MaybeRefOrGetter, onUnmounted, toValue } from 'vue';
+import { computed, type MaybeRefOrGetter, onUnmounted, toValue } from 'vue';
 import { control } from '../bridge/control';
 import { useProofWindowStore } from './state';
 
-// Flat `[domain, ...ids]` keys (workbench/state/queryClient.ts). Go pushes `kira:proof:changed`,
-// so every read stays fresh until the broadcast invalidates it.
+// Flat `[domain, ...ids]` keys (workbench/state/queryClient.ts). The window refetches only on Reload
+// or its own accept and reject; `kira:proof:changed` only checks for staleness.
 const proofKey = {
   all: ['proof'] as const,
   session: (id: string) => ['proof', 'session', id] as const,
+  latest: (id: string) => ['proof', 'latest', id] as const,
   step: (id: string, rev: number, ordinal: number) => ['proof', 'step', id, rev, ordinal] as const,
   shotLocation: ['proof', 'shotLocation'] as const,
   shotClipboard: ['proof', 'shotClipboard'] as const,
@@ -134,10 +136,34 @@ export function useReviewEdit() {
   return { accept, reject };
 }
 
-/** Go broadcasts: refetch whatever changed. */
-export function useProofSync(): void {
-  const off = control.onProofChanged(() => {
-    void refreshProof();
+export type ProofStaleState = 'changed' | 'removed';
+
+/** Tells whether the proof changed or vanished after the window loaded it. A `kira:proof:changed`
+ *  naming this session reads the proof once more into a disabled query; a differing `version`, or
+ *  not found, marks the window stale. Nothing reloads by itself: `reload` does. */
+export function useProofStale(
+  id: MaybeRefOrGetter<string | null>,
+  shown: UseQueryReturnType<ProofDetail, Error>,
+) {
+  const latest = useQuery<ProofDetail>({
+    queryKey: () => proofKey.latest(toValue(id) ?? ''),
+    queryFn: () => control.proofSession(toValue(id) as string),
+    enabled: false,
+  });
+  const off = control.onProofChanged((e) => {
+    const mine = toValue(id);
+    if (mine === null || (e.sessionId !== '' && e.sessionId !== mine)) return;
+    void latest.refetch();
   });
   onUnmounted(off);
+  const state = computed<ProofStaleState | null>(() => {
+    if (shown.isFetching.value || latest.isFetching.value) return null;
+    if (latest.error.value && toCodedError(latest.error.value).code === 'E_NOT_FOUND') {
+      return 'removed';
+    }
+    const a = latest.data.value;
+    const b = shown.data.value;
+    return a && b && a.version !== b.version ? 'changed' : null;
+  });
+  return { state, reload: refreshProof };
 }

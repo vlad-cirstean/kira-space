@@ -9,6 +9,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/ade"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -41,16 +42,22 @@ const (
 const (
 	captureMaxBytes      = 64 << 10
 	captureMaxTitleBytes = adeMaxNameBytes
+	captureMaxLinkBytes  = 2048
 )
+
+// windowRows is the window table slice capture writes.
+type windowRows interface {
+	List() ([]model.WindowRecord, error)
+	Create(model.WindowRecord) error
+}
 
 // CaptureService is the clipboard capture popup: the global hotkey reads the clipboard once, the
 // popup shows what it holds, Confirm adds it as a task.
 type CaptureService struct {
-	Deps     appcore.Deps
-	HostView *HostViewService
-	Tasks    *AdeTaskService
-	Windows  hostViewWindowRows
-	Binding  *shell.HotkeyBinding
+	Deps    appcore.Deps
+	Tasks   *AdeTaskService
+	Windows windowRows
+	Binding *shell.HotkeyBinding
 
 	// Seams filled by appwire.BindShell.
 	Clipboard   func() (string, bool)
@@ -219,7 +226,7 @@ func errText(err error) string {
 }
 
 func (s *CaptureService) singleLink(text string) bool {
-	return len(text) <= maxHostViewURLBytes && !strings.ContainsFunc(text, unicode.IsSpace)
+	return len(text) <= captureMaxLinkBytes && !strings.ContainsFunc(text, unicode.IsSpace)
 }
 
 func (s *CaptureService) closePopup(key string) {
@@ -328,16 +335,16 @@ func (s *CaptureService) classify(ctx context.Context, raw string, ok bool) capt
 	if !s.singleLink(text) {
 		return e
 	}
-	if hosts := s.HostView.hosts(); hosts != nil {
-		if p, _, repo, n, ok := hosts.ParseChangeRequestLink(ctx, text); ok {
+	if hosts := s.Tasks.Hosts; hosts != nil {
+		if p, repo, n, ok := hosts.ParseChangeRequestLink(ctx, text); ok {
 			e.item.Kind = CaptureKindChangeRequest
 			e.item.Label = p.Terms().ChangeRequestShort + " #" + strconv.Itoa(n) + " " + repo.Owner + "/" + repo.Name
 			return e
 		}
 	}
-	if p, ref, ok := s.HostView.issueProvider(text); ok {
+	if ref, ok := ade.ParseJiraRef(text); ok {
 		e.item.Kind = CaptureKindIssue
-		e.item.Label = p.Terms().Label + " " + ref.Key
+		e.item.Label = "Jira " + ref.Key
 		e.jira = &adewire.Jira{Key: ref.Key, URL: ref.URL}
 	}
 	return e

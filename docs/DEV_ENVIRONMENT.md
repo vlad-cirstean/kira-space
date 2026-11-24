@@ -475,20 +475,10 @@ temp `KIRA_SPACE_HOME`, `WAILS_SERVER_HOST=127.0.0.1`. Run `bun run build:mobile
 - A `bun run ... &` job dies with its tool call; start long suites with `setsid nohup`.
 - Complete-gated flow tests that write contracts need `KIRA_FLOW_COMPLETE=1 KIRA_FLOW_DOCKER=require`.
 
-## acli fixtures (P417)
-
-- `apps/kira-space/internal/issuetracker/jira/testdata/*.json` are hand-written from acli's documented output. Running a downloaded `acli` binary was refused in the sandbox, so no real output was captured.
-- Refresh by hand against a real site: `acli jira workitem view KEY --json --fields '*all,-comment,-attachment,-worklog,-description'`, then redact. Keep both Development field forms (string and object).
-- P428 adds `issue-detail.json`, `issue-detail-plain.json` and `comment-list.json`. Refresh with `acli jira workitem view KEY --json --fields <jira.DetailFields>` (includes `attachment`; real attachment ids and URLs redacted) and `acli jira workitem comment list --key KEY --json --limit 50 --order -created`, then redact.
-- P429: no `comment create` fixture exists. `fakeacli` records the call and reads the `--body-file` ADF. Check by hand: `acli jira workitem comment create --key KEY --body-file body.json` with an ADF document.
-- Flow tests use `flowharness/fakeacli`; no test needs `acli` installed.
-
 ## `az` fixtures (P423)
 
 - Install for captures: `python3 -m venv /tmp/azenv && /tmp/azenv/bin/pip install azure-cli && AZURE_CONFIG_DIR=/tmp/azcfg /tmp/azenv/bin/az extension add --name azure-devops`. Keep `AZURE_CONFIG_DIR` in scratch.
-- `githost/azure/testdata`: version, configure-list and stderr files are captured from real `az`. PR, policy, query and thread JSON are hand-written from the documented shape and await confirmation against a real org (`testdata/README`). No org was reachable in the sandbox.
-- P427 detail fixtures (`pr_detail.json`, `policy_detail.json`, `threads_get.json`) are hand-written too. Check the invoke GET projection with `az devops invoke --area git --resource pullRequestThreads --route-parameters project=<p> repositoryId=<r> pullRequestId=<n> --http-method GET --query "<ThreadsQuery>" --org https://dev.azure.com/<org> --detect false -o json` (`--query` is a global argument; `--help` lists it).
-- GitHub `githost/github/testdata/pr_detail.json` is hand-written from the GraphQL schema. Optional check: `gh api graphql -f query=@<detailQuery text> -f owner=<o> -f name=<r> -F number=<n>` against a real PR.
+- `githost/azure/testdata`: version, configure-list and stderr files are captured from real `az`. PR, policy and query JSON are hand-written from the documented shape and await confirmation against a real org (`testdata/README`). No org was reachable in the sandbox.
 - Refresh PR JSON: `az repos pr list --org https://dev.azure.com/<org> --project <p> --repository <r> --detect false -o json`, then redact.
 - Flow tests use `flowharness/fakeaz`; no test needs `az` installed.
 

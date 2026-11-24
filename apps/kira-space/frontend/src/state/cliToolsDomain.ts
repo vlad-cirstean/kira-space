@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-// P417: the local CLIs Settings explains (a code host's and an issue tracker's) and the registered
-// issue trackers. Type only: the bridge trusts the wire shape, like every sibling method.
+// The local CLIs Settings explains (a code host's). Type only: the bridge trusts the wire shape, like
+// every sibling method.
 const cliToolSchema = z.object({
-  kind: z.enum(['host', 'tracker']),
+  kind: z.literal('host'),
   provider: z.string(),
   label: z.string(),
   cli: z.string(),
@@ -22,9 +22,5 @@ const cliToolSchema = z.object({
   }),
 });
 const cliToolsResultSchema = z.object({ tools: z.array(cliToolSchema) });
-const issueTrackersSchema = z.object({
-  trackers: z.array(z.object({ id: z.string(), label: z.string(), issue: z.string() })),
-});
 export type CliTool = z.infer<typeof cliToolSchema>;
 export type CliToolsResult = z.infer<typeof cliToolsResultSchema>;
-export type IssueTrackers = z.infer<typeof issueTrackersSchema>;

@@ -82,6 +82,13 @@ async function openChain(page: Page, taskId = 'T_alerts'): Promise<void> {
   await expect(page.locator(t('ade-task-chain'))).toBeVisible();
 }
 
+// Proofs start collapsed: the steps render only once the toggle opens them.
+async function expandProof(page: Page, slug = 'login-checks'): Promise<void> {
+  const entry = page.locator(`${t('ade-proof-entry')}[data-slug="${slug}"]`);
+  await entry.locator(t('ade-proof-toggle')).click();
+  await expect(entry.locator(t('ade-proof-toggle'))).toHaveAttribute('aria-expanded', 'true');
+}
+
 const kinds = (page: Page) =>
   page
     .locator(`${t('ade-task-chain')} [data-kind]`)
@@ -109,6 +116,7 @@ test('contract: the chain mixes a note and a proof newest first', async ({ relau
   ]);
   await openChain(page);
   await expect.poll(() => kinds(page)).toEqual(['handover', 'proof']);
+  await expandProof(page);
   const entry = page.locator(t('ade-proof-entry'));
   await expect(entry.locator(t('ade-proof-name'))).toHaveText('Login checks');
   await expect(entry.locator(t('ade-proof-path'))).toHaveText('proofs/login-checks');
@@ -136,6 +144,7 @@ test('the same time orders a diagram proof, then the note, then other proof', as
 test('contract: the diagram step draws inline', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
   await openChain(page);
+  await expandProof(page);
   const diagram = page.locator(`${t('ade-proof-diagram')} ${t('proof-diagram')}`);
   await expect(diagram).toHaveAttribute('data-diagram-type', 'flowchart');
   await expect(diagram.locator('svg text', { hasText: 'Check' }).first()).toBeVisible();
@@ -144,6 +153,7 @@ test('contract: the diagram step draws inline', async ({ relaunch }) => {
 test('the diagram step draws at full height', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
   await openChain(page);
+  await expandProof(page);
   const scroller = page.locator(`${t('ade-proof-diagram')} ${t('proof-diagram')} > div`);
   await expect(scroller.locator('svg')).toBeVisible();
   const fit = await scroller.evaluate((el) => ({
@@ -157,7 +167,7 @@ test('the diagram step draws at full height', async ({ relaunch }) => {
   await expect(page.locator(t('ade-proof-diagram'))).not.toHaveCSS('overflow', 'hidden');
 });
 
-test('proof name, summary and step text select', async ({ relaunch }) => {
+test('summary and step text select', async ({ relaunch }) => {
   const long = 'A long step description that must wrap instead of ending in an ellipsis '.repeat(6);
   const list = proofs().map((p) => ({
     ...p,
@@ -166,14 +176,11 @@ test('proof name, summary and step text select', async ({ relaunch }) => {
   }));
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
   await openChain(page);
+  await expandProof(page);
   const entry = page.locator(t('ade-proof-entry'));
   const step = entry.locator(`${t('ade-proof-step')}[data-view="table"]`);
   const description = step.locator('span.select-text').first();
-  for (const target of [
-    entry.locator(t('ade-proof-name')),
-    entry.locator('p.select-text'),
-    description,
-  ]) {
+  for (const target of [entry.locator('p.select-text'), description]) {
     await target.click({ clickCount: 3 });
     const text = ((await target.textContent()) ?? '').trim();
     expect(await page.evaluate(() => window.getSelection()?.toString() ?? '')).toContain(text);
@@ -191,6 +198,9 @@ test('the proof name opens the proof window of its task and folder', async ({ re
     diagramStep,
   ]);
   await openChain(page);
+  await expect(page.locator(t('ade-proof-open')).locator(t('ade-proof-name'))).toHaveText(
+    'Login checks',
+  );
   await page.locator(t('ade-proof-open')).click();
   await expect.poll(() => calls(control, IPC.proofOpenWindow)).toHaveLength(1);
   expect(calls(control, IPC.proofOpenWindow)[0]?.args).toEqual({
@@ -210,6 +220,32 @@ test('a refused proof window toasts the error', async ({ relaunch }) => {
   await expect(page.locator('[data-sonner-toast]')).toContainText('proof is gone');
 });
 
+test('a proof starts collapsed: title and summary only', async ({ relaunch }) => {
+  const list = proofs().map((p) => ({ ...p, summary: 'Summary of the login checks' }));
+  const { window: page, control } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
+  await openChain(page);
+  const entry = page.locator(t('ade-proof-entry'));
+  await expect(entry.locator(t('ade-proof-name'))).toHaveText('Login checks');
+  await expect(entry.locator('p')).toHaveText('Summary of the login checks');
+  await expect(entry.locator(t('ade-proof-toggle'))).toHaveAttribute('aria-expanded', 'false');
+  await expect(entry.locator(t('ade-proof-step'))).toHaveCount(0);
+  await expect(entry.locator(t('ade-proof-diagram'))).toHaveCount(0);
+  await expect(entry.locator(t('ade-proof-open'))).toHaveCount(1);
+  expect(calls(control, IPC.proofStep)).toHaveLength(0);
+});
+
+test('an expanded proof stays expanded across a tab switch', async ({ relaunch }) => {
+  const { window: page } = await openPlan(relaunch, [proofsSnapshot(proofs()), diagramStep]);
+  await openChain(page);
+  await expandProof(page);
+  const entry = page.locator(t('ade-proof-entry'));
+  await expect(entry.locator(t('ade-proof-step'))).toHaveCount(2);
+  await page.locator(t('ade-panel-tab-main')).click();
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect(entry.locator(t('ade-proof-step'))).toHaveCount(2);
+  await expect(entry.locator(t('ade-proof-toggle'))).toHaveAttribute('aria-expanded', 'true');
+});
+
 test('contract: a proof with image and data steps lists every step by its id', async ({
   relaunch,
 }) => {
@@ -224,6 +260,7 @@ test('contract: a proof with image and data steps lists every step by its id', a
   }));
   const { window: page } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
   await openChain(page);
+  await expandProof(page, 'checkout-fix');
   const entry = page.locator(t('ade-proof-entry'));
   await expect(entry.locator(t('ade-proof-path'))).toHaveText('proofs/checkout-fix');
   await expect(entry.locator(t('ade-proof-step'))).toHaveCount(3);

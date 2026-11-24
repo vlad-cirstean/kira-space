@@ -1,0 +1,68 @@
+{
+  "ProofService.Session#changed": {
+    "closedAt": 0,
+    "current": {
+      "createdAt": 0,
+      "reason": "",
+      "rev": 2,
+      "steps": [
+        {
+          "bytes": 209,
+          "description": "rows changed",
+          "diff": "added",
+          "id": "<masked>",
+          "language": "sql",
+          "ordinal": 1,
+          "originOrdinal": null,
+          "source": "postgres",
+          "view": "table"
+        }
+      ]
+    },
+    "id": "<masked>",
+    "name": "Login",
+    "pending": null,
+    "removed": [],
+    "slug": "login",
+    "summary": "",
+    "taskId": "<id:1>",
+    "taskTitle": "Login form",
+    "version": "<version:changed>"
+  },
+  "ProofService.Session#loaded": {
+    "closedAt": 0,
+    "current": {
+      "createdAt": 0,
+      "reason": "",
+      "rev": 1,
+      "steps": [
+        {
+          "bytes": 209,
+          "description": "rows",
+          "diff": "added",
+          "id": "<masked>",
+          "language": "sql",
+          "ordinal": 1,
+          "originOrdinal": null,
+          "source": "postgres",
+          "view": "table"
+        }
+      ]
+    },
+    "id": "<masked>",
+    "name": "Login",
+    "pending": null,
+    "removed": [],
+    "slug": "login",
+    "summary": "",
+    "taskId": "<id:1>",
+    "taskTitle": "Login form",
+    "version": "<version:loaded>"
+  },
+  "event:kira:proof:changed#acceptedEdit": {
+    "sessionId": "session-1"
+  },
+  "event:kira:proof:changed#deleted": {
+    "sessionId": "session-1"
+  }
+}

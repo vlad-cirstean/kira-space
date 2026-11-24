@@ -233,7 +233,7 @@ func TestChangedBudget(t *testing.T) {
 		best = min(best, time.Since(start))
 	}
 	// Generous for a loaded CI runner; still far below a pass that reads or hashes file contents.
-	if best > 25*time.Millisecond {
+	if best > 25*time.Millisecond*timingSlack {
 		t.Fatalf("stat pass over %d files took %s, budget 25ms", MaxFilesPerTask, best)
 	}
 	e.disk("notes/20261101T090000-007.md", "changed")

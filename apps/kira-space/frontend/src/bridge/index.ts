@@ -15,8 +15,6 @@ import * as FileHandlersService from '@bindings/filehandlersservice.js';
 import * as FilesService from '@bindings/filesservice.js';
 import * as GitCredentialService from '@bindings/gitcredentialservice.js';
 import * as GitHostService from '@bindings/githostservice.js';
-import * as HostViewService from '@bindings/hostviewservice.js';
-import * as IssueTrackerService from '@bindings/issuetrackerservice.js';
 import * as KeepAwakeService from '@bindings/keepawakeservice.js';
 import * as LayoutService from '@bindings/layoutservice.js';
 import * as LeasesService from '@bindings/leasesservice.js';
@@ -125,13 +123,6 @@ import type {
   ConfigSyncPreview,
   ConfigSyncStatus,
 } from '../configsync/domain';
-import type {
-  HostViewChangeRequest,
-  HostViewIssue,
-  HostViewOpen,
-  HostViewPosted,
-  HostViewTarget,
-} from '../hostview/wire';
 import { CHANNEL_OPENED_FILES_ARRIVED } from '../openedfiles/wire';
 import type {
   RepoConfigFile,
@@ -141,7 +132,7 @@ import type {
 } from '../repo/state/repoConfigTypes';
 import type { RepoFormArgs, RepoFormResult } from '../repo/state/repoFormTypes';
 import type { AppInfo } from '../state/appInfoDomain';
-import type { CliToolsResult, IssueTrackers } from '../state/cliToolsDomain';
+import type { CliToolsResult } from '../state/cliToolsDomain';
 import type { SpaceOpRecord } from '../state/opsDomain';
 import type { Settings, SettingsPatch } from '../state/settingsDomain';
 import type { TabRecord } from '../state/tabDomain';
@@ -310,22 +301,6 @@ const spaceControl = {
   onCaptureItem: (cb: (item: CaptureItem) => void): (() => void) => on(CHANNEL_CAPTURE_ITEM, cb),
   onCaptureStatus: (cb: (state: HotkeyState) => void): (() => void) =>
     on(CHANNEL_CAPTURE_STATUS, cb),
-  hostViewOpen: (url: string): Promise<HostViewOpen> =>
-    unwrap(HostViewService.Open({ url })).then((r) => trust<HostViewOpen>(r)),
-  hostViewWindowTarget: (args: { windowKey: string }): Promise<HostViewTarget | null> =>
-    unwrap(HostViewService.WindowTarget(args)).then((r) => trust<HostViewTarget | null>(r)),
-  hostViewChangeRequest: (args: { url: string }): Promise<HostViewChangeRequest> =>
-    unwrap(HostViewService.ChangeRequest(args)).then((r) => trust<HostViewChangeRequest>(r)),
-  hostViewIssue: (args: { ref: string; fresh?: boolean }): Promise<HostViewIssue> =>
-    unwrap(HostViewService.Issue({ ref: args.ref, fresh: args.fresh ?? false })).then((r) =>
-      trust<HostViewIssue>(r),
-    ),
-  hostViewPostComment: (args: {
-    windowKey: string;
-    body: string;
-    replyTo: string;
-  }): Promise<HostViewPosted> =>
-    unwrap(HostViewService.PostComment(args)).then((r) => trust<HostViewPosted>(r)),
   gitHostProviders: (): Promise<V2.HostProviders> =>
     unwrap(GitHostService.Providers()).then((r) => trust<V2.HostProviders>(r)),
 
@@ -685,17 +660,13 @@ const spaceControl = {
     unwrap(AdeTaskService.DismissHandover(args)),
   adeTaskArtifacts: (args: V2.TaskArgs): Promise<V2.ArtifactsResult> =>
     unwrap(AdeTaskService.Artifacts(args)).then((r) => trust<V2.ArtifactsResult>(r)),
-  adeTaskIssue: (args: V2.TaskIssueArgs): Promise<V2.TaskIssue> =>
-    unwrap(IssueTrackerService.TaskIssue(args)).then((r) => trust<V2.TaskIssue>(r)),
   adeTaskTrackedUpdates: (): Promise<V2.TrackedUpdatesResult> =>
     unwrap(AdeTaskService.TrackedUpdates()).then((r) => trust<V2.TrackedUpdatesResult>(r)),
   adeTaskMarkTrackedSeen: (args: V2.MarkTrackedSeenArgs): Promise<void> =>
     unwrap(AdeTaskService.MarkTrackedSeen(args)),
   onAdeTaskUpdates: (cb: () => void): (() => void) => on(CHANNEL.adeTaskUpdates, cb),
   cliTools: (refresh: boolean): Promise<CliToolsResult> =>
-    unwrap(IssueTrackerService.Tools({ refresh })).then((r) => trust<CliToolsResult>(r)),
-  issueTrackers: (): Promise<IssueTrackers> =>
-    unwrap(IssueTrackerService.Trackers()).then((r) => trust<IssueTrackers>(r)),
+    unwrap(GitHostService.Tools({ refresh })).then((r) => trust<CliToolsResult>(r)),
   adeTaskAddLink: (args: V2.AddLinkArgs): Promise<V2.LinkResult> =>
     unwrap(AdeTaskService.AddLink(args)).then((r) => trust<V2.LinkResult>(r)),
   adeTaskEditLink: (args: V2.EditLinkArgs): Promise<V2.LinkResult> =>

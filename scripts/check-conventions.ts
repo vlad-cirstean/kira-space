@@ -28,9 +28,11 @@
  * discard/force need `dialog-danger`; no `dialog*` variant takes a `text|bg|border-error|ok|warn`
  * class. A justified exception is marked `<!-- conventions-allow N17: reason -->` before the element.
  *
- * N18 selection stays neutral (P710): the selection and focus tokens are grey, Monaco and xterm read
- * only grey tokens for selection keys, `::selection` is themed, and no selection variant or
- * `selected ?` expression picks a blue utility or CSS rule. Blue means primary, info or data.
+ * N18 selection stays neutral, on-state is blue (P710, P754): selection and focus tokens are grey,
+ * Monaco and xterm selection keys read grey tokens, `::selection` is themed, no selection variant or
+ * `selected ?` expression picks a blue or on-state utility. On-state primitives (checkbox, switch,
+ * radio, radio card, pressed toolbar and dialog buttons, Toggle, segmented) paint
+ * `--kira-toggle-on`/`-edge`, which alias the accent and info blues.
  *
  * N19 every shortcut shows (P712): each `SHORTCUTS` id has a display site (`shortcut` prop or menu item
  * field, `moduleShortcut`, `ShortcutKbd`, or a Go menu accelerator) or a reason in
@@ -873,8 +875,6 @@ const NEUTRAL_TOKENS = [
   '--kira-select-text',
   '--kira-focus',
   '--kira-bg-input',
-  '--kira-toggle-on',
-  '--kira-toggle-on-edge',
   '--kira-toggle-mark',
   '--kira-toggle-off-edge',
   '--kira-toggle-knob',
@@ -888,6 +888,8 @@ const NEUTRAL_ALIAS_TARGETS = new Set([
   '--kira-bg-elevated',
   '--kira-select-edge',
 ]);
+// On-state fill and edge alias the accent and info blues; no literal hex.
+const ON_TOKENS = ['--kira-toggle-on', '--kira-toggle-on-edge'] as const;
 const ALIASED_TOKENS = ['--kira-control-edge'] as const;
 const NEUTRAL_SPREAD = 12;
 const NEUTRAL_READS = new Set<string>([...NEUTRAL_TOKENS, '--kira-fg']);
@@ -896,7 +898,13 @@ const TERMINAL_PATH = 'packages/workbench/src/terminal/terminalRenderer.ts';
 const BASE_CSS_PATH = 'packages/theme/src/base.css';
 const TOKENS_CSS_PATH = 'packages/theme/src/tokens.css';
 const MONACO_SELECTION_KEY =
-  /[Ss]election|focusBackground|focusOutline|focusBorder|dropBackground|hoverHighlight|wordHighlight|inputOption\.active|peekView\.border/;
+  /[Ss]election|focusBackground|focusOutline|focusBorder|dropBackground|hoverHighlight|wordHighlight|peekView\.border/;
+// Monaco find-widget option toggles follow the on-state tokens.
+const MONACO_ON_KEYS = new Map([
+  ['inputOption.activeBackground', '--kira-toggle-on'],
+  ['inputOption.activeBorder', '--kira-toggle-on-edge'],
+  ['inputOption.activeForeground', '--kira-fg'],
+]);
 const MONACO_REQUIRED_KEYS = [
   'editor.selectionBackground',
   'editor.inactiveSelectionBackground',
@@ -919,15 +927,22 @@ const MONACO_REQUIRED_KEYS = [
 ];
 const BLUE_UTILITY =
   '(?:bg|border|ring|outline|decoration|text|fill|stroke)-(?:focus|primary|info|accent|status-(?:blue|sky|indigo)|conn-(?:blue|indigo|cyan))(?:/\\d+)?(?![\\w-])';
-const SELECTION_VARIANT =
-  '(?:data-\\[(?:selected|highlighted|state=(?:on|active|checked|open))[^\\]]*\\]|data-(?:selected|highlighted)|aria-(?:selected|current|pressed|checked)|group-data-selected/[\\w-]+):';
-const BLUE_BEHIND_VARIANT = new RegExp(`${SELECTION_VARIANT}(?:[\\w-]+:)*${BLUE_UTILITY}`);
+const SELECTION_ONLY_VARIANT =
+  '(?:data-\\[(?:selected|highlighted|state=(?:active|open))[^\\]]*\\]|data-(?:selected|highlighted)|aria-(?:selected|current)|group-data-selected/[\\w-]+):';
+const ON_VARIANT = '(?:data-\\[state=(?:on|checked)\\]|aria-(?:pressed|checked)):';
+const ON_UTILITY = '(?:bg|border|ring|outline)-toggle-on(?:-edge)?(?![\\w-])';
+const BLUE_BEHIND_VARIANT = new RegExp(
+  `(?:${SELECTION_ONLY_VARIANT}(?:[\\w-]+:)*(?:${BLUE_UTILITY}|${ON_UTILITY}))|(?:${ON_VARIANT}(?:[\\w-]+:)*${BLUE_UTILITY})`,
+);
 const SELECTED_EXPR = /(?:\bselected|\bisSelected|\w+Selected)\b[^'"`\n]*(?:\?|&&)/;
-const BLUE_LITERAL = new RegExp(`['"\`][^'"\`]*(?<![\\w-])${BLUE_UTILITY}[^'"\`]*['"\`]`);
+const BLUE_LITERAL = new RegExp(
+  `['"\`][^'"\`]*(?<![\\w-])(?:${BLUE_UTILITY}|${ON_UTILITY})[^'"\`]*['"\`]`,
+);
 // Swatch pickers paint the data colour when checked.
 const N18_CLASS_ALLOW = ['ade/v2/statusColors.ts', 'connColor.ts'];
-// On-state controls paint the --kira-toggle-* / --kira-progress-fill greys, never --primary, in any state.
+// On-state controls paint the blue --kira-toggle-on tokens (Progress stays grey), never --primary.
 const ON_STATE_FILES = [
+  'packages/theme/src/components/ui/radio-group/RadioGroupCard.vue',
   'packages/theme/src/components/ui/checkbox/Checkbox.vue',
   'packages/theme/src/components/ui/switch/Switch.vue',
   'packages/theme/src/components/ui/radio-group/RadioGroupItem.vue',
@@ -947,7 +962,7 @@ const N18_CLASS_DIRS = [
   'packages/theme/src',
 ];
 const BLUE_REF =
-  /var\(--kira-(?:accent|focus|info|status-blue|status-sky|status-indigo|conn-blue)\)/;
+  /var\(--kira-(?:accent|focus|info|status-blue|status-sky|status-indigo|conn-blue|toggle-on(?:-edge)?)\)/;
 const SELECTION_SELECTOR = /selected|highlight|::selection|:checked|is-active/;
 
 function hexSpread(hex: string): number | undefined {
@@ -957,9 +972,21 @@ function hexSpread(hex: string): number | undefined {
   return Math.max(...ch) - Math.min(...ch);
 }
 
-/** N18: the selection and focus tokens are 6-digit neutral greys. */
-export function neutralTokenHits(tokensCss: string): Hit[] {
+/** N18: selection and focus tokens are 6-digit neutral greys, on-state tokens alias the blues. */
+export function paletteTokenHits(tokensCss: string): Hit[] {
   const hits: Hit[] = [];
+  for (const token of ON_TOKENS) {
+    const value = new RegExp(`${token}:\\s*([^;]+);`).exec(tokensCss)?.[1]?.trim();
+    if (value === undefined) {
+      hits.push({ rule: 'N18', path: TOKENS_CSS_PATH, message: `${token} is missing` });
+    } else if (!/var\(--kira-(?:accent|info)\)/.test(value) || /#[0-9a-f]{3,8}\b/i.test(value)) {
+      hits.push({
+        rule: 'N18',
+        path: TOKENS_CSS_PATH,
+        message: `${token} is ${value}, not the blue on-state family`,
+      });
+    }
+  }
   for (const token of NEUTRAL_TOKENS) {
     const value = new RegExp(`${token}:\\s*([^;\\s]+)`).exec(tokensCss)?.[1];
     const spread = value === undefined ? undefined : hexSpread(value);
@@ -998,6 +1025,17 @@ export function engineThemeHits(monacoTs: string, terminalTs: string, baseCss: s
     keys.set(key, /cssVar\(\s*'(--[\w-]+)'/.exec(m[3] ?? '')?.[1]);
   }
   for (const [key, token] of keys) {
+    const onToken = MONACO_ON_KEYS.get(key);
+    if (onToken !== undefined) {
+      if (token !== onToken) {
+        hits.push({
+          rule: 'N18',
+          path: MONACO_THEME_PATH,
+          message: `${key} must read ${onToken}, not ${token ?? 'a literal'}`,
+        });
+      }
+      continue;
+    }
     if (!MONACO_SELECTION_KEY.test(key) || key.startsWith('editor.find')) continue;
     if (token === undefined || !NEUTRAL_READS.has(token)) {
       hits.push({
@@ -1076,6 +1114,61 @@ export function selectionClassHits(path: string, source: string): Hit[] {
   return hits;
 }
 
+// Each on-state primitive must keep painting the blue toggle tokens (min count of each literal).
+const ON_STATE_PRIMITIVES: ReadonlyMap<string, readonly (readonly [string, number])[]> = new Map([
+  ...[
+    'packages/theme/src/components/ui/checkbox/Checkbox.vue',
+    'packages/theme/src/components/ui/switch/Switch.vue',
+    'packages/theme/src/components/ui/radio-group/RadioGroupItem.vue',
+    'packages/theme/src/components/ui/radio-group/RadioGroupCard.vue',
+  ].map((f): [string, readonly (readonly [string, number])[]] => [
+    f,
+    [
+      ['aria-checked:bg-toggle-on', 1],
+      ['aria-checked:border-toggle-on-edge', 1],
+    ],
+  ]),
+  [
+    'packages/theme/src/components/ui/button/index.ts',
+    [
+      ['aria-pressed:bg-toggle-on', 2],
+      ['aria-pressed:border-toggle-on-edge', 2],
+    ],
+  ],
+  [
+    'packages/theme/src/components/ui/toggle/index.ts',
+    [
+      ['data-[state=on]:bg-toggle-on', 1],
+      ['data-[state=on]:border-toggle-on-edge', 1],
+    ],
+  ],
+  [
+    'packages/theme/src/components/ui/toggle/Toggle.vue',
+    [
+      ['data-[state=on]:bg-toggle-on', 1],
+      ['data-[state=on]:border-toggle-on-edge', 1],
+    ],
+  ],
+]);
+
+/** N18: every on-state primitive still paints the blue toggle tokens. */
+export function onStatePrimitiveHits(read: (path: string) => string): Hit[] {
+  const hits: Hit[] = [];
+  for (const [path, literals] of ON_STATE_PRIMITIVES) {
+    const source = read(path);
+    for (const [literal, min] of literals) {
+      if (source.split(literal).length - 1 < min) {
+        hits.push({
+          rule: 'N18',
+          path,
+          message: `${path} lost ${literal}; on-state must use the blue toggle tokens`,
+        });
+      }
+    }
+  }
+  return hits;
+}
+
 const BLUE_COLOUR_LITERAL = /#[0-9a-f]{6}\b|#[0-9a-f]{3}\b|rgba?\([^)]*\)/gi;
 
 function isBlueLiteral(literal: string): boolean {
@@ -1140,7 +1233,8 @@ export function cssSelectionHits(path: string, source: string): Hit[] {
 function selectionHits(): Hit[] {
   const read = (p: string) => readFileSync(join(REPO_ROOT, p), 'utf8');
   const hits = [
-    ...neutralTokenHits(read(TOKENS_CSS_PATH)),
+    ...paletteTokenHits(read(TOKENS_CSS_PATH)),
+    ...onStatePrimitiveHits(read),
     ...engineThemeHits(read(MONACO_THEME_PATH), read(TERMINAL_PATH), read(BASE_CSS_PATH)),
   ];
   for (const root of N18_CLASS_DIRS) {

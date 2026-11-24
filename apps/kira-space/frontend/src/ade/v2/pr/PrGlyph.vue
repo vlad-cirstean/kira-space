@@ -10,8 +10,7 @@ import PrStatusLines from './PrStatusLines.vue';
 import { type PrStatus, prGlyph, prStateLabel, prStatusText } from './prGlyph';
 
 // The one pull request icon. `button` opens it (branch row); `tooltip` is a hover glyph (task panel
-// line); `inline` shows the lines as text beside the glyph, where hover does not reach (host view
-// sidebar, phone). The corner dot is the checks and pulses while they run.
+// line); `inline` shows the lines as text beside the glyph, where hover does not reach (phone). The corner dot is the checks and pulses while they run.
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
@@ -40,11 +39,11 @@ const emit = defineEmits<{ open: [] }>();
 
 const model = computed(() => prGlyph(props.status));
 const text = computed(() => prStatusText(props.status));
-// Tooltips read "Open into main" (the host view header phrase); the inline text keeps the dotted pair.
+// Tooltips read "Open into main"; the inline text keeps the dotted pair.
 const tipStateLine = computed(() => {
   const state = prStateLabel(props.status.state);
   return props.baseRef
-    ? t('space.hostView.header.branches.label', { head: state, base: props.baseRef })
+    ? t('space.ade.pr.branches.label', { head: state, base: props.baseRef })
     : state;
 });
 const stateLine = computed(() => {

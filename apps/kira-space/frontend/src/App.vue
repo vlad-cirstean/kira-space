@@ -44,8 +44,6 @@ import CaptureWindow from './capture/CaptureWindow.vue';
 import { useCaptureWindowStore } from './capture/state';
 import ConfigSyncReviewWindow from './configsync/ConfigSyncReviewWindow.vue';
 import ConfigSyncToast from './configsync/ConfigSyncToast.vue';
-import HostViewWindow from './hostview/HostViewWindow.vue';
-import { useHostViewWindowStore } from './hostview/state';
 import OpenedFilesWindow from './openedfiles/OpenedFilesWindow.vue';
 import SessionRestoreHost from './restore/SessionRestoreHost.vue';
 import { appPaletteCommands, closeTab, nextTab, prevTab } from './shortcuts/appCommands';
@@ -117,7 +115,6 @@ const promptKinds = {
 };
 const reviewWindow = useAdeReviewWindowStore();
 const filesWindow = useAdeFilesWindowStore();
-const hostView = useHostViewWindowStore();
 const capture = useCaptureWindowStore();
 const openedFilesWindow = useOpenedFilesWindowStore();
 const configSyncWindow = useConfigSyncWindowStore();
@@ -128,12 +125,11 @@ const fakeDataStore = useFakeDataStore();
 const objectStoreStore = useObjectStoreStore();
 const collectionsStore = useCollectionsStore();
 
-// Review, task Files, host-view, capture, opened-files and proof windows own no project or
+// Review, task Files, capture, opened-files and proof windows own no project or
 // operations panel.
 const mainWindow = (): boolean =>
   !reviewWindow.target &&
   !filesWindow.taskId &&
-  !hostView.target &&
   !capture.item &&
   !openedFilesWindow.active &&
   !configSyncWindow.active &&
@@ -231,7 +227,6 @@ function onToggleKeepAwake(): void {
   <!-- P104 §6.1: disable-hoverable-content matches the app's pointer-events: none tooltip. -->
   <TooltipProvider>
     <CaptureWindow v-if="capture.item" />
-    <HostViewWindow v-else-if="hostView.target" />
     <AdeReviewWindow v-else-if="reviewWindow.target" />
     <AdeTaskFilesWindow v-else-if="filesWindow.taskId" />
     <OpenedFilesWindow v-else-if="openedFilesWindow.active" />

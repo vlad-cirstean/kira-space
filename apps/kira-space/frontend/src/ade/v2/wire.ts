@@ -559,27 +559,6 @@ export interface ArtifactFound {
 export interface ArtifactGap {
   source: string;
   repo: string;
-  /** Why a tracker source is partial; '' for the others. */
-  reason?: string;
-}
-/** The issue tracker's view of a task's linked issue. */
-export interface TaskIssue {
-  provider: string;
-  label: string;
-  key: string;
-  url: string;
-  title: string;
-  status: string;
-  statusCategory: 'new' | 'indeterminate' | 'done' | '';
-  summary: { known: boolean; count: number; state: string; providers: string[] };
-  /** Why the issue could not be read; '' when it was. noTracker: no tracker recognises the link. */
-  reason: string;
-  /** A kept copy past the tracker's fresh window; one fresh read follows. */
-  stale?: boolean;
-}
-export interface TaskIssueArgs {
-  taskId: string;
-  fresh?: boolean;
 }
 export interface ArtifactsResult {
   artifacts: Artifact[];
@@ -1484,10 +1463,9 @@ export interface FocusSessionArgs {
  *  the tracking settings. */
 export interface TrackedUpdate {
   taskId: string;
-  /** `issue`, `cr:<branchId>` or `branch:<branchId>`. */
+  /** `cr:<branchId>` or `branch:<branchId>`. */
   itemKey: string;
-  kind: 'changeRequest' | 'issue' | 'branch';
-  /** '' for an issue. */
+  kind: 'changeRequest' | 'branch';
   branchId: string;
   label: string;
   concepts: string[];

@@ -203,7 +203,7 @@ test('the branch request chip on the card reopens the approvals item', async ({ 
   await expect(page.locator(t('approvals-dialog'))).toBeVisible();
 });
 
-// Backend half: adeflow trackedupdates_test.go (seen). Opening the host view has its own flow.
+// Backend half: adeflow trackedupdates_test.go (seen). Opening the link in the browser has its own flow.
 test('the PR glyph opens the change request and marks its pending update seen', async ({
   relaunch,
 }) => {
@@ -216,13 +216,13 @@ test('the PR glyph opens the change request and marks its pending update seen', 
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskTrackedUpdates, response: { updates: [update] } },
     { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
-    { channel: IPC.hostViewOpen, response: { key: 'hostview-1', opened: true } },
+    { channel: IPC.linkOpenExternal, response: null },
   ]);
   await page
     .locator(`${t('ade-branch-row')}[data-branch-id="b_cart"] ${t('ade-branch-pr')}`)
     .click();
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.hostViewOpen)[0]?.args).toEqual({
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({
     url: 'https://github.com/acme/web-app/pull/1431',
   });
   await expect.poll(() => calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(1);

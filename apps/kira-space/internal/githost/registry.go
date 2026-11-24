@@ -136,32 +136,18 @@ func (r *Registry) BranchLinkLabels() string {
 	return strings.Join(labels, " or ")
 }
 
-// ParseChangeRequestLink asks each provider in order that reads change request detail.
-func (r *Registry) ParseChangeRequestLink(ctx context.Context, raw string) (Provider, ChangeRequestDetails, Repo, int, bool) {
+// ParseChangeRequestLink asks each provider in order that recognises change request links.
+func (r *Registry) ParseChangeRequestLink(ctx context.Context, raw string) (Provider, Repo, int, bool) {
 	for _, p := range r.All() {
-		cd, ok := p.(ChangeRequestDetails)
+		cl, ok := p.(ChangeRequestLinks)
 		if !ok {
 			continue
 		}
-		if repo, n, parsed := cd.ParseChangeRequestLink(ctx, raw); parsed {
-			return p, cd, repo, n, true
+		if repo, n, parsed := cl.ParseChangeRequestLink(ctx, raw); parsed {
+			return p, repo, n, true
 		}
 	}
-	return nil, nil, Repo{}, 0, false
-}
-
-// ChangeRequestViewLabels joins "<label> <short> link" per detail provider with " or ", in
-// registration order: "GitHub PR link or Azure Repos PR link".
-func (r *Registry) ChangeRequestViewLabels() string {
-	var labels []string
-	for _, p := range r.All() {
-		if _, ok := p.(ChangeRequestDetails); !ok {
-			continue
-		}
-		t := p.Terms()
-		labels = append(labels, t.Label+" "+t.ChangeRequestShort+" link")
-	}
-	return strings.Join(labels, " or ")
+	return nil, Repo{}, 0, false
 }
 
 // IsChangeRequestURL is true when any provider accepts u.

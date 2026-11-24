@@ -15,7 +15,7 @@ import { useCliTools, useRefreshCliTools } from '../../state/cliTools';
 import type { CliTool } from '../../state/cliToolsDomain';
 import type { SettingsPaneProps } from './types';
 
-// Setup guide for the local CLIs the app shells out to (a code host's and an issue tracker's). The
+// Setup guide for the local CLIs the app shells out to for code hosts. The
 // CLI owns credentials; this pane only shows what the app sees and the commands to fix it.
 const props = defineProps<SettingsPaneProps>();
 

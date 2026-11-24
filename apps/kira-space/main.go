@@ -47,21 +47,24 @@ var mobileAssets embed.FS
 
 // openProofWindow opens the proof window cascaded from the current window, at the proof size.
 func openProofWindow(app *application.App, winDeps shell.WindowOpenerDeps, rec shell.WindowRecord) {
-	rec.Bounds = proofBounds(shell.CascadeFrom(app.Window.Current()), app.Screen.GetPrimary())
+	rec.Bounds = proofBounds(app.Window.Current(), app.Screen.GetPrimary())
 	shell.OpenWindow(winDeps, rec)
 }
 
-// proofBounds sizes cascaded bounds to the proof window. With nothing to cascade from (Linux never
-// resolves a current window) it falls back to the primary work-area origin, so the proof size holds.
-func proofBounds(cascaded *shell.WindowBounds, primary *application.Screen) *shell.WindowBounds {
-	b := cascaded
-	if b == nil {
-		b = &shell.WindowBounds{}
-		if primary != nil {
-			b.X, b.Y = float64(primary.WorkArea.X), float64(primary.WorkArea.Y)
-		}
+// proofBounds cascades from the current window at the proof size, fitted to the screen. With no
+// current window (Linux never resolves one) it falls back to the primary work-area origin.
+func proofBounds(from application.Window, primary *application.Screen) *shell.WindowBounds {
+	if b := shell.CascadeFromSized(from, proof.WindowWidth, proof.WindowHeight); b != nil {
+		return b
 	}
-	b.Width, b.Height = proof.WindowWidth, proof.WindowHeight
+	b := &shell.WindowBounds{}
+	var work *application.Rect
+	if primary != nil {
+		work = &primary.WorkArea
+		b.X, b.Y = float64(work.X), float64(work.Y)
+	}
+	w, h := shell.FitSize(work, proof.WindowWidth, proof.WindowHeight)
+	b.Width, b.Height = float64(w), float64(h)
 	return b
 }
 
@@ -210,7 +213,7 @@ func main() {
 		},
 	}
 	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OnWindowClosing...)
-	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.ConfigSyncSvc.Review.Forget, wired.HostView.Targets.Forget, wired.GitWindows.Close,
+	winDeps.OnWindowClosing = append(winDeps.OnWindowClosing, wired.OpenedFiles.Forget, wired.ConfigSyncSvc.Review.Forget, wired.GitWindows.Close,
 		func(key string) { bridge.CaptureForget(wired.Capture, key) })
 	openNew := func() { shell.OpenNewWindow(winDeps) }
 	// OpenNewWindow is the title bar's "New window" button (P116 G6) — the same action the ⇧⌘N
@@ -306,7 +309,7 @@ func purgeReviewWindows(repositories *repos.Repos) {
 	}
 }
 
-// purgeKeyedWindows drops capture popup, host view, opened file, task Files and proof window rows a previous run left
+// purgeKeyedWindows drops capture popup, opened file, task Files and proof window rows a previous run left
 // behind: they are never restored.
 func purgeKeyedWindows(repositories *repos.Repos) {
 	records, err := repositories.Windows.List()
@@ -324,9 +327,9 @@ func purgeKeyedWindows(repositories *repos.Repos) {
 	}
 }
 
-// ephemeralWindowKey reports a window that is never restored: host view, capture, opened file, task
+// ephemeralWindowKey reports a window that is never restored: capture, opened file, task
 // Files, proof or shared-config review.
 func ephemeralWindowKey(key string) bool {
-	return bridge.IsHostViewKey(key) || bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) ||
+	return bridge.IsCaptureKey(key) || openedfiles.IsWindowKey(key) ||
 		ade.IsFilesWindowKey(key) || proof.IsWindowKey(key) || bridge.IsConfigSyncKey(key)
 }

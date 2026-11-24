@@ -131,7 +131,6 @@
     "clsx": "2.1.1",
     "echarts": "6.1.0",
     "markdown-it": "15.0.3",
-    "markdown-it-github-alerts": "1.0.1",
     "monaco-editor": "0.57.0",
     "pinia": "4.1.0",
     "reka-ui": "2.11.0",

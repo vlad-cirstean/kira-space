@@ -13,7 +13,7 @@ import (
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
-var maskIDs = flowharness.Mask("id", "closedAt", "createdAt", "linkedAt")
+var maskIDs = flowharness.Mask("id", "closedAt", "createdAt", "linkedAt", "version")
 
 func TestProofCloseAndRead(t *testing.T) {
 	f := newFixture(t)

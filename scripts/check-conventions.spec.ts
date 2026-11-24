@@ -11,8 +11,9 @@ import {
   idRegistryHits,
   menuShortcutHits,
   migrationHits,
-  neutralTokenHits,
+  onStatePrimitiveHits,
   oversizeVueHit,
+  paletteTokenHits,
   piniaHits,
   rawIdHits,
   rawSqlHits,
@@ -332,8 +333,8 @@ describe('N17 semantic button variant', () => {
   });
 });
 
-describe('N18 selection stays neutral', () => {
-  const tokens = (select: string, on = '#33333a') =>
+describe('N18 selection stays neutral, on-state is blue', () => {
+  const tokens = (select: string, on = 'color-mix(in srgb, var(--kira-accent) 20%, transparent)') =>
     [
       `--kira-select: ${select};`,
       '--kira-select-edge: #71717a;',
@@ -341,7 +342,7 @@ describe('N18 selection stays neutral', () => {
       '--kira-focus: #a1a1aa;',
       '--kira-bg-input: #27272c;',
       `--kira-toggle-on: ${on};`,
-      '--kira-toggle-on-edge: #c4c4cc;',
+      '--kira-toggle-on-edge: var(--kira-info);',
       '--kira-toggle-mark: #f4f4f5;',
       '--kira-toggle-off-edge: #3e3e45;',
       '--kira-toggle-knob: #6b6b73;',
@@ -350,12 +351,13 @@ describe('N18 selection stays neutral', () => {
     ].join('\n');
 
   test('a blue selection token fails, the grey passes', () => {
-    expect(neutralTokenHits(tokens('#36363c'))).toEqual([]);
-    expect(neutralTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
-    expect(neutralTokenHits(tokens('#36363c', '#3b6ed1'))[0]?.message).toContain(
-      '--kira-toggle-on',
+    expect(paletteTokenHits(tokens('#36363c'))).toEqual([]);
+    expect(paletteTokenHits(tokens('#1f3354'))[0]?.rule).toBe('N18');
+    expect(paletteTokenHits(tokens('#36363c', '#33333a'))[0]?.message).toContain(
+      'not the blue on-state family',
     );
-    expect(neutralTokenHits('--kira-select: #36363c;')).toHaveLength(11);
+    expect(paletteTokenHits(tokens('#36363c', '#3b6ed1'))).toHaveLength(1);
+    expect(paletteTokenHits('--kira-select: #36363c;')).toHaveLength(11);
   });
 
   test('Monaco keeps every required grey key and ::selection stays themed', () => {
@@ -379,12 +381,17 @@ describe('N18 selection stays neutral', () => {
       'peekView.border',
       'minimap.selectionHighlight',
     ];
+    const onTokens: Record<string, string> = {
+      'inputOption.activeBackground': '--kira-toggle-on',
+      'inputOption.activeBorder': '--kira-toggle-on-edge',
+      'inputOption.activeForeground': '--kira-fg',
+    };
     const monaco = (skip = '', literal = '') =>
       keys
         .filter((k) => k !== skip)
         .map(
           (k) =>
-            `      '${k}': ${k === literal ? "'#264f78'" : "cssVar('--kira-select', '#36363c')"},`,
+            `      '${k}': ${k === literal ? "'#264f78'" : `cssVar('${onTokens[k] ?? '--kira-select'}', '#36363c')`},`,
         )
         .join('\n');
     const term = "selectionBackground: cssVar('--kira-select-text'),";
@@ -394,6 +401,11 @@ describe('N18 selection stays neutral', () => {
       'list.dropBackground',
     );
     expect(engineThemeHits(monaco('', 'peekView.border'), term, base)).toHaveLength(1);
+    const greyBorder = monaco().replace(
+      "'inputOption.activeBorder': cssVar('--kira-toggle-on-edge'",
+      "'inputOption.activeBorder': cssVar('--kira-select-edge'",
+    );
+    expect(engineThemeHits(greyBorder, term, base)[0]?.message).toContain('--kira-toggle-on-edge');
     expect(engineThemeHits(monaco(), "selectionBackground: '#264f78',", base)).toHaveLength(1);
     expect(engineThemeHits(monaco(), term, '')).toHaveLength(1);
   });
@@ -404,6 +416,12 @@ describe('N18 selection stays neutral', () => {
     expect(hits('p/X.vue', "x && 'ring-1'; isSelected && 'bg-info/10'")).toHaveLength(1);
     expect(hits('p/X.vue', "'data-[state=on]:decoration-primary underline'")).toHaveLength(1);
     expect(hits('p/X.vue', "'aria-selected:bg-accent'")).toHaveLength(1);
+    expect(hits('p/X.vue', "'aria-selected:bg-toggle-on'")).toHaveLength(1);
+    expect(hits('p/X.vue', "selected ? 'bg-toggle-on' : ''")).toHaveLength(1);
+    expect(
+      hits('p/X.vue', "'aria-pressed:bg-toggle-on aria-pressed:border-toggle-on-edge'"),
+    ).toEqual([]);
+    expect(hits('p/X.vue', "'aria-pressed:bg-primary'")).toHaveLength(1);
     expect(hits('p/X.vue', "selected ? 'border-select-edge' : 'border-border'")).toEqual([]);
     expect(hits('p/X.vue', "'text-info hover:underline'")).toEqual([]);
     const checkbox = 'packages/theme/src/components/ui/checkbox/Checkbox.vue';
@@ -419,6 +437,27 @@ describe('N18 selection stays neutral', () => {
       ),
     ).toHaveLength(1);
     expect(hits('p/X.spec.ts', "selected ? 'border-focus' : ''")).toEqual([]);
+    expect(
+      hits(
+        'packages/theme/src/components/ui/radio-group/RadioGroupCard.vue',
+        "'data-[state=checked]:bg-toggle-on'",
+      )[0]?.message,
+    ).toContain('aria-checked');
+  });
+
+  test('on-state primitives keep the blue toggle tokens', () => {
+    const full = (path: string) =>
+      path.endsWith('button/index.ts')
+        ? 'aria-pressed:bg-toggle-on aria-pressed:border-toggle-on-edge '.repeat(2)
+        : path.endsWith('toggle/index.ts') || path.endsWith('Toggle.vue')
+          ? 'data-[state=on]:bg-toggle-on data-[state=on]:border-toggle-on-edge'
+          : 'aria-checked:bg-toggle-on aria-checked:border-toggle-on-edge';
+    expect(onStatePrimitiveHits(full)).toEqual([]);
+    const hits = onStatePrimitiveHits((p) =>
+      p.endsWith('Checkbox.vue') ? 'aria-checked:border-toggle-on-edge' : full(p),
+    );
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.message).toContain('aria-checked:bg-toggle-on');
   });
 
   test('CSS selection rules and blue literals fail outside tokens.css', () => {
@@ -428,6 +467,9 @@ describe('N18 selection stays neutral', () => {
     expect(
       cssSelectionHits('p/a.css', '.row.inserted { background: var(--kira-accent); }'),
     ).toEqual([]);
+    expect(
+      cssSelectionHits('p/a.css', '.row.selected { background: var(--kira-toggle-on); }'),
+    ).toHaveLength(1);
     expect(cssSelectionHits('p/a.css', '.x { color: #3b6ed1; }')).toHaveLength(1);
     expect(cssSelectionHits('p/tokens.css', ':root { --a: #3b6ed1; }')).toEqual([]);
     expect(cssSelectionHits('p/a.css', '.x { color: #36363c; } /* #3b6ed1 */')).toEqual([]);

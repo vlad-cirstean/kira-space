@@ -16,7 +16,7 @@ const tab = defineModel<T>({ required: true });
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div class="relative shrink-0" data-testid="ade-panel-head">
+    <div class="relative shrink-0" :class="color && 'pb-0.75'" data-testid="ade-panel-head">
       <slot name="header" />
       <ColorLine v-if="color" data-testid="ade-task-line" variant="under" :color="color" />
     </div>

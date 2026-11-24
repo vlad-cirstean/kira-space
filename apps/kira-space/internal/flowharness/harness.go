@@ -45,7 +45,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/github"
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/localauth"
@@ -78,7 +77,6 @@ type options struct {
 	clock           scriptruns.Clock
 	mobileNow       func() time.Time
 	noGh            bool
-	issueTracker    *jira.Options
 	azure           *azure.Options
 	gitHosts        []githost.Provider
 	noClaude        bool
@@ -118,10 +116,6 @@ func WithFileHandlers(r filehandlers.Registry) Opt { return func(o *options) { o
 
 // WithoutGh leaves gh off PATH entirely, system installs included (claude stays the fake).
 func WithoutGh() Opt { return func(o *options) { o.noGh = true } }
-
-// WithIssueTracker replaces the Jira provider's acli seams. Without it the harness finds no acli, so a
-// flow never reaches the host's real one. ChangeRequests is the harness's own.
-func WithIssueTracker(o jira.Options) Opt { return func(opts *options) { opts.issueTracker = &o } }
 
 // WithAzure replaces the Azure Repos provider's az seams. Without it the harness finds no az, so a flow
 // never reaches the host's real one.
@@ -243,15 +237,10 @@ func kubeEnv() kubernetes.Env {
 // noGhLocator finds no gh anywhere, system installs included.
 type noGhLocator struct{}
 
-// noAcliLocator finds no acli anywhere.
-type noAcliLocator struct{}
-
 // noAzLocator finds no az anywhere.
 type noAzLocator struct{}
 
 func (noAzLocator) Locate() (string, []string, bool) { return "", []string{"az (on PATH)"}, false }
-
-func (noAcliLocator) Locate() (string, []string, bool) { return "", []string{"acli (on PATH)"}, false }
 
 func (noGhLocator) Locate() (string, []string, bool) { return "", []string{"gh (on PATH)"}, false }
 
@@ -504,17 +493,13 @@ func (a *App) build() {
 	if a.opts.azure != nil {
 		az = *a.opts.azure
 	}
-	tracker := jira.Options{Locator: noAcliLocator{}}
-	if a.opts.issueTracker != nil {
-		tracker = *a.opts.issueTracker
-	}
 	a.W, err = appwire.Build(appwire.Options{
 		UpdateChecker: a.opts.updateChecker, Cipher: cipher, DbMcpPort: dbMcpPort,
 		Authorizer:   localauth.New(time.Now, a.OSAuth.evaluate, a.OSAuth.isAvailable),
 		McpInstaller: a.McpInstaller, WindowFocus: focus, DockerHubAPI: a.opts.dockerHubAPI, DockerExtra: a.opts.dockerExtra,
 		KubernetesExtra: append([]kubernetes.Option{kubernetes.WithEnv(kubeEnv)}, a.opts.kubeExtra...),
-		Providers:       registry, IssueTracker: tracker,
-		GitHosts: githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, SessionRestoreWindow: a.opts.restoreWindow, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
+		Providers:       registry,
+		GitHosts:        githostproviders.New(ghOptions, append([]githost.Provider{azure.New(az)}, a.opts.gitHosts...)...), TrackerGrace: a.opts.trackerGrace, SessionRestoreWindow: a.opts.restoreWindow, RebaseTimeout: a.opts.rebaseTimeout, BranchRequestWait: a.opts.branchWait, CallWait: a.opts.callWait, LeaseTTL: a.opts.leaseTTL, LeaseNow: a.opts.leaseNow, LeaseElapsed: a.opts.leaseElapsed, SmartTimeout: a.opts.smartTimeout, Sandbox: a.opts.sandbox, ScheduleTimeout: a.opts.scheduleTimeout, Clock: a.opts.clock, MobilePoll: a.opts.mobilePoll, MobileNow: a.opts.mobileNow, ChangeRequestSync: a.opts.crSync, TrackedUpdates: *a.opts.updates,
 		Repos: r, DB: db, Emitter: a.Events, Browser: a.Browser, FileOpener: a.FileOpener, TaskRevealer: a.FileOpener, Editor: a.Editor, ImageClipboard: a.ImageClipboard, Dialogs: a.Dialogs,
 		Locator: gitclient.NewHostLocator(), KeepAwakeDriver: a.KeepAwake, FileHandlers: a.opts.fileHandlers,
 		MobileAssets: fstest.MapFS{"index.html": {Data: []byte("<!doctype html><title>phone</title>")}},

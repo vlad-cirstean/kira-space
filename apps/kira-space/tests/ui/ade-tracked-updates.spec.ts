@@ -25,11 +25,9 @@ const fx = contract<{ updates: Update[] }>(
   'AdeTaskService.TrackedUpdates#changed',
 );
 const crFx = fx.updates.find((u) => u.kind === 'changeRequest');
-const issueFx = fx.updates.find((u) => u.kind === 'issue');
-if (!crFx || !issueFx) throw new Error('contract lacks a change request or an issue update');
+if (!crFx) throw new Error('contract lacks a change request update');
 
 const cr: Update = { ...crFx, taskId: 'T_bill', itemKey: 'cr:b_bill', branchId: 'b_bill' };
-const issue: Update = { ...issueFx, taskId: 'T_bill', itemKey: 'issue', branchId: '' };
 const branch: Update = {
   taskId: 'T_auth',
   itemKey: 'branch:b_auth',
@@ -45,7 +43,7 @@ test('contract: a dot marks the task and the branch, and the strip lists each ch
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr, issue, branch] } },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr, branch] } },
   ]);
   await expect(
     page.locator(`${t('ade-card')}[data-task-id="T_bill"] ${t('ade-task-updated')}`),
@@ -63,7 +61,6 @@ test('contract: a dot marks the task and the branch, and the strip lists each ch
   await expect(strip.locator(t('ade-task-update-cr:b_bill'))).toContainText(
     'Request checks failing',
   );
-  await expect(strip.locator(t('ade-task-update-issue'))).toContainText('Issue status changed');
   await expect(page.locator(t('ade-branch-updated-b_bill'))).toBeVisible();
   await expect(page.locator(t('ade-branch-updated-b_billdash'))).toHaveCount(0);
 });
@@ -71,17 +68,17 @@ test('contract: a dot marks the task and the branch, and the strip lists each ch
 // The mark call is held so the refetch it triggers does not bring the static reply back.
 test('Mark seen sends the item key and clears its line', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr, issue] } },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr] } },
     { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
   ]);
   await openTask(page, 'T_bill');
-  await page.locator(t('ade-task-update-seen-issue')).click();
+  await page.locator(t('ade-task-update-seen-cr:b_bill')).click();
   await expect.poll(() => calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskMarkTrackedSeen)[0]?.args).toEqual({
     taskId: 'T_bill',
-    itemKeys: ['issue'],
+    itemKeys: ['cr:b_bill'],
   });
-  await expect(page.locator(t('ade-task-update-issue'))).toHaveCount(0);
+  await expect(page.locator(t('ade-task-update-cr:b_bill'))).toHaveCount(0);
 });
 
 // The popover on the card's updated dot is the frontend half too; same backend scenario.
@@ -89,24 +86,26 @@ test('the card dot opens the list; Mark seen sends the key and removes the dot',
   relaunch,
 }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [issue] } },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr] } },
     { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
   ]);
   const dot = page.locator(`${t('ade-card')}[data-task-id="T_bill"] ${t('ade-task-updated')}`);
   await dot.click();
-  await expect(page.locator(t('ade-task-update-issue'))).toContainText('Issue status changed');
-  await page.locator(t('ade-task-update-seen-issue')).click();
+  await expect(page.locator(t('ade-task-update-cr:b_bill'))).toContainText(
+    '3 new request comments',
+  );
+  await page.locator(t('ade-task-update-seen-cr:b_bill')).click();
   await expect.poll(() => calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskMarkTrackedSeen)[0]?.args).toEqual({
     taskId: 'T_bill',
-    itemKeys: ['issue'],
+    itemKeys: ['cr:b_bill'],
   });
   await expect(dot).toHaveCount(0);
 });
 
 test('Mark all seen sends an empty key list', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr, issue] } },
+    { channel: IPC.adeTaskTrackedUpdates, response: { updates: [cr] } },
     { channel: IPC.adeTaskMarkTrackedSeen, hold: true },
   ]);
   await openTask(page, 'T_bill');

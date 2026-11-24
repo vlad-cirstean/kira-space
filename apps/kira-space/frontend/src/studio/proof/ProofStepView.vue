@@ -184,6 +184,7 @@ onBeforeUnmount(() => {
               path=""
               :view-state="view.seed.value"
               auto-expand
+              lined
               @update:view-state="view.setResult"
               @ready="resultReady = true"
             />
@@ -207,14 +208,9 @@ onBeforeUnmount(() => {
               @ready="resultReady = true"
             />
             <ProofImage
-              v-else-if="imagePayload && view.seed.value"
+              v-else-if="imagePayload"
               :payload="imagePayload"
               :description="data.description"
-              :seed="{
-                top: view.seed.value.resultScrollTop,
-                left: view.seed.value.resultScrollLeft,
-              }"
-              @update:scroll="view.setScroll"
               @ready="resultReady = true"
             />
           </div>

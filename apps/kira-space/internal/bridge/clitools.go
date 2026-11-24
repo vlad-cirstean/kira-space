@@ -2,22 +2,21 @@ package bridge
 
 import "github.com/kirathecat/kira-studio/apps/kira-space/internal/clisetup"
 
-// ToolsArgs is IssueTrackerService.Tools' request. Refresh drops each CLI's cached probe first.
+// ToolsArgs is GitHostService.Tools' request. Refresh drops each CLI's cached probe first.
 type ToolsArgs struct {
 	Refresh bool `json:"refresh"`
 }
 
 // Tool kinds.
 const (
-	ToolKindHost    = "host"
-	ToolKindTracker = "tracker"
+	ToolKindHost = "host"
 )
 
-// Tool is one local CLI Settings explains: a code host's or an issue tracker's.
+// Tool is one local CLI Settings explains: a code host's.
 type Tool struct {
-	Kind     string         `json:"kind"` // host | tracker
+	Kind     string         `json:"kind"` // host
 	Provider string         `json:"provider"`
-	Label    string         `json:"label"` // GitHub, Jira
+	Label    string         `json:"label"` // GitHub, Azure Repos
 	CLI      string         `json:"cli"`   // GitHub CLI (gh)
 	Setup    clisetup.Setup `json:"setup"`
 	Status   ToolStatus     `json:"status"`
@@ -34,19 +33,7 @@ type ToolStatus struct {
 	Probed  []string `json:"probed"`
 }
 
-// ToolsResult lists code host CLIs first, then issue tracker CLIs, each in registration order.
+// ToolsResult lists the code host CLIs in registration order.
 type ToolsResult struct {
 	Tools []Tool `json:"tools"`
-}
-
-// TrackerInfo names one issue tracker without probing its CLI.
-type TrackerInfo struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	Issue string `json:"issue"`
-}
-
-// TrackersResult lists the registered issue trackers.
-type TrackersResult struct {
-	Trackers []TrackerInfo `json:"trackers"`
 }

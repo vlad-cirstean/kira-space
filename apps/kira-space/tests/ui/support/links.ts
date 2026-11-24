@@ -1,4 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
+import { adeBoard } from './adeV2';
+import { IPC } from './ipcChannels';
 
 // Page object for the link strip (AdeLinkStrip). The card and the add popover render in a portal, so
 // they are located from the page, never from inside the strip.
@@ -20,13 +22,9 @@ export async function openCard(scope: Page | Locator, text: string): Promise<Loc
   return card;
 }
 
-/** Clicks the pill; `external` holds the primary modifier (Meta: the UI harness runs a macOS UA). */
-export async function openIn(
-  scope: Page | Locator,
-  text: string,
-  opts: { external?: boolean } = {},
-): Promise<void> {
-  await pill(scope, text).click(opts.external ? { modifiers: ['Meta'] } : undefined);
+/** Clicks the pill: opens the link in the browser. */
+export async function openIn(scope: Page | Locator, text: string): Promise<void> {
+  await pill(scope, text).click();
 }
 
 /** Opens the add popover with `+`, types the text and presses Enter. */
@@ -35,4 +33,20 @@ export async function addLine(page: Page, text: string): Promise<void> {
   const input = page.locator('[data-testid="ade-links-paste"]');
   await input.fill(text);
   await input.press('Enter');
+}
+
+/** Boot snapshots for a plan whose task `T_alerts` carries `links`; artifacts get ids when user-made. */
+export function linkSnapshots(
+  links: object,
+  artifacts: readonly { source: string }[],
+): { channel: string; response: unknown }[] {
+  const board = adeBoard((b) => {
+    Object.assign(b.tasks.find((x) => x.id === 'T_alerts') ?? {}, links);
+  });
+  const listed = artifacts.map((a, i) => ({ ...a, id: a.source === 'user' ? `a_${i}` : '' }));
+  return [
+    { channel: IPC.adeTaskBoard, response: board },
+    { channel: IPC.adeTaskArtifacts, response: { artifacts: listed, gaps: [] } },
+    { channel: IPC.linkOpenExternal, response: null },
+  ];
 }

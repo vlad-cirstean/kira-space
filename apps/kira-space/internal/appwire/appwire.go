@@ -40,7 +40,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/github"
 	githostproviders "github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/providers"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/keptvars"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/kubernetes"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/lannet"
@@ -121,9 +120,6 @@ type Options struct {
 	MobileNow func() time.Time
 	// GitHosts are the registered code-host providers; nil means GitHub and Azure Repos with their real CLIs.
 	GitHosts *githost.Registry
-	// IssueTracker seams the Jira provider's acli locator, runner and clock; the zero value is production's
-	// (a flow-test seam). Its ChangeRequests is set by the wiring.
-	IssueTracker jira.Options
 	// TrackerGrace is how long the ADE tracker waits before it reads a spawned TUI session as
 	// stopped; zero means the tracker default.
 	TrackerGrace time.Duration
@@ -241,9 +237,7 @@ type Wired struct {
 	GitSvc          *bridge.GitService
 	GitCredential   *bridge.GitCredentialService
 	GitHost         *bridge.GitHostService
-	HostView        *bridge.HostViewService
 	Capture         *bridge.CaptureService
-	IssueTracker    *bridge.IssueTrackerService
 	Link            *bridge.LinkService
 	Files           *bridge.FilesService
 	Settings        *bridge.SettingsService
@@ -373,7 +367,6 @@ func Build(opts Options) (*Wired, error) {
 	}
 	w.RepoConfig = wireRepoConfig(repositories, hosts)
 	git := wireGit(repositories, opts.Locator, hosts, opts.ChangeRequestSync, w.RepoConfig)
-	git.trackers = wireTrackers(git.opLog, opts.IssueTracker)
 	w.Git, w.CredentialRelay = git, credentialRelay
 
 	// The tap feeds every window-wide event to the phone event hub, which drops what is not allowlisted.
@@ -461,11 +454,7 @@ func Build(opts Options) (*Wired, error) {
 	w.GitSvc = bridge.NewGitService(w.GitWindows)
 	w.detachGitCred = bridge.AttachGitCredentialPush(w.GitCredential)
 	w.GitHost = &bridge.GitHostService{Deps: deps, Browser: opts.Browser}
-	w.HostView = &bridge.HostViewService{Deps: deps, Windows: repositories.Windows, Targets: &bridge.HostViewTargets{}, Trackers: git.trackers}
-	if opts.Clock != nil {
-		w.HostView.Now = opts.Clock.Now
-	}
-	w.Capture = &bridge.CaptureService{Deps: deps, HostView: w.HostView, Windows: repositories.Windows}
+	w.Capture = &bridge.CaptureService{Deps: deps, Windows: repositories.Windows}
 	w.Link = &bridge.LinkService{Browser: opts.Browser}
 	w.Settings = &bridge.SettingsService{Deps: deps}
 	w.Layout = &bridge.LayoutService{Deps: deps}
@@ -585,7 +574,6 @@ func Build(opts Options) (*Wired, error) {
 	loader.Start()
 	w.sched.Start()
 	w.ConfigSync.Start()
-	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
 	w.SessionRestore = &bridge.SessionRestoreService{Svc: sessionrestore.New(runs, sessionrestore.DockerOf(w.Docker.BoundService), w.AdeBoard,
@@ -683,9 +671,6 @@ func (w *Wired) BindShell(h ShellHooks) {
 	w.AdeTask.CloseWindow = closeWindow
 	w.AdeTask.FocusWindow = focusWindow
 	w.AdeTask.SetWindowTitle = setTitle
-	w.HostView.OpenWindow = h.OpenWindow
-	w.HostView.FocusWindow = focusWindow
-	w.HostView.SetWindowTitle = setTitle
 	w.WindowsSvc.OpenNewWindow = h.OpenNewWindow
 	w.OpenedFiles.OpenWindow = h.OpenNewWindowKeyed
 	w.OpenedFiles.FocusWindow = focusWindow
@@ -744,7 +729,7 @@ func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
-		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.HostView), application.NewService(w.IssueTracker), application.NewService(w.Link),
+		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
 		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.SessionRestore), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),

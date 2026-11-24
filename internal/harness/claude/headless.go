@@ -243,7 +243,7 @@ func (p *Provider) RunHeadless(ctx context.Context, spec harness.HeadlessSpec, h
 	cmd.Stdout.(*linewriter.Writer).Flush()
 	cmd.Stderr.(*linewriter.Writer).Flush()
 
-	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded)
+	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil
 	cancelled := !timedOut && ctx.Err() != nil
 	if (timedOut || cancelled) && cmd.Process != nil {
 		_ = killGroup(cmd.Process.Pid, syscall.SIGKILL)

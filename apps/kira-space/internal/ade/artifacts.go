@@ -65,13 +65,9 @@ var artifactKindOrder = map[string]int{
 	model.AdeArtifactDeployment: 3, model.AdeArtifactDoc: 4, model.AdeArtifactLink: 5,
 }
 
-// builtinArtifactSources is the registration order: task links, repos, one per issue tracker (the stored issue row only, no tracker call), stored rows, links found in notes.
+// builtinArtifactSources is the registration order: task links, repos, stored rows, links found in notes.
 func (b *TaskBoard) builtinArtifactSources() []ArtifactSource {
-	out := []ArtifactSource{taskLinkSource{b}, repoSource{b}}
-	for _, p := range b.deps.Trackers.All() {
-		out = append(out, trackerSource{b: b, p: p})
-	}
-	return append(out, storedSource{b}, notesSource{b})
+	return []ArtifactSource{taskLinkSource{b}, repoSource{b}, storedSource{b}, notesSource{b}}
 }
 
 // TaskArtifacts lists the task's artifacts (archived tasks included), merged, deduped and sorted. A
@@ -543,7 +539,7 @@ func agentArtifacts(res adewire.ArtifactsResult) agentmcp.TaskArtifacts {
 		out.Artifacts[i] = agentmcp.Artifact{Kind: a.Kind, Title: a.Title, URL: a.URL, Ref: a.Ref, Status: a.Status, Repo: a.Repo, Source: a.Source}
 	}
 	for i, g := range res.Gaps {
-		out.Gaps[i] = agentmcp.ArtifactGap{Source: g.Source, Repo: g.Repo, Reason: g.Reason}
+		out.Gaps[i] = agentmcp.ArtifactGap{Source: g.Source, Repo: g.Repo}
 	}
 	return out
 }

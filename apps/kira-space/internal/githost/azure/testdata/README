@@ -10,8 +10,3 @@ against a real organization; see docs/DEV_ENVIRONMENT.md "az fixtures (P423)" to
   pr_list.json, pr_show.json   output of the `--query` projections in client.go (prListQuery, prShowQuery)
   policy_list.json             output of policyQuery
   pr_query.json                `az devops invoke` pullRequestQuery result (raw REST plus continuation_token)
-  threads_post.json            `az devops invoke` pullRequestThreads POST result
-  pr_detail.json               output of PRDetailQuery (detail.go)
-  policy_detail.json           output of PolicyDetailQuery
-  threads_get.json             `az devops invoke --http-method GET --resource pullRequestThreads --query ThreadsQuery` result
-`az devops invoke --help` is expected to list the global --query; confirm it before trusting the GET (DEV_ENVIRONMENT.md).

@@ -20,20 +20,6 @@ type CRSnap struct {
 	Assignees      []string `json:"assignees,omitempty"`
 }
 
-// IssueSnap is what is observed of a task's linked issue. Comments and Linked are nil when the
-// tracker does not say.
-type IssueSnap struct {
-	V        int    `json:"v"`
-	Key      string `json:"key,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Status   string `json:"status,omitempty"`
-	Priority string `json:"priority,omitempty"`
-	Assignee string `json:"assignee,omitempty"` // tracker account id
-	Comments *int   `json:"comments,omitempty"`
-	Linked   *int   `json:"linked,omitempty"`
-	Updated  int64  `json:"updated,omitempty"` // tracker's updated stamp, unix ms; change check only, never a concept
-}
-
 // BranchSnap is what is observed of a task branch. ConflictsKnown is false until a conflict check
 // has finished.
 type BranchSnap struct {
@@ -49,9 +35,6 @@ type BranchSnap struct {
 
 // Encode returns the stored form, stamped with the current Version.
 func (s CRSnap) Encode() string { s.V = Version; return marshal(s) }
-
-// Encode returns the stored form, stamped with the current Version.
-func (s IssueSnap) Encode() string { s.V = Version; return marshal(s) }
 
 // Encode returns the stored form, stamped with the current Version.
 func (s BranchSnap) Encode() string { s.V = Version; return marshal(s) }
@@ -73,11 +56,6 @@ func decode[T any](stored string, v *T, version func(T) int) bool {
 // DecodeCR reads a stored change request snapshot; false when unreadable or of another version.
 func DecodeCR(stored string, v *CRSnap) bool {
 	return decode(stored, v, func(s CRSnap) int { return s.V })
-}
-
-// DecodeIssue reads a stored issue snapshot; false when unreadable or of another version.
-func DecodeIssue(stored string, v *IssueSnap) bool {
-	return decode(stored, v, func(s IssueSnap) int { return s.V })
 }
 
 // DecodeBranch reads a stored branch snapshot; false when unreadable or of another version.

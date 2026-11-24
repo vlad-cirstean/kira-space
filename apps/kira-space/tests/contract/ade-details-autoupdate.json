@@ -1,0 +1,48 @@
+{
+  "AdeTaskService.DetailsDiskChanges#idle": [
+    {
+      "diff": "--- a/notes/<time>-<id:1>.md\n+++ b/notes/<time>-<id:1>.md\n@@ -1 +1 @@\n-First note.\n+Edited outside.\n",
+      "kind": "note",
+      "path": "notes/<time>-<id:1>.md",
+      "pending": false,
+      "problem": "",
+      "state": "edited"
+    }
+  ],
+  "AdeTaskService.TaskProofs#edited": {
+    "proofs": [
+      {
+        "closedAt": 0,
+        "linkedAt": 0,
+        "name": "Second",
+        "pending": false,
+        "proofId": "<id:1>",
+        "rev": 2,
+        "sessionId": "<masked>",
+        "slug": "second",
+        "steps": [
+          {
+            "description": "Second rows",
+            "id": "<masked>",
+            "ordinal": 1,
+            "source": "postgres",
+            "view": "table"
+          }
+        ],
+        "summary": "Checks Second"
+      }
+    ]
+  },
+  "event:kira:adetask:board": {
+    "refs": false,
+    "taskIds": [
+      "T_alerts"
+    ]
+  },
+  "event:kira:adetask:board#proofEdit": {
+    "refs": false,
+    "taskIds": [
+      "T_alerts"
+    ]
+  }
+}

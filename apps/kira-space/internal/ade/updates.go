@@ -17,19 +17,14 @@ import (
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/updates"
 )
 
 // Defaults for UpdatesConfig's zero fields.
 const (
-	defaultUpdatesMinGap       = 30 * time.Second
-	defaultUpdatesInterval     = 5 * time.Minute
-	defaultUpdatesJiraInterval = 10 * time.Minute
-	updatesIssueTimeout        = 15 * time.Second
-	updatesIssueFanOut         = 2
-	updatesBatchTimeout        = 45 * time.Second
+	defaultUpdatesMinGap   = 30 * time.Second
+	defaultUpdatesInterval = 5 * time.Minute
 )
 
 // UpdatesConfig tunes the tracked item watcher. Zero durations take the defaults.
@@ -40,8 +35,6 @@ type UpdatesConfig struct {
 	MinGap time.Duration
 	// Interval is the timer period.
 	Interval time.Duration
-	// JiraInterval is the least time between two reads of one task's issue in a non-fresh pass.
-	JiraInterval time.Duration
 }
 
 func (c UpdatesConfig) withDefaults() UpdatesConfig {
@@ -50,9 +43,6 @@ func (c UpdatesConfig) withDefaults() UpdatesConfig {
 	}
 	if c.Interval <= 0 {
 		c.Interval = defaultUpdatesInterval
-	}
-	if c.JiraInterval <= 0 {
-		c.JiraInterval = defaultUpdatesJiraInterval
 	}
 	return c
 }
@@ -68,13 +58,12 @@ type updateWatcher struct {
 
 	mu      sync.Mutex // guards the fields below
 	lastRun time.Time
-	jiraAt  map[string]time.Time // task id -> last issue read
 	timer   *time.Timer
 	pending *time.Timer // the board-change trigger waiting out MinGap
 }
 
 func newUpdateWatcher(b *TaskBoard, cfg UpdatesConfig) *updateWatcher {
-	return &updateWatcher{b: b, cfg: cfg.withDefaults(), jiraAt: map[string]time.Time{}}
+	return &updateWatcher{b: b, cfg: cfg.withDefaults()}
 }
 
 // start runs a first pass and arms the timer.
@@ -197,23 +186,9 @@ func (w *updateWatcher) pass(ctx context.Context, fresh bool) error {
 		wanted[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "cr:" + br.ID}] = true
 		wanted[model.AdeTrackedKey{TaskID: br.TaskID, ItemKey: "branch:" + br.ID}] = true
 	}
-	issueTasks := w.issueTasks(live)
-	for _, t := range issueTasks {
-		wanted[model.AdeTrackedKey{TaskID: t.task.ID, ItemKey: "issue"}] = true
-	}
-	// Issue reads share only prev (read-only) and jiraAt (locked) with the host reads, so they run beside
-	// them: the start-up Jira warm-up does not wait behind every gh and az call.
-	var issueObs []observation
-	issuesDone := make(chan struct{})
-	go func() {
-		defer close(issuesDone)
-		issueObs = w.issueObservations(ctx, issueTasks, prev, fresh)
-	}()
 	observed := make([]observation, 0, 2*len(created))
 	observed = append(observed, w.branchObservations(ctx, created, prev)...)
 	observed = append(observed, w.crObservations(ctx, created, prev)...)
-	<-issuesDone
-	observed = append(observed, issueObs...)
 
 	now := b.deps.Now().UnixMilli()
 	var upserts []model.AdeTrackedItem
@@ -368,166 +343,6 @@ func keepCRCounts(snap *updates.CRSnap, old model.AdeTrackedItem) {
 	}
 }
 
-type issueTask struct {
-	task     model.AdeTask
-	provider issuetracker.Provider
-	ref      issuetracker.Ref
-}
-
-// issueTasks lists the live tasks whose linked issue a tracker with details can read.
-func (w *updateWatcher) issueTasks(live map[string]model.AdeTask) []issueTask {
-	var out []issueTask
-	for _, t := range live {
-		for _, p := range w.b.deps.Trackers.All() {
-			if _, ok := p.(issuetracker.IssueDetails); !ok {
-				continue
-			}
-			if ref, ok := trackerRef(p, t); ok {
-				out = append(out, issueTask{task: t, provider: p, ref: ref})
-				break
-			}
-		}
-	}
-	return out
-}
-
-// issueObservations reads the due tasks' issues: one batch call per provider that has one, then a
-// detail read only for an issue the batch lacks or whose updated stamp moved since the last snapshot.
-func (w *updateWatcher) issueObservations(ctx context.Context, tasks []issueTask, prev map[model.AdeTrackedKey]model.AdeTrackedItem, fresh bool) []observation {
-	due := w.dueIssues(tasks, prev, fresh)
-	batch := w.batchIssues(ctx, due)
-	var mu sync.Mutex
-	var out []observation
-	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(updatesIssueFanOut)
-	for _, it := range due {
-		g.Go(func() error {
-			var snap updates.IssueSnap
-			var ok bool
-			bi, found := batch[it.task.ID]
-			if found {
-				snap, ok = unchangedIssueSnap(prev[model.AdeTrackedKey{TaskID: it.task.ID, ItemKey: "issue"}], bi)
-			}
-			if !ok {
-				// The batch just saw a newer issue than any saved detail: read fresh.
-				var err error
-				if snap, err = w.detailIssueSnap(gctx, it, fresh || (found && bi.UpdatedAt != 0)); err != nil {
-					slog.Debug("ade updates: issue", "scope", "ade", "task", it.task.ID, "err", err)
-					return nil
-				}
-			}
-			w.mu.Lock()
-			w.jiraAt[it.task.ID] = time.Now()
-			w.mu.Unlock()
-			mu.Lock()
-			out = append(out, observation{taskID: it.task.ID, key: "issue", kind: updates.KindIssue, snap: snap.Encode()})
-			mu.Unlock()
-			return nil
-		})
-	}
-	_ = g.Wait() // a tracker failure keeps the previous snapshot
-	return out
-}
-
-// dueIssues keeps the tasks whose issue a pass reads: all on a fresh pass, else those unseen or last
-// read over JiraInterval ago.
-func (w *updateWatcher) dueIssues(tasks []issueTask, prev map[model.AdeTrackedKey]model.AdeTrackedItem, fresh bool) []issueTask {
-	var due []issueTask
-	for _, it := range tasks {
-		w.mu.Lock()
-		last := w.jiraAt[it.task.ID]
-		w.mu.Unlock()
-		_, had := prev[model.AdeTrackedKey{TaskID: it.task.ID, ItemKey: "issue"}]
-		if !fresh && had && time.Since(last) < w.cfg.JiraInterval {
-			continue
-		}
-		due = append(due, it)
-	}
-	return due
-}
-
-// batchIssues reads the due issues of every provider that batches, keyed by task id. A batch failure
-// leaves its provider's tasks out, so each falls back to its own detail read.
-func (w *updateWatcher) batchIssues(ctx context.Context, due []issueTask) map[string]issuetracker.BatchIssue {
-	byProvider := map[string][]issueTask{}
-	for _, it := range due {
-		if _, ok := it.provider.(issuetracker.IssueBatch); ok {
-			byProvider[it.provider.ID()] = append(byProvider[it.provider.ID()], it)
-		}
-	}
-	out := map[string]issuetracker.BatchIssue{}
-	for _, group := range byProvider {
-		refs := make([]issuetracker.Ref, len(group))
-		for i, it := range group {
-			refs[i] = it.ref
-		}
-		bctx, cancel := context.WithTimeout(ctx, updatesBatchTimeout)
-		res, err := group[0].provider.(issuetracker.IssueBatch).Issues(bctx, refs)
-		cancel()
-		if err != nil {
-			slog.Debug("ade updates: issue batch", "scope", "ade", "err", err)
-			continue
-		}
-		for _, it := range group {
-			if bi, ok := res[it.ref.Key]; ok {
-				out[it.task.ID] = bi
-			}
-		}
-	}
-	return out
-}
-
-// unchangedIssueSnap rebuilds the snapshot from the previous one when the tracker's updated stamp has
-// not moved, taking only the light fields from the batch. Comments and Updated stay as they were.
-func unchangedIssueSnap(old model.AdeTrackedItem, bi issuetracker.BatchIssue) (updates.IssueSnap, bool) {
-	var snap updates.IssueSnap
-	if !updates.DecodeIssue(old.CurrentJSON, &snap) || snap.Updated == 0 || snap.Updated != bi.UpdatedAt {
-		return updates.IssueSnap{}, false
-	}
-	snap.Title, snap.Status, snap.Priority, snap.Assignee = bi.Title, bi.Status, bi.Priority, bi.Assignee
-	if bi.Summary.Known {
-		n := bi.Summary.Count
-		snap.Linked = &n
-	}
-	return snap, true
-}
-
-// detailIssueSnap reads the heavy detail of one issue.
-func (w *updateWatcher) detailIssueSnap(ctx context.Context, it issueTask, fresh bool) (updates.IssueSnap, error) {
-	d, err := w.readIssue(ctx, it, fresh)
-	if err != nil {
-		return updates.IssueSnap{}, err
-	}
-	snap := updates.IssueSnap{Key: d.Ref.Key, Title: d.Title, Status: d.Status, Priority: d.Priority, Updated: d.UpdatedAt}
-	if d.Assignee != nil {
-		snap.Assignee = d.Assignee.ID
-	}
-	if !d.CommentsOmitted {
-		n := d.CommentsTotal
-		snap.Comments = &n
-	}
-	if d.Summary.Known {
-		n := d.Summary.Count
-		snap.Linked = &n
-	}
-	return snap, nil
-}
-
-// readIssue reads the saved copy and falls back to a fresh read when it is older than JiraInterval.
-func (w *updateWatcher) readIssue(ctx context.Context, it issueTask, fresh bool) (issuetracker.IssueDetail, error) {
-	det := it.provider.(issuetracker.IssueDetails)
-	ctx, cancel := context.WithTimeout(ctx, updatesIssueTimeout)
-	defer cancel()
-	d, err := det.IssueDetail(ctx, it.ref, fresh)
-	if err != nil {
-		return d, err
-	}
-	if !fresh && time.Since(time.UnixMilli(d.FetchedAt)) > w.cfg.JiraInterval {
-		return det.IssueDetail(ctx, it.ref, true)
-	}
-	return d, nil
-}
-
 // TrackedUpdates returns every tracked item whose current snapshot differs from the seen one. The
 // concepts are unfiltered: which count as meaningful is the user's setting, applied by the renderer.
 func (b *TaskBoard) TrackedUpdates(_ context.Context) (adewire.TrackedUpdatesResult, error) {
@@ -573,10 +388,6 @@ func (b *TaskBoard) TrackedUpdates(_ context.Context) (adewire.TrackedUpdatesRes
 				continue
 			}
 			u.Label = br.Name
-		case updates.KindIssue:
-			var s updates.IssueSnap
-			updates.DecodeIssue(row.CurrentJSON, &s)
-			u.Label = s.Key
 		}
 		out.Updates = append(out.Updates, u)
 	}

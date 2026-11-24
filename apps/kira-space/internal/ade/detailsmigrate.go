@@ -163,6 +163,7 @@ func (b *TaskBoard) startDetails() {
 	if df == nil {
 		return
 	}
+	defer b.startIdleWatch() // after the migration and mirror writes
 	if err := df.svc.Recover(b.ctx); err != nil {
 		slog.Error("ade: recover task files", "scope", "ade", "err", err)
 	}

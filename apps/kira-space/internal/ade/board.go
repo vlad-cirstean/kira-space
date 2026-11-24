@@ -25,7 +25,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitprepare"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
@@ -146,8 +145,6 @@ type TaskBoardDeps struct {
 	RunSandbox *repos.AdeRunSandboxRepo
 	// SessionSandbox stores each manual step session's policy and denials (P511).
 	SessionSandbox *repos.AdeSessionSandboxRepo
-	// Trackers are the issue tracker providers; each adds a task artifact source and fills TaskIssue. nil = none.
-	Trackers *issuetracker.Registry
 	// ArtifactSources append to the built-in task artifact sources.
 	ArtifactSources []ArtifactSource
 	// CallWait is how long a state call that waits (a branch, a rename, a lease) blocks before it
@@ -215,6 +212,7 @@ type TaskBoard struct {
 	watchMu    sync.Mutex
 	watches    map[string]*taskWatch
 	grants     map[string]int // live Space grants per task, watched or not
+	idle       *idleWatch     // board-wide watcher of task folders no agent watches (idlewatch.go)
 	watchWG    sync.WaitGroup // final passes of stopped watchers
 	stopFlowW  func()
 	stopStepsW func()

@@ -170,17 +170,17 @@ func TestTaskArtifacts(t *testing.T) {
 	waitRun(t, app, f.taskID, "one", "done")
 
 	// 1. The finishing reply is built from local data: the cached PR, the branch, the stored rows, the
-	// stored issue link; no deployment detected from git and no gap. The reported PR folds into the PR.
+	// no deployment detected from git and no gap. The reported PR folds into the PR.
 	_, list := mcpReply(t, app, "mcp-step.finish-1.json")
 	kinds := map[string]int{}
 	for _, a := range list.Artifacts {
 		kinds[a.Kind]++
 	}
-	if kinds["changeRequest"] != 1 || kinds["issue"] != 2 || kinds["branch"] != 1 || kinds["deployment"] != 1 || kinds["doc"] != 1 || kinds["link"] != 0 || len(list.Artifacts) != 6 {
+	if kinds["changeRequest"] != 1 || kinds["issue"] != 1 || kinds["branch"] != 1 || kinds["deployment"] != 1 || kinds["doc"] != 1 || kinds["link"] != 0 || len(list.Artifacts) != 5 {
 		t.Fatalf("step.finish artifacts = %+v", list.Artifacts)
 	}
 	if len(list.Gaps) != 0 {
-		t.Fatalf("gaps = %+v, want none: the finish reply makes no host, git or tracker call", list.Gaps)
+		t.Fatalf("gaps = %+v, want none: the finish reply makes no host or git call", list.Gaps)
 	}
 	res := artifactsOf(t, app, f.taskID)
 	pr, ok := findArtifact(res, "changeRequest", "Fix login")
@@ -193,8 +193,8 @@ func TestTaskArtifacts(t *testing.T) {
 	if a, ok := findArtifact(res, "deployment", "prod"); !ok || a.Source != "git" || a.Status != "deployed" || len(a.Ref) != 7 {
 		t.Fatalf("deployment = %+v", a)
 	}
-	if a, ok := findArtifact(res, "issue", "KIRA-12"); !ok || a.Source != "jira" || a.Status != "" {
-		t.Fatalf("jira = %+v", a)
+	if a, ok := findArtifact(res, "issue", "KIRA-12"); ok {
+		t.Fatalf("jira row = %+v, want none: the Jira slot is no artifact", a)
 	}
 	if a, ok := findArtifact(res, "issue", "api#3"); !ok || a.Source != "task" || a.URL != artIssue {
 		t.Fatalf("host link = %+v", a)
@@ -265,7 +265,7 @@ func TestTaskArtifacts(t *testing.T) {
 	if _, ok := findArtifact(after, "doc", "Design notes"); ok {
 		t.Fatal("removed doc still listed")
 	}
-	if _, ok := findArtifact(after, "link", "Runbook"); !ok || len(after.Artifacts) != 7 {
+	if _, ok := findArtifact(after, "link", "Runbook"); !ok || len(after.Artifacts) != 6 {
 		t.Fatalf("artifacts after add and remove = %+v", after.Artifacts)
 	}
 
@@ -296,13 +296,8 @@ func TestTaskArtifacts(t *testing.T) {
 	openLaunch(t, app, second)
 	waitSession(t, app, second.SessionID, "running")
 	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 1 || gaps[0].Source != "host" || gaps[0].Repo != "api" {
-		t.Fatalf("panel gaps = %+v, want one host gap for api (the tracker gap comes from TaskIssue)", gaps)
+		t.Fatalf("panel gaps = %+v, want one host gap for api", gaps)
 	}
-	ti, err := app.W.IssueTracker.TaskIssue(ctx, adewire.TaskIssueArgs{TaskID: f.taskID})
-	if err != nil || ti.Reason != "unavailable" {
-		t.Fatalf("TaskIssue = %+v, %v, want reason unavailable", ti, err)
-	}
-	app.Contract(t, "ade-artifacts", "IssueTrackerService.TaskIssue#unavailable", ti)
 	if err := os.WriteFile(hold2, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}

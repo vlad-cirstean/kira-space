@@ -1,10 +1,7 @@
 import { useTaskAction } from '@workbench/behaviour/asyncAction';
 import { fireAndForget } from '@workbench/bridge/fireAndForget';
-import { logWarn } from '@workbench/bridge/log';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { control } from '../../../bridge/control';
-import { useOpenChangeRequest, useOpenHostView } from '../../../hostview/queries';
-import { issueCategoryTone } from '../artifacts/status';
 import { taskPatch } from '../board/panelFacts';
 import {
   useAddLink,
@@ -12,12 +9,9 @@ import {
   useEditLink,
   useRemoveArtifact,
   useTaskArtifacts,
-  useTaskIssue,
   useUpdateTask,
 } from '../queries';
 import { useChangeRequests } from '../readQueries';
-import { useMarkTrackedSeen } from '../updates/queries';
-import { useTaskUpdates } from '../updates/useTaskUpdates';
 import type { Artifact, ArtifactGap, Task } from '../wire';
 import { type LinkCategory, type LinkItem, linkGroups } from './linkGroups';
 
@@ -38,19 +32,6 @@ export function useTaskLinks(
   const editLink = useEditLink();
   const dismissFoundLink = useDismissFoundLink();
   const removeArtifact = useRemoveArtifact();
-  const openView = useOpenChangeRequest();
-  const openRef = useOpenHostView();
-  const { pending } = useTaskUpdates();
-  const markSeen = useMarkTrackedSeen();
-  // Same query key as the Jira pill card's issue line: one call serves both.
-  const issue = useTaskIssue(
-    () => toValue(task).id,
-    () => {
-      const jira = toValue(task).jira;
-      return jira ? `${jira.key} ${jira.url}` : '';
-    },
-    () => Boolean(toValue(task).jira),
-  );
 
   // Board change requests of the task's own branches: stored rows with these URLs are its own PRs.
   const ownUrls = computed(() =>
@@ -63,32 +44,9 @@ export function useTaskLinks(
     linkGroups(toValue(task), query.data.value?.artifacts ?? [], {
       branches: toValue(opts.branches) ?? false,
       ownUrls: ownUrls.value,
-    })
-      .filter((g) => g.items.length > 0)
-      .map((g) => ({
-        ...g,
-        items: g.items.map((item) => {
-          if (item.origin !== 'jira') return item;
-          if (issue.isPending.value) return { ...item, pending: true };
-          const i = issue.data.value;
-          if (!i?.title) return item;
-          return {
-            ...item,
-            status: i.status || undefined,
-            tone: i.status ? issueCategoryTone(i.statusCategory) : undefined,
-          };
-        }),
-      })),
+    }).filter((g) => g.items.length > 0),
   );
-  // The tracker's reason comes from the issue query, not from Artifacts (same rule as the card's issue line).
-  const gaps = computed<ArtifactGap[]>(() => {
-    const i = issue.data.value;
-    const tracker: ArtifactGap[] =
-      i && i.reason !== 'noTracker' && i.reason
-        ? [{ source: i.provider, repo: '', reason: i.reason }]
-        : [];
-    return [...(query.data.value?.gaps ?? []), ...tracker];
-  });
+  const gaps = computed<ArtifactGap[]>(() => query.data.value?.gaps ?? []);
   const surface = useTaskAction();
 
   /** Saves one link's edit; an empty text removes it. A failure throws, so the editor stays open. */
@@ -147,39 +105,12 @@ export function useTaskLinks(
   const add = (line: string) => addLink.mutateAsync({ taskId: toValue(task).id, text: line });
 
   /**
-   * Opens a link: in the host view where one exists (change request or issue), else in the browser;
-   * `external` always the browser. Returns false when nothing can open (no url, no in-app ref), so the
-   * caller shows the card. `onRefused` runs when the view refuses a urlless ref (no browser fallback).
+   * Opens a link in the browser. Returns false when it has no url, so the caller shows the card.
    */
-  function openLink(
-    item: LinkItem,
-    opts: { external?: boolean; onRefused?: () => void } = {},
-  ): boolean {
-    if (opts.external) {
-      if (!item.url) return false;
-      fireAndForget(control.openExternal(item.url), 'ade.links');
-      return true;
-    }
-    if (item.origin === 'jira') {
-      const taskId = toValue(task).id;
-      if (pending(taskId, 'issue')) markSeen.mutate({ taskId, itemKeys: ['issue'] });
-    }
-    if ((item.kind === 'changeRequest' || item.kind === 'issue') && item.url) {
-      fireAndForget(openView.mutateAsync(item.url), 'hostView.open');
-      return true;
-    }
-    if (item.kind === 'issue' && item.ref) {
-      openRef.mutateAsync(item.ref).catch((err: unknown) => {
-        logWarn('hostView.open', `no view for ${item.ref}`, err);
-        opts.onRefused?.();
-      });
-      return true;
-    }
-    if (item.url) {
-      fireAndForget(control.openExternal(item.url), 'ade.links');
-      return true;
-    }
-    return false;
+  function openLink(item: LinkItem): boolean {
+    if (!item.url) return false;
+    fireAndForget(control.openExternal(item.url), 'ade.links');
+    return true;
   }
 
   return {

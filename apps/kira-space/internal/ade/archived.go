@@ -192,6 +192,7 @@ func (b *TaskBoard) RestoreTask(ctx context.Context, taskID string) (adewire.Tas
 		}
 		return adewire.Task{}, err
 	}
+	b.goTracked(func() { b.rewatchRestored(taskID) })
 	b.notifyBoard()
 	b.notifySessions()
 	tc, err := b.loadTaskCtx(taskID)

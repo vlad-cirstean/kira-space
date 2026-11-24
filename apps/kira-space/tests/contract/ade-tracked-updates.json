@@ -16,18 +16,6 @@
         "kind": "changeRequest",
         "label": "#7",
         "taskId": "<masked>"
-      },
-      {
-        "branchId": "<masked>",
-        "changedAt": 0,
-        "concepts": [
-          "statusChanged"
-        ],
-        "counts": {},
-        "itemKey": "<masked>",
-        "kind": "issue",
-        "label": "KIRA-12",
-        "taskId": "<masked>"
       }
     ]
   }

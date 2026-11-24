@@ -153,7 +153,7 @@ const label = computed(() =>
       />
     </template>
     <template #header>
-      <DetailHeader flush class="px-3 pt-2 pb-0.75" @contextmenu="taskMenu.open">
+      <DetailHeader flush class="px-3 pt-2 pb-1" @contextmenu="taskMenu.open">
         <template #leading>
           <Badge v-if="card.parked" variant="default">{{ label }}</Badge>
           <AdeChip v-else :label="label" :color="card.status.color" />
@@ -168,7 +168,8 @@ const label = computed(() =>
             :placeholder="card.defaultTitle"
             :aria-label="t('common.field.name.label')"
             appearance="inline"
-            class="min-w-0 flex-1 text-kira-lg font-medium"
+            size="fluid"
+            class="min-w-0 flex-1 text-kira-lg font-medium text-ellipsis"
             data-testid="ade-panel-title"
             @update:model-value="titleEdit.onInput"
             @blur="titleEdit.onCommit"

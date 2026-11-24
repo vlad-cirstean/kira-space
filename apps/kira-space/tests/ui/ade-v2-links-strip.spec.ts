@@ -36,7 +36,7 @@ interface ArtifactFx {
   createdAt: number;
 }
 
-// Eight links: the Jira slot PAY-130, then PAY-10 (detected), PAY-12, api!9, feat/x, Design spec, Runbook, wiki.example/x.
+// Eight links: the Jira slot PAY-130, PAY-12, api!9, feat/x, api!7 (detected), Design spec, Runbook, wiki.example/x.
 const listed = (): ArtifactFx[] =>
   contract<{ artifacts: ArtifactFx[] }>(
     'ade-details-links',
@@ -65,19 +65,23 @@ const DEPLOYMENT: ArtifactFx = {
   status: 'deployed',
 };
 
-const open = (key: string): ControlSnapshot[] => [
-  { channel: IPC.linkOpenExternal, response: null },
-  { channel: IPC.hostViewOpen, response: { key, opened: true } },
-];
+const DETECTED_CR: ArtifactFx = {
+  ...DETECTED_BRANCH,
+  kind: 'changeRequest',
+  title: 'api!7',
+  ref: 'api!7',
+  url: 'https://forge.test/acme/api/-/merge_requests/7',
+  status: 'open',
+};
 
-const base = (artifacts: ArtifactFx[] = listed()): ControlSnapshot[] => [
+const base = (artifacts: ArtifactFx[] = [...listed(), DETECTED_CR]): ControlSnapshot[] => [
   { channel: IPC.adeTaskArtifacts, response: { artifacts, gaps: [] } },
   {
     channel: IPC.adeTaskAddLink,
     response: contract('ade-details-links', 'AdeTaskService.AddLink'),
   },
   { channel: IPC.adeTaskRemoveArtifact, response: null },
-  ...open('hostview-1'),
+  { channel: IPC.linkOpenExternal, response: null },
 ];
 
 const OWN_PR_URL = 'https://github.com/acme/api/pull/77';
@@ -153,17 +157,17 @@ test('pills are one tab stop; arrows, Home, End and Up/Down move focus', async (
   await expect(page.locator(`${t('ade-links-pill')}:focus`)).toHaveCount(0);
   await pill(page, 'PAY-130').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(pill(page, 'PAY-10')).toBeFocused();
+  await expect(pill(page, 'PAY-12')).toBeFocused();
   await page.keyboard.press('End');
   await expect(pill(page, 'wiki.example/x')).toBeFocused();
   await page.keyboard.press('Home');
   await expect(pill(page, 'PAY-130')).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(pill(line(page, 'changeRequest'), 'api!9')).toBeFocused();
+  await expect(pill(line(page, 'changeRequest'), 'api!7')).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(pill(line(page, 'misc'), 'feat/x')).toBeFocused();
   await page.keyboard.press('ArrowUp');
-  await expect(pill(line(page, 'changeRequest'), 'api!9')).toBeFocused();
+  await expect(pill(line(page, 'changeRequest'), 'api!7')).toBeFocused();
 });
 
 test('contract: opening a pasted link sends the URL the backend opens', async ({ relaunch }) => {
@@ -187,9 +191,7 @@ test('contract: opening a pasted link sends the URL the backend opens', async ({
   expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual(args);
 });
 
-test('Enter opens in the app, Cmd+Enter in the browser; Space opens the card, Esc closes it', async ({
-  relaunch,
-}) => {
+test('Enter opens in the browser; Space opens the card, Esc closes it', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
   const runbook = listed().find((a) => a.title === 'Runbook');
@@ -201,13 +203,8 @@ test('Enter opens in the app, Cmd+Enter in the browser; Space opens the card, Es
 
   await pill(page, 'api!9').focus();
   await page.keyboard.press('Enter');
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(1);
-
-  await page.keyboard.press('Meta+Enter');
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(2);
   expect(calls(control, IPC.linkOpenExternal)[1]?.args).toEqual({ url: mr?.url });
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(1);
 
   await pill(page, 'Runbook').focus();
   await page.keyboard.press(' ');
@@ -221,55 +218,29 @@ test('Enter opens in the app, Cmd+Enter in the browser; Space opens the card, Es
   await page.keyboard.press('Escape');
   // A stray click from Space would add calls.
   expect(calls(control, IPC.linkOpenExternal)).toHaveLength(2);
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(1);
 });
 
-test('a click opens in the app, Cmd-click in the browser, per kind', async ({ relaunch }) => {
+test('a click opens the link in the browser, per kind; a link with no url shows its card', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openPlan(relaunch, base());
   await openDetails(page);
   const urlOf = (title: string) => listed().find((a) => a.title === title)?.url ?? '';
-  const table: { text: string; channel: 'view' | 'browser'; url: string; external: boolean }[] = [
-    {
-      text: 'PAY-130',
-      channel: 'view',
-      url: 'https://acme.atlassian.net/browse/PAY-130',
-      external: true,
-    },
-    { text: 'PAY-12', channel: 'view', url: urlOf('PAY-12'), external: true },
-    { text: 'PAY-10', channel: 'view', url: 'PAY-10', external: false },
-    { text: 'api!9', channel: 'view', url: urlOf('api!9'), external: true },
-    { text: 'feat/x', channel: 'browser', url: urlOf('feat/x'), external: true },
-    { text: 'Design spec', channel: 'browser', url: urlOf('Design spec'), external: true },
-    { text: 'wiki.example/x', channel: 'browser', url: urlOf('wiki.example/x'), external: true },
+  const table: { text: string; url: string }[] = [
+    { text: 'PAY-130', url: 'https://acme.atlassian.net/browse/PAY-130' },
+    { text: 'PAY-12', url: urlOf('PAY-12') },
+    { text: 'api!9', url: urlOf('api!9') },
+    { text: 'feat/x', url: urlOf('feat/x') },
+    { text: 'Design spec', url: urlOf('Design spec') },
+    { text: 'wiki.example/x', url: urlOf('wiki.example/x') },
   ];
   for (const row of table) {
-    const view = calls(control, IPC.hostViewOpen).length;
-    const browser = calls(control, IPC.linkOpenExternal).length;
+    const opened = calls(control, IPC.linkOpenExternal).length;
     await openIn(page, row.text);
-    const channel = row.channel === 'view' ? IPC.hostViewOpen : IPC.linkOpenExternal;
-    await expect
-      .poll(() => calls(control, channel).length)
-      .toBe((row.channel === 'view' ? view : browser) + 1);
-    expect(calls(control, channel).at(-1)?.args).toEqual({ url: row.url });
-    expect(
-      calls(control, row.channel === 'view' ? IPC.linkOpenExternal : IPC.hostViewOpen),
-    ).toHaveLength(row.channel === 'view' ? browser : view);
+    await expect.poll(() => calls(control, IPC.linkOpenExternal).length).toBe(opened + 1);
+    expect(calls(control, IPC.linkOpenExternal).at(-1)?.args).toEqual({ url: row.url });
     await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
   }
-  for (const row of table.filter((r) => r.external)) {
-    const view = calls(control, IPC.hostViewOpen).length;
-    const browser = calls(control, IPC.linkOpenExternal).length;
-    await openIn(page, row.text, { external: true });
-    await expect.poll(() => calls(control, IPC.linkOpenExternal).length).toBe(browser + 1);
-    expect(calls(control, IPC.linkOpenExternal).at(-1)?.args).toEqual({
-      url: row.url,
-    });
-    expect(calls(control, IPC.hostViewOpen)).toHaveLength(view);
-  }
-  const before = calls(control, IPC.linkOpenExternal).length;
-  await openIn(page, 'PAY-10', { external: true });
-  await expect(page.locator(t('ade-links-card'))).toBeVisible();
-  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(before);
 });
 
 test('a link with nothing to open shows its card', async ({ relaunch }) => {
@@ -278,22 +249,6 @@ test('a link with nothing to open shows its card', async ({ relaunch }) => {
   await openIn(page, 'staging');
   await expect(page.locator(t('ade-links-card'))).toBeVisible();
   expect(calls(control, IPC.linkOpenExternal)).toHaveLength(0);
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(0);
-});
-
-test('a refused view falls back: browser with a url, the card without', async ({ relaunch }) => {
-  const { window: page, control } = await openPlan(relaunch, [
-    ...base(),
-    { channel: IPC.hostViewOpen, error: { code: 'E_BAD_REQUEST', message: 'Refused.' } },
-  ]);
-  await openDetails(page);
-  const pay12 = listed().find((a) => a.title === 'PAY-12');
-  await openIn(page, 'PAY-12');
-  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
-  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: pay12?.url });
-  await openIn(page, 'PAY-10');
-  await expect(page.locator(t('ade-links-card'))).toBeVisible();
-  expect(calls(control, IPC.linkOpenExternal)).toHaveLength(1);
 });
 
 test('right-click opens the card and opens nothing', async ({ relaunch }) => {
@@ -301,17 +256,16 @@ test('right-click opens the card and opens nothing', async ({ relaunch }) => {
   await openDetails(page);
   await openCard(page, 'Runbook');
   expect(calls(control, IPC.linkOpenExternal)).toHaveLength(0);
-  expect(calls(control, IPC.hostViewOpen)).toHaveLength(0);
   await expect(pill(page, 'Runbook')).toHaveAttribute('aria-expanded', 'true');
   await page.keyboard.press('Escape');
   await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
 });
 
-test('every pill points at the hint that names the modifier', async ({ relaunch }) => {
+test('every pill points at the hint', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, base());
   await openDetails(page);
   const hint = page.locator(t('ade-links-hint'));
-  await expect(hint).toContainText('Cmd+Enter');
+  await expect(hint).toContainText('opens the link in the browser');
   const id = await hint.getAttribute('id');
   const pills = page.locator(t('ade-links-pill'));
   const n = await pills.count();
@@ -336,7 +290,7 @@ test('F2 opens the editor, Esc cancels it; Delete removes a stored link, not a d
   await expect(page.locator(t('ade-links-card'))).toHaveCount(0);
   expect(calls(control, IPC.adeTaskEditLink)).toHaveLength(0);
 
-  await pill(page, 'PAY-10').focus();
+  await pill(page, 'api!7').focus();
   await page.keyboard.press('Delete');
   await pill(page, 'Runbook').focus();
   await page.keyboard.press('Delete');
@@ -359,7 +313,11 @@ test('+ on a focused pill opens the add popover', async ({ relaunch }) => {
 
 test('slot pills show while artifacts load, then the rest join', async ({ relaunch }) => {
   const { window: page, control } = await openPlan(relaunch, [
-    { channel: IPC.adeTaskArtifacts, response: { artifacts: listed(), gaps: [] }, hold: true },
+    {
+      channel: IPC.adeTaskArtifacts,
+      response: { artifacts: [...listed(), DETECTED_CR], gaps: [] },
+      hold: true,
+    },
   ]);
   await openDetails(page);
   await expect(page.locator(t('ade-links-skeleton'))).toHaveCount(1);
@@ -387,7 +345,7 @@ test('own Jira and PR links lead their lines', async ({ relaunch }) => {
   expect(first).toContain('Own PR');
   expect(second).toContain('api!9');
   const issues = await texts('issue');
-  expect(issues.map((x) => x.match(/PAY-\d+/)?.[0])).toEqual(['PAY-130', 'PAY-10', 'PAY-12']);
+  expect(issues.map((x) => x.match(/PAY-\d+/)?.[0])).toEqual(['PAY-130', 'PAY-12']);
 });
 
 // Handoff dialogs: the strip in add mode, on every move and the pass.
@@ -406,7 +364,10 @@ async function noEditInCard(page: Page, text: string): Promise<void> {
 test('a stage move shows the strip in add mode; + adds a link; cards have no edit or remove', async ({
   relaunch,
 }) => {
-  const { window: page, control } = await openPlan(relaunch, base([...listed(), DETECTED_BRANCH]));
+  const { window: page, control } = await openPlan(
+    relaunch,
+    base([...listed(), DETECTED_CR, DETECTED_BRANCH]),
+  );
   await openTask(page, 'T_auth');
   await page.locator(t('ade-step-back')).click();
   const links = dialogLinks(page);
@@ -431,7 +392,10 @@ test('a stage move shows the strip in add mode; + adds a link; cards have no edi
 test('moving to Done adds the detected branches; another target drops them', async ({
   relaunch,
 }) => {
-  const { window: page } = await openPlan(relaunch, base([...listed(), DETECTED_BRANCH]));
+  const { window: page } = await openPlan(
+    relaunch,
+    base([...listed(), DETECTED_CR, DETECTED_BRANCH]),
+  );
   await openTask(page, 'T_alerts');
   await page.locator(t('ade-step-pick')).click();
   await page.locator(t('ade-step-option-done')).click();
@@ -569,9 +533,9 @@ test('the Run dialog shows a read-only strip and keeps its own focus', async ({ 
   await expect(links.locator(t('ade-links-add'))).toHaveCount(0);
   await expect.poll(() => focusedTestid(page)).toMatch(/^ade-run-(message|branch)$/);
   await openIn(links, 'api!9');
-  await expect.poll(() => calls(control, IPC.hostViewOpen)).toHaveLength(1);
-  await openIn(links, 'Runbook', { external: true });
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
+  await openIn(links, 'Runbook');
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(2);
   await expect(dialog).toBeVisible();
   await openCard(links, 'Runbook');
   await expect(page.locator(t('ade-links-card-remove'))).toHaveCount(0);

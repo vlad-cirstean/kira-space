@@ -39,7 +39,12 @@ export function captureElement(el: HTMLElement): Promise<HTMLCanvasElement> {
     backgroundColor: opaqueBackground(el),
     includeStyleProperties: paintedProperties(),
     features: { restoreScrollPosition: true },
-    filter: (node) => !(node instanceof Element && node.classList.contains(TOOLTIP_CLASS)),
+    // data-shot-skip: controls that act on the window, not on the proof.
+    filter: (node) =>
+      !(
+        node instanceof Element &&
+        (node.classList.contains(TOOLTIP_CLASS) || node.hasAttribute('data-shot-skip'))
+      ),
   });
 }
 

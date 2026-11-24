@@ -2089,17 +2089,6 @@
         },
         "notLink": {
           "error": "Not a {links}."
-        },
-        "view": {
-          "notChangeRequest": {
-            "body": "The PR view opens a {changeRequests} only."
-          },
-          "unavailable": {
-            "body": "The pull request view is not available."
-          },
-          "window": {
-            "title": "{short} #{number} · {repo}"
-          }
         }
       },
       "gitrpc": {
@@ -2159,44 +2148,6 @@
         },
         "unknownMethod": {
           "body": "Git doesn’t support {method}."
-        }
-      },
-      "hostView": {
-        "compose": {
-          "badReply": {
-            "body": "That reply target isn’t valid."
-          },
-          "badText": {
-            "body": "The comment has characters that can’t be posted."
-          },
-          "empty": {
-            "body": "Write a comment first."
-          },
-          "noWindow": {
-            "body": "This window can’t post comments."
-          },
-          "posting": {
-            "body": "A comment is already being posted."
-          },
-          "replyUnsupported": {
-            "body": "Issues have no replies."
-          },
-          "tooLong": {
-            "body": "A comment can be at most {max}."
-          }
-        }
-      },
-      "issueTracker": {
-        "view": {
-          "notIssue": {
-            "body": "This view opens a {issues} only."
-          },
-          "notViewable": {
-            "body": "This view opens a {changeRequests} or a {issues}."
-          },
-          "window": {
-            "title": "{key} · {label}"
-          }
         }
       },
       "menu": {
@@ -8295,22 +8246,7 @@
       },
       "artifacts": {
         "gap": {
-          "body": "Couldn’t read {source} for {repo}. The list may be incomplete.",
-          "notFound": {
-            "body": "{source} has no such issue, or you don’t have access to it."
-          },
-          "otherSite": {
-            "body": "This link is on a different {source} site than the one you’re signed in to."
-          },
-          "timeout": {
-            "body": "{source} didn’t answer in time. The list may be incomplete."
-          },
-          "unauthenticated": {
-            "body": "You’re not signed in to {source}. Sign in from settings, under CLI tools."
-          },
-          "unavailable": {
-            "body": "The {source} command line tool isn’t installed. Set it up in settings, under CLI tools."
-          }
+          "body": "Couldn’t read {source} for {repo}. The list may be incomplete."
         },
         "gapNoRepo": {
           "body": "Couldn’t read {source}. The list may be incomplete."
@@ -9240,9 +9176,6 @@
       "link": {
         "copy": {
           "tooltip": "Copy {label} link"
-        },
-        "view": {
-          "tooltip": "View {label} in Kira"
         }
       },
       "links": {
@@ -9278,7 +9211,7 @@
           "aria": "Link kind"
         },
         "pill": {
-          "hint": "Enter opens the link. {modifier}+Enter opens it in the browser. Space shows its details."
+          "hint": "Enter opens the link in the browser. Space shows its details."
         },
         "source": {
           "notes": {
@@ -9970,6 +9903,11 @@
         },
         "written": {
           "label": "Written"
+        }
+      },
+      "pr": {
+        "branches": {
+          "label": "{head} into {base}"
         }
       },
       "progress": {
@@ -10890,14 +10828,6 @@
         "issue": {
           "label": "Issue"
         },
-        "issueLine": {
-          "prs": {
-            "label": "{count} pull request | {count} pull requests"
-          },
-          "prsNone": {
-            "label": "No pull requests"
-          }
-        },
         "notMerging": {
           "hint": "Stays on the plan; never merged."
         },
@@ -11686,214 +11616,6 @@
         "title": "Git credentials"
       }
     },
-    "hostView": {
-      "assignees": {
-        "empty": {
-          "empty": "No assignees"
-        },
-        "heading": {
-          "title": "Assignees"
-        }
-      },
-      "checks": {
-        "empty": {
-          "empty": "No checks"
-        },
-        "heading": {
-          "title": "Checks"
-        },
-        "truncated": {
-          "hint": "Some checks are not shown."
-        }
-      },
-      "compose": {
-        "body": {
-          "placeholder": "Write a comment"
-        },
-        "heading": {
-          "title": "Add a comment"
-        },
-        "mayHavePosted": {
-          "hint": "The host may have posted this comment. Refresh to check before posting again."
-        },
-        "mode": {
-          "aria": "Write or preview"
-        },
-        "preview": {
-          "empty": "Nothing to preview"
-        }
-      },
-      "conversation": {
-        "commentsTruncated": {
-          "hint": "Older comments in this thread are not shown."
-        },
-        "empty": {
-          "empty": "No comments yet"
-        },
-        "heading": {
-          "title": "Conversation"
-        },
-        "outdated": {
-          "status": "Outdated"
-        },
-        "resolved": {
-          "status": "Resolved"
-        },
-        "toggle": {
-          "aria": "Show or hide this thread"
-        },
-        "truncated": {
-          "hint": "Older threads are not shown. Open on the host for the rest."
-        }
-      },
-      "description": {
-        "empty": {
-          "empty": "No description"
-        }
-      },
-      "gone": {
-        "body": "This pull request is not available."
-      },
-      "header": {
-        "branches": {
-          "label": "{head} into {base}"
-        },
-        "opened": {
-          "label": "{author} opened {when}"
-        }
-      },
-      "issue": {
-        "assignee": {
-          "none": {
-            "empty": "Unassigned"
-          }
-        },
-        "attachments": {
-          "heading": {
-            "title": "Attachments"
-          },
-          "truncated": {
-            "hint": "More attachments exist. Open on {label} for the rest."
-          }
-        },
-        "comments": {
-          "edited": {
-            "status": "Revised"
-          },
-          "omitted": {
-            "hint": "Comments are too large to load here. Open on {label} to read them."
-          },
-          "open": {
-            "tooltip": "Open comment on {label}"
-          },
-          "truncated": {
-            "hint": "Older comments are not shown. Open on {label} for the rest."
-          }
-        },
-        "components": {
-          "empty": {
-            "empty": "No components"
-          },
-          "heading": {
-            "title": "Components"
-          }
-        },
-        "date": {
-          "due": {
-            "label": "Due"
-          },
-          "updated": {
-            "label": "Last updated"
-          }
-        },
-        "field": {
-          "assignee": {
-            "label": "Assignee"
-          },
-          "priority": {
-            "label": "Priority"
-          },
-          "reporter": {
-            "label": "Reporter"
-          },
-          "resolution": {
-            "label": "Resolution"
-          }
-        },
-        "header": {
-          "created": {
-            "label": "Created {when}"
-          },
-          "reported": {
-            "label": "{author} reported {when}"
-          }
-        },
-        "parent": {
-          "heading": {
-            "title": "Parent"
-          }
-        },
-        "pullRequests": {
-          "heading": {
-            "title": "Pull requests"
-          }
-        },
-        "reporter": {
-          "none": {
-            "empty": "No reporter"
-          }
-        },
-        "stale": {
-          "failed": {
-            "hint": "Saved copy from {when}. Couldn’t update it: {reason}."
-          },
-          "hint": "Saved copy from {when}. Updating."
-        },
-        "view": {
-          "tooltip": "View issue"
-        }
-      },
-      "labels": {
-        "empty": {
-          "empty": "No labels"
-        },
-        "heading": {
-          "title": "Applied labels"
-        }
-      },
-      "markdown": {
-        "alert": {
-          "caution": {
-            "title": "Caution"
-          },
-          "important": {
-            "title": "Important"
-          },
-          "note": {
-            "title": "Note"
-          },
-          "tip": {
-            "title": "Tip"
-          },
-          "warning": {
-            "title": "Warning"
-          }
-        }
-      },
-      "reviewers": {
-        "empty": {
-          "empty": "No reviewers"
-        },
-        "heading": {
-          "title": "Reviewers"
-        }
-      },
-      "stats": {
-        "summary": {
-          "label": "{commits} commits, {files} files, +{additions} -{deletions}"
-        }
-      }
-    },
     "mobilePairing": {
       "dialog": {
         "title": "Phone wants to view the agents board"
@@ -12428,7 +12150,7 @@
         }
       },
       "cliTools": {
-        "description": "Kira runs local command line tools for pull requests and issues. The tools keep your credentials; Kira never sees them. Install and sign in with the commands below.",
+        "description": "Kira runs local command line tools for pull requests. The tools keep your credentials; Kira never sees them. Install and sign in with the commands below.",
         "docs": {
           "label": "Open documentation"
         },
@@ -12813,32 +12535,7 @@
           "description": "Choose which changes to a tracked item count as an update. A dot marks tasks and branches with unseen updates. Mark them seen to clear the dot."
         },
         "issue": {
-          "assigneeChanged": {
-            "description": "The issue is assigned to someone else.",
-            "label": "Issue assignee changed"
-          },
-          "commentAdded": {
-            "description": "Someone comments on the issue.",
-            "label": "New issue comments"
-          },
-          "description": "The issue a task links.",
-          "linkedChangeRequests": {
-            "description": "The number of pull requests linked to the issue changes.",
-            "label": "Linked pull requests"
-          },
-          "priorityChanged": {
-            "description": "The issue’s priority changes.",
-            "label": "Priority changed"
-          },
-          "statusChanged": {
-            "description": "The issue moves to another status.",
-            "label": "Status changed"
-          },
-          "title": "Issues",
-          "titleChanged": {
-            "description": "The issue is renamed.",
-            "label": "Issue title changed"
-          }
+          "title": "Issues"
         }
       }
     },
@@ -17443,6 +17140,14 @@
         },
         "savedPartial": {
           "error": "Saved {count} of {total} screenshots before failing: {error}"
+        }
+      },
+      "stale": {
+        "changed": {
+          "status": "This proof changed after the window loaded it. Refresh to see the new version"
+        },
+        "removed": {
+          "status": "This proof was deleted after the window loaded it"
         }
       },
       "summary": {

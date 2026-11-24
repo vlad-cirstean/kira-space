@@ -22,8 +22,8 @@ import (
 // saved is applied after a short quiet as that agent's. Only the event paths go in, so an earlier
 // edit of the user stays on the disk banner. A change that touches another agent's content raises
 // the details.edit approval at once; nothing is told to the agent, which reads it in state.yaml
-// pending. With no live grant nothing watches, so a user's save in an outside editor only shows on
-// the banner. With several grants a save cannot be attributed: board push only, the next finish
+// pending. With no live grant the board-wide idleWatch (idlewatch.go) pushes the board on a save, and
+// applies nothing. With several grants a save cannot be attributed: board push only, the next finish
 // flush decides.
 
 const (
@@ -172,7 +172,12 @@ func (b *TaskBoard) stopTaskWatches() {
 	b.watchMu.Lock()
 	all := b.watches
 	b.watches = nil
+	idle := b.idle
+	b.idle = nil
 	b.watchMu.Unlock()
+	if idle != nil {
+		idle.stop()
+	}
 	for _, tw := range all {
 		tw.stop(nil)
 	}

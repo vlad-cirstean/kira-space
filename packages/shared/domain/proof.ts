@@ -178,6 +178,7 @@ export const proofDetailSchema = /*#__PURE__*/ z.object({
   current: proofRevisionSchema,
   pending: proofRevisionSchema.nullable(),
   removed: z.array(proofStepMetaSchema),
+  version: z.string(),
 });
 export type ProofDetail = z.infer<typeof proofDetailSchema>;
 

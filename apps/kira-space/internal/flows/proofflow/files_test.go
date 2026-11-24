@@ -18,7 +18,7 @@ import (
 
 const filesScenario = "proof-files"
 
-var filesMask = flowharness.Mask("id", "proofId", "taskId", "sessionId", "createdAt", "updatedAt", "closedAt", "linkedAt")
+var filesMask = flowharness.Mask("id", "proofId", "taskId", "sessionId", "createdAt", "updatedAt", "closedAt", "linkedAt", "version")
 
 func (f *fixture) put(t *testing.T, rel string, data []byte) {
 	t.Helper()

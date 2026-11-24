@@ -47,38 +47,57 @@ test('contract: an image step draws each stored format', async ({ relaunch, uiSe
   }
 });
 
-test('contract: an image step keeps its scroll', async ({ relaunch, uiServer }) => {
-  const { window: page, control: log } = await relaunch({ control: imageControl() });
+test('contract: an image step fits the window', async ({ relaunch, uiServer }) => {
+  const { window: page } = await relaunch({ control: imageControl() });
   await openProofWindow(page, uiServer.url);
   await stepReady(page);
   await tab(page, 4).click();
-  await expect
-    .poll(() =>
-      region(page)
-        .locator('img')
-        .evaluate((el: HTMLImageElement) => el.naturalHeight),
-    )
-    .toBe(2000);
+  const img = region(page).locator('img');
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalHeight)).toBe(2000);
   await stepReady(page);
-  await region(page).evaluate((el) => {
-    el.scrollTop = 700;
-  });
-  await expect
-    .poll(
-      () =>
-        log
-          .log()
-          .filter((c) => c.channel === IPC.proofSetViewState)
-          .map((c) => c.args as Json)
-          .at(-1)?.state.resultScrollTop,
-    )
-    .toBeGreaterThan(600);
 
-  // Another tab and back: the cache carries the position.
-  await tab(page, 1).click();
-  await expect(region(page)).toBeVisible();
-  await tab(page, 4).click();
-  await expect.poll(() => region(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(600);
+  // Whole image inside the region, no scroll, height filled, aspect kept.
+  const expectFits = async () => {
+    await expect
+      .poll(() =>
+        region(page).evaluate((el) => [
+          el.scrollHeight - el.clientHeight,
+          el.scrollWidth - el.clientWidth,
+        ]),
+      )
+      .toEqual([0, 0]);
+    await expect
+      .poll(async () => {
+        const r = await region(page).boundingBox();
+        const i = await img.boundingBox();
+        if (!r || !i) return false;
+        const inside =
+          i.x >= r.x - 1 &&
+          i.y >= r.y - 1 &&
+          i.x + i.width <= r.x + r.width + 1 &&
+          i.y + i.height <= r.y + r.height + 1;
+        const fillsHeight = Math.abs(i.height - r.height) <= 1;
+        const aspect = Math.abs(i.width - (64 * i.height) / 2000) <= 1;
+        return inside && fillsHeight && aspect;
+      })
+      .toBe(true);
+  };
+  await expectFits();
+
+  // Follows the window.
+  const before = (await img.boundingBox())?.height ?? 0;
+  await page.setViewportSize({ width: 900, height: 520 });
+  await expect.poll(async () => (await img.boundingBox())?.height ?? before).toBeLessThan(before);
+  await expectFits();
+
+  // Never upscaled.
+  await tab(page, 2).click();
+  await expect
+    .poll(async () => {
+      const i = await region(page).locator('img').boundingBox();
+      return i ? [Math.round(i.width), Math.round(i.height)] : null;
+    })
+    .toEqual([8, 8]);
 });
 
 test('contract: saving writes a JPEG of the image step', async ({ relaunch, uiServer }) => {

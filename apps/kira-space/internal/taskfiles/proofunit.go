@@ -26,6 +26,9 @@ type ProofConfig struct {
 type ProofEvents interface {
 	// ProofReview raises (pending true) or withdraws the review of a proof's pending edit.
 	ProofReview(ctx context.Context, taskID, slug string, pending bool) error
+	// ProofChanged reports a change of a proof's accepted or pending content, or its delete, that raised
+	// or withdrew no review.
+	ProofChanged(ctx context.Context, sessionID string) error
 }
 
 // ProofResult is the structured answer for one proof unit.
@@ -312,8 +315,21 @@ func (s *Service) unitApply(ctx context.Context, req Request, slug string, doc p
 				slog.Warn("taskfiles: proof review", "scope", "ade", "task", req.TaskID, "slug", slug, "err", err)
 			}
 		}
+	} else if a.changed != "" {
+		s.proofChanged(ctx, req.TaskID, a.changed)
 	}
 	return a.res, nil
+}
+
+// proofChanged tells the proof windows that a proof's content changed.
+func (s *Service) proofChanged(ctx context.Context, taskID, sessionID string) {
+	pe, ok := s.cfg.Events.(ProofEvents)
+	if !ok {
+		return
+	}
+	if err := pe.ProofChanged(ctx, sessionID); err != nil {
+		slog.Warn("taskfiles: proof changed", "scope", "ade", "task", taskID, "session", sessionID, "err", err)
+	}
 }
 
 // unitTx is the write of one valid proof unit inside the index transaction.
@@ -331,6 +347,8 @@ type unitTx struct {
 	res    FileResult
 	// review is set when the pending-review flag of the proof changed: true raised, false cleared.
 	review *bool
+	// changed is the session id whose content changed with no review flag change.
+	changed string
 }
 
 func (a *unitTx) setReview(v bool) { a.review = &v }
@@ -459,6 +477,7 @@ func (a *unitTx) edit(u *repos.ProofUnit, before ProofHead, changes []Change) er
 	if u.Session.PendingRev != nil {
 		a.setReview(false)
 	}
+	a.changed = u.Session.ID
 	pr.Status = string(StatusAccepted)
 	a.result(StatusAccepted, pr)
 	return nil
@@ -554,6 +573,7 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 	}
 	var res FileResult
 	var item *PendingItem
+	var gone string
 	err := s.cfg.Index.InTx(func(tx Tx) error {
 		q := tx.Querier()
 		u, err := pc.Cache.ByTaskSlug(q, req.TaskID, slug)
@@ -588,6 +608,7 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 		if err := s.deleteProofTx(tx, req.TaskID, slug, u); err != nil {
 			return err
 		}
+		gone = u.Session.ID
 		pr.Status = string(StatusAccepted)
 		res = FileResult{Path: md, Status: StatusAccepted, Proof: pr}
 		return nil
@@ -595,7 +616,9 @@ func (s *Service) unitGone(ctx context.Context, req Request, slug string, rows [
 	if err != nil {
 		return FileResult{Path: md, Status: StatusInvalid, Message: fmt.Sprintf("%s: could not apply: %v", md, err)}, nil
 	}
-	_ = ctx
+	if gone != "" {
+		s.proofChanged(ctx, req.TaskID, gone)
+	}
 	return res, item
 }
 
@@ -647,6 +670,7 @@ func (s *Service) RestoreProof(ctx context.Context, taskID, slug string) error {
 		return fmt.Errorf("%w: proof", ErrNoHandler)
 	}
 	var rows []model.TaskFile
+	var dropped string
 	err := s.cfg.Index.InTx(func(tx Tx) error {
 		var err error
 		if rows, err = tx.FilesUnder(taskID, proofFolder(slug)); err != nil {
@@ -655,12 +679,18 @@ func (s *Service) RestoreProof(ctx context.Context, taskID, slug string) error {
 		if u, err := s.cfg.Proof.Cache.ByTaskSlug(tx.Querier(), taskID, slug); err != nil {
 			return err
 		} else if u != nil {
+			if u.Session.PendingRev != nil {
+				dropped = u.Session.ID
+			}
 			return s.cfg.Proof.Cache.DropPending(tx.Querier(), u.Session.ID, s.nowMs())
 		}
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+	if dropped != "" {
+		s.proofChanged(ctx, taskID, dropped)
 	}
 	for _, r := range rows {
 		if r.AcceptedSHA256 == "" {

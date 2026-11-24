@@ -49,12 +49,6 @@ func TestDiff(t *testing.T) {
 		{"catalog order", KindChangeRequest, open.Encode(),
 			with(open, func(s *CRSnap) { s.State, s.ChecksState, s.CommentCount = "merged", "SUCCESS", n(2) }).Encode(),
 			[]string{"commentAdded", "merged", "checksPassed"}, map[string]int{"commentAdded": 1}, false},
-		{"issue status and unknown comments", KindIssue, IssueSnap{Status: "To Do"}.Encode(),
-			IssueSnap{Status: "Done", Comments: n(4)}.Encode(), []string{"statusChanged"}, nil, false},
-		{"issue comments", KindIssue, IssueSnap{Comments: n(1)}.Encode(), IssueSnap{Comments: n(2)}.Encode(),
-			[]string{"commentAdded"}, map[string]int{"commentAdded": 1}, false},
-		{"issue linked unknown", KindIssue, IssueSnap{}.Encode(), IssueSnap{Linked: n(1)}.Encode(), nil, nil, false},
-		{"issue linked known", KindIssue, IssueSnap{Linked: n(0)}.Encode(), IssueSnap{Linked: n(1)}.Encode(), []string{"linkedChangeRequests"}, nil, false},
 		{"branch remote commits", KindBranch, BranchSnap{UpstreamBehind: 1}.Encode(), BranchSnap{UpstreamBehind: 3}.Encode(), []string{"remoteCommits"}, nil, false},
 		{"branch merged", KindBranch, BranchSnap{}.Encode(), BranchSnap{Merged: true}.Encode(), []string{"merged"}, nil, false},
 		{"conflicts both known", KindBranch, BranchSnap{ConflictsKnown: true}.Encode(),
@@ -70,7 +64,7 @@ func TestDiff(t *testing.T) {
 		{"base moved and local commits", KindBranch, BranchSnap{Tip: "a", Behind: 1}.Encode(), BranchSnap{Tip: "b", Behind: 2}.Encode(),
 			[]string{"baseMoved", "localCommits"}, nil, false},
 		{"version mismatch", KindChangeRequest, `{"v":0,"present":true}`, open.Encode(), nil, nil, true},
-		{"unreadable", KindIssue, `not json`, IssueSnap{}.Encode(), nil, nil, true},
+		{"unreadable", KindBranch, `not json`, BranchSnap{}.Encode(), nil, nil, true},
 		{"unknown kind", "other", `{}`, `{}`, nil, nil, true},
 	}
 	for _, tc := range cases {

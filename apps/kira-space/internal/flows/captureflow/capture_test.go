@@ -11,11 +11,9 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakeacli"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakeaz"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/fakehost"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/githost/azure"
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/issuetracker/jira"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/flowtest/fakeclock"
 	"github.com/kirathecat/kira-studio/internal/shell"
@@ -29,7 +27,6 @@ const scenario = "capture"
 const (
 	ghLink    = "https://github.com/acme/api/pull/7"
 	azLink    = "https://dev.azure.com/acme/Web%20App/_git/api/pullrequest/12"
-	jiraSite  = "acme.atlassian.net"
 	jiraLink  = "https://acme.atlassian.net/browse/PROJ-12"
 	forgeLink = "https://forge.test/acme/api/-/merge_requests/12"
 )
@@ -38,19 +35,16 @@ type rig struct {
 	app *flowharness.App
 }
 
-// newRig boots an app with GitHub, Azure Repos (fake az), a Forge and Jira (fake acli) all signed in.
+// newRig boots an app with GitHub, Azure Repos (fake az), and a Forge all signed in.
 func newRig(t *testing.T, opts ...flowharness.Opt) *rig {
 	t.Helper()
 	forge := fakehost.New()
 	az := fakeaz.New()
 	az.SetDefaults("https://dev.azure.com/acme", "Web App")
-	acli := fakeacli.New(jiraSite)
-	acli.SetIssue("PROJ-12", fakeacli.IssueJSON("PROJ-12", "Export report as CSV", "In Progress", "indeterminate", 0))
 	clock := fakeclock.New(time.Now())
 	all := append([]flowharness.Opt{
 		flowharness.WithGitHost(forge), flowharness.WithClock(clock),
 		flowharness.WithAzure(azure.Options{Locator: az, Runner: az, Clock: clock}),
-		flowharness.WithIssueTracker(jira.Options{Locator: acli, Runner: acli, Clock: clock}),
 	}, opts...)
 	return &rig{app: flowharness.New(t, all...)}
 }

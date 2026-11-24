@@ -126,6 +126,9 @@ func New(cfg Config) *Service {
 
 const maxIgnoredReported = 10
 
+// Sum is the content hash the index stores in TaskFile.SHA256.
+func Sum(b []byte) string { return sum(b) }
+
 func sum(b []byte) string {
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:])

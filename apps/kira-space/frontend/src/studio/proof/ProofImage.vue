@@ -2,18 +2,14 @@
 import type { ProofImagePayload } from '@shared/domain/proof';
 import EmptyState from '@theme/components/EmptyState.vue';
 import { t } from '@theme/i18n';
-import { useScroll } from '@vueuse/core';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 // One image step (PNG, JPEG, WebP or SVG): the file's bytes as a data URL (the window CSP allows
-// data:, not blob:), fitted to the width and never upscaled; a tall image scrolls. SVG renders only
-// through <img>, never inline, so its scripts cannot run.
-const props = defineProps<{
-  payload: ProofImagePayload;
-  description: string;
-  seed: { top: number; left: number };
-}>();
-const emit = defineEmits<{ 'update:scroll': [top: number, left: number]; ready: [] }>();
+// data:, not blob:), fitted whole into the pane (width and height), never upscaled, so one view and
+// each screenshot show all of it. SVG renders only through <img>, never inline, so its scripts
+// cannot run.
+const props = defineProps<{ payload: ProofImagePayload; description: string }>();
+const emit = defineEmits<{ ready: [] }>();
 
 const MIME = {
   png: 'image/png',
@@ -23,28 +19,12 @@ const MIME = {
 } as const;
 const src = computed(() => `data:${MIME[props.payload.format]};base64,${props.payload.base64}`);
 const failed = ref(false);
-const scroller = useTemplateRef<HTMLElement>('scroller');
-const { x, y } = useScroll(scroller);
-let restored = false;
-// Scrolls fired before the saved position is restored would overwrite it.
-watch([x, y], ([left, top]) => {
-  if (restored) emit('update:scroll', top, left);
-});
 
 let announced = false;
 function announce(): void {
   if (announced) return;
   announced = true;
   emit('ready');
-}
-
-async function onLoad(): Promise<void> {
-  await nextTick();
-  x.value = props.seed.left;
-  y.value = props.seed.top;
-  await nextTick();
-  restored = true;
-  announce();
 }
 
 function onError(): void {
@@ -63,8 +43,7 @@ function onError(): void {
   />
   <section
     v-else
-    ref="scroller"
-    class="h-full overflow-auto bg-bg"
+    class="absolute inset-0 flex items-center justify-center overflow-hidden bg-bg"
     :aria-label="t('studio.proof.image.region.aria', { description })"
     data-testid="proof-image"
   >
@@ -73,9 +52,9 @@ function onError(): void {
       :alt="description"
       :width="payload.width"
       :height="payload.height"
-      class="mx-auto block h-auto max-w-full"
+      class="block h-auto max-h-full min-h-0 w-auto max-w-full min-w-0"
       decoding="async"
-      @load="onLoad"
+      @load="announce"
       @error="onError"
     >
   </section>

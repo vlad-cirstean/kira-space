@@ -698,3 +698,13 @@
 .slick-grid-host .header-key {
   font-size: var(--kira-t-xs);
 }
+
+/* P748: the proof window draws stronger lines so rows and columns read apart. */
+.slick-grid-host.kira-grid--lined .slick-cell,
+.slick-grid-host.kira-grid--lined .slick-header-column.ui-state-default {
+  border-color: var(--kira-grid-line);
+}
+.slick-grid-host.kira-grid--lined .slick-header,
+.slick-grid-host.kira-grid--lined .slick-headerrow {
+  border-bottom-color: var(--kira-grid-line);
+}
