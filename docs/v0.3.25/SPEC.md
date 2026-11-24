@@ -11,8 +11,8 @@ Code review at chapter end: 1 round.
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Done |
 | P749 | Proof window: images fit the window, larger default size | Done |
 | P750 | Details panel and proofs: auto-update on disk changes | Done |
-| P751 Part 1 | Drop the issue and change request viewer windows; links open in the browser | Todo |
-| P751 Part 2 | Drop acli support and the issue tracker | Todo |
+| P751 Part 1 | Drop the issue and change request viewer windows; links open in the browser | Done |
+| P751 Part 2 | Drop acli support and the issue tracker | Done |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
 | P753 | Proof window shows that its proof is stale | Todo |
 | P754 | Checkboxes and toggles: blue checked state | Done |
@@ -87,6 +87,16 @@ implementation is not what the owner wants.
 - Stored data and settings for removed features: plan states the cleanup; no legacy code across a
   minor bump, but this is a patch, so a migration step must keep existing installs clean.
 - Run after P750 lands: it touches task link and detail code that P748 and P750 also touch.
+
+Result: Part 1 removed the viewer windows (`HostViewService`, `frontend/src/hostview/`, change request
+detail and comment roles, Jira comments, `markdown-it-github-alerts`, goldmark); every PR, merge
+request and Jira link opens in the browser; migration 0107 deletes `hostview-*` window rows. Part 2
+removed acli and the issue tracker (`internal/issuetracker/`, `fakeacli`, `oplog/toolrunner`, task
+issue line, issue updates and the `tracking.issue` setting); the Jira task slot stays a plain link,
+`ade.ParseJiraRef` replaces the parser, `Tools` lists gh and az only; migration 0108 rebuilds
+`ade_tracked_items` without kind `issue`. The change request tracker is untouched. About 16,000 lines
+deleted. Plan: `plans/P751.md`. CLAUDE.md prose (acli at line 122, `issuetracker/` at line 126) is
+stale until the owner approves the edit.
 
 ## P752
 
