@@ -22,14 +22,6 @@
       "readyForReview": true,
       "reopened": true,
       "titleChanged": false
-    },
-    "issue": {
-      "assigneeChanged": false,
-      "commentAdded": true,
-      "linkedChangeRequests": false,
-      "priorityChanged": false,
-      "statusChanged": true,
-      "titleChanged": false
     }
   }
 }

@@ -169,7 +169,6 @@ func readTracking(stored map[string]json.RawMessage, t *model.TrackingSettings) 
 		dst  *map[string]bool
 	}{
 		{"tracking.changeRequest", updates.KindChangeRequest, &t.ChangeRequest},
-		{"tracking.issue", updates.KindIssue, &t.Issue},
 		{"tracking.branch", updates.KindBranch, &t.Branch},
 	} {
 		var saved map[string]bool
@@ -183,9 +182,6 @@ func upsertTracking(tx *sql.Tx, t *model.TrackingPatch) error {
 		return nil
 	}
 	if err := appsettings.UpsertOptional(tx, "tracking.changeRequest", t.ChangeRequest); err != nil {
-		return err
-	}
-	if err := appsettings.UpsertOptional(tx, "tracking.issue", t.Issue); err != nil {
 		return err
 	}
 	return appsettings.UpsertOptional(tx, "tracking.branch", t.Branch)

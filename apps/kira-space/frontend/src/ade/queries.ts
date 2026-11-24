@@ -17,7 +17,6 @@ import {
   dbAuditPrefix,
   diskPrefix,
   handoversPrefix,
-  issuePrefix,
   proofsPrefix,
   reviewStepPrefix,
   stepYamlKey,
@@ -88,7 +87,6 @@ export function installAdeSignals(
     invalidateTaskFamily(queryClient, handoversPrefix, change);
     invalidateTaskFamily(queryClient, artifactsPrefix, change);
     invalidateTaskFamily(queryClient, diskPrefix, change);
-    invalidateTaskFamily(queryClient, issuePrefix, change);
     invalidateTaskFamily(queryClient, proofsPrefix, change);
     // An accepted edit rewrites a proof step in place under the same rev, and step keys carry no task.
     void queryClient.invalidateQueries({ queryKey: proofStepPrefix });

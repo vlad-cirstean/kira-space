@@ -242,7 +242,6 @@ type Wired struct {
 	GitCredential   *bridge.GitCredentialService
 	GitHost         *bridge.GitHostService
 	Capture         *bridge.CaptureService
-	IssueTracker    *bridge.IssueTrackerService
 	Link            *bridge.LinkService
 	Files           *bridge.FilesService
 	Settings        *bridge.SettingsService
@@ -580,7 +579,6 @@ func Build(opts Options) (*Wired, error) {
 	loader.Start()
 	w.sched.Start()
 	w.ConfigSync.Start()
-	w.IssueTracker = &bridge.IssueTrackerService{Engine: w.AdeBoard, Hosts: git.registry.Hosts.Registry, Providers: git.trackers}
 	w.AdeTask = &bridge.AdeTaskService{Engine: w.AdeBoard, Registry: terminalRegistry, Emit: emitter, Hosts: git.registry.Hosts.Registry, Revealer: opts.TaskRevealer, Editor: opts.Editor}
 	w.Capture.Tasks = w.AdeTask
 	w.SessionRestore = &bridge.SessionRestoreService{Svc: sessionrestore.New(runs, sessionrestore.DockerOf(w.Docker.BoundService), w.AdeBoard,
@@ -736,7 +734,7 @@ func (w *Wired) StartMobile() { bridge.StartMobileIfEnabled(w.Mobile) }
 func (w *Wired) Bound() []application.Service {
 	return []application.Service{
 		application.NewService(w.GitCredential),
-		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.IssueTracker), application.NewService(w.Link),
+		application.NewService(w.CodeWorkspace), application.NewService(w.GitHost), application.NewService(w.Link),
 		application.NewService(w.Files), application.NewService(w.Settings), application.NewService(w.Layout),
 		application.NewService(w.Tabs), application.NewService(w.CustomScripts), application.NewService(w.ScriptRuns), application.NewService(w.SessionRestore), application.NewService(w.Terminal),
 		application.NewService(w.AdeTask), application.NewService(w.Leases), application.NewService(w.Ops), application.NewService(w.Lifecycle),

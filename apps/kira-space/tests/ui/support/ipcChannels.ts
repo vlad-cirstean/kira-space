@@ -294,7 +294,6 @@ export const IPC = {
   adeTaskUpdateHandover: 'kira:adetask:updateHandover',
   adeTaskDismissHandover: 'kira:adetask:dismissHandover',
   adeTaskArtifacts: 'kira:adetask:artifacts',
-  adeTaskIssue: 'kira:issuetracker:taskIssue',
   adeTaskTrackedUpdates: 'kira:adetask:trackedUpdates',
   adeTaskMarkTrackedSeen: 'kira:adetask:markTrackedSeen',
   cliTools: 'kira:githost:tools',

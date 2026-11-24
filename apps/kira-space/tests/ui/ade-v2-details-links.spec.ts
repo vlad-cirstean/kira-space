@@ -133,11 +133,7 @@ const categoryOf = (kind: string) => (kind === 'issue' || kind === 'changeReques
 test('links group under Issues, Change requests and Misc; the block stays compact', async ({
   relaunch,
 }) => {
-  const issueFx = contract('ade-issue-tracker', 'IssueTrackerService.TaskIssue');
-  const { window: page } = await openPlan(relaunch, [
-    ...base(),
-    { channel: IPC.adeTaskIssue, response: issueFx },
-  ]);
+  const { window: page } = await openPlan(relaunch, base());
   await openDetails(page);
   await expect(
     page
@@ -163,7 +159,7 @@ test('links group under Issues, Change requests and Misc; the block stays compac
   const box = await page.locator(t('ade-links')).boundingBox();
   expect(box?.height ?? Infinity).toBeLessThanOrEqual(104);
   const jira = await openCard(page, 'PAY-130');
-  await expect(jira.locator(t('ade-task-issue'))).toHaveCount(1);
+  await expect(jira.locator(t('ade-links-card-url'))).toHaveCount(1);
 });
 
 test('a line without links is hidden', async ({ relaunch }) => {

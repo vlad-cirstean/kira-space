@@ -26,8 +26,6 @@ export interface LinkItem {
   sessionId: string;
   status?: string;
   tone?: Tone;
-  /** Jira details (status) still loading. */
-  pending?: boolean;
 }
 
 const norm = (url: string): string => url.trim().replace(/\/+$/, '');
@@ -156,7 +154,7 @@ export function linkGroups(
     const detectedBranch = a.kind === 'branch' && a.id === '';
     if (detectedBranch && !opts.branches) continue;
     if (a.url && seen.has(norm(a.url))) continue;
-    // The tracker's own row for the Jira key the task already shows.
+    // A detected row for the Jira key the task already shows.
     if (a.kind === 'issue' && jira && (a.title === jira.key || a.ref === jira.key)) continue;
     if (a.url) seen.add(norm(a.url));
     if (a.source === 'notes') found.push(fromArtifact(a));

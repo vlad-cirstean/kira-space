@@ -15,7 +15,6 @@ import * as FileHandlersService from '@bindings/filehandlersservice.js';
 import * as FilesService from '@bindings/filesservice.js';
 import * as GitCredentialService from '@bindings/gitcredentialservice.js';
 import * as GitHostService from '@bindings/githostservice.js';
-import * as IssueTrackerService from '@bindings/issuetrackerservice.js';
 import * as KeepAwakeService from '@bindings/keepawakeservice.js';
 import * as LayoutService from '@bindings/layoutservice.js';
 import * as LeasesService from '@bindings/leasesservice.js';
@@ -661,8 +660,6 @@ const spaceControl = {
     unwrap(AdeTaskService.DismissHandover(args)),
   adeTaskArtifacts: (args: V2.TaskArgs): Promise<V2.ArtifactsResult> =>
     unwrap(AdeTaskService.Artifacts(args)).then((r) => trust<V2.ArtifactsResult>(r)),
-  adeTaskIssue: (args: V2.TaskIssueArgs): Promise<V2.TaskIssue> =>
-    unwrap(IssueTrackerService.TaskIssue(args)).then((r) => trust<V2.TaskIssue>(r)),
   adeTaskTrackedUpdates: (): Promise<V2.TrackedUpdatesResult> =>
     unwrap(AdeTaskService.TrackedUpdates()).then((r) => trust<V2.TrackedUpdatesResult>(r)),
   adeTaskMarkTrackedSeen: (args: V2.MarkTrackedSeenArgs): Promise<void> =>

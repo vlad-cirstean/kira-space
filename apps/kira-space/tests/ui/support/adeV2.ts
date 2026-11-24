@@ -30,19 +30,6 @@ const NO_PANEL_FORWARD = {
   preview: '',
 };
 
-/** The task issue of a task no tracker recognises: the Task tab shows no issue row. */
-const NO_TRACKER_ISSUE = {
-  provider: '',
-  label: '',
-  key: '',
-  url: '',
-  title: '',
-  status: '',
-  statusCategory: '',
-  summary: { known: false, count: 0, state: '', providers: [] },
-  reason: 'noTracker',
-};
-
 const REBASE_PREVIEW = {
   prompt: 'Rebase feat/billing onto origin/main.',
   suffix: 'Report the outcome with finish_step.',
@@ -226,7 +213,6 @@ export function adeV2Control(extra: readonly ControlSnapshot[] = []): ControlSna
     { channel: IPC.adeTaskForwardPanelEdits },
     { channel: IPC.adeTaskDismissPanelEdits },
     { channel: IPC.adeTaskArtifacts, response: { artifacts: [], gaps: [] } },
-    { channel: IPC.adeTaskIssue, response: NO_TRACKER_ISSUE },
     { channel: IPC.adeTaskTrackedUpdates, response: { updates: [] } },
     { channel: IPC.adeTaskMarkTrackedSeen },
     { channel: IPC.adeTaskAddLink, response: { filed: 'stored', kind: 'link', artifact: null } },

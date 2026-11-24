@@ -136,7 +136,6 @@ func ValidCaptureHotkey(s string) bool {
 // meaningful change. A concept missing from a map reads its catalog default.
 type TrackingSettings struct {
 	ChangeRequest map[string]bool `json:"changeRequest"`
-	Issue         map[string]bool `json:"issue"`
 	Branch        map[string]bool `json:"branch"`
 }
 
@@ -144,7 +143,6 @@ type TrackingSettings struct {
 func DefaultTrackingSettings() TrackingSettings {
 	return TrackingSettings{
 		ChangeRequest: trackingDefaults(updates.KindChangeRequest),
-		Issue:         trackingDefaults(updates.KindIssue),
 		Branch:        trackingDefaults(updates.KindBranch),
 	}
 }
@@ -317,7 +315,6 @@ type CapturePatch struct {
 // TrackingPatch mirrors TrackingSettings' own `.partial()` shape; each map replaces its whole leaf.
 type TrackingPatch struct {
 	ChangeRequest *map[string]bool `json:"changeRequest,omitempty"`
-	Issue         *map[string]bool `json:"issue,omitempty"`
 	Branch        *map[string]bool `json:"branch,omitempty"`
 }
 
@@ -477,7 +474,7 @@ func validateTrackingSection(t *TrackingPatch) error {
 	for _, leaf := range []struct {
 		kind string
 		m    *map[string]bool
-	}{{updates.KindChangeRequest, t.ChangeRequest}, {updates.KindIssue, t.Issue}, {updates.KindBranch, t.Branch}} {
+	}{{updates.KindChangeRequest, t.ChangeRequest}, {updates.KindBranch, t.Branch}} {
 		if leaf.m == nil {
 			continue
 		}

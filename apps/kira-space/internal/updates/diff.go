@@ -26,12 +26,6 @@ func Diff(kind, seen, current string) Change {
 			return Change{Reset: true}
 		}
 		c = diffCR(a, b)
-	case KindIssue:
-		var a, b IssueSnap
-		if !DecodeIssue(seen, &a) || !DecodeIssue(current, &b) {
-			return Change{Reset: true}
-		}
-		c = diffIssue(a, b)
 	case KindBranch:
 		var a, b BranchSnap
 		if !DecodeBranch(seen, &a) || !DecodeBranch(current, &b) {
@@ -105,20 +99,6 @@ func sameSet(a, b []string) bool {
 	slices.Sort(x)
 	slices.Sort(y)
 	return slices.Equal(x, y)
-}
-
-func diffIssue(a, b IssueSnap) Change {
-	var c collector
-	c.add("statusChanged", a.Status != b.Status)
-	if d, ok := grew(a.Comments, b.Comments); ok {
-		c.add("commentAdded", true)
-		c.Counts = map[string]int{"commentAdded": d}
-	}
-	c.add("assigneeChanged", a.Assignee != b.Assignee)
-	c.add("priorityChanged", a.Priority != b.Priority)
-	c.add("titleChanged", a.Title != b.Title)
-	c.add("linkedChangeRequests", a.Linked != nil && b.Linked != nil && *a.Linked != *b.Linked)
-	return c.Change
 }
 
 func diffBranch(a, b BranchSnap) Change {

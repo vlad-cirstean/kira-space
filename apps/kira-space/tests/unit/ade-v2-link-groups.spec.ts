@@ -52,7 +52,7 @@ describe('linkGroups order', () => {
     expect(labels(g, 'changeRequest')).toEqual(['user CR', 'agent CR']);
   });
 
-  test('C: Jira slot, then detected tracker row, then stored; own key row dropped', () => {
+  test('C: Jira slot, then detected issue row, then stored; own key row dropped', () => {
     const g = linkGroups(jiraTask(), [
       art({ kind: 'issue', id: 's', title: 'PAY-2', url: 'https://j.test/browse/PAY-2' }),
       art({

@@ -15,7 +15,6 @@ import {
 } from '../artifacts/status';
 import AdeLinkOpenExternal from '../details/AdeLinkOpenExternal.vue';
 import AdeOriginSession from '../details/AdeOriginSession.vue';
-import AdeTaskIssueLine from '../panel/AdeTaskIssueLine.vue';
 import { THEME_TONE } from '../tones';
 import type { Artifact, Task } from '../wire';
 import AdeLinkEdit from './AdeLinkEdit.vue';
@@ -87,7 +86,7 @@ function openTitle(e: MouseEvent): void {
         }}</span
       >
       <Badge
-        v-if="item.status && item.origin !== 'jira'"
+        v-if="item.status"
         :variant="TONE_BADGE[THEME_TONE[artifactStatusTone(item.status)]]"
         >{{
           artifactStatusLabel(item.status)
@@ -127,11 +126,6 @@ function openTitle(e: MouseEvent): void {
         </li>
       </ul>
     </div>
-    <AdeTaskIssueLine
-      v-if="item.origin === 'jira'"
-      :task-id="task.id"
-      :link="`${item.label} ${item.url}`"
-    />
     <SecondaryTabs
       v-if="canEdit() && item.origin === 'stored'"
       :model-value="item.kind"

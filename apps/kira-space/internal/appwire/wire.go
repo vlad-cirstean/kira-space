@@ -194,7 +194,6 @@ func wireAdeTask(
 		Tasks: repositories.AdeTasks, Statuses: repositories.AdeStatuses, RepoConfig: repositories.AdeRepoConfig,
 		CodeRepos: repositories.CodeRepos, GitRepoSettings: repoFiles.Settings, RepoFile: repoFile(repoFiles),
 		Registry:  git.registry,
-		Trackers:  git.trackers,
 		GitStatus: func(ctx context.Context) gitclient.GitStatus { return git.discovery.Status(ctx, gitPath()) },
 		Askpass:   git.askpassBroker,
 		Workflows: &adeflow.Reader{Dir: configfs.ModuleDir(config.KiraSpaceHome(), adeflow.WorkflowsFolder), Store: configfs.TableProjection{DB: repositories.CustomScripts.DB, Folder: adeflow.WorkflowsFolder},

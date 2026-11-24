@@ -36,18 +36,6 @@
         "ref": "<masked>",
         "repo": "",
         "sessionId": "<masked>",
-        "source": "jira",
-        "status": "",
-        "title": "KIRA-12",
-        "url": "https://jira.test/browse/KIRA-12"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
-        "ref": "<masked>",
-        "repo": "",
-        "sessionId": "<masked>",
         "source": "task",
         "status": "",
         "title": "api#3",
@@ -117,18 +105,6 @@
         "status": "open",
         "title": "Fix login",
         "url": "https://forge.test/acme/api/-/merge_requests/7"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
-        "ref": "<masked>",
-        "repo": "",
-        "sessionId": "<masked>",
-        "source": "jira",
-        "status": "",
-        "title": "KIRA-12",
-        "url": "https://jira.test/browse/KIRA-12"
       },
       {
         "createdAt": 0,
@@ -207,18 +183,6 @@
         "ref": "<masked>",
         "repo": "",
         "sessionId": "<masked>",
-        "source": "jira",
-        "status": "",
-        "title": "KIRA-12",
-        "url": "https://jira.test/browse/KIRA-12"
-      },
-      {
-        "createdAt": 0,
-        "id": "<masked>",
-        "kind": "issue",
-        "ref": "<masked>",
-        "repo": "",
-        "sessionId": "<masked>",
         "source": "task",
         "status": "",
         "title": "api#3",
@@ -279,22 +243,6 @@
         "source": "host"
       }
     ]
-  },
-  "IssueTrackerService.TaskIssue#unavailable": {
-    "key": "KIRA-12",
-    "label": "Jira",
-    "provider": "jira",
-    "reason": "unavailable",
-    "status": "",
-    "statusCategory": "",
-    "summary": {
-      "count": 0,
-      "known": false,
-      "providers": [],
-      "state": ""
-    },
-    "title": "",
-    "url": "https://jira.test/browse/KIRA-12"
   },
   "args:AdeTaskService.AddLink": {
     "taskId": "<id:1>",

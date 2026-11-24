@@ -277,7 +277,6 @@ function trackingKindSchema(kind: TrackedKind) {
 }
 const trackingSettingsSchema = /*#__PURE__*/ z.object({
   changeRequest: trackingKindSchema('changeRequest'),
-  issue: trackingKindSchema('issue'),
   branch: trackingKindSchema('branch'),
 });
 
@@ -324,7 +323,6 @@ const settingsSchema = /*#__PURE__*/ z.object({
   capture: captureSettingsSchema.default({ enabled: true, hotkey: DEFAULT_CAPTURE_HOTKEY }),
   tracking: trackingSettingsSchema.default({
     changeRequest: trackingDefaults('changeRequest'),
-    issue: trackingDefaults('issue'),
     branch: trackingDefaults('branch'),
   }),
   data: dataSettingsSchema.default({ defaultPageSize: 100 }),
@@ -423,7 +421,6 @@ export const defaultSettings: Settings = {
   },
   tracking: {
     changeRequest: trackingDefaults('changeRequest'),
-    issue: trackingDefaults('issue'),
     branch: trackingDefaults('branch'),
   },
   data: {

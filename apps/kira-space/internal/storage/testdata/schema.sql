@@ -273,7 +273,7 @@ CREATE TABLE "ade_tasks" (
 CREATE TABLE "ade_tracked_items" (
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
   item_key TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('changeRequest', 'issue', 'branch')),
+  kind TEXT NOT NULL CHECK (kind IN ('changeRequest', 'branch')),
   seen_at INTEGER NOT NULL CHECK (seen_at >= 0),
   observed_at INTEGER NOT NULL CHECK (observed_at >= 0),
   changed_at INTEGER NOT NULL DEFAULT 0 CHECK (changed_at >= 0),

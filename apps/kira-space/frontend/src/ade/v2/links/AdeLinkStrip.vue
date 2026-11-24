@@ -175,7 +175,7 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
     >
       <span
         v-for="(g, i) in links.gaps.value"
-        :key="`${g.source}:${g.repo}:${g.reason ?? ''}`"
+        :key="`${g.source}:${g.repo}`"
         data-testid="ade-links-gap"
         >{{ gapText(g) }}{{ i < links.gaps.value.length - 1 ? ' ' : '' }}</span
       >
