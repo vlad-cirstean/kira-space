@@ -47,21 +47,24 @@ var mobileAssets embed.FS
 
 // openProofWindow opens the proof window cascaded from the current window, at the proof size.
 func openProofWindow(app *application.App, winDeps shell.WindowOpenerDeps, rec shell.WindowRecord) {
-	rec.Bounds = proofBounds(shell.CascadeFrom(app.Window.Current()), app.Screen.GetPrimary())
+	rec.Bounds = proofBounds(app.Window.Current(), app.Screen.GetPrimary())
 	shell.OpenWindow(winDeps, rec)
 }
 
-// proofBounds sizes cascaded bounds to the proof window. With nothing to cascade from (Linux never
-// resolves a current window) it falls back to the primary work-area origin, so the proof size holds.
-func proofBounds(cascaded *shell.WindowBounds, primary *application.Screen) *shell.WindowBounds {
-	b := cascaded
-	if b == nil {
-		b = &shell.WindowBounds{}
-		if primary != nil {
-			b.X, b.Y = float64(primary.WorkArea.X), float64(primary.WorkArea.Y)
-		}
+// proofBounds cascades from the current window at the proof size, fitted to the screen. With no
+// current window (Linux never resolves one) it falls back to the primary work-area origin.
+func proofBounds(from application.Window, primary *application.Screen) *shell.WindowBounds {
+	if b := shell.CascadeFromSized(from, proof.WindowWidth, proof.WindowHeight); b != nil {
+		return b
 	}
-	b.Width, b.Height = proof.WindowWidth, proof.WindowHeight
+	b := &shell.WindowBounds{}
+	var work *application.Rect
+	if primary != nil {
+		work = &primary.WorkArea
+		b.X, b.Y = float64(work.X), float64(work.Y)
+	}
+	w, h := shell.FitSize(work, proof.WindowWidth, proof.WindowHeight)
+	b.Width, b.Height = float64(w), float64(h)
 	return b
 }
 

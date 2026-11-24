@@ -102,28 +102,23 @@ func Options(sec SecurityOptions, w WindowRecord, primaryWorkArea *application.R
 	return opts
 }
 
-// DefaultBounds is Options' first-launch size decision (used only when a window has no stored
-// rectangle — the `if w.Bounds != nil` branch above overrides it unconditionally otherwise), split
-// out and exported so the clamp arithmetic is unit-testable the same way CascadeFrom's own
-// cascadeRect is split out for testability (though cascadeRect itself has no dedicated test in
-// this repo today, so this is the pattern's structure, not a test it literally extends). It can
-// only ever *shrink* the 1280×800 default to fit a
-// smaller primary screen — never grow it — and falls back to exactly 1280×800 when no usable work
-// area is given.
-//
-// The motivation is UX, not memory: an unconditional 1280×800 first-launch window is edge-to-edge
-// on a same-size laptop panel, overlapping the menu bar and Dock, which is a real bug on its own
-// regardless of anything else. Its effect on the WKWebView scroll-memory plateau is real
-// but small and unmeasured in magnitude — this is not the
-// fix for that symptom, and it is first-launch-only besides (a window that has ever been resized
-// never sees this default again).
+// DefaultBounds is Options' first-launch size (used only when a window has no stored rectangle).
+// It only ever shrinks the 1280×800 default to fit a smaller primary screen, never grows it: an
+// unconditional 1280×800 window is edge-to-edge on a same-size laptop panel, overlapping the menu
+// bar and Dock.
 func DefaultBounds(work *application.Rect) (width, height int) {
+	return FitSize(work, defaultWindowWidth, defaultWindowHeight)
+}
+
+// FitSize shrinks a wanted size to the work area minus windowSizeMargin, never under the app
+// floor, never grown. A nil or empty work area returns the wanted size.
+func FitSize(work *application.Rect, width, height int) (int, int) {
 	if work == nil || work.Width <= 0 || work.Height <= 0 {
-		return defaultWindowWidth, defaultWindowHeight
+		return width, height
 	}
-	width = min(max(min(defaultWindowWidth, work.Width-windowSizeMargin), minWindowWidth), defaultWindowWidth)
-	height = min(max(min(defaultWindowHeight, work.Height-windowSizeMargin), minWindowHeight), defaultWindowHeight)
-	return width, height
+	w := min(max(min(width, work.Width-windowSizeMargin), minWindowWidth), width)
+	h := min(max(min(height, work.Height-windowSizeMargin), minWindowHeight), height)
+	return w, h
 }
 
 // boundsFromRect converts Wails' int-fielded Rect (webview_window.go's Bounds()) to the
@@ -216,12 +211,30 @@ func CascadeFrom(from application.Window) *WindowBounds {
 	if from == nil {
 		return nil
 	}
-	b := from.Bounds()
-	var work *application.Rect
-	if screen, err := from.GetScreen(); err == nil && screen != nil {
-		work = &screen.WorkArea
+	return cascadeRect(from.Bounds(), workAreaOf(from))
+}
+
+// CascadeFromSized is CascadeFrom at a wanted size, fitted to the work area. Nil when there is no
+// window to cascade from.
+func CascadeFromSized(from application.Window, width, height int) *WindowBounds {
+	if from == nil {
+		return nil
 	}
-	return cascadeRect(b, work)
+	return cascadeSized(from.Bounds(), workAreaOf(from), width, height)
+}
+
+// cascadeSized judges the wrap at the new size, so a window larger than its source still lands on
+// screen.
+func cascadeSized(from application.Rect, work *application.Rect, width, height int) *WindowBounds {
+	from.Width, from.Height = FitSize(work, width, height)
+	return cascadeRect(from, work)
+}
+
+func workAreaOf(from application.Window) *application.Rect {
+	if screen, err := from.GetScreen(); err == nil && screen != nil {
+		return &screen.WorkArea
+	}
+	return nil
 }
 
 // cascadeRect is CascadeFrom's pure arithmetic, split out so the offset/wrap rule doesn't need a

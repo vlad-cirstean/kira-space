@@ -19,10 +19,11 @@ import (
 // WindowKeyPrefix marks the proof window's key.
 const WindowKeyPrefix = "proof-"
 
-// WindowWidth and WindowHeight: proof window opens compact so its screenshots stay small and readable.
+// WindowWidth and WindowHeight: proof window default, a step above the 1024x640 window floor, room
+// for fitted images, screenshots still small (P749).
 const (
-	WindowWidth  = 1024
-	WindowHeight = 640
+	WindowWidth  = 1152
+	WindowHeight = 720
 )
 
 // IsWindowKey reports whether key names a proof window.
