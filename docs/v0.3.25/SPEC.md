@@ -9,7 +9,7 @@ Code review at chapter end: 1 round.
 |---|-------|--------|
 | P747 | Run restarted after app restart: fresh script timeout | Done |
 | P748 | Proof tool: visible grid borders, title link to window, collapsed by default | Done |
-| P749 | Proof window: images fit the window, larger default size | Todo |
+| P749 | Proof window: images fit the window, larger default size | Done |
 | P750 | Details panel and proofs: auto-update on disk changes | Todo |
 | P751 | Drop issue and change request viewer windows and acli support | Todo |
 | P752 | Task detail: title no longer overlaps the colored bar | Done |
@@ -48,6 +48,11 @@ updates left to PR CI. Plan: `plans/P748.md`.
 
 - Screenshots in the proof window scale to fit the window so one view shows the whole image.
 - Proof window default size grows a bit.
+
+Result: proof images scale down in CSS to fit the step pane whole (aspect kept, never upscaled, no
+scroll), so a window screenshot shows the full image. Default proof window grows from 1024x640 to
+1152x720; `shell.FitSize` shrinks it on small screens (floor 1024x640) and `shell.CascadeFromSized`
+checks the cascade wrap at the proof size. Plan: `plans/P749.md`.
 
 ## P750
 
