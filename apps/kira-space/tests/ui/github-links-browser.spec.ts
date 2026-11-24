@@ -58,11 +58,15 @@ test('contract: a PR, merge request or Jira pill opens the link in the browser',
   await expect(page.locator(t('ade-task-issue-view'))).toHaveCount(0);
 });
 
-test('the branch panel PR link opens the browser and marks its pending update seen', async ({
+test('the branch panel PR link marks its pending update seen, the branch link does not', async ({
   relaunch,
 }) => {
   const url = 'https://github.com/acme/web-app/pull/7/changes';
-  const fx = adeFixture<{ branches: Record<string, unknown> }>('change-requests');
+  const branchUrl = 'https://github.com/acme/web-app/tree/feat/oauth-login';
+  const fx = adeFixture<{ branches: Record<string, unknown>; branchUrls: Record<string, string> }>(
+    'change-requests',
+  );
+  fx.branchUrls = { ...fx.branchUrls, b_auth: branchUrl };
   fx.branches.b_auth = { number: 7, title: 'Fix login', state: 'Open', url };
   const crFx = contract<{ updates: Record<string, unknown>[] }>(
     'ade-tracked-updates',
@@ -80,9 +84,13 @@ test('the branch panel PR link opens the browser and marks its pending update se
   await page.locator(t('ade-panel-tab-main')).click();
   await page.locator(`${t('ade-task-branch')}[data-branch-id="b_auth"]`).click();
   await expect(page.locator(t('ade-pr-view'))).toHaveCount(0);
-  await page.locator(`${t('ade-branch-pr')} a`).click();
+  await page.locator(`${t('ade-branch-details')} a`, { hasText: 'feat/oauth-login' }).click();
   await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(1);
-  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url });
+  expect(calls(control, IPC.linkOpenExternal)[0]?.args).toEqual({ url: branchUrl });
+  expect(calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(0);
+  await page.locator(`${t('ade-branch-pr')} a`).click();
+  await expect.poll(() => calls(control, IPC.linkOpenExternal)).toHaveLength(2);
+  expect(calls(control, IPC.linkOpenExternal)[1]?.args).toEqual({ url });
   await expect.poll(() => calls(control, IPC.adeTaskMarkTrackedSeen)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskMarkTrackedSeen)[0]?.args).toEqual({
     taskId: 'T_auth',

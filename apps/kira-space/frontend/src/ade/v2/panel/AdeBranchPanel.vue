@@ -193,9 +193,9 @@ watch(
   },
   { immediate: true },
 );
-function open(url: string, e: MouseEvent): void {
+function open(url: string, e: MouseEvent, seenKey?: string): void {
   e.preventDefault();
-  markItemSeen(`cr:${props.row.id}`);
+  if (seenKey) markItemSeen(seenKey);
   fireAndForget(control.openExternal(url), 'ade.branch');
 }
 
@@ -451,7 +451,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
             <a
               :href="changeRequest.url"
               class="max-w-1/2 shrink-0 truncate font-data text-kira-md text-info"
-              @click="(e) => open(changeRequest!.url, e)"
+              @click="(e) => open(changeRequest!.url, e, `cr:${props.row.id}`)"
               >#{{ changeRequest.number }}</a
             >
             <span class="min-w-0 flex-1 truncate text-kira-md">{{ changeRequest.title }}</span>
