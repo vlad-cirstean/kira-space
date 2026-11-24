@@ -215,6 +215,7 @@ type TaskBoard struct {
 	watchMu    sync.Mutex
 	watches    map[string]*taskWatch
 	grants     map[string]int // live Space grants per task, watched or not
+	idle       *idleWatch     // board-wide watcher of task folders no agent watches (idlewatch.go)
 	watchWG    sync.WaitGroup // final passes of stopped watchers
 	stopFlowW  func()
 	stopStepsW func()
