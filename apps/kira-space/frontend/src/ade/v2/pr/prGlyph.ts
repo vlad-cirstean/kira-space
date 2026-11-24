@@ -4,9 +4,9 @@ import type { StatusTone } from '@theme/lib/statusTone';
 import type { Tone } from '../board/actions';
 
 // The one table of pull request status. A glyph is the state (shape), the checks (corner dot) and the
-// tone that ranks conflicts, review, auto-merge. Branch row, task panel, host view and phone read it.
+// tone that ranks conflicts, review, auto-merge. Branch row, task panel and phone read it.
 
-/** What any change request carries: the board wire and the host view detail both fit. */
+/** What any change request carries: the board wire fits. */
 export interface PrStatus {
   state: string;
   checksState?: string;
