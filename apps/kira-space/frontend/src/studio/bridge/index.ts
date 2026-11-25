@@ -416,7 +416,6 @@ const studioControl = {
   proofRejectEdit: (sessionId: string): Promise<void> =>
     unwrap(ProofService.RejectEdit({ sessionId })),
   proofDelete: (sessionId: string): Promise<void> => unwrap(ProofService.Delete({ sessionId })),
-  proofMarkSeen: (sessionId: string): Promise<void> => unwrap(ProofService.MarkSeen({ sessionId })),
   proofOpenWindow: (taskId: string, slug: string): Promise<ProofOpenResult> =>
     unwrap(ProofService.OpenWindow({ taskId, slug })).then((r) => trust<ProofOpenResult>(r)),
   proofOpenFolder: (sessionId: string): Promise<void> =>

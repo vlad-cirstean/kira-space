@@ -64,7 +64,6 @@ import ConnectionFileDialog from './studio/project/ConnectionFileDialog.vue';
 import DataGripImportDialog from './studio/project/DataGripImportDialog.vue';
 import MaskingReviewPrompt from './studio/project/MaskingReviewPrompt.vue';
 import NewConnectionDialog from './studio/project/NewConnectionDialog.vue';
-import ProofReadyPrompt from './studio/proof/ProofReadyPrompt.vue';
 import ProofWindow from './studio/proof/ProofWindow.vue';
 import { useProofWindowStore } from './studio/proof/state';
 import { useConnectionDialogStore } from './studio/state/connectionDialogs';
@@ -110,7 +109,6 @@ const promptKinds = {
   update: markRaw(UpdatePrompt),
   quit: markRaw(QuitPrompt),
   handover: markRaw(AdeHandoverPrompt),
-  proof: markRaw(ProofReadyPrompt),
   masking: markRaw(MaskingReviewPrompt),
 };
 const reviewWindow = useAdeReviewWindowStore();

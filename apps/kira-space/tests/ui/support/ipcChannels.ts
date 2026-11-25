@@ -572,7 +572,6 @@ export const IPC = {
   proofAcceptEdit: 'kira:proof:acceptEdit',
   proofRejectEdit: 'kira:proof:rejectEdit',
   proofDelete: 'kira:proof:delete',
-  proofMarkSeen: 'kira:proof:markSeen',
   proofOpenWindow: 'kira:proof:openWindow',
   proofOpenFolder: 'kira:proof:openFolder',
   proofRevealFolder: 'kira:proof:revealFolder',
