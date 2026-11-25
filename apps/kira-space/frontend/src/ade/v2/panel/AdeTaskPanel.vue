@@ -11,7 +11,7 @@ import { TooltipDisabledTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
 import { useInlineEdit } from '@workbench/behaviour/inlineEdit';
 import { errorText } from '@workbench/bridge/codedError';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import AdeChip from '../AdeChip.vue';
 import AdeOrchestratorBadge from '../AdeOrchestratorBadge.vue';
 import AdeAutomationsBlock from '../automation/AdeAutomationsBlock.vue';
@@ -43,6 +43,17 @@ const tab = computed({
     tabs.setTaskTab(props.card.task.id, v);
   },
 });
+// Details mounts on its first visit and then stays mounted (hidden) while the panel shows this task,
+// so a return neither refetches its links nor re-renders the chain. Panel-local: no shared state.
+const detailsSeenFor = ref<string | null>(null);
+watch(
+  [tab, () => props.card.task.id],
+  ([t, id]) => {
+    if (t === 'details') detailsSeenFor.value = id;
+  },
+  { immediate: true },
+);
+const detailsMounted = computed(() => detailsSeenFor.value === props.card.task.id);
 const { sessions } = useSessionViews();
 const sessionCount = computed(
   () =>
@@ -198,6 +209,12 @@ const label = computed(() =>
     </template>
     <AdeMainTab v-if="tab === 'main'" :card="card" />
     <AdeSessionsTab v-else-if="tab === 'sessions'" :task-id="card.task.id" />
-    <AdeDetailsTab v-else :task="card.task" :branches="card.rows.map((r) => r.branch)" />
+    <AdeDetailsTab
+      v-if="detailsMounted"
+      v-show="tab === 'details'"
+      :task="card.task"
+      :branches="card.rows.map((r) => r.branch)"
+      :active="tab === 'details'"
+    />
   </AdePanelFrame>
 </template>

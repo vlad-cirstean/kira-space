@@ -8,11 +8,16 @@ import AdeTaskChain from './AdeTaskChain.vue';
 import type { TimelineBranch } from './taskTimeline';
 
 // Details tab: the links, one list of notes, handovers and proof (task events with the Timeline toggle). Archived tasks open it read-only.
-const props = defineProps<{
-  task: Task;
-  branches: readonly TimelineBranch[];
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    task: Task;
+    branches: readonly TimelineBranch[];
+    readonly?: boolean;
+    /** False while the tab is mounted but hidden: the disk query pauses and restats when shown again. */
+    active?: boolean;
+  }>(),
+  { active: true },
+);
 
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
@@ -26,7 +31,7 @@ useKeptScroll(() => `ade:details:${props.task.id}`, bodyEl);
     class="flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-3 py-2"
     data-testid="ade-details-tab"
   >
-    <AdeDetailsDiskBanner :task-id="task.id" :readonly="readonly" />
+    <AdeDetailsDiskBanner :task-id="task.id" :readonly="readonly" :active="active" />
     <AdeLinkStrip
       :task="props.task"
       :mode="readonly ? 'view' : 'edit'"

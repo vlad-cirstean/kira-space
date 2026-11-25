@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleTrigger } from '@theme/components/ui/collapsibl
 import { Popover, PopoverAnchor, PopoverContent } from '@theme/components/ui/popover';
 import { Skeleton } from '@theme/components/ui/skeleton';
 import { t } from '@theme/i18n';
+import { useSpinnerDelay } from '@theme/lib/useSpinnerDelay';
 import { useEventListener } from '@vueuse/core';
 import QueryState from '@workbench/components/QueryState.vue';
 import { RovingFocusGroup, RovingFocusItem } from 'reka-ui';
@@ -37,6 +38,10 @@ const SHOWN = 7;
 const OVER = 8;
 
 const links = useTaskLinks(() => props.task, { branches: () => props.branches ?? false });
+// Like every loading placeholder, the skeleton waits SPINNER_DELAY: a fast first answer never flashes it.
+const showSkeleton = useSpinnerDelay(
+  () => links.query.isPending.value || links.query.data.value === undefined,
+);
 const root = useTemplateRef<HTMLElement>('root');
 const adder = useTemplateRef<{ file: (raw: string) => void }>('adder');
 const openKey = ref<string | null>(null);
@@ -285,7 +290,11 @@ useEventListener(root, 'paste', (e: ClipboardEvent) => {
     </RovingFocusGroup>
     <QueryState :query="links.query" variant="inline">
       <template #loading>
-        <div class="flex min-h-6 items-center gap-1" data-testid="ade-links-loading">
+        <div
+          v-if="showSkeleton"
+          class="flex min-h-6 items-center gap-1"
+          data-testid="ade-links-loading"
+        >
           <Skeleton class="h-4 w-1/3" data-testid="ade-links-skeleton" />
         </div>
       </template>
