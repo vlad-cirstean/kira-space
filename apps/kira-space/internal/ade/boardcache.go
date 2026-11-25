@@ -158,6 +158,18 @@ func (b *TaskBoard) finishBoardFlight(gen uint64, fl *boardFlight, began time.Ti
 	close(fl.done)
 }
 
+// boardLatest is the kept snapshot of any gen, read-only: it never builds and has no age limit. current
+// is true while no invalidation came since it was built; ok is false when none was ever built.
+func (b *TaskBoard) boardLatest() (board adewire.Board, current, ok bool) {
+	c := &b.bcache
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.snap == nil {
+		return adewire.Board{}, false, false
+	}
+	return c.snap.board, c.snap.gen == c.gen.Load(), true
+}
+
 // notifyBoard announces a change of unknown scope.
 func (b *TaskBoard) notifyBoard() { b.notifyBoardWith(allChanged) }
 
