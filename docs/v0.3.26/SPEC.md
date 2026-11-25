@@ -9,7 +9,7 @@ Code review at chapter end: 1 round.
 |---|-------|--------|
 | P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Done |
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Done |
-| P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Todo |
+| P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Done |
 | P759 | Remove the proof ready dialog | Todo |
 | P760 | Remove Kibana from connections, keep its time series and chart visualisation | Todo |
 | P761 | Chapter close | Todo |
@@ -57,6 +57,23 @@ on ade-v2-merged, ade-v2-base-rebase, ade-v2-main-branches. No visual baseline c
 Opening task Details is slow although Jira fetching is gone. Findings and fix list:
 `plans/audit-details-open.md`. Plan picks the fixes in priority order a to f; confirm by timing the
 `AdeTask.Artifacts` bridge call. Real latency on the owner's machine is unmeasured.
+
+Result: plan `plans/P758.md`. (a) UI `Artifacts` never waits on the host: change requests come from
+`CachedBranchChangeRequest` (any age), else the stored row; one tracked job per task (`ade/artifacthost.go`)
+resolves the host, and pushes `{refs: true, taskIds: [id]}` only when its share differs from the served
+one. The host gap shows from the last lookup kind (memory). (b) Branch facts come from `boardLatest()`;
+`repoShare` is the pure builder; facts decide status when present. (c) No host or git wait is left in
+the call; the links skeleton waits `SPINNER_DELAY`. (d) Details stays mounted after the first visit,
+disk query paused while hidden. (e) Link, note, handover writes push `taskChanged`; Rescan names the idle
+live tasks. (f) `DiskChanges` `TryLock` with a last-result cache dropped by every folder write.
+`ade artifacts: slow` Info log over 250 ms. Measured with the fake host at 500 ms per lookup: cold
+call 0.5 s, 1.5 s, 3.5 s at 1, 8, 24 live branches before; 4 to 5 ms after; warm 10 to 34 ms before, 0.25
+to 1.1 ms after (table in the plan). Flow `TestArtifactsOpen`, `TestDetailsScopedPushes`, in-package
+`TestDiskChangesDuringTaskOp`; UI `ade-v2-artifacts-open.spec.ts` and an AddNote case in
+`ade-v2-details-autoupdate.spec.ts`; contracts `ade-artifacts-open`, `ade-details-autoupdate`. Steps
+changed in `TestTaskArtifacts` (wait for the PR and the gap after the confirm push). Fixed
+`TestTaskStartNeedsRepo` (-race timing). No visual baseline changed. Rescan push not covered by a flow
+test (the harness cannot raise one). Real gh latency on the owner's machine stays unmeasured.
 
 ## P759
 
