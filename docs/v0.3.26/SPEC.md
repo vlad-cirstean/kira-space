@@ -10,7 +10,8 @@ Code review at chapter end: 1 round.
 | P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Todo |
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Todo |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Todo |
-| P759 | Chapter close | Todo |
+| P759 | Remove the proof ready dialog | Todo |
+| P760 | Chapter close | Todo |
 
 ## P756
 
@@ -34,3 +35,10 @@ against main (stacked or `develop`-based), PR merge matched by branch name only.
 Opening task Details is slow although Jira fetching is gone. Findings and fix list:
 `plans/audit-details-open.md`. Plan picks the fixes in priority order a to f; confirm by timing the
 `AdeTask.Artifacts` bridge call. Real latency on the owner's machine is unmeasured.
+
+## P759
+
+The proof ready dialog (`ProofReadyPrompt`) pops on screen and annoys the owner. Remove the dialog
+and everything only it uses. Plan checks what else hangs off it (`proofReady` backend event,
+`NotifyProofReady`, settings, i18n, specs, docs) and whether a quiet signal (task row badge, existing
+notification) already tells the user a proof is ready; keep that, drop the popup.
