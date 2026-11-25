@@ -496,14 +496,6 @@ func (s *Service) SessionOf(taskID, slug string) (id string, ok bool, err error)
 	return u.Session.ID, true, nil
 }
 
-// RaiseReady opens the "ready to review" popup of a new proof.
-func (s *Service) RaiseReady(id string) {
-	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {
-		s.openPrompt(id, row.Name, false)
-	}
-	s.emit(id)
-}
-
 // RaiseReview puts the review of a pending edit in the approvals queue, replacing an earlier one.
 func (s *Service) RaiseReview(id string) {
 	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {

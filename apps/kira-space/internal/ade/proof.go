@@ -12,7 +12,7 @@ import (
 )
 
 // proof.go: proofs of tasks (P643 Part 4). A proof is a folder proofs/<slug>/ in the task folder; the
-// proof_* rows cache it and the proof service owns the review windows and prompts.
+// proof_* rows cache it and the proof service owns the review windows and edit reviews.
 
 // ProofLinks is the proof service the board reads and notifies; *proof.Service implements it.
 type ProofLinks interface {
@@ -22,7 +22,6 @@ type ProofLinks interface {
 	PurgeTaskless()
 	SessionOf(taskID, slug string) (string, bool, error)
 	LinkOf(sessionID string) (taskID, slug string, ok bool, err error)
-	RaiseReady(id string)
 	RaiseReview(id string)
 	WithdrawReview(id string)
 	NotifyChanged(id string)
@@ -130,20 +129,6 @@ func (e detailsEvents) ProofChanged(_ context.Context, sessionID string) error {
 		links.NotifyChanged(sessionID)
 	}
 	return nil
-}
-
-// proofReady raises the ready popup of a new proof.
-func (b *TaskBoard) proofReady(taskID, rel string) {
-	links := b.proofLinks()
-	c := taskfiles.Classify(rel)
-	if links == nil || c.Slug == "" {
-		return
-	}
-	id, ok, err := links.SessionOf(taskID, c.Slug)
-	if err != nil || !ok {
-		return
-	}
-	links.RaiseReady(id)
 }
 
 // proofDelete is the user's delete of a proof: the folder and every row of it go.

@@ -65,15 +65,6 @@ const (
 	CauseKiraReadOnly Cause = "readonly"
 )
 
-// Notify names a notification a decision carries.
-type Notify string
-
-// Notifications. A silent accept has none.
-const (
-	NotifyNone       Notify = ""
-	NotifyProofReady Notify = "proofReady"
-)
-
 // Collision says another writer changed the file after the calling session's last sync.
 type Collision struct {
 	By string
@@ -125,7 +116,6 @@ type Input struct {
 type Decision struct {
 	Outcome Outcome
 	Cause   Cause
-	Notify  Notify
 	// Message is the line the reply carries for a non-accept outcome.
 	Message string
 	// Collision is set on a pending decision whose file another writer changed since the session's last sync.
@@ -143,47 +133,43 @@ func Decide(rel string, in Input) Decision {
 		return Decision{Outcome: Reject, Cause: CauseWrongStage,
 			Message: fmt.Sprintf("%s: the task moved on to %s. Write handovers/draft-%s.md instead.", rel, in.CurrentStep, in.CurrentStep)}
 	}
-	cause, notify := approvalCause(in)
+	cause := approvalCause(in)
 	if cause == CauseNone && in.Collision != nil {
 		cause = CauseCollision
 	}
 	if cause == CauseNone {
-		return Decision{Outcome: Accept, Notify: notify}
+		return Decision{Outcome: Accept}
 	}
 	return Decision{Outcome: Pending, Cause: cause, Collision: in.Collision}
 }
 
-// approvalCause is the cause that puts an agent change behind the user, and the notification of an
-// accepted one. Only another agent's content asks.
-func approvalCause(in Input) (Cause, Notify) {
+// approvalCause is the cause that puts an agent change behind the user. Only another agent's content asks.
+func approvalCause(in Input) Cause {
 	other := in.Author == AuthorAgent
 	switch in.Kind {
 	case KindNote:
 		if other && (in.Op == OpDelete || (in.Op == OpEdit && !in.Latest)) {
-			return CauseNote, NotifyNone
+			return CauseNote
 		}
 	case KindHandover:
 		if other && (in.Op == OpDelete || (in.Op == OpEdit && !in.Latest)) {
-			return CauseHandover, NotifyNone
+			return CauseHandover
 		}
 	case KindLinks:
 		if other && !in.Slot && in.Op != OpCreate {
-			return CauseLink, NotifyNone
+			return CauseLink
 		}
 	case KindProof, KindProofData, KindProofImage:
 		switch {
 		case !in.ProofAccepted:
-			if in.Kind == KindProof && in.Op == OpCreate {
-				return CauseNone, NotifyProofReady
-			}
 		case !other:
 		case in.Op == OpDelete && in.Kind == KindProof:
-			return CauseProofDelete, NotifyNone
+			return CauseProofDelete
 		case in.Op == OpDelete || !in.Latest:
-			return CauseProof, NotifyNone
+			return CauseProof
 		}
 	}
-	return CauseNone, NotifyNone
+	return CauseNone
 }
 
 // causeText is the phrase a pending reply line gives for a cause; collision adds the writer.

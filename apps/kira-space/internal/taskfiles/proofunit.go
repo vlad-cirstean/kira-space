@@ -408,19 +408,19 @@ func (a *unitTx) nameTaken(u *repos.ProofUnit) (bool, error) {
 
 func (a *unitTx) create() error {
 	pc := a.s.cfg.Proof
-	d := Decide(a.md, Input{Role: a.req.Session.Role, Kind: KindProof, Op: OpCreate})
 	by, source := a.req.Session.Key, "agent"
 	if a.req.Session.Role == RoleUser {
 		by, source = "", "user"
 	}
-	if err := pc.Cache.Create(a.tx.Querier(), repos.ProofNew{ID: pc.NewID(), TaskID: a.req.TaskID, Slug: a.slug, Name: a.doc.Name, Summary: a.doc.Summary, Steps: stepRows(a.doc), Now: a.s.nowMs(), By: by, Source: source}); err != nil {
+	id := pc.NewID()
+	if err := pc.Cache.Create(a.tx.Querier(), repos.ProofNew{ID: id, TaskID: a.req.TaskID, Slug: a.slug, Name: a.doc.Name, Summary: a.doc.Summary, Steps: stepRows(a.doc), Now: a.s.nowMs(), By: by, Source: source}); err != nil {
 		return err
 	}
 	if err := a.putRows(true); err != nil {
 		return err
 	}
 	a.result(StatusAccepted, &ProofResult{Slug: a.slug, Name: a.doc.Name, Status: string(StatusAccepted), New: true, Steps: a.steps, Counts: a.counts})
-	a.res.Notify = d.Notify
+	a.changed = id
 	return nil
 }
 

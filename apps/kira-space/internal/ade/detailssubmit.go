@@ -32,14 +32,6 @@ func (e detailsEvents) Pending(_ context.Context, p taskfiles.PendingSubmit) err
 	return nil
 }
 
-// Accepted raises the ready popup of a new proof; every other accept is silent.
-func (e detailsEvents) Accepted(_ context.Context, taskID, rel string, n taskfiles.Notify) error {
-	if n == taskfiles.NotifyProofReady {
-		e.b.proofReady(taskID, rel)
-	}
-	return nil
-}
-
 type detailsItemFile struct {
 	Path      string `json:"path"`
 	Kind      string `json:"kind"`
