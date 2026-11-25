@@ -200,7 +200,7 @@ CREATE TABLE "ade_task_branches" (
   cr_state TEXT,
   cr_url TEXT,
   review_comments TEXT CHECK (review_comments IS NULL OR json_valid(review_comments))
-, adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1))) STRICT;
+, adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1)), merged_tip TEXT NOT NULL DEFAULT '') STRICT;
 
 CREATE TABLE ade_task_found_link_dismissals (
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,

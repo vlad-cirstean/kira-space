@@ -108,8 +108,10 @@ type AdeTaskBranch struct {
 	HadCommits      bool
 	AddedAt         int64
 	MergedAt        *int64
-	ArchivedAt      *int64
-	Origin          string
+	// MergedTip is the branch tip MergedAt was recorded at ("" = none).
+	MergedTip  string
+	ArchivedAt *int64
+	Origin     string
 	// ChangeRequest is the PR recorded at archive; nil = none recorded.
 	ChangeRequest *AdeChangeRequest
 	// ReviewCommentsJSON holds the review comments moved off the branch at archive or detach; ""
@@ -492,4 +494,17 @@ func (d AdeStatusDefaults) Validate(set []AdeTaskStatus) error {
 		}
 	}
 	return nil
+}
+
+// AdeBranchMerge is one merged-into-main record: when, and at which branch tip.
+type AdeBranchMerge struct {
+	At  int64
+	Tip string
+}
+
+// AdeBranchFactWrites is what a board build or Refresh writes back to branch rows.
+type AdeBranchFactWrites struct {
+	HadCommits []string                  // latch had_commits = 1
+	Merged     map[string]AdeBranchMerge // record merged_at + merged_tip
+	Unmerged   map[string]string         // branch id -> stale merged_tip to clear
 }
