@@ -10,7 +10,7 @@ Code review at chapter end: 1 round.
 | P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Done |
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Done |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Done |
-| P759 | Remove the proof ready dialog | Todo |
+| P759 | Remove the proof ready dialog | Done |
 | P760 | Remove Kibana from connections, keep its time series and chart visualisation | Todo |
 | P761 | Chapter close | Todo |
 
@@ -81,6 +81,16 @@ The proof ready dialog (`ProofReadyPrompt`) pops on screen and annoys the owner.
 and everything only it uses. Plan checks what else hangs off it (`proofReady` backend event,
 `NotifyProofReady`, settings, i18n, specs, docs) and whether a quiet signal (task row badge, existing
 notification) already tells the user a proof is ready; keep that, drop the popup.
+
+Result: plan `plans/P759.md`. Removed the ready popup end to end: `ProofReadyPrompt.vue`, prompt kind
+`proof`, `Events.Accepted`, `Notify`/`NotifyProofReady`, `RaiseReady`, `MarkSeen`, `seen_at` (migration
+`0110_p759_drop_proof_seen.sql`, regenerated `kiraschema_gen.go` and schema golden), `Detail.TaskTitle`
+and `proofMarkSeen`, i18n keys, specs. `RaiseUnreviewed` became `RaisePendingReviews` (pending edit
+reviews only). New proof now emits `kira:proof:changed` from `unitApply`. Quiet signals stay: Details
+chain and `proof.review`. Flow half in `TestProofFiles` (no prompt, proof changed), UI half in
+`ade-v2-proof-chain.spec.ts`. Contracts lose `taskTitle`. Tests: touched Go packages with `-race`,
+proofflow, promptflow, adeflow, `golangci-lint`, typecheck, lint, knip, own UI specs pass. No visual
+baseline changed. Owner's desktop notification for a new proof is gone with the prompt.
 
 ## P760
 
