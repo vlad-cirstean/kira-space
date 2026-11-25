@@ -25,7 +25,8 @@ type repoResult struct {
 	branches   map[string]adewire.Branch
 	pairs      []adewire.Pair
 	hadCommits []string
-	merged     map[string]int64
+	merged     map[string]model.AdeBranchMerge
+	unmerged   map[string]string // branch id -> stale merged_tip to clear
 	jobs       map[string]rebaseJob
 	marks      []model.AdeBranchMark // integration and deploy marks a board build defers
 }
@@ -150,12 +151,14 @@ func (sc *boardCtx) plannerRef(other model.AdeTaskBranch) (baseRef, bool) {
 }
 
 type branchOut struct {
-	wb        adewire.Branch
-	pi        *pairItem
-	tip, ref  string
-	hadNew    bool
-	mergedNew bool
-	job       *rebaseJob
+	wb       adewire.Branch
+	pi       *pairItem
+	tip, ref string
+	hadNew   bool
+	merged   *model.AdeBranchMerge
+	// unmergedTip is the stale merged_tip of a record the build found past the current tip.
+	unmergedTip *string
+	job         *rebaseJob
 }
 
 // boardShared is what every repo of one board build reads from the store: loaded once, read-only.
@@ -195,7 +198,7 @@ func (b *TaskBoard) repoFactsWith(ctx context.Context, codeRepoID string, branch
 	res := &repoResult{
 		state:    adewire.RepoState{CodeRepoID: codeRepoID},
 		branches: make(map[string]adewire.Branch, len(branches)), pairs: []adewire.Pair{},
-		merged: map[string]int64{}, jobs: map[string]rebaseJob{},
+		merged: map[string]model.AdeBranchMerge{}, unmerged: map[string]string{}, jobs: map[string]rebaseJob{},
 	}
 	setupOf := func(id string) *adewire.WorktreeSetup {
 		if s, ok := setups[id]; ok {
@@ -218,7 +221,7 @@ func (b *TaskBoard) repoFactsWith(ctx context.Context, codeRepoID string, branch
 	res.state.Remote, res.state.LastFetchAt = remote, lastFetchAt(entry)
 	if err := b.collectRepo(ctx, entry, codeRepoID, branches, setupOf, shared, res); err != nil {
 		slog.Warn("ade board: repo facts", "scope", "ade", "repo", codeRepoID, "err", err)
-		res.hadCommits, res.merged, res.jobs, res.pairs = nil, map[string]int64{}, map[string]rebaseJob{}, []adewire.Pair{}
+		res.hadCommits, res.merged, res.unmerged, res.jobs, res.pairs = nil, map[string]model.AdeBranchMerge{}, map[string]string{}, map[string]rebaseJob{}, []adewire.Pair{}
 		fallback()
 	}
 	return res
@@ -290,8 +293,11 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 		if o.hadNew {
 			res.hadCommits = append(res.hadCommits, sb.ID)
 		}
-		if o.mergedNew {
-			res.merged[sb.ID] = sc.nowMs
+		if o.merged != nil {
+			res.merged[sb.ID] = *o.merged
+		}
+		if o.unmergedTip != nil {
+			res.unmerged[sb.ID] = *o.unmergedTip
 		}
 		if o.job != nil {
 			res.jobs[sb.ID] = *o.job
@@ -386,17 +392,21 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 		wb.Deployments = b.deploymentFacts(ctx, sc, sb, base.tip, row.Tip)
 	}
 
-	hadCommits := sb.HadCommits || depth > 0
+	hadCommits := sb.HadCommits || wb.Ahead > 0
 	out.hadNew = hadCommits && !sb.HadCommits
-	byAncestor := mergedRule(sc.hasMain && depth == 0, hadCommits, "")
-	wb.MergedIntoMain = byAncestor || sb.MergedAt != nil
+	recorded := sb.MergedAt != nil && sb.MergedTip == row.Tip
+	byAncestor := sc.hasMain && depth == 0 && hadCommits
+	wb.MergedIntoMain = mergedRule(sc.hasMain && depth == 0, hadCommits, recorded)
 	switch {
-	case sb.MergedAt != nil:
+	case recorded:
 		wb.MergedAt = sb.MergedAt
 	case byAncestor:
 		now := sc.nowMs
 		wb.MergedAt = &now
-		out.mergedNew = true
+		out.merged = &model.AdeBranchMerge{At: now, Tip: row.Tip}
+	case sb.MergedAt != nil:
+		stale := sb.MergedTip
+		out.unmergedTip = &stale
 	}
 
 	if sb.Kind == model.AdeBranchKindMine || sb.Kind == model.AdeBranchKindReview {
@@ -429,6 +439,16 @@ func (sc *boardCtx) fillUpstream(ctx context.Context, wb *adewire.Branch, sb mod
 	}
 	wb.Upstream, wb.UpstreamAhead, wb.UpstreamBehind = twin.Ref, ahead, behind
 	return nil
+}
+
+// recordedMerge reports whether the stored merge of sb holds at the branch's current tip. Readers
+// that work from stored rows use it: a record at an older tip is stale.
+func recordedMerge(sc *boardCtx, sb model.AdeTaskBranch) bool {
+	if sb.MergedAt == nil || sb.Name == "" {
+		return false
+	}
+	row, ok := resolveQueuedRef(sc.inv, sb.Name, sc.remote)
+	return ok && row.Tip == sb.MergedTip
 }
 
 // mainDepth is the branch's commit count over main; baseAhead is reused when main is the base.

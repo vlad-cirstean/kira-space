@@ -121,14 +121,12 @@ func intersectSorted(paths, shared []string) []string {
 // mergedRule (§0.8)
 // ---------------------------------------------------------------------------------------
 
-// mergedRule implements §0.8: merged iff (the tip is reachable from main AND had_commits) or the
-// raw PR state is exactly "merged" (covers squash/rebase merges, whose tip never becomes an
-// ancestor of main). prState is ResolveBranchPr's own raw State when a PR is known, "" otherwise.
-func mergedRule(tipReachableFromMain, hadCommits bool, prState string) bool {
-	if tipReachableFromMain && hadCommits {
-		return true
-	}
-	return prState == "merged"
+// mergedRule (P757): merged iff the tip is reachable from main and the branch has own commits
+// (latched from its resolved base, never counted against main), or a recorded merge holds at exactly
+// the current tip. Squash and rebase merges, whose tip never becomes an ancestor of main, are
+// recorded by checkPrMerges from a merged PR whose head is the tip or descends from it.
+func mergedRule(tipInMain, ownCommits, recordedAtTip bool) bool {
+	return (tipInMain && ownCommits) || recordedAtTip
 }
 
 // ---------------------------------------------------------------------------------------

@@ -168,21 +168,20 @@ func TestPairFacts_PendingAndFailedChecks(t *testing.T) {
 func TestMergedRule(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name                  string
-		tipReachable, commits bool
-		prState               string
-		want                  bool
+		name                       string
+		tipInMain, own, recordedAt bool
+		want                       bool
 	}{
-		{"ancestor without had_commits not merged", true, false, "", false},
-		{"ancestor with had_commits merged", true, true, "", true},
-		{"PR merged wins", false, false, "merged", true},
-		{"PR closed not merged", false, false, "closed", false},
+		{"ancestor without own commits not merged", true, false, false, false},
+		{"ancestor with own commits merged", true, true, false, true},
+		{"recorded at tip merged", false, false, true, true},
+		{"neither not merged", false, true, false, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if got := mergedRule(c.tipReachable, c.commits, c.prState); got != c.want {
-				t.Fatalf("mergedRule(%v, %v, %q) = %v, want %v", c.tipReachable, c.commits, c.prState, got, c.want)
+			if got := mergedRule(c.tipInMain, c.own, c.recordedAt); got != c.want {
+				t.Fatalf("mergedRule(%v, %v, %v) = %v, want %v", c.tipInMain, c.own, c.recordedAt, got, c.want)
 			}
 		})
 	}
