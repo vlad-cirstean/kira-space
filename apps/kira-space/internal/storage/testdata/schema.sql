@@ -450,12 +450,12 @@ CREATE TABLE connection_metadata_cache (
   payload_json TEXT NOT NULL
 ) STRICT;
 
-CREATE TABLE connection_saved_queries (
+CREATE TABLE "connection_saved_queries" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
   connection_id TEXT NOT NULL REFERENCES connections (id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   name TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('filter', 'console', 'discover')),
+  kind TEXT NOT NULL CHECK (kind IN ('filter', 'console')),
   pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   used_at INTEGER CHECK (used_at IS NULL OR used_at >= 0),
@@ -918,8 +918,6 @@ CREATE INDEX connection_filter_history_target ON connection_filter_history (conn
 CREATE UNIQUE INDEX connection_mask_rules_unique ON connection_mask_rules (connection_id, lower(table_name), lower(column_name));
 
 CREATE UNIQUE INDEX connection_metadata_cache_path ON connection_metadata_cache (connection_id, path);
-
-CREATE UNIQUE INDEX connection_saved_queries_discover_name ON connection_saved_queries (connection_id, lower(name)) WHERE kind = 'discover';
 
 CREATE INDEX connection_saved_queries_path ON connection_saved_queries (connection_id, path, kind, pinned DESC, used_at DESC, name);
 
