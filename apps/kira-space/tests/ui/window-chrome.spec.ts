@@ -141,22 +141,12 @@ test('the keep-awake button is hidden when unsupported, shown and toggleable whe
   const button = window.locator('[data-testid="toggle-keep-awake"]');
   await expect(button).toBeVisible();
   await expect(button).toHaveAttribute('aria-pressed', 'false');
-  const dot = button.locator('[data-testid="keep-awake-dot"]');
-  const icon = button.locator('.codicon-coffee');
-  const offColor = await icon.evaluate((el) => getComputedStyle(el).color);
-  await expect(dot).toHaveCount(0);
 
   const setManualCalls = () => control.log().filter((e) => e.channel === IPC.keepAwakeSetManual);
   await button.click();
   await expect.poll(() => setManualCalls().length).toBe(1);
   expect(setManualCalls()[0]?.args).toEqual({ enabled: true });
   await expect(button).toHaveAttribute('aria-pressed', 'true');
-  // P754: on = the blue --kira-toggle-on-edge icon plus a dot; off keeps the muted icon, no dot.
-  await expect(icon).toHaveCSS('color', 'rgb(105, 161, 232)');
-  expect(offColor).not.toBe('rgb(105, 161, 232)');
-  await expect(dot).toHaveCount(1);
-  await expect(dot).toHaveCSS('background-color', 'rgb(105, 161, 232)');
-  await expect(dot).toHaveAttribute('aria-hidden', 'true');
 });
 
 test('the keep-awake button turns on from a pushed kira:keepAwake:changed event with no click', async ({

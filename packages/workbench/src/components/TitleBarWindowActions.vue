@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import StatusDot from '@theme/components/StatusDot.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { t } from '@theme/i18n';
 import { computed } from 'vue';
@@ -13,9 +12,9 @@ import type { KeepAwakeStatus } from '../bridge/createCoreControl';
 const props = defineProps<{ keepAwake: KeepAwakeStatus }>();
 const emit = defineEmits<{ toggleKeepAwake: []; newWindow: [] }>();
 
-// §8.3: aria-pressed plus this state-naming tooltip carry the state for assistive tech.
-// @vscode/codicons has no filled coffee glyph, so on is the same icon in the blue on-state colour
-// (P754) plus a decorative dot; the button's pressed background stays the title variant's.
+// §8.3: aria-pressed plus this state-naming tooltip carry what a missing coffee-off glyph would
+// have — @vscode/codicons ships no such glyph, so the button can't also swap its icon the way the
+// Connections/Operations toggles do.
 const keepAwakeTooltip = computed(() => {
   if (props.keepAwake.error)
     return t('workbench.titleBar.keepAwakeFailed.error', { error: props.keepAwake.error });
@@ -35,20 +34,9 @@ const keepAwakeTooltip = computed(() => {
     variant="title"
     size="title"
     :aria-pressed="keepAwake.manual"
-    class="relative aria-pressed:text-toggle-on-edge"
     data-testid="toggle-keep-awake"
     @click="emit('toggleKeepAwake')"
-  >
-    <template #badge>
-      <StatusDot
-        v-if="keepAwake.manual"
-        aria-hidden="true"
-        class="pointer-events-none absolute top-0.5 right-0.5 size-1.5!"
-        tone="info"
-        data-testid="keep-awake-dot"
-      />
-    </template>
-  </TooltipIconButton>
+  />
   <TooltipIconButton
     icon="empty-window"
     :label="t('workbench.titleBar.newWindow.label')"
