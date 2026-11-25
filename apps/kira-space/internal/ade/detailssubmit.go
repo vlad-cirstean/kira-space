@@ -158,6 +158,7 @@ func (o detailsOwner) Answer(taskID string, a approvals.Answer) error {
 	mu := o.b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
+	defer df.dropDisk(taskID)
 	ctx := withDetailsSession(o.b.ctxWithTask(o.b.ctx, taskID), detailsSession{role: taskfiles.RoleUser})
 	var errs []error
 	for _, p := range paths {
@@ -200,6 +201,7 @@ func (b *TaskBoard) SubmitFiles(ctx context.Context, taskID string, s detailsSes
 	mu := b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
+	defer df.dropDisk(taskID)
 	tc, err := b.loadTaskCtx(taskID)
 	if err != nil {
 		return taskfiles.Result{}, err
@@ -374,6 +376,7 @@ func (b *TaskBoard) SyncTaskFiles(ctx context.Context, call agentmcp.SpaceCall, 
 	if df == nil {
 		return "", nil
 	}
+	defer df.dropDisk(call.TaskID)
 	rows, err := df.idx.Files(call.TaskID)
 	if err != nil {
 		return "", err
@@ -429,8 +432,16 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 		return nil, nil
 	}
 	mu := b.taskMu(taskID)
-	mu.Lock()
+	if !mu.TryLock() {
+		// A task op holds the lock: answer its last result; its own push restats. With none cached
+		// the first answer must be real, so wait as before.
+		if last, ok := df.lastDisk(taskID); ok {
+			return last, nil
+		}
+		mu.Lock()
+	}
 	defer mu.Unlock()
+	gen := df.diskGeneration(taskID)
 	paths, err := df.svc.Changed(b.ctxWithTask(ctx, taskID), taskID)
 	if err != nil {
 		return nil, err
@@ -483,7 +494,39 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 		}
 		out = append(out, dc)
 	}
+	df.storeDisk(taskID, out, gen)
 	return out, nil
+}
+
+func (df *detailsFiles) lastDisk(taskID string) ([]adewire.DiskChange, bool) {
+	df.diskMu.Lock()
+	defer df.diskMu.Unlock()
+	last, ok := df.disk[taskID]
+	return slices.Clone(last), ok
+}
+
+func (df *detailsFiles) diskGeneration(taskID string) uint64 {
+	df.diskMu.Lock()
+	defer df.diskMu.Unlock()
+	return df.diskGen[taskID]
+}
+
+// storeDisk keeps out as the task's last answer unless a write dropped the cache since gen was read.
+func (df *detailsFiles) storeDisk(taskID string, out []adewire.DiskChange, gen uint64) {
+	df.diskMu.Lock()
+	defer df.diskMu.Unlock()
+	if df.diskGen[taskID] == gen {
+		df.disk[taskID] = slices.Clone(out)
+	}
+}
+
+// dropDisk forgets the task's last DiskChanges answer after a write that changes it, so a cached
+// answer is never older than Kira's last write to the folder.
+func (df *detailsFiles) dropDisk(taskID string) {
+	df.diskMu.Lock()
+	defer df.diskMu.Unlock()
+	df.diskGen[taskID]++
+	delete(df.disk, taskID)
 }
 
 // AcceptDisk makes the named changes the accepted copy (Kira-written files are restored instead: only
@@ -505,6 +548,7 @@ func (b *TaskBoard) resolveDisk(ctx context.Context, taskID string, paths []stri
 	mu := b.taskMu(taskID)
 	mu.Lock()
 	defer mu.Unlock()
+	defer df.dropDisk(taskID)
 	if len(paths) == 0 {
 		var err error
 		if paths, err = df.svc.Changed(ctx, taskID); err != nil {
