@@ -392,22 +392,7 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 		wb.Deployments = b.deploymentFacts(ctx, sc, sb, base.tip, row.Tip)
 	}
 
-	hadCommits := sb.HadCommits || wb.Ahead > 0
-	out.hadNew = hadCommits && !sb.HadCommits
-	recorded := sb.MergedAt != nil && sb.MergedTip == row.Tip
-	byAncestor := sc.hasMain && depth == 0 && hadCommits
-	wb.MergedIntoMain = mergedRule(sc.hasMain && depth == 0, hadCommits, recorded)
-	switch {
-	case recorded:
-		wb.MergedAt = sb.MergedAt
-	case byAncestor:
-		now := sc.nowMs
-		wb.MergedAt = &now
-		out.merged = &model.AdeBranchMerge{At: now, Tip: row.Tip}
-	case sb.MergedAt != nil:
-		stale := sb.MergedTip
-		out.unmergedTip = &stale
-	}
+	sc.mergedFacts(sb, row, depth, wb, &out)
 
 	if sb.Kind == model.AdeBranchKindMine || sb.Kind == model.AdeBranchKindReview {
 		out.pi = &pairItem{Item: sb.ID, Tip: row.Tip, Kind: sb.Kind, Merged: wb.MergedIntoMain, Files: filesSet(files)}
@@ -425,6 +410,26 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 		}
 	}
 	return out, nil
+}
+
+// mergedFacts sets the merged wire facts of one row and the writes they imply (record, clear, latch).
+func (sc *boardCtx) mergedFacts(sb model.AdeTaskBranch, row porcelain.InventoryRef, depth int, wb *adewire.Branch, out *branchOut) {
+	hadCommits := sb.HadCommits || wb.Ahead > 0
+	out.hadNew = hadCommits && !sb.HadCommits
+	recorded := sb.MergedAt != nil && sb.MergedTip == row.Tip
+	byAncestor := sc.hasMain && depth == 0 && hadCommits
+	wb.MergedIntoMain = mergedRule(sc.hasMain && depth == 0, hadCommits, recorded)
+	switch {
+	case recorded:
+		wb.MergedAt = sb.MergedAt
+	case byAncestor:
+		now := sc.nowMs
+		wb.MergedAt = &now
+		out.merged = &model.AdeBranchMerge{At: now, Tip: row.Tip}
+	case sb.MergedAt != nil:
+		stale := sb.MergedTip
+		out.unmergedTip = &stale
+	}
 }
 
 // fillUpstream sets the tracked upstream, falling back to a same-named remote branch.
