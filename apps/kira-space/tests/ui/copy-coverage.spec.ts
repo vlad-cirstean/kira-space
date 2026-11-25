@@ -290,7 +290,7 @@ studioTest.describe('databases module', () => {
 
   // Product and typeface names are proper nouns; `1k`/`10k` are page-size numerals.
   const NAMES =
-    /^(PostgreSQL|MariaDB|MySQL|SQLite|ClickHouse|MongoDB|Redis|Kafka|SQS|S3|Kibana|Courier New|Menlo|SF Mono|Monaco|Andale Mono|PT Mono|JetBrains Mono|Fira Code|Source Code Pro|IBM Plex Mono|Cascadia Code|Hack|Inconsolata|Roboto Mono|\d+k)$/;
+    /^(PostgreSQL|MariaDB|MySQL|SQLite|ClickHouse|MongoDB|Redis|Kafka|SQS|S3|Courier New|Menlo|SF Mono|Monaco|Andale Mono|PT Mono|JetBrains Mono|Fira Code|Source Code Pro|IBM Plex Mono|Cascadia Code|Hack|Inconsolata|Roboto Mono|\d+k)$/;
   // Column, table and key names from the fixtures: data, not chrome.
   const SCHEMA = /^(id|email|name|text|integer|order_id|product_id|quantity|orders|products)$/;
   const REDIS = /^(Test Redis \/|events|queue|session|tags|counter|leaderboard)$/;

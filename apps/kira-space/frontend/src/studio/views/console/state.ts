@@ -1,5 +1,4 @@
 import { type ConnectionKind, explainThresholdOf } from '@shared/domain/connection';
-import type { KibanaConsoleState } from '@shared/domain/kibana';
 import { newUuid } from '@shared/ids';
 import type { Page } from '@shared/protocol/page';
 import { t } from '@theme/i18n';
@@ -57,9 +56,6 @@ interface ConsoleViewRuntime {
   status: 'idle' | 'running' | 'error' | 'cancelled';
   error: { code: string; message: string } | null;
   opId: string | null; // the in-flight op, for the stop button
-  // The statements of the latest run, so a view that builds statements itself (kibana Discover)
-  // can tell a Re-run it did not issue.
-  lastStatements: string[] | null;
   // P12 round 1 finding #5: the pre-run auto-explain batch's own op id, tracked separately from
   // opId (which already holds the *real* run's future id by the time this fires) — without it,
   // Stop had nothing registered on the backend to cancel while this batch was in flight.
@@ -100,7 +96,6 @@ function defaultRuntime(): ConsoleViewRuntime {
     status: 'idle',
     error: null,
     opId: null,
-    lastStatements: null,
     explainOpId: null,
     results: [],
     activeKey: null,
@@ -159,10 +154,6 @@ function evictOldestResults(rt: ConsoleViewRuntime, protectedCount: number): voi
 
 export function setText(tabId: string, text: string): void {
   useTabsStore().patchConsoleTabState(tabId, { text });
-}
-
-export function setKibana(tabId: string, kibana: KibanaConsoleState): void {
-  useTabsStore().patchConsoleTabState(tabId, { kibana });
 }
 
 export function setNewResultSet(tabId: string, on: boolean): void {
@@ -535,7 +526,6 @@ export const useConsoleViewStore = defineStore('consoleView', () => {
     const opId = newUuid();
     rt.status = 'running';
     rt.opId = opId;
-    rt.lastStatements = statements;
     rt.error = null;
     // D19: cleared on every new run, the same "next action supersedes the last one" discipline
     // ConsoleView.vue's own formatError/explainError already follow on a document edit.

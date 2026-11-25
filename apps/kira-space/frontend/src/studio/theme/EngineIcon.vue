@@ -3,7 +3,6 @@ import type { ConnectionKind } from '@shared/domain/connection';
 import {
   siApachekafka,
   siClickhouse,
-  siKibana,
   siMariadb,
   siMongodb,
   siMysql,
@@ -173,18 +172,6 @@ const iconSize = computed(() => props.size ?? 16);
         :fill="`#${siClickhouse.hex}`"
         :d="siClickhouse.path"
       />
-    </template>
-
-    <template v-if="kind === 'kibana'">
-      <path
-        transform="translate(2,2) scale(0.5)"
-        fill="#ececec"
-        stroke="#ececec"
-        stroke-width="1.4"
-        stroke-linejoin="round"
-        :d="siKibana.path"
-      />
-      <path transform="translate(2,2) scale(0.5)" :fill="`#${siKibana.hex}`" :d="siKibana.path" />
     </template>
 
     <template v-if="kind === 's3'">

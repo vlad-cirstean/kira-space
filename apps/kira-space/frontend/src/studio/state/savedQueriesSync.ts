@@ -12,7 +12,6 @@ export function initSavedQueriesSync(): void {
   unsubscribeSaved = control.onSavedQueriesChanged(({ connectionId }) => {
     void queryClient.invalidateQueries({ queryKey: ['filterHistory', connectionId] });
     void queryClient.invalidateQueries({ queryKey: ['consoleSaved', connectionId] });
-    void queryClient.invalidateQueries({ queryKey: ['kibanaSaved', connectionId] });
   });
   unsubscribeHistory?.();
   unsubscribeHistory = control.onFilterHistoryChanged(({ connectionId, path }) => {

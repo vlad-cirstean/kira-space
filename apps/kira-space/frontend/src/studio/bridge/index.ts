@@ -6,7 +6,6 @@ import * as DbMcpService from '@bindings/dbmcpservice.js';
 import * as FilesService from '@bindings/filesservice.js';
 import * as FiltersService from '@bindings/filtersservice.js';
 import * as KeptVarsService from '@bindings/keptvarsservice.js';
-import * as KibanaService from '@bindings/kibanaservice.js';
 import * as MaskRulesService from '@bindings/maskrulesservice.js';
 import type * as WailsModels from '@bindings/models.js';
 import * as ProofService from '@bindings/proofservice.js';
@@ -39,17 +38,6 @@ import {
   keptListSchema,
   keptValueSchema,
 } from '@shared/domain/kept';
-import {
-  type KibanaDataView,
-  type KibanaDiscoverBody,
-  type KibanaDiscoverRequest,
-  type KibanaHistogram,
-  type KibanaInterval,
-  type KibanaSuggestions,
-  kibanaDataViewSchema,
-  kibanaHistogramSchema,
-  kibanaSuggestionsSchema,
-} from '@shared/domain/kibana';
 import type { MaskRule, MaskRuleFields } from '@shared/domain/mask';
 import type { MaskReviewListing, MaskReviewPending } from '@shared/domain/maskReview';
 import type {
@@ -68,16 +56,14 @@ import type {
   ProofViewStateEntry,
   ProofWindowTarget,
 } from '@shared/domain/proof';
-import {
-  type ConsoleBody,
-  type FilterBody,
-  type FilterHistoryEntry,
-  type SavedConsoleQuery,
-  type SavedDiscoverQuery,
-  type SavedFilterQuery,
-  type SavedQuery,
-  type SortSpec,
-  savedDiscoverQuerySchema,
+import type {
+  ConsoleBody,
+  FilterBody,
+  FilterHistoryEntry,
+  SavedConsoleQuery,
+  SavedFilterQuery,
+  SavedQuery,
+  SortSpec,
 } from '@shared/domain/queries';
 import type { ConnectionDdl } from '@shared/domain/schema';
 import type { SecretStorageStatus } from '@shared/domain/secrets';
@@ -489,31 +475,6 @@ const studioControl = {
     pinned: boolean;
   }): Promise<SavedConsoleQuery> =>
     unwrap(QueriesService.SaveConsole(args)).then((r) => trust<SavedConsoleQuery>(r)),
-  queriesListDiscover: (connectionId: string): Promise<SavedDiscoverQuery[]> =>
-    unwrap(QueriesService.ListDiscover({ connectionId })).then((rows) =>
-      trust<unknown[]>(rows ?? []).flatMap((row) => {
-        const parsed = savedDiscoverQuerySchema.safeParse(row);
-        if (parsed.success) return [parsed.data];
-        logWarn('queries', 'dropping saved Discover query that does not parse', parsed.error);
-        return [];
-      }),
-    ),
-  queriesSaveDiscover: (args: {
-    connectionId: string;
-    name: string;
-    body: KibanaDiscoverBody;
-    pinned: boolean;
-  }): Promise<SavedDiscoverQuery> =>
-    unwrap(QueriesService.SaveDiscover(args)).then((r) => savedDiscoverQuerySchema.parse(r)),
-  /** `expect` is the body this window last read: a stored body that differs answers `E_CONFLICT`. */
-  queriesUpdateDiscover: (
-    id: string,
-    body: KibanaDiscoverBody,
-    expect?: KibanaDiscoverBody,
-  ): Promise<SavedDiscoverQuery> =>
-    unwrap(QueriesService.UpdateDiscover({ id, body, expect: expect ?? null })).then((r) =>
-      savedDiscoverQuerySchema.parse(r),
-    ),
   /** `expect` is the name and pin state this window last read: a stored query that differs
    *  answers `E_CONFLICT`. */
   queriesUpdate: (
@@ -552,33 +513,6 @@ const studioControl = {
     unwrap(SchemaService.Set({ connectionId, ddl })).then((r) => trust<ConnectionDdl>(r)),
   onSchemaChanged: (cb: (ddl: ConnectionDdl) => void): (() => void) =>
     on(CHANNEL.schemaChanged, cb),
-
-  // P424: Discover reads beyond execute(). The wire shapes are zod-parsed, not trusted.
-  kibanaDataViews: (connectionId: string): Promise<KibanaDataView[]> =>
-    unwrap(KibanaService.DataViews({ connectionId, opId: '' })).then((r) =>
-      kibanaDataViewSchema.array().parse(r ?? []),
-    ),
-  kibanaDataView: (connectionId: string, id: string): Promise<KibanaDataView> =>
-    unwrap(KibanaService.DataView({ connectionId, opId: '', id })).then((r) =>
-      kibanaDataViewSchema.parse(r),
-    ),
-  kibanaHistogram: (args: {
-    connectionId: string;
-    opId: string;
-    tabId: string;
-    request: KibanaDiscoverRequest;
-    interval: KibanaInterval;
-  }): Promise<KibanaHistogram> =>
-    unwrap(KibanaService.Histogram(args)).then((r) => kibanaHistogramSchema.parse(r)),
-  kibanaSuggest: (args: {
-    connectionId: string;
-    opId: string;
-    tabId: string;
-    request: KibanaDiscoverRequest;
-    field: string;
-    prefix: string;
-  }): Promise<KibanaSuggestions> =>
-    unwrap(KibanaService.Suggest(args)).then((r) => kibanaSuggestionsSchema.parse(r)),
 };
 
 // Studio's control: the hub's shared and Space methods, with the Studio-bound ones layered on top.

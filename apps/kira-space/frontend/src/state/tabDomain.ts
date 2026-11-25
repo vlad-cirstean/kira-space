@@ -1,6 +1,5 @@
 import { grpcRequestTabStateSchema } from '@shared/domain/grpc';
 import { httpRequestTabStateSchema } from '@shared/domain/http';
-import { kibanaConsoleStateSchema } from '@shared/domain/kibana';
 import {
   SQS_DEFAULT_VISIBILITY_TIMEOUT_SECONDS,
   SQS_MAX_VISIBILITY_TIMEOUT_SECONDS,
@@ -182,8 +181,6 @@ export type DefinitionTabState = z.infer<typeof definitionTabStateSchema>;
 export const consoleTabStateSchema = /*#__PURE__*/ z.object({
   text: z.string(),
   newResultSet: z.boolean().default(true),
-  // P424: Discover state of a kibana console tab; absent on every other kind, so no migration.
-  kibana: kibanaConsoleStateSchema.optional(),
 });
 export type ConsoleTabState = z.infer<typeof consoleTabStateSchema>;
 
