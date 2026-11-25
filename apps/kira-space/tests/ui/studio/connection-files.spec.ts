@@ -10,9 +10,11 @@ import { connectionRow } from './support/tree';
 
 // Contract connection-files. Backend half: dbflow TestConnectionFiles (a file edit changes the
 // row and the tree filters, a bad edit keeps the last valid version and reports its line).
+// Contract connection-files-removed-kind. Backend half: dbflow TestConnectionRemovedKindFile.
 
 const FILE = 'local.yaml';
 const SCENARIO = 'connection-files';
+const REMOVED_KIND_SCENARIO = 'connection-files-removed-kind';
 
 const listed = () => contract<ConnectionSummary[]>(SCENARIO, 'ConnectionsService.List');
 const edited = () => contract<ConnectionSummary[]>(SCENARIO, 'ConnectionsService.List#edited');
@@ -123,6 +125,25 @@ test('a file that never held a valid connection is listed and opens its dialog',
   await expect(page.locator('[data-testid="connection-file-dialog"]')).toBeVisible();
   await page.locator('[data-testid="connection-tab-yaml"]').click();
   await expect(page.locator('[data-testid="config-file-problem"]')).toContainText('Can’t be read');
+});
+
+test('contract: a file of a removed kind is listed as unreadable and no connection shows', async ({
+  relaunch,
+}) => {
+  const view = contract<ConnectionConfigView>(
+    REMOVED_KIND_SCENARIO,
+    'ConnectionConfigService.View',
+  );
+  const { window: page } = await relaunch({
+    control: [
+      { channel: IPC.connectionsList, response: [] },
+      { channel: IPC.connectionConfigView, response: view },
+    ],
+  });
+  const entry = page.locator(`[data-testid="tree-connection-broken-${view.files[0]?.file}"]`);
+  await expect(entry).toBeVisible();
+  await expect(entry).toContainText('Can’t be read');
+  await expect(connectionRow(page)).toHaveCount(0);
 });
 
 test('a valid connection shows no notice on any tab', async ({ relaunch }) => {

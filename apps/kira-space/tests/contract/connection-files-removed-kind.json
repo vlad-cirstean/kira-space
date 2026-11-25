@@ -1,0 +1,24 @@
+{
+  "ConnectionConfigService.View": {
+    "dir": "<space>/config/connections",
+    "files": [
+      {
+        "file": "logs.yaml",
+        "id": "",
+        "lastGood": false,
+        "name": "",
+        "problem": {
+          "line": 2,
+          "message": "kind must be one of \"clickhouse\", \"kafka\", \"mariadb\", \"mongodb\", \"mysql\", \"postgres\", \"redis\", \"s3\", \"sqlite\", \"sqs\"."
+        }
+      }
+    ],
+    "secrets": [],
+    "storage": {
+      "available": true,
+      "backend": "basic_text",
+      "insecureFallback": true,
+      "reason": null
+    }
+  }
+}

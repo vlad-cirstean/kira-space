@@ -194,6 +194,39 @@ func TestConnectionConfigFile(t *testing.T) {
 	}
 }
 
+// Contract connection-files-removed-kind, read by tests/ui/connection-files.spec.ts: a file whose
+// kind Kira no longer supports (kibana, after migration 0111 removed its row) loads as a file
+// problem, lists no connection, and can be deleted from the file list.
+func TestConnectionRemovedKindFile(t *testing.T) {
+	app := flowharness.New(t)
+	const sc = "connection-files-removed-kind"
+	const name = "logs.yaml"
+	file := filepath.Join(app.W.ConnectionFiles.Dir(), name)
+	text := "name: Logs\nkind: kibana\ncolor: blue\nhost: 127.0.0.1\nport: 5601\n"
+	if err := fileservice.Host().WriteFile(file, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	testx.WaitUntil(t, waitFor, func() bool { return fileProblem(t, app, name) != nil })
+	if p := fileProblem(t, app, name); p.Line != 2 || !strings.Contains(p.Message, "kind must be one of") || strings.Contains(p.Message, "kibana") {
+		t.Errorf("problem = %+v, want the kind-enum message on line 2 without kibana", p)
+	}
+	list, err := app.W.Connections.List()
+	if err != nil || len(list) != 0 {
+		t.Fatalf("Connections.List = %+v (%v), want none", list, err)
+	}
+	view, err := app.W.ConnectionConfig.View()
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Contract(t, sc, "ConnectionConfigService.View", view, flowharness.Replace(app.SpaceHome, "<home>"))
+	if err := app.W.ConnectionConfig.DeleteFile(bridge.ConnectionFileArgs{File: name}); err != nil {
+		t.Fatalf("DeleteFile: %v", err)
+	}
+	if _, err := fileservice.Host().Stat(file); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("file after DeleteFile: %v, want it removed", err)
+	}
+}
+
 // Contract connection-secrets, read by tests/ui/studio/secrets.spec.ts: a password is a named
 // secret the file refers to; no call returns its value but Reveal.
 func TestConnectionSecrets(t *testing.T) {
