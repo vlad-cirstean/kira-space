@@ -432,17 +432,18 @@ func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID,
 	}
 	in := repoShareInput{facts: facts}
 	entry, err := b.openRepo(ctx, repoID)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Warn("ade artifacts: open repo", "scope", "ade", "repo", repoID, "err", err)
 		in.openFailed, in.facts = true, nil
-	} else if resolve {
+	case resolve:
 		var kind string
 		kind, _, in.crs, in.urls = resolveRepoHost(ctx, entry, named)
 		if ctx.Err() == nil { // a cancelled lookup says nothing about the host
 			b.artHost.setKind(repoID, kind)
 		}
 		in.hostGap = kind == "unavailable"
-	} else {
+	default:
 		in.crs, in.urls = cachedRepoHost(ctx, entry, named)
 		in.hostGap = b.artHost.lastKind(repoID) == "unavailable"
 	}
