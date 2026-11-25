@@ -84,7 +84,6 @@
     "slug": "checkout-fix",
     "summary": "Checkout rejects an expired card.",
     "taskId": "<masked>",
-    "taskTitle": "Login form",
     "version": "<masked>"
   },
   "ProofService.Step#data-file": {

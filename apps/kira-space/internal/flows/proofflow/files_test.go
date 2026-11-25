@@ -11,6 +11,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appshell"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/proof"
 	"github.com/kirathecat/kira-studio/internal/approvals"
 )
 
@@ -86,10 +87,11 @@ func TestProofFiles(t *testing.T) {
 	jpg := jpegBytes(t, 64, 48)
 	const audit = `{"columns":[{"name":"n","type":"number"}],"rows":[[1],[2]]}`
 
-	// 1. A new proof folder plus submit: accepted, linked, the ready prompt raised, the reply names it.
+	// 1. A new proof folder plus submit: accepted, linked, the the reply names it.
 	f.put(t, "proofs/checkout-fix/proof.md", []byte(filesProofMD))
 	f.put(t, "proofs/checkout-fix/shot.jpg", jpg)
 	f.put(t, "proofs/checkout-fix/audit.json", []byte(audit))
+	mark := f.app.Events.Mark()
 	reply := f.submit(t)
 	mustHave(t, "first submit reply", reply, "accepted 1", `new proof "Checkout fix"`, "orders (table)", "shot (image)", "audit (table)", "3 steps")
 	list := f.proofs(t)
@@ -99,6 +101,12 @@ func TestProofFiles(t *testing.T) {
 	f.app.Contract(t, filesScenario, "AdeTaskService.TaskProofs", f.proofs(t), filesMask)
 	f.app.Contract(t, filesScenario, "reply#new", reply)
 	id := list[0].ProofID
+	// A new proof pops no dialog; it updates proof state and emits proof changed (UI half:
+	// tests/ui/ade-v2-proof-chain.spec.ts "a new proof shows in the chain and no dialog opens").
+	if routed, err := f.app.W.PromptsSvc.List(); err != nil || len(routed) != 0 {
+		t.Fatalf("prompts = %+v (%v), want none for a new proof", routed, err)
+	}
+	f.app.Events.WaitAfter(t, mark, proof.ChannelChanged, named(id), staleWait)
 	for i, key := range []string{"table", "image", "data-file"} {
 		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: id, Rev: 1, Ordinal: i + 1})
 		if err != nil {
