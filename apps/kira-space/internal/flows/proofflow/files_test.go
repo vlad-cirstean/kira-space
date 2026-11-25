@@ -99,9 +99,6 @@ func TestProofFiles(t *testing.T) {
 	f.app.Contract(t, filesScenario, "AdeTaskService.TaskProofs", f.proofs(t), filesMask)
 	f.app.Contract(t, filesScenario, "reply#new", reply)
 	id := list[0].ProofID
-	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != id {
-		t.Fatalf("prompts = %+v, want the ready popup for %s", ps, id)
-	}
 	for i, key := range []string{"table", "image", "data-file"} {
 		st, err := f.app.W.Proof.Step(bridge.ProofStepArgs{SessionID: id, Rev: 1, Ordinal: i + 1})
 		if err != nil {

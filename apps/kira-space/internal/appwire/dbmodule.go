@@ -264,7 +264,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 		Emit: func(taskID string) { emitter.Emit(adewire.ChannelDbAudit, adewire.DbAuditEvent{TaskID: taskID}) },
 	})
 	proofDeps := proof.Deps{
-		Repo: repositories.Proof, Prompts: w.Prompts, Approvals: w.Approvals,
+		Repo: repositories.Proof, Approvals: w.Approvals,
 		Emit: func(channel string, payload any) { emitter.Emit(channel, payload) },
 	}
 	if opts.Clock != nil {
@@ -276,7 +276,7 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 		proofDeps.Blobs = blobs
 	}
 	proofSvc := proof.New(proofDeps)
-	proofSvc.RaiseUnreviewed()
+	proofSvc.RaisePendingReviews()
 	proofTargets := &bridge.ProofWindowTargets{}
 	shellForProof := &registryShell{windows: w.Windows}
 

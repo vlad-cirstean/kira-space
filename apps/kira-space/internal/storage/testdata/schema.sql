@@ -651,7 +651,6 @@ CREATE TABLE "proof_sessions" (
   pending_rev INTEGER CHECK (pending_rev IS NULL OR pending_rev >= 0),
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   closed_at INTEGER CHECK (closed_at IS NULL OR closed_at >= 0),
-  seen_at INTEGER CHECK (seen_at IS NULL OR seen_at >= 0),
   updated_at INTEGER NOT NULL CHECK (updated_at >= 0),
   name TEXT NOT NULL,
   name_key TEXT NOT NULL UNIQUE,

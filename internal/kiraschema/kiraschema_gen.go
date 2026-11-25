@@ -1344,7 +1344,6 @@ var ProofSessions = struct {
 	PendingRev string
 	CreatedAt  string
 	ClosedAt   string
-	SeenAt     string
 	UpdatedAt  string
 	Name       string
 	NameKey    string
@@ -1357,7 +1356,6 @@ var ProofSessions = struct {
 	PendingRev: "pending_rev",
 	CreatedAt:  "created_at",
 	ClosedAt:   "closed_at",
-	SeenAt:     "seen_at",
 	UpdatedAt:  "updated_at",
 	Name:       "name",
 	NameKey:    "name_key",

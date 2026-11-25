@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"errors"
-	"log/slog"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -285,14 +284,6 @@ func (s *ProofService) withFolder(sessionID string, fn func(string) error) error
 	return fn(filepath.Join(root, "proofs", slug))
 }
 
-// MarkSeen records that the user opened the session.
-func (s *ProofService) MarkSeen(args ProofSessionArgs) error {
-	if err := proofID(args.SessionID); err != nil {
-		return err
-	}
-	return proofErr(s.Svc.MarkSeen(args.SessionID))
-}
-
 // OpenWindow shows the window of one proof, creating it or focusing the live one. A window shows
 // one proof; the proof of a task is named by its task id and folder.
 func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
@@ -314,7 +305,6 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 	key := proof.WindowKeyPrefix + sessionID
 	if slices.Contains(s.Shell.Keys(), key) {
 		s.Shell.Focus(key)
-		s.markOpened(sessionID)
 		return ProofOpenResult{Key: key}, nil
 	}
 	records, err := s.Windows.List()
@@ -333,19 +323,7 @@ func (s *ProofService) OpenWindow(args ProofOpenArgs) (ProofOpenResult, error) {
 	s.Targets.Set(key, sessionID)
 	s.Shell.Open(shell.WindowRecord{Key: key, Order: order})
 	s.Shell.SetTitle(key, i18n.T("backend.studio.proof.window.title", nil))
-	s.markOpened(sessionID)
 	return ProofOpenResult{Key: key, Opened: true}, nil
-}
-
-// markOpened records that the user opened sessionID, which withdraws its ready popup. The window
-// open already succeeded, so a failure here only logs.
-func (s *ProofService) markOpened(sessionID string) {
-	if sessionID == "" {
-		return
-	}
-	if err := s.Svc.MarkSeen(sessionID); err != nil {
-		slog.Warn("proof: mark opened session seen", "scope", "proof", "session", sessionID, "err", err)
-	}
 }
 
 // WindowTarget returns the session a proof window was opened for, read once at boot.
