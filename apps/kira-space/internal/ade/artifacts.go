@@ -404,10 +404,11 @@ func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID,
 			Kind: artifactBranch, Title: r.Name, URL: urls[r.ID], Repo: nick, Source: artifactSrcGit, CreatedAt: r.AddedAt,
 			Status: "local",
 		}
-		if r.MergedAt != nil {
-			br.Status = "merged"
+		wb, hasFacts := facts.branch(r.ID)
+		if r.MergedAt != nil && !hasFacts {
+			br.Status = "merged" // no live facts for this row: the stored record decides
 		}
-		if wb, ok := facts.branch(r.ID); ok {
+		if hasFacts {
 			br.Ref = wb.Worktree
 			switch {
 			case wb.MergedIntoMain:

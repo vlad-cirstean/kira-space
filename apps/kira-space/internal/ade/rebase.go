@@ -108,7 +108,7 @@ func stackParent(sc *boardCtx, br model.AdeTaskBranch) string {
 func rebaseStack(sc *boardCtx, root model.AdeTaskBranch) []stackNode {
 	kids := map[string][]model.AdeTaskBranch{}
 	for _, br := range sc.byID {
-		if br.Kind != model.AdeBranchKindMine || br.Name == "" || br.MergedAt != nil || br.ID == root.ID {
+		if br.Kind != model.AdeBranchKindMine || br.Name == "" || recordedMerge(sc, br) || br.ID == root.ID {
 			continue
 		}
 		if p := stackParent(sc, br); p != "" {
@@ -189,8 +189,6 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 		return nil, invalid("only your own branch can be rebased")
 	case root.Name == "":
 		return nil, invalid("the branch of %s is not created yet", b.repoNick(tc, root))
-	case root.MergedAt != nil:
-		return nil, invalid("%s is merged", root.Name)
 	}
 	if err := b.checkNotArchiving(tc.task.ID); err != nil {
 		return nil, err
@@ -209,6 +207,9 @@ func (b *TaskBoard) planRebase(ctx context.Context, tc *taskCtx, args adewire.On
 	sc, err := b.baseCtxFor(ctx, entry, root.CodeRepoID)
 	if err != nil {
 		return nil, err
+	}
+	if recordedMerge(sc, root) {
+		return nil, invalid("%s is merged", root.Name)
 	}
 	p := &rebasePlan{tc: tc, root: root, nick: tc.nick[root.CodeRepoID], predicted: map[string]string{}}
 	p.stack = rebaseStack(sc, root)

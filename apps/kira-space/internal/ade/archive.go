@@ -103,14 +103,20 @@ func (b *TaskBoard) branchRisk(ctx context.Context, lb linkedBranch) (adewire.Br
 		return adewire.BranchRisk{}, err
 	}
 	dirty := toDirtyEntries(status)
+	tip, mainTip, hasMain, err := b.archiveTips(ctx, lb)
+	if err != nil {
+		return adewire.BranchRisk{}, err
+	}
+	// A merge record holds only at its tip: a stale one must not hide unmerged work.
+	merged := lb.sb.MergedAt != nil && tip != "" && lb.sb.MergedTip == tip
 	unmerged := 0
-	if lb.sb.MergedAt == nil {
-		if unmerged, err = b.aheadOfMain(ctx, lb); err != nil {
+	if !merged && hasMain && tip != "" {
+		if unmerged, _, err = lb.entry.AheadBehind(ctx, tip, mainTip); err != nil {
 			return adewire.BranchRisk{}, err
 		}
 	}
 	res := atRisk(atRiskInput{
-		Kind: lb.sb.Kind, Merged: lb.sb.MergedAt != nil, HasLinkedWorktree: true,
+		Kind: lb.sb.Kind, Merged: merged, HasLinkedWorktree: true,
 		DirtyCount: len(dirty), UnmergedAheadOfMain: unmerged,
 	})
 	pf, err := lb.entry.WorktreeRemovePreflight(ctx, lb.path)
@@ -130,23 +136,22 @@ func (b *TaskBoard) branchRisk(ctx context.Context, lb linkedBranch) (adewire.Br
 	return risk, nil
 }
 
-// aheadOfMain counts the branch's commits not on the repo's main.
-func (b *TaskBoard) aheadOfMain(ctx context.Context, lb linkedBranch) (int, error) {
-	_, mainTip, hasMain, err := lb.entry.MainRef(ctx)
-	if err != nil || !hasMain {
-		return 0, err
+// archiveTips resolves the branch's current tip and the repo's main tip. tip is "" when the branch
+// does not resolve.
+func (b *TaskBoard) archiveTips(ctx context.Context, lb linkedBranch) (tip, mainTip string, hasMain bool, err error) {
+	_, mainTip, hasMain, err = lb.entry.MainRef(ctx)
+	if err != nil {
+		return "", "", false, err
 	}
 	inv, err := lb.entry.BranchInventory(ctx)
 	if err != nil {
-		return 0, err
+		return "", "", false, err
 	}
 	remote, _ := lb.entry.DefaultRemote(ctx)
-	row, ok := resolveQueuedRef(inv, lb.sb.Name, remote)
-	if !ok {
-		return 0, nil
+	if row, ok := resolveQueuedRef(inv, lb.sb.Name, remote); ok {
+		tip = row.Tip
 	}
-	ahead, _, err := lb.entry.AheadBehind(ctx, row.Tip, mainTip)
-	return ahead, err
+	return tip, mainTip, hasMain, nil
 }
 
 // ArchiveTask stops the task's runs, setups and terminals, removes its worktrees and archives it.
