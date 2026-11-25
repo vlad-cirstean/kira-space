@@ -7,7 +7,7 @@ Code review at chapter end: 1 round.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Todo |
+| P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Done |
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Todo |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Todo |
 | P759 | Remove the proof ready dialog | Todo |
@@ -23,6 +23,15 @@ status dot, UI specs, visual baselines, `ARCHITECTURE.md` text. Restore the pre-
 (`data-[state=on]:bg-select`). Land as a forward change, not a git revert of the squash. Keep every
 other v0.3.25 change. Plan lists P754's file set from the `chapter/v0.3.25` history (commits
 `28780367d`, `1aa4a0da2`, `f0112b77f`, `787bbbc98`, `6b2a08eeb`).
+
+Result: forward commits `deb3c0f9f` (theme, guard N18, specs), `15fa0a691` (keep-awake), `a4ba64403`
+(ARCHITECTURE), `5a8931951` (33 PNGs). Code files match pre-P754 tree; no `P754` string and no
+`keep-awake-dot` left. Checks: typecheck, lint with guards, knip, conventions spec (44 pass), `visual`
+on the 18 owning specs (51 pass after re-record), `ui` on selection-colour, window-chrome,
+ade-v2-dialogs, control-sizing, automations-smart green. Re-recorded `ade-links-visual` and
+`branch-panel-details-visual`: restored pre-P754 blobs carried stale P751/P748 drift (removed
+`PAY-10` chip, etc.); new images are byte-equal to the P754 ones (no on-state control in shot, no blue
+tint), so they show as unchanged against HEAD.
 
 ## P757
 
