@@ -131,6 +131,6 @@ func (b *TaskBoard) DismissFoundLink(_ context.Context, args adewire.DismissFoun
 	if err := b.deps.Tasks.DismissFoundLink(args.TaskID, key, b.deps.Now().UnixMilli()); err != nil {
 		return err
 	}
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(args.TaskID))
 	return nil
 }

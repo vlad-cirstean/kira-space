@@ -153,7 +153,7 @@ func (b *TaskBoard) setSlotLocked(taskID, slot string, c linkClass) (adewire.Lin
 		b.recordHost(taskID, prev.HostURL, c.URL)
 	}
 	b.mirrorTask(taskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return adewire.LinkResult{Filed: slot, Kind: c.Kind}, nil
 }
 
@@ -171,7 +171,7 @@ func (b *TaskBoard) clearSlotLocked(taskID, slot string) error {
 		return err
 	}
 	b.mirrorTask(taskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return nil
 }
 
@@ -282,7 +282,7 @@ func (b *TaskBoard) editStoredLocked(tc *taskCtx, args adewire.EditLinkArgs, p p
 		return adewire.LinkResult{}, err
 	}
 	b.mirrorTask(args.TaskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(args.TaskID))
 	a := wireStoredArtifact(updated)
 	b.recordArtifact(args.TaskID, row.ID, artifactText(*row), artifactText(updated))
 	return adewire.LinkResult{Filed: linkFiledStored, Kind: a.Kind, Artifact: &a}, nil

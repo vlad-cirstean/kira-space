@@ -609,7 +609,7 @@ func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, session
 		out = append(out, row)
 	}
 	b.mirrorTask(taskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return out, nil
 }
 
@@ -676,6 +676,6 @@ func (b *TaskBoard) RemoveArtifact(_ context.Context, args adewire.RemoveArtifac
 	}
 	b.recordArtifact(args.TaskID, row.ID, artifactText(*row), "")
 	b.mirrorTask(args.TaskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(args.TaskID))
 	return nil
 }
