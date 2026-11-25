@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/ids"
@@ -253,13 +254,19 @@ func (s repoSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.
 		}
 		return arts, nil, nil
 	}
+	set := repoShareSet{repoIDs: repoIDs, byRepo: byRepo, nicks: nicks}
 	facts := b.artifactFacts(ctx, sc)
-	arts, gaps := b.repoShares(ctx, sc, repoIDs, byRepo, nicks, facts)
+	arts, gaps := b.repoShares(ctx, sc, set, facts, false)
+	if len(repoIDs) > 0 {
+		b.confirmArtifacts(sc, set, facts, arts, gaps)
+	}
 	return arts, gaps, nil
 }
 
-// repoShares is every repo's share of the task, in repo id order.
-func (b *TaskBoard) repoShares(ctx context.Context, sc ArtifactScope, repoIDs []string, byRepo map[string][]model.AdeTaskBranch, nicks map[string]string, facts *artifactFacts) ([]adewire.Artifact, []adewire.ArtifactGap) {
+// repoShares is every repo's share of the task, in repo id order. resolve asks the host for each
+// change request (it may wait); without it the share reads only caches, the stored rows and facts.
+func (b *TaskBoard) repoShares(ctx context.Context, sc ArtifactScope, set repoShareSet, facts *artifactFacts, resolve bool) ([]adewire.Artifact, []adewire.ArtifactGap) {
+	repoIDs, byRepo, nicks := set.repoIDs, set.byRepo, set.nicks
 	type share struct {
 		arts []adewire.Artifact
 		gaps []adewire.ArtifactGap
@@ -269,7 +276,7 @@ func (b *TaskBoard) repoShares(ctx context.Context, sc ArtifactScope, repoIDs []
 	g.SetLimit(boardFanOut)
 	for i, id := range repoIDs {
 		g.Go(func() error {
-			shares[i].arts, shares[i].gaps = b.repoArtifacts(ctx, sc, id, nicks[id], byRepo[id], facts)
+			shares[i].arts, shares[i].gaps = b.repoArtifacts(ctx, sc, id, nicks[id], byRepo[id], facts, resolve)
 			return nil
 		})
 	}
@@ -405,8 +412,10 @@ func namedBranches(rows []model.AdeTaskBranch) []model.AdeTaskBranch {
 
 // repoArtifacts is one repo's share: the task's change requests (live from the host, else the archive
 // snapshot), its branches and, for a live task, the deployments the board's facts report. rows are the
-// task's rows in the repo.
-func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID, nick string, rows []model.AdeTaskBranch, facts *artifactFacts) ([]adewire.Artifact, []adewire.ArtifactGap) {
+// task's rows in the repo. Without resolve the change requests come from the repo entry's caches (any
+// age, no host call) and the host gap from the last lookup kind; with it the host is asked and the
+// kind recorded.
+func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID, nick string, rows []model.AdeTaskBranch, facts *artifactFacts, resolve bool) ([]adewire.Artifact, []adewire.ArtifactGap) {
 	named := namedBranches(rows)
 	if len(named) == 0 {
 		return nil, nil
@@ -416,12 +425,33 @@ func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID,
 	if err != nil {
 		slog.Warn("ade artifacts: open repo", "scope", "ade", "repo", repoID, "err", err)
 		in.openFailed, in.facts = true, nil
-	} else {
+	} else if resolve {
 		var kind string
 		kind, _, in.crs, in.urls = resolveRepoHost(ctx, entry, named)
-		in.hostGap = kind == "unavailable" || (ctx.Err() != nil && kind != "disabled")
+		if ctx.Err() == nil { // a cancelled lookup says nothing about the host
+			b.artHost.setKind(repoID, kind)
+		}
+		in.hostGap = kind == "unavailable"
+	} else {
+		in.crs, in.urls = cachedRepoHost(ctx, entry, named)
+		in.hostGap = b.artHost.lastKind(repoID) == "unavailable"
 	}
 	return repoShare(sc, nick, named, in)
+}
+
+// cachedRepoHost is resolveRepoHost from caches alone: each branch's change request as the entry
+// already knows it, of any age, and its web page composed locally. It never calls the host.
+func cachedRepoHost(ctx context.Context, entry *gitsession.RepoEntry, named []model.AdeTaskBranch) (crs map[string]adewire.ChangeRequest, urls map[string]string) {
+	crs, urls = map[string]adewire.ChangeRequest{}, map[string]string{}
+	for _, r := range named {
+		if c, ok := entry.CachedBranchChangeRequest(ctx, r.Name); ok {
+			crs[r.ID] = wireChangeRequest(c)
+		}
+		if u, ok := entry.BranchURL(ctx, r.Name); ok {
+			urls[r.ID] = u
+		}
+	}
+	return crs, urls
 }
 
 // repoShareInput is everything repoShare builds from; it reads no store, git or host.

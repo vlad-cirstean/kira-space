@@ -234,6 +234,7 @@ type TaskBoard struct {
 	boardTimer     *time.Timer
 	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
 	bcache         boardCache
+	artHost        artifactHost // last host kind per repo and running Artifacts confirm jobs (artifacthost.go)
 	repoCfg        repoConfigCache
 	facts          boardFacts
 	wfMemo         *lru.Cache[string, wfMemoEntry]
@@ -842,12 +843,16 @@ func (b *TaskBoard) ChangeRequests(ctx context.Context) (adewire.ChangeRequestsR
 			entry, err := b.openRepo(gctx, id)
 			if err != nil {
 				slog.Warn("ade board: prs open repo", "scope", "ade", "repo", id, "err", err)
+				b.artHost.setKind(id, "unavailable")
 				mu.Lock()
 				rows[id] = adewire.RepoHost{CodeRepoID: id, Kind: "unavailable"}
 				mu.Unlock()
 				return nil
 			}
 			kind, host, found, urls := resolveRepoHost(gctx, entry, byRepo[id])
+			if gctx.Err() == nil {
+				b.artHost.setKind(id, kind)
+			}
 			mu.Lock()
 			rows[id] = adewire.RepoHost{CodeRepoID: id, Kind: kind, Host: host}
 			for k, v := range found {
