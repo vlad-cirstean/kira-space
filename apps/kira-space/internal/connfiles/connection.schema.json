@@ -191,7 +191,7 @@
           "type": "array",
           "maxItems": 10000,
           "items": { "type": "string", "minLength": 1 },
-          "description": "Tables, views or collections MCP statements may touch. Absent allows all, including later ones; an empty list allows none. Entry format: postgres database.schema.name; mysql, mariadb, clickhouse, mongodb database.name; sqlite and kibana name. Wrap a part in double quotes when it holds a dot. Not for redis, kafka, s3 or sqs."
+          "description": "Tables, views or collections MCP statements may touch. Absent allows all, including later ones; an empty list allows none. Entry format: postgres database.schema.name; mysql, mariadb, clickhouse, mongodb database.name; sqlite name. Wrap a part in double quotes when it holds a dot. Not for redis, kafka, s3 or sqs."
         }
       }
     },
@@ -231,7 +231,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["columns"],
-      "description": "Column review for masking. Absent turns it off. Present, a column that no mask rule covers and that is not listed here is withheld from MCP results until the user reviews it. Not for mongodb, redis, kafka, s3, sqs or kibana.",
+      "description": "Column review for masking. Absent turns it off. Present, a column that no mask rule covers and that is not listed here is withheld from MCP results until the user reviews it. Not for mongodb, redis, kafka, s3 or sqs.",
       "properties": {
         "columns": {
           "type": "array",

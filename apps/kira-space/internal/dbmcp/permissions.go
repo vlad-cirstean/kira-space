@@ -161,7 +161,7 @@ func classMode(class adapters.OpClass) string {
 }
 
 // writeConsoleKinds are the kinds with a console that can change data or schema. The rest have no
-// write path: kibana runs one Discover search; kafka, s3 and sqs have no console.
+// write path: kafka, s3 and sqs have no console.
 var writeConsoleKinds = map[string]bool{
 	"postgres": true, "mysql": true, "mariadb": true, "sqlite": true,
 	"clickhouse": true, "mongodb": true, "redis": true,

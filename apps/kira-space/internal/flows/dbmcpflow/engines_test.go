@@ -282,7 +282,7 @@ func (e engine) setup(t *testing.T, sess *mcp.ClientSession, connID, scratch str
 func stopFixtures() {
 	testsupport.StopConcurrently(
 		testsupport.StopPostgres, testsupport.StopMysql, testsupport.StopMariadb, testsupport.StopClickHouse,
-		testsupport.StopMongo, testsupport.StopRedis, testsupport.StopKibana,
+		testsupport.StopMongo, testsupport.StopRedis,
 	)
 }
 

@@ -70,7 +70,6 @@ type listedConnection struct {
 	WithheldMore    int      `json:"withheldMore,omitempty"`
 	Can             []string `json:"can"`
 	ParamSyntax     string   `json:"paramSyntax,omitempty"`
-	QueryFormat     string   `json:"queryFormat,omitempty"`
 }
 
 // paramSyntaxOf is how a kind's bind placeholders read; the agent finds it in list, not in the tool schema.
@@ -88,9 +87,6 @@ func paramSyntaxOf(kind string) string {
 	}
 	return ""
 }
-
-// kibanaQueryFormat is run_query's sql on kibana.
-const kibanaQueryFormat = `sql is a JSON object: dataView (id from describe), query, language (kuery or lucene), timeRange ({"from","to"} ISO-8601 or date math, or null), filters ([{"field","operator","values","disabled"}]; operator is, is_not, is_one_of, is_not_one_of, exists, does_not_exist or between), sort ([{"field","order"}]), size, timeZone (IANA).`
 
 func (s *Server) listedConnectionOf(c model.ConnectionSummary) listedConnection {
 	state := s.cfg.Conns.StateOf(c.ID)
@@ -135,9 +131,6 @@ func (s *Server) listedConnectionOf(c model.ConnectionSummary) listedConnection 
 	}
 	if s.scriptsOn() {
 		v.Can = append(v.Can, "scripts")
-	}
-	if c.Kind == "kibana" {
-		v.QueryFormat = kibanaQueryFormat
 	}
 	return v
 }

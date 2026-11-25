@@ -19,40 +19,6 @@
     "pinned": false,
     "usedAt": "<masked>"
   },
-  "UpdateDiscover#changed": {
-    "code": "E_CONFLICT",
-    "details": {
-      "changed": true
-    },
-    "message": "Another window changed this saved query since you opened it."
-  },
-  "UpdateDiscover#confirmed": {
-    "body": {
-      "columns": [
-        "level"
-      ],
-      "dataViewId": "kira-logs",
-      "dataViewName": "kira-logs",
-      "filters": [],
-      "interval": "auto",
-      "language": "kuery",
-      "query": "level:warn",
-      "sampleSize": 500,
-      "sort": [],
-      "time": {
-        "mode": "preset",
-        "preset": "last15m"
-      }
-    },
-    "connectionId": "<masked>",
-    "createdAt": "<masked>",
-    "id": "<masked>",
-    "kind": "discover",
-    "name": "errors",
-    "path": "",
-    "pinned": false,
-    "usedAt": "<masked>"
-  },
   "args:Update#confirmed": {
     "id": "<masked>",
     "name": "report b"
@@ -64,62 +30,5 @@
     },
     "id": "<masked>",
     "name": "report b"
-  },
-  "args:UpdateDiscover#confirmed": {
-    "body": {
-      "columns": [
-        "level"
-      ],
-      "dataViewId": "kira-logs",
-      "dataViewName": "kira-logs",
-      "filters": [],
-      "interval": "auto",
-      "language": "kuery",
-      "query": "level:warn",
-      "sampleSize": 500,
-      "sort": [],
-      "time": {
-        "mode": "preset",
-        "preset": "last15m"
-      }
-    },
-    "id": "<masked>"
-  },
-  "args:UpdateDiscover#guarded": {
-    "body": {
-      "columns": [
-        "level"
-      ],
-      "dataViewId": "kira-logs",
-      "dataViewName": "kira-logs",
-      "filters": [],
-      "interval": "auto",
-      "language": "kuery",
-      "query": "level:warn",
-      "sampleSize": 500,
-      "sort": [],
-      "time": {
-        "mode": "preset",
-        "preset": "last15m"
-      }
-    },
-    "expect": {
-      "columns": [
-        "level"
-      ],
-      "dataViewId": "kira-logs",
-      "dataViewName": "kira-logs",
-      "filters": [],
-      "interval": "auto",
-      "language": "kuery",
-      "query": "level:error",
-      "sampleSize": 500,
-      "sort": [],
-      "time": {
-        "mode": "preset",
-        "preset": "last15m"
-      }
-    },
-    "id": "<masked>"
   }
 }

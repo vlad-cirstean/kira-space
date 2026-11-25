@@ -12,8 +12,8 @@ import (
 // laneIdleTimeout closes a read lane that served no op for this long.
 const laneIdleTimeout = 10 * time.Minute
 
-// laneKinds are the kinds whose read statements run on a second adapter. The rest have no write
-// path (kibana) or no console (kafka, s3, sqs): they run on the main adapter.
+// laneKinds are the kinds whose read statements run on a second adapter. The rest have no console
+// (kafka, s3, sqs): they run on the main adapter.
 var laneKinds = map[string]bool{
 	"postgres": true, "mysql": true, "mariadb": true, "sqlite": true,
 	"clickhouse": true, "mongodb": true, "redis": true,

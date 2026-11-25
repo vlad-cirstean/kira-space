@@ -300,7 +300,6 @@ type Wired struct {
 	Filters         *bridge.FiltersService
 	Queries         *bridge.QueriesService
 	Schema          *bridge.SchemaService
-	Kibana          *bridge.KibanaService
 	Http            *bridge.HttpService
 	Grpc            *bridge.GrpcService
 	Collections     *bridge.CollectionsService
@@ -740,7 +739,7 @@ func (w *Wired) Bound() []application.Service {
 		application.NewService(w.App), application.NewService(w.Connections),
 		application.NewService(w.MaskRules), application.NewService(w.Tree),
 		application.NewService(w.Filters), application.NewService(w.Queries), application.NewService(w.Schema),
-		application.NewService(w.Kibana), application.NewService(w.Http), application.NewService(w.Grpc),
+		application.NewService(w.Http), application.NewService(w.Grpc),
 		application.NewService(w.Collections), application.NewService(w.Variables), application.NewService(w.ApiConfig),
 		application.NewService(w.ConnectionConfig), application.NewService(w.ResponseHistory), application.NewService(w.GrpcHistory),
 		application.NewService(w.DataGrip), application.NewService(w.DbMcp), application.NewService(w.Docker),

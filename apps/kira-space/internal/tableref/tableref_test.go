@@ -16,7 +16,6 @@ func TestParseFormatRoundTrip(t *testing.T) {
 		{"postgres", `shop."my.schema"."a""b"`, Ref{"shop", "my.schema", `a"b`}},
 		{"mysql", `db." lead"`, Ref{Database: "db", Name: " lead"}},
 		{"sqlite", `"a.b"`, Ref{Name: "a.b"}},
-		{"kibana", "logs-*", Ref{Name: "logs-*"}},
 	}
 	for _, c := range cases {
 		got, err := Parse(c.kind, c.entry)
@@ -99,7 +98,6 @@ func TestFromPath(t *testing.T) {
 		{"mongodb", seg("database", "d", "collection", "c"), Ref{Database: "d", Name: "c"}, true},
 		{"sqlite", seg("database", "main", "table", "t"), Ref{Name: "t"}, true},
 		{"sqlite", seg("database", "other", "table", "t"), Ref{}, false},
-		{"kibana", seg("collection", "id1"), Ref{Name: "id1"}, true},
 		{"redis", seg("database", "0"), Ref{}, false},
 	}
 	for i, c := range cases {

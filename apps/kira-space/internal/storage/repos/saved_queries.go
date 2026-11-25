@@ -19,9 +19,6 @@ import (
 // ErrSavedQueryNotFound is a read or patch of a saved-query id that has no row.
 var ErrSavedQueryNotFound = errors.New("repos/saved_queries: not found")
 
-// ErrSavedQueryNameTaken is a rename or save into a name another discover query of the connection holds.
-var ErrSavedQueryNameTaken = errors.New("repos/saved_queries: name taken")
-
 // ErrSavedQueryChanged is a guarded write whose expected stored value no longer holds: another
 // window changed the query since the caller read it.
 var ErrSavedQueryChanged = errors.New("repos/saved_queries: changed since read")
@@ -36,7 +33,7 @@ type SavedQueriesRepo struct {
 	Dialect sqlb.Dialect
 }
 
-// savedQueryList is the discover/filter/console list query: pinned first, then most recently used.
+// savedQueryList is the filter/console list query: pinned first, then most recently used.
 func (r *SavedQueriesRepo) savedQueryList(connectionID string, conds func(sb *sqlbuilder.SelectBuilder) []string) *sqlbuilder.SelectBuilder {
 	c := kiraschema.ConnectionSavedQueries
 	sb := r.Dialect.Select(savedQuerySelectColumns...).From(c.Table)
@@ -85,15 +82,6 @@ func scanSavedQueryRow(row rowScanner) (*model.SavedQuery, error) {
 			slog.Warn("dropping saved query: body does not match console shape", "scope", "storage/saved-queries", "id", q.ID)
 			return nil, nil
 		}
-	case "discover":
-		body, err := decodeStrict[model.DiscoverBody](body)
-		if err == nil {
-			err = body.Validate()
-		}
-		if err != nil {
-			slog.Warn("dropping saved query: body does not match discover shape", "scope", "storage/saved-queries", "id", q.ID)
-			return nil, nil
-		}
 	default:
 		slog.Warn("dropping saved query: unrecognised kind", "scope", "storage/saved-queries", "id", q.ID, "kind", q.Kind)
 		return nil, nil
@@ -121,14 +109,6 @@ func (r *SavedQueriesRepo) listByKindQuery(connectionID, path, kind string) *sql
 	return r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
 		return []string{sb.Equal(c.Path, path), sb.Equal(c.Kind, kind)}
 	})
-}
-
-// ListDiscover lists a connection's discover queries regardless of path.
-func (r *SavedQueriesRepo) ListDiscover(connectionID string) ([]model.SavedQuery, error) {
-	c := kiraschema.ConnectionSavedQueries
-	return r.queryRows(r.savedQueryList(connectionID, func(sb *sqlbuilder.SelectBuilder) []string {
-		return []string{sb.Equal(c.Kind, "discover")}
-	}))
 }
 
 func (r *SavedQueriesRepo) queryRows(sb *sqlbuilder.SelectBuilder) ([]model.SavedQuery, error) {
@@ -173,9 +153,6 @@ func (r *SavedQueriesRepo) insert(connectionID, path, name, kind string, body []
 	ib := r.Dialect.InsertInto(c.Table).Cols(c.ID, c.ConnectionID, c.Path, c.Name, c.Kind, c.Body, c.Pinned, c.CreatedAt, c.UsedAt).
 		Values(newID, connectionID, path, name, kind, string(body), 0, now, now)
 	if _, err := sqlb.Exec(r.DB, ib); err != nil {
-		if isUniqueViolation(err) {
-			return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, name)
-		}
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: insert: %w", err)
 	}
 	return r.mustGet(newID)
@@ -227,45 +204,6 @@ func (r *SavedQueriesRepo) SaveFilter(connectionID, path, name string, body mode
 
 func (r *SavedQueriesRepo) SaveConsole(connectionID, path, name string, body model.ConsoleBody, pinned bool) (model.SavedQuery, error) {
 	return r.save(connectionID, path, name, "console", body, pinned)
-}
-
-// SaveDiscover stores a Discover state under a name unique within the connection.
-func (r *SavedQueriesRepo) SaveDiscover(connectionID, name string, body model.DiscoverBody, pinned bool) (model.SavedQuery, error) {
-	if err := body.Validate(); err != nil {
-		return model.SavedQuery{}, err
-	}
-	return r.save(connectionID, "", name, "discover", body.Normalized(), pinned)
-}
-
-// UpdateDiscover replaces the body of a discover query in place. A non-nil expect writes only
-// while the stored body still equals it, else ErrSavedQueryChanged.
-func (r *SavedQueriesRepo) UpdateDiscover(queryID string, body model.DiscoverBody, expect *model.DiscoverBody) (model.SavedQuery, error) {
-	if err := body.Validate(); err != nil {
-		return model.SavedQuery{}, err
-	}
-	encoded, err := json.Marshal(body.Normalized())
-	if err != nil {
-		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: encode discover body: %w", err)
-	}
-	c := kiraschema.ConnectionSavedQueries
-	ub := r.Dialect.Update(c.Table)
-	conds := []string{ub.Equal(c.ID, queryID), ub.Equal(c.Kind, "discover")}
-	if expect != nil {
-		want, err := json.Marshal(expect.Normalized())
-		if err != nil {
-			return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: encode expected discover body: %w", err)
-		}
-		conds = append(conds, ub.Equal(c.Body, string(want)))
-	}
-	ub.Set(ub.Assign(c.Body, string(encoded)), ub.Assign(c.UsedAt, kiratime.NowMs())).Where(conds...)
-	res, err := sqlb.Exec(r.DB, ub)
-	if err != nil {
-		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update body %s: %w", queryID, err)
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return r.missOrChanged(queryID, expect != nil)
-	}
-	return r.mustGet(queryID)
 }
 
 // missOrChanged names why a guarded update touched no row: the row is gone, or the guard failed.
@@ -322,9 +260,6 @@ func (r *SavedQueriesRepo) Update(queryID string, patch model.SavedQueryPatch, e
 	ub.Set(sets...).Where(conds...)
 	res, err := sqlb.Exec(r.DB, ub)
 	if err != nil {
-		if isUniqueViolation(err) && patch.Name != nil {
-			return model.SavedQuery{}, fmt.Errorf("%w: %s", ErrSavedQueryNameTaken, strings.TrimSpace(*patch.Name))
-		}
 		return model.SavedQuery{}, fmt.Errorf("repos/saved_queries: update %s: %w", queryID, err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {

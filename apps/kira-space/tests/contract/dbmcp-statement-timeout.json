@@ -70,17 +70,6 @@
       }
     },
     {
-      "kind": "kibana",
-      "statementTimeout": {
-        "enforcement": {
-          "ddl": "none",
-          "read": "app",
-          "write": "none"
-        },
-        "seconds": 10
-      }
-    },
-    {
       "kind": "mariadb",
       "statementTimeout": {
         "enforcement": {

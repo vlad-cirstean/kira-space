@@ -75,7 +75,7 @@ func TestE2EDbParams(t *testing.T) {
 	})
 
 	t.Run("kinds without params refuse before connecting", func(t *testing.T) {
-		for _, kind := range []string{"mongodb", "redis", "kibana"} {
+		for _, kind := range []string{"mongodb", "redis"} {
 			// Unreachable on purpose: the refusal comes before any connect.
 			conn, err := f.app.W.Connections.Create(connections.Input{ConnectionFields: model.ConnectionFields{
 				Name: "e2e " + kind, Kind: kind, Color: "teal", Mode: "fields", Host: ptr("127.0.0.1"), Port: ptr(1), Options: map[string]any{},

@@ -2402,57 +2402,6 @@
         "kafkaPositionLost": {
           "body": "The records at this position were removed from the topic. Refresh to start again."
         },
-        "kibanaBadRequest": {
-          "body": "Invalid Discover request: {detail}."
-        },
-        "kibanaDuplicateColumn": {
-          "body": "Column {field} is listed twice."
-        },
-        "kibanaFilterOperator": {
-          "body": "Filter operator {operator} is not supported."
-        },
-        "kibanaFilterValues": {
-          "body": "Filter on {field} has the wrong number of values."
-        },
-        "kibanaLanguage": {
-          "body": "Query language {language} is not supported. Use kuery or lucene."
-        },
-        "kibanaMinVersion": {
-          "body": "Kibana {version} is not supported. Use Kibana 8.19 or newer."
-        },
-        "kibanaNoDataView": {
-          "body": "Choose a data view before running a query."
-        },
-        "kibanaOffsetOnly": {
-          "body": "Kibana pages by offset only."
-        },
-        "kibanaOneStatement": {
-          "body": "Discover runs exactly one request per run."
-        },
-        "kibanaResponseTooLarge": {
-          "body": "Kibana reply is too large. Lower the sample size or add filters."
-        },
-        "kibanaSortOrder": {
-          "body": "Sort order {order} is invalid. Use asc or desc."
-        },
-        "kibanaSpaceMissing": {
-          "body": "Kibana space {space} does not exist."
-        },
-        "kibanaTextSort": {
-          "body": "Text sort is not supported. Sort by a field and direction."
-        },
-        "kibanaUnknownColumn": {
-          "body": "Column {field} is not in this data view."
-        },
-        "kibanaUnknownField": {
-          "body": "Field {field} is not in this data view."
-        },
-        "kibanaUnsortable": {
-          "body": "Can’t sort on {field}. Choose an aggregatable field of this data view."
-        },
-        "kibanaUriScheme": {
-          "body": "Kibana URL must start with http:// or https://."
-        },
         "laneConnectionChanged": {
           "body": "The connection changed while its read connection opened. Retry."
         },
@@ -2970,12 +2919,6 @@
       "query": {
         "changed": {
           "body": "Another window changed this saved query since you opened it."
-        },
-        "invalidBody": {
-          "body": "Saved query is invalid: {detail}."
-        },
-        "nameTaken": {
-          "body": "A saved query named “{name}” already exists on this connection."
         },
         "notFound": {
           "body": "This saved query no longer exists."

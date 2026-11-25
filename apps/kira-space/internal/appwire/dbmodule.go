@@ -9,7 +9,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/clickhouse"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/kafka"
-	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/kibana"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mariadb"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mongo"
 	_ "github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/mysql"
@@ -310,7 +309,6 @@ func (w *Wired) wireDbServices(dbm *dbModule, opts Options) (*proof.Service, *db
 	w.Filters = &bridge.FiltersService{Deps: deps}
 	w.Queries = &bridge.QueriesService{Deps: deps}
 	w.Schema = &bridge.SchemaService{Deps: deps}
-	w.Kibana = &bridge.KibanaService{Deps: deps}
 	w.Http = &bridge.HttpService{Deps: deps}
 	w.Grpc = &bridge.GrpcService{Deps: deps}
 	w.Collections = &bridge.CollectionsService{Deps: deps, Files: dbm.apiFiles}
