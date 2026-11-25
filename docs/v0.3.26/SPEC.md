@@ -8,7 +8,7 @@ Code review at chapter end: 1 round.
 | # | Phase | Status |
 |---|-------|--------|
 | P756 | Revert v0.3.25 P754: checkboxes and toggles back to the neutral on state | Done |
-| P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Todo |
+| P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Done |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Todo |
 | P759 | Remove the proof ready dialog | Todo |
 | P760 | Remove Kibana from connections, keep its time series and chart visualisation | Todo |
@@ -39,6 +39,18 @@ Tasks often show merged on main when they are not. Findings and fix list: `plans
 Fix the three causes: `merged_at` never clears after new commits, branches with no own commits counted
 against main (stacked or `develop`-based), PR merge matched by branch name only. Reset existing wrong
 `had_commits` rows (migration). Each new case gets a backend flow test and a matching UI spec.
+
+Result: migration `0109_p757_merged_tip.sql` adds `merged_tip`, drops live recorded merges, recounts
+`had_commits` of stacked and non-main-based live rows. A branch reads merged iff it has own commits
+(latched from `Ahead` against its resolved base, never main) and its tip is in main, or a recorded
+merge holds at exactly the current tip. Merged PR records only when its head is the local tip or
+descends from it. A build clears a record the tip moved past (compare-and-clear). Rebase stack,
+rebase refusal, archive risk and quick artifacts read the tip too. Flow test `TestMergedIntoMain`
+(6 cases, contract `ade-merged`) and UI spec `ade-v2-merged.spec.ts` (6 `contract:` tests) pass. Checks:
+storage and `ade` with `-race`, all `internal/flows` (one `TestSmartRunSandboxed` timeout under
+load, passes alone), go vet, golangci-lint (extracted `mergedFacts` from `computeBranch` for
+gocyclo), typecheck, lint, knip, `TestSchemaSnapshot` with regenerated golden and `kiraschema`, `ui`
+on ade-v2-merged, ade-v2-base-rebase, ade-v2-main-branches. No visual baseline changed.
 
 ## P758
 
