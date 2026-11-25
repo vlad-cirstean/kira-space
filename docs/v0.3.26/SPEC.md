@@ -11,7 +11,8 @@ Code review at chapter end: 1 round.
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Todo |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Todo |
 | P759 | Remove the proof ready dialog | Todo |
-| P760 | Chapter close | Todo |
+| P760 | Remove Kibana from connections, keep its time series and chart visualisation | Todo |
+| P761 | Chapter close | Todo |
 
 ## P756
 
@@ -42,3 +43,11 @@ The proof ready dialog (`ProofReadyPrompt`) pops on screen and annoys the owner.
 and everything only it uses. Plan checks what else hangs off it (`proofReady` backend event,
 `NotifyProofReady`, settings, i18n, specs, docs) and whether a quiet signal (task row badge, existing
 notification) already tells the user a proof is ready; keep that, drop the popup.
+
+## P760
+
+Drop Kibana as a connection kind: adapter (`internal/adapters/kibana`), test fixtures
+(`testsupport/kibana.go`), connection form, kind registry, docs, specs, guards. Keep the data
+visualisation module Kibana support provided (time series and charts); it stays and must still work for
+the remaining sources. Plan names the exact keep/drop line per file and symbol, and any stored
+connection rows of kind kibana need a migration (patch release: allowed) that removes them.
