@@ -37,6 +37,7 @@ type Forge struct {
 	account  string
 	limited  time.Time
 	offline  bool
+	hold     chan struct{} // non-nil while Hold is in force; closed by its release
 	authors  map[int]string
 	reviews  map[int][]githost.Review
 	comments map[int][]string
@@ -225,18 +226,65 @@ func (f *Forge) accountName() string {
 	return f.account
 }
 
-func (f *Forge) ForCommit(_ context.Context, _ githost.Repo, sha string) ([]githost.ChangeRequest, githost.Status) {
+// Hold makes ForCommit, ForBranch and Open wait until the returned release runs or the call's
+// context ends, so a test holds the host without timing. Calls are recorded before they wait.
+func (f *Forge) Hold() (release func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	gate := make(chan struct{})
+	f.hold = gate
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			f.mu.Lock()
+			if f.hold == gate {
+				f.hold = nil
+			}
+			f.mu.Unlock()
+			close(gate)
+		})
+	}
+}
+
+// held waits while Hold is in force; false when ctx ended first.
+func (f *Forge) held(ctx context.Context) bool {
+	f.mu.Lock()
+	gate := f.hold
+	f.mu.Unlock()
+	if gate == nil {
+		return true
+	}
+	select {
+	case <-gate:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+var errHeldCancelled = githost.Status{Kind: githost.KindForbidden, Host: Host, Reason: "cancelled while held"}
+
+func (f *Forge) ForCommit(ctx context.Context, _ githost.Repo, sha string) ([]githost.ChangeRequest, githost.Status) {
 	f.record("ForCommit:" + sha)
+	if !f.held(ctx) {
+		return nil, errHeldCancelled
+	}
 	return f.match(func(cr githost.ChangeRequest) bool { return cr.HeadSha == sha })
 }
 
-func (f *Forge) ForBranch(_ context.Context, _ githost.Repo, branch string) ([]githost.ChangeRequest, githost.Status) {
+func (f *Forge) ForBranch(ctx context.Context, _ githost.Repo, branch string) ([]githost.ChangeRequest, githost.Status) {
 	f.record("ForBranch:" + branch)
+	if !f.held(ctx) {
+		return nil, errHeldCancelled
+	}
 	return f.match(func(cr githost.ChangeRequest) bool { return cr.HeadRef == branch })
 }
 
-func (f *Forge) Open(_ context.Context, _ githost.Repo) ([]githost.ChangeRequest, githost.Status) {
+func (f *Forge) Open(ctx context.Context, _ githost.Repo) ([]githost.ChangeRequest, githost.Status) {
 	f.record("Open")
+	if !f.held(ctx) {
+		return nil, errHeldCancelled
+	}
 	return f.match(func(cr githost.ChangeRequest) bool { return cr.State == "open" || cr.State == "draft" })
 }
 
