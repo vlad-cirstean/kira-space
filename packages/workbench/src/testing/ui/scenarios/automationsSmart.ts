@@ -309,11 +309,8 @@ export function registerSmartScenarios(env: Env, extra?: (ctx: Ctx) => void): vo
     const prod = dialog.locator('[data-testid="run-param-option-env-prod"]');
     await prod.click();
     await expect(prod).toHaveAttribute('data-state', 'on');
-    // The on fill (--kira-toggle-on, accent at 20%) beats the hover fill.
-    await expect(prod).toHaveCSS(
-      'background-color',
-      'color(srgb 0.231373 0.431373 0.819608 / 0.2)',
-    );
+    // The solid selection fill (--kira-select) beats the hover fill.
+    await expect(prod).toHaveCSS('background-color', 'rgb(54, 54, 60)');
     await prod.click();
     await expect(prod).toHaveAttribute('data-state', 'on');
     const none = dialog.locator('[data-testid="run-param-option-env-"]');

@@ -18,11 +18,11 @@ export const buttonVariants = cva(
         // Geometry stays on the `kira`/`kira-lg`/`kira-icon` sizes below (design-system tokens,
         // runtime-adjustable via @theme's --spacing-control* -- see base.css).
         toolbar:
-          'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:border-toggle-on-edge aria-pressed:bg-toggle-on aria-pressed:text-fg aria-pressed:hover:bg-toggle-on aria-expanded:bg-field aria-expanded:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok data-[tone=warn]:text-warn data-[tone=warn]:hover:text-warn data-[tone=info]:text-info data-[tone=info]:hover:text-info',
+          'text-muted-foreground hover:bg-field hover:text-fg aria-pressed:bg-field aria-pressed:text-fg aria-expanded:bg-field aria-expanded:text-fg data-[tone=error]:text-error data-[tone=error]:hover:text-error data-[tone=ok]:text-ok data-[tone=ok]:hover:text-ok data-[tone=warn]:text-warn data-[tone=warn]:hover:text-warn data-[tone=info]:text-info data-[tone=info]:hover:text-info',
         // Dialog buttons by meaning: neutral, confirm, approve, deny, destructive. One look: border
         // and text in the hue on a transparent fill, a faint fill only on hover.
         dialog:
-          'justify-center border-border bg-transparent text-fg hover:bg-field aria-pressed:border-toggle-on-edge aria-pressed:bg-toggle-on aria-pressed:hover:bg-toggle-on',
+          'justify-center border-border bg-transparent text-fg hover:bg-field aria-pressed:border-select-edge aria-pressed:bg-select',
         'dialog-primary':
           'justify-center border-primary bg-transparent text-fg hover:bg-primary/15',
         'dialog-approve':

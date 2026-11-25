@@ -36,7 +36,7 @@ withDefaults(
     size?: ButtonVariants['size'];
     /** Tone of a `dialog` outline; see Button. */
     outline?: ButtonVariants['outline'];
-    /** `aria-pressed`; the toolbar variant draws the blue on look from it. */
+    /** `aria-pressed`; the toolbar variant draws the pressed look from it. */
     pressed?: boolean;
     /** Colours the icon for a state: `ok` (done, on), `warn` or `error`. */
     tone?: 'ok' | 'warn' | 'error' | 'info';

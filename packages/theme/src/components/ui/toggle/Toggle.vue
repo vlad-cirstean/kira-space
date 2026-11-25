@@ -33,13 +33,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
     v-slot="slotProps"
     data-slot="toggle"
     v-bind="forwarded"
-    :class="
-      cn(
-        toggleVariants({ variant, size }),
-        'border border-transparent data-[state=on]:border-toggle-on-edge data-[state=on]:bg-toggle-on data-[state=on]:hover:bg-toggle-on',
-        props.class,
-      )
-    "
+    :class="cn(toggleVariants({ variant, size }), props.class)"
   >
     <slot v-bind="slotProps" />
   </Toggle>
