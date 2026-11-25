@@ -64,7 +64,13 @@ func TestTaskStartNeedsRepo(t *testing.T) {
 		if _, err := os.Stat(f.dir); !os.IsNotExist(err) {
 			t.Fatalf("task folder: %v, want none", err)
 		}
-		f.app.Contract(t, rrScenario, "AdeTaskService.Board#started", taskOf(t, board(t, f.app), f.task.ID), nrMask)
+		// The task status follows the run's end a moment later; slow runs (-race) read it earlier.
+		var started adewire.Task
+		testx.WaitUntil(t, waitFor, func() bool {
+			started = taskOf(t, board(t, f.app), f.task.ID)
+			return started.StatusID == "done"
+		})
+		f.app.Contract(t, rrScenario, "AdeTaskService.Board#started", started, nrMask)
 	})
 
 	t.Run("session step refuses, then opens in the repo", func(t *testing.T) {
