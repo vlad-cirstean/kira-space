@@ -44,5 +44,11 @@
     "taskIds": [
       "T_alerts"
     ]
+  },
+  "event:kira:adetask:board#scopedPush": {
+    "refs": false,
+    "taskIds": [
+      "T_alerts"
+    ]
   }
 }

@@ -22,8 +22,9 @@ import (
 // asserts the refresh through the UI.
 
 const (
-	duScenario = "ade-details-autoupdate"
-	duQuiet    = 300 * time.Millisecond // the watch debounce
+	duScenario  = "ade-details-autoupdate"
+	duQuiet     = 300 * time.Millisecond // the watch debounce
+	boardWindow = 30 * time.Millisecond  // the board push coalescing window
 )
 
 func duMask(taskID string) []flowharness.ContractOption {
@@ -151,4 +152,69 @@ func TestDetailsAutoUpdateAgentProofEdit(t *testing.T) {
 	app.Contract(t, duScenario, "AdeTaskService.TaskProofs#edited", adewire.TaskProofsResult{Proofs: taskProofs(t, app, f.task.ID)}, opts...)
 	_ = os.WriteFile(gate, nil, 0o644)
 	waitRun(t, app, f.task.ID, "one", "done")
+}
+
+// P758: a link, note or handover write pushes only its own task and no refs change, so another task's
+// Details and every PR fact stay as they are. Contract ade-details-autoupdate (#scopedPush).
+func TestDetailsScopedPushes(t *testing.T) {
+	app := flowharness.New(t)
+	repo, _ := cloneWithMain(app, filepath.Join(app.Work, "api"))
+	rec := importRepo(t, app, repo.Dir)
+	task := createTask(t, app, "Fix login", "", rec.ID)
+	opts := duMask(task.ID)
+
+	// push runs write and checks every board push it raised: each names only the task, refs false.
+	push := func(name string, write func()) []flowtest.Event {
+		t.Helper()
+		time.Sleep(3 * boardWindow) // let earlier pushes land
+		mark := app.Events.Mark()
+		write()
+		app.Events.WaitAfter(t, mark, adewire.ChannelBoard, duNamesTask(t, task.ID), waitFor)
+		time.Sleep(3 * boardWindow)
+		evs := app.Events.Since(mark, adewire.ChannelBoard)
+		for _, ev := range evs {
+			var p adewire.BoardChangedEvent
+			ev.Decode(t, &p)
+			if p.Refs || len(p.TaskIDs) != 1 || p.TaskIDs[0] != task.ID {
+				t.Fatalf("%s pushed %s, want only task %s with refs false", name, ev.Data, task.ID)
+			}
+		}
+		return evs
+	}
+
+	var note adewire.Handover
+	evs := push("AddNote", func() {
+		var err error
+		if note, err = app.W.AdeTask.AddNote(ctx, adewire.AddNoteArgs{TaskID: task.ID, Body: "A note with https://notes.example/a in it."}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	app.Contract(t, duScenario, "event:kira:adetask:board#scopedPush", evs[0].Data, opts...)
+	push("UpdateHandover", func() {
+		if err := app.W.AdeTask.UpdateHandover(ctx, adewire.UpdateHandoverArgs{ID: note.ID, Body: "Edited https://notes.example/a"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	var link adewire.LinkResult
+	push("AddLink", func() {
+		var err error
+		if link, err = app.W.AdeTask.AddLink(ctx, adewire.AddLinkArgs{TaskID: task.ID, Text: "Runbook https://wiki.example/runbook"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	push("EditLink", func() {
+		if _, err := app.W.AdeTask.EditLink(ctx, adewire.EditLinkArgs{TaskID: task.ID, Slot: "stored", ID: link.Artifact.ID, Text: "https://wiki.example/runbook-v2"}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	push("RemoveArtifact", func() {
+		if err := app.W.AdeTask.RemoveArtifact(ctx, adewire.RemoveArtifactArgs{TaskID: task.ID, ID: link.Artifact.ID}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	push("DismissFoundLink", func() {
+		if err := app.W.AdeTask.DismissFoundLink(ctx, adewire.DismissFoundLinkArgs{TaskID: task.ID, URL: "https://notes.example/a"}); err != nil {
+			t.Fatal(err)
+		}
+	})
 }
