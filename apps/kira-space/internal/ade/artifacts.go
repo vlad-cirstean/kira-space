@@ -92,6 +92,8 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 		gaps []adewire.ArtifactGap
 	}
 	results := make([]result, len(sources))
+	took := make([]time.Duration, len(sources))
+	begun := time.Now()
 	var g errgroup.Group
 	g.SetLimit(boardFanOut)
 	for i, src := range sources {
@@ -99,6 +101,7 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 			sctx, cancel := context.WithTimeout(ctx, artifactSourceTimeout)
 			defer cancel()
 			arts, gaps, err := src.Artifacts(sctx, scope)
+			took[i] = time.Since(begun)
 			if err != nil {
 				slog.Warn("ade artifacts: source", "scope", "ade", "source", src.Name(), "task", taskID, "err", err)
 				gaps = append(gaps, adewire.ArtifactGap{Source: src.Name()})
@@ -108,6 +111,13 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 		})
 	}
 	_ = g.Wait() // a source reports failure as a gap
+	if total := time.Since(begun); !quick && total > artifactSlowLog {
+		attrs := []any{"scope", "ade", "task", taskID, "ms", total.Milliseconds()}
+		for i, src := range sources {
+			attrs = append(attrs, src.Name()+"Ms", took[i].Milliseconds())
+		}
+		slog.Info("ade artifacts: slow", attrs...)
+	}
 	var all []adewire.Artifact
 	gaps := []adewire.ArtifactGap{}
 	for _, r := range results {
