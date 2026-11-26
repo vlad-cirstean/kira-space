@@ -12,7 +12,7 @@ Code review at chapter end: 1 round.
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Done |
 | P759 | Remove the proof ready dialog | Done |
 | P760 | Remove Kibana from connections, keep its time series and chart visualisation | Done |
-| P761 | Chapter close | Todo |
+| P761 | Chapter close | Done |
 
 ## P756
 
@@ -114,3 +114,7 @@ orphaned `list_connections` entry removed). Touched Go packages with `-race`, pr
 without `-race`, `golangci-lint`, typecheck, lint, knip, unit tests, own UI specs pass. `TestThrottleSerialAcrossUserAndMcp`
 fails under `-race` only, same on the phase start commit (CPU-bound slow query exceeds the 30 s wait). Container
 engine tests not run (no Docker daemon). No visual baseline changes found.
+
+## P761
+
+Chapter close by hand. One non-UI full run fixed in-chapter (`TestThrottleSerialAcrossUserAndMcp` scaled under `-race`, flow harness service count, `TestBranchChange` worktree wait). Code review round 1 fixed in-chapter: migration 0109 recounts `had_commits` via `recount_commits` instead of resetting facts, a dirty confirm job for the latest Artifacts share, dead `MonacoHost` options removed, hidden Details tab pauses its queries (`enabled`). History block appended, `docs/v0.3.26/` removed, branch pushed.
