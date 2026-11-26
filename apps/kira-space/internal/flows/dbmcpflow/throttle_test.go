@@ -2,6 +2,7 @@ package dbmcpflow
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -18,7 +19,7 @@ import (
 // connection, shared by the user's console and the MCP read lane.
 
 // About a second of SQLite work; the cancel test uses the unbounded-ish longQuery instead.
-const slowQuery = `WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c) SELECT count(*) FROM (SELECT x FROM c LIMIT 2500000)`
+var slowQuery = fmt.Sprintf(`WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM c) SELECT count(*) FROM (SELECT x FROM c LIMIT %d)`, slowRows)
 
 type opMark struct {
 	topic, source, kind, opID string
