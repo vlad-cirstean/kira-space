@@ -320,9 +320,10 @@ func TestRestoreWaitingPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	e.gen.Bump()
-	if got := e.ours(e.state(t))["keeper"]; got.Status != "waiting" {
-		t.Fatalf("keeper = %+v, want waiting", got)
-	}
+	// A tick that fails on a loaded engine reads none; poll until the pending snapshot shows.
+	e.waitState(t, "keeper to wait on its restart policy", func(s docker.RestoreState) bool {
+		return e.ours(s)["keeper"].Status == "waiting"
+	})
 	e.waitState(t, "keeper to turn restorable", func(s docker.RestoreState) bool {
 		return e.ours(s)["keeper"].Status == "restorable"
 	})
