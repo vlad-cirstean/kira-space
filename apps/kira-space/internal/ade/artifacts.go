@@ -112,11 +112,11 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 	}
 	_ = g.Wait() // a source reports failure as a gap
 	if total := time.Since(begun); !quick && total > artifactSlowLog {
-		attrs := []any{"scope", "ade", "task", taskID, "ms", total.Milliseconds()}
+		attrs := []any{"task", taskID, "ms", total.Milliseconds()}
 		for i, src := range sources {
 			attrs = append(attrs, src.Name()+"Ms", took[i].Milliseconds())
 		}
-		slog.Info("ade artifacts: slow", attrs...)
+		slog.With("scope", "ade").With(attrs...).Info("ade artifacts: slow")
 	}
 	var all []adewire.Artifact
 	gaps := []adewire.ArtifactGap{}
