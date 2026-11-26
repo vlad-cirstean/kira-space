@@ -11,7 +11,7 @@ Code review at chapter end: 1 round.
 | P757 | Task shows merged on main wrongly: own-commit count, recorded merge tip, PR head match | Done |
 | P758 | Task Details opens slowly: non-blocking Artifacts, cached facts, no skeleton on refetch | Done |
 | P759 | Remove the proof ready dialog | Done |
-| P760 | Remove Kibana from connections, keep its time series and chart visualisation | Todo |
+| P760 | Remove Kibana from connections, keep its time series and chart visualisation | Done |
 | P761 | Chapter close | Todo |
 
 ## P756
@@ -99,3 +99,19 @@ Drop Kibana as a connection kind: adapter (`internal/adapters/kibana`), test fix
 visualisation module Kibana support provided (time series and charts); it stays and must still work for
 the remaining sources. Plan names the exact keep/drop line per file and symbol, and any stored
 connection rows of kind kibana need a migration (patch release: allowed) that removes them.
+
+Result: plan `plans/P760.md`. Removed Kibana end to end: adapter and `kql`, `Discoverer`, test fixture and
+images, bridge and adapterhost services, Discover view and tab state, saved Discover queries (model, repo,
+bridge, shared schema), kind registry and form branches, MCP, docs, site, CI `elastic` image bundle.
+Migration `0111_p760_drop_kibana.sql` deletes kibana connection rows (cascades) and rebuilds
+`connection_saved_queries` without `discover` (regenerated schema golden; `kiraschema_gen.go` unchanged).
+Users' kibana files stay on disk and load as a file problem on `/kind`. Also dropped the saved-query
+name-taken error and its two i18n keys (only the Discover unique index raised it). Chart module kept
+untouched (`studio/charts`, proof chart view, `internal/proof`, echarts deps). Tests: migration test, flow
+test `TestConnectionRemovedKindFile` plus UI replay, `TestSavedQueryTwoWindows` on postgres,
+connection-mcp-access specs on kafka; contracts diffed by hand (deletions and the kind-enum message only;
+orphaned `list_connections` entry removed). Touched Go packages with `-race`, proofflow, dbflow, dbmcpflow
+without `-race`, `golangci-lint`, typecheck, lint, knip, unit tests, own UI specs pass. `TestThrottleSerialAcrossUserAndMcp`
+fails under `-race` only, same on the phase start commit (CPU-bound slow query exceeds the 30 s wait). Container
+engine tests not run (no Docker daemon). Unused `MonacoHost` props from Discover (`monacoLanguage`,
+`triggerCharacters`, `asyncCompletionSources`) remain. No visual baseline changes found.
