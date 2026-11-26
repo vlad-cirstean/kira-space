@@ -41,6 +41,8 @@ func newChangeFixture(t *testing.T, from, to string) (*brFixture, *flowharness.R
 	t.Helper()
 	f, _, repo := newRenameFixture(t, changeCall(from, to), noSandbox)
 	f.createFirst(t)
+	// The second step starts in the worktree and attaches it to feat/old; a switch before it runs is undone.
+	waitRun(t, f.app, f.task.ID, "two", "running")
 	own := branchOf(t, board(t, f.app), f.task.ID, f.api).Worktree
 	if own == "" {
 		t.Fatal("feat/old has no worktree after the first run")
