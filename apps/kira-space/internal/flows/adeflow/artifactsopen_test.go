@@ -26,13 +26,26 @@ const (
 
 var aoMask = flowharness.Mask("id", "createdAt", "ref", "taskId", "sessionId", "foundIn")
 
-// aoRefsTask matches the confirm job's push: refs changed, naming exactly the task.
+// aoRefsTask matches a push that tells the task's refs changed. The coalescer merges every change
+// within its window, so under load the confirm job's push can ride with an unscoped one (the
+// board's own fact marking) and name no tasks: that covers the task too.
 func aoRefsTask(t *testing.T, taskID string) func(flowtest.Event) bool {
 	return func(ev flowtest.Event) bool {
 		var p adewire.BoardChangedEvent
 		ev.Decode(t, &p)
-		return p.Refs && slices.Equal(p.TaskIDs, []string{taskID})
+		return p.Refs && (p.TaskIDs == nil || slices.Contains(p.TaskIDs, taskID))
 	}
+}
+
+// aoScoped is the push as the confirm job sends it alone, for the contract: a merged push names
+// no tasks.
+func aoScoped(t *testing.T, ev flowtest.Event, taskID string) adewire.BoardChangedEvent {
+	var p adewire.BoardChangedEvent
+	ev.Decode(t, &p)
+	if p.TaskIDs == nil {
+		p.TaskIDs = []string{taskID}
+	}
+	return p
 }
 
 // aoCall runs Artifacts and fails when it does not return within 3s, below the source timeout.
@@ -106,8 +119,15 @@ func TestArtifactsOpen(t *testing.T) {
 
 	// 2. Released: the job finds the PR and pushes the task with refs, once.
 	release()
+	// The cold call's board build marks branch facts and pushes unscoped, in or after the confirm
+	// job's push window, so a covering event alone does not say the job's push landed: wait for the
+	// PR first, then for an event, which the job raises after the PR is cached.
+	testx.WaitUntil(t, waitFor, func() bool {
+		_, ok := findArtifact(aoCall(t, app, task.ID), "changeRequest", "Fix login")
+		return ok
+	})
 	ev := app.Events.WaitAfter(t, mark, adewire.ChannelBoard, refsTask, waitFor)
-	app.Contract(t, aoScenario, "event:kira:adetask:board#hostRefresh", ev.Data, opts...)
+	app.Contract(t, aoScenario, "event:kira:adetask:board#hostRefresh", aoScoped(t, ev, task.ID), opts...)
 	warm := aoCall(t, app, task.ID)
 	if a, ok := findArtifact(warm, "changeRequest", "Fix login"); !ok || a.Status != "open" || a.URL != aoPRURL || a.Source != "host" {
 		t.Fatalf("warm answer lacks the PR: %+v", warm.Artifacts)
