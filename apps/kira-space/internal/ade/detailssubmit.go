@@ -425,8 +425,9 @@ func (b *TaskBoard) DiskChanges(ctx context.Context, taskID string) ([]adewire.D
 	}
 	mu := b.taskMu(taskID)
 	if !mu.TryLock() {
-		// A task op holds the lock: answer its last result; its own push restats. With none cached
-		// the first answer must be real, so wait as before.
+		// A task op holds the lock: answer its last result; its own push restats. An edit made outside
+		// Kira meanwhile shows only after the op ends, on the next poll. With none cached the first
+		// answer must be real, so wait as before.
 		if last, ok := df.lastDisk(taskID); ok {
 			return last, nil
 		}
