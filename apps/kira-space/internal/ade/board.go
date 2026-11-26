@@ -575,10 +575,13 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 		return adewire.Board{}, err
 	}
 
-	writes := model.AdeBranchFactWrites{Merged: map[string]model.AdeBranchMerge{}, Unmerged: map[string]string{}}
+	writes := model.AdeBranchFactWrites{Recounted: map[string]bool{}, Merged: map[string]model.AdeBranchMerge{}, Unmerged: map[string]string{}}
 	for _, id := range repoIDs {
 		res := results[id]
 		writes.HadCommits = append(writes.HadCommits, res.hadCommits...)
+		for k, v := range res.recounted {
+			writes.Recounted[k] = v
+		}
 		for k, v := range res.merged {
 			writes.Merged[k] = v
 		}
@@ -602,7 +605,7 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 // build that ran inside the write window read the old marks (stored target mark, HadCommits, a
 // merge time of its own clock), so the landing pushes the board.
 func (b *TaskBoard) writeBoardMarks(w model.AdeBranchFactWrites, marks []model.AdeBranchMark) {
-	if len(w.HadCommits) == 0 && len(w.Merged) == 0 && len(w.Unmerged) == 0 && len(marks) == 0 {
+	if len(w.HadCommits) == 0 && len(w.Recounted) == 0 && len(w.Merged) == 0 && len(w.Unmerged) == 0 && len(marks) == 0 {
 		return
 	}
 	b.goTracked(func() {
@@ -1075,7 +1078,7 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) (out adewire.Rep
 
 	facts := b.repoFacts(ctx, id, mine, nil)
 	out.MergedInto = newlyMerged(mine, facts, f.marksBefore)
-	if err := b.deps.Tasks.MarkBranchFacts(model.AdeBranchFactWrites{HadCommits: facts.hadCommits, Merged: facts.merged, Unmerged: facts.unmerged}); err != nil {
+	if err := b.deps.Tasks.MarkBranchFacts(model.AdeBranchFactWrites{HadCommits: facts.hadCommits, Recounted: facts.recounted, Merged: facts.merged, Unmerged: facts.unmerged}); err != nil {
 		return refreshFailure(id, err), nil
 	}
 	return out, func(tctx context.Context) { b.refreshTail(tctx, id, f.entry, mine, facts) }

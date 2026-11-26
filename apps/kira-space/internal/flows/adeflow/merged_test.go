@@ -233,4 +233,50 @@ func TestMergedIntoMain(t *testing.T) {
 		br = f.settle(t, "feat/squash")
 		f.wantMerged(t, br, false)
 	})
+
+	// A row from before P757: had_commits counted against main (it may hold the base's commits),
+	// merged_at has no tip. The first build recounts against the resolved base and keeps a merge
+	// with evidence of own commits.
+	t.Run("upgraded stacked row", func(t *testing.T) {
+		legacy := func(t *testing.T, f *mergedFx, name string) {
+			t.Helper()
+			if _, err := f.app.DB().Exec(`UPDATE ade_task_branches SET had_commits = 1, recount_commits = 1,
+				merged_at = 1, merged_tip = '' WHERE name = ?`, name); err != nil {
+				t.Fatal(err)
+			}
+		}
+		state := func(t *testing.T, f *mergedFx, name string) (had, recount int) {
+			t.Helper()
+			if err := f.app.DB().QueryRow(`SELECT had_commits, recount_commits FROM ade_task_branches WHERE name = ?`, name).Scan(&had, &recount); err != nil {
+				t.Fatal(err)
+			}
+			return had, recount
+		}
+
+		f := newMergedFx(t)
+		f.pushBranch(t, "feat/parent")
+		parent := f.adopt(t, "feat/parent")
+		child := f.started(t, "Stacked child", "feat/child", adewire.BaseChoice{BranchID: parent.ID})
+		f.followUp(t, child, "child.txt")
+		gitOut(t, child.Worktree, "push", "-q", "origin", "feat/child")
+		f.mergeOnRemote(t, "feat/parent", "--no-ff")
+		f.mergeOnRemote(t, "feat/child", "--no-ff")
+		f.wantMerged(t, f.settle(t, "feat/child"), true)
+		legacy(t, f, "feat/child")
+		f.wantMerged(t, f.settle(t, "feat/child"), true)
+		if had, recount := state(t, f, "feat/child"); had != 1 || recount != 0 {
+			t.Fatalf("merged child after the upgrade: had_commits %d recount_commits %d, want 1 0", had, recount)
+		}
+
+		g := newMergedFx(t)
+		g.pushBranch(t, "feat/parent")
+		parent = g.adopt(t, "feat/parent")
+		g.started(t, "Empty child", "feat/empty", adewire.BaseChoice{BranchID: parent.ID})
+		g.mergeOnRemote(t, "feat/parent", "--no-ff")
+		legacy(t, g, "feat/empty")
+		g.wantMerged(t, g.settle(t, "feat/empty"), false)
+		if had, recount := state(t, g, "feat/empty"); had != 0 || recount != 0 {
+			t.Fatalf("empty child after the upgrade: had_commits %d recount_commits %d, want 0 0", had, recount)
+		}
+	})
 }

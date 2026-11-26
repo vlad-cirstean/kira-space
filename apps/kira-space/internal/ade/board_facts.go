@@ -25,6 +25,7 @@ type repoResult struct {
 	branches   map[string]adewire.Branch
 	pairs      []adewire.Pair
 	hadCommits []string
+	recounted  map[string]bool // branch id -> had_commits recounted against the resolved base
 	merged     map[string]model.AdeBranchMerge
 	unmerged   map[string]string // branch id -> stale merged_tip to clear
 	jobs       map[string]rebaseJob
@@ -155,7 +156,9 @@ type branchOut struct {
 	pi       *pairItem
 	tip, ref string
 	hadNew   bool
-	merged   *model.AdeBranchMerge
+	// recounted is the had_commits recounted against the resolved base (nil = none pending).
+	recounted *bool
+	merged    *model.AdeBranchMerge
 	// unmergedTip is the stale merged_tip of a record the build found past the current tip.
 	unmergedTip *string
 	job         *rebaseJob
@@ -198,7 +201,7 @@ func (b *TaskBoard) repoFactsWith(ctx context.Context, codeRepoID string, branch
 	res := &repoResult{
 		state:    adewire.RepoState{CodeRepoID: codeRepoID},
 		branches: make(map[string]adewire.Branch, len(branches)), pairs: []adewire.Pair{},
-		merged: map[string]model.AdeBranchMerge{}, unmerged: map[string]string{}, jobs: map[string]rebaseJob{},
+		recounted: map[string]bool{}, merged: map[string]model.AdeBranchMerge{}, unmerged: map[string]string{}, jobs: map[string]rebaseJob{},
 	}
 	setupOf := func(id string) *adewire.WorktreeSetup {
 		if s, ok := setups[id]; ok {
@@ -221,7 +224,7 @@ func (b *TaskBoard) repoFactsWith(ctx context.Context, codeRepoID string, branch
 	res.state.Remote, res.state.LastFetchAt = remote, lastFetchAt(entry)
 	if err := b.collectRepo(ctx, entry, codeRepoID, branches, setupOf, shared, res); err != nil {
 		slog.Warn("ade board: repo facts", "scope", "ade", "repo", codeRepoID, "err", err)
-		res.hadCommits, res.merged, res.unmerged, res.jobs, res.pairs = nil, map[string]model.AdeBranchMerge{}, map[string]string{}, map[string]rebaseJob{}, []adewire.Pair{}
+		res.hadCommits, res.recounted, res.merged, res.unmerged, res.jobs, res.pairs = nil, map[string]bool{}, map[string]model.AdeBranchMerge{}, map[string]string{}, map[string]rebaseJob{}, []adewire.Pair{}
 		fallback()
 	}
 	return res
@@ -292,6 +295,9 @@ func (b *TaskBoard) collectRepo(ctx context.Context, entry *gitsession.RepoEntry
 		res.branches[sb.ID] = o.wb
 		if o.hadNew {
 			res.hadCommits = append(res.hadCommits, sb.ID)
+		}
+		if o.recounted != nil {
+			res.recounted[sb.ID] = *o.recounted
 		}
 		if o.merged != nil {
 			res.merged[sb.ID] = *o.merged
@@ -392,7 +398,7 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 		wb.Deployments = b.deploymentFacts(ctx, sc, sb, base.tip, row.Tip)
 	}
 
-	sc.mergedFacts(sb, row, depth, wb, &out)
+	sc.mergedFacts(sb, row, depth, base.ok && (wb.Ahead > 0 || row.Tip != base.tip), base.ok, wb, &out)
 
 	if sb.Kind == model.AdeBranchKindMine || sb.Kind == model.AdeBranchKindReview {
 		out.pi = &pairItem{Item: sb.ID, Tip: row.Tip, Kind: sb.Kind, Merged: wb.MergedIntoMain, Files: filesSet(files)}
@@ -412,10 +418,23 @@ func (b *TaskBoard) computeBranch(ctx context.Context, sc *boardCtx, sb model.Ad
 	return out, nil
 }
 
-// mergedFacts sets the merged wire facts of one row and the writes they imply (record, clear, latch).
-func (sc *boardCtx) mergedFacts(sb model.AdeTaskBranch, row porcelain.InventoryRef, depth int, wb *adewire.Branch, out *branchOut) {
+// mergedFacts sets the merged wire facts of one row and the writes they imply (record, clear, latch,
+// recount). ownCommits is the evidence the branch holds commits of its own over its resolved base:
+// ahead of it, or off its tip (it merged into the base, which moved on). baseOK is false while the
+// base does not resolve.
+func (sc *boardCtx) mergedFacts(sb model.AdeTaskBranch, row porcelain.InventoryRef, depth int, ownCommits, baseOK bool, wb *adewire.Branch, out *branchOut) {
 	hadCommits := sb.HadCommits || wb.Ahead > 0
-	out.hadNew = hadCommits && !sb.HadCommits
+	if sb.RecountCommits {
+		// An upgraded latch counted the base's commits too: it holds only with evidence of own commits.
+		// A branch sitting on its base's tip with none reads as never committed.
+		hadCommits = baseOK && ownCommits
+		if baseOK {
+			out.recounted = &hadCommits
+		}
+	} else {
+		out.hadNew = hadCommits && !sb.HadCommits
+	}
+	// A merge recorded before P757 has no tip: it is re-validated here and kept at the current tip.
 	recorded := sb.MergedAt != nil && sb.MergedTip == row.Tip
 	byAncestor := sc.hasMain && depth == 0 && hadCommits
 	wb.MergedIntoMain = mergedRule(sc.hasMain && depth == 0, hadCommits, recorded)
@@ -423,9 +442,12 @@ func (sc *boardCtx) mergedFacts(sb model.AdeTaskBranch, row porcelain.InventoryR
 	case recorded:
 		wb.MergedAt = sb.MergedAt
 	case byAncestor:
-		now := sc.nowMs
-		wb.MergedAt = &now
-		out.merged = &model.AdeBranchMerge{At: now, Tip: row.Tip}
+		at := sc.nowMs
+		if sb.MergedAt != nil && sb.MergedTip == "" {
+			at = *sb.MergedAt
+		}
+		wb.MergedAt = &at
+		out.merged = &model.AdeBranchMerge{At: at, Tip: row.Tip}
 	case sb.MergedAt != nil:
 		stale := sb.MergedTip
 		out.unmergedTip = &stale

@@ -106,8 +106,11 @@ type AdeTaskBranch struct {
 	QueuedAfter     string
 	Position        int
 	HadCommits      bool
-	AddedAt         int64
-	MergedAt        *int64
+	// RecountCommits marks a had_commits counted against main on an upgraded stacked or
+	// non-main-based row; the next board build recounts it against the resolved base.
+	RecountCommits bool
+	AddedAt        int64
+	MergedAt       *int64
 	// MergedTip is the branch tip MergedAt was recorded at ("" = none).
 	MergedTip  string
 	ArchivedAt *int64
@@ -505,6 +508,7 @@ type AdeBranchMerge struct {
 // AdeBranchFactWrites is what a board build or Refresh writes back to branch rows.
 type AdeBranchFactWrites struct {
 	HadCommits []string                  // latch had_commits = 1
+	Recounted  map[string]bool           // branch id -> recounted had_commits, clears recount_commits
 	Merged     map[string]AdeBranchMerge // record merged_at + merged_tip
 	Unmerged   map[string]string         // branch id -> stale merged_tip to clear
 }

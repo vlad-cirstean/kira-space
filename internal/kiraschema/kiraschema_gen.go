@@ -395,6 +395,7 @@ var AdeTaskBranches = struct {
 	ReviewComments  string
 	Adopted         string
 	MergedTip       string
+	RecountCommits  string
 }{
 	Table:           "ade_task_branches",
 	ID:              "id",
@@ -420,6 +421,7 @@ var AdeTaskBranches = struct {
 	ReviewComments:  "review_comments",
 	Adopted:         "adopted",
 	MergedTip:       "merged_tip",
+	RecountCommits:  "recount_commits",
 }
 
 // AdeTaskFoundLinkDismissals names table ade_task_found_link_dismissals.
