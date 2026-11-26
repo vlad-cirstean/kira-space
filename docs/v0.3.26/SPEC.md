@@ -113,5 +113,4 @@ connection-mcp-access specs on kafka; contracts diffed by hand (deletions and th
 orphaned `list_connections` entry removed). Touched Go packages with `-race`, proofflow, dbflow, dbmcpflow
 without `-race`, `golangci-lint`, typecheck, lint, knip, unit tests, own UI specs pass. `TestThrottleSerialAcrossUserAndMcp`
 fails under `-race` only, same on the phase start commit (CPU-bound slow query exceeds the 30 s wait). Container
-engine tests not run (no Docker daemon). Unused `MonacoHost` props from Discover (`monacoLanguage`,
-`triggerCharacters`, `asyncCompletionSources`) remain. No visual baseline changes found.
+engine tests not run (no Docker daemon). No visual baseline changes found.

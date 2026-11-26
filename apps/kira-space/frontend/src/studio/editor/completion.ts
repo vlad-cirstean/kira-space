@@ -52,9 +52,3 @@ interface EditorCompletionContext {
 export type EditorCompletionSource = (
   ctx: EditorCompletionContext,
 ) => EditorCompletionResult | null;
-
-/** Like a source, but resolves later (server-backed values); `signal` aborts when Monaco cancels. */
-export type EditorAsyncCompletionSource = (
-  ctx: EditorCompletionContext,
-  signal: AbortSignal,
-) => Promise<EditorCompletionResult | null>;
