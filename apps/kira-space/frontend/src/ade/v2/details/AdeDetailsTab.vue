@@ -13,7 +13,7 @@ const props = withDefaults(
     task: Task;
     branches: readonly TimelineBranch[];
     readonly?: boolean;
-    /** False while the tab is mounted but hidden: the disk query pauses and restats when shown again. */
+    /** False while the tab is mounted but hidden: the disk and artifacts queries pause and refetch when shown again. */
     active?: boolean;
   }>(),
   { active: true },
@@ -36,12 +36,14 @@ useKeptScroll(() => `ade:details:${props.task.id}`, bodyEl);
       :task="props.task"
       :mode="readonly ? 'view' : 'edit'"
       :archived="readonly"
+      :active="active"
       @open-session="emit('openSession', $event)"
     />
     <AdeTaskChain
       :task="task"
       :branches="branches"
       :readonly="readonly"
+      :active="active"
       @open-session="emit('openSession', $event)"
     />
   </div>

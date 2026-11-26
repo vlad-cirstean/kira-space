@@ -33,18 +33,26 @@ import { type TimelineBranch, timelineEvents } from './taskTimeline';
 // attached to the task, one list, newest first; the Timeline toggle adds task events and the Kira Studio
 // toggle (on by default) the DB actions of its agent sessions. An entry edits
 // in place unless the task is archived.
-const props = defineProps<{
-  task: Task;
-  branches: readonly TimelineBranch[];
-  readonly?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    task: Task;
+    branches: readonly TimelineBranch[];
+    readonly?: boolean;
+    /** False while the tab is mounted but hidden: the artifacts query pauses. */
+    active?: boolean;
+  }>(),
+  { active: true },
+);
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 const taskId = computed(() => props.task.id);
 const composer = useAdeNoteComposerStore();
 const list = useAdeDetailsListStore();
 const handovers = useHandovers(() => taskId.value);
 const proofs = useTaskProofs(() => taskId.value);
-const artifacts = useTaskArtifacts(() => taskId.value);
+const artifacts = useTaskArtifacts(
+  () => taskId.value,
+  () => props.active,
+);
 const dbAudit = useTaskDbAudit(() => taskId.value);
 const auditCount = computed(() => dbAudit.data.value?.entries.length ?? 0);
 const add = useAddNote();

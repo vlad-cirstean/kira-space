@@ -24,20 +24,28 @@ import { useTaskLinks } from './useTaskLinks';
 // The task's links as one strip: a line per non-empty category (Issues, Change requests, Misc, Related) of 18px
 // pills. A pill click opens the link in the browser. Right-click, Space or Alt+Down open its card; the `+` opens the add popover. `edit` changes links (Details), `add` only
 // adds (handoff dialogs), `view` is read-only. Pills share one tab stop; arrows move between them.
-const props = defineProps<{
-  task: Task;
-  mode: 'edit' | 'view' | 'add';
-  /** Include detected branches in Misc (a Done move). */
-  branches?: boolean;
-  /** Archived Details: the session button hands the id up instead of selecting. */
-  archived?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    task: Task;
+    mode: 'edit' | 'view' | 'add';
+    /** Include detected branches in Misc (a Done move). */
+    branches?: boolean;
+    /** Archived Details: the session button hands the id up instead of selecting. */
+    archived?: boolean;
+    /** False while a mounted tab is hidden: the links query pauses and refetches when shown again. */
+    active?: boolean;
+  }>(),
+  { active: true },
+);
 const emit = defineEmits<{ openSession: [sessionId: string] }>();
 
 const SHOWN = 7;
 const OVER = 8;
 
-const links = useTaskLinks(() => props.task, { branches: () => props.branches ?? false });
+const links = useTaskLinks(() => props.task, {
+  branches: () => props.branches ?? false,
+  enabled: () => props.active,
+});
 // Like every loading placeholder, the skeleton waits SPINNER_DELAY: a fast first answer never flashes it.
 const showSkeleton = useSpinnerDelay(
   () => links.query.isPending.value || links.query.data.value === undefined,

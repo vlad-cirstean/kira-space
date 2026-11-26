@@ -23,9 +23,9 @@ export interface LinkGroup {
 /** The task's links as category groups (non-empty only) plus every change to them. */
 export function useTaskLinks(
   task: MaybeRefOrGetter<Task>,
-  opts: { branches?: MaybeRefOrGetter<boolean> } = {},
+  opts: { branches?: MaybeRefOrGetter<boolean>; enabled?: MaybeRefOrGetter<boolean> } = {},
 ) {
-  const query = useTaskArtifacts(() => toValue(task).id);
+  const query = useTaskArtifacts(() => toValue(task).id, opts.enabled);
   const crs = useChangeRequests();
   const update = useUpdateTask();
   const addLink = useAddLink();

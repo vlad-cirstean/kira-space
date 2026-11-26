@@ -596,12 +596,17 @@ export function useDeleteProof() {
   });
 }
 
-/** The task's artifacts, detected and stored; a board push refetches it while mounted. */
-export function useTaskArtifacts(taskId: MaybeRefOrGetter<string>) {
-  return useQuery({
-    queryKey: [...artifactsPrefix, taskId] as const,
+/** The task's artifacts, detected and stored; a board push refetches it while mounted and enabled.
+ *  A disabled (hidden) observer skips the push and refetches when enabled again. */
+export function useTaskArtifacts(
+  taskId: MaybeRefOrGetter<string>,
+  enabled: MaybeRefOrGetter<boolean> = true,
+) {
+  return useQuery(() => ({
+    queryKey: [...artifactsPrefix, toValue(taskId)] as const,
     queryFn: () => control.adeTaskArtifacts({ taskId: toValue(taskId) }),
-  });
+    enabled: toValue(enabled),
+  }));
 }
 
 const refetchArtifacts = () => queryClient.invalidateQueries({ queryKey: artifactsPrefix });
