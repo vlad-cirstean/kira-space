@@ -149,14 +149,10 @@ async function onRerun(record: SpaceOpRecord): Promise<void> {
   if (!record.connectionId || !record.command || record.commandTruncated) return;
   const kind = connectionFor(record)?.kind;
   const dialect = sqlDialectFor(kind);
-  // A Discover statement is one JSON request; splitting it on ';' would cut a query string.
-  const statements =
-    kind === 'kibana'
-      ? [record.command]
-      : splitSqlStatements(record.command, {
-          ...lexOptionsFor(dialect),
-          slashSlashComments: kind === 'mongodb',
-        }).map((s) => s.text);
+  const statements = splitSqlStatements(record.command, {
+    ...lexOptionsFor(dialect),
+    slashSlashComments: kind === 'mongodb',
+  }).map((s) => s.text);
   if (statements.length === 0) return;
   const tabId = tabsStore.openConsoleTab(record.connectionId, record.path ?? '');
   try {
@@ -293,11 +289,7 @@ function menuFor(record: Row): MenuItem[] {
     detailsText(record),
   );
   if (!isDb(record)) return base;
-  const canSql =
-    !!record.connectionId &&
-    connectionsStore.states[record.connectionId]?.caps?.sql &&
-    // Only execute() carries a Discover request; the other kibana op kinds log metadata calls.
-    (connectionFor(record)?.kind !== 'kibana' || record.kind === 'execute');
+  const canSql = !!record.connectionId && connectionsStore.states[record.connectionId]?.caps?.sql;
   return [
     {
       type: 'item',

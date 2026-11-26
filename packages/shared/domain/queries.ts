@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { kibanaDiscoverBodySchema } from './kibana';
 
 export type SortDirection = 'asc' | 'desc';
 export const sortDirectionSchema = /*#__PURE__*/ z.enum(['asc', 'desc']);
@@ -46,12 +45,6 @@ const savedQueryBase = {
   usedAt: z.string().nullable(),
 };
 
-export const savedDiscoverQuerySchema = /*#__PURE__*/ z.object({
-  ...savedQueryBase,
-  kind: z.literal('discover'),
-  body: kibanaDiscoverBodySchema,
-});
-
 export const savedQuerySchema = /*#__PURE__*/ z.discriminatedUnion('kind', [
   /*#__PURE__*/ z.object({ ...savedQueryBase, kind: z.literal('filter'), body: filterBodySchema }),
   /*#__PURE__*/ z.object({
@@ -59,12 +52,10 @@ export const savedQuerySchema = /*#__PURE__*/ z.discriminatedUnion('kind', [
     kind: z.literal('console'),
     body: consoleBodySchema,
   }),
-  savedDiscoverQuerySchema,
 ]);
 export type SavedQuery = z.infer<typeof savedQuerySchema>;
 export type SavedFilterQuery = Extract<SavedQuery, { kind: 'filter' }>;
 export type SavedConsoleQuery = Extract<SavedQuery, { kind: 'console' }>;
-export type SavedDiscoverQuery = Extract<SavedQuery, { kind: 'discover' }>;
 
 export const filterHistoryEntrySchema = /*#__PURE__*/ z.object({
   id: z.string(),

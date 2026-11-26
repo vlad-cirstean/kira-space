@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness/servers"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/grpcclient"
 )
 
 type (
@@ -147,5 +148,7 @@ func SilentAccepting(t testing.TB) (string, <-chan struct{}) {
 		t.Fatalf("start silent server: %v", err)
 	}
 	t.Cleanup(s.Close)
+	// Descriptor cache keys on target; a reused ephemeral port would serve a closed server's schema.
+	grpcclient.InvalidateCache(grpcclient.Source{Mode: grpcclient.SourceReflection, Target: s.Addr})
 	return s.Addr, s.Accepted
 }

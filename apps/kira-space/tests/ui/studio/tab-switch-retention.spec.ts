@@ -1,12 +1,7 @@
 // P433: switching away from a tab and back keeps its state and re-reads nothing. The backend never
 // changes behaviour here, so the scenarios assert what crosses the mock IPC boundary and what the
-// user sees: kept key-value page, kept console cursor, kept Discover sidebar search and data view.
+// user sees: kept key-value page, kept console cursor.
 import type { Page } from '@playwright/test';
-import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
-import {
-  browserTimeZone,
-  resolveTime,
-} from '../../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
@@ -18,7 +13,6 @@ import { openConsoleFromMenu } from './support/connect';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from './support/copyScenarios';
 import { typeInto } from './support/editor';
 import { editorText } from './support/editorText';
-import { executeHits, kibanaControl, logsNode, logsView } from './support/kibanaFixture';
 import { ORDER_ITEMS_PATH } from './support/postgresFixture';
 import { connectionRow, expandRow, findRow, openBrowseLeaf, openRowMenu } from './support/tree';
 
@@ -86,53 +80,6 @@ test('a console tab keeps its cursor across a tab switch', async ({ relaunch }) 
   await view.locator('textarea.inputarea').focus();
   await page.keyboard.type('X');
   await expect.poll(() => editorText(view)).toContain('SELECT 2;X');
-});
-
-function discoverStatement(): string {
-  const { columns, ...request }: KibanaDiscoverRequest = {
-    dataView: logsView.id,
-    query: '',
-    language: 'kuery',
-    timeRange: resolveTime({ mode: 'preset', preset: 'last15m' }, NOW),
-    filters: [],
-    sort: [],
-    size: 500,
-    timeZone: browserTimeZone(),
-  };
-  return JSON.stringify(columns ? { ...request, columns } : request);
-}
-
-test('Discover keeps its field search and re-reads no data view or histogram after four minutes away', async ({
-  relaunch,
-}) => {
-  const { window: page, control } = await relaunch({
-    control: kibanaControl(),
-    stream: [executeHits(discoverStatement(), 200)],
-  });
-  await page.clock.install({ time: NOW });
-  await page.clock.setFixedTime(NOW);
-  await connect(page);
-  await (await findRow(page, logsNode.path)).dblclick();
-  await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({ timeout: 15_000 });
-
-  const search = page.locator('[data-testid="kibana-field-search"]');
-  await search.fill('mess');
-  // The data view definition has no gcTime override (P434 R1-F3): the default 5 min bounds it, so the
-  // away time stays under that. The data view picker's list (kibanaDataViews) stays on a one-minute staleTime on purpose: Kibana
-  // owns it and others add views. The view's own definition and the histogram are Kira's to keep.
-  const kibanaReads = () =>
-    control
-      .log()
-      .filter((e) => [IPC.kibanaDataView, IPC.kibanaHistogram].includes(e.channel as never)).length;
-  const before = kibanaReads();
-
-  await modeTab(page, 'api').click();
-  await page.clock.fastForward(4 * 60_000);
-  await modeTab(page, 'studio').click();
-
-  await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible();
-  await expect(search).toHaveValue('mess');
-  expect(kibanaReads()).toBe(before);
 });
 
 test('a gRPC tab keeps its schema and history after six minutes away', async ({ relaunch }) => {

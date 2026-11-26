@@ -115,6 +115,7 @@ func cloneRepoResult(r *repoResult) *repoResult {
 	c.pairs = append([]adewire.Pair(nil), r.pairs...)
 	c.jobs = maps.Clone(r.jobs)
 	c.merged = maps.Clone(r.merged)
+	c.unmerged = maps.Clone(r.unmerged)
 	return &c
 }
 
@@ -234,7 +235,7 @@ func overlayFacts(last *repoLast, rows []model.AdeTaskBranch, per map[string]str
 	res := &repoResult{
 		state:    last.res.state,
 		branches: make(map[string]adewire.Branch, len(rows)),
-		pairs:    []adewire.Pair{}, merged: map[string]int64{}, jobs: map[string]rebaseJob{},
+		pairs:    []adewire.Pair{}, recounted: map[string]bool{}, merged: map[string]model.AdeBranchMerge{}, unmerged: map[string]string{}, jobs: map[string]rebaseJob{},
 	}
 	res.state.Updating = true
 	for _, sb := range rows {

@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test';
-import { emitPrompts, routed } from '@workbench/testing/ui/prompts';
 import { expect, studioTest as test } from '../fixtures';
 import { contract } from '../support/contract';
 import { IPC } from '../support/ipcChannels';
@@ -679,49 +678,4 @@ test('rejecting a pending edit calls RejectEdit', async ({ relaunch, uiServer })
     )
     .toEqual([{ sessionId: PENDING_ID }]);
   await expect(page.locator('[data-testid="proof-change"]')).toHaveCount(0);
-});
-
-test('a ready prompt opens the proof window of its proof', async ({ relaunch, uiServer }) => {
-  const { window: page, control } = await relaunch({
-    control: [
-      { channel: IPC.proofWindowTarget, response: { sessionId: SESSION_ID } },
-      {
-        channel: IPC.proofSession,
-        args: { sessionId: SESSION_ID },
-        response: { ...session(), taskTitle: 'Fix checkout' },
-      },
-      ...threeSteps(),
-    ],
-  });
-  await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(
-    page.locator('[data-testid="proof-ready-dialog"] [data-slot="dialog-title"]'),
-  ).toHaveText('Fix checkout');
-  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveText('Checkout fix');
-  await page.locator('[data-testid="proof-ready-open"]').click();
-  await expect
-    .poll(() =>
-      control
-        .log()
-        .filter((c) => c.channel === IPC.proofOpenWindow)
-        .map((c) => c.args),
-    )
-    .toEqual([{ taskId: TASK_ID, slug: 'checkout-fix' }]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toHaveCount(0);
-
-  await openProofWindow(page, uiServer.url);
-  await expect(page.locator('[data-testid="proof-title"]')).toHaveText('Checkout fix');
-});
-
-test('a ready prompt for a proof with no task title is titled by the entry', async ({
-  relaunch,
-}) => {
-  const { window: page } = await relaunch({
-    control: [{ channel: IPC.proofSession, response: { ...session(), taskTitle: '' } }],
-  });
-  await emitPrompts(page, [routed('proof', SESSION_ID, { title: 'Proof ready: Checkout fix' })]);
-  await expect(page.locator('[data-testid="proof-ready-dialog"]')).toContainText(
-    'Proof ready: Checkout fix',
-  );
-  await expect(page.locator('[data-testid="proof-ready-proof"]')).toHaveCount(0);
 });

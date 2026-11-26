@@ -60,11 +60,6 @@ function isKeyBrowserRow(row: TreeRowVm): boolean {
   return connectionsStore.states[row.connectionId]?.caps?.keyBrowser === true;
 }
 
-// A kibana data view opens in Discover, not the document tab other engines' collections use.
-function isKibanaConnection(connectionId: string): boolean {
-  return connectionsStore.connectionRecord(connectionId)?.kind === 'kibana';
-}
-
 const { single: rowHeight } = useRowHeight();
 
 // P104 §3.4: TreeHost's own recipe (virtualization + pinned ancestor band + reveal-scroll),
@@ -145,10 +140,6 @@ function onOpen(row: TreeRowVm): void {
   if (OPENABLE_KINDS.has(row.kind)) {
     const opened = tabsStore.openDataTab(row.connectionId, row.path);
     if (opened?.reused) reloadTab('data', opened.id);
-    return;
-  }
-  if (row.kind === 'collection' && isKibanaConnection(row.connectionId)) {
-    tabsStore.openDiscoverTab(row.connectionId, row.path, { title: row.name });
     return;
   }
   if (DOCUMENT_OPENABLE_KINDS.has(row.kind)) {

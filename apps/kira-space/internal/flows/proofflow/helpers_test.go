@@ -19,7 +19,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/approvals"
-	"github.com/kirathecat/kira-studio/internal/prompts"
 )
 
 var ctx = context.Background()
@@ -269,21 +268,6 @@ func keyValueStep(desc string) map[string]any {
 			map[string]any{"field": "latencyMs", "value": 12.5},
 		}},
 	}
-}
-
-func proofPrompts(t *testing.T, app *flowharness.App) []prompts.Routed {
-	t.Helper()
-	all, err := app.W.PromptsSvc.List()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out []prompts.Routed
-	for _, p := range all {
-		if p.Kind == prompts.KindProof {
-			out = append(out, p)
-		}
-	}
-	return out
 }
 
 func reviewItems(t *testing.T, app *flowharness.App) []approvals.Item {

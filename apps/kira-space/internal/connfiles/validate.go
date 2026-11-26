@@ -265,7 +265,7 @@ func (f File) checkMaskReview() *ValidationError {
 	if r == nil {
 		return nil
 	}
-	if !tableref.Applies(f.Kind) || f.Kind == "mongodb" || f.Kind == "kibana" {
+	if !tableref.Applies(f.Kind) || f.Kind == "mongodb" {
 		return bad("/mask_review", "backend.studio.connection.maskReviewKind.body", nil)
 	}
 	if len(r.Columns) > MaskReviewMax {

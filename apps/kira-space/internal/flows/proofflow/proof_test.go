@@ -56,10 +56,6 @@ func TestProofCloseAndRead(t *testing.T) {
 	if !bytes.Contains(st.Data, []byte(`"alpha"`)) {
 		t.Fatalf("first-row name missing: %s", st.Data)
 	}
-
-	if ps := proofPrompts(t, f.app); len(ps) != 1 || ps[0].Ref != list[0].ProofID {
-		t.Fatalf("prompts = %+v, want one for %s", ps, list[0].ProofID)
-	}
 }
 
 func TestProofNameCollision(t *testing.T) {
@@ -111,15 +107,9 @@ func TestProofEditFlow(t *testing.T) {
 	if len(review) != 1 || review[0].ID != "proof.review:"+id || review[0].Target.Name != "Edit me" {
 		t.Fatalf("review items = %+v, want the pending edit", review)
 	}
-	// Opening the session withdraws the ready popup, never the review of the pending edit.
-	if ps := proofPrompts(t, f.app); len(ps) != 1 {
-		t.Fatalf("prompts before open = %+v, want the ready popup", ps)
-	}
+	// Opening the session never withdraws the review of the pending edit.
 	if _, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "edit-me"}); err != nil {
 		t.Fatal(err)
-	}
-	if ps := proofPrompts(t, f.app); len(ps) != 0 {
-		t.Fatalf("prompts after open = %+v, want none", ps)
 	}
 	if left := reviewItems(t, f.app); len(left) != 1 || left[0].ID != "proof.review:"+id {
 		t.Fatalf("review items after open = %+v, want the pending edit kept", left)
@@ -186,13 +176,7 @@ func TestProofWindow(t *testing.T) {
 	f.save(t, "Window", keyValueStep("x"))
 	id := f.idOf(t, "Window")
 
-	if ps := proofPrompts(t, f.app); len(ps) != 1 {
-		t.Fatalf("prompts before open = %+v, want one", ps)
-	}
 	res, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "window"})
-	if ps := proofPrompts(t, f.app); err == nil && len(ps) != 0 {
-		t.Fatalf("prompts after open = %+v, want the ready popup withdrawn", ps)
-	}
 	if err != nil || !res.Opened || !strings.HasPrefix(res.Key, proof.WindowKeyPrefix) {
 		t.Fatalf("OpenWindow = %+v, %v", res, err)
 	}
@@ -204,8 +188,5 @@ func TestProofWindow(t *testing.T) {
 	again, err := f.app.W.Proof.OpenWindow(bridge.ProofOpenArgs{TaskID: f.taskID, Slug: "window"})
 	if err != nil || again.Opened || again.Key != res.Key {
 		t.Fatalf("second OpenWindow = %+v, %v; want the same window raised", again, err)
-	}
-	if err := f.app.W.Proof.MarkSeen(bridge.ProofSessionArgs{SessionID: id}); err != nil {
-		t.Fatal(err)
 	}
 }

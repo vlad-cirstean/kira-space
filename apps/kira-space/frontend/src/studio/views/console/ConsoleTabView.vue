@@ -1,19 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { ConsoleTabRecord } from '../../../state/tabDomain';
-import { useConnectionsStore } from '../../state/connections';
 import ConsoleView from './ConsoleView.vue';
-import KibanaDiscoverView from './kibana/KibanaDiscoverView.vue';
 
-const props = defineProps<{ tab: ConsoleTabRecord }>();
-const connectionsStore = useConnectionsStore();
-
-const isKibana = computed(
-  () => connectionsStore.connectionRecord(props.tab.connectionId)?.kind === 'kibana',
-);
+defineProps<{ tab: ConsoleTabRecord }>();
 </script>
 
 <template>
-  <KibanaDiscoverView v-if="isKibana" :tab="tab" />
-  <ConsoleView v-else :tab="tab" />
+  <ConsoleView :tab="tab" />
 </template>

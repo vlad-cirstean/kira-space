@@ -278,14 +278,11 @@ async function onBrowseDatabaseFile(): Promise<void> {
         <template v-else>
           <Field class="flex-1">
             <FieldLabel :for="`${idBase}-connection-database`">{{
-              kind === 'kibana'
-                ? t('studio.kibana.space.label')
-                : t('studio.project.connectionDialog.database.label')
+              t('studio.project.connectionDialog.database.label')
             }}</FieldLabel>
             <Input
               :id="`${idBase}-connection-database`"
               :model-value="file.database ?? ''"
-              :placeholder="kind === 'kibana' ? t('common.state.default.option') : undefined"
               :aria-invalid="props.errorFor('/database') ? true : undefined"
               class="font-data"
               data-testid="connection-database"

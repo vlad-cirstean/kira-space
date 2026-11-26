@@ -135,7 +135,7 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 			if err := b.deps.Tasks.MirrorFinish(run.TaskID, stepName(tc, run.StepID), h.Now); err != nil {
 				slog.Warn("ade: mirror finish", "scope", "ade", "task", run.TaskID, "err", err)
 			}
-			b.notifyBoard()
+			b.notifyBoardWith(finishChanged(tc.task, to))
 		}
 		return
 	}
@@ -145,7 +145,15 @@ func (b *TaskBoard) recordRunHandoverLocked(run model.AdeRun) {
 	}
 	b.closeHandoverPrompt(run.TaskID)
 	b.mirrorTask(run.TaskID, mirrorOpts{})
-	b.notifyBoard()
+	b.notifyBoardWith(finishChanged(tc.task, to))
+}
+
+// finishChanged names the run's task and, when the finish mirrors into a parent's chain, the parent.
+func finishChanged(t model.AdeTask, to string) adewire.BoardChangedEvent {
+	if to == entryDone && t.ParentID != "" {
+		return taskChanged(t.ID, t.ParentID)
+	}
+	return taskChanged(t.ID)
 }
 
 func containsInt(s []int, v int) bool {
@@ -244,7 +252,7 @@ func (b *TaskBoard) AddNote(_ context.Context, taskID, body string) (adewire.Han
 	}
 	b.recordHandover(n, "", n.Body)
 	b.mirrorTask(taskID, userMirror)
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return toWireHandover(n), nil
 }
 
@@ -303,7 +311,7 @@ func (b *TaskBoard) UpdateHandover(_ context.Context, id, body string) error {
 	}
 	b.recordHandover(*row, row.Body, after)
 	b.mirrorTask(row.TaskID, userEdit(false, id))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(row.TaskID))
 	return nil
 }
 

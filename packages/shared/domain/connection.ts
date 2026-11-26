@@ -14,7 +14,6 @@ export const connectionKindSchema = /*#__PURE__*/ z.enum([
   'kafka',
   'sqs',
   's3',
-  'kibana',
 ]); // all v1 kinds; every one has an adapter as of P36 (rabbitmq dropped, see P58 findings)
 export type ConnectionKind = z.infer<typeof connectionKindSchema>;
 
@@ -30,7 +29,6 @@ export const DEFAULT_PORT: Partial<Record<ConnectionKind, number>> = {
   mongodb: 27017,
   redis: 6379,
   kafka: 9092,
-  kibana: 5601,
 };
 
 // The minimum server version each adapter's client library (and this app's own catalog SQL)
@@ -58,9 +56,6 @@ export const MIN_SERVER_VERSION: Partial<Record<ConnectionKind, string>> = {
   },
   get kafka() {
     return t('shared.connection.minVersion.kafka.hint');
-  },
-  get kibana() {
-    return t('studio.kibana.minVersion.hint');
   },
   get sqlite() {
     return t('shared.connection.minVersion.sqlite.hint');

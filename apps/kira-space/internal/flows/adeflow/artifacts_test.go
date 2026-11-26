@@ -160,10 +160,12 @@ func TestTaskArtifacts(t *testing.T) {
 		br := branchOf(t, board(t, app), f.taskID, f.repoID)
 		return len(br.Deployments) == 1 && br.Deployments[0].Status == "deployed"
 	})
-	// The panel's full gather warms the repo's change-request cache, which the quick finish reply reads.
-	if _, ok := findArtifact(artifactsOf(t, app, f.taskID), "changeRequest", "Fix login"); !ok {
-		t.Fatal("panel gather lacks the change request")
-	}
+	// The panel's gather answers from caches; its background confirm warms the repo's change-request
+	// cache with the host's PR, which the quick finish reply reads.
+	testx.WaitUntil(t, waitFor, func() bool {
+		_, ok := findArtifact(artifactsOf(t, app, f.taskID), "changeRequest", "Fix login")
+		return ok
+	})
 	if err := os.WriteFile(ready, nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +297,14 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 	openLaunch(t, app, second)
 	waitSession(t, app, second.SessionID, "running")
-	if gaps := artifactsOf(t, app, f.taskID).Gaps; len(gaps) != 1 || gaps[0].Source != "host" || gaps[0].Repo != "api" {
+	// The panel's first answer reads caches and shows no gap; the confirm learns the host is down,
+	// pushes the task, and the next answer carries the gap.
+	var gaps []adewire.ArtifactGap
+	testx.WaitUntil(t, waitFor, func() bool {
+		gaps = artifactsOf(t, app, f.taskID).Gaps
+		return len(gaps) > 0
+	})
+	if len(gaps) != 1 || gaps[0].Source != "host" || gaps[0].Repo != "api" {
 		t.Fatalf("panel gaps = %+v, want one host gap for api", gaps)
 	}
 	if err := os.WriteFile(hold2, nil, 0o644); err != nil {
@@ -311,7 +320,13 @@ func TestTaskArtifacts(t *testing.T) {
 	}
 	app.Restart()
 	forge.SetOffline(true)
-	arch := artifactsOf(t, app, f.taskID)
+	// The first answer carries no gap (the host kind is unknown after a restart); the confirm job
+	// learns the host is down and pushes, and the next answer has it.
+	var arch adewire.ArtifactsResult
+	testx.WaitUntil(t, waitFor, func() bool {
+		arch = artifactsOf(t, app, f.taskID)
+		return len(arch.Gaps) > 0
+	})
 	if a, ok := findArtifact(arch, "changeRequest", "Fix login"); !ok || a.Status != "open" || a.URL != artPRURL {
 		t.Fatalf("archived PR = %+v in %+v", a, arch.Artifacts)
 	}

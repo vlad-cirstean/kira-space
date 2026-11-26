@@ -20,13 +20,11 @@ import { useSettingsStore } from '../../state/settings';
 import type { SqlDialect } from '../views/shared/sqlIdent';
 import { pumpChunks, textChunks } from './chunkedText';
 import type {
-  EditorAsyncCompletionSource,
   EditorCompletion,
   EditorCompletionKind,
   EditorCompletionResult,
   EditorCompletionSource,
 } from './completion';
-import { ensureCustomLanguage } from './customLanguages';
 import type { ConsoleDiagnostic } from './diagnostics';
 import { type ConsoleHoverInfo, escapeMarkdownSyntaxTokens, fenceMarkdownValue } from './hoverInfo';
 
@@ -56,18 +54,11 @@ const props = defineProps<{
   /** §3.1: pure data in, pure data out — replaces `@codemirror/autocomplete`'s `CompletionSource`
    *  at this seam. */
   completionSources?: readonly EditorCompletionSource[];
-  /** A grammar this host registers itself (once per id) in place of the `language` mapping. */
-  monacoLanguage?: { id: string; register(m: MonacoModule): void };
-  /** Overrides the default `.`, `$`, `{` for this host's provider. */
-  triggerCharacters?: readonly string[];
-  /** Server-backed sources, awaited alongside the sync ones. */
-  asyncCompletionSources?: readonly EditorAsyncCompletionSource[];
   lintSource?: (doc: string) => ConsoleDiagnostic[];
   /** §3.1: simpler than the CodeMirror shape it replaces — `hover.ts`'s own `buildHoverSource`
    *  existed only to turn a pure lookup into a CodeMirror object; that glue collapses into the
    *  pure lookup itself here. */
   hoverSource?: (doc: string, offset: number) => ConsoleHoverInfo | null;
-  singleLine?: boolean;
   /** Blends into the surface it sits on: no gutter, padding, scrollbar or own background. */
   flush?: boolean;
   /** The save chord emits `save`; Monaco consumes it before the view handler otherwise. */
@@ -90,8 +81,6 @@ const emit = defineEmits<{
   'update:contentHeight': [height: number];
   /** The first content is in and `scrollTop` is applied and painted. */
   ready: [];
-  /** Enter in a `singleLine` host with no suggestion open. */
-  submit: [];
   save: [];
 }>();
 
@@ -138,13 +127,10 @@ let decorations: DecorationsCollection | null = null;
 let completionDisposable: MonacoDisposable | null = null;
 let hoverDisposable: MonacoDisposable | null = null;
 let wrapDisposable: MonacoDisposable | null = null;
-// Never shown: the context menu is off, so the id doubles as Monaco's required label.
-const SUBMIT_ACTION = 'kira.submit';
 const SAVE_ACTION = 'kira.save';
 let actionDisposables: MonacoDisposable[] = [];
 
 function resolveWordWrap(): 'on' | 'off' {
-  if (props.singleLine) return 'off';
   if (props.forceWrap) return 'on';
   return settingsStore.appearance.wordWrap ? 'on' : 'off';
 }
@@ -251,15 +237,12 @@ function kindFor(m: MonacoModule, type?: EditorCompletionKind): CompletionItemKi
   }
 }
 
-function languageId(m: MonacoModule): string {
-  const custom = props.monacoLanguage;
-  if (!custom) return monacoLanguageIdFor(props.language);
-  ensureCustomLanguage(m, custom);
-  return custom.id;
+function languageId(): string {
+  return monacoLanguageIdFor(props.language);
 }
 
 function hasCompletion(): boolean {
-  return Boolean(props.completionSources?.length || props.asyncCompletionSources?.length);
+  return Boolean(props.completionSources?.length);
 }
 
 // Word-based suggestions stay off whenever completion is this host's own: with `autocomplete` on
@@ -274,9 +257,9 @@ function wordBasedSuggestions(): 'off' | undefined {
 function buildCompletionProvider(m: MonacoModule): CompletionItemProvider {
   return {
     // Without trigger characters Monaco re-invokes a provider only as a word continues, never right
-    // after `.`, `$` or `{` — the positions this app's sources key off. A host can override them.
-    triggerCharacters: [...(props.triggerCharacters ?? ['.', '$', '{'])],
-    async provideCompletionItems(candidateModel, position, context, token) {
+    // after `.`, `$` or `{` — the positions this app's sources key off.
+    triggerCharacters: ['.', '$', '{'],
+    provideCompletionItems(candidateModel, position, context) {
       if (candidateModel !== model || !hasCompletion()) return { suggestions: [] };
       const doc = candidateModel.getValue();
       const offset = candidateModel.getOffsetAt(position);
@@ -312,19 +295,6 @@ function buildCompletionProvider(m: MonacoModule): CompletionItemProvider {
         if (result) return { suggestions: toSuggestions(result), incomplete: result.incomplete };
       }
 
-      const asyncSources = props.asyncCompletionSources ?? [];
-      if (asyncSources.length === 0) return { suggestions: [] };
-      const abort = new AbortController();
-      const cancel = token.onCancellationRequested(() => abort.abort());
-      try {
-        for (const source of asyncSources) {
-          const result = await source(ctx, abort.signal);
-          if (abort.signal.aborted) return { suggestions: [] };
-          if (result) return { suggestions: toSuggestions(result), incomplete: result.incomplete };
-        }
-      } finally {
-        cancel.dispose();
-      }
       return { suggestions: [] };
     },
   };
@@ -456,7 +426,7 @@ function applyBaseOptions(): ConstructionOptions {
     // A read-only view has no caret worth marking; the lane's canvas paints a frame late, so a
     // capture could land before or after it.
     hideCursorInOverviewRuler: props.readonly,
-    lineNumbers: props.singleLine ? 'off' : 'on',
+    lineNumbers: 'on',
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     renderLineHighlight: 'none',
@@ -482,9 +452,7 @@ function applyBaseOptions(): ConstructionOptions {
     hover: { delay: TIMING.hoverInfo, above: true },
     fontFamily: settingsStore.appearance.fontFamily,
     fontSize: settingsStore.appearance.fontSize,
-    ...(props.singleLine
-      ? { lineDecorationsWidth: 0, lineNumbersMinChars: 0, padding: { top: 0, bottom: 0 } }
-      : { padding: { top: 8, bottom: 8 } }),
+    padding: { top: 8, bottom: 8 },
     ...(props.flush
       ? {
           lineNumbers: 'off' as const,
@@ -571,24 +539,13 @@ onMounted(async () => {
   mod = resolved;
 
   // Empty first, filled after `create`: the doc never enters the editor's construction path.
-  model = mod.editor.createModel('', languageId(mod));
+  model = mod.editor.createModel('', languageId());
   editor = mod.editor.create(rootRef.value, {
     ...applyBaseOptions(),
     model,
     theme: KIRA_EDITOR_THEME,
   });
   decorations = editor.createDecorationsCollection();
-  if (props.singleLine) {
-    actionDisposables.push(
-      editor.addAction({
-        id: SUBMIT_ACTION,
-        label: SUBMIT_ACTION,
-        keybindings: [mod.KeyCode.Enter],
-        keybindingContext: '!suggestWidgetVisible',
-        run: () => emit('submit'),
-      }),
-    );
-  }
   if (props.saveCommand) {
     actionDisposables.push(
       editor.addAction({
@@ -600,7 +557,7 @@ onMounted(async () => {
     );
   }
   wrapDisposable = attachWrapOnType(editor, model);
-  registerProviders(mod, languageId(mod));
+  registerProviders(mod, languageId());
   model.onDidChangeContent(() => {
     if (filling) return;
     if (!applyingExternal) docModel.value = model?.getValue() ?? '';
@@ -759,10 +716,10 @@ watch(
 );
 
 watch(
-  () => [props.language, props.sqlDialect, props.monacoLanguage?.id],
+  () => [props.language, props.sqlDialect],
   () => {
     if (!mod || !model) return;
-    const id = languageId(mod);
+    const id = languageId();
     mod.editor.setModelLanguage(model, id);
     registerProviders(mod, id);
   },
@@ -780,7 +737,7 @@ watch(
 );
 
 watch(
-  () => [props.autocomplete, props.completionSources, props.asyncCompletionSources],
+  () => [props.autocomplete, props.completionSources],
   () => {
     if (!mod) return;
     editor?.updateOptions({
@@ -788,7 +745,7 @@ watch(
       suggestOnTriggerCharacters: Boolean(props.autocomplete),
       wordBasedSuggestions: wordBasedSuggestions(),
     });
-    registerProviders(mod, languageId(mod));
+    registerProviders(mod, languageId());
   },
 );
 
@@ -802,7 +759,7 @@ watch(
 watch(
   () => props.hoverSource,
   () => {
-    if (mod) registerProviders(mod, languageId(mod));
+    if (mod) registerProviders(mod, languageId());
   },
 );
 
@@ -863,7 +820,6 @@ watch(
     ref="rootRef"
     class="monaco-host h-full min-h-0 overflow-hidden"
     :class="[
-      singleLine && 'monaco-host--single-line',
       flush &&
         '[&_.monaco-editor]:[--vscode-editor-background:transparent] [&_.monaco-editor]:[--vscode-editorGutter-background:transparent] [&_.monaco-editor]:bg-transparent! [&_.monaco-editor-background]:bg-transparent! [&_.margin]:bg-transparent!',
     ]"
@@ -873,8 +829,8 @@ watch(
       class="m-0 font-data text-kira-md text-fg overflow-auto"
       :class="[
         flush ? 'bg-transparent' : 'bg-bg',
-        singleLine || flush ? 'p-0' : 'py-2 px-0',
-        singleLine ? 'whitespace-pre' : 'whitespace-pre-wrap',
+        flush ? 'p-0' : 'py-2 px-0',
+        'whitespace-pre-wrap',
         forceWrap && 'break-words',
       ]"
       v-text="previewDoc"
@@ -887,16 +843,9 @@ watch(
 
 /* `.monaco-host` stays a bare marker: a real test dependency (tests/ui/support/editorText.ts and
    every UI spec use it to find "the Monaco host") and the anchor every :deep()/:global() rule below
-   needs (no template to put a class on for Monaco's own child DOM). P110 I2-18: the
-   `.monaco-host--single-line.monaco-host-pending` compound moved to a ternary on the `<pre>` in the
-   template; `.kira-ed-var*` moved to the shared apps/kira-space/frontend/src/studio/editor/
+   needs (no template to put a class on for Monaco's own child DOM). `.kira-ed-var*` moved to the shared apps/kira-space/frontend/src/studio/editor/
    edDecorations.css (M8), imported once from workbench.css -- AutocompleteField.vue's overlay painted a
    byte-identical copy of the same three rules. */
-.monaco-host--single-line,
-.monaco-host--single-line :deep(.monaco-editor) {
-  @apply h-auto;
-}
-
 .monaco-host :deep(.kira-ed-find-match) {
   @apply bg-search-match;
 }

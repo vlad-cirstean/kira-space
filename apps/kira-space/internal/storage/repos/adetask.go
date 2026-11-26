@@ -95,13 +95,13 @@ var (
 		kiraschema.AdeTaskBranches.Name, kiraschema.AdeTaskBranches.Kind, kiraschema.AdeTaskBranches.Base,
 		kiraschema.AdeTaskBranches.BaseBranchID, kiraschema.AdeTaskBranches.BasePendingFrom,
 		kiraschema.AdeTaskBranches.QueuedAfter, kiraschema.AdeTaskBranches.Position, kiraschema.AdeTaskBranches.HadCommits,
-		kiraschema.AdeTaskBranches.AddedAt, kiraschema.AdeTaskBranches.MergedAt, kiraschema.AdeTaskBranches.ArchivedAt,
+		kiraschema.AdeTaskBranches.AddedAt, kiraschema.AdeTaskBranches.MergedAt, kiraschema.AdeTaskBranches.MergedTip, kiraschema.AdeTaskBranches.ArchivedAt,
 		kiraschema.AdeTaskBranches.Origin,
 	}
 	adeTaskBranchColumns = append(slices.Clone(adeTaskBranchInsertColumns),
 		kiraschema.AdeTaskBranches.CrNumber, kiraschema.AdeTaskBranches.CrTitle, kiraschema.AdeTaskBranches.CrState,
 		kiraschema.AdeTaskBranches.CrURL, kiraschema.AdeTaskBranches.ReviewComments, kiraschema.AdeTaskBranches.WorktreeDir,
-		kiraschema.AdeTaskBranches.Adopted)
+		kiraschema.AdeTaskBranches.Adopted, kiraschema.AdeTaskBranches.RecountCommits)
 	adeRunColumns = []string{
 		kiraschema.AdeRuns.ID, kiraschema.AdeRuns.TaskID, kiraschema.AdeRuns.StepID, kiraschema.AdeRuns.BranchID,
 		kiraschema.AdeRuns.Attempt, kiraschema.AdeRuns.State, kiraschema.AdeRuns.Loops, kiraschema.AdeRuns.Note,
@@ -162,11 +162,11 @@ func scanAdeTask(row rowScanner) (model.AdeTask, error) {
 
 func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	var b model.AdeTaskBranch
-	var had, adopted int
+	var had, adopted, recount int
 	var merged, archived, crNumber sql.NullInt64
 	var crTitle, crState, crURL, comments sql.NullString
 	if err := row.Scan(&b.ID, &b.TaskID, &b.CodeRepoID, &b.Name, &b.Kind, &b.Base, &b.BaseBranchID, &b.BasePendingFrom, &b.QueuedAfter, &b.Position,
-		&had, &b.AddedAt, &merged, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir, &adopted); err != nil {
+		&had, &b.AddedAt, &merged, &b.MergedTip, &archived, &b.Origin, &crNumber, &crTitle, &crState, &crURL, &comments, &b.WorktreeDir, &adopted, &recount); err != nil {
 		return model.AdeTaskBranch{}, err
 	}
 	if crNumber.Valid {
@@ -175,6 +175,7 @@ func scanAdeTaskBranch(row rowScanner) (model.AdeTaskBranch, error) {
 	b.ReviewCommentsJSON = comments.String
 	b.HadCommits = had != 0
 	b.Adopted = adopted != 0
+	b.RecountCommits = recount != 0
 	b.MergedAt = nullInt64Ptr(merged)
 	b.ArchivedAt = nullInt64Ptr(archived)
 	return b, nil
@@ -1057,9 +1058,14 @@ func (r *AdeTaskRepo) ClearBasePending(ids []string) error {
 	return nil
 }
 
-// MarkBranchFacts idempotently sets had_commits and sets merged_at once (never overwritten).
-func (r *AdeTaskRepo) MarkBranchFacts(hadCommits []string, merged map[string]int64) error {
-	if len(hadCommits) == 0 && len(merged) == 0 {
+// MarkBranchFacts writes the facts a board build or Refresh derived, in one transaction.
+// HadCommits latches had_commits = 1 (never cleared). Recounted sets a recounted had_commits once and
+// clears recount_commits. Merged records merged_at and merged_tip, and
+// overwrites a record held at another tip, so a follow-up commit that is merged again re-records.
+// Unmerged clears a record only while merged_tip still equals the stale tip it saw (compare-and-clear),
+// so a concurrent re-record at a new tip survives.
+func (r *AdeTaskRepo) MarkBranchFacts(w model.AdeBranchFactWrites) error {
+	if len(w.HadCommits) == 0 && len(w.Recounted) == 0 && len(w.Merged) == 0 && len(w.Unmerged) == 0 {
 		return nil
 	}
 	tx, err := r.DB.Begin()
@@ -1068,18 +1074,35 @@ func (r *AdeTaskRepo) MarkBranchFacts(hadCommits []string, merged map[string]int
 	}
 	defer tx.Rollback() //nolint:errcheck
 	bc := kiraschema.AdeTaskBranches
-	for _, id := range hadCommits {
+	for _, id := range w.HadCommits {
 		ub := r.Dialect.Update(bc.Table)
 		ub.Set(ub.Assign(bc.HadCommits, 1)).Where(ub.Equal(bc.ID, id), ub.Equal(bc.HadCommits, 0))
 		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: mark ade branch had commits %s: %w", id, err)
 		}
 	}
-	for id, at := range merged {
+	for id, had := range w.Recounted {
 		ub := r.Dialect.Update(bc.Table)
-		ub.Set(ub.Assign(bc.MergedAt, at)).Where(ub.Equal(bc.ID, id), ub.IsNull(bc.MergedAt))
+		ub.Set(ub.Assign(bc.HadCommits, boolInt(had)), ub.Assign(bc.RecountCommits, 0)).
+			Where(ub.Equal(bc.ID, id), ub.Equal(bc.RecountCommits, 1))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
+			return fmt.Errorf("repos: mark ade branch recount %s: %w", id, err)
+		}
+	}
+	for id, m := range w.Merged {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.MergedAt, m.At), ub.Assign(bc.MergedTip, m.Tip)).
+			Where(ub.Equal(bc.ID, id), ub.Or(ub.IsNull(bc.MergedAt), ub.NotEqual(bc.MergedTip, m.Tip)))
 		if _, err := sqlb.Exec(tx, ub); err != nil {
 			return fmt.Errorf("repos: mark ade branch merged %s: %w", id, err)
+		}
+	}
+	for id, stale := range w.Unmerged {
+		ub := r.Dialect.Update(bc.Table)
+		ub.Set(ub.Assign(bc.MergedAt, nil), ub.Assign(bc.MergedTip, "")).
+			Where(ub.Equal(bc.ID, id), ub.IsNotNull(bc.MergedAt), ub.Equal(bc.MergedTip, stale))
+		if _, err := sqlb.Exec(tx, ub); err != nil {
+			return fmt.Errorf("repos: clear ade branch merged %s: %w", id, err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -1288,7 +1311,7 @@ func (r *AdeTaskRepo) renameBranch(id, from, to string, resetFacts bool) ([]stri
 	nameUp := r.Dialect.Update(bc.Table)
 	assigns := []string{nameUp.Assign(bc.Name, to)}
 	if resetFacts {
-		assigns = append(assigns, nameUp.Assign(bc.MergedAt, nil), nameUp.Assign(bc.HadCommits, 0))
+		assigns = append(assigns, nameUp.Assign(bc.MergedAt, nil), nameUp.Assign(bc.MergedTip, ""), nameUp.Assign(bc.HadCommits, 0), nameUp.Assign(bc.RecountCommits, 0))
 	}
 	nameUp.Set(assigns...).Where(nameUp.Equal(bc.ID, id))
 	if _, err := sqlb.Exec(tx, nameUp); err != nil {

@@ -106,7 +106,7 @@ hands it off to the user's own machine/VM. Never ask the user to run a command i
   already-namespaced image (`clickhouse/clickhouse-server`, `confluentinc/cp-kafka`,
   `localstack/localstack`) mirrors at the same path with no prefix. Confirmed for every image this
   repo uses. ClickHouse needs one further workaround on top — see the ClickHouse section below.
-- **Docker Hub `429 toomanyrequests`** fails Go and `e2e-real` tests that pull `confluentinc/cp-kafka`, kibana or postgres.
+- **Docker Hub `429 toomanyrequests`** fails Go and `e2e-real` tests that pull `confluentinc/cp-kafka` or postgres.
   Not a code fault. Run `bun run test:images` (mirror pull) first, then rerun later if it persists.
 - **Bun's `testcontainers` integration hangs indefinitely in this sandbox** on images that pull and
   run fine under plain Node with the identical image (confirmed fine on real hardware — a Bun-here
@@ -147,14 +147,6 @@ rather than hand-written. This section is only about running it here.
   `KIRA_IPC_FIXTURES=write` only regenerates the six fixtures already committed under
   `apps/kira-space/tests/ipc/`. Capturing a fresh shape for a new `tests/ui/` fixture needs that
   mode written first.
-
-## Kibana and Elasticsearch — testing in this environment (P424)
-
-- Fixture starts Elasticsearch plus Kibana (`kibana:9.5.3`, `elasticsearch:9.5.3`, plain Hub names; `bun run test:images` pulls both) on one Docker network. Needs about 1.5 GB of memory. Cold start takes 1 to 3 minutes; seeding adds seconds. Never run two heavy jobs beside it: a concurrent `vue-tsc` run OOM-killed Kibana (exit 137) on a 16 GB box.
-- Run from `apps/kira-space`: `CGO_ENABLED=1 go test ./internal/adapters/kibana/ -count=1 -timeout 40m` (conformance, search, KQL, interval). Complete suite: `KIRA_TEST_MATRIX=1 ... -run TestKibana_AuthMatrix`. Flow test: `go test ./internal/flows/dbflow -run TestKibanaDiscoverJourney`; `KIRA_CONTRACT=write` regenerates `tests/contract/kibana-discover.json`.
-- Compat overrides: `KIRA_COMPAT_IMAGE_KIBANA` and `KIRA_COMPAT_IMAGE_ELASTICSEARCH`. Keep both on the same version.
-- Elasticsearch runs with `cluster.routing.allocation.disk.threshold_enabled=false`. On a near-full disk the watermark otherwise leaves every shard unassigned and Kibana hangs on startup.
-- A low-privilege Kibana user on 9.x gets no version from `/api/status`; tests do not assert one for that user.
 
 ## ClickHouse — testing in this environment (P36, its workaround resolved P58f)
 

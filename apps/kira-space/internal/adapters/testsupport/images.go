@@ -86,8 +86,6 @@ var pinned = []struct{ kind, image string }{
 	{"mongo", MongoImage},
 	{"kafka", kafkaImage},
 	{"localstack", LocalStackImage},
-	{"elasticsearch", elasticsearchImage},
-	{"kibana", kibanaImage},
 }
 
 // Images lists every image the fixtures start, resolved through ImageFor. One source for

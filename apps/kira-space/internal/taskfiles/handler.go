@@ -61,8 +61,6 @@ type PendingSubmit struct {
 type Events interface {
 	// Pending raises the approval of the pending files; a later submit of the same file replaces its item.
 	Pending(ctx context.Context, p PendingSubmit) error
-	// Accepted reports an accepted file that carries a notification.
-	Accepted(ctx context.Context, taskID, rel string, n Notify) error
 }
 
 // ErrNoHandler marks a kind with no registered handler.

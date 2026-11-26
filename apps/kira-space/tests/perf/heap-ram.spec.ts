@@ -2,13 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Page } from '@playwright/test';
 import type { ApprovalItem } from '@shared/domain/approvals';
-import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import { liveItem, pushApprovals } from '@workbench/testing/ui/approvals';
 import { closeAllTabs } from '@workbench/testing/ui/heapProbe';
 import { diffSnapshotFiles } from '@workbench/testing/ui/heapSnapshot';
 import { MemSampler, type MemStep, runMemSteps, SNAPSHOTS } from '@workbench/testing/ui/memProbe';
 import { emitWailsEvent } from '@workbench/testing/ui/mockRuntime';
-import { browserTimeZone, resolveTime } from '../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
@@ -18,7 +16,6 @@ import { expect, filesTest, studioTest, test } from '../ui/fixtures';
 import { grpcTab } from '../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../ui/studio/support/copyScenarios';
 import { container, openDocker, setupDocker } from '../ui/studio/support/dockerFixture';
-import { executeHits, kibanaControl, logsNode, logsView } from '../ui/studio/support/kibanaFixture';
 import {
   loc,
   openKind,
@@ -74,7 +71,6 @@ import {
   lastStreamId,
   menuOpen,
   modeTab,
-  NOW,
   newTerminal,
   openTerminalTab,
   pinClock,
@@ -678,67 +674,6 @@ studioTest.describe('Studio worlds', () => {
         }
       },
     });
-  });
-
-  function discoverStatement(): string {
-    const { columns, ...request }: KibanaDiscoverRequest = {
-      dataView: logsView.id,
-      query: '',
-      language: 'kuery',
-      timeRange: resolveTime({ mode: 'preset', preset: 'last15m' }, NOW),
-      filters: [],
-      sort: [],
-      size: 500,
-      timeZone: browserTimeZone(),
-    };
-    return JSON.stringify(columns ? { ...request, columns } : request);
-  }
-
-  studioTest('ram: discover', async ({ relaunch }, info) => {
-    studioTest.skip(!worldEnabled('discover'));
-    const { window: page } = await relaunch({
-      control: kibanaControl(),
-      stream: [executeHits(discoverStatement(), 200)],
-    });
-    await connect(page);
-    await pinClock(page);
-    const round = (n: number): MemStep => ({
-      name: `round${n}`,
-      run: async () => {
-        await modeTab(page, 'api').click();
-        await page.waitForTimeout(500);
-        await modeTab(page, 'studio').click();
-        await page.waitForTimeout(500);
-      },
-      snapshot: n === 3 || n === 5 ? 'keep' : false,
-    });
-    const s = await runMemSteps({
-      app: APP,
-      world: 'discover',
-      page,
-      info,
-      steps: [
-        {
-          name: 'open1',
-          run: async () => {
-            await (await findRow(page, logsNode.path)).dblclick();
-            await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({
-              timeout: 15_000,
-            });
-          },
-          snapshot: true,
-        },
-        ...[1, 2, 3, 4, 5, 6, 7, 8].map(round),
-        {
-          name: 'closed',
-          run: () => closeAllTabs(page),
-        },
-      ],
-    });
-    if (SNAPSHOTS) {
-      const d = await diffSnapshotFiles(s.snapshotFile('round3'), s.snapshotFile('round5'));
-      console.log(`HEAPDIFF ${APP} discover round3-round5 ${JSON.stringify(d)}`);
-    }
   });
 
   studioTest('ram: api', async ({ relaunch }, info) => {

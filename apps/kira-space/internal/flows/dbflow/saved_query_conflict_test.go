@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kirathecat/kira-studio/apps/kira-space/internal/adapters/testsupport"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/connections"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
@@ -22,8 +21,8 @@ const savedConflictScenario = "saved-query-two-windows"
 func TestSavedQueryTwoWindows(t *testing.T) {
 	app := flowharness.New(t)
 	conn := createConn(t, app, connections.Input{ConnectionFields: model.ConnectionFields{
-		Name: "two windows", Kind: "kibana", Color: "indigo", Mode: "fields",
-		Host: ptr("127.0.0.1"), Port: ptr(5601), Options: map[string]any{},
+		Name: "two windows", Kind: "postgres", Color: "indigo", Mode: "fields",
+		Host: ptr("127.0.0.1"), Port: ptr(5432), Options: map[string]any{},
 		McpReadMode: "deny", McpWriteMode: "deny", McpDdlMode: "deny",
 	}})
 	q := app.W.Queries
@@ -92,35 +91,4 @@ func TestSavedQueryTwoWindows(t *testing.T) {
 	} else if ie := new(ipcerr.Error); !errors.As(err, &ie) || ie.Code != string(ipcerr.CodeNotFound) {
 		t.Fatalf("deleted query: %v, want %s", err, ipcerr.CodeNotFound)
 	}
-
-	// Discover query: the body is the guarded value.
-	view := testsupport.KibanaLogsView
-	bodyA := model.DiscoverBody{
-		Query: "level:error", DataViewID: view, DataViewName: &view, Language: "kuery",
-		Time:    model.KibanaTimeSelection{Mode: "preset", Preset: "last15m"},
-		Filters: []model.KibanaFilter{}, Columns: []string{"level"}, Sort: []model.KibanaSort{},
-		SampleSize: 500, Interval: "auto",
-	}
-	bodyB := bodyA
-	bodyB.Columns = []string{"level", "status"}
-	bodyC := bodyA
-	bodyC.Query = "level:warn"
-	d, err := q.SaveDiscover(bridge.QueriesSaveDiscoverArgs{ConnectionID: conn.ID, Name: "errors", Body: bodyA})
-	if err != nil {
-		t.Fatalf("SaveDiscover: %v", err)
-	}
-	if _, err := q.UpdateDiscover(bridge.QueriesUpdateDiscoverArgs{ID: d.ID, Body: bodyB, Expect: &bodyA}); err != nil {
-		t.Fatalf("window A body save: %v", err)
-	}
-	guardedC := bridge.QueriesUpdateDiscoverArgs{ID: d.ID, Body: bodyC, Expect: &bodyA}
-	app.Contract(t, savedConflictScenario, "args:UpdateDiscover#guarded", guardedC, mask)
-	_, err = q.UpdateDiscover(guardedC)
-	app.Contract(t, savedConflictScenario, "UpdateDiscover#changed", changed(err))
-	forcedC := bridge.QueriesUpdateDiscoverArgs{ID: d.ID, Body: bodyC}
-	app.Contract(t, savedConflictScenario, "args:UpdateDiscover#confirmed", forcedC, mask)
-	got2, err := q.UpdateDiscover(forcedC)
-	if err != nil {
-		t.Fatalf("confirmed body save: %v", err)
-	}
-	app.Contract(t, savedConflictScenario, "UpdateDiscover#confirmed", got2, mask)
 }

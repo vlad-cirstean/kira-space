@@ -12,7 +12,6 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles/store"
 	"github.com/kirathecat/kira-studio/internal/approvals"
-	"github.com/kirathecat/kira-studio/internal/prompts"
 	"github.com/kirathecat/kira-studio/packages/theme/src/i18n"
 )
 
@@ -41,8 +40,6 @@ type Deps struct {
 	OnEditResolved func(sessionID string, accepted bool) error
 	// DeleteFiles removes the folder of a proof and its rows; Delete calls it for a proof with a folder.
 	DeleteFiles func(taskID, slug string) error
-	// Prompts receives the "ready to review" popup; nil drops it.
-	Prompts prompts.Sink
 	// Approvals receives a pending edit for review; nil drops it.
 	Approvals *approvals.Queue
 	// Emit broadcasts an app-wide event; nil drops it.
@@ -89,38 +86,13 @@ func (s *Service) emit(sessionID string) {
 // NotifyChanged announces an accepted change of the proof's files.
 func (s *Service) NotifyChanged(id string) { s.emit(id) }
 
-func promptID(sessionID string) string { return prompts.ID(prompts.KindProof, sessionID) }
-
 func reviewID(sessionID string) string { return approvals.KindProofReview + ":" + sessionID }
 
-// closeReadyPrompt withdraws the session's ready popup.
-func (s *Service) closeReadyPrompt(sessionID string) {
-	if s.d.Prompts != nil {
-		s.d.Prompts.Close(promptID(sessionID))
-	}
-}
-
-// closePrompt withdraws the session's ready popup and any pending edit review.
-func (s *Service) closePrompt(sessionID string) {
-	s.closeReadyPrompt(sessionID)
+// withdrawReviewItem removes the session's pending edit review from the approvals queue.
+func (s *Service) withdrawReviewItem(sessionID string) {
 	if s.d.Approvals != nil {
 		s.d.Approvals.Remove(reviewID(sessionID))
 	}
-}
-
-// openPrompt raises the ready popup of a new session, or the review item of a pending edit.
-func (s *Service) openPrompt(id, name string, edit bool) {
-	if edit {
-		s.putReview(id, name)
-		return
-	}
-	if s.d.Prompts == nil {
-		return
-	}
-	s.d.Prompts.Open(prompts.Prompt{
-		ID: promptID(id), Kind: prompts.KindProof, Ref: id,
-		Title: i18n.T("backend.prompt.proof.title", map[string]string{"name": name}),
-	})
 }
 
 type reviewStep struct {
@@ -167,16 +139,16 @@ func (s *Service) putReview(id, name string) {
 	})
 }
 
-// RaiseUnreviewed re-raises the popup of every closed session the user has not opened or that
-// holds a pending edit. The router persists nothing, so a restart calls this.
-func (s *Service) RaiseUnreviewed() {
-	list, err := s.d.Repo.Unreviewed()
+// RaisePendingReviews re-raises the review of every closed session that holds a pending edit. The
+// approvals queue persists nothing, so a restart calls this.
+func (s *Service) RaisePendingReviews() {
+	list, err := s.d.Repo.PendingReviews()
 	if err != nil {
-		slog.Warn("proof: list unreviewed", "scope", "proof", "err", err)
+		slog.Warn("proof: list pending reviews", "scope", "proof", "err", err)
 		return
 	}
 	for _, p := range list {
-		s.openPrompt(p.ID, p.Name, p.Pending)
+		s.putReview(p.ID, p.Name)
 	}
 }
 
@@ -213,16 +185,14 @@ type Revision struct {
 type Detail struct {
 	ID string `json:"id"`
 	// TaskID and Slug name the proof's folder: tasks/<TaskID>/proofs/<Slug>.
-	TaskID string `json:"taskId"`
-	// TaskTitle is the title of the task holding the proof.
-	TaskTitle string     `json:"taskTitle"`
-	Slug      string     `json:"slug"`
-	Name      string     `json:"name"`
-	Summary   string     `json:"summary"`
-	ClosedAt  int64      `json:"closedAt"`
-	Current   Revision   `json:"current"`
-	Pending   *Revision  `json:"pending"`
-	Removed   []StepMeta `json:"removed"`
+	TaskID   string     `json:"taskId"`
+	Slug     string     `json:"slug"`
+	Name     string     `json:"name"`
+	Summary  string     `json:"summary"`
+	ClosedAt int64      `json:"closedAt"`
+	Current  Revision   `json:"current"`
+	Pending  *Revision  `json:"pending"`
+	Removed  []StepMeta `json:"removed"`
 	// Version changes with every content write; a window compares it to tell its copy is stale.
 	Version string `json:"version"`
 }
@@ -280,11 +250,7 @@ func (s *Service) Session(id string) (Detail, error) {
 	if err != nil {
 		return Detail{}, err
 	}
-	title, err := s.d.Repo.TaskTitleOf(id)
-	if err != nil {
-		return Detail{}, err
-	}
-	d := Detail{ID: row.ID, TaskTitle: title, TaskID: taskID, Slug: slug, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}, Version: version(row)}
+	d := Detail{ID: row.ID, TaskID: taskID, Slug: slug, Name: row.Name, Summary: row.Summary, ClosedAt: *row.ClosedAt, Current: cur, Removed: []StepMeta{}, Version: version(row)}
 	if row.PendingRev == nil {
 		return d, nil
 	}
@@ -414,7 +380,7 @@ func (s *Service) AcceptEdit(id string) error {
 			return err
 		}
 	}
-	s.seen(id)
+	s.withdrawReviewItem(id)
 	s.emit(id)
 	return nil
 }
@@ -429,12 +395,12 @@ func (s *Service) RejectEdit(id string) error {
 			return err
 		}
 	}
-	s.seen(id)
+	s.withdrawReviewItem(id)
 	s.emit(id)
 	return nil
 }
 
-// Delete removes a closed session and withdraws its popup.
+// Delete removes a closed session and withdraws its review.
 func (s *Service) Delete(id string) error {
 	if taskID, slug, ok, err := s.d.Repo.LinkOf(id); err != nil {
 		return err
@@ -442,7 +408,7 @@ func (s *Service) Delete(id string) error {
 		if err := s.d.DeleteFiles(taskID, slug); err != nil {
 			return err
 		}
-		s.closePrompt(id)
+		s.withdrawReviewItem(id)
 		s.emit(id)
 		return nil
 	}
@@ -453,29 +419,9 @@ func (s *Service) Delete(id string) error {
 	if !ok {
 		return notFound()
 	}
-	s.closePrompt(id)
+	s.withdrawReviewItem(id)
 	s.emit(id)
 	return nil
-}
-
-// MarkSeen records that the user opened the session and withdraws its popup. The edit review stays
-// while an edit still waits.
-func (s *Service) MarkSeen(id string) error {
-	if err := s.d.Repo.MarkSeen(id, s.d.Now()); err != nil {
-		return err
-	}
-	s.closeReadyPrompt(id)
-	if row, ok, err := s.d.Repo.Session(id); err == nil && ok && row.PendingRev == nil {
-		s.closePrompt(id)
-	}
-	return nil
-}
-
-func (s *Service) seen(id string) {
-	if err := s.d.Repo.MarkSeen(id, s.d.Now()); err != nil {
-		slog.Warn("proof: mark seen", "scope", "proof", "err", err)
-	}
-	s.closePrompt(id)
 }
 
 // Blobs is the store holding the bytes of proof files.
@@ -496,14 +442,6 @@ func (s *Service) SessionOf(taskID, slug string) (id string, ok bool, err error)
 	return u.Session.ID, true, nil
 }
 
-// RaiseReady opens the "ready to review" popup of a new proof.
-func (s *Service) RaiseReady(id string) {
-	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {
-		s.openPrompt(id, row.Name, false)
-	}
-	s.emit(id)
-}
-
 // RaiseReview puts the review of a pending edit in the approvals queue, replacing an earlier one.
 func (s *Service) RaiseReview(id string) {
 	if row, ok, err := s.d.Repo.Session(id); err == nil && ok {
@@ -514,7 +452,7 @@ func (s *Service) RaiseReview(id string) {
 
 // WithdrawReview removes the review of an edit that no longer exists.
 func (s *Service) WithdrawReview(id string) {
-	s.closePrompt(id)
+	s.withdrawReviewItem(id)
 	s.emit(id)
 }
 

@@ -48,8 +48,7 @@ func wantTimeoutRefusal(t *testing.T, res *mcp.CallToolResult, took time.Duratio
 
 // TestDbMcpEngineTimeout is the real-engine half of TestDbMcpStatementTimeout*: mcp_statement_timeout_sec 1
 // against a 5 s read, write and ddl on every engine, the exemption path, the off switch, browse_table on
-// a slow view and the enforcement list reports. Kibana is left out: its timeout is the same
-// app timer sqlite, mongodb and redis exercise here, and no Kibana query sleeps on demand.
+// a slow view and the enforcement list reports.
 func TestDbMcpEngineTimeout(t *testing.T) {
 	engineTest(t, nil, func(t *testing.T, e engine, f *fixture, sess *mcp.ClientSession) {
 		connID := f.engineConn(t, e, func(c *model.ConnectionFields) { c.McpStatementTimeoutSec = 1 })

@@ -200,17 +200,16 @@ func (iw *idleWatch) fire() {
 	iw.tasks, iw.rescan = map[string]map[string]struct{}{}, false
 	iw.mu.Unlock()
 	if rescan {
-		iw.b.notifyBoardNow(adewire.BoardChangedEvent{})
+		if ev, ok := iw.rescanEvent(); ok {
+			iw.b.notifyBoardNow(ev)
+		}
 		return
 	}
-	iw.b.watchMu.Lock()
-	idle := make([]string, 0, len(saved))
+	candidates := make([]string, 0, len(saved))
 	for id := range saved {
-		if iw.b.watches[id] == nil && iw.b.grants[id] == 0 {
-			idle = append(idle, id)
-		}
+		candidates = append(candidates, id)
 	}
-	iw.b.watchMu.Unlock()
+	idle := iw.b.unwatched(candidates)
 	out := idle[:0]
 	for _, id := range idle {
 		if iw.external(id, saved[id]) {
@@ -222,6 +221,39 @@ func (iw *idleWatch) fire() {
 	}
 	sort.Strings(out)
 	iw.b.notifyBoardNow(taskChanged(out...))
+}
+
+// rescanEvent names every live task the idle watcher covers; ok is false when none is covered. A store
+// failure leaves the unscoped event (every task may have changed).
+func (iw *idleWatch) rescanEvent() (ev adewire.BoardChangedEvent, ok bool) {
+	tasks, err := iw.b.deps.Tasks.ListLive()
+	if err != nil {
+		slog.Warn(taskWatchEvents, "scope", "ade", "err", err)
+		return adewire.BoardChangedEvent{}, true
+	}
+	ids := make([]string, 0, len(tasks))
+	for _, t := range tasks {
+		ids = append(ids, t.ID)
+	}
+	idle := iw.b.unwatched(ids)
+	if len(idle) == 0 {
+		return adewire.BoardChangedEvent{}, false
+	}
+	sort.Strings(idle)
+	return taskChanged(idle...), true
+}
+
+// unwatched keeps the ids with no agent watcher and no Space grant: the tasks the idle watcher covers.
+func (b *TaskBoard) unwatched(ids []string) []string {
+	b.watchMu.Lock()
+	defer b.watchMu.Unlock()
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if b.watches[id] == nil && b.grants[id] == 0 {
+			out = append(out, id)
+		}
+	}
+	return out
 }
 
 // external reports whether any saved path differs from the index: a folder, a file the index does not

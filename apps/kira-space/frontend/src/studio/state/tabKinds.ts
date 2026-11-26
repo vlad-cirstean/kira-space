@@ -59,7 +59,6 @@ import {
 import { useTabsStore } from '../../state/tabs';
 import { useApiTabCloseStore } from '../api/state/tabClose';
 import { useTreeStore } from '../project/state/tree';
-import { discoverDirty } from '../views/console/kibana/savedDiscover';
 import { dropForTab as dropConsoleResultPagesForTab } from '../views/console/resultPages';
 import { hasOpenTransaction } from '../views/console/transaction';
 import { drop as dropDocumentPagesForTab } from '../views/documents/page';
@@ -171,35 +170,13 @@ export const STUDIO_TAB_KINDS: TabKindRegistry<
   },
   console: {
     mode: STUDIO_TAB_KIND_MODE.console,
-    title: (tab) =>
-      tab.kind === 'console' && tab.state.kibana
-        ? (tab.state.kibana.saved?.name ??
-          tab.state.kibana.dataViewName ??
-          t('studio.kibana.tab.title'))
-        : tabTitle(tab),
-    icon: (tab) => (tab.kind === 'console' && tab.state.kibana ? 'search' : 'terminal'),
+    title: tabTitle,
+    icon: () => 'terminal',
     railColor,
-    badge: (tab) =>
-      tab.kind === 'console' && discoverDirty(tab.state)
-        ? {
-            icon: 'circle-filled',
-            tooltip: t('studio.kibana.saved.dirty.tooltip', {
-              name: tab.state.kibana?.saved?.name ?? '',
-            }),
-          }
-        : null,
     defaultState: () => defaultConsoleTabState(),
     // A duplicate is an unsaved copy of the same query.
-    duplicateState: (tab: ConsoleTabRecord): ConsoleTabState =>
-      tab.state.kibana
-        ? {
-            ...defaultConsoleTabState(),
-            text: tab.state.text,
-            kibana: { ...tab.state.kibana, saved: null },
-          }
-        : defaultConsoleTabState(),
-    isDirty: (tabId) =>
-      discoverDirty(useTabsStore().findConsoleTab(tabId)?.state) || hasOpenTransaction(tabId),
+    duplicateState: (_tab: ConsoleTabRecord): ConsoleTabState => defaultConsoleTabState(),
+    isDirty: (tabId) => hasOpenTransaction(tabId),
     dropResources: dropConsoleResultPagesForTab,
     menuExtras: revealInProjectPanel,
     parseState: parseStateWith(consoleTabStateSchema),

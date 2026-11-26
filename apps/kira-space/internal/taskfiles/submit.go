@@ -37,8 +37,7 @@ type FileResult struct {
 	// Message says why for every status but accepted and unchanged; for invalid it ends in what to change.
 	Message string
 	// Line is the 1-based line of an invalid file's problem, 0 when unknown.
-	Line   int
-	Notify Notify
+	Line int
 	// Proof is set once per proof unit, on its proof.md entry.
 	Proof *ProofResult
 }
@@ -286,7 +285,7 @@ func (r *submitRun) files(paths []string, units map[string]bool) {
 	}
 }
 
-// finish raises the approval for what waits on the user and notifies what was accepted.
+// finish raises the approval for what waits on the user.
 func (r *submitRun) finish() error {
 	ev := r.s.cfg.Events
 	if ev == nil {
@@ -295,13 +294,6 @@ func (r *submitRun) finish() error {
 	if len(r.pend.Items) > 0 {
 		if err := ev.Pending(r.ctx, r.pend); err != nil {
 			return fmt.Errorf("taskfiles: raise approval: %w", err)
-		}
-	}
-	for _, f := range r.out {
-		if f.Status == StatusAccepted && f.Notify != NotifyNone {
-			if err := ev.Accepted(r.ctx, r.req.TaskID, f.Path, f.Notify); err != nil {
-				slog.Warn("taskfiles: notify accepted file", "scope", "ade", "task", r.req.TaskID, "path", f.Path, "err", err)
-			}
 		}
 	}
 	return nil
@@ -529,7 +521,7 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 		}
 		coll := s.collisionOf(req, row, hasRow)
 		v := s.judge(req, rel, class, changes, coll, s.proofAccepted(req.TaskID, class, tx))
-		pending, reject, notify, cause := v.pending, v.reject, v.notify, v.cause
+		pending, reject, cause := v.pending, v.reject, v.cause
 		switch {
 		case len(reject) > 0:
 			res = FileResult{Path: rel, Status: StatusRejected, Message: reject[0].Message}
@@ -547,7 +539,7 @@ func (s *Service) decide(ctx context.Context, st store.Store, req Request, rel s
 			item = &PendingItem{Path: rel, Kind: class.Kind, Cause: cause, Changes: pending, Collision: coll}
 			return s.putRow(tx, req, rel, class, row, hasRow, info, hash, model.TaskFilePending, msg, false)
 		}
-		res = FileResult{Path: rel, Status: StatusAccepted, Notify: notify}
+		res = FileResult{Path: rel, Status: StatusAccepted}
 		if parsed == nil {
 			return tx.DeleteFile(req.TaskID, rel)
 		}
@@ -599,7 +591,6 @@ func (s *Service) collisionOf(req Request, row model.TaskFile, hasRow bool) *Col
 type verdict struct {
 	accepted, pending []Change
 	reject            []Decision
-	notify            Notify
 	cause             Cause
 }
 
@@ -614,9 +605,6 @@ func (s *Service) judge(req Request, rel string, class Class, changes []Change, 
 		switch d.Outcome {
 		case Accept:
 			v.accepted = append(v.accepted, c)
-			if d.Notify != NotifyNone {
-				v.notify = d.Notify
-			}
 		case Pending:
 			v.pending = append(v.pending, c)
 			v.cause = d.Cause

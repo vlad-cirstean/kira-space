@@ -86,17 +86,11 @@ func (h *textHandler) get(rel string) (string, bool) {
 
 // fakeEvents records what a submit raised.
 type fakeEvents struct {
-	pending  []PendingSubmit
-	accepted []string
+	pending []PendingSubmit
 }
 
 func (e *fakeEvents) Pending(_ context.Context, p PendingSubmit) error {
 	e.pending = append(e.pending, p)
-	return nil
-}
-
-func (e *fakeEvents) Accepted(_ context.Context, _, rel string, n Notify) error {
-	e.accepted = append(e.accepted, rel+":"+string(n))
 	return nil
 }
 

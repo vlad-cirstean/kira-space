@@ -7,9 +7,6 @@ import { reactive } from 'vue';
 export interface ConsoleUiState {
   cursor: number;
   scrollTop: number;
-  /** Discover field sidebar. */
-  fieldSearch: string;
-  fieldCap: number | null;
 }
 
 export const useConsoleUiStore = defineStore('consoleUi', () => {
@@ -20,7 +17,7 @@ export const useConsoleUiStore = defineStore('consoleUi', () => {
   });
 
   function ui(tabId: string): ConsoleUiState {
-    if (!byTab[tabId]) byTab[tabId] = { cursor: 0, scrollTop: 0, fieldSearch: '', fieldCap: null };
+    if (!byTab[tabId]) byTab[tabId] = { cursor: 0, scrollTop: 0 };
     return byTab[tabId];
   }
 

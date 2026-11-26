@@ -240,7 +240,7 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer sess.Close()
-	for i, kind := range []string{"postgres", "mysql", "mariadb", "clickhouse", "sqlite", "mongodb", "redis", "kibana", "kafka"} {
+	for i, kind := range []string{"postgres", "mysql", "mariadb", "clickhouse", "sqlite", "mongodb", "redis", "kafka"} {
 		seconds := model.McpStatementTimeoutDefault
 		if i == 0 {
 			seconds = 0
@@ -268,7 +268,6 @@ func TestDbMcpListConnectionsStatementTimeout(t *testing.T) {
 		"t-sqlite":     {10, `{"ddl":"app","read":"app","write":"app"}`},
 		"t-mongodb":    {10, `{"ddl":"app","read":"app","write":"app"}`},
 		"t-redis":      {10, `{"ddl":"app","read":"app","write":"app"}`},
-		"t-kibana":     {10, `{"ddl":"none","read":"app","write":"none"}`},
 		"t-kafka":      {10, `{"ddl":"none","read":"none","write":"none"}`},
 	}
 	// The agent sees only timeoutSeconds; the per-mode split is pinned from dbmcp itself, for the Studio mirror.

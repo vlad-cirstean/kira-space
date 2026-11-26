@@ -9,7 +9,6 @@ export const promptKindSchema = /*#__PURE__*/ z.enum([
   'update',
   'quit',
   'handover',
-  'proof',
   'masking',
   'approval',
 ]);

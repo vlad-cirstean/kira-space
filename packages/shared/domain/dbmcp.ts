@@ -88,8 +88,6 @@ export function statementTimeoutEnforcementOf(kind: string): Record<DbMcpMode, D
     case 'mongodb':
     case 'redis':
       return all('app');
-    case 'kibana':
-      return { read: 'app', write: 'none', ddl: 'none' };
     default:
       return all('none');
   }
@@ -525,7 +523,6 @@ export const TABLE_LIST_KINDS: ReadonlySet<string> = /*#__PURE__*/ new Set([
   'clickhouse',
   'mongodb',
   'sqlite',
-  'kibana',
 ]);
 
 // bridge/dbmcp_tables.go's DbMcpService.Tables: the live relations the MCP tab can list.

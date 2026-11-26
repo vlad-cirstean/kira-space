@@ -200,7 +200,7 @@ CREATE TABLE "ade_task_branches" (
   cr_state TEXT,
   cr_url TEXT,
   review_comments TEXT CHECK (review_comments IS NULL OR json_valid(review_comments))
-, adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1))) STRICT;
+, adopted INTEGER NOT NULL DEFAULT 0 CHECK (adopted IN (0, 1)), merged_tip TEXT NOT NULL DEFAULT '', recount_commits INTEGER NOT NULL DEFAULT 0) STRICT;
 
 CREATE TABLE ade_task_found_link_dismissals (
   task_id TEXT NOT NULL REFERENCES ade_tasks (id) ON DELETE CASCADE,
@@ -450,12 +450,12 @@ CREATE TABLE connection_metadata_cache (
   payload_json TEXT NOT NULL
 ) STRICT;
 
-CREATE TABLE connection_saved_queries (
+CREATE TABLE "connection_saved_queries" (
   id TEXT NOT NULL PRIMARY KEY CHECK (id <> ''),
   connection_id TEXT NOT NULL REFERENCES connections (id) ON DELETE CASCADE,
   path TEXT NOT NULL,
   name TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('filter', 'console', 'discover')),
+  kind TEXT NOT NULL CHECK (kind IN ('filter', 'console')),
   pinned INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   used_at INTEGER CHECK (used_at IS NULL OR used_at >= 0),
@@ -651,7 +651,6 @@ CREATE TABLE "proof_sessions" (
   pending_rev INTEGER CHECK (pending_rev IS NULL OR pending_rev >= 0),
   created_at INTEGER NOT NULL CHECK (created_at >= 0),
   closed_at INTEGER CHECK (closed_at IS NULL OR closed_at >= 0),
-  seen_at INTEGER CHECK (seen_at IS NULL OR seen_at >= 0),
   updated_at INTEGER NOT NULL CHECK (updated_at >= 0),
   name TEXT NOT NULL,
   name_key TEXT NOT NULL UNIQUE,
@@ -919,8 +918,6 @@ CREATE INDEX connection_filter_history_target ON connection_filter_history (conn
 CREATE UNIQUE INDEX connection_mask_rules_unique ON connection_mask_rules (connection_id, lower(table_name), lower(column_name));
 
 CREATE UNIQUE INDEX connection_metadata_cache_path ON connection_metadata_cache (connection_id, path);
-
-CREATE UNIQUE INDEX connection_saved_queries_discover_name ON connection_saved_queries (connection_id, lower(name)) WHERE kind = 'discover';
 
 CREATE INDEX connection_saved_queries_path ON connection_saved_queries (connection_id, path, kind, pinned DESC, used_at DESC, name);
 

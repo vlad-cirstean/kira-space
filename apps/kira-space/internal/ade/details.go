@@ -22,6 +22,7 @@ import (
 
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/repos"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/taskfiles"
@@ -50,6 +51,13 @@ type detailsFiles struct {
 	lastSync map[string]time.Time                 // session key -> launch or last accepted submit
 	// fileErrs holds the open problems of agent writes, by task and path: state.yaml fileErrors.
 	fileErrs map[string]map[string]fileError
+
+	// disk is each task's last DiskChanges answer, served while a task op holds the task lock. A write
+	// that changes what DiskChanges reports drops it (dropDisk); diskGen keeps a computation that raced
+	// the write from storing its stale result.
+	diskMu  sync.Mutex
+	disk    map[string][]adewire.DiskChange
+	diskGen map[string]uint64
 }
 
 // fileError is the last invalid or rejected result of an agent write of one path.
@@ -73,6 +81,7 @@ func (b *TaskBoard) initDetails() {
 	df := &detailsFiles{
 		b: b, idx: taskfiles.RepoIndex(d.TaskFiles), cache: repos.DetailsCache{Dialect: d.Tasks.Dialect}, root: d.FilesDir,
 		pending: map[string]map[string]detailsPending{}, lastSync: map[string]time.Time{}, fileErrs: map[string]map[string]fileError{},
+		disk: map[string][]adewire.DiskChange{}, diskGen: map[string]uint64{},
 	}
 	h := &detailsHandlers{b: b, df: df}
 	cfg := taskfiles.Config{
@@ -266,6 +275,7 @@ func (b *TaskBoard) mirrorTask(taskID string, o mirrorOpts) {
 }
 
 func (df *detailsFiles) mirror(b *TaskBoard, taskID string, o mirrorOpts) error {
+	defer df.dropDisk(taskID)
 	tc, err := b.loadTaskCtx(taskID)
 	if err != nil {
 		return nil // archived tasks keep the files they have

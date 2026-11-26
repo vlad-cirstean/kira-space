@@ -1,0 +1,104 @@
+{
+  "AdeTaskService.Artifacts#cold": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "branch",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "<masked>",
+        "source": "git",
+        "status": "local",
+        "title": "feat/api-work",
+        "url": "https://forge.test/acme/api/-/tree/feat/api-work"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Runbook",
+        "url": "https://wiki.example/runbook"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "notes.example/design",
+        "url": "https://notes.example/design"
+      }
+    ],
+    "gaps": []
+  },
+  "AdeTaskService.Artifacts#warm": {
+    "artifacts": [
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "changeRequest",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "<masked>",
+        "source": "host",
+        "status": "open",
+        "title": "Fix login",
+        "url": "https://forge.test/acme/api/-/merge_requests/7"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "branch",
+        "ref": "<masked>",
+        "repo": "api",
+        "sessionId": "<masked>",
+        "source": "git",
+        "status": "local",
+        "title": "feat/api-work",
+        "url": "https://forge.test/acme/api/-/tree/feat/api-work"
+      },
+      {
+        "createdAt": 0,
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "user",
+        "status": "",
+        "title": "Runbook",
+        "url": "https://wiki.example/runbook"
+      },
+      {
+        "createdAt": 0,
+        "foundIn": [],
+        "id": "<masked>",
+        "kind": "link",
+        "ref": "<masked>",
+        "repo": "",
+        "sessionId": "<masked>",
+        "source": "notes",
+        "status": "",
+        "title": "notes.example/design",
+        "url": "https://notes.example/design"
+      }
+    ],
+    "gaps": []
+  },
+  "event:kira:adetask:board#hostRefresh": {
+    "refs": true,
+    "taskIds": [
+      "T_alerts"
+    ]
+  }
+}

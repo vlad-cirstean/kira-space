@@ -20,11 +20,16 @@ import { refreshDisk, useAcceptDisk, useDiscardDisk, useDiskChanges } from './us
 
 // The task folder against what Kira holds: files edited outside Kira's apply. Stat on open, window focus,
 // Refresh and board push. Accept makes a change the held copy, Discard restores the held copy.
-const props = defineProps<{ taskId: string; readonly?: boolean }>();
+const props = withDefaults(
+  defineProps<{ taskId: string; readonly?: boolean; active?: boolean }>(),
+  {
+    active: true,
+  },
+);
 
 const changes = useDiskChanges(
   () => props.taskId,
-  () => !props.readonly,
+  () => !props.readonly && props.active,
 );
 const accept = useAcceptDisk();
 const discard = useDiscardDisk();

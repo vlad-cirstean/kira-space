@@ -15,14 +15,14 @@ import (
 type Ref struct{ Database, Schema, Name string }
 
 // Levels is how many parts an entry has for kind: 3 postgres; 2 mysql, mariadb, clickhouse, mongodb;
-// 1 sqlite, kibana; 0 when the list does not apply.
+// 1 sqlite; 0 when the list does not apply.
 func Levels(kind string) int {
 	switch kind {
 	case "postgres":
 		return 3
 	case "mysql", "mariadb", "clickhouse", "mongodb":
 		return 2
-	case "sqlite", "kibana":
+	case "sqlite":
 		return 1
 	}
 	return 0
@@ -297,10 +297,6 @@ func FromPath(kind string, segs []model.PathSegment) (r Ref, ok bool) {
 	case "sqlite":
 		if len(segs) >= 2 && segs[0].Kind == "database" && segs[0].Name == "main" && relationKinds[segs[1].Kind] {
 			return Ref{Name: segs[1].Name}, true
-		}
-	case "kibana":
-		if len(segs) >= 1 && segs[0].Kind == "collection" {
-			return Ref{Name: segs[0].Name}, true
 		}
 	}
 	return Ref{}, false

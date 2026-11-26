@@ -7,12 +7,12 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
+	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitsession"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
 	"github.com/kirathecat/kira-studio/internal/agentmcp"
 	"github.com/kirathecat/kira-studio/internal/ids"
@@ -92,6 +92,8 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 		gaps []adewire.ArtifactGap
 	}
 	results := make([]result, len(sources))
+	took := make([]time.Duration, len(sources))
+	begun := time.Now()
 	var g errgroup.Group
 	g.SetLimit(boardFanOut)
 	for i, src := range sources {
@@ -99,6 +101,7 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 			sctx, cancel := context.WithTimeout(ctx, artifactSourceTimeout)
 			defer cancel()
 			arts, gaps, err := src.Artifacts(sctx, scope)
+			took[i] = time.Since(begun)
 			if err != nil {
 				slog.Warn("ade artifacts: source", "scope", "ade", "source", src.Name(), "task", taskID, "err", err)
 				gaps = append(gaps, adewire.ArtifactGap{Source: src.Name()})
@@ -108,6 +111,13 @@ func (b *TaskBoard) taskArtifacts(ctx context.Context, taskID string, quick bool
 		})
 	}
 	_ = g.Wait() // a source reports failure as a gap
+	if total := time.Since(begun); !quick && total > artifactSlowLog {
+		attrs := []any{"task", taskID, "ms", total.Milliseconds()}
+		for i, src := range sources {
+			attrs = append(attrs, src.Name()+"Ms", took[i].Milliseconds())
+		}
+		slog.With("scope", "ade").With(attrs...).Info("ade artifacts: slow")
+	}
 	var all []adewire.Artifact
 	gaps := []adewire.ArtifactGap{}
 	for _, r := range results {
@@ -254,42 +264,95 @@ func (s repoSource) Artifacts(ctx context.Context, sc ArtifactScope) ([]adewire.
 		}
 		return arts, nil, nil
 	}
-	var liveBy map[string][]model.AdeTaskBranch
-	var setups map[string]model.AdeWorktreeSetup
-	if !sc.Archived {
-		live, err := b.deps.Tasks.BranchesLive()
-		if err != nil {
-			return nil, nil, err
-		}
-		_, liveBy = branchesByRepo(live)
-		if setups, err = b.deps.Tasks.SetupByBranch(); err != nil {
-			return nil, nil, err
-		}
+	set := repoShareSet{repoIDs: repoIDs, byRepo: byRepo, nicks: nicks}
+	facts := b.artifactFacts(ctx, sc)
+	arts, gaps := b.repoShares(ctx, sc, set, facts, false)
+	if len(repoIDs) > 0 {
+		b.confirmArtifacts(sc, set, facts, arts, gaps)
 	}
-	var (
-		mu   sync.Mutex
+	return arts, gaps, nil
+}
+
+// repoShares is every repo's share of the task, in repo id order. resolve asks the host for each
+// change request (it may wait); without it the share reads only caches, the stored rows and facts.
+func (b *TaskBoard) repoShares(ctx context.Context, sc ArtifactScope, set repoShareSet, facts *artifactFacts, resolve bool) ([]adewire.Artifact, []adewire.ArtifactGap) {
+	repoIDs, byRepo, nicks := set.repoIDs, set.byRepo, set.nicks
+	type share struct {
 		arts []adewire.Artifact
 		gaps []adewire.ArtifactGap
-	)
+	}
+	shares := make([]share, len(repoIDs))
 	var g errgroup.Group
 	g.SetLimit(boardFanOut)
-	for _, id := range repoIDs {
+	for i, id := range repoIDs {
 		g.Go(func() error {
-			a, gp := b.repoArtifacts(ctx, sc, id, nicks[id], byRepo[id], liveBy[id], setups)
-			mu.Lock()
-			arts, gaps = append(arts, a...), append(gaps, gp...)
-			mu.Unlock()
+			shares[i].arts, shares[i].gaps = b.repoArtifacts(ctx, sc, id, nicks[id], byRepo[id], facts, resolve)
 			return nil
 		})
 	}
 	_ = g.Wait() // repoArtifacts reports failures as gaps
+	var (
+		arts []adewire.Artifact
+		gaps []adewire.ArtifactGap
+	)
+	for _, sh := range shares {
+		arts, gaps = append(arts, sh.arts...), append(gaps, sh.gaps...)
+	}
 	sort.SliceStable(gaps, func(i, j int) bool {
 		if gaps[i].Repo != gaps[j].Repo {
 			return gaps[i].Repo < gaps[j].Repo
 		}
 		return gaps[i].Source < gaps[j].Source
 	})
-	return arts, gaps, nil
+	return arts, gaps
+}
+
+// artifactFacts is the branch facts of a live task's rows, read from the board snapshot.
+type artifactFacts struct {
+	byID map[string]adewire.Branch
+	// current is false when the snapshot predates a board invalidation.
+	current bool
+}
+
+// artifactFacts reads the task's rows' facts from the kept board snapshot, never recomputing them
+// (the board already holds the same facts). Waits for a build only when none exists yet. nil for an
+// archived task or when no board can be had; the rows then decide.
+func (b *TaskBoard) artifactFacts(ctx context.Context, sc ArtifactScope) *artifactFacts {
+	if sc.Archived {
+		return nil
+	}
+	board, current, ok := b.boardLatest()
+	if !ok {
+		var err error
+		if board, err = b.Board(ctx); err != nil {
+			slog.Warn("ade artifacts: board", "scope", "ade", "task", sc.Task.ID, "err", err)
+			return nil
+		}
+		current = true
+	}
+	return factsOfBoard(board, sc.Rows, current)
+}
+
+func factsOfBoard(board adewire.Board, rows []model.AdeTaskBranch, current bool) *artifactFacts {
+	mine := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		mine[r.ID] = true
+	}
+	f := &artifactFacts{byID: make(map[string]adewire.Branch, len(rows)), current: current}
+	for _, wb := range board.Branches {
+		if mine[wb.ID] {
+			f.byID[wb.ID] = wb
+		}
+	}
+	return f
+}
+
+func (f *artifactFacts) branch(id string) (adewire.Branch, bool) {
+	if f == nil {
+		return adewire.Branch{}, false
+	}
+	wb, ok := f.byID[id]
+	return wb, ok
 }
 
 // quickRepoArtifacts is one repo's share from local data alone: each row's branch and its change
@@ -358,36 +421,74 @@ func namedBranches(rows []model.AdeTaskBranch) []model.AdeTaskBranch {
 }
 
 // repoArtifacts is one repo's share: the task's change requests (live from the host, else the archive
-// snapshot), its branches and, for a live task, the deployments git facts report. rows are the task's
-// rows in the repo; liveRows every live row of the repo, the input the board gives repoFacts.
-func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID, nick string, rows, liveRows []model.AdeTaskBranch, setups map[string]model.AdeWorktreeSetup) ([]adewire.Artifact, []adewire.ArtifactGap) {
+// snapshot), its branches and, for a live task, the deployments the board's facts report. rows are the
+// task's rows in the repo. Without resolve the change requests come from the repo entry's caches (any
+// age, no host call) and the host gap from the last lookup kind; with it the host is asked and the
+// kind recorded.
+func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID, nick string, rows []model.AdeTaskBranch, facts *artifactFacts, resolve bool) ([]adewire.Artifact, []adewire.ArtifactGap) {
 	named := namedBranches(rows)
 	if len(named) == 0 {
 		return nil, nil
 	}
-	var (
-		arts  []adewire.Artifact
-		gaps  []adewire.ArtifactGap
-		found map[string]adewire.ChangeRequest
-		urls  map[string]string
-	)
+	in := repoShareInput{facts: facts}
 	entry, err := b.openRepo(ctx, repoID)
-	if err != nil {
+	switch {
+	case err != nil:
 		slog.Warn("ade artifacts: open repo", "scope", "ade", "repo", repoID, "err", err)
-		gaps = append(gaps, adewire.ArtifactGap{Source: artifactSrcHost, Repo: nick}, adewire.ArtifactGap{Source: artifactSrcGit, Repo: nick})
-	} else {
+		in.openFailed, in.facts = true, nil
+	case resolve:
 		var kind string
-		kind, _, found, urls = resolveRepoHost(ctx, entry, named)
-		if kind == "unavailable" || (ctx.Err() != nil && kind != "disabled") {
-			gaps = append(gaps, adewire.ArtifactGap{Source: artifactSrcHost, Repo: nick})
+		kind, _, in.crs, in.urls = resolveRepoHost(ctx, entry, named)
+		if ctx.Err() == nil { // a cancelled lookup says nothing about the host
+			b.artHost.setKind(repoID, kind)
+		}
+		in.hostGap = kind == "unavailable"
+	default:
+		in.crs, in.urls = cachedRepoHost(ctx, entry, named)
+		in.hostGap = b.artHost.lastKind(repoID) == "unavailable"
+	}
+	return repoShare(sc, nick, named, in)
+}
+
+// cachedRepoHost is resolveRepoHost from caches alone: each branch's change request as the entry
+// already knows it, of any age, and its web page composed locally. It never calls the host.
+func cachedRepoHost(ctx context.Context, entry *gitsession.RepoEntry, named []model.AdeTaskBranch) (crs map[string]adewire.ChangeRequest, urls map[string]string) {
+	crs, urls = map[string]adewire.ChangeRequest{}, map[string]string{}
+	for _, r := range named {
+		if c, ok := entry.CachedBranchChangeRequest(ctx, r.Name); ok {
+			crs[r.ID] = wireChangeRequest(c)
+		}
+		if u, ok := entry.BranchURL(ctx, r.Name); ok {
+			urls[r.ID] = u
 		}
 	}
-	var facts *repoResult
-	if err == nil && !sc.Archived {
-		facts = b.repoFacts(ctx, repoID, liveRows, setups)
+	return crs, urls
+}
+
+// repoShareInput is everything repoShare builds from; it reads no store, git or host.
+type repoShareInput struct {
+	crs  map[string]adewire.ChangeRequest // by row id; absent when the host knows none
+	urls map[string]string                // branch web page by row id
+	// facts is nil when no facts were read: the stored rows decide each branch's status.
+	facts *artifactFacts
+	// hostGap marks the host source failed for the repo; openFailed also fails the git source.
+	hostGap, openFailed bool
+}
+
+// repoShare is the pure builder of one repo's share. The served answer and the background confirm
+// both call it, so their results compare like for like.
+func repoShare(sc ArtifactScope, nick string, named []model.AdeTaskBranch, in repoShareInput) ([]adewire.Artifact, []adewire.ArtifactGap) {
+	var (
+		arts []adewire.Artifact
+		gaps []adewire.ArtifactGap
+	)
+	if in.openFailed {
+		gaps = append(gaps, adewire.ArtifactGap{Source: artifactSrcHost, Repo: nick}, adewire.ArtifactGap{Source: artifactSrcGit, Repo: nick})
+	} else if in.hostGap {
+		gaps = append(gaps, adewire.ArtifactGap{Source: artifactSrcHost, Repo: nick})
 	}
 	for _, r := range named {
-		cr, ok := found[r.ID]
+		cr, ok := in.crs[r.ID]
 		if !ok && r.ChangeRequest != nil {
 			cr, ok = adewire.ChangeRequest{Number: r.ChangeRequest.Number, Title: r.ChangeRequest.Title, State: r.ChangeRequest.State, URL: r.ChangeRequest.URL}, true
 		}
@@ -401,13 +502,14 @@ func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID,
 			continue
 		}
 		br := adewire.Artifact{
-			Kind: artifactBranch, Title: r.Name, URL: urls[r.ID], Repo: nick, Source: artifactSrcGit, CreatedAt: r.AddedAt,
+			Kind: artifactBranch, Title: r.Name, URL: in.urls[r.ID], Repo: nick, Source: artifactSrcGit, CreatedAt: r.AddedAt,
 			Status: "local",
 		}
-		if r.MergedAt != nil {
-			br.Status = "merged"
+		wb, hasFacts := in.facts.branch(r.ID)
+		if r.MergedAt != nil && !hasFacts {
+			br.Status = "merged" // no facts for this row: the stored record decides
 		}
-		if wb, ok := facts.branch(r.ID); ok {
+		if hasFacts {
 			br.Ref = wb.Worktree
 			switch {
 			case wb.MergedIntoMain:
@@ -422,15 +524,6 @@ func (b *TaskBoard) repoArtifacts(ctx context.Context, sc ArtifactScope, repoID,
 		arts = append(arts, br)
 	}
 	return arts, gaps
-}
-
-// branch is the board's fact row for a branch id; ok is false when facts were not computed.
-func (r *repoResult) branch(id string) (adewire.Branch, bool) {
-	if r == nil {
-		return adewire.Branch{}, false
-	}
-	wb, ok := r.branches[id]
-	return wb, ok
 }
 
 // artifactBranchVisible reports whether a row is a branch of the task as it stands: live for a live
@@ -517,7 +610,7 @@ func (b *TaskBoard) storeCleanLocked(tc *taskCtx, source, stepID, runID, session
 		out = append(out, row)
 	}
 	b.mirrorTask(taskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(taskID))
 	return out, nil
 }
 
@@ -584,6 +677,6 @@ func (b *TaskBoard) RemoveArtifact(_ context.Context, args adewire.RemoveArtifac
 	}
 	b.recordArtifact(args.TaskID, row.ID, artifactText(*row), "")
 	b.mirrorTask(args.TaskID, userEdit(true))
-	b.notifyBoard()
+	b.notifyBoardWith(taskChanged(args.TaskID))
 	return nil
 }

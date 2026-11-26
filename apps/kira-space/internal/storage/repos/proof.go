@@ -54,7 +54,7 @@ type ProofSessionRow struct {
 	ID, Name, NameKey, State, Summary string
 	CurrentRev, PendingRev            *int
 	CreatedAt, UpdatedAt              int64
-	ClosedAt, SeenAt                  *int64
+	ClosedAt                          *int64
 }
 
 // ProofRevisionRow is one proof_revisions row.
@@ -95,7 +95,7 @@ type ProofDraft struct {
 var proofSessionCols = []string{
 	kiraschema.ProofSessions.ID, kiraschema.ProofSessions.Name, kiraschema.ProofSessions.NameKey, kiraschema.ProofSessions.State,
 	kiraschema.ProofSessions.CurrentRev, kiraschema.ProofSessions.PendingRev, kiraschema.ProofSessions.Summary,
-	kiraschema.ProofSessions.CreatedAt, kiraschema.ProofSessions.ClosedAt, kiraschema.ProofSessions.SeenAt,
+	kiraschema.ProofSessions.CreatedAt, kiraschema.ProofSessions.ClosedAt,
 	kiraschema.ProofSessions.UpdatedAt,
 }
 
@@ -108,25 +108,15 @@ func proofAlias(alias string, cols ...string) []string {
 	return out
 }
 
-// proofSummarySelect is the history-list select shared by Sessions, Unreviewed and
-// UnattachedSessions; the caller adds the filter and order.
-func (r *ProofRepo) proofSummarySelect() *sqlbuilder.SelectBuilder {
-	s, st := kiraschema.ProofSessions, kiraschema.ProofSteps
-	return r.Dialect.Select(
-		"s."+s.ID, "s."+s.Name, "s."+s.ClosedAt, "s."+s.PendingRev+" IS NOT NULL", "s."+s.SeenAt+" IS NOT NULL",
-		"(SELECT COUNT(*) FROM "+st.Table+" st WHERE st."+st.SessionID+" = s."+s.ID+" AND st."+st.Rev+" = s."+s.CurrentRev+")",
-	).From(s.Table + " s")
-}
-
 func scanProofSession(row rowScanner) (ProofSessionRow, error) {
 	var s ProofSessionRow
 	var cur, pend sql.NullInt64
-	var closed, seen sql.NullInt64
-	if err := row.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &seen, &s.UpdatedAt); err != nil {
+	var closed sql.NullInt64
+	if err := row.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &s.UpdatedAt); err != nil {
 		return ProofSessionRow{}, err
 	}
 	s.CurrentRev, s.PendingRev = nullInt(cur), nullInt(pend)
-	s.ClosedAt, s.SeenAt = nullInt64(closed), nullInt64(seen)
+	s.ClosedAt = nullInt64(closed)
 	return s, nil
 }
 
@@ -160,15 +150,8 @@ func (r *ProofRepo) tx(fn func(tx *sql.Tx) error) error {
 	return nil
 }
 
-// ProofSummary is one closed session in the history list.
-type ProofSummary struct {
-	ID, Name      string
-	ClosedAt      int64
-	Steps         int
-	Pending, Seen bool
-	// TaskTitle is the title of the task holding the session; "" when none does.
-	TaskTitle string
-}
+// ProofSummary names one closed session.
+type ProofSummary struct{ ID, Name string }
 
 // Session returns one session; ok is false when absent or still open.
 func (r *ProofRepo) Session(id string) (ProofSessionRow, bool, error) {
@@ -376,30 +359,16 @@ func (r *ProofRepo) Delete(id string) (bool, error) {
 	return n > 0, nil
 }
 
-// MarkSeen stamps a closed session as seen by the user.
-func (r *ProofRepo) MarkSeen(id string, now time.Time) error {
-	ts := now.UnixMilli()
+// PendingReviews lists closed sessions holding a pending edit, oldest first: the ones whose review a
+// restart re-raises.
+func (r *ProofRepo) PendingReviews() ([]ProofSummary, error) {
 	ps := kiraschema.ProofSessions
-	ub := r.Dialect.Update(ps.Table)
-	ub.Set(ub.Assign(ps.SeenAt, ts)).Where(ub.Equal(ps.ID, id), ub.Equal(ps.State, "closed"))
-	_, err := sqlb.Exec(r.DB, ub)
-	if err != nil {
-		return fmt.Errorf("repos/proof: mark seen: %w", err)
-	}
-	return nil
-}
-
-// Unreviewed lists closed sessions never opened by the user or holding a pending edit, oldest
-// first: the ones whose prompt a restart re-raises.
-func (r *ProofRepo) Unreviewed() ([]ProofSummary, error) {
-	ps := kiraschema.ProofSessions
-	sb := r.proofSummarySelect()
-	sb.Where(sb.Equal("s."+ps.State, "closed"), sb.Or(sb.IsNull("s."+ps.SeenAt), sb.IsNotNull("s."+ps.PendingRev))).
-		OrderBy("s."+ps.ClosedAt, "s."+sqlb.RowID)
+	sb := r.Dialect.Select(ps.ID, ps.Name).From(ps.Table)
+	sb.Where(sb.Equal(ps.State, "closed"), sb.IsNotNull(ps.PendingRev)).OrderBy(ps.ClosedAt, sqlb.RowID)
 	rows, err := sqlb.Query(r.DB, sb)
 	return queryAll(rows, err, func(rows *sql.Rows) (ProofSummary, error) {
 		var p ProofSummary
-		return p, rows.Scan(&p.ID, &p.Name, &p.ClosedAt, &p.Pending, &p.Seen, &p.Steps)
+		return p, rows.Scan(&p.ID, &p.Name)
 	})
 }
 
@@ -450,11 +419,11 @@ func (r *ProofRepo) TaskSessions(taskID string) ([]ProofTaskSession, error) {
 	rows, err := sqlb.Query(r.DB, sb)
 	list, err := queryAll(rows, err, func(rows *sql.Rows) (ProofTaskSession, error) {
 		var t ProofTaskSession
-		var cur, pend, closed, seen sql.NullInt64
+		var cur, pend, closed sql.NullInt64
 		s := &t.Session
-		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &seen, &s.UpdatedAt,
+		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &s.UpdatedAt,
 			&t.Link.Source, &t.Link.KiraSessionID, &t.Link.StepID, &t.Link.StepName, &t.LinkedAt, &t.Link.Slug)
-		s.CurrentRev, s.PendingRev, s.ClosedAt, s.SeenAt = nullInt(cur), nullInt(pend), nullInt64(closed), nullInt64(seen)
+		s.CurrentRev, s.PendingRev, s.ClosedAt = nullInt(cur), nullInt(pend), nullInt64(closed)
 		t.Link.TaskID = taskID
 		return t, err
 	})

@@ -234,6 +234,7 @@ type TaskBoard struct {
 	boardTimer     *time.Timer
 	boardSched     boardChanges // changes the debounced scheduleBoard timer will announce
 	bcache         boardCache
+	artHost        artifactHost // last host kind per repo and running Artifacts confirm jobs (artifacthost.go)
 	repoCfg        repoConfigCache
 	facts          boardFacts
 	wfMemo         *lru.Cache[string, wfMemoEntry]
@@ -574,13 +575,18 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 		return adewire.Board{}, err
 	}
 
-	var hadCommits []string
-	merged := map[string]int64{}
+	writes := model.AdeBranchFactWrites{Recounted: map[string]bool{}, Merged: map[string]model.AdeBranchMerge{}, Unmerged: map[string]string{}}
 	for _, id := range repoIDs {
 		res := results[id]
-		hadCommits = append(hadCommits, res.hadCommits...)
+		writes.HadCommits = append(writes.HadCommits, res.hadCommits...)
+		for k, v := range res.recounted {
+			writes.Recounted[k] = v
+		}
 		for k, v := range res.merged {
-			merged[k] = v
+			writes.Merged[k] = v
+		}
+		for k, v := range res.unmerged {
+			writes.Unmerged[k] = v
 		}
 		b.applyChecks(id, res)
 	}
@@ -589,7 +595,7 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 	for _, id := range repoIDs {
 		marks = append(marks, results[id].marks...)
 	}
-	b.writeBoardMarks(hadCommits, merged, marks)
+	b.writeBoardMarks(writes, marks)
 	return board, nil
 }
 
@@ -598,13 +604,13 @@ func (b *TaskBoard) buildBoard(ctx context.Context) (adewire.Board, error) {
 // builds writing the same mark is harmless. A written row makes the next build reread it, and a
 // build that ran inside the write window read the old marks (stored target mark, HadCommits, a
 // merge time of its own clock), so the landing pushes the board.
-func (b *TaskBoard) writeBoardMarks(hadCommits []string, merged map[string]int64, marks []model.AdeBranchMark) {
-	if len(hadCommits) == 0 && len(merged) == 0 && len(marks) == 0 {
+func (b *TaskBoard) writeBoardMarks(w model.AdeBranchFactWrites, marks []model.AdeBranchMark) {
+	if len(w.HadCommits) == 0 && len(w.Recounted) == 0 && len(w.Merged) == 0 && len(w.Unmerged) == 0 && len(marks) == 0 {
 		return
 	}
 	b.goTracked(func() {
 		ok := true
-		if err := b.deps.Tasks.MarkBranchFacts(hadCommits, merged); err != nil {
+		if err := b.deps.Tasks.MarkBranchFacts(w); err != nil {
 			slog.Warn("ade board: mark branch facts", "scope", "ade", "err", err)
 			ok = false
 		}
@@ -840,12 +846,16 @@ func (b *TaskBoard) ChangeRequests(ctx context.Context) (adewire.ChangeRequestsR
 			entry, err := b.openRepo(gctx, id)
 			if err != nil {
 				slog.Warn("ade board: prs open repo", "scope", "ade", "repo", id, "err", err)
+				b.artHost.setKind(id, "unavailable")
 				mu.Lock()
 				rows[id] = adewire.RepoHost{CodeRepoID: id, Kind: "unavailable"}
 				mu.Unlock()
 				return nil
 			}
 			kind, host, found, urls := resolveRepoHost(gctx, entry, byRepo[id])
+			if gctx.Err() == nil {
+				b.artHost.setKind(id, kind)
+			}
 			mu.Lock()
 			rows[id] = adewire.RepoHost{CodeRepoID: id, Kind: kind, Host: host}
 			for k, v := range found {
@@ -1068,7 +1078,7 @@ func (b *TaskBoard) refreshRepo(ctx context.Context, id string) (out adewire.Rep
 
 	facts := b.repoFacts(ctx, id, mine, nil)
 	out.MergedInto = newlyMerged(mine, facts, f.marksBefore)
-	if err := b.deps.Tasks.MarkBranchFacts(facts.hadCommits, facts.merged); err != nil {
+	if err := b.deps.Tasks.MarkBranchFacts(model.AdeBranchFactWrites{HadCommits: facts.hadCommits, Recounted: facts.recounted, Merged: facts.merged, Unmerged: facts.unmerged}); err != nil {
 		return refreshFailure(id, err), nil
 	}
 	return out, func(tctx context.Context) { b.refreshTail(tctx, id, f.entry, mine, facts) }
@@ -1130,7 +1140,7 @@ func (b *TaskBoard) refreshFetch(ctx context.Context, id string, out *adewire.Re
 func (b *TaskBoard) refreshTail(ctx context.Context, id string, entry *gitsession.RepoEntry, mine []model.AdeTaskBranch, facts *repoResult) {
 	prMerged := b.checkPrMerges(ctx, entry, mine, facts)
 	if len(prMerged) > 0 {
-		if err := b.deps.Tasks.MarkBranchFacts(nil, prMerged); err != nil {
+		if err := b.deps.Tasks.MarkBranchFacts(model.AdeBranchFactWrites{Merged: prMerged}); err != nil {
 			slog.Warn("ade refresh: mark pr merged", "scope", "ade", "repo", id, "err", err)
 			root := entry.Summary.Root
 			b.deps.Ops.Record(ctx, oplog.Meta{Category: oplog.CategoryGit, Kind: opRefreshTail, RepoRoot: root, RepoName: filepath.Base(root)},
@@ -1154,26 +1164,43 @@ func remoteOpError(e *gitsession.RemoteOpError) *adewire.RemoteOpError {
 	return &adewire.RemoteOpError{Kind: e.Kind, Message: e.Message, RemoteMessage: e.RemoteMessage}
 }
 
-// checkPrMerges is the squash/rebase-merge signal: a mine branch with a merged PR counts as merged
-// though its tip never became an ancestor of main. Returns branch id -> merge time.
-func (b *TaskBoard) checkPrMerges(ctx context.Context, entry *gitsession.RepoEntry, branches []model.AdeTaskBranch, facts *repoResult) map[string]int64 {
-	merged := map[string]int64{}
+// checkPrMerges is the squash/rebase-merge signal: a mine branch with own commits and a merged PR
+// whose head is the local tip or descends from it counts as merged though its tip never became an
+// ancestor of main. A name match alone is not enough: a reused name (setup.go feat/new-task) finds
+// an old PR. Returns branch id -> merge record at the local tip.
+func (b *TaskBoard) checkPrMerges(ctx context.Context, entry *gitsession.RepoEntry, branches []model.AdeTaskBranch, facts *repoResult) map[string]model.AdeBranchMerge {
+	merged := map[string]model.AdeBranchMerge{}
 	now := b.deps.Now().UnixMilli()
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(boardFanOut)
 	for _, br := range branches {
 		wb, ok := facts.branches[br.ID]
-		if !ok || br.Name == "" || br.Kind != model.AdeBranchKindMine || wb.MergedAt != nil || wb.Tip == "" {
+		if !ok || br.Name == "" || br.Kind != model.AdeBranchKindMine || wb.MergedIntoMain || wb.Tip == "" || (!br.HadCommits && wb.Ahead == 0) {
 			continue
 		}
 		g.Go(func() error {
 			r := entry.ResolveBranchChangeRequest(gctx, br.Name)
-			if r.Kind == "ok" && len(r.ChangeRequests) > 0 && r.ChangeRequests[0].State == "merged" {
-				mu.Lock()
-				merged[br.ID] = now
-				mu.Unlock()
+			if r.Kind != "ok" || len(r.ChangeRequests) == 0 {
+				return nil
 			}
+			cr := r.ChangeRequests[0]
+			if cr.State != "merged" || cr.HeadSha == "" {
+				return nil
+			}
+			if cr.HeadSha != wb.Tip {
+				desc, err := entry.IsAncestor(gctx, wb.Tip, cr.HeadSha)
+				if err != nil {
+					slog.Debug("ade refresh: pr head not local", "scope", "ade", "branch", br.Name, "err", err)
+					return nil
+				}
+				if !desc {
+					return nil
+				}
+			}
+			mu.Lock()
+			merged[br.ID] = model.AdeBranchMerge{At: now, Tip: wb.Tip}
+			mu.Unlock()
 			return nil
 		})
 	}

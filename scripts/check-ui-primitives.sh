@@ -153,6 +153,7 @@ U34 apps/kira-space/frontend/src/workbench/settings/MobileQr.vue # QR needs a wh
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeBranchRow.vue # plan board branch row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/ade/v2/plan/AdeDayBand.vue # plan board history and span row selected fill, board visual exempt per P263 §2.10
 U37 apps/kira-space/frontend/src/studio/views/shared/DateTimePicker.vue # picker cell selection fill, not a list row (P525 rule 7)
+U37 packages/theme/src/components/SecondaryTabs.vue # choice variant selected fill, a toggle not a list row (P668)
 U62 apps/kira-space/frontend/src/views/repo/useReadonlyFileViewer.ts # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/RepoDiffView.vue # Monaco editor.focus(), not DOM focus
 U62 apps/kira-space/frontend/src/views/repo/useFileEdit.ts # Monaco editor.focus(), not DOM focus
@@ -275,7 +276,7 @@ U86@@vt@@@@z-index off the token ladder (use z-(--kira-z-*) tiers; in-pane z-0..
 U87@@v@@Disclosure.vue@@<details (use Disclosure)@@<details\b
 U88@@vt@@EmptyState.vue|PairScreen.vue@@off-scale density (scale is 0.5, 1, 1.5, 2, 3, 4)@@${TOK}(?:gap|gap-x|gap-y|p|px|py|mt|mb|my|pt|pb)-(?:0\.25|1\.25|1\.75|2\.5|3\.5|5|6|7|8|10|12)(?![\w.-])
 U89@@vt@@linkify.ts|badgeClass.ts@@cursor-pointer outside link owners, or cursor-help/copy (controls and rows are cursor-default)@@${TOK}cursor-(?:pointer|help|copy)(?![\w-])
-U90@@vt@@rowVariants.ts|sortableReorder.ts|FilterBar.vue@@hover tone override, or opacity as muted or state (use tone, rowVariants muted/disabled, SORTABLE_GHOST_CLASS)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])|(?<![\w:-])opacity-50(?![\w.-])
+U90@@vt@@rowVariants.ts|sortableReorder.ts@@hover tone override, or opacity as muted or state (use tone, rowVariants muted/disabled, SORTABLE_GHOST_CLASS)@@hover:text-(?:ok|error|warn|primary)(?![\w-])|${TOK}opacity-(?:40|60|70|75|80)(?![\w.-])|(?<![\w:-])opacity-50(?![\w.-])
 U91@@vt@@@@hand-written truncate, or tooltip-wrapped truncate, also a TextTooltip repeating the truncated text (use TruncatedText)@@overflow-hidden text-ellipsis whitespace-nowrap|<TooltipTrigger\b(?&t)>\s*<(?:span|div|button)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])|<TextTooltip\b(?&t)\s:text="(?<u91>[^"]+)"(?&t)>\s*<(?:span|div|button|Badge)\b(?&t)\s:?class="[^"]*${TOK}truncate(?![\w-])[^"]*"(?&t)>\s*\{\{\s*\k<u91>\s*\}\}
 U92@@v@@SplitButton.vue@@<Button :disabled carries a pending flag, or Spinner inside Button (use pending)@@<Button\b(?&t)\s:disabled="[^"]*(?i:pending|busy|saving|loading|running|installing|committing)|(?s)<Button\b(?&t)(?<!/)>(?:(?!</Button>).)*?<Spinner\b
 U93@@vt@@/theme/src/format.ts|/testing/!@@toFixed or {{ }}% (use formatPercent, formatBytes, formatDuration)@@toFixed\(|\}\}%

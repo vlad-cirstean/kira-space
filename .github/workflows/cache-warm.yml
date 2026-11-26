@@ -113,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        bundle: [elastic, sql, kv, stream, flow]
+        bundle: [sql, kv, stream, flow]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup

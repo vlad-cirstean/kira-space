@@ -170,7 +170,6 @@ export const proofDetailSchema = /*#__PURE__*/ z.object({
   id: z.string(),
   // The proof's folder is tasks/<taskId>/proofs/<slug>.
   taskId: z.string(),
-  taskTitle: z.string(),
   slug: z.string(),
   name: z.string(),
   summary: z.string(),

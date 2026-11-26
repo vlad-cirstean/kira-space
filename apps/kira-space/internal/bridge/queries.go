@@ -3,7 +3,6 @@ package bridge
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/appcore"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/storage/model"
@@ -18,7 +17,7 @@ import (
 type QueriesService struct{ Deps appcore.Deps }
 
 // SavedQueriesChangedEvent is ChannelSavedQueriesChanged's payload: whose list changed and which
-// kind ("filter", "console" or "discover").
+// kind ("filter" or "console").
 type SavedQueriesChangedEvent struct {
 	ConnectionID string `json:"connectionId"`
 	Kind         string `json:"kind"`
@@ -90,7 +89,7 @@ func (s *QueriesService) SaveConsole(args QueriesSaveConsoleArgs) (model.SavedQu
 	return ipcerr.InternalResult(q, err)
 }
 
-// QueriesExpect is the name and pin state the caller last read. Update and UpdateDiscover refuse
+// QueriesExpect is the name and pin state the caller last read. Update refuses
 // with a conflict when the stored query no longer matches, so a second window never overwrites
 // the first unseen.
 type QueriesExpect struct {
@@ -109,21 +108,17 @@ func (s *QueriesService) Update(args QueriesUpdateArgs) (model.SavedQuery, error
 	if args.ID == "" {
 		return model.SavedQuery{}, ipcerr.Required("id")
 	}
-	name := ""
-	if args.Name != nil {
-		name = strings.TrimSpace(*args.Name)
-	}
 	var expect *model.SavedQueryPatch
 	if args.Expect != nil {
 		expect = &model.SavedQueryPatch{Name: args.Expect.Name, Pinned: args.Expect.Pinned}
 	}
 	q, err := s.Deps.Repos.SavedQueries.Update(args.ID, model.SavedQueryPatch{Name: args.Name, Pinned: args.Pinned}, expect)
 	s.notifySaved(q, err)
-	return queryResult(q, err, name)
+	return queryResult(q, err)
 }
 
 // queryResult maps the repo errors a caller can act on to typed IPC errors.
-func queryResult(q model.SavedQuery, err error, name string) (model.SavedQuery, error) {
+func queryResult(q model.SavedQuery, err error) (model.SavedQuery, error) {
 	switch {
 	case err == nil:
 		return q, nil
@@ -133,58 +128,8 @@ func queryResult(q model.SavedQuery, err error, name string) (model.SavedQuery, 
 		e := ipcerr.T(ipcerr.CodeConflict, "backend.studio.query.changed.body", nil)
 		e.Details = json.RawMessage(`{"changed":true}`)
 		return model.SavedQuery{}, e
-	case errors.Is(err, repos.ErrSavedQueryNameTaken):
-		return model.SavedQuery{}, ipcerr.T(ipcerr.CodeConflict, "backend.studio.query.nameTaken.body", map[string]string{"name": name})
-	case errors.Is(err, model.ErrInvalidDiscoverBody):
-		detail := strings.TrimPrefix(err.Error(), model.ErrInvalidDiscoverBody.Error()+": ")
-		return model.SavedQuery{}, ipcerr.T(ipcerr.CodeBadRequest, "backend.studio.query.invalidBody.body", map[string]string{"detail": detail})
 	}
 	return ipcerr.InternalResult(q, err)
-}
-
-type QueriesListDiscoverArgs struct {
-	ConnectionID string `json:"connectionId"`
-}
-
-// ListDiscover lists a connection's saved Discover queries, whatever data view they target.
-func (s *QueriesService) ListDiscover(args QueriesListDiscoverArgs) ([]model.SavedQuery, error) {
-	if args.ConnectionID == "" {
-		return nil, ipcerr.Required("connectionId")
-	}
-	return ipcerr.InternalResult(s.Deps.Repos.SavedQueries.ListDiscover(args.ConnectionID))
-}
-
-type QueriesSaveDiscoverArgs struct {
-	ConnectionID string             `json:"connectionId"`
-	Name         string             `json:"name"`
-	Body         model.DiscoverBody `json:"body"`
-	Pinned       bool               `json:"pinned"`
-}
-
-func (s *QueriesService) SaveDiscover(args QueriesSaveDiscoverArgs) (model.SavedQuery, error) {
-	if args.ConnectionID == "" {
-		return model.SavedQuery{}, ipcerr.Required("connectionId")
-	}
-	q, err := s.Deps.Repos.SavedQueries.SaveDiscover(args.ConnectionID, args.Name, args.Body, args.Pinned)
-	s.notifySaved(q, err)
-	return queryResult(q, err, strings.TrimSpace(args.Name))
-}
-
-type QueriesUpdateDiscoverArgs struct {
-	ID   string             `json:"id"`
-	Body model.DiscoverBody `json:"body"`
-	// Expect is the body the caller last read; a stored body that differs is a conflict.
-	Expect *model.DiscoverBody `json:"expect,omitempty"`
-}
-
-// UpdateDiscover replaces a saved Discover query's body in place.
-func (s *QueriesService) UpdateDiscover(args QueriesUpdateDiscoverArgs) (model.SavedQuery, error) {
-	if args.ID == "" {
-		return model.SavedQuery{}, ipcerr.Required("id")
-	}
-	q, err := s.Deps.Repos.SavedQueries.UpdateDiscover(args.ID, args.Body, args.Expect)
-	s.notifySaved(q, err)
-	return queryResult(q, err, "")
 }
 
 type QueriesIDArgs struct {

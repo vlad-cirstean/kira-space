@@ -230,16 +230,10 @@ function rawMenuForRow(row: TreeRowVm): MenuItem[] {
   }
 }
 
-function isKibana(row: MenuRowLike): boolean {
-  return useConnectionsStore().connectionRecord(row.connectionId)?.kind === 'kibana';
-}
-
 // D5: offered only when the connection's caps say so, same discipline as "Open definition" — shared by
 // all three menu builders below rather than repeated per-row-kind gating logic.
 function consoleMenuItem(row: TreeRowVm): MenuItem[] {
   if (useConnectionsStore().states[row.connectionId]?.caps?.sql !== true) return [];
-  // A kibana connection's console is Discover, opened by its own items.
-  if (isKibana(row)) return [];
   return [
     {
       type: 'item',
@@ -364,7 +358,6 @@ function connectionMenu(row: TreeRowVm): MenuItem[] {
         ]
       : []),
     ...consoleMenuItem(row),
-    ...newDiscoverItem(row),
     { type: 'separator' },
     {
       type: 'item',
@@ -500,7 +493,6 @@ function relationMenu(row: TreeRowVm): MenuItem[] {
 // gains "Open definition" (Caps.definition === true for mongo). No saved-filters submenu (a saved
 // query body is a SQL WHERE/ORDER BY shape that has no Mongo-filter analog yet).
 function collectionMenu(row: TreeRowVm): MenuItem[] {
-  if (isKibana(row)) return discoverDataViewMenu(row);
   return [
     ...openItems(row, {
       idBase: 'open-document',
@@ -519,37 +511,6 @@ function collectionMenu(row: TreeRowVm): MenuItem[] {
       kind: 'document',
       openTab: (connectionId, path) => useTabsStore().openDocumentTab(connectionId, path),
     }),
-  ];
-}
-
-// The connection root: a Discover tab with no data view chosen yet.
-function newDiscoverItem(row: TreeRowVm): MenuItem[] {
-  if (!isKibana(row)) return [];
-  return [
-    {
-      type: 'item',
-      id: 'new-discover',
-      label: t('studio.kibana.menu.newDiscover.label'),
-      icon: 'search',
-      run: () => {
-        useTabsStore().openDiscoverTab(row.connectionId, '', { newTab: true });
-      },
-    },
-  ];
-}
-
-// A kibana data view: Discover replaces the document, definition, console and count items.
-function discoverDataViewMenu(row: TreeRowVm): MenuItem[] {
-  return [
-    ...openItems(row, {
-      idBase: 'open-discover',
-      label: t('studio.kibana.menu.openDiscover.label'),
-      icon: 'search',
-      openTab: (connectionId, path, opts) =>
-        useTabsStore().openDiscoverTab(connectionId, path, { ...opts, title: row.name }),
-    }),
-    refreshItem(row),
-    ...copyNameItems(row),
   ];
 }
 

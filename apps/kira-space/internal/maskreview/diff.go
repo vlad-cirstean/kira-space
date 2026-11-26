@@ -11,7 +11,7 @@ import (
 )
 
 // Applies reports whether column review exists for kind. Kinds without fixed columns (mongodb, redis,
-// kafka, s3, sqs) or without a column listing (kibana) are skipped.
+// kafka, s3, sqs) are skipped.
 func Applies(kind string) bool {
 	switch kind {
 	case "postgres", "mysql", "mariadb", "clickhouse", "sqlite":

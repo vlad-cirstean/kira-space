@@ -833,7 +833,7 @@ var DbmcpToolRunQuery = define(Entry{
 
 var (
 	_ = arg(DbmcpToolRunQuery.id, "connectionId", studioApp, NextCall, `From list.`, NoVars{})
-	_ = arg(DbmcpToolRunQuery.id, "sql", studioApp, NextCall, `One statement. Kibana: the connection's queryFormat in list.`, NoVars{})
+	_ = arg(DbmcpToolRunQuery.id, "sql", studioApp, NextCall, `One statement.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "path", studioApp, NextCall, `Database path from describe; "" where the engine has none.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "mode", studioApp, NextCall, `read: SELECT-like. write: data changes. ddl: schema changes.`, NoVars{})
 	_ = arg(DbmcpToolRunQuery.id, "maxRows", studioApp, NextCall, `1-{{.Max}}, default {{.Default}}.`, LimitVars{Default: 100, Max: 2000})

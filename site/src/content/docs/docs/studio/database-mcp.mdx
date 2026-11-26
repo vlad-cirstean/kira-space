@@ -62,7 +62,7 @@ Each exposed connection has three modes: read, write and DDL. Each mode is allow
 
 The AI client declares one mode per `run_query` call: `read`, `write` or `ddl`. The declared mode picks the permission that applies. The app's statement check can only refuse: a statement more powerful than the declared mode is rejected, and an unclassifiable statement runs only under `ddl`.
 
-A `read` call runs on a separate read-only connection with the same credentials, so the database refuses writes itself. This holds for PostgreSQL, MySQL, MariaDB, SQLite and ClickHouse. MongoDB and Redis have no read-only session, so the app checks `read` itself; use a database user with read-only rights for a hard guarantee. Some engines still allow side-effecting functions in a read-only session, such as `pg_terminate_backend`. The database cannot tell write from DDL on one connection, so a misclassified DDL statement would run under the write permission. Write and DDL are not available for read-only connections or for Kibana, Kafka, S3 and SQS.
+A `read` call runs on a separate read-only connection with the same credentials, so the database refuses writes itself. This holds for PostgreSQL, MySQL, MariaDB, SQLite and ClickHouse. MongoDB and Redis have no read-only session, so the app checks `read` itself; use a database user with read-only rights for a hard guarantee. Some engines still allow side-effecting functions in a read-only session, such as `pg_terminate_backend`. The database cannot tell write from DDL on one connection, so a misclassified DDL statement would run under the write permission. Write and DDL are not available for read-only connections or for Kafka, S3 and SQS.
 
 The connection dialog's MCP tab shows which modes the client may use and what backs `read`.
 
@@ -90,7 +90,7 @@ Set the threshold in Settings, under Advanced. The default is 100,000, and the s
 
 The AI client can improve the query or ask for an exemption. You always approve an exemption in a dialog. It shows the estimate and the plan. If the plan cannot be read, the call is refused and no exemption is offered.
 
-Kira enforces this, not the database. PostgreSQL, MySQL, MariaDB and ClickHouse give a row estimate. SQLite, MongoDB, Redis, Kibana, Kafka, S3 and SQS give none, so queries there are not checked.
+Kira enforces this, not the database. PostgreSQL, MySQL, MariaDB and ClickHouse give a row estimate. SQLite, MongoDB, Redis, Kafka, S3 and SQS give none, so queries there are not checked.
 
 Known limits:
 - Estimates come from table statistics, so stale statistics give wrong numbers.
@@ -109,7 +109,7 @@ Rules:
 - A view is refused on a connection that has masking rules, because Kira cannot see which columns it exposes.
 - Table allow list and column review apply as for `run_query`.
 - The expensive-query check applies. A browse whose plan estimates at least the row threshold is refused. The AI client can ask for an exemption, and you always see a dialog. SQLite gives no estimate, so it skips the check.
-- Not available for MongoDB, Redis, Kibana, Kafka, S3 and SQS.
+- Not available for MongoDB, Redis, Kafka, S3 and SQS.
 
 Limits: masking matches by column name. A filter value containing a semicolon is refused while the plan check is on. Paging is by offset.
 

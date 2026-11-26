@@ -1,11 +1,9 @@
-import type { KibanaDiscoverRequest } from '@shared/domain/kibana';
 import {
   closeAllTabs,
   type HeapTab,
   isReadChannel,
   runHeapScenario,
 } from '@workbench/testing/ui/heapProbe';
-import { browserTimeZone, resolveTime } from '../../frontend/src/studio/views/console/kibana/time';
 import {
   controlSnapshots as redisControl,
   portSnapshots as redisPorts,
@@ -14,7 +12,6 @@ import { controlSnapshots as sqsControl, portSnapshots as sqsPorts } from '../ip
 import { expect, filesTest, type KiraApp, studioTest, test } from '../ui/fixtures';
 import { grpcTab } from '../ui/studio/support/apiMode';
 import { connectPostgres, ITEMS_CONTROL, ITEMS_PORT } from '../ui/studio/support/copyScenarios';
-import { executeHits, kibanaControl, logsNode, logsView } from '../ui/studio/support/kibanaFixture';
 import {
   DB_PATH as MONGO_DB,
   mongoConnectionSummary,
@@ -36,7 +33,7 @@ import { IPC } from '../ui/support/ipcChannels';
 import { restoredRepoTabs } from '../ui/support/repoFiles';
 import { repoTab } from '../ui/support/repoRows';
 import type { ControlSnapshot } from '../ui/support/types';
-import { connect, menuOpen, modeTab, NOW, pinClock } from './support/ramWorlds';
+import { connect, menuOpen, modeTab, pinClock } from './support/ramWorlds';
 
 // P433 heap probe: per tab kind, JS heap per open tab, switch rounds, six minutes away, close all.
 // Chromium only (CDP); report-only. `bunx playwright test -c playwright.perf.config.ts heap-tabs
@@ -331,45 +328,6 @@ studioTest.describe('Studio tab kinds', () => {
         },
       ],
       true,
-    );
-  });
-
-  function discoverStatement(): string {
-    const { columns, ...request }: KibanaDiscoverRequest = {
-      dataView: logsView.id,
-      query: '',
-      language: 'kuery',
-      timeRange: resolveTime({ mode: 'preset', preset: 'last15m' }, NOW),
-      filters: [],
-      sort: [],
-      size: 500,
-      timeZone: browserTimeZone(),
-    };
-    return JSON.stringify(columns ? { ...request, columns } : request);
-  }
-
-  studioTest('heap: kibana discover', async ({ relaunch }) => {
-    const app = await relaunch({
-      control: kibanaControl(),
-      stream: [executeHits(discoverStatement(), 200)],
-    });
-    const page = app.window;
-    await connect(page);
-    await run(
-      app,
-      [
-        {
-          name: 'discover',
-          open: async () => {
-            await (await findRow(page, logsNode.path)).dblclick();
-            await expect(page.locator('[data-testid="kibana-results"]')).toBeVisible({
-              timeout: 15_000,
-            });
-          },
-        },
-      ],
-      true,
-      5,
     );
   });
 

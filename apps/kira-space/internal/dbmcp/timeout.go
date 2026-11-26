@@ -64,8 +64,6 @@ func TimeoutEnforcementOf(kind, mode string) string {
 		read, write, ddl = "session", "app", "app"
 	case "sqlite", "mongodb", "redis":
 		read, write, ddl = "app", "app", "app"
-	case "kibana":
-		read = "app"
 	}
 	switch mode {
 	case modeRead, modeMasked:

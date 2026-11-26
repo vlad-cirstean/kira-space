@@ -167,7 +167,7 @@ func (c ProofCache) Propose(q sqlb.Querier, e ProofEdit) error {
 		return err
 	}
 	up := c.Dialect.Update(ps.Table)
-	up.Set(up.Assign(ps.PendingRev, rev), ps.SeenAt+" = NULL", up.Assign(ps.UpdatedAt, e.Now)).Where(up.Equal(ps.ID, e.SessionID))
+	up.Set(up.Assign(ps.PendingRev, rev), up.Assign(ps.UpdatedAt, e.Now)).Where(up.Equal(ps.ID, e.SessionID))
 	_, err := sqlb.Exec(q, up)
 	return err
 }
@@ -240,20 +240,6 @@ func (r *ProofRepo) LinkOf(sessionID string) (taskID, slug string, ok bool, err 
 	return taskID, slug, err == nil && slug != "", err
 }
 
-// TaskTitleOf returns the title of the task holding the session; "" when none does.
-func (r *ProofRepo) TaskTitleOf(sessionID string) (string, error) {
-	tl, tk := kiraschema.ProofTaskLinks, kiraschema.AdeTasks
-	sb := r.Dialect.Select("k." + tk.Title).From(tl.Table + " l")
-	sb.Join(tk.Table+" k", "k."+tk.ID+" = l."+tl.TaskID)
-	sb.Where(sb.Equal("l."+tl.SessionID, sessionID))
-	var title string
-	err := sqlb.QueryRow(r.DB, sb).Scan(&title)
-	if errors.Is(err, sql.ErrNoRows) {
-		return "", nil
-	}
-	return title, err
-}
-
 // SlugOf returns the folder slug of a proof session, "" when unknown.
 func (c ProofCache) SlugOf(q sqlb.Querier, sessionID string) (string, error) {
 	tl := kiraschema.ProofTaskLinks
@@ -291,10 +277,10 @@ func (r *ProofRepo) LegacyProofs(taskID string) ([]LegacyProof, error) {
 	rows, err := sqlb.Query(r.DB, sb)
 	list, err := queryAll(rows, err, func(rows *sql.Rows) (LegacyProof, error) {
 		var p LegacyProof
-		var cur, pend, closed, seen sql.NullInt64
+		var cur, pend, closed sql.NullInt64
 		s := &p.Session
-		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &seen, &s.UpdatedAt, &p.LinkedAt)
-		s.CurrentRev, s.PendingRev, s.ClosedAt, s.SeenAt = nullInt(cur), nullInt(pend), nullInt64(closed), nullInt64(seen)
+		err := rows.Scan(&s.ID, &s.Name, &s.NameKey, &s.State, &cur, &pend, &s.Summary, &s.CreatedAt, &closed, &s.UpdatedAt, &p.LinkedAt)
+		s.CurrentRev, s.PendingRev, s.ClosedAt = nullInt(cur), nullInt(pend), nullInt64(closed)
 		return p, err
 	})
 	if err != nil {

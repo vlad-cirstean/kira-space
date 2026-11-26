@@ -26,7 +26,6 @@
     "slug": "login",
     "summary": "",
     "taskId": "<id:1>",
-    "taskTitle": "Login form",
     "version": "<version:changed>"
   },
   "ProofService.Session#loaded": {
@@ -56,7 +55,6 @@
     "slug": "login",
     "summary": "",
     "taskId": "<id:1>",
-    "taskTitle": "Login form",
     "version": "<version:loaded>"
   },
   "event:kira:proof:changed#acceptedEdit": {

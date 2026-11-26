@@ -137,3 +137,41 @@ test('a board push moves an open diagram step to the bumped rev', async ({ relau
   await emitWailsEvent(page, IPC.adeTaskBoardChanged, board('event:kira:adetask:board#proofEdit'));
   await expect.poll(stepRevs).toContain(2);
 });
+
+test('contract: an AddNote push refetches this task handovers and artifacts, not another open task', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch);
+  await openDetails(page, TASK);
+  await expect.poll(() => calls(control, IPC.adeTaskArtifacts).length).toBeGreaterThan(0);
+  const handovers = () => calls(control, IPC.adeTaskHandovers).length;
+  const artifacts = () => calls(control, IPC.adeTaskArtifacts).length;
+  const [h0, a0] = [handovers(), artifacts()];
+
+  await emitWailsEvent(page, IPC.adeTaskBoardChanged, board('event:kira:adetask:board#scopedPush'));
+  await expect.poll(handovers).toBeGreaterThan(h0);
+  await expect.poll(artifacts).toBeGreaterThan(a0);
+
+  const [h1, a1] = [handovers(), artifacts()];
+  await emitWailsEvent(page, IPC.adeTaskBoardChanged, { refs: false, taskIds: ['T_other'] });
+  await page.waitForTimeout(500);
+  expect([handovers(), artifacts()]).toEqual([h1, a1]);
+});
+
+test('a hidden Details tab skips the push and refetches the artifacts when shown again', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openPlan(relaunch);
+  await openDetails(page, TASK);
+  await expect.poll(() => calls(control, IPC.adeTaskArtifacts).length).toBeGreaterThan(0);
+  await page.locator(t('ade-panel-tab-main')).click();
+  const artifacts = () => calls(control, IPC.adeTaskArtifacts).length;
+  const hidden = artifacts();
+
+  await emitWailsEvent(page, IPC.adeTaskBoardChanged, board('event:kira:adetask:board#scopedPush'));
+  await page.waitForTimeout(500);
+  expect(artifacts()).toBe(hidden);
+
+  await page.locator(t('ade-panel-tab-details')).click();
+  await expect.poll(artifacts).toBeGreaterThan(hidden);
+});

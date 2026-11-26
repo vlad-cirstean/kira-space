@@ -276,12 +276,6 @@ jobs:
         run: |
           echo "bundles= $(sh scripts/go-test-split.sh --bundles containers) " >> "$GITHUB_OUTPUT"
           echo "pins=$(sh scripts/go-test-split.sh --pins-hash)" >> "$GITHUB_OUTPUT"
-      - name: Restore elastic images
-        if: contains(steps.images.outputs.bundles, ' elastic ')
-        uses: actions/cache/restore@v6
-        with:
-          path: ~/tc-images/elastic.tar
-          key: tc-images-${{ runner.os }}-elastic-${{ steps.images.outputs.pins }}
       - name: Restore sql images
         if: contains(steps.images.outputs.bundles, ' sql ')
         uses: actions/cache/restore@v6

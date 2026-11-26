@@ -213,7 +213,10 @@ test('a refused proof window toasts the error', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     proofsSnapshot(proofs()),
     diagramStep,
-    { channel: IPC.proofOpenWindow, error: { code: 'E_INTERNAL', message: 'proof is gone' } },
+    {
+      channel: IPC.proofOpenWindow,
+      error: { code: 'E_INTERNAL', message: 'proof is gone' },
+    },
   ]);
   await openChain(page);
   await page.locator(t('ade-proof-open')).click();
@@ -221,7 +224,10 @@ test('a refused proof window toasts the error', async ({ relaunch }) => {
 });
 
 test('a proof starts collapsed: title and summary only', async ({ relaunch }) => {
-  const list = proofs().map((p) => ({ ...p, summary: 'Summary of the login checks' }));
+  const list = proofs().map((p) => ({
+    ...p,
+    summary: 'Summary of the login checks',
+  }));
   const { window: page, control } = await openPlan(relaunch, [proofsSnapshot(list), diagramStep]);
   await openChain(page);
   const entry = page.locator(t('ade-proof-entry'));
@@ -281,7 +287,9 @@ test('Delete asks first, then removes the proof folder; no attach entry point ex
   await expect(page.locator(t('confirm-dialog-message'))).toContainText('Login checks');
   await page.locator(t('confirm-dialog-confirm')).click();
   await expect.poll(() => calls(control, IPC.proofDelete)).toHaveLength(1);
-  expect(calls(control, IPC.proofDelete)[0]?.args).toEqual({ sessionId: 'P_login' });
+  expect(calls(control, IPC.proofDelete)[0]?.args).toEqual({
+    sessionId: 'P_login',
+  });
 });
 
 test('a proof changed push refetches the task proofs', async ({ relaunch }) => {
@@ -296,6 +304,17 @@ test('a proof changed push refetches the task proofs', async ({ relaunch }) => {
   await expect
     .poll(() => calls(control, IPC.adeTaskProofs).length, { timeout: 15_000 })
     .toBeGreaterThan(before);
+});
+
+// Backend half: flows/proofflow TestProofFiles (a new proof raises no prompt and emits proof changed).
+test('a new proof shows in the chain and no dialog opens', async ({ relaunch }) => {
+  const { window: page, control } = await openPlan(relaunch, [proofsSnapshot([]), diagramStep]);
+  await openChain(page);
+  await expect(page.locator(t('ade-proof-entry'))).toHaveCount(0);
+  control.respond(IPC.adeTaskProofs, { proofs: proofs() });
+  await emitWailsEvent(page, IPC.proofChanged, { sessionId: 'P_login' });
+  await expect(page.locator(`${t('ade-proof-entry')}[data-slug="login-checks"]`)).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('an archived task shows its proof with no delete button', async ({ relaunch }) => {

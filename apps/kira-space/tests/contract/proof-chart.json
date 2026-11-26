@@ -138,7 +138,6 @@
     "slug": "deploy-health",
     "summary": "",
     "taskId": "<id:2>",
-    "taskTitle": "Login form",
     "version": "<masked>"
   },
   "ProofService.Session#pending": {
@@ -295,7 +294,6 @@
     "slug": "deploy-health",
     "summary": "",
     "taskId": "<id:2>",
-    "taskTitle": "Login form",
     "version": "<masked>"
   },
   "ProofService.Step#area": {

@@ -126,7 +126,7 @@
     "problem": {
       "col": 1,
       "line": 3,
-      "message": "kind must be one of \"clickhouse\", \"kafka\", \"kibana\", \"mariadb\", \"mongodb\", \"mysql\", \"postgres\", \"redis\", \"s3\", \"sqlite\", \"sqs\".",
+      "message": "kind must be one of \"clickhouse\", \"kafka\", \"mariadb\", \"mongodb\", \"mysql\", \"postgres\", \"redis\", \"s3\", \"sqlite\", \"sqs\".",
       "path": "/kind"
     },
     "text": "# Staging database for the web team.\nname: Pg # shown in the sidebar\nkind: nosuchkind\nhost: 127.0.0.1\nport: 5432\ndatabase: app\nusername: kira\npassword: ${secret:pg.password}\nmcp:\n  read: deny\n  write: deny\n  auto_explain: false\ncolor: blue\n",

@@ -101,7 +101,7 @@ test('a kind without a write console disables write and DDL, never hides them', 
   relaunch,
 }) => {
   const page = await open(relaunch, {
-    kind: 'kibana',
+    kind: 'kafka',
     mcp: { read: 'allow', write: 'prompt', ddl: 'prompt' },
   });
   await expect(page.locator('[data-testid="connection-mcp-access-summary"]')).toContainText(
@@ -141,7 +141,7 @@ test('modes, DDL, exemption, throttle and rows lines render for a SQL engine, ma
 test('the DDL line hides for a kind without a write console, the rest stay', async ({
   relaunch,
 }) => {
-  const page = await open(relaunch, { kind: 'kibana', mcp: { read: 'allow' } });
+  const page = await open(relaunch, { kind: 'kafka', mcp: { read: 'allow' } });
   await expect(line(page, 'ddl')).toHaveCount(0);
   await expect(line(page, 'modes')).toBeVisible();
 });

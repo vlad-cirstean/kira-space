@@ -14,7 +14,7 @@
 # in that group's `other` shard, so every package runs in exactly one shard by construction.
 #
 # Basis: PR run 43628609545 (v0.3.13), seconds per shard, `go test` -p 4:
-#   containers one job, about 250 s of tests (kibana 131, dbflow 105 longest);
+#   containers one job, about 250 s of tests (dbflow 105 longest);
 #   adeflow1 and adeflow2 about 139 each (278 split in two), rest other about 500 summed (ade 75 longest).
 # A new package that starts containers must match the containers group (GROUP_PATTERN), or its
 # fixtures pull from Docker Hub in the `rest` job.
@@ -24,14 +24,13 @@ GROUP_PATTERN='/internal/adapters/|/internal/ipcfixture|/flows/dockerflow|/flows
 
 # group;shard;pattern (ERE on import path, empty = remainder);slice k/n;image bundles.
 # First matching pattern owns a package; rows sharing a pattern are slices of one package by test name.
-TABLE='containers;other;;;elastic sql kv stream flow
+TABLE='containers;other;;;sql kv stream flow
 rest;adeflow1;/internal/flows/adeflow$;1/2;
 rest;adeflow2;/internal/flows/adeflow$;2/2;
 rest;other;;;'
 
 # bundle:kinds (kinds as in testsupport/images.go; `flow` is pull-test-images.sh's pseudo-kind).
-BUNDLES='elastic:elasticsearch kibana
-sql:postgres mysql mariadb clickhouse
+BUNDLES='sql:postgres mysql mariadb clickhouse
 kv:redis mongo
 stream:kafka localstack
 flow:flow'

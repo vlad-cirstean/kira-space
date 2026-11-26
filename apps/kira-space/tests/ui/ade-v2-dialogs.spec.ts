@@ -118,7 +118,7 @@ test('Merge from the fix menu: path, push line, recorded only after a Stop', asy
   await expect(target).toHaveAttribute('data-slot', 'secondary-tabs');
   const newSession = target.locator('button', { hasText: 'new session' });
   await newSession.click();
-  await expect(newSession).toHaveClass(/data-\[state=on\]:bg-toggle-on/);
+  await expect(newSession).toHaveClass(/data-\[state=on\]:bg-select/);
   await page.locator(t('ade-dialog-send')).click();
   await expect.poll(() => calls(control, IPC.adeTaskStartBranch)).toHaveLength(1);
   expect(calls(control, IPC.adeTaskRecordMerge)).toHaveLength(0);
