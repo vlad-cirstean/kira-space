@@ -141,4 +141,19 @@ func TestArtifactsOpen(t *testing.T) {
 		gaps := aoCall(t, app, task.ID).Gaps
 		return len(gaps) == 1 && gaps[0].Source == "host" && gaps[0].Repo == "api"
 	})
+
+	// 5. A call that arrives while the task's confirm job waits on the host is not dropped: the job
+	// confirms once more against the latest share served, and the task still gets its push.
+	forge.SetOffline(false)
+	app.Restart()
+	release = forge.Hold()
+	mark = app.Events.Mark()
+	aoCall(t, app, task.ID)
+	aoCall(t, app, task.ID)
+	release()
+	app.Events.WaitAfter(t, mark, adewire.ChannelBoard, refsTask, waitFor)
+	testx.WaitUntil(t, waitFor, func() bool {
+		_, ok := findArtifact(aoCall(t, app, task.ID), "changeRequest", "Fix login")
+		return ok
+	})
 }
