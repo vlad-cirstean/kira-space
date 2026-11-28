@@ -61,6 +61,13 @@ Owner request: unify the colour components so a future colour change is modular 
 module owns palette, band, mark and selection ring; every coloured surface consumes it. Runs after
 P764 ships, builds on its shared band component. Plan audits every current colour consumer.
 
+Owner decisions (audit `plans/colour-audit.md` section 5, mockup `plans/colour-rollout-mockup.html`):
+one palette app-wide, the task Pure-B inks and bands; band only, no colour dots in heads; tabs and
+list rows take the band too (every coloured module, terminal scripts included); engine and connection
+icons are already coloured and stay untouched; task status uses the same palette for now. Legacy
+names and repo chips unanswered: take the audit's recommendations (`lime`/`sky` stored names, band
+ground with neutral text).
+
 ## P767
 
 Owner request: apply the P764 faint-band design to the other parts of the app: Studio, API, repos,
