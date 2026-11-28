@@ -80,7 +80,7 @@ P764 ships, builds on its shared band component. Plan audits every current colou
 Owner decisions (audit `plans/colour-audit.md` section 5, mockup `plans/colour-rollout-mockup.html`):
 one palette app-wide, the task Pure-B inks and bands; band only, no colour dots in heads; tabs and
 list rows take the band too (every coloured module, terminal scripts included); engine and connection
-icons are already coloured and stay untouched; task status first took the same palette, then the owner reversed it: status gets its own stronger, purer colours, distinct from the task colours (P766 plan to be revised before implementing). Legacy
+icons are already coloured and stay untouched; task status first took the same palette, then the owner reversed it: status gets its own stronger, purer colours, distinct from the task colours (`plans/P766.md` revised: 9-colour status palette, solid chips, migration 0113). Legacy
 names and repo chips unanswered: take the audit's recommendations (`lime`/`sky` stored names, band
 ground with neutral text).
 
