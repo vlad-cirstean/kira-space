@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>P763 Link Hosts</title>
+<title>P763 Link Rows</title>
 <style>
-/* Dark values copied from packages/theme/src/tokens.css. App ships dark only; light is a stand-in. */
+/* Values copied from packages/theme/src/tokens.css (dark, the only theme the app ships). */
 :root {
   --kira-bg: #1b1b1e;
   --kira-bg-elevated: #212125;
@@ -21,6 +21,7 @@
   --kira-info: #69a1e8;
   --kira-warn: #d5b449;
   --kira-error: #e66e68;
+  --kira-merged: #a78bdb;
   --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.24);
   --kira-radius-sm: 4px;
   --kira-radius: 6px;
@@ -33,161 +34,142 @@
   --mock-accent: #3b6ed1;
   color-scheme: dark;
 }
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --kira-bg: #ffffff;
-    --kira-bg-elevated: #f7f7f8;
-    --kira-bg-chrome: #f0f0f2;
-    --kira-bg-input: #ececef;
-    --kira-fg: #27272a;
-    --kira-fg-muted: #52525b;
-    --kira-fg-subtle: #6b6b74;
-    --kira-border: #dcdce0;
-    --kira-focus: #52525b;
-    --kira-select-edge: #a1a1aa;
-    --kira-ok: #1f8a57;
-    --kira-info: #2f6fc4;
-    --kira-warn: #9a7a12;
-    --kira-error: #c2413a;
-    --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
-    color-scheme: light;
-  }
-}
-:root[data-theme="light"] {
-  --kira-bg: #ffffff;
-  --kira-bg-elevated: #f7f7f8;
-  --kira-bg-chrome: #f0f0f2;
-  --kira-bg-input: #ececef;
-  --kira-fg: #27272a;
-  --kira-fg-muted: #52525b;
-  --kira-fg-subtle: #6b6b74;
-  --kira-border: #dcdce0;
-  --kira-focus: #52525b;
-  --kira-select-edge: #a1a1aa;
-  --kira-ok: #1f8a57;
-  --kira-info: #2f6fc4;
-  --kira-warn: #9a7a12;
-  --kira-error: #c2413a;
-  --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
-  color-scheme: light;
-}
-
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--kira-bg-chrome);
-  color: var(--kira-fg);
-  font: var(--kira-t-md)/1.4 var(--kira-font-ui);
-  padding: 24px 16px 48px;
+  background: var(--kira-bg-chrome); color: var(--kira-fg);
+  font: var(--kira-t-md)/1.4 var(--kira-font-ui); padding: 24px 16px 48px;
 }
-.page { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.page { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 header.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 header.top h1 { font-size: 16px; font-weight: 600; margin: 0; }
 header.top p { margin: 0; color: var(--kira-fg-muted); flex: 1 1 320px; }
 .toggle {
   font: inherit; color: var(--kira-fg); background: var(--kira-bg-input);
   border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm);
-  height: 26px; padding: 0 10px; cursor: pointer;
+  height: 26px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px;
 }
-.toggle:focus-visible { outline: 1px solid var(--kira-focus); outline-offset: 1px; }
 
-section.variant {
-  background: var(--kira-bg); border: 1px solid var(--kira-border); border-radius: var(--kira-radius);
-  overflow: hidden;
-}
-.variant > .head {
-  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-  padding: 8px 12px; border-bottom: 1px solid var(--kira-border); background: var(--kira-bg-elevated);
-}
+section.variant { background: var(--kira-bg); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); overflow: hidden; }
+.variant > .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--kira-border); background: var(--kira-bg-elevated); }
 .variant > .head h2 { margin: 0; font-size: 13px; font-weight: 600; }
-.variant > .head .tag {
-  font-size: var(--kira-t-xs); text-transform: uppercase; letter-spacing: .04em;
-  padding: 1px 6px; border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); color: var(--kira-fg-muted);
-}
-.variant > .head .tag.rec { background: color-mix(in srgb, var(--kira-ok) 15%, transparent); color: var(--kira-ok); }
+.tag { font-size: var(--kira-t-xs); text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); color: var(--kira-fg-muted); }
+.tag.rec { background: color-mix(in srgb, var(--kira-ok) 15%, transparent); color: var(--kira-ok); }
 .variant > .head p { margin: 0; color: var(--kira-fg-subtle); font-size: var(--kira-t-sm); flex: 1 1 300px; }
 .body { padding: 10px 12px 12px; display: grid; gap: 16px; }
 .body.split { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
-@media (max-width: 860px) { .body.split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .body.split { grid-template-columns: minmax(0, 1fr); } }
 .cap { color: var(--kira-fg-subtle); font-size: var(--kira-t-xs); margin: 0 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.col { display: grid; gap: 16px; min-width: 0; align-content: start; }
 
-/* Strip, mirrors AdeLinkStrip.vue */
-.strip { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.section-heading {
-  display: flex; align-items: center; justify-content: space-between;
-  font-size: var(--kira-t-sm); color: var(--kira-fg-muted); text-transform: uppercase; letter-spacing: .04em; height: 22px;
-}
-.section-heading .add { color: var(--kira-fg-muted); width: 18px; height: 18px; display: grid; place-items: center; }
+/* Task panel frame: the Details tab at its default width */
+.panel { border: 1px solid var(--kira-border); border-radius: var(--kira-radius); background: var(--kira-bg); min-width: 0; }
+.panel .tabs { display: flex; gap: 12px; padding: 0 12px; height: 28px; align-items: center; border-bottom: 1px solid var(--kira-border); color: var(--kira-fg-muted); font-size: var(--kira-t-sm); }
+.panel .tabs .on { color: var(--kira-fg); box-shadow: inset 0 -1px 0 var(--kira-fg); height: 100%; display: flex; align-items: center; }
+.panel .inner { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+.chain { color: var(--kira-fg-subtle); font-size: var(--kira-t-sm); border-top: 1px dashed var(--kira-border); padding-top: 6px; }
+.w-details { max-width: 560px; }
+.w-dialog { max-width: 420px; }
+
+svg.i { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.section-heading { display: flex; align-items: center; justify-content: space-between; font-size: var(--kira-t-sm); color: var(--kira-fg-muted); text-transform: uppercase; letter-spacing: .04em; height: 22px; }
+.section-heading .add { width: 18px; height: 18px; display: grid; place-items: center; }
+.section-heading .count { text-transform: none; letter-spacing: 0; color: var(--kira-fg-subtle); margin-left: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--kira-ok); } .dot.info { background: var(--kira-info); }
+.dot.muted { background: var(--kira-fg-subtle); } .dot.merged { background: var(--kira-merged); }
+.dot.warn { background: var(--kira-warn); }
+.data { font-family: var(--kira-font-data); }
+
+/* CURRENT: pill strip (AdeLinkStrip + AdeLinkPill today) */
 .line { display: flex; align-items: flex-start; gap: 4px; min-height: 24px; }
 .cat { width: 20px; min-height: 24px; flex: none; display: grid; place-items: center; color: var(--kira-fg-muted); }
 .pills { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px 0; min-width: 0; flex: 1; }
-
-svg.i { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
-.cat svg.i { width: 13px; height: 13px; }
-
-/* Pill, mirrors AdeLinkPill.vue on Badge default variant */
-.pill {
-  display: inline-flex; align-items: center; gap: 4px; height: var(--kira-h-xs);
-  padding: 0 6px; border-radius: var(--kira-radius-sm); background: var(--kira-bg-input);
-  color: var(--kira-fg); font: var(--kira-t-sm)/1 var(--kira-font-ui); white-space: nowrap;
-  border: 1px solid transparent; min-width: 0; max-width: 192px; cursor: pointer;
-}
-.pill:focus-visible, .b .row:focus-visible { outline: 1px solid var(--kira-focus); outline-offset: 1px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; height: var(--kira-h-xs); padding: 0 6px; border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); color: var(--kira-fg); font: var(--kira-t-sm)/1 var(--kira-font-ui); white-space: nowrap; border: 1px solid transparent; max-width: 192px; }
 .pill.dashed { background: transparent; border: 1px dashed var(--kira-border); color: var(--kira-fg-muted); }
 .pill .lbl { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .pill .ico { color: var(--kira-fg-muted); display: flex; }
-.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.dot.ok { background: var(--kira-ok); }
-.dot.info { background: var(--kira-info); }
-.dot.muted { background: var(--kira-fg-subtle); }
-.dot.warn { background: var(--kira-warn); }
 
-/* Option A: host segment */
-.a .pill { max-width: 320px; }
-.a .pill .lbl { flex: 0 1 auto; }
-.host {
-  font: var(--kira-t-sm)/1 var(--kira-font-data); color: var(--kira-fg-subtle);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+/* ROWS (B1 and B2 share the row shell) */
+.rows { display: grid; column-gap: 8px; min-width: 0; }
+.b1 .rows { grid-template-columns: 14px fit-content(38%) minmax(0, 1fr) 8px; }
+.b2 .rows { grid-template-columns: 14px minmax(0, 1fr) fit-content(36%) 8px; }
+.row {
+  grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+  height: 22px; padding: 0 6px; margin: 0 -6px; border-radius: var(--kira-radius-sm);
+  font: var(--kira-t-sm)/1 var(--kira-font-ui); color: var(--kira-fg); background: transparent;
+  border: 1px solid transparent; text-align: left; cursor: pointer; min-width: 0;
 }
-.a .pill .host { flex: 0 0 auto; max-width: 160px; border-left: 1px solid var(--kira-border); padding-left: 6px; margin-left: 2px; }
-.a .pill .lbl { min-width: 32px; }
-.host.repo { display: inline-flex; gap: 3px; align-items: center; font-family: var(--kira-font-ui); }
-.host.repo svg.i { width: 10px; height: 10px; }
+.row:hover { background: var(--kira-bg-input); }
+.row:focus-visible, .more:focus-visible, .pill:focus-visible { outline: 1px solid var(--kira-focus); outline-offset: -1px; }
+.row.found { border: 1px dashed var(--kira-border); }
+.row .k { color: var(--kira-fg-muted); display: flex; justify-content: center; }
+.row .k.note { color: var(--kira-fg-subtle); }
+.grp { grid-column: 1 / -1; height: 5px; }
+.grp.rule { height: 9px; display: flex; align-items: center; }
+.grp.rule::after { content: ""; flex: 1; border-top: 1px solid var(--kira-border); opacity: .6; }
 
-/* Option B: rows */
-.b .group { display: flex; gap: 4px; align-items: flex-start; }
-.b .rows { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.b .row {
-  font: inherit; color: inherit; background: transparent; text-align: left; width: 100%;
-  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto 8px; align-items: center; gap: 8px;
-  height: 24px; padding: 0 6px; border-radius: var(--kira-radius-sm); cursor: pointer;
-  border: 1px solid transparent;
-}
-.b .row:hover { background: var(--kira-bg-input); }
-.b .row.dashed { border: 1px dashed var(--kira-border); color: var(--kira-fg-muted); }
-.b .row .ico { color: var(--kira-fg-muted); display: flex; justify-content: center; }
-.b .row .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; gap: 4px; align-items: center; min-width: 0; }
-.b .row .lbl .t { overflow: hidden; text-overflow: ellipsis; }
-.b .row .host { max-width: 40vw; text-align: right; justify-self: end; }
-.b .row .nodot { width: 8px; }
-.b .gap { height: 6px; }
+/* host cell */
+.h { display: flex; min-width: 0; overflow: hidden; white-space: nowrap; font: var(--kira-t-sm)/1 var(--kira-font-data); color: var(--kira-fg-subtle); }
+.h .hn { flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.h .rp { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--kira-fg-muted); }
+.h.repo, .h.jira { font-family: var(--kira-font-ui); gap: 3px; align-items: center; color: var(--kira-fg-muted); }
+.h.repo svg.i { width: 10px; height: 10px; }
+.h.rep { opacity: .45; }
+.b2 .h { justify-content: flex-end; }
 
-/* Card, mirrors AdeLinkCard.vue in PopoverContent w-80 */
-.card {
-  width: 320px; max-width: 100%; background: var(--kira-bg-elevated); border: 1px solid var(--kira-border);
-  border-radius: var(--kira-radius); box-shadow: var(--kira-shadow); padding: 10px; display: flex; flex-direction: column; gap: 6px;
-}
+/* primary + secondary cell */
+.t { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.t .p { flex: 0 1 auto; min-width: 6ch; overflow: hidden; text-overflow: ellipsis; }
+.t .p.id { font-family: var(--kira-font-data); }
+.t .p.path { font-family: var(--kira-font-data); color: var(--kira-fg-muted); }
+.t .s { flex: 0 1000 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--kira-fg-subtle); font-family: var(--kira-font-data); }
+.nodot { width: 8px; }
+
+.more { grid-column: 1 / -1; justify-self: start; height: 20px; margin: 2px 0 0 16px; padding: 0 6px; border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); color: var(--kira-fg-muted); border: 0; font: var(--kira-t-sm)/1 var(--kira-font-ui); cursor: pointer; }
+.rows.collapsed .row[data-extra] { display: none; }
+.rows.collapsed .grp[data-extra] { display: none; }
+
+/* Card (AdeLinkCard in PopoverContent w-80) */
+.card { width: 320px; max-width: 100%; background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); box-shadow: var(--kira-shadow); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
 .card .title { display: flex; gap: 6px; align-items: flex-start; }
-.card .title .ttl { color: var(--kira-fg); text-decoration: none; font-weight: 500; flex: 1; min-width: 0; }
+.card .ttl { color: var(--kira-info); font-weight: 500; flex: 1; min-width: 0; }
+.card .ttl.id { font-family: var(--kira-font-data); }
 .card .badge { font-size: var(--kira-t-sm); height: 18px; display: inline-flex; align-items: center; padding: 0 4px; border-radius: var(--kira-radius-sm); background: color-mix(in srgb, var(--kira-info) 15%, transparent); color: var(--kira-info); }
+.card .host { font: var(--kira-t-sm)/1.3 var(--kira-font-data); color: var(--kira-fg); }
 .card .url { font: var(--kira-t-sm)/1.3 var(--kira-font-data); color: var(--kira-fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .meta { display: flex; gap: 6px; font-size: var(--kira-t-sm); color: var(--kira-fg-muted); flex-wrap: wrap; }
-.card .meta .h { font-family: var(--kira-font-data); color: var(--kira-fg); }
-body.marks .new { outline: 1px dashed color-mix(in srgb, var(--mock-accent) 70%, transparent); outline-offset: 2px; border-radius: 2px; }
+.card .hint { font-size: var(--kira-t-sm); color: var(--kira-fg-subtle); }
+.card .acts { display: flex; gap: 8px; border-top: 1px solid var(--kira-border); padding-top: 6px; color: var(--kira-fg-muted); font-size: var(--kira-t-sm); }
+.tip { display: inline-block; background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); padding: 3px 6px; font: var(--kira-t-sm)/1.3 var(--kira-font-data); color: var(--kira-fg); box-shadow: var(--kira-shadow); max-width: 320px; overflow-wrap: anywhere; }
 
-.legend { margin: 0; padding-left: 18px; color: var(--kira-fg-muted); font-size: var(--kira-t-sm); display: grid; gap: 2px; }
+/* Tiers: main rows full strength; related rows quieter under a toggle header */
+.tier {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; height: 22px; margin: 4px -6px 0; padding: 0 6px;
+  background: transparent; border: 0; border-top: 1px solid var(--kira-border); border-radius: 0;
+  font: var(--kira-t-sm)/1 var(--kira-font-ui); color: var(--kira-fg-subtle); cursor: pointer; text-align: left;
+}
+.tier:hover { color: var(--kira-fg-muted); }
+.tier:focus-visible { outline: 1px solid var(--kira-focus); outline-offset: -1px; }
+.tier .chev { width: 10px; height: 10px; transition: transform .1s; }
+.tier[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.tier .n { color: var(--kira-fg-subtle); }
+.tier .peek { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--kira-font-data); opacity: .7; display: none; }
+.more.rel { margin-left: 16px; }
+.row.rel { color: var(--kira-fg-muted); }
+.row.rel .k { color: var(--kira-fg-subtle); }
+.row.rel .h { opacity: .75; }
+.row.rel .h.rep { opacity: .4; }
+.row.rel .t .p.path { color: var(--kira-fg-subtle); }
+.rows[data-related="collapsed"] .row.rel[data-extra] { display: none; }
+.rows[data-related="hidden"] .row.rel, .rows[data-related="hidden"] .more.rel { display: none; }
+.rows[data-related="hidden"] .tier .peek { display: block; }
+body.marks .new { outline: 1px dashed color-mix(in srgb, var(--mock-accent) 70%, transparent); outline-offset: 1px; border-radius: 2px; }
+.legend { margin: 0; padding-left: 18px; color: var(--kira-fg-muted); font-size: var(--kira-t-sm); display: grid; gap: 3px; }
 .legend code { font-family: var(--kira-font-data); color: var(--kira-fg); }
-.narrow { max-width: 420px; border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 6px 8px; }
+.kv { font-size: var(--kira-t-sm); color: var(--kira-fg-muted); display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 0; }
+.kv dt { color: var(--kira-fg-subtle); }
+.kv dd { margin: 0; }
 </style>
 </head>
 <body>
@@ -195,145 +177,169 @@ body.marks .new { outline: 1px dashed color-mix(in srgb, var(--mock-accent) 70%,
   <symbol id="i-issue" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></symbol>
   <symbol id="i-pr" viewBox="0 0 16 16"><circle cx="4" cy="3.5" r="1.6"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="12" cy="12.5" r="1.6"/><path d="M4 5.1v5.8M12 10.9V6.5a2 2 0 0 0-2-2H7.5M9 3l-1.5 1.5L9 6"/></symbol>
   <symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.6"/><circle cx="4.5" cy="12.5" r="1.6"/><circle cx="11.5" cy="5" r="1.6"/><path d="M4.5 5.1v5.8M11.5 6.6c0 3-7 2-7 4.3"/></symbol>
+  <symbol id="i-rocket" viewBox="0 0 16 16"><path d="M9.5 2.5c2 0 4 0 4 0s0 2 0 4L8 12l-4-4 5.5-5.5zM4 8l-2 .5 1.5 1.5M8 12l-.5 2-1.5-1.5M10.5 5.5h.01"/></symbol>
   <symbol id="i-link" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11.5l-1 1A2.5 2.5 0 0 1 4.5 9l1-1"/></symbol>
   <symbol id="i-file" viewBox="0 0 16 16"><path d="M4 1.5h5l3 3v10H4z M9 1.5v3h3"/></symbol>
   <symbol id="i-note" viewBox="0 0 16 16"><path d="M3 2.5h10v8l-3 3H3z M10 13.5v-3h3 M5.5 6h5M5.5 8.5h3"/></symbol>
   <symbol id="i-repo" viewBox="0 0 16 16"><path d="M4 2h8.5v10H5a1.5 1.5 0 0 0 0 3h7.5M4 13.5V2.5"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></symbol>
   <symbol id="i-add" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
 </svg>
 
 <div class="page">
   <header class="top">
-    <h1>P763: links show host too</h1>
-    <p>Task Details link strip, at Details width. Current, then option A (recommended), then option B. Tick "Mark new" to outline what is new. Hover or Tab through the links to see focus.</p>
-    <label class="toggle" style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="marks"> Mark new</label>
-    <button class="toggle" type="button" id="themeToggle" aria-pressed="false">Theme: system</button>
+    <h1>P763: link rows built for untitled links</h1>
+    <p>One task, 17 links, 12 of them untitled (Jira keys, bare refs, pasted URLs, branches, a deployment). Six are main (the task's own), eleven related. Today, then B1 (recommended), then B2. Click a row, then Up/Down/Home/End move; the Related header toggles. Tick "Mark new" to outline what changes.</p>
+    <label class="toggle"><input type="checkbox" id="marks"> Mark new</label>
   </header>
 
   <!-- CURRENT -->
   <section class="variant">
-    <div class="head"><h2>Current</h2><span class="tag">today</span><p>Label only, max 192px. Kind icon on Misc line only. Host hidden inside the URL in the card.</p></div>
+    <div class="head"><h2>Today</h2><span class="tag">current</span><p>Pills, label only, max 192px. Untitled links show their ref or host+path, so most pills read as fragments with no hint where they go.</p></div>
     <div class="body">
-      <div class="strip">
-        <div class="section-heading">Links <span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
-        <div class="line"><span class="cat" title="Issues"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span>
-          <div class="pills">
-            <button type="button" class="pill"><span class="lbl">PAY-130</span></button>
-            <button type="button" class="pill"><span class="lbl">PAY-12</span></button>
-          </div></div>
-        <div class="line"><span class="cat" title="Change requests"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span>
-          <div class="pills">
-            <button type="button" class="pill"><span class="lbl">Fix retry backoff in payment client</span><span class="dot info"></span></button>
-          </div></div>
-        <div class="line"><span class="cat" title="Misc"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span>
-          <div class="pills">
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">feat/retry-backoff</span><span class="dot info"></span></button>
-            <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">wip/spike</span><span class="dot muted"></span></button>
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">Payments runbook</span></button>
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">Design spec</span></button>
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">wiki.example/x</span></button>
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">storage.googleapis.com/acme-build-artifacts/release…</span></button>
-            <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">Health check</span></button>
-          </div></div>
-        <div class="line"><span class="cat" title="Related"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span>
-          <div class="pills">
-            <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lbl">Latency dashboard</span></button>
-          </div></div>
+      <div class="panel w-details">
+        <div class="tabs"><span class="on">Details</span><span>Branches</span><span>Runs</span></div>
+        <div class="inner">
+          <div>
+            <div class="section-heading">Links <span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
+            <div class="line"><span class="cat"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span><div class="pills">
+              <button type="button" class="pill"><span class="lbl">PAY-130</span></button>
+              <button type="button" class="pill"><span class="lbl">PAY-141</span></button>
+              <button type="button" class="pill"><span class="lbl">PAY-12</span></button>
+              <button type="button" class="pill"><span class="lbl">api#77</span></button>
+            </div></div>
+            <div class="line"><span class="cat"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span><div class="pills">
+              <button type="button" class="pill"><span class="lbl">#482</span><span class="dot info"></span></button>
+              <button type="button" class="pill"><span class="lbl">Bump payments SDK to 4.2</span><span class="dot merged"></span></button>
+              <button type="button" class="pill"><span class="lbl">#1203</span></button>
+            </div></div>
+            <div class="line"><span class="cat"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><div class="pills">
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">feat/retry-backoff</span><span class="dot info"></span></button>
+              <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">wip/spike</span><span class="dot muted"></span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-rocket"/></svg></span><span class="lbl">staging</span><span class="dot ok"></span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">Payments runbook</span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">acme.atlassian.net/wiki/spaces/PAY/pages/88213/Retry+policy</span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">storage.googleapis.com/acme-build-artifacts/release-2026.11.28/payments-api-linux-amd64.tar.gz</span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">10.0.4.12:8080/health</span></button>
+              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">status.acme.io</span></button>
+            </div></div>
+            <div class="line"><span class="cat"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><div class="pills">
+              <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lbl">Latency dashboard</span></button>
+              <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lbl">sentry.io/organizations/acme/issues/4410</span></button>
+            </div></div>
+          </div>
+          <div class="chain">Notes, handovers and proof follow here.</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- OPTION A -->
-  <section class="variant a">
-    <div class="head"><h2>Option A: pill with host segment</h2><span class="tag rec">recommended</span><p>Same strip, keyboard model and card. Pill up to 320px: kind icon, label, divider, host (data font, subtle), status dot. Label shrinks first, host caps at 160px.</p></div>
+  <!-- B1 -->
+  <section class="variant b1">
+    <div class="head"><h2>B1: host first, then name; main above related</h2><span class="tag rec">recommended</span><p>22px row: kind icon, host column (sized to the widest host, max 38%), name, muted secondary, status dot. Main links (the task's own: Jira and host slots, its change requests, branches, deployments) sit on top at full strength. Related links (pasted, agent-added, found in notes) follow under a "Related" toggle, quieter. An untitled row reads like its URL split at the host.</p></div>
     <div class="body split">
-      <div style="display:grid;gap:16px;min-width:0">
-        <div class="strip">
-          <div class="section-heading">Links <span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
-          <div class="line"><span class="cat" title="Issues"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span>
-            <div class="pills">
-              <button type="button" class="pill" aria-label="PAY-130, acme.atlassian.net"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span><span class="lbl">PAY-130</span><span class="host new">acme.atlassian.net</span></button>
-              <button type="button" class="pill" aria-label="PAY-12"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span><span class="lbl">PAY-12</span></button>
-            </div></div>
-          <div class="line"><span class="cat" title="Change requests"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span>
-            <div class="pills">
-              <button type="button" class="pill" aria-label="Fix retry backoff in payment client, github.com/acme/api, open"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span><span class="lbl">Fix retry backoff in payment client</span><span class="host new">github.com/acme/api</span><span class="dot info"></span></button>
-            </div></div>
-          <div class="line"><span class="cat" title="Misc"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span>
-            <div class="pills">
-              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">feat/retry-backoff</span><span class="host new">github.com/acme/api</span><span class="dot info"></span></button>
-              <button type="button" class="pill dashed" title="Local branch in api"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl">wip/spike</span><span class="host repo new"><svg class="i" aria-hidden="true"><use href="#i-repo"/></svg>api</span><span class="dot muted"></span></button>
-              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">Payments runbook</span><span class="host new">acme.atlassian.net</span></button>
-              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl">Design spec</span><span class="host new">docs.google.com</span></button>
-              <button type="button" class="pill" title="Auto title wiki.example/x: host moves out of the label"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl new">x</span><span class="host new">wiki.example</span></button>
-              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">acme-build-artifacts/release-2026.11.28/payments-api-linux-amd64.tar.gz</span><span class="host new">storage.googleapis.com</span></button>
-              <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl">Health check</span><span class="host new">10.0.4.12:8080</span></button>
-            </div></div>
-          <div class="line"><span class="cat" title="Related"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span>
-            <div class="pills">
-              <button type="button" class="pill dashed"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lbl">Latency dashboard</span><span class="host new">grafana.acme.io</span></button>
-            </div></div>
-        </div>
+      <div class="col">
         <div>
-          <p class="cap">Narrow mount (stage and run dialogs)</p>
-          <div class="strip narrow">
-            <div class="line"><span class="cat"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span>
-              <div class="pills">
-                <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span><span class="lbl">Fix retry backoff in payment client</span><span class="host">github.com/acme/api</span><span class="dot info"></span></button>
-                <button type="button" class="pill"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span><span class="lbl">Bump SDK</span><span class="host">forge.test/acme/platform/payments-gateway</span><span class="dot ok"></span></button>
-              </div></div>
+          <p class="cap">Details tab, default: main open, related shows 3 then "8 more"</p>
+          <div class="panel w-details">
+            <div class="tabs"><span class="on">Details</span><span>Branches</span><span>Runs</span></div>
+            <div class="inner">
+              <div>
+                <div class="section-heading"><span>Links<span class="count">17</span></span><span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
+                <div class="rows" data-roving data-render="b1" data-related="collapsed" data-peek="3"></div>
+              </div>
+              <div class="chain">Notes, handovers and proof follow here.</div>
+            </div>
           </div>
         </div>
+
+        <div>
+          <p class="cap">Stage and run dialogs (420px): main only, related folded to its header with a host peek</p>
+          <div class="panel w-dialog">
+            <div class="inner">
+              <div>
+                <div class="section-heading"><span>Links<span class="count">17</span></span></div>
+                <div class="rows" data-roving data-render="b1" data-related="hidden" data-peek="0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <ul class="legend">
-          <li>Code host: <code>host/owner/repo</code>. Other links: hostname, <code>www.</code> dropped, port kept, punycode kept.</li>
-          <li><code>PAY-12</code> has no URL: no host segment. Local branch <code>wip/spike</code> has no URL: repo nickname with repo icon.</li>
-          <li>Auto-titled <code>wiki.example/x</code>: label shows <code>x</code>, host carries the rest.</li>
-          <li>No favicons: CSP <code>img-src 'self' data:</code>, and fetching them leaks every linked host.</li>
+          <li>Tier rule (existing data, see plan section 3): main = Jira slot, host slot, every detected row (id empty, source not <code>notes</code>: change requests, issues, branches, deployments), and stored rows whose URL is one of the task's own change requests. Related = every other stored row (user paste, agent report) and every found link.</li>
+          <li>Main rows: text <code>fg</code>, host <code>fg-subtle</code>. Related rows: text <code>fg-muted</code>, host at 75%, kind icon subtle. Found rows keep the note icon; the dashed outline goes (detected rows are now main, so "dashed = detected" no longer holds).</li>
+          <li>Host column: code host <code>github.com/acme/api</code> (hostname gives way first when narrow); other links hostname, <code>www.</code> dropped, port kept, punycode kept; no URL: repo nickname with repo icon, or <code>Jira</code> for a key-only issue. Same host as the row above (same tier) dims.</li>
+          <li>Name: real title in UI font; else identifier in data font (<code>PAY-130</code>, <code>#77</code>, <code>feat/retry-backoff</code>); else URL rest after the host, muted; host-only URL shows <code>/</code>.</li>
+          <li>Secondary: ref beside a title (<code>#482</code>), URL rest beside a titled doc, short sha beside a deployment, <code>local</code> beside an unpushed branch. Truncation order: secondary, name (min 6ch), hostname part, repo part.</li>
+          <li>Kind order inside a tier: issue, change request, branch, deployment, doc, link; found links last in related. Main never collapses; related collapses above 3 rows.</li>
         </ul>
       </div>
-      <div>
-        <p class="cap">Card (both options)</p>
-        <div class="card">
-          <div class="title"><span class="ttl">Fix retry backoff in payment client</span><span class="badge">Open</span></div>
-          <div class="url">https://github.com/acme/api/pull/482</div>
-          <div class="meta"><span class="h new">github.com/acme/api</span><span>api</span><span>Host</span></div>
+
+      <div class="col">
+        <div>
+          <p class="cap">Hover tooltip (every row with a URL)</p>
+          <span class="tip new">https://acme.atlassian.net/wiki/spaces/PAY/pages/88213/Retry+policy</span>
+        </div>
+        <div>
+          <p class="cap">Card, main change request (host slot, title from host cache)</p>
+          <div class="card">
+            <div class="title"><span class="ttl">Fix retry backoff in payment client</span><span class="badge">Open</span></div>
+            <div class="host new">github.com/acme/api <span style="color:var(--kira-fg-subtle)">#482</span></div>
+            <div class="url">https://github.com/acme/api/pull/482</div>
+            <div class="meta"><span>api</span><span>Task link</span></div>
+            <div class="acts"><span>Open</span><span>Copy</span><span>Edit</span><span>Remove</span></div>
+          </div>
+        </div>
+        <div>
+          <p class="cap">Card, related untitled Jira link (edit mode)</p>
+          <div class="card">
+            <div class="title"><span class="ttl id">PAY-141</span></div>
+            <div class="host new">acme.atlassian.net</div>
+            <div class="url">https://acme.atlassian.net/browse/PAY-141</div>
+            <div class="hint new">No title. Edit to add one: <span class="data">Checkout retry storm https://…</span></div>
+            <div class="meta"><span>Related</span><span>You</span></div>
+            <div class="acts"><span>Open</span><span>Copy</span><span>Edit</span><span>Remove</span></div>
+          </div>
+        </div>
+        <div>
+          <p class="cap">Keyboard (one tab stop for the list)</p>
+          <dl class="kv">
+            <dt>Up / Down</dt><dd>previous / next row, across tiers and the Related header</dd>
+            <dt>Home / End</dt><dd>first / last visible row</dd>
+            <dt>Enter</dt><dd>open link (no URL: open card)</dd>
+            <dt>Space, Alt+Down</dt><dd>open card</dd>
+            <dt>F2 / Delete</dt><dd>edit / remove (edit mode, own rows)</dd>
+            <dt>+</dt><dd>add a link</dd>
+            <dt>Related header</dt><dd>Enter/Space toggle, Right expand, Left collapse</dd>
+            <dt>"N more"</dt><dd>Enter expands, focus moves to first new row</dd>
+          </dl>
+        </div>
+        <div>
+          <p class="cap">Height in the task panel (17 links: 6 main, 11 related)</p>
+          <dl class="kv">
+            <dt>Today</dt><dd>4 pill lines, about 120px with heading</dd>
+            <dt>B1 default</dt><dd>6 main + header + 3 related + more, about 270px</dd>
+            <dt>B1 related folded</dt><dd>6 main + header, about 180px</dd>
+            <dt>Typical (2 main, 1 related)</dt><dd>today 70px, B1 120px</dd>
+          </dl>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- OPTION B -->
-  <section class="variant b">
-    <div class="head"><h2>Option B: rows with host column</h2><span class="tag">alternative</span><p>One 24px row per link: kind icon, label (full width), host right-aligned, status dot. Up/Down move rows. Taller: one row per link in all three mounts.</p></div>
+  <!-- B2 -->
+  <section class="variant b2">
+    <div class="head"><h2>B2: name first, host at the right; same tiers</h2><span class="tag">alternative</span><p>Same rows, fields, tiers and rules; only the column order differs. Titles lead, so titled main links scan by meaning. Untitled rows (most related links) read reversed: path left, host right.</p></div>
     <div class="body">
-      <div class="strip">
-        <div class="section-heading">Links <span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
-        <div class="group"><span class="cat" title="Issues"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span>
-          <div class="rows">
-            <button type="button" class="row" tabindex="0"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span><span class="lbl"><span class="t">PAY-130 Checkout times out on retry</span></span><span class="host new">acme.atlassian.net</span><span class="nodot"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-issue"/></svg></span><span class="lbl"><span class="t">PAY-12</span></span><span class="host"></span><span class="nodot"></span></button>
-          </div></div>
-        <div class="gap"></div>
-        <div class="group"><span class="cat" title="Change requests"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span>
-          <div class="rows">
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-pr"/></svg></span><span class="lbl"><span class="t">Fix retry backoff in payment client</span></span><span class="host new">github.com/acme/api</span><span class="dot info"></span></button>
-          </div></div>
-        <div class="gap"></div>
-        <div class="group"><span class="cat" title="Misc"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span>
-          <div class="rows">
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl"><span class="t">feat/retry-backoff</span></span><span class="host new">github.com/acme/api</span><span class="dot info"></span></button>
-            <button type="button" class="row dashed" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg></span><span class="lbl"><span class="t">wip/spike</span></span><span class="host repo new"><svg class="i" aria-hidden="true"><use href="#i-repo"/></svg>api</span><span class="dot muted"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl"><span class="t">Payments runbook</span></span><span class="host new">acme.atlassian.net</span><span class="nodot"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-file"/></svg></span><span class="lbl"><span class="t">Design spec</span></span><span class="host new">docs.google.com</span><span class="nodot"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl"><span class="t new">x</span></span><span class="host new">wiki.example</span><span class="nodot"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl"><span class="t">acme-build-artifacts/release-2026.11.28/payments-api-linux-amd64.tar.gz</span></span><span class="host new">storage.googleapis.com</span><span class="nodot"></span></button>
-            <button type="button" class="row" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></span><span class="lbl"><span class="t">Health check</span></span><span class="host new">10.0.4.12:8080</span><span class="nodot"></span></button>
-          </div></div>
-        <div class="gap"></div>
-        <div class="group"><span class="cat" title="Related"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span>
-          <div class="rows">
-            <button type="button" class="row dashed" tabindex="-1"><span class="ico"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg></span><span class="lbl"><span class="t">Latency dashboard</span></span><span class="host new">grafana.acme.io</span><span class="nodot"></span></button>
-          </div></div>
+      <div class="panel w-details">
+        <div class="tabs"><span class="on">Details</span><span>Branches</span><span>Runs</span></div>
+        <div class="inner">
+          <div>
+            <div class="section-heading"><span>Links<span class="count">17</span></span><span class="add"><svg class="i" aria-hidden="true"><use href="#i-add"/></svg></span></div>
+            <div class="rows" data-roving data-render="b2" data-related="open" data-peek="3"></div>
+          </div>
+          <div class="chain">Notes, handovers and proof follow here.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -341,21 +347,122 @@ body.marks .new { outline: 1px dashed color-mix(in srgb, var(--mock-accent) 70%,
 
 <script>
 (() => {
-  const root = document.documentElement;
-  const btn = document.getElementById('themeToggle');
-  const order = ['system', 'dark', 'light'];
-  let i = 0;
   document.getElementById('marks').addEventListener('change', (e) => {
     document.body.classList.toggle('marks', e.target.checked);
   });
-  btn.addEventListener('click', () => {
-    i = (i + 1) % order.length;
-    const m = order[i];
-    if (m === 'system') root.removeAttribute('data-theme');
-    else root.setAttribute('data-theme', m);
-    btn.textContent = `Theme: ${m}`;
-    btn.setAttribute('aria-pressed', m === 'system' ? 'false' : 'true');
-  });
+
+  // h: [kind, hn, rp] where kind is web | code | repo | jira. p: [text, class]. tier: m main, r related.
+  const LINKS = [
+    { tier: 'm', k: 'issue', h: ['web', 'acme.atlassian.net'], p: ['PAY-130', 'id'], url: 'https://acme.atlassian.net/browse/PAY-130', why: 'Jira slot' },
+    { tier: 'm', k: 'pr', h: ['code', 'github.com/', 'acme/api'], p: ['Fix retry backoff in payment client', ''], s: '#482', dot: 'info', url: 'https://github.com/acme/api/pull/482', why: 'host slot, title from detected change request' },
+    { tier: 'm', k: 'pr', h: ['code', 'forge.test/', 'acme/platform/payments-gateway'], p: ['Bump payments SDK to 4.2', ''], s: '!9', dot: 'merged', url: 'https://forge.test/acme/platform/payments-gateway/-/merge_requests/9', why: 'detected change request' },
+    { tier: 'm', k: 'branch', h: ['code', 'github.com/', 'acme/api'], p: ['feat/retry-backoff', 'id'], dot: 'info', url: 'https://github.com/acme/api/tree/feat/retry-backoff', why: 'detected branch, pushed' },
+    { tier: 'm', k: 'branch', h: ['repo', 'payments-gateway'], p: ['wip/spike', 'id'], s: 'local', dot: 'muted', why: 'detected branch, local only' },
+    { tier: 'm', k: 'rocket', h: ['repo', 'api'], p: ['staging', ''], s: 'a1b2c3d', dot: 'ok', why: 'detected deployment' },
+    { tier: 'r', k: 'issue', h: ['web', 'acme.atlassian.net'], p: ['PAY-141', 'id'], url: 'https://acme.atlassian.net/browse/PAY-141', why: 'pasted Jira link (slot taken)' },
+    { tier: 'r', k: 'issue', h: ['jira', 'Jira'], p: ['PAY-12', 'id'], why: 'pasted Jira key, no URL' },
+    { tier: 'r', k: 'issue', h: ['code', 'github.com/', 'acme/api'], p: ['#77', 'id'], url: 'https://github.com/acme/api/issues/77', why: 'pasted code host issue' },
+    { tier: 'r', k: 'pr', h: ['code', 'github.com/', 'acme/web'], p: ['#1203', 'id'], url: 'https://github.com/acme/web/pull/1203', why: 'pasted PR of another repo' },
+    { tier: 'r', k: 'file', h: ['web', 'docs.google.com'], p: ['Payments runbook', ''], s: 'document/d/1x9FqP7/edit', url: 'https://docs.google.com/document/d/1x9FqP7/edit', why: 'agent-reported doc, titled' },
+    { tier: 'r', k: 'file', h: ['web', 'acme.atlassian.net'], p: ['wiki/spaces/PAY/pages/88213/Retry+policy', 'path'], url: 'https://acme.atlassian.net/wiki/spaces/PAY/pages/88213/Retry+policy', why: 'pasted Confluence page, untitled' },
+    { tier: 'r', k: 'link', h: ['web', 'storage.googleapis.com'], p: ['acme-build-artifacts/release-2026.11.28/payments-api-linux-amd64.tar.gz', 'path'], url: 'https://storage.googleapis.com/acme-build-artifacts/release-2026.11.28/payments-api-linux-amd64.tar.gz', why: 'pasted, untitled' },
+    { tier: 'r', k: 'link', h: ['web', '10.0.4.12:8080'], p: ['health', 'path'], url: 'http://10.0.4.12:8080/health', why: 'pasted, untitled, port kept' },
+    { tier: 'r', k: 'link', h: ['web', 'status.acme.io'], p: ['/', 'path'], url: 'https://status.acme.io/', why: 'pasted, host only' },
+    { tier: 'r', k: 'note', found: true, h: ['web', 'grafana.acme.io'], p: ['Latency dashboard', ''], s: 'd/latency', url: 'https://grafana.acme.io/d/latency', why: 'found in a handover, markdown title' },
+    { tier: 'r', k: 'note', found: true, h: ['web', 'sentry.io'], p: ['organizations/acme/issues/4410', 'path'], url: 'https://sentry.io/organizations/acme/issues/4410/', why: 'found in a note, bare URL' },
+  ];
+  const ICON = { issue: 'i-issue', pr: 'i-pr', branch: 'i-branch', rocket: 'i-rocket', file: 'i-file', link: 'i-link', note: 'i-note' };
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const svg = (id) => `<svg class="i" aria-hidden="true"><use href="#${id}"/></svg>`;
+  const hostKey = (l) => l.h.slice(1).join('');
+
+  function hostCell(l, rep) {
+    const [kind, hn, rp] = l.h;
+    const cls = `h new${rep ? ' rep' : ''}`;
+    if (kind === 'repo') return `<span class="${cls} repo">${svg('i-repo')}${esc(hn)}</span>`;
+    if (kind === 'jira') return `<span class="${cls} jira">${esc(hn)}</span>`;
+    return `<span class="${cls}"><span class="hn">${esc(hn)}</span>${rp ? `<span class="rp">${esc(rp)}</span>` : ''}</span>`;
+  }
+  function nameCell(l) {
+    const [text, cls] = l.p;
+    return `<span class="t"><span class="p ${cls}">${esc(text)}</span>${l.s ? `<span class="s new">${esc(l.s)}</span>` : ''}</span>`;
+  }
+  function row(l, variant, rep, extra) {
+    const cls = `row${l.tier === 'r' ? ' rel' : ''}`;
+    const tip = l.url || `${l.p[0]} (no link)`;
+    const k = `<span class="k${l.found ? ' note' : ''}" title="${esc(l.why)}">${svg(ICON[l.k])}</span>`;
+    const dot = l.dot ? `<span class="dot ${l.dot}"></span>` : '<span class="nodot"></span>';
+    const mid = variant === 'b1' ? hostCell(l, rep) + nameCell(l) : nameCell(l) + hostCell(l, rep);
+    return `<button type="button" class="${cls}" tabindex="-1" title="${esc(tip)}" data-tier="${l.tier}"${extra ? ' data-extra' : ''}>${k}${mid}${dot}</button>`;
+  }
+
+  function render(list) {
+    const variant = list.dataset.render;
+    const peek = Number(list.dataset.peek);
+    const state = list.dataset.related;
+    const main = LINKS.filter((l) => l.tier === 'm');
+    const rel = LINKS.filter((l) => l.tier === 'r');
+    let html = '';
+    let prev = '';
+    main.forEach((l) => { html += row(l, variant, hostKey(l) === prev, false); prev = hostKey(l); });
+    const hosts = [...new Set(rel.map((l) => l.h[1].replace(/\/$/, '')))];
+    html += `<button type="button" class="tier new" tabindex="-1" aria-expanded="${state === 'hidden' ? 'false' : 'true'}"><svg class="i chev" aria-hidden="true"><use href="#i-chev"/></svg><span>Related</span><span class="n">${rel.length}</span><span class="peek">${esc(hosts.join(' · '))}</span></button>`;
+    prev = '';
+    rel.forEach((l, i) => { html += row(l, variant, hostKey(l) === prev, state === 'collapsed' && i >= peek); prev = hostKey(l); });
+    if (state === 'collapsed' && rel.length > peek) html += `<button type="button" class="more rel new" tabindex="-1">${rel.length - peek} more</button>`;
+    list.innerHTML = html;
+    const first = list.querySelector('.row');
+    if (first) first.tabIndex = 0;
+  }
+
+  const visible = (list) => Array.from(list.querySelectorAll('.row, .more, .tier')).filter((el) => el.offsetParent !== null);
+  function focusTo(list, el) {
+    for (const x of list.querySelectorAll('[tabindex="0"]')) x.tabIndex = -1;
+    el.tabIndex = 0;
+    el.focus();
+  }
+  for (const list of document.querySelectorAll('[data-render]')) {
+    render(list);
+    list.addEventListener('keydown', (e) => {
+      const all = visible(list);
+      const at = all.indexOf(document.activeElement);
+      if (at < 0) return;
+      const cur = all[at];
+      let next = null;
+      if (e.key === 'ArrowDown') next = all[Math.min(at + 1, all.length - 1)];
+      else if (e.key === 'ArrowUp') next = all[Math.max(at - 1, 0)];
+      else if (e.key === 'Home') next = all[0];
+      else if (e.key === 'End') next = all[all.length - 1];
+      else if (cur.classList.contains('tier') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        const open = e.key === 'ArrowRight';
+        if ((list.dataset.related !== 'hidden') !== open) cur.click();
+        return;
+      }
+      if (!next) return;
+      e.preventDefault();
+      focusTo(list, next);
+    });
+    list.addEventListener('click', (e) => {
+      const t = e.target.closest('.tier, .more');
+      if (!t) return;
+      if (t.classList.contains('tier')) {
+        const hidden = list.dataset.related === 'hidden';
+        list.dataset.related = hidden ? 'collapsed' : 'hidden';
+        t.setAttribute('aria-expanded', hidden ? 'true' : 'false');
+        if (hidden && !list.querySelector('.more.rel') && list.querySelector('.row.rel[data-extra]')) {
+          const extra = list.querySelectorAll('.row.rel[data-extra]').length;
+          list.insertAdjacentHTML('beforeend', `<button type="button" class="more rel" tabindex="-1">${extra} more</button>`);
+        }
+        if (hidden && list.dataset.peek === '0') list.dataset.related = 'open';
+        return;
+      }
+      const firstNew = list.querySelector('.row.rel[data-extra]');
+      list.dataset.related = 'open';
+      t.remove();
+      if (firstNew) focusTo(list, firstNew);
+    });
+  }
 })();
 </script>
 </body>
