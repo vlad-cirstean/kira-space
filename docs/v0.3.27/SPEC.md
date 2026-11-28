@@ -12,7 +12,7 @@ review and iterate on; implementation follows the owner's sign-off.
 | # | Phase | Status |
 |---|-------|--------|
 | P762 | Branches MCP cannot target a worktree when a repo has several branches | Done |
-| P763 | Redesign links to show the host too (design for review) | Pending |
+| P763 | Redesign links to show the host too (design for review, owner decision deferred) | Pending |
 | P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
 | P765 | Repo files window opens without a worktree and starts fully collapsed | Done |
 | P766 | Unify colour components: one module owns palette, band, mark and selection ring so a later colour change is one edit | Pending |
@@ -39,6 +39,8 @@ implementation until the owner approves.
 
 ## P764
 
+Owner sign-off: Pure-B, 1.5px neutral selection ring, ripple dropped. Implement.
+
 Task colours become a faint background tint. Task details and the review window use the same tint and
 design. Design first: mockup and plan, no implementation until the owner approves.
 
@@ -64,7 +66,7 @@ P764 ships, builds on its shared band component. Plan audits every current colou
 Owner decisions (audit `plans/colour-audit.md` section 5, mockup `plans/colour-rollout-mockup.html`):
 one palette app-wide, the task Pure-B inks and bands; band only, no colour dots in heads; tabs and
 list rows take the band too (every coloured module, terminal scripts included); engine and connection
-icons are already coloured and stay untouched; task status uses the same palette for now. Legacy
+icons are already coloured and stay untouched; task status first took the same palette, then the owner reversed it: status gets its own stronger, purer colours, distinct from the task colours (P766 plan to be revised before implementing). Legacy
 names and repo chips unanswered: take the audit's recommendations (`lime`/`sky` stored names, band
 ground with neutral text).
 
