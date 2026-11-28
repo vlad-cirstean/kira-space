@@ -117,7 +117,12 @@ func (b *TaskBoard) taskCandidates(tc *taskCtx, cfgs []model.AdeRepoConfig) []re
 		byID[c.CodeRepoID] = c
 	}
 	out := make([]repoCandidate, 0, len(tc.branches))
+	seen := make(map[string]bool, len(tc.branches))
 	for _, br := range tc.branches {
+		if seen[br.CodeRepoID] {
+			continue
+		}
+		seen[br.CodeRepoID] = true
 		c := byID[br.CodeRepoID]
 		out = append(out, repoCandidate{id: br.CodeRepoID, name: c.Name, nickname: c.Nickname})
 	}
