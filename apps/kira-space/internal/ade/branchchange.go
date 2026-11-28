@@ -50,10 +50,10 @@ func (b *TaskBoard) ChangeBranch(ctx context.Context, call agentmcp.SpaceCall, a
 		}
 		res, err := b.changeDecision(b.ctx, call, args, plan.nick, dec, prefix+"i0")
 		if err != nil {
-			b.recordAnswer(call, stateAnswer{ID: args.Repo + "/" + args.To, Kind: "branch.change", Subject: args.Repo + "/" + args.To, Status: answerFailed, Message: toolMessage(err)})
+			b.recordAnswer(call, stateAnswer{ID: plan.nick + "/" + args.To, Kind: "branch.change", Subject: plan.nick + "/" + args.To, Status: answerFailed, Message: toolMessage(err)})
 			return
 		}
-		b.recordAnswer(call, answerOfOutcome("branch.change", args.Repo+"/"+args.To, res.Outcome, agentmcp.BranchChanged, res.Next))
+		b.recordAnswer(call, answerOfOutcome("branch.change", plan.nick+"/"+args.To, res.Outcome, agentmcp.BranchChanged, res.Next))
 	}
 	dec, prefix := b.awaitBranchRequest(ctx, call, plan.draft, deadline, late)
 	if dec.kind == decisionPending {
@@ -109,12 +109,11 @@ func (b *TaskBoard) changeTarget(ctx context.Context, call agentmcp.SpaceCall, a
 	if err != nil {
 		return changePlan{}, nil, err
 	}
-	id, err := resolveRepoRef(args.Repo, b.taskCandidates(tc, cfgs), "task")
+	named, id, err := b.taskRow(ctx, tc, cfgs, args.Repo, args.From, args.Worktree)
 	if err != nil {
 		return changePlan{}, nil, err
 	}
 	plan := changePlan{nick: tc.nick[id]}
-	named, _ := taskRepoRows(tc, id, args.From)
 	if named == nil {
 		return plan, nil, agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo.", args.From))
 	}

@@ -385,9 +385,9 @@ func defineStateAction(name, text string) Prompt[NoVars] {
 var (
 	HeadlessStateRepoDeclare     = defineStateAction("repo.declare", `repo.declare: args {repos}: repos the work touches.`)
 	HeadlessStateBranchRequest   = defineStateAction("branch.request", `branch.request: args {repo, branch, base?, existing?}: create a branch and its worktree, or check out an existing one (user approves only when another worktree holds it); waits until its worktree is ready.`)
-	HeadlessStateBranchRename    = defineStateAction("branch.rename", `branch.rename: args {repo, from, to, renameRemote?}: rename your branch, and with renameRemote its remote branch too (user approves).`)
-	HeadlessStateBranchChange    = defineStateAction("branch.change", `branch.change: args {repo, from, to}: point task branch from at existing local branch to (user approves).`)
-	HeadlessStateWorktreeRemove  = defineStateAction("worktree.remove", `worktree.remove: args {repo, branch}: remove your branch's worktree; the branch stays in git. Refused while it has uncommitted changes or anything works in it.`)
+	HeadlessStateBranchRename    = defineStateAction("branch.rename", `branch.rename: args {repo or worktree, from, to, renameRemote?}: rename your branch, and with renameRemote its remote branch too (user approves).`)
+	HeadlessStateBranchChange    = defineStateAction("branch.change", `branch.change: args {repo or worktree, from, to}: point task branch from at existing local branch to (user approves).`)
+	HeadlessStateWorktreeRemove  = defineStateAction("worktree.remove", `worktree.remove: args {repo, branch} or {worktree}: remove your branch's worktree; the branch stays in git. Refused while it has uncommitted changes or anything works in it.`)
 	HeadlessStateLeaseAcquire    = defineStateAction("lease.acquire", `lease.acquire: args {queue}: wait for the queue's lease.`)
 	HeadlessStateLeaseRelease    = defineStateAction("lease.release", `lease.release: args {queue?}: leave one queue, or every queue.`)
 	HeadlessStateOperationCancel = defineStateAction("operation.cancel", `operation.cancel: args {opId}: stop a running operation (state.yaml operations).`)

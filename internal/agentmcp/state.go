@@ -56,11 +56,11 @@ var stateActions = []stateAction{
 	{"repo.declare", []stateField{{"repos", true, kindList}}, `"repos": ["api", "app"]`, llmprompts.HeadlessStateRepoDeclare, spaceOnly},
 	{"branch.request", []stateField{{"repo", true, kindString}, {"branch", true, kindString}, {"base", false, kindString}, {"existing", false, kindBool}},
 		`"repo": "app", "branch": "feature/x"`, llmprompts.HeadlessStateBranchRequest, spaceOnly},
-	{"branch.rename", []stateField{{"repo", true, kindString}, {"from", true, kindString}, {"to", true, kindString}, {"renameRemote", false, kindBool}},
+	{"branch.rename", []stateField{{"repo", false, kindString}, {"worktree", false, kindString}, {"from", true, kindString}, {"to", true, kindString}, {"renameRemote", false, kindBool}},
 		`"repo": "app", "from": "feature/x", "to": "feature/y"`, llmprompts.HeadlessStateBranchRename, spaceOnly},
-	{"branch.change", []stateField{{"repo", true, kindString}, {"from", true, kindString}, {"to", true, kindString}},
+	{"branch.change", []stateField{{"repo", false, kindString}, {"worktree", false, kindString}, {"from", true, kindString}, {"to", true, kindString}},
 		`"repo": "app", "from": "feature/x", "to": "feature/x-alt"`, llmprompts.HeadlessStateBranchChange, spaceOnly},
-	{"worktree.remove", []stateField{{"repo", true, kindString}, {"branch", true, kindString}},
+	{"worktree.remove", []stateField{{"repo", false, kindString}, {"branch", false, kindString}, {"worktree", false, kindString}},
 		`"repo": "app", "branch": "feature/x"`, llmprompts.HeadlessStateWorktreeRemove, spaceOnly},
 	{"lease.acquire", []stateField{{"queue", true, kindString}}, `"queue": "deploy-staging"`, llmprompts.HeadlessStateLeaseAcquire, spaceOnly},
 	{"lease.release", []stateField{{"queue", false, kindString}}, `"queue": "deploy-staging"`, llmprompts.HeadlessStateLeaseRelease, spaceOnly},
@@ -392,22 +392,31 @@ func (s *Server) stateBranchRequest(ctx context.Context, call SpaceCall, d state
 
 // stateBranchMove is branch.rename and branch.change: both take from and to.
 func (s *Server) stateBranchMove(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
-	repo, from, to := d.str("repo"), d.str("from"), d.str("to")
+	repo, wt, from, to := d.str("repo"), d.str("worktree"), d.str("from"), d.str("to")
 	if from == "" || to == "" || from == to {
 		return oneOut(invalidItem(d.action, "from and to must be two different branch names."), "")
 	}
-	id := repo + "/" + to
+	if repo == "" && wt == "" {
+		return oneOut(invalidItem(d.action, "Name the branch with repo, or with worktree."), "")
+	}
+	id := cmpNonEmpty(repo, wt) + "/" + to
 	var outcome, ok, next string
 	var waited time.Duration
 	var err error
 	if d.action == "branch.rename" {
 		var res RenameBranchResult
-		res, err = s.space.RenameBranch(ctx, call, RenameBranchArgs{Repo: repo, From: from, To: to, RenameRemote: d.boolean("renameRemote")})
+		res, err = s.space.RenameBranch(ctx, call, RenameBranchArgs{Repo: repo, Worktree: wt, From: from, To: to, RenameRemote: d.boolean("renameRemote")})
 		outcome, ok, next, waited = res.Outcome, BranchRenamed, res.Next, res.Waited
+		if res.Repo != "" {
+			id = res.Repo + "/" + to
+		}
 	} else {
 		var res ChangeBranchResult
-		res, err = s.space.ChangeBranch(ctx, call, ChangeBranchArgs{Repo: repo, From: from, To: to})
+		res, err = s.space.ChangeBranch(ctx, call, ChangeBranchArgs{Repo: repo, Worktree: wt, From: from, To: to})
 		outcome, ok, next, waited = res.Outcome, BranchChanged, res.Next, res.Waited
+		if res.Repo != "" {
+			id = res.Repo + "/" + to
+		}
 	}
 	if err != nil {
 		return oneOut(stateFail(d.action, id, err), "")
@@ -417,15 +426,15 @@ func (s *Server) stateBranchMove(ctx context.Context, call SpaceCall, d stateCal
 
 // stateWorktreeRemove is worktree.remove: nothing waits, so the item is done or failed.
 func (s *Server) stateWorktreeRemove(ctx context.Context, call SpaceCall, d stateCallArgs) stateOutcome {
-	repo, branch := d.str("repo"), d.str("branch")
-	if repo == "" || branch == "" {
-		return oneOut(invalidItem(d.action, "repo and branch are required."), "")
+	repo, branch, wt := d.str("repo"), d.str("branch"), d.str("worktree")
+	if wt == "" && (repo == "" || branch == "") {
+		return oneOut(invalidItem(d.action, "repo and branch, or worktree, are required."), "")
 	}
-	id := repo + "/" + branch
-	res, err := s.space.RemoveWorktree(ctx, call, RemoveWorktreeArgs{Repo: repo, Branch: branch})
+	res, err := s.space.RemoveWorktree(ctx, call, RemoveWorktreeArgs{Repo: repo, Branch: branch, Worktree: wt})
 	if err != nil {
-		return oneOut(stateFail(d.action, id, err), "")
+		return oneOut(stateFail(d.action, strings.TrimSuffix(cmpNonEmpty(repo, wt)+"/"+branch, "/"), err), "")
 	}
+	id := res.Repo + "/" + res.Branch
 	return oneOut(outcomeItem(call, id, res.Outcome, BranchRemoved, res.Next, 0, ""), "")
 }
 

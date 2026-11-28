@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/gitclient"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/oplog"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -429,6 +430,68 @@ func (b *TaskBoard) taskBranch(taskID, repo, branch string) (br model.AdeTaskBra
 		}
 	}
 	return br, "", agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo. Request it with state branch.request.", branch))
+}
+
+// taskRow resolves an agent's row selector: worktree when given, else repo and branch. repo and branch
+// may be empty with worktree; when given they must agree with the row the worktree names.
+func (b *TaskBoard) taskRow(ctx context.Context, tc *taskCtx, cfgs []model.AdeRepoConfig, repo, branch, worktree string) (named *model.AdeTaskBranch, codeRepoID string, err error) {
+	if worktree == "" {
+		id, err := resolveRepoRef(repo, b.taskCandidates(tc, cfgs), "task")
+		if err != nil {
+			return nil, "", err
+		}
+		named, _ := taskRepoRows(tc, id, branch)
+		return named, id, nil
+	}
+	want := filepath.Clean(worktree)
+	cache := b.newAttachCache()
+	found := -1
+	var shown []string
+	for pass := 0; pass < 2 && found < 0; pass++ {
+		for i, row := range tc.branches {
+			if row.Name == "" {
+				continue
+			}
+			at, err := cache.worktree(ctx, row)
+			if err != nil {
+				return nil, "", err
+			}
+			if pass == 0 {
+				shown = append(shown, cmpNonEmpty(at.attached, at.own))
+			}
+			cand := at.own
+			if pass == 1 {
+				cand = at.attached
+			}
+			if cand != "" && filepath.Clean(cand) == want {
+				found = i
+				break
+			}
+		}
+	}
+	if found < 0 {
+		var paths []string
+		for _, p := range shown {
+			if p != "" {
+				paths = append(paths, p)
+			}
+		}
+		return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q is not a worktree of this task. Its worktrees: %s.", worktree, joinOrNone(paths)))
+	}
+	row := &tc.branches[found]
+	if repo != "" {
+		id, err := resolveRepoRef(repo, b.taskCandidates(tc, cfgs), "task")
+		if err != nil {
+			return nil, "", err
+		}
+		if id != row.CodeRepoID {
+			return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q belongs to %s, not %s.", worktree, tc.nick[row.CodeRepoID], repo))
+		}
+	}
+	if branch != "" && branch != row.Name {
+		return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q holds branch %s, not %s.", worktree, row.Name, branch))
+	}
+	return row, row.CodeRepoID, nil
 }
 
 // recentRun is one run as state.yaml shows it. Outcome is the stored outcome, nil while the run has none.

@@ -170,7 +170,7 @@ func (f *fakeSpace) ChangeBranch(_ context.Context, call SpaceCall, args ChangeB
 }
 
 func (f *fakeSpace) RemoveWorktree(_ context.Context, call SpaceCall, args RemoveWorktreeArgs) (RemoveWorktreeResult, error) {
-	f.rec("remove|" + call.TaskID + "|" + args.Repo + "/" + args.Branch)
+	f.rec("remove|" + call.TaskID + "|" + args.Repo + "/" + args.Branch + "|" + args.Worktree)
 	return RemoveWorktreeResult{Repo: args.Repo, Branch: args.Branch, Outcome: BranchRemoved, Next: "Removed worktree."}, nil
 }
 
@@ -329,13 +329,19 @@ func TestGrantScopes(t *testing.T) {
 	if res, reply := stateCall(t, sp, "worktree.remove", map[string]any{"repo": "api", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
 		t.Fatalf("worktree.remove: %v", reply)
 	}
+	if res, reply := stateCall(t, sp, "worktree.remove", map[string]any{"worktree": "/w/x"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("worktree.remove by worktree: %v", reply)
+	}
+	if res, reply := stateCall(t, sp, "branch.rename", map[string]any{"worktree": "/w/x", "from": "a", "to": "b"}); res.IsError || firstItem(t, reply)["status"] != "done" {
+		t.Fatalf("branch.rename by worktree: %v", reply)
+	}
 	if res, reply := stateCall(t, both, "branch.request", map[string]any{"repo": "gone", "branch": "feat/x"}); res.IsError || firstItem(t, reply)["status"] != "invalid" {
 		t.Fatalf("an agent-fixable refusal must be an invalid item, not an error: %v", reply)
 	}
 	space.mu.Lock()
 	got := space.calls
 	space.mu.Unlock()
-	want := []string{"branch|task-2|api", "acquire|task-1||q", "remove|task-1|api/feat/x", "branch|task-2|gone"}
+	want := []string{"branch|task-2|api", "acquire|task-1||q", "remove|task-1|api/feat/x|", "remove|task-1|/|/w/x", "rename|task-1|a>b", "branch|task-2|gone"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("calls = %v, want %v", got, want)
 	}
@@ -368,12 +374,14 @@ func TestStateInvalidCalls(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, raw := range map[string]map[string]any{
-		"flat":          {"action": "branch.request", "repo": "app", "branch": "x"},
-		"stray field":   {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": "x", "color": "red"}},
-		"missing field": {"action": "branch.request", "args": map[string]any{"repo": "app"}},
-		"args string":   {"action": "branch.request", "args": `{"repo": "app", "branch": "x"}`},
-		"wrong type":    {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": 7}},
-		"remove blank":  {"action": "worktree.remove", "args": map[string]any{"repo": "", "branch": "x"}},
+		"flat":           {"action": "branch.request", "repo": "app", "branch": "x"},
+		"stray field":    {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": "x", "color": "red"}},
+		"missing field":  {"action": "branch.request", "args": map[string]any{"repo": "app"}},
+		"args string":    {"action": "branch.request", "args": `{"repo": "app", "branch": "x"}`},
+		"wrong type":     {"action": "branch.request", "args": map[string]any{"repo": "app", "branch": 7}},
+		"remove blank":   {"action": "worktree.remove", "args": map[string]any{"repo": "", "branch": "x"}},
+		"remove nothing": {"action": "worktree.remove", "args": map[string]any{"repo": "", "branch": ""}},
+		"change nobody":  {"action": "branch.change", "args": map[string]any{"from": "a", "to": "b"}},
 	} {
 		res, err := sess.CallTool(context.Background(), &mcp.CallToolParams{Name: "state", Arguments: raw})
 		if err != nil || res.IsError {

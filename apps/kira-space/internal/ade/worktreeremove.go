@@ -33,15 +33,17 @@ func (b *TaskBoard) RemoveWorktree(ctx context.Context, call agentmcp.SpaceCall,
 	if err != nil {
 		return agentmcp.RemoveWorktreeResult{}, err
 	}
-	id, err := resolveRepoRef(args.Repo, b.taskCandidates(tc, cfgs), "task")
+	named, id, err := b.taskRow(ctx, tc, cfgs, args.Repo, args.Branch, args.Worktree)
 	if err != nil {
 		return agentmcp.RemoveWorktreeResult{}, err
 	}
 	nick := tc.nick[id]
+	if named != nil {
+		args.Branch = named.Name
+	}
 	failed := func(text string) (agentmcp.RemoveWorktreeResult, error) {
 		return agentmcp.RemoveWorktreeResult{Repo: nick, Branch: args.Branch, Outcome: agentmcp.BranchFailed, Next: text}, nil
 	}
-	named, _ := taskRepoRows(tc, id, args.Branch)
 	if named == nil {
 		return agentmcp.RemoveWorktreeResult{}, agentmcp.ToolError(fmt.Sprintf("Branch %q is not on this task in that repo.", args.Branch))
 	}

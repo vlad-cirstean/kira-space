@@ -117,7 +117,9 @@ const (
 
 // RenameBranchArgs asks to rename a branch of the task.
 type RenameBranchArgs struct {
-	Repo         string `json:"repo"`
+	Repo string `json:"repo"`
+	// Worktree is the row's worktree path; it picks the row instead of repo and branch.
+	Worktree     string `json:"worktree,omitempty"`
 	From         string `json:"from"`
 	To           string `json:"to"`
 	RenameRemote bool   `json:"renameRemote,omitempty"`
@@ -142,8 +144,10 @@ const BranchChanged = "changed"
 // ChangeBranchArgs asks to re-point the task's branch From at the existing local branch To.
 type ChangeBranchArgs struct {
 	Repo string `json:"repo"`
-	From string `json:"from"`
-	To   string `json:"to"`
+	// Worktree is the row's worktree path; it picks the row instead of repo and branch.
+	Worktree string `json:"worktree,omitempty"`
+	From     string `json:"from"`
+	To       string `json:"to"`
 }
 
 // ChangeBranchResult is branch.change's answer.
@@ -270,6 +274,8 @@ const BranchRemoved = "removed"
 type RemoveWorktreeArgs struct {
 	Repo   string `json:"repo"`
 	Branch string `json:"branch"`
+	// Worktree is the row's worktree path; it picks the row instead of repo and branch.
+	Worktree string `json:"worktree,omitempty"`
 }
 
 // RemoveWorktreeResult is worktree.remove's answer.
