@@ -13,7 +13,7 @@ review and iterate on; implementation follows the owner's sign-off.
 |---|-------|--------|
 | P762 | Branches MCP cannot target a worktree when a repo has several branches | Done |
 | P763 | Redesign links to show the host too (design for review, owner decision deferred) | Pending |
-| P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
+| P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Done |
 | P765 | Repo files window opens without a worktree and starts fully collapsed | Done |
 | P766 | Unify colour components: one module owns palette, band, mark and selection ring so a later colour change is one edit | Pending |
 | P767 | Apply the faint colour band to Studio, API, repos and every other coloured surface, with screenshots | Pending |
@@ -43,6 +43,20 @@ Owner sign-off: Pure-B, 1.5px neutral selection ring, ripple dropped. Implement.
 
 Task colours become a faint background tint. Task details and the review window use the same tint and
 design. Design first: mockup and plan, no implementation until the owner approves.
+
+Result: task colours are 10 slots (`maxColorSlots = 10`, migration `0112_p764_color_slots_10.sql` folds
+`color % 10`). `palette.ts` holds 10 OKLCH inks plus precomputed rest and hover band hex; recipe tokens
+`--kira-task-band-*` live in `tokens.css`. The band paints card heads, day-band span rows and, through
+the new shared `AdeTaskBand`, the task/branch panel head and the review and Files window title bars
+(`TitleBar` gained a `class` prop). Cards keep a neutral 1px edge; the selected card has a 1.5px
+`--kira-fg` inset outline, the selected branch row `bg-field` plus a 1px inset ring. Ripple edge removed
+(`TASK_EDGE_RIPPLE`, `rippleIds`, `rippleOf`, i18n `nothingToRebase`/`rebaseList`). `ColorLine` marks
+stay in list rows, base marker and phone dot, in the new inks. `check-ade-colours.sh` allowlist now the
+30 new hex values. Tests: flow `TestTaskColorSlotsTen`, migration test `TestMigration0112ColorSlotsTen`,
+unit `ade-v2-palette-contrast.spec.ts`, UI specs `ade-v2-plan`, `selection-colour`, `ade-v2-task-row`,
+`ade-v2-task-panel`, `ade-v2-task-title-line`, `ade-v2-review`, `ade-v2-task-files-window` (124 pass).
+Fixture colours 10-13 moved into 0-9. Chromium snaps the 1.5px ring to 1px at 1x, so UI specs accept
+`1px` or `1.5px`. Visual baselines and the new `ade-task-tint` visual spec left to PR CI.
 
 ## P765
 
