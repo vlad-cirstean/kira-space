@@ -21,12 +21,12 @@
   --kira-error: #e66e68;
   --kira-warn: #d5b449;
   --kira-ok: #57bc8a;
-  --kira-info: #69a1e8;
   --kira-status-blue: #8ebaf4;
   --kira-status-amber: #dbaf71;
   --kira-status-green: #8bc997;
   --kira-status-grey: #a1a1aa;
   --kira-conn-teal: #6db4a6;
+  --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.24);
   --kira-radius-sm: 4px;
   --kira-radius: 6px;
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Ubuntu, sans-serif;
@@ -34,23 +34,23 @@
   color-scheme: dark;
 }
 /* Light: preview only. No light theme ships (ARCHITECTURE "Known open items", P138). Subtle uses the
-   proposed #63636b (plan section Contrast). Task palette stays the dark-only one. */
+   proposed #5f5f68 (plan section Contrast). */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --kira-bg: #ffffff; --kira-bg-elevated: #fafafa; --kira-bg-chrome: #f4f4f5; --kira-bg-input: #ebebed;
-    --kira-fg: #18181b; --kira-fg-muted: #52525b; --kira-fg-subtle: #63636b; --kira-border: #d4d4d8;
+    --kira-fg: #18181b; --kira-fg-muted: #52525b; --kira-fg-subtle: #5f5f68; --kira-border: #d4d4d8;
     --kira-focus: #52525b; --kira-select: #e4e4e7; --kira-select-edge: #71717a;
     --kira-status-blue: #2f6db8; --kira-status-amber: #8a5a12; --kira-status-green: #2c7a45; --kira-status-grey: #52525b;
-    --kira-conn-teal: #2c7a6c;
+    --kira-conn-teal: #2c7a6c; --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
   --kira-bg: #ffffff; --kira-bg-elevated: #fafafa; --kira-bg-chrome: #f4f4f5; --kira-bg-input: #ebebed;
-  --kira-fg: #18181b; --kira-fg-muted: #52525b; --kira-fg-subtle: #63636b; --kira-border: #d4d4d8;
+  --kira-fg: #18181b; --kira-fg-muted: #52525b; --kira-fg-subtle: #5f5f68; --kira-border: #d4d4d8;
   --kira-focus: #52525b; --kira-select: #e4e4e7; --kira-select-edge: #71717a;
   --kira-status-blue: #2f6db8; --kira-status-amber: #8a5a12; --kira-status-green: #2c7a45; --kira-status-grey: #52525b;
-  --kira-conn-teal: #2c7a6c;
+  --kira-conn-teal: #2c7a6c; --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
   color-scheme: light;
 }
 
@@ -63,42 +63,34 @@ header.top h1 { font-size: 16px; font-weight: 600; margin: 0; flex: 1; min-width
 .seg { margin: 0; padding: 0; display: inline-flex; border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); overflow: hidden; }
 .seg button { background: transparent; color: var(--kira-fg-muted); border: 0; padding: 4px 10px; font: inherit; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--kira-select); color: var(--kira-fg); }
-.seg button:focus-visible, select:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: -2px; }
-select { background: var(--kira-bg-input); color: var(--kira-fg); border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); padding: 3px 6px; font: inherit; }
-p.lede { color: var(--kira-fg-muted); margin: 0 0 16px; max-width: 900px; }
+.seg button:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: -2px; }
+p.lede { color: var(--kira-fg-muted); margin: 0 0 16px; max-width: 980px; }
 h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
-.note { color: var(--kira-fg-subtle); font-size: 11px; margin: 0 0 8px; }
-.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-@media (max-width: 1100px) { .cols { grid-template-columns: 1fr; } }
-.cols.stack { grid-template-columns: 1fr; }
-.col h3 { font-size: 12px; font-weight: 600; margin: 0 0 6px; display: flex; gap: 6px; align-items: baseline; }
+.note { color: var(--kira-fg-subtle); font-size: 11px; margin: 0 0 8px; max-width: 980px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+.grid.wide { grid-template-columns: repeat(auto-fit, minmax(640px, 1fr)); }
+@media (max-width: 700px) { .grid, .grid.wide { grid-template-columns: 1fr; } }
+.col h3 { font-size: 12px; font-weight: 600; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
 .col h3 span { font-weight: 400; color: var(--kira-fg-subtle); font-size: 11px; }
 .ground { background: var(--kira-bg-chrome); border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 
-/* Option knobs: the formula from the plan. */
-.cur  { --tt: 0%;  --tth: 0%; }
-.optA { --tt: 8%;  --tth: 14%; }
-.optB { --tt: 12%; --tth: 14%; }
+/* Intensity knobs: html[data-tint] picks strong (14/18) or soft (10/14). Current column ignores them. */
+:root { --tt: 14%; --tth: 18%; }
+:root[data-tint="soft"] { --tt: 10%; --tth: 14%; }
 .tinted {
   --task-tint: color-mix(in srgb, var(--task-color) var(--tt), var(--kira-bg-chrome));
   --task-tint-hover: color-mix(in srgb, var(--task-color) var(--tth), var(--kira-bg-chrome));
   --task-edge: color-mix(in srgb, var(--task-color) 40%, var(--kira-bg-chrome));
-  --task-body: color-mix(in srgb, var(--task-color) 6%, var(--kira-bg));
 }
 
-/* ---- Task card (plan list) ---- */
-.card { position: relative; border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--task-color); background: var(--kira-bg-chrome); --row-ground: var(--kira-bg-chrome); }
-.optA .card { border-color: var(--task-edge); background: var(--task-tint); --row-ground: var(--task-tint); }
-.optB .card { border-color: transparent; background: var(--task-tint); --row-ground: var(--task-tint); box-shadow: inset 3px 0 0 var(--task-color); }
-.card.sel { outline: 2px solid var(--task-color); outline-offset: 0; }
-.card.ripple { border-style: dashed; }
-.optB .card.ripple { border-color: var(--task-edge); }
+/* ---- Task card ---- */
+.card { position: relative; border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--task-edge); --row-ground: var(--task-tint); background: var(--row-ground); }
 .head { display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px; background: var(--row-ground); cursor: pointer; }
-.cur .head:hover, .cur .head.hov, .cur .brow:hover, .cur .brow.hov { background: var(--kira-bg-input); }
-.optA .head:hover, .optA .head.hov, .optA .brow:hover, .optA .brow.hov,
-.optB .head:hover, .optB .head.hov, .optB .brow:hover, .optB .brow.hov { background: var(--task-tint-hover); }
-.card.sel .head { background: var(--kira-select); }
-.head:focus-visible, .brow:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: -2px; }
+.brow { display: grid; grid-template-columns: 24px 80px minmax(0,1fr) auto; align-items: center; gap: 6px; height: 28px; padding: 0 8px; background: var(--row-ground); font-size: 11px; cursor: pointer; }
+.head:hover, .head.hov, .brow:hover { background: var(--task-tint-hover); }
+.head:focus-visible, .brow:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: 2px; }
+.card.ripple { border-style: dashed; }
+
 .lead { width: 24px; display: inline-flex; justify-content: center; flex-shrink: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kira-ok); }
 .dot.idle { background: transparent; border: 1px solid var(--kira-select-edge); }
@@ -106,72 +98,89 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .l1, .l2 { display: flex; align-items: center; gap: 6px; height: 18px; min-width: 0; }
 .title { font-weight: 500; color: var(--kira-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .key { font-family: var(--font-data); font-size: 11px; color: var(--kira-fg-subtle); flex-shrink: 0; }
-.chip { font-size: 11px; color: var(--chip, var(--kira-status-blue)); width: 80px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 11px; color: var(--chip, var(--kira-status-blue)); width: 72px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .segs { display: inline-flex; gap: 2px; width: 32px; flex-shrink: 0; }
 .segs i { flex: 1; height: 6px; border-radius: 4px; background: var(--kira-border); }
 .segs i.d { background: var(--kira-fg-muted); }
 .segs i.n { background: var(--kira-fg); }
-.step { font-size: 11px; color: var(--kira-fg-muted); width: 72px; flex-shrink: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.step { font-size: 11px; color: var(--kira-fg-muted); width: 64px; flex-shrink: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .meta { font-size: 11px; color: var(--kira-fg-subtle); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .est { font-size: 11px; color: var(--kira-fg-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .act { width: 22px; height: 18px; border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); color: var(--kira-fg-muted); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
-.brow { display: grid; grid-template-columns: 24px 80px minmax(0,1fr) auto; align-items: center; gap: 6px; height: 28px; padding: 0 8px; background: var(--row-ground); font-size: 11px; cursor: pointer; }
 .brow .repo { color: var(--kira-conn-teal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brow .bname { font-family: var(--font-data); color: var(--kira-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brow .tag { color: var(--kira-fg-subtle); }
-.brow.bsel { background: var(--kira-select); }
 .cardlabel { font-size: 10px; color: var(--kira-fg-subtle); margin: 2px 0 -2px 2px; }
 
-/* ---- Shared band: AdeTaskBand ---- */
-.band { position: relative; background: var(--kira-bg-chrome); }
-.optA .band, .optB .band { background: var(--task-tint); }
-.band.panel { padding: 8px 12px 7px; }
+/* Current (today) */
+.cur .card { border-color: var(--task-color); --row-ground: var(--kira-bg-chrome); }
+.cur .head:hover, .cur .head.hov, .cur .brow:hover { background: var(--kira-bg-input); }
+.cur .card.sel { outline: 2px solid var(--task-color); }
+.cur .card.sel .head { background: var(--kira-select); }
+
+/* S1 neutral ring */
+.s1 .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--kira-fg); outline-offset: -2px; }
+/* S2 colour ring */
+.s2 .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--task-color); outline-offset: -2px; }
+/* S3 lifted */
+.s3 .card.sel { --row-ground: var(--task-tint-hover); border-color: var(--kira-select-edge); box-shadow: 0 6px 18px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.06); }
+/* S4 solid head */
+.s4 .card.sel .head { background: var(--task-color); }
+.s4 .card.sel .head .title, .s4 .card.sel .head .key, .s4 .card.sel .head .chip,
+.s4 .card.sel .head .step, .s4 .card.sel .head .meta, .s4 .card.sel .head .est { color: var(--kira-bg-chrome); }
+.s4 .card.sel .head .segs i { background: color-mix(in srgb, var(--kira-bg-chrome) 35%, transparent); }
+.s4 .card.sel .head .segs i.d, .s4 .card.sel .head .segs i.n { background: var(--kira-bg-chrome); }
+.s4 .card.sel .head .act { background: transparent; border-color: var(--kira-bg-chrome); color: var(--kira-bg-chrome); }
+.s4 .card.sel .head .dot.idle { border-color: var(--kira-bg-chrome); }
+
+
+/* ---- Shared band: AdeTaskBand (no colour line) ---- */
+.band { position: relative; background: var(--task-tint); }
+.band.panel { padding: 8px 12px; }
+.cur .band { background: var(--kira-bg-chrome); }
 .cur .band.panel { background: var(--kira-bg); }
-.cline { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--task-color); }
-.band.panel .row1 { display: flex; align-items: center; gap: 8px; min-height: 26px; }
-.band.panel .ttl { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cline { display: none; }
+.cur .cline { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--task-color); }
+.cur .band.panel { padding-bottom: 11px; }
+.row1 { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.pttl { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status { font-size: 11px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--kira-border); color: var(--kira-status-blue); background: var(--kira-bg-input); white-space: nowrap; }
 .fwd { margin-top: 6px; font-size: 11px; color: var(--kira-fg-muted); display: flex; gap: 6px; align-items: center; }
 .fwd b { font-weight: 500; color: var(--kira-fg); }
 
-/* ---- Task details panel ---- */
-.panel-pane { border-radius: var(--kira-radius); overflow: hidden; background: var(--kira-bg); display: flex; flex-direction: column; min-height: 360px; }
-.tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; background: var(--kira-bg); }
-.optB .tabs { background: var(--task-tint); }
+/* ---- Details context ---- */
+.ctx { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 2px; background: var(--kira-bg-chrome); border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 6px; }
+.ctx .list { display: flex; flex-direction: column; gap: 6px; padding: 2px; }
+.panel-pane { border-radius: var(--kira-radius); overflow: hidden; background: var(--kira-bg); display: flex; flex-direction: column; }
+.tabs { display: flex; align-items: center; gap: 2px; padding: 4px 6px; }
 .tab { padding: 3px 8px; border-radius: var(--kira-radius-sm); color: var(--kira-fg-muted); font-size: 12px; }
 .tab.on { background: var(--kira-select); color: var(--kira-fg); }
 .tabs .sp { flex: 1; }
 .btn { font: inherit; font-size: 11px; color: var(--kira-fg); background: var(--kira-bg-input); border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); padding: 2px 8px; }
-.pbody { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.optB .pbody { background: var(--task-body); }
+.pbody { padding: 8px 12px; display: flex; flex-direction: column; gap: 8px; }
 .sect { background: var(--kira-bg-elevated); border-radius: var(--kira-radius); padding: 8px; display: flex; flex-direction: column; gap: 4px; }
-.sect h4 { margin: 0; font-size: 11px; font-weight: 600; color: var(--kira-fg-muted); text-transform: none; }
+.sect h4 { margin: 0; font-size: 11px; font-weight: 600; color: var(--kira-fg-muted); }
 .ev { display: flex; gap: 8px; font-size: 11px; }
-.ev .when { color: var(--kira-fg-subtle); width: 48px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.ev .what { color: var(--kira-fg); }
-.link { font-size: 11px; color: var(--kira-fg); display: flex; gap: 6px; }
-.link .k { color: var(--kira-fg-subtle); }
+.ev .when { color: var(--kira-fg-subtle); width: 40px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
 /* ---- Review window ---- */
-.win { border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--kira-border); background: var(--kira-bg-chrome); display: flex; flex-direction: column; min-height: 220px; }
+.win { border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--kira-border); background: var(--kira-bg-chrome); display: flex; flex-direction: column; min-height: 200px; }
 .tbar { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; }
 .lights { display: inline-flex; gap: 6px; margin-right: 6px; }
-.lights i { width: 10px; height: 10px; border-radius: 50%; background: var(--kira-select-edge); opacity: .6; }
+.lt { width: 10px; height: 10px; border-radius: 50%; background: var(--kira-select-edge); opacity: .6; }
 .wttl { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .repotag { font-size: 11px; color: var(--kira-conn-teal); background: color-mix(in srgb, var(--kira-conn-teal) 12%, transparent); border-radius: var(--kira-radius-sm); padding: 0 5px; white-space: nowrap; }
-.br { font-family: var(--font-data); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.br { font-family: var(--font-data); font-size: 11px; white-space: nowrap; }
 .base { font-size: 11px; color: var(--kira-fg-muted); white-space: nowrap; }
 .badge { font-size: 10px; padding: 0 5px; border-radius: 999px; border: 1px solid var(--kira-border); color: var(--kira-fg-muted); white-space: nowrap; }
 .badge.warn { color: var(--kira-warn); border-color: color-mix(in srgb, var(--kira-warn) 40%, var(--kira-border)); }
 .tbar .sp { flex: 1; }
-.wbody { flex: 1; display: flex; gap: 2px; padding: 0 6px 2px; background: var(--kira-bg-chrome); }
-.optB .wbody { background: var(--task-tint); }
+.wbody { flex: 1; display: flex; gap: 2px; padding: 0 6px 2px; }
 .pane { background: var(--kira-bg); border-radius: var(--kira-radius); overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-.pane.files { width: 28%; }
+.pane.files { width: 24%; }
 .pane.diff { flex: 1; }
-.pane.agent { width: 24%; }
+.pane.agent { width: 22%; }
 .tstrip { height: 30px; display: flex; align-items: flex-end; gap: 2px; padding: 0 4px; background: var(--kira-bg-chrome); }
-.optB .tstrip { background: var(--task-tint); }
 .wtab { font-size: 11px; padding: 5px 10px; border-radius: var(--kira-radius-sm) var(--kira-radius-sm) 0 0; color: var(--kira-fg-muted); }
 .wtab.on { background: var(--kira-bg); color: var(--kira-fg); }
 .frow { display: flex; gap: 6px; font-size: 11px; padding: 3px 8px; }
@@ -179,7 +188,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .frow .st { width: 12px; color: var(--kira-warn); }
 .frow .st.a { color: var(--kira-ok); }
 .frow .fn { font-family: var(--font-data); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dl { font-family: var(--font-data); font-size: 11px; padding: 0 8px; white-space: pre; overflow: hidden; text-overflow: ellipsis; line-height: 18px; color: var(--kira-fg); }
+.dl { font-family: var(--font-data); font-size: 11px; padding: 0 8px; white-space: pre; overflow: hidden; text-overflow: ellipsis; line-height: 18px; }
 .dl.add { background: color-mix(in srgb, var(--kira-ok) 15%, transparent); }
 .dl.del { background: color-mix(in srgb, var(--kira-error) 15%, transparent); }
 .dl .ln { color: var(--kira-fg-subtle); display: inline-block; width: 28px; }
@@ -190,75 +199,84 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .pal { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
 @media (max-width: 800px) { .pal { grid-template-columns: repeat(5, minmax(0,1fr)); } }
 .sw { border-radius: var(--kira-radius-sm); overflow: hidden; border: 1px solid var(--kira-border); font-size: 10px; }
-.sw div { height: 22px; display: flex; align-items: center; padding: 0 5px; color: var(--kira-fg-subtle); }
-.sw .full { background: var(--task-color); color: #131315; font-family: var(--font-data); }
-.sw .a { background: color-mix(in srgb, var(--task-color) 8%, var(--kira-bg-chrome)); }
-.sw .h { background: color-mix(in srgb, var(--task-color) 14%, var(--kira-bg-chrome)); }
-.sw .b { background: color-mix(in srgb, var(--task-color) 12%, var(--kira-bg-chrome)); }
-table.cr { border-collapse: collapse; font-size: 11px; margin-top: 6px; }
+.sw div { height: 22px; display: flex; align-items: center; padding: 0 5px; color: var(--kira-fg-subtle); font-family: var(--font-data); white-space: nowrap; overflow: hidden; }
+.sw .full { color: #131315; }
+table.cr { border-collapse: collapse; font-size: 11px; margin-top: 8px; }
 table.cr td, table.cr th { border: 1px solid var(--kira-border); padding: 3px 8px; text-align: left; font-variant-numeric: tabular-nums; }
 table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
 .fail { color: var(--kira-error); }
+.rec { color: var(--kira-ok); font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="page">
   <header class="top">
-    <h1>P764 task tint: current vs option A vs option B</h1>
-    <label class="note" style="margin:0">Details/review colour
-      <select id="slot" aria-label="Task colour for details and review"></select></label>
+    <h1>P764 task tint, iteration 2</h1>
+    <fieldset class="seg"><legend class="sr">Tint intensity</legend>
+      <button type="button" data-tint-btn="strong" aria-pressed="true">Strong 14/18</button>
+      <button type="button" data-tint-btn="soft" aria-pressed="false">Soft 10/14</button>
+    </fieldset>
     <fieldset class="seg"><legend class="sr">Theme</legend>
       <button type="button" data-theme-btn="auto" aria-pressed="true">Auto</button>
       <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
       <button type="button" data-theme-btn="light" aria-pressed="false">Light</button>
     </fieldset>
   </header>
-  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>. Light is a preview only: no light theme ships (P138 open item), the task palette is dark-only. Tint formula: <code>color-mix(in srgb, task colour N%, chrome)</code>. A: rest 8%, hover 14%, soft 40% edge, header band only. B: rest 12%, hover 14%, left rail, whole frame tinted. Hover any card head or branch row; the "hover" and "selected" labelled cards are pinned states.</p>
+  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Tint: <code>color-mix(in srgb, task colour N%, chrome)</code>. Strong (default): rest 14%, hover and selected ground 18%, adjusted palette. Soft: rest 10%, hover 14%, original palette. Colour lines under headers are gone; the tint alone marks the task. Hover any card head or branch row.</p>
 
-  <h2>1. Task cards in the plan list</h2>
-  <p class="note">8 slots of the real 20-slot palette. Card 3 pinned hover on head, card 5 selected (2px outline in full colour, head neutral select), card 7 ripple (dashed).</p>
-  <div class="cols" id="cards"></div>
+  <h2>1. Selected card: current vs four options</h2>
+  <p class="note">Seven slots: light-ish yellow (2), saturated blue (7) and pink (11), orange (0), grey (19), and same-hue neighbours green 3 and olive 14 (the selected card sits right above its neighbour). Card 2 has head hover pinned. S1 is the recommendation.</p>
+  <div class="grid" id="sel"></div>
 
-  <h2>2. Task details panel (header + body)</h2>
-  <p class="note">One shared band (<code>AdeTaskBand</code>, variant panel). A: band on tint, 3px line kept, tabs and body neutral. B: band and tabs tinted 12%, body 6% over bg, section cards stay neutral elevated.</p>
-  <div class="cols" id="details"></div>
+  <h2>2. Selection in the details panel context</h2>
+  <p class="note">The plan list on the left with the selected card; the details panel on the right shows the same task. The band (<code>AdeTaskBand</code>) stays at the resting tint for every option, with no colour line.</p>
+  <div class="grid wide" id="ctx"></div>
 
-  <h2>3. Review window</h2>
-  <p class="note">Same <code>AdeTaskBand</code>, variant titlebar. Stacked full width so the title bar reads at real size. A: title bar only. B: title bar, window gutter and tab strip tinted; panes neutral. Note how B's frame sits next to diff add/remove colours.</p>
-  <div class="cols stack" id="review"></div>
+  <h2>3. Review window title bar</h2>
+  <p class="note">Same <code>AdeTaskBand</code> as the details head. Title bar tinted, no colour line; gutter, tab strip and panes neutral.</p>
+  <div class="grid" id="review" style="grid-template-columns: 1fr"></div>
 
-  <h2>4. Palette: full colour, A rest 8%, B rest 12%, hover 14%</h2>
+  <h2>4. Palette before and after</h2>
+  <p class="note">Rows: original colour, adjusted colour, then rest and hover tints of the palette the current intensity uses. Only OKLCH lightness moved; slots 8, 9, 12 unchanged.</p>
   <div class="pal" id="pal"></div>
   <table class="cr" aria-label="Contrast summary">
     <tr><th>Dark, worst of 20 slots</th><th>fg</th><th>muted</th><th>subtle</th></tr>
     <tr><td>today chrome</td><td>12.56</td><td>7.24</td><td>5.71</td></tr>
-    <tr><td>today hover field</td><td>10.06</td><td>5.80</td><td>4.58</td></tr>
-    <tr><td>today/new selected select</td><td>8.12</td><td>4.68</td><td class="fail">3.70</td></tr>
-    <tr><td>8% (A rest)</td><td>11.08</td><td>6.39</td><td>5.04</td></tr>
-    <tr><td>12% (B rest)</td><td>10.31</td><td>5.95</td><td>4.69</td></tr>
-    <tr><td>14% (hover)</td><td>9.91</td><td>5.72</td><td>4.51</td></tr>
-    <tr><td>18% (rejected)</td><td>9.09</td><td>5.24</td><td class="fail">4.14</td></tr>
+    <tr><td>today selected select grey</td><td>8.12</td><td>4.68</td><td class="fail">3.70</td></tr>
+    <tr><td>original palette 18%</td><td>9.10</td><td>5.25</td><td class="fail">4.14</td></tr>
+    <tr><td>soft rest 10% (original)</td><td>10.71</td><td>6.18</td><td>4.88</td></tr>
+    <tr><td>soft hover 14% (original)</td><td>9.90</td><td>5.71</td><td>4.51</td></tr>
+    <tr><td>strong rest 14% (adjusted)</td><td>10.53</td><td>6.07</td><td>4.79</td></tr>
+    <tr><td>strong hover/selected 18% (adjusted)</td><td>9.90</td><td>5.71</td><td>4.51</td></tr>
+    <tr><td>S4 solid head, chrome text</td><td colspan="3">5.02 (one grade only)</td></tr>
   </table>
 </div>
 <script>
-const PALETTE = ['#d38261','#d2a155','#b4b04d','#90ba66','#64b477','#57b1a0','#56a6c2','#5a8fd5','#727ed7','#9676d1','#bc72cb','#d36fa4','#d56c7e','#b18765','#95a269','#669d8e','#8092b0','#a182b7','#cc9191','#a4aab2'];
-const OPTS = [['cur','Current','1px full edge, chrome ground'],['optA','Option A','recommended: 8% wash, soft edge'],['optB','Option B','12% wash, left rail, tinted frame']];
+const ORIG = ['#d38261','#d2a155','#b4b04d','#90ba66','#64b477','#57b1a0','#56a6c2','#5a8fd5','#727ed7','#9676d1','#bc72cb','#d36fa4','#d56c7e','#b18765','#95a269','#669d8e','#8092b0','#a182b7','#cc9191','#a4aab2'];
+const NEW = ['#c97858','#b38436','#948f28','#6f9744','#4d9d61','#409b8b','#4696b2','#598ed4','#727ed7','#9676d1','#bb71c9','#d16da2','#d56c7e','#ac8361','#849058','#5f9587','#7a8ba9','#9e7fb3','#b67c7d','#858a92'];
+const OPTS = [
+  ['cur', 'Current', 'chrome, 1px colour edge, 2px colour outline, grey head; subtle 3.70 on selected head'],
+  ['s1', 'S1 Neutral ring', 'recommended: 18% ground, 2px inset fg ring; text 9.90 / 5.71 / 4.51, ring 9.90'],
+  ['s2', 'S2 Colour ring', '18% ground, 2px inset full-colour ring; text as S1, ring 4.02 on tint'],
+  ['s3', 'S3 Lifted', '18% ground, select-edge border, shadow; text as S1, border 3.84'],
+  ['s4', 'S4 Solid head', 'full-colour head, chrome text 5.02; rows stay tinted'],
+];
 const TASKS = [
-  {slot:0, title:'Retry backoff for host sync', key:'KIRA-412', chip:'In progress', step:'Implement', segs:'ddn--', meta:'2 branches · kira-space', est:'6h', branch:'feat/sync-backoff', repo:'kira-space', tag:'ahead 3', live:true},
-  {slot:2, title:'Split review comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57 · kira-space', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open'},
-  {slot:4, title:'Faint task colours', key:'', chip:'Planned', step:'Plan', segs:'n----', meta:'notes', est:'4h', branch:'design/task-tint', repo:'kira-space', tag:'draft', hov:true},
-  {slot:6, title:'MariaDB least-privilege matrix', key:'KIRA-377', chip:'In progress', step:'Test', segs:'ddn--', meta:'db-fixtures', est:'2d', branch:'test/mariadb-matrix', repo:'adapters', tag:'behind 1', live:true},
-  {slot:7, title:'Links surface redesign', key:'KIRA-420', chip:'In progress', step:'Implement', segs:'dn---', meta:'2 repos', est:'1d', branch:'feat/links-v2', repo:'kira-space', tag:'ahead 7', sel:true, live:true},
-  {slot:9, title:'Branches MCP tool resolver', key:'KIRA-419', chip:'Done', step:'Merged', segs:'ddddd', meta:'merged today', est:'3h', branch:'feat/branches-mcp', repo:'kira-space', tag:'merged', chipColor:'var(--kira-status-green)'},
+  {slot:0, title:'Retry backoff for host sync', key:'KIRA-412', chip:'In progress', step:'Implement', segs:'ddn--', meta:'2 branches', est:'6h', branch:'feat/sync-backoff', repo:'kira-space', tag:'ahead 3', live:true},
+  {slot:2, title:'Split comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open', hov:true},
+  {slot:3, title:'Faint task colours', key:'KIRA-421', chip:'In progress', step:'Plan', segs:'n----', meta:'notes', est:'4h', branch:'design/task-tint', repo:'kira-space', tag:'draft', sel:true, live:true},
+  {slot:14, title:'Links surface redesign', key:'KIRA-420', chip:'In progress', step:'Implement', segs:'dn---', meta:'2 repos', est:'1d', branch:'feat/links-v2', repo:'kira-space', tag:'ahead 7'},
+  {slot:7, title:'MariaDB least-privilege matrix', key:'KIRA-377', chip:'In progress', step:'Test', segs:'ddn--', meta:'adapters', est:'2d', branch:'test/mariadb-matrix', repo:'adapters', tag:'behind 1', live:true},
   {slot:11, title:'Phone plan card polish', key:'', chip:'Waiting', step:'Review', segs:'dddn-', meta:'mobile', est:'2h', branch:'ui/phone-card', repo:'kira-mobile', tag:'rebase', ripple:true, chipColor:'var(--kira-status-amber)'},
-  {slot:13, title:'Archive old review rounds', key:'KIRA-350', chip:'Backlog', step:'—', segs:'-----', meta:'backlog', est:'', branch:'chore/archive-rounds', repo:'kira-space', tag:'no worktree', chipColor:'var(--kira-status-grey)'},
+  {slot:19, title:'Archive old review rounds', key:'KIRA-350', chip:'Backlog', step:'—', segs:'-----', meta:'backlog', est:'', branch:'chore/archive-rounds', repo:'kira-space', tag:'no worktree', chipColor:'var(--kira-status-grey)'},
 ];
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const segs = (s) => `<span class="segs">${[...s].map((c) => `<i class="${c === 'd' ? 'd' : c === 'n' ? 'n' : ''}"></i>`).join('')}</span>`;
-function card(t) {
-  const cls = ['card','tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
-  const label = t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
-  return `${label}<div class="${cls}" style="--task-color:${PALETTE[t.slot]}" aria-current="${t.sel ? 'true' : 'false'}">
+const colour = (opt, slot) => `var(--${opt === 'cur' ? 'o' : 'p'}${slot})`;
+function card(t, opt, labels) {
+  const cls = ['card', 'tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
+  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.slot === 14 ? '<div class="cardlabel">rest, same-hue neighbour</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
+  return `${label}<div class="${cls}" style="--task-color:${colour(opt, t.slot)}" aria-current="${t.sel ? 'true' : 'false'}">
     <div class="head${t.hov ? ' hov' : ''}" tabindex="0" role="button" aria-label="Open ${esc(t.title)}">
       <span class="lead"><span class="dot${t.live ? '' : ' idle'}"></span></span>
       <span class="lines">
@@ -269,76 +287,88 @@ function card(t) {
     <div class="brow" tabindex="0" role="button"><span></span><span class="repo">${t.repo}</span><span class="bname">${t.branch}</span><span class="tag">${t.tag}</span></div>
   </div>`;
 }
-function detailsPanel() {
-  return `<div class="panel-pane tinted" style="--task-color:var(--preview)">
+function detailsPanel(opt) {
+  return `<div class="panel-pane tinted" style="--task-color:${colour(opt, 3)}">
     <div class="band panel">
-      <div class="row1"><span class="status">In progress</span><span class="ttl">Links surface redesign</span><span class="key">KIRA-420</span></div>
-      <div class="fwd">Forward to <b>Review</b> · handover drafted 12 min ago</div>
+      <div class="row1"><span class="status">In progress</span><span class="pttl">Faint task colours</span><span class="key">KIRA-421</span></div>
+      <div class="fwd">Forward to <b>Implement</b> · handover drafted 12 min ago</div>
       <span class="cline" aria-hidden="true"></span>
     </div>
-    <div class="tabs"><span class="tab">Main</span><span class="tab on">Details</span><span class="tab">Sessions 2</span><span class="sp"></span><button class="btn" type="button">Review code</button></div>
+    <div class="tabs"><span class="tab">Main</span><span class="tab on">Details</span><span class="tab">Sessions 1</span><span class="sp"></span><button class="btn" type="button">Review code</button></div>
     <div class="pbody">
-      <div class="sect"><h4>Links</h4>
-        <div class="link"><span class="k">PR</span>#61 Links surface v2</div>
-        <div class="link"><span class="k">Jira</span>KIRA-420</div></div>
       <div class="sect"><h4>Notes and handovers</h4>
-        <div class="ev"><span class="when">10:42</span><span class="what">Plan to Implement: card grid, link strip, empty state.</span></div>
-        <div class="ev"><span class="when">09:15</span><span class="what">Owner note: keep links editable inline.</span></div>
-        <div class="ev"><span class="when">Mon</span><span class="what">Proof: screenshots for 3 states attached.</span></div></div>
+        <div class="ev"><span class="when">10:42</span><span>Plan: tint 14/18, palette tweak, S1 ring.</span></div>
+        <div class="ev"><span class="when">09:15</span><span>Owner: drop the colour line.</span></div></div>
     </div>
   </div>`;
 }
-function reviewWindow() {
-  return `<div class="win tinted" style="--task-color:var(--preview)">
-    <div class="band titlebar"><div class="tbar">
-      <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span class="wttl">Links surface redesign</span><span class="repotag">kira-space</span>
-      <span class="br">feat/links-v2</span><span class="base">into main</span>
+function reviewWindow(opt) {
+  return `<div class="win tinted" style="--task-color:${colour(opt, 3)}">
+    <div class="band"><div class="tbar">
+      <span class="lights" aria-hidden="true"><span class="lt"></span><span class="lt"></span><span class="lt"></span></span>
+      <span class="wttl">Faint task colours</span><span class="repotag">kira-space</span>
+      <span class="br">design/task-tint</span><span class="base">into main</span>
       <span class="badge warn">2 uncommitted</span><span class="badge">&#10003; a1b2c3d</span>
       <span class="sp"></span><button class="btn" type="button">Submit review</button>
     </div><span class="cline" aria-hidden="true"></span></div>
     <div class="wbody">
       <section class="pane files" aria-label="Files">
-        <div class="frow on"><span class="st">M</span><span class="fn">AdeLinkStrip.vue</span></div>
-        <div class="frow"><span class="st a">A</span><span class="fn">AdeLinkCard.vue</span></div>
-        <div class="frow"><span class="st">M</span><span class="fn">linkGroups.ts</span></div>
-        <div class="frow"><span class="st">M</span><span class="fn">en.json</span></div>
+        <div class="frow on"><span class="st">M</span><span class="fn">taskGrid.ts</span></div>
+        <div class="frow"><span class="st a">A</span><span class="fn">AdeTaskBand.vue</span></div>
+        <div class="frow"><span class="st">M</span><span class="fn">palette.ts</span></div>
       </section>
       <section class="pane diff" aria-label="Diffs">
-        <div class="tstrip"><span class="wtab on">AdeLinkStrip.vue</span><span class="wtab">linkGroups.ts</span></div>
-        <div class="dl"><span class="ln">41</span>  const groups = computed(() =&gt;</div>
-        <div class="dl del"><span class="ln">42</span>-   linkGroups(props.task.links));</div>
-        <div class="dl add"><span class="ln">42</span>+   linkGroups(props.task, mode.value));</div>
-        <div class="dl add"><span class="ln">43</span>+ const empty = computed(() =&gt; !groups.value.length);</div>
-        <div class="dl"><span class="ln">44</span></div>
-        <div class="dl"><span class="ln">45</span>  function onOpen(link: Link): void {</div>
+        <div class="tstrip"><span class="wtab on">taskGrid.ts</span><span class="wtab">palette.ts</span></div>
+        <div class="dl"><span class="ln">17</span>  export const TASK_EDGE =</div>
+        <div class="dl del"><span class="ln">18</span>-   'border border-(--task-color)';</div>
+        <div class="dl add"><span class="ln">18</span>+   'border border-(--task-edge)';</div>
+        <div class="dl"><span class="ln">19</span></div>
       </section>
       <section class="pane agent" aria-label="Agent">
-        <div class="ag"><b>Review agent</b><span>3 comments on 2 files</span><span>Waiting for your answer</span></div>
+        <div class="ag"><b>Review agent</b><span>1 comment</span></div>
       </section>
     </div>
   </div>`;
 }
-const col = (k, name, sub, body) => `<div class="col ${k}"><h3>${name} <span>${sub}</span></h3>${body}</div>`;
-document.getElementById('cards').innerHTML = OPTS.map(([k,n,s]) => col(k,n,s,`<div class="ground">${TASKS.map(card).join('')}</div>`)).join('');
-document.getElementById('details').innerHTML = OPTS.map(([k,n,s]) => col(k,n,s,detailsPanel())).join('');
-document.getElementById('review').innerHTML = OPTS.map(([k,n,s]) => col(k,n,s,reviewWindow())).join('');
-document.getElementById('pal').innerHTML = PALETTE.map((c,i) => `<div class="sw" style="--task-color:${c}"><div class="full">${i} ${c}</div><div class="a">A 8%</div><div class="b">B 12%</div><div class="h">hover 14%</div></div>`).join('');
+const head3 = (name, sub, rec) => `<h3>${name}${rec ? ' <b class="rec">recommended</b>' : ''} <span>${sub}</span></h3>`;
+document.getElementById('sel').innerHTML = OPTS.map(([k, n, s]) =>
+  `<div class="col ${k}">${head3(n, s, k === 's1')}<div class="ground">${TASKS.map((t) => card(t, k, true)).join('')}</div></div>`).join('');
+const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4]].map((t) => ({ ...t, hov: false, ripple: false }));
+document.getElementById('ctx').innerHTML = OPTS.map(([k, n]) =>
+  `<div class="col ${k}">${head3(n, '', k === 's1')}<div class="ctx"><div class="list">${CTX_TASKS.map((t) => card(t, k, false)).join('')}</div>${detailsPanel(k)}</div></div>`).join('');
+document.getElementById('review').innerHTML = [['cur', 'Current', '3px colour line under a chrome bar'], ['s1', 'New', 'tinted bar, no line (same for every selection option)']]
+  .map(([k, n, s]) => `<div class="col ${k}">${head3(n, s, false)}${reviewWindow(k)}</div>`).join('');
 
-const sel = document.getElementById('slot');
-sel.innerHTML = PALETTE.map((c,i) => `<option value="${i}">slot ${i} ${c}</option>`).join('');
-const setSlot = (i) => document.documentElement.style.setProperty('--preview', PALETTE[i]);
-sel.value = '7'; setSlot(7);
-sel.addEventListener('change', () => setSlot(Number(sel.value)));
+const root = document.documentElement;
+function applyPalette(tint) {
+  const pal = tint === 'soft' ? ORIG : NEW;
+  for (let i = 0; i < 20; i++) {
+    root.style.setProperty(`--p${i}`, pal[i]);
+    root.style.setProperty(`--o${i}`, ORIG[i]);
+  }
+  document.getElementById('pal').innerHTML = ORIG.map((o, i) => `<div class="sw" style="--task-color:${pal[i]}">
+    <div class="full" style="background:${o}">${i} ${o}</div>
+    <div class="full" style="background:${NEW[i]}">${NEW[i] === o ? 'same' : NEW[i]}</div>
+    <div style="background:color-mix(in srgb, ${pal[i]} var(--tt), var(--kira-bg-chrome))">rest</div>
+    <div style="background:color-mix(in srgb, ${pal[i]} var(--tth), var(--kira-bg-chrome))">hover/sel</div></div>`).join('');
+}
+const tintBtns = document.querySelectorAll('[data-tint-btn]');
+function setTint(v) {
+  root.setAttribute('data-tint', v);
+  for (const b of tintBtns) b.setAttribute('aria-pressed', String(b.dataset.tintBtn === v));
+  applyPalette(v);
+}
+for (const b of tintBtns) b.addEventListener('click', () => setTint(b.dataset.tintBtn));
+setTint('strong');
 
-const btns = document.querySelectorAll('[data-theme-btn]');
+const themeBtns = document.querySelectorAll('[data-theme-btn]');
 function setTheme(v) {
-  if (v === 'auto') document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', v);
-  for (const b of btns) b.setAttribute('aria-pressed', String(b.dataset.themeBtn === v));
+  if (v === 'auto') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', v);
+  for (const b of themeBtns) b.setAttribute('aria-pressed', String(b.dataset.themeBtn === v));
   try { localStorage.setItem('p764-theme', v); } catch { /* storage blocked */ }
 }
-for (const b of btns) b.addEventListener('click', () => setTheme(b.dataset.themeBtn));
+for (const b of themeBtns) b.addEventListener('click', () => setTheme(b.dataset.themeBtn));
 try { const v = localStorage.getItem('p764-theme'); if (v) setTheme(v); } catch { /* storage blocked */ }
 </script>
 </body>
