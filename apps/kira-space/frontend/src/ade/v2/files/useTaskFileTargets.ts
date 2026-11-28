@@ -7,9 +7,11 @@ export interface TaskFileTarget {
   repo: string;
   branch: string;
   worktree: string;
+  /** The row has no worktree, so the repo's main worktree shows. */
+  main: boolean;
 }
 
-/** The task's named branches that have a worktree, in the task's own order. */
+/** The task's branch rows, in the task's own order; a row without a worktree shows the repo's main one. */
 export function useTaskFileTargets(taskId: () => string) {
   const board = useBoard();
   const repos = useRepos();
@@ -24,14 +26,13 @@ export function useTaskFileTargets(taskId: () => string) {
     if (!t) return [];
     return t.branchIds
       .map((id) => branches.find((b) => b.id === id))
-      .filter(
-        (b): b is NonNullable<typeof b> => b !== undefined && b.name !== '' && b.worktree !== '',
-      )
+      .filter((b): b is NonNullable<typeof b> => b !== undefined)
       .map((b) => ({
         branchId: b.id,
         repo: repoLabel(b.codeRepoId),
         branch: b.name,
         worktree: b.worktree,
+        main: b.worktree === '',
       }));
   });
   return { task, targets };

@@ -1,10 +1,11 @@
-import type { FileListing, FileRead } from '@shared/domain/repo';
+import type { FileRead } from '@shared/domain/repo';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { t } from '@theme/i18n';
 import { errorText } from '@workbench/bridge/codedError';
 import type { MenuItem } from '@workbench/state/contextMenu';
 import { computed, type MaybeRefOrGetter, toValue } from 'vue';
 import { control } from '../../../bridge/control';
+import type { TaskFileListing } from '../wire';
 import { useAdeFilesUiStore } from './state/filesUi';
 
 const launchersKey = ['adetask', 'files', 'launchers'] as const;
@@ -12,7 +13,7 @@ const filesKey = (branchId: string) => ['adetask', 'files', branchId] as const;
 
 /** The branch worktree's tracked and untracked files. Refetches on mount, window focus and Refresh. */
 export function useTaskFilesListing(branchId: MaybeRefOrGetter<string>) {
-  return useQuery<FileListing>(() => {
+  return useQuery<TaskFileListing>(() => {
     const id = toValue(branchId);
     return {
       queryKey: [...filesKey(id), 'list'],

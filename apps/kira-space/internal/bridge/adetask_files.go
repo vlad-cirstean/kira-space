@@ -53,14 +53,27 @@ type AdeTaskLaunchers struct {
 	Editor bool   `json:"editor"`
 }
 
-// TaskFiles lists the files of the branch's worktree.
-func (s *AdeTaskService) TaskFiles(ctx context.Context, args adewire.BranchArgs) (codeworkspace.FileListing, error) {
+// AdeTaskFileListing is the branch's file listing with the root it lists; Main is true when the
+// row has no worktree and the repo's main worktree shows instead.
+type AdeTaskFileListing struct {
+	Paths     []string          `json:"paths"`
+	Status    map[string]string `json:"status"`
+	Truncated bool              `json:"truncated"`
+	Root      string            `json:"root"`
+	Main      bool              `json:"main"`
+}
+
+// TaskFiles lists the files of the branch's worktree, or its repo's main worktree.
+func (s *AdeTaskService) TaskFiles(ctx context.Context, args adewire.BranchArgs) (AdeTaskFileListing, error) {
 	ctx = adeUserCtx(ctx)
 	if err := validateAdeItemID(args.BranchID, "branchId"); err != nil {
-		return codeworkspace.FileListing{}, err
+		return AdeTaskFileListing{}, err
 	}
 	l, err := s.Engine.TaskFiles(ctx, args.BranchID)
-	return l, adeTaskError(err)
+	if err != nil {
+		return AdeTaskFileListing{}, adeTaskError(err)
+	}
+	return AdeTaskFileListing{Paths: l.Paths, Status: l.Status, Truncated: l.Truncated, Root: l.Root, Main: l.Main}, nil
 }
 
 // TaskFileRead reads one worktree file.

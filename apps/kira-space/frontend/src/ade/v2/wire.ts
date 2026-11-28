@@ -10,9 +10,15 @@ import type {
   ReviewCommentKind,
   ReviewFileStatus,
 } from '@kira/git-ipc';
+import type { FileListing } from '@shared/domain/repo';
 import type { RunOutcome } from '@shared/domain/runOutcome';
 
 // ---- shared
+/** A branch's file listing, plus the root it lists; main when that root is the repo's main worktree. */
+export interface TaskFileListing extends FileListing {
+  root: string;
+  main: boolean;
+}
 interface Jira {
   key: string;
   url: string;

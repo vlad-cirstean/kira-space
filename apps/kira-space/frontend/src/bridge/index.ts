@@ -54,7 +54,6 @@ import type {
   FileContent,
   FileHandlersSetResult,
   FileHandlersStatus,
-  FileListing,
   FileRead,
   FileStat,
   OpenedFilesTerminalOpenArgs,
@@ -747,10 +746,18 @@ const spaceControl = {
     ),
   // Task Files window: the read-only file view of a task branch's worktree. The worktree root comes
   // from the branch row; only a branch id and a relative path cross the boundary.
-  adeTaskFiles: (args: V2.BranchArgs): Promise<FileListing> =>
+  adeTaskFiles: (args: V2.BranchArgs): Promise<V2.TaskFileListing> =>
     unwrap<Awaited<ReturnType<typeof AdeTaskService.TaskFiles>>>(
       AdeTaskService.TaskFiles(args),
-    ).then((r) => trust<FileListing>({ ...r, paths: r.paths ?? [], status: r.status ?? {} })),
+    ).then((r) =>
+      trust<V2.TaskFileListing>({
+        ...r,
+        paths: r.paths ?? [],
+        status: r.status ?? {},
+        root: r.root ?? '',
+        main: r.main ?? false,
+      }),
+    ),
   adeTaskFileRead: (branchId: string, path: string, ifStat?: FileStat): Promise<FileRead> =>
     unwrap(AdeTaskService.TaskFileRead({ branchId, path, ifStat })).then((r) => trust<FileRead>(r)),
   // Returns as soon as the scan starts; results stream on onCodeSearch, matched by searchId.

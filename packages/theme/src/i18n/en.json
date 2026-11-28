@@ -1732,8 +1732,8 @@
           "launchUnsupported": {
             "body": "Not available in the browser build."
           },
-          "noWorktree": {
-            "body": "This branch has no worktree."
+          "noMainWorktree": {
+            "body": "The repository’s main worktree is missing."
           },
           "targetMissing": {
             "body": "This file no longer exists in the worktree."
@@ -8915,8 +8915,11 @@
         "copyRelPath": {
           "label": "Copy relative path"
         },
-        "noWorktree": {
-          "empty": "This task has no worktree yet"
+        "main": {
+          "tooltip": "This branch has no worktree, so its repository’s main worktree shows here"
+        },
+        "noRepo": {
+          "empty": "This task has no repository yet"
         },
         "openInEditor": {
           "label": "Open in VS Code"
@@ -8952,6 +8955,9 @@
         "target": {
           "file": {
             "label": "Selected file"
+          },
+          "main": {
+            "label": "{repo} · main worktree"
           }
         },
         "tree": {

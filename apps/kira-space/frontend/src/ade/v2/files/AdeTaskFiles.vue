@@ -3,8 +3,10 @@ import { useQueryClient } from '@tanstack/vue-query';
 import EmptyState from '@theme/components/EmptyState.vue';
 import SearchField from '@theme/components/SearchField.vue';
 import SecondaryTabs from '@theme/components/SecondaryTabs.vue';
+import TextTooltip from '@theme/components/TextTooltip.vue';
 import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Alert, AlertDescription } from '@theme/components/ui/alert';
+import { Badge } from '@theme/components/ui/badge';
 import { NativeSelect } from '@theme/components/ui/native-select';
 import { ResizeHandle } from '@theme/components/ui/resizable';
 import { useLiveSize } from '@theme/components/ui/resizable/useLiveSize';
@@ -42,7 +44,12 @@ const branchId = computed(
 );
 const target = computed(() => targets.value.find((x) => x.branchId === branchId.value));
 const branchOptions = computed(() =>
-  targets.value.map((x) => ({ value: x.branchId, label: `${x.repo} · ${x.branch}` })),
+  targets.value.map((x) => ({
+    value: x.branchId,
+    label: x.main
+      ? t('space.ade.files.target.main.label', { repo: x.repo })
+      : `${x.repo} · ${x.branch}`,
+  })),
 );
 
 const mode = computed({
@@ -114,7 +121,7 @@ const pane = useLiveSize(
     v-if="branchId === ''"
     fill
     icon="folder"
-    :title="t('space.ade.files.noWorktree.empty')"
+    :title="t('space.ade.files.noRepo.empty')"
     data-testid="ade-files-empty"
   />
   <div v-else class="flex h-full min-h-0 flex-col" data-testid="ade-files-body">
@@ -129,6 +136,11 @@ const pane = useLiveSize(
       >
         <option v-for="o in branchOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
       </NativeSelect>
+      <TextTooltip v-if="target?.main" :text="t('space.ade.files.main.tooltip')">
+        <Badge variant="default" class="shrink-0" data-testid="ade-files-main">{{
+          t('common.mainWorktree.tooltip')
+        }}</Badge>
+      </TextTooltip>
       <SecondaryTabs
         variant="segmented"
         :model-value="mode"
@@ -182,14 +194,14 @@ const pane = useLiveSize(
         <AdeFileTree
           v-if="mode === 'files'"
           :branch-id="branchId"
-          :worktree="target?.worktree ?? ''"
+          :worktree="listing.data.value?.root || target?.worktree || ''"
           :filter="filter"
           @open="onOpen"
         />
         <AdeFileSearch
           v-else
           :branch-id="branchId"
-          :worktree="target?.worktree ?? ''"
+          :worktree="listing.data.value?.root || target?.worktree || ''"
           @open="onSearchOpen"
         />
       </div>

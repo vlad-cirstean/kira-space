@@ -31,21 +31,6 @@ const selected = computed({
 const listing = useTaskFilesListing(() => props.branchId);
 const launch = useTaskFileLaunch(() => props.branchId);
 const tree = computed(() => buildTree(listing.data.value?.paths ?? []));
-// First load of a branch opens the root's own directories; a later Refresh never re-expands
-// whatever the user has since collapsed.
-watch(
-  tree,
-  (nodes) => {
-    // An empty tree is the not-yet-loaded state; seeding then would freeze an empty set.
-    if (!listing.data.value) return;
-    filesUi.initExpanded(
-      props.branchId,
-      nodes.filter((n) => n.isDir).map((n) => n.path),
-    );
-  },
-  { immediate: true },
-);
-
 // The filter field stays instantly responsive; only the filter fold (a full tree walk, 538ms per
 // keystroke at the 200k-file cap) waits for typing to settle.
 const debouncedFilter = ref(props.filter);

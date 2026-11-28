@@ -75,17 +75,8 @@ const reviewDisabled = computed(
 
 // The task's Files window: a quiet icon, below the labelled Review button.
 const openFiles = useOpenFilesWindow();
-const hasBranch = computed(() => props.card.rows.some((r) => r.branch.name !== ''));
-const filesDisabled = computed(
-  () =>
-    openFiles.isPending.value ||
-    !props.card.rows.some((r) => r.branch.name !== '' && r.branch.worktree !== ''),
-);
-const filesTip = computed(() =>
-  props.card.rows.some((r) => r.branch.name !== '' && r.branch.worktree !== '')
-    ? t('space.ade.panel.files.tooltip')
-    : t('space.ade.files.noWorktree.empty'),
-);
+const hasRepo = computed(() => props.card.rows.length > 0);
+const filesDisabled = computed(() => openFiles.isPending.value);
 function openFilesWindow(ev: MouseEvent): void {
   const taskId = props.card.task.id;
   const returnTo = ev.currentTarget as HTMLElement | null;
@@ -146,9 +137,9 @@ const label = computed(() =>
         </TooltipDisabledTrigger>
       </TextTooltip>
       <TooltipIconButton
-        v-if="hasBranch"
+        v-if="hasRepo"
         icon="files"
-        :label="filesTip"
+        :label="t('space.ade.panel.files.tooltip')"
         disabled-trigger
         :disabled="filesDisabled"
         class="shrink-0"

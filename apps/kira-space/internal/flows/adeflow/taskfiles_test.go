@@ -15,6 +15,7 @@ import (
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/bridge/adewire"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/codeworkspace"
 	"github.com/kirathecat/kira-studio/apps/kira-space/internal/flowharness"
+	"github.com/kirathecat/kira-studio/internal/flowtest/fakeagent"
 	"github.com/kirathecat/kira-studio/internal/ipcerr"
 )
 
@@ -54,6 +55,9 @@ func TestTaskFiles(t *testing.T) {
 		if !slices.Contains(list.Paths, want) {
 			t.Fatalf("listing %v lacks %s", list.Paths, want)
 		}
+	}
+	if list.Root != wt || list.Main {
+		t.Fatalf("root = %q main = %v, want %q and false", list.Root, list.Main, wt)
 	}
 	app.Contract(t, taskFilesScenario, "list", list, mask)
 
@@ -141,6 +145,55 @@ func TestTaskFiles(t *testing.T) {
 	if app.W.AdeBoard.TaskFilesPeek(br.ID) != nil {
 		t.Fatal("file session survived the archive")
 	}
+}
+
+// A row without a worktree opens its repo's main worktree; a missing main checkout is refused.
+func TestTaskFilesMainWorktree(t *testing.T) {
+	f := newRunFixture(t, []fakeagent.Action{{Name: "done"}}, agentStep("one", ""))
+	app, dir := f.app, f.repo.Dir
+	br := branchOf(t, board(t, app), f.taskID, f.repoID)
+	if br.Name != "" || br.Worktree != "" {
+		t.Fatalf("branch = %+v, want no name and no worktree", br)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	commitIn(t, dir, filepath.Join("src", "main.go"))
+	branch := adewire.BranchArgs{BranchID: br.ID}
+	list, err := app.W.AdeTask.TaskFiles(ctx, branch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Split(gitOut(t, dir, "ls-files", "--cached", "--others", "--exclude-standard"), "\n")
+	got := slices.Clone(list.Paths)
+	sort.Strings(got)
+	sort.Strings(want)
+	if !slices.Equal(got, want) || !slices.Contains(got, "src/main.go") {
+		t.Fatalf("paths = %v, want git's %v", got, want)
+	}
+	if list.Root != dir || !list.Main {
+		t.Fatalf("root = %q main = %v, want %q and true", list.Root, list.Main, dir)
+	}
+	app.Contract(t, taskFilesScenario, "list#main", list, flowharness.Replace(dir, "<main>"))
+
+	if c, err := app.W.AdeTask.TaskFileRead(ctx, bridge.AdeTaskFileArgs{BranchID: br.ID, Path: "src/main.go"}); err != nil || c.Kind != "found" {
+		t.Fatalf("read = %+v, %v", c, err)
+	}
+	if err := app.W.AdeTask.TaskFileReveal(ctx, bridge.AdeTaskFileArgs{BranchID: br.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.FileOpener.RevealedFiles(); !slices.Equal(got, []string{dir}) {
+		t.Fatalf("revealed = %v, want %v", got, []string{dir})
+	}
+
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	_, err = app.W.AdeTask.TaskFiles(ctx, branch)
+	if errCode(err) != "E_NOT_FOUND" {
+		t.Fatalf("missing main = %v, want E_NOT_FOUND", err)
+	}
+	app.Contract(t, taskFilesScenario, "noMainWorktree", map[string]string{"code": errCode(err), "message": errMessage(err)})
 }
 
 func errMessage(err error) string {

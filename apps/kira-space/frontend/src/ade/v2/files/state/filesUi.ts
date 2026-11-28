@@ -14,7 +14,7 @@ interface TaskFilesView {
 // live in useAdeFileSearchStore, file lists in TanStack Query.
 export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   const view = ref<TaskFilesView>({ branchId: '', mode: 'files', filter: '' });
-  /** Per branch: expanded directories. Absent until the tree first loads. */
+  /** Per branch: expanded directories, set by the user's toggles; absent means all collapsed. */
   const expanded = ref<Record<string, Set<string>>>({});
   /** Per branch: the selected tree path and the file open in the viewer. */
   const selected = ref<Record<string, string | null>>({});
@@ -29,9 +29,6 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
   }
 
   const expandedOf = (branchId: string): Set<string> | undefined => expanded.value[branchId];
-  function initExpanded(branchId: string, dirs: Iterable<string>): void {
-    if (!expanded.value[branchId]) expanded.value[branchId] = new Set(dirs);
-  }
   function toggleDir(branchId: string, path: string): void {
     const set = expanded.value[branchId] ?? new Set<string>();
     if (set.has(path)) set.delete(path);
@@ -48,7 +45,6 @@ export const useAdeFilesUiStore = defineStore('adeFilesUi', () => {
     launchError,
     patch,
     expandedOf,
-    initExpanded,
     toggleDir,
   };
 });

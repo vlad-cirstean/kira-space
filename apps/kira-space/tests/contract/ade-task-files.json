@@ -26,18 +26,34 @@
     "reveal": "fileManager"
   },
   "list": {
+    "main": false,
     "paths": [
       "README.md",
       "base.txt",
       "escape",
       "src/a.go"
     ],
+    "root": "<worktree>",
     "status": {
       "README.md": "?",
       "escape": "?",
       "src/": "?"
     },
     "truncated": false
+  },
+  "list#main": {
+    "main": true,
+    "paths": [
+      "base.txt",
+      "src/main.go"
+    ],
+    "root": "<main>",
+    "status": {},
+    "truncated": false
+  },
+  "noMainWorktree": {
+    "code": "E_NOT_FOUND",
+    "message": "The repository’s main worktree is missing."
   },
   "read": {
     "bytes": 28,
