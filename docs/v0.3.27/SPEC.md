@@ -11,7 +11,7 @@ review and iterate on; implementation follows the owner's sign-off.
 
 | # | Phase | Status |
 |---|-------|--------|
-| P762 | Branches MCP cannot target a worktree when a repo has several branches | Pending |
+| P762 | Branches MCP cannot target a worktree when a repo has several branches | Done |
 | P763 | Redesign links to show the host too (design for review) | Pending |
 | P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
 | P765 | Chapter close | Pending |
@@ -21,6 +21,13 @@ review and iterate on; implementation follows the owner's sign-off.
 The branches MCP tool fails when one repo has more than one branch: the caller cannot name the
 worktree. Add worktree selection to the tool, resolve it in the backend, cover with a flow test and a
 UI spec split at the IPC boundary.
+
+Result: forward commits `518dde91d` (`taskCandidates` lists each repo once), `bb16aba2a` (optional
+`worktree` arg on `branch.rename`, `branch.change`, `worktree.remove`; `taskRow` resolver; tool wording
+and `budget.tsv`), `fa0ebf454` (`TestAgentMultiWorktree`, contract `ade-agent-multi-worktree.json`, UI
+spec `ade-v2-agent-multi-worktree`), `109bef5c8` (ARCHITECTURE). Checks: go tests for agentmcp,
+llmprompts, ade, adeflow agent/rename/change tests (`-race -count=20` on the new one), checkprompts,
+typecheck:tests, biome, UI specs 3/3, real `claude` `TestAdeBranchRequest` green.
 
 ## P763
 
