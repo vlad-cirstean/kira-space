@@ -181,15 +181,13 @@ taskFilesWindowTest(
       page.locator(`[data-testid="ade-files-row"][data-path="${path}"]`);
     await expect(row('a.ts')).toBeVisible();
 
-    // Rows: dir (open on first load), a.ts (folders first). Selecting by click makes the row the
-    // roving stop.
+    // Rows: dir (collapsed on first load), a.ts (folders first). A click selects the row as the
+    // roving stop and toggles the folder open.
+    await expect(row('dir')).toBeVisible();
+    await expect(row('dir/b.ts')).toHaveCount(0);
     await row('dir').click();
     await expect(row('dir')).toBeFocused();
-    // A click toggles a folder: it was open, so it is closed now.
-    await expect(row('dir/b.ts')).toHaveCount(0);
-    await page.keyboard.press('ArrowRight');
     await expect(row('dir/b.ts')).toBeVisible();
-    await expect(row('dir')).toBeFocused();
     await page.keyboard.press('ArrowDown');
     await expect(row('dir/b.ts')).toBeFocused();
     await page.keyboard.press('End');

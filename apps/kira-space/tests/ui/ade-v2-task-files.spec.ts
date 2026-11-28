@@ -27,16 +27,26 @@ interface Listing {
   paths: string[];
 }
 
-test('contract: the tree lists the worktree files, root directories open', async ({ relaunch }) => {
+test('contract: the tree lists the worktree files, every folder collapsed', async ({
+  relaunch,
+}) => {
   const { window: page, control } = await openFilesWindow(relaunch, taskFilesControl());
   const listing = contract<Listing>('ade-task-files', 'list');
   await expect(page.locator(t('ade-files-row')).first()).toBeVisible();
-  const paths = await rowPaths(page);
-  // Directories are rows too: every listed file shows, under its (expanded) directory.
-  for (const p of listing.paths) expect(paths).toContain(p);
-  expect(paths).toContain('src');
+  const roots = [...new Set(listing.paths.map((p) => p.split('/')[0]))].sort();
+  await expect.poll(async () => [...(await rowPaths(page))].sort()).toEqual(roots);
+  const src = page.locator('[data-testid="ade-files-row"][data-path="src"]');
+  await expect(src).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('[data-testid="ade-files-row"][data-path^="src/"]')).toHaveCount(0);
   expect(calls(control, IPC.adeTaskFiles)[0]?.args).toEqual({ branchId: FILES_BRANCH });
   await expect(page.locator(t('ade-files-viewer-empty'))).toBeVisible();
+  // A user's expansion survives a refetch.
+  await src.click();
+  const a = page.locator('[data-testid="ade-files-row"][data-path="src/a.go"]');
+  await expect(a).toBeVisible();
+  await page.locator(t('ade-files-refresh')).click();
+  await expect.poll(() => calls(control, IPC.adeTaskFiles).length).toBeGreaterThan(1);
+  await expect(a).toBeVisible();
 });
 
 test('the name filter narrows the tree', async ({ relaunch }) => {
@@ -241,9 +251,40 @@ test('a build with no launchers shows neither action', async ({ relaunch }) => {
   await expect(page.locator(t('ade-files-open-editor'))).toHaveCount(0);
 });
 
-test('a task without a worktree has an empty Files window', async ({ relaunch }) => {
-  const { window: page } = await openFilesWindow(relaunch, taskFilesControl(), 'T_alerts');
-  await expect(page.locator(t('ade-files-empty'))).toBeVisible();
+test('contract: a task without a worktree shows the main worktree, collapsed', async ({
+  relaunch,
+}) => {
+  const { window: page, control } = await openFilesWindow(
+    relaunch,
+    taskFilesControl([
+      { channel: IPC.adeTaskFiles, response: contract('ade-task-files', 'list#main') },
+    ]),
+    'T_alerts',
+  );
+  const main = contract<Listing & { root: string; main: boolean }>('ade-task-files', 'list#main');
+  expect(main.main).toBe(true);
+  await expect(page.locator(t('ade-files-main'))).toBeVisible();
+  await expect(page.locator(t('ade-files-branch')).locator('option').first()).toContainText(
+    'main worktree',
+  );
+  await expect
+    .poll(() => calls(control, IPC.adeTaskFiles)[0]?.args)
+    .toEqual({
+      branchId: 'd_alerts_api',
+    });
+  const roots = [...new Set(main.paths.map((p) => p.split('/')[0]))].sort();
+  await expect.poll(async () => [...(await rowPaths(page))].sort()).toEqual(roots);
+  await expect(page.locator('[data-testid="ade-files-row"][data-path^="src/"]')).toHaveCount(0);
+});
+
+test('contract: a missing main worktree shows the refusal', async ({ relaunch }) => {
+  const refusal = contract<{ code: string; message: string }>('ade-task-files', 'noMainWorktree');
+  const { window: page } = await openFilesWindow(
+    relaunch,
+    taskFilesControl([{ channel: IPC.adeTaskFiles, error: refusal }]),
+    'T_alerts',
+  );
+  await expect(page.locator(t('ade-files-error'))).toContainText(refusal.message);
 });
 
 test('a task with several worktrees picks the branch, and leaving one closes its session', async ({

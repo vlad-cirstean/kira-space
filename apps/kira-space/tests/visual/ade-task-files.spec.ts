@@ -56,9 +56,15 @@ test('files window: launch error', async ({ relaunch }) => {
   await expect(window.locator(t('ade-files-window'))).toHaveScreenshot('files-launch-error.png');
 });
 
-test('files window: no worktree', async ({ relaunch }) => {
-  const { window } = await openFilesWindow(relaunch, taskFilesControl(), 'T_alerts');
+test('files window: main worktree', async ({ relaunch }) => {
+  const { window } = await openFilesWindow(
+    relaunch,
+    taskFilesControl([
+      { channel: IPC.adeTaskFiles, response: contract('ade-task-files', 'list#main') },
+    ]),
+    'T_alerts',
+  );
   await window.setViewportSize({ width: 1400, height: 900 });
-  await expect(window.locator(t('ade-files-empty'))).toBeVisible();
-  await expect(window.locator(t('ade-files-empty'))).toHaveScreenshot('files-empty.png');
+  await expect(window.locator(t('ade-files-main'))).toBeVisible();
+  await expect(window.locator(t('ade-files-window'))).toHaveScreenshot('files-main.png');
 });

@@ -37,10 +37,13 @@ test('a refused open shows the action error in the panel', async ({ relaunch }) 
   await expect(page.locator(t('ade-panel-action-error'))).toContainText('no window');
 });
 
-test('a branch without a worktree disables the icon; a task with no branch has none', async ({
+test('a branch without a worktree keeps the icon enabled; a task with no repo has none', async ({
   relaunch,
 }) => {
-  const board = adeFixture<{ branches: { id: string; worktree: string }[] }>('board');
+  const board = adeFixture<{
+    branches: { id: string; worktree: string }[];
+    tasks: { id: string; branchIds: string[] }[];
+  }>('board');
   for (const br of board.branches) if (br.id === 'b_cart') br.worktree = '';
   const { window: page, control } = await openPlan(relaunch, [
     { channel: IPC.adeTaskBoard, response: board },
@@ -49,10 +52,23 @@ test('a branch without a worktree disables the icon; a task with no branch has n
   await openTask(page, FILES_TASK);
   const icon = page.locator(t('ade-panel-files'));
   await expect(icon).toBeVisible();
-  await expect(icon).toBeDisabled();
+  await expect(icon).toBeEnabled();
+  await icon.click();
+  await expect.poll(() => calls(control, IPC.adeTaskOpenFilesWindow)).toHaveLength(1);
+  expect(calls(control, IPC.adeTaskOpenFilesWindow)[0]?.args).toEqual({ taskId: FILES_TASK });
+  // Repo rows without a branch still open the repo's main worktree.
+  await openTask(page, 'T_alerts');
+  await expect(page.locator(t('ade-panel-files'))).toBeEnabled();
+});
+
+test('a task with no repo row shows no Files icon', async ({ relaunch }) => {
+  const board = adeFixture<{ tasks: { id: string; branchIds: string[] }[] }>('board');
+  for (const task of board.tasks) if (task.id === 'T_alerts') task.branchIds = [];
+  const { window: page } = await openPlan(relaunch, [
+    { channel: IPC.adeTaskBoard, response: board },
+  ]);
   await openTask(page, 'T_alerts');
   await expect(page.locator(t('ade-panel-files'))).toHaveCount(0);
-  expect(calls(control, IPC.adeTaskOpenFilesWindow)).toHaveLength(0);
 });
 
 taskFilesWindowTest(

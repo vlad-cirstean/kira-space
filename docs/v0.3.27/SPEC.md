@@ -14,7 +14,7 @@ review and iterate on; implementation follows the owner's sign-off.
 | P762 | Branches MCP cannot target a worktree when a repo has several branches | Done |
 | P763 | Redesign links to show the host too (design for review) | Pending |
 | P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
-| P765 | Repo files window opens without a worktree and starts fully collapsed | Pending |
+| P765 | Repo files window opens without a worktree and starts fully collapsed | Done |
 | P766 | Chapter close | Pending |
 
 ## P762
@@ -44,6 +44,14 @@ design. Design first: mockup and plan, no implementation until the owner approve
 
 Repo files window: make it available when the repo has no worktree (it opens the main one), and
 stop auto-expanding the first folder row; every folder starts collapsed.
+
+Result: the task Files window opens for any task with a repo row. A row without a worktree shows
+the repo's main worktree (`mainWorktree`, `ErrNoMainWorktree`); `AdeTaskFileListing` carries `root` and
+`main`, and the window shows a Main worktree badge. `initExpanded` is gone: every folder starts
+collapsed, user toggles live for the window's life. Flow test `TestTaskFilesMainWorktree` and contract
+keys `list#main`, `noMainWorktree`; UI specs `ade-v2-task-files`, `ade-v2-task-files-window` and
+`list-keyboard` extended and passing. Visual baselines `files-open`, `files-reading`,
+`files-launch-error` need re-record and `files-main` is new; left to PR CI.
 
 ## P766
 
