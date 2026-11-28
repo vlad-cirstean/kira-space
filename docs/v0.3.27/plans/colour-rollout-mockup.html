@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colour Rollout Questions</title>
+<style>
+/* Dark: real values from packages/theme/src/tokens.css (shared with P764-mockup.html). */
+:root {
+  --kira-bg: #1b1b1e;
+  --kira-bg-elevated: #212125;
+  --kira-bg-chrome: #131315;
+  --kira-bg-input: #27272c;
+  --kira-fg: #d4d4d8;
+  --kira-fg-muted: #a1a1aa;
+  --kira-fg-subtle: #8e8e97;
+  --kira-border: #323237;
+  --kira-focus: #a1a1aa;
+  --kira-select: #36363c;
+  --kira-select-edge: #71717a;
+  --kira-error: #e66e68;
+  --kira-warn: #d5b449;
+  --kira-ok: #57bc8a;
+  --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.24);
+  --kira-radius-sm: 4px;
+  --kira-radius: 6px;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Ubuntu, sans-serif;
+  --font-data: Menlo, ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--kira-bg-chrome); color: var(--kira-fg); font: 12px/1.4 var(--font-ui); }
+.page { max-width: 1480px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+p.lede { color: var(--kira-fg-muted); margin: 0 0 8px; max-width: 1040px; }
+code { font-family: var(--font-data); font-size: 11px; }
+section.q { margin-top: 26px; border-top: 1px solid var(--kira-border); padding-top: 12px; }
+section.q h2 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+section.q p.ask { color: var(--kira-fg-muted); margin: 0 0 4px; max-width: 1040px; }
+section.q p.note { color: var(--kira-fg-subtle); font-size: 11px; margin: 0 0 8px; max-width: 1040px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.cols.four { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+@media (max-width: 700px) { .cols, .cols.four { grid-template-columns: 1fr; } }
+.col h3 { font-size: 12px; font-weight: 600; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.col h3 small { font-weight: 400; color: var(--kira-fg-subtle); font-size: 11px; }
+.pill { font-size: 10px; font-weight: 600; padding: 0 6px; border-radius: 999px; border: 1px solid var(--kira-border); color: var(--kira-fg-muted); }
+.pill.rec { color: var(--kira-ok); border-color: color-mix(in srgb, var(--kira-ok) 45%, var(--kira-border)); }
+.pill.alt { color: var(--kira-warn); border-color: color-mix(in srgb, var(--kira-warn) 45%, var(--kira-border)); }
+.ground { background: var(--kira-bg-chrome); border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.lbl { font-size: 10px; color: var(--kira-fg-subtle); margin: 0 0 -4px 2px; }
+
+/* View pane + ViewHead */
+.pane { background: var(--kira-bg); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); overflow: hidden; }
+.vh { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; background: var(--vh-bg, var(--kira-bg)); min-width: 0; }
+.vline { height: 2px; background: var(--ink, transparent); }
+.d5 { width: 5px; height: 5px; border-radius: 50%; background: var(--ink); flex-shrink: 0; }
+.ico { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--ico, var(--kira-fg-muted)); flex-shrink: 0; }
+.ttl { font-size: 13px; color: var(--kira-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ttl .pre { color: var(--kira-fg-subtle); }
+.bdg { font-size: 10px; padding: 0 5px; border-radius: 999px; border: 1px solid var(--kira-border); color: var(--kira-fg-muted); white-space: nowrap; flex-shrink: 0; }
+.sp { flex: 1; }
+.btn { font: inherit; font-size: 11px; color: var(--kira-fg); background: var(--kira-bg-input); border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); padding: 1px 7px; white-space: nowrap; flex-shrink: 0; }
+.btn.pri { background: var(--kira-fg); color: var(--kira-bg-chrome); border-color: transparent; }
+.vbody { padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 2px; }
+.gr { display: grid; grid-template-columns: 34px 1fr 1fr 64px; gap: 8px; font-family: var(--font-data); font-size: 11px; color: var(--kira-fg-muted); line-height: 18px; }
+.gr.h { color: var(--kira-fg-subtle); font-family: var(--font-ui); }
+.url { display: flex; gap: 6px; align-items: center; font-size: 11px; }
+.method { font-family: var(--font-data); font-weight: 600; color: #81a9d2; width: 32px; }
+.uin { flex: 1; font-family: var(--font-data); background: var(--kira-bg-input); border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); padding: 1px 6px; color: var(--kira-fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uin i { font-style: normal; color: var(--kira-fg-subtle); }
+
+/* Rows, rails, marks */
+.row { position: relative; display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px 0 12px; font-size: 12px; color: var(--kira-fg); white-space: nowrap; }
+.row.on { background: var(--kira-select); }
+.row .sub { color: var(--kira-fg-subtle); font-size: 11px; }
+.rail { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--ink); }
+.mbar { width: 2px; height: 14px; border-radius: 999px; background: var(--ink); flex-shrink: 0; }
+.mline { width: 16px; height: 3px; border-radius: 2px; background: var(--ink); flex-shrink: 0; }
+.ts { display: flex; align-items: flex-end; gap: 2px; padding: 4px 4px 0; background: var(--kira-bg-chrome); }
+.tb { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: var(--kira-radius-sm) var(--kira-radius-sm) 0 0; font-size: 11px; color: var(--kira-fg-muted); white-space: nowrap; background: var(--tb-bg, transparent); }
+.tb.on { background: var(--tb-bg, var(--kira-bg)); color: var(--kira-fg); box-shadow: inset 0 -2px 0 var(--tb-edge, transparent); }
+
+/* Swatch picker */
+.sws { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; padding: 4px 2px; }
+.sw { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); flex-shrink: 0; }
+.sw.none { background: transparent; border: 1px solid var(--kira-fg-muted); }
+.sw.on { outline: 2px solid var(--kira-fg); outline-offset: 2px; }
+.picker { background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; }
+.picker .pl { font-size: 11px; color: var(--kira-fg-muted); }
+
+/* Task head (P764 AdeTaskBand) and status */
+.task { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; background: var(--vh-bg); border-radius: var(--kira-radius) var(--kira-radius) 0 0; }
+.taskcard { border: 1px solid var(--kira-border); border-radius: var(--kira-radius); overflow: hidden; background: var(--kira-bg-chrome); }
+.taskcard .brow { display: flex; gap: 8px; height: 24px; align-items: center; padding: 0 8px 0 30px; font-size: 11px; color: var(--kira-fg-subtle); }
+.key { font-family: var(--font-data); font-size: 11px; color: var(--kira-fg-subtle); flex-shrink: 0; }
+.stc { font-size: 11px; padding: 0 6px; border-radius: 999px; color: var(--st); background: color-mix(in srgb, var(--st) 15%, transparent); white-space: nowrap; flex-shrink: 0; }
+.livedot { width: 8px; height: 8px; border-radius: 50%; background: var(--kira-ok); flex-shrink: 0; margin: 0 4px; }
+
+/* Repo chip */
+.rc { font-size: 11px; padding: 0 5px; border-radius: var(--kira-radius-sm); white-space: nowrap; flex-shrink: 0; }
+.br { font-family: var(--font-data); font-size: 11px; white-space: nowrap; color: var(--kira-fg); }
+
+/* Approvals dialog */
+.dlg { background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); box-shadow: var(--kira-shadow); overflow: hidden; }
+.dh { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--vh-bg, var(--kira-bg-elevated)); }
+.dh b { font-weight: 600; font-size: 13px; }
+.dh .sub { font-size: 11px; color: var(--kira-fg-muted); }
+.dl3 { height: 3px; background: var(--ink); }
+.dbody { padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+.op { display: flex; gap: 6px; align-items: center; font-family: var(--font-data); color: var(--kira-fg-muted); }
+.dfoot { display: flex; justify-content: flex-end; gap: 6px; padding: 6px 10px 8px; }
+
+/* Q2 strip */
+.map { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 4px; }
+@media (max-width: 1000px) { .map { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+.mc { border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); overflow: hidden; font-size: 10px; }
+.mc.legacy { border-color: var(--kira-warn); }
+.mc div { height: 20px; display: flex; align-items: center; padding: 0 4px; white-space: nowrap; overflow: hidden; font-family: var(--font-data); }
+.mc .ink { color: #131315; }
+.mc .band { color: var(--kira-fg); }
+.mc .nm { color: var(--kira-fg-subtle); background: var(--kira-bg); }
+.menu { background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); padding: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+.mi { display: flex; align-items: center; gap: 6px; padding: 2px 6px; font-size: 11px; border-radius: var(--kira-radius-sm); }
+.mi code { color: var(--kira-fg-subtle); margin-left: auto; font-size: 10px; }
+.mi.warn code { color: var(--kira-warn); }
+
+/* Palette strips (Q7) */
+.strip { display: flex; flex-wrap: wrap; gap: 3px; }
+.strip span { width: 22px; height: 14px; border-radius: 3px; background: var(--ink); }
+.strip.bands span { background: var(--b); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Colour rollout: owner questions (P766 / P767)</h1>
+  <p class="lede">One section per question in <code>colour-audit.md</code> section 5. Each shows today, the recommended answer and the alternative side by side, in app chrome: Studio DB view head, HTTP request head, ADE repos head, approvals dialog header. Dark tokens from <code>packages/theme/src/tokens.css</code>; Pure-B inks and bands from <code>P764.md</code> / <code>P764-mockup.html</code>. Today's muted inks are the shipping <code>--kira-conn-*</code> values. Bands for the muted alternative (Q1) are illustrative only: OKLCH L 0.235 C 0.025 at each muted hue, no contrast check run.</p>
+  <div id="root"></div>
+</div>
+<script>
+const PB_NAMES = ['red', 'teal', 'amber', 'violet', 'blue', 'orange', 'magenta', 'green', 'lime', 'sky'];
+const PB_INK = ['#dd7577', '#09adb4', '#cfae42', '#af81d6', '#7d92e8', '#d48140', '#cf76ac', '#31b182', '#81a749', '#31a3dd'];
+const PB_REST = ['#2d1717', '#052325', '#241e09', '#23192b', '#181d2f', '#2b1a0d', '#2a1722', '#0c231a', '#19210f', '#0c212c'];
+const PB_HOV = ['#341819', '#012729', '#292105', '#281b32', '#1a2037', '#321b0a', '#311827', '#08281c', '#1b260d', '#082534'];
+const PB = Object.fromEntries(PB_NAMES.map((n, i) => [n, { ink: PB_INK[i], band: PB_REST[i], hov: PB_HOV[i] }]));
+PB.grey = { ink: 'var(--kira-fg-subtle)', band: 'var(--kira-bg-elevated)' };
+// Shipping --kira-conn-* (muted oklch(0.72 0.075 h)); hue angle drives the illustrative alternative band.
+const MUTED = {
+  red: ['#d0938d', 25], orange: ['#ca9877', 55], amber: ['#baa16e', 85], olive: ['#a3ab74', 115],
+  green: ['#83b28c', 150], teal: ['#6db4a6', 180], cyan: ['#68b3bb', 205], blue: ['#81a9d2', 250],
+  indigo: ['#96a1d4', 275], violet: ['#ac9acd', 300], magenta: ['#c592b3', 340],
+};
+const M = Object.fromEntries(Object.entries(MUTED).map(([n, [ink, h]]) => [n, { ink, band: `oklch(0.235 0.025 ${h})` }]));
+M.grey = { ink: 'var(--kira-fg-subtle)', band: 'var(--kira-bg-elevated)' };
+const OFFERED_TODAY = ['red', 'amber', 'green', 'cyan', 'blue', 'magenta', 'grey'];
+const OFFERED_PB = ['red', 'orange', 'amber', 'lime', 'green', 'teal', 'sky', 'blue', 'violet', 'magenta', 'grey'];
+// Legacy name to Pure-B display hue (Q2).
+const SHOW_AS = { olive: 'lime', cyan: 'sky', indigo: 'blue' };
+const pbOf = (name) => PB[SHOW_AS[name] ?? name];
+const ST = {
+  blue: '#8ebaf4', amber: '#dbaf71', green: '#8bc997', grey: '#a1a1aa', violet: '#bbacee', red: '#eea099',
+  brown: '#d1b099', orange: '#e9a680', yellow: '#cab76f', lime: '#a9c27f', teal: '#6cccba', cyan: '#65c9d4',
+  sky: '#6fc4e5', indigo: '#a5b3f4', purple: '#cfa5e1', pink: '#e69ec0',
+};
+
+const svg = (p) => `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">${p}</svg>`;
+const IC = {
+  table: svg('<rect x="2" y="3" width="12" height="10" rx="1"/><path d="M2 6.5h12M6 6.5V13"/>'),
+  db: svg('<ellipse cx="8" cy="4" rx="5" ry="2"/><path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>'),
+  leaf: svg('<path d="M8 14V7M8 2c3 2 4 5 0 9-4-4-3-7 0-9z"/>'),
+  key: svg('<circle cx="5.5" cy="10.5" r="3"/><path d="M7.6 8.4 13 3M11 5l2 2"/>'),
+  stream: svg('<path d="M2 5h9M2 8h12M2 11h7"/>'),
+  globe: svg('<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/>'),
+  repo: svg('<circle cx="5" cy="4" r="1.6"/><circle cx="5" cy="12" r="1.6"/><circle cx="11" cy="6" r="1.6"/><path d="M5 5.6v4.8M11 7.6c0 2-6 1.5-6 2.8"/>'),
+  shield: svg('<path d="M8 2 3 4v4c0 3 2.2 5 5 6 2.8-1 5-3 5-6V4z"/>'),
+  term: svg('<rect x="2" y="3" width="12" height="10" rx="1"/><path d="m5 7 2 1.5L5 10M8.5 10.5H11"/>'),
+  file: svg('<path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/>'),
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+/* mode: 'line' (today: dot + 2px line), 'band' (ground). c = {ink, band}. */
+function vh({ mode, c, dot, icon, iconInk, lead, pre, title, badges = [], actions = [] }) {
+  const ground = mode === 'band' && c ? `--vh-bg:${c.band};` : '';
+  const ink = c ? `--ink:${c.ink};` : '';
+  const showDot = mode === 'line' ? c !== undefined : dot;
+  const d = showDot ? (c ? '<span class="d5"></span>' : '<span class="d5" style="background:none;border:1px solid var(--kira-border)"></span>') : '';
+  const leadIco = lead ? `<span class="ico" style="${iconInk && c ? `--ico:${c.ink}` : ''}">${lead}</span>` : '';
+  return `<div class="vh" style="${ground}${ink}">${d}${leadIco}<span class="ico">${icon}</span>
+    <span class="ttl">${pre ? `<span class="pre">${esc(pre)}</span>` : ''}${esc(title)}</span>
+    ${badges.map((b) => `<span class="bdg">${b}</span>`).join('')}<span class="sp"></span>
+    ${actions.map((a, i) => `<button type="button" class="btn${i === actions.length - 1 && a.startsWith('!') ? ' pri' : ''}">${esc(a.replace(/^!/, ''))}</button>`).join('')}
+  </div>${mode === 'line' ? `<div class="vline" style="${ink}"></div>` : ''}`;
+}
+const gridBody = () => `<div class="vbody"><div class="gr h"><span>id</span><span>customer</span><span>status</span><span>total</span></div>
+  <div class="gr"><span>1041</span><span>Ada Byrne</span><span>shipped</span><span>84.20</span></div>
+  <div class="gr"><span>1042</span><span>Jonas Lind</span><span>pending</span><span>12.00</span></div></div>`;
+const httpBody = () => `<div class="vbody"><div class="url"><span class="method">GET</span><span class="uin"><i>{{baseUrl}}</i>/v2/orders?limit=20</span><button type="button" class="btn pri">Send</button></div></div>`;
+const reposBody = (pal, shape) => `<div class="vbody" style="padding:2px 0 4px">${[['kira-space', 'green', 'main'], ['adapters', 'magenta', 'feat/mariadb'], ['kira-mobile', 'amber', 'main']]
+  .map(([n, col, b], i) => `<div class="row${i === 0 ? ' on' : ''}" style="--ink:${pal(col).ink}">${shape === 'none' ? '' : '<span class="rail"></span>'}${IC.repo}<span>${n}</span><span class="sub">${b}</span></div>`).join('')}</div>`;
+
+const P = {
+  db: (mode, c, o = {}) => `<div class="pane">${vh({ mode, c, dot: o.dot, icon: IC.table, lead: o.lead ?? IC.db, iconInk: o.iconInk ?? mode === 'line', pre: 'public.', title: 'orders', badges: ['1,204 rows'], actions: ['Filter', 'Refresh'] })}${gridBody()}</div>`,
+  http: (mode, c, o = {}) => `<div class="pane">${vh({ mode, c, dot: o.dot, icon: IC.globe, pre: 'Orders API / ', title: 'List orders', badges: [o.env ?? 'staging'], actions: ['Save'] })}${httpBody()}</div>`,
+  repos: (mode, c, pal, o = {}) => `<div class="pane">${vh({ mode, c, dot: o.dot, icon: IC.repo, title: 'kira-space', badges: ['main', '3 worktrees'], actions: ['Fetch'] })}${reposBody(pal)}</div>`,
+  approvals: (mode, c) => `<div class="dlg"><div class="dh" style="${mode === 'band' ? `--vh-bg:${c.band}` : ''}"><span class="ico">${IC.shield}</span><b>Approve 2 operations</b><span class="sub">orders-prod</span><span class="sp"></span><span class="bdg">MCP</span></div>${mode === 'line' ? `<div class="dl3" style="--ink:${c.ink}"></div>` : ''}
+    <div class="dbody"><div class="op">UPDATE orders SET status = 'void' WHERE id = 1042</div><div class="op">DELETE FROM carts WHERE age_days &gt; 30</div></div>
+    <div class="dfoot"><button type="button" class="btn">Reject</button><button type="button" class="btn pri">Approve</button></div></div>`,
+};
+const picker = (label, names, pal, on) => `<div class="picker"><span class="pl">${label}</span><div class="sws">
+  <span class="sw none" title="No colour"></span>${names.map((n) => `<span class="sw${n === on ? ' on' : ''}" style="--ink:${pal(n).ink}" title="${n}"></span>`).join('')}</div></div>`;
+const taskHead = (slot, title, key, st, stName) => `<div class="taskcard"><div class="task" style="--vh-bg:${PB_REST[slot]}"><span class="livedot"></span><span class="ttl" style="font-size:12px;font-weight:500">${esc(title)}</span><span class="key">${key}</span><span class="sp"></span><span class="stc" style="--st:${st}">${stName}</span></div>
+  <div class="brow"><span>kira-space</span><span class="br">${esc(key.toLowerCase())}/work</span></div></div>`;
+const scriptAndTerm = (pal, mark) => `<div class="pane"><div class="ts">
+  <span class="tb"><span class="${mark}" style="--ink:${pal('blue').ink}"></span>orders</span>
+  <span class="tb on"><span class="${mark}" style="--ink:${pal('magenta').ink}"></span>${IC.term}seed-db</span>
+  <span class="tb"><span class="${mark}" style="--ink:${pal('amber').ink}"></span>List orders</span></div>
+  <div class="row" style="--ink:${pal('magenta').ink}"><span class="rail"></span>${IC.file}<span>seed-db</span><span class="sub">Automations script</span></div></div>`;
+const col = (title, pill, small, body) => `<div class="col"><h3>${title}${pill ? ` <span class="pill ${pill}">${pill === 'rec' ? 'recommended' : pill === 'alt' ? 'alternative' : 'today'}</span>` : ''} <small>${small}</small></h3><div class="ground">${body}</div></div>`;
+const L = (t) => `<div class="lbl">${t}</div>`;
+const sec = (n, title, ask, note, colsHtml, cls = '') => `<section class="q" id="q${n}"><h2>Q${n}. ${title}</h2><p class="ask">${ask}</p>${note ? `<p class="note">${note}</p>` : ''}<div class="cols ${cls}">${colsHtml}</div></section>`;
+
+const pm = (n) => M[n];
+const pp = (n) => pbOf(n);
+let html = '';
+
+/* Q1 */
+const q1col = (pal, mode, offered) => [
+  picker('Colour picker: connection, environment, repo, script', offered, pal, 'blue'),
+  L('Studio DB view head (connection orders-prod, blue)'), P.db(mode, pal('blue'), { iconInk: mode === 'line' }),
+  L('HTTP request head (environment staging, amber)'), P.http(mode, pal('amber')),
+  L('ADE repos head (repo kira-space, green)'), P.repos(mode, pal('green'), pal),
+  L('Terminal tabs + Automations script row (marks)'), scriptAndTerm(pal, 'mbar'),
+  L('Task beside them (P764, always Pure-B)'), taskHead(4, 'MariaDB least-privilege matrix', 'KIRA-377', ST.blue, 'In progress'),
+].join('');
+html += sec(1, 'One app-wide palette',
+  'Do connections, environments, repos, scripts and terminals take the Pure-B inks and bands too (recommended), or keep today\'s muted inks with their own bands?',
+  'Today the task (P764) already uses Pure-B, so the same screen mixes two inks. Recommended: one set of 10 inks and bands for every source.',
+  col('Today', 'cur', 'muted conn inks, dot + 2px line', q1col(pm, 'line', OFFERED_TODAY)) +
+  col('Pure-B everywhere', 'rec', '10 inks + grey, header band', q1col(pp, 'band', OFFERED_PB)) +
+  col('Keep muted inks, own bands', 'alt', 'second band recipe beside the task one', q1col(pm, 'band', OFFERED_TODAY)));
+
+/* Q2 */
+const ALL13 = ['red', 'orange', 'amber', 'olive', 'green', 'teal', 'cyan', 'blue', 'indigo', 'violet', 'magenta', 'grey'];
+const mapCells = `${ALL13.map((n) => {
+  const t = M[n];
+  const p = pbOf(n);
+  const shown = SHOW_AS[n] ?? n;
+  return `<div class="mc${SHOW_AS[n] ? ' legacy' : ''}"><div class="nm">${n}</div><div class="ink" style="background:${t.ink}">today</div><div class="ink" style="background:${p.ink}">${shown}</div><div class="band" style="background:${p.band}">band</div></div>`;
+}).join('')}<div class="mc"><div class="nm">none</div><div style="color:var(--kira-fg-subtle)">no mark</div><div style="color:var(--kira-fg-subtle)">no mark</div><div style="color:var(--kira-fg-subtle)">neutral</div></div>`;
+const menu = (rows) => `<div class="menu">${rows.map(([lab, ink, stored, warn]) => `<div class="mi${warn ? ' warn' : ''}"><span class="sw" style="--ink:${ink}"></span>${lab}<code>${stored}</code></div>`).join('')}</div>`;
+const pbRows = (relabel) => OFFERED_PB.map((n) => {
+  const back = { lime: 'olive', sky: 'cyan' }[n];
+  if (relabel && back) return [`${n[0].toUpperCase()}${n.slice(1)}`, pp(n).ink, back, true];
+  return [`${n[0].toUpperCase()}${n.slice(1)}`, pp(n).ink, n, false];
+});
+html += `<section class="q" id="q2"><h2>Q2. Legacy names mapped</h2>
+  <p class="ask">Offer the 10 Pure-B hues (+ no colour, + grey) in every picker. Stored legacy names display as the nearest hue: olive as lime, cyan as sky, indigo as blue. Add <code>lime</code> and <code>sky</code> as stored names (recommended) or only relabel?</p>
+  <p class="note">Per stored name: today's muted ink, the Pure-B ink it displays as, and its band. Amber outline marks the three legacy names. <code>indigo</code> folds into <code>blue</code> either way.</p>
+  <div class="map">${mapCells}</div>
+  <div class="cols" style="margin-top:10px">
+  ${col('Add stored names', 'rec', 'picker value matches label; old rows keep parsing', `${menu(pbRows(false))}`)}
+  ${col('Relabel only', 'alt', 'Lime writes olive, Sky writes cyan; label and stored name drift', `${menu(pbRows(true))}`)}
+  </div></section>`;
+
+/* Q3 */
+const q3col = (mode, dot) => [
+  L('Studio DB data view'), P.db(mode, pp('blue'), { dot, iconInk: mode === 'line' }),
+  L('HTTP request (environment staging, amber)'), P.http(mode, pp('amber'), { dot }),
+  L('ADE repos head'), P.repos(mode, pp('green'), pp, { dot }),
+  L('Approvals dialog header'), P.approvals(mode, pp('blue')),
+  L('Variables view (no colour): plain chrome, never an empty band'), `<div class="pane">${vh({ mode: mode === 'line' ? 'line' : 'band', c: undefined, icon: IC.globe, title: 'Variables', actions: ['Add'] })}</div>`,
+].join('');
+html += sec(3, 'View heads: colour dot',
+  'Drop the colour dot once the band shows (recommended)?',
+  'One <code>ViewHead</code> change reaches 12 heads. Approvals header follows the same band (no dot there today). Pure-B inks in all three columns so only the dot differs.',
+  col('Today', 'cur', 'dot + 2px band line; approvals 3px line', q3col('line', true)) +
+  col('Band, no dot', 'rec', 'hue lives in the ground only', q3col('band', false)) +
+  col('Band + dot', 'alt', 'hue twice in one bar', q3col('band', true)));
+
+/* Q4 */
+const chip = (mode, n) => {
+  if (mode === 'today') { const c = M[n].ink; return `<span class="rc" style="color:${c};background:color-mix(in srgb, ${c} 12%, transparent)">${REPO_N[n]}</span>`; }
+  const p = pp(n);
+  if (mode === 'ink') return `<span class="rc" style="color:${p.ink};background:color-mix(in srgb, ${p.ink} 12%, transparent)">${REPO_N[n]}</span>`;
+  return `<span class="rc" style="color:var(--kira-fg);background:${p.band}">${REPO_N[n]}</span>`;
+};
+const REPO_N = { teal: 'kira-space', magenta: 'adapters', amber: 'kira-mobile' };
+const q4col = (mode) => [
+  L('Review window title bar (task band, P764)'),
+  `<div class="taskcard"><div class="task" style="--vh-bg:${PB_REST[3]}"><span class="ttl" style="font-size:12px;font-weight:500">Faint task colours</span>${chip(mode, 'teal')}<span class="br">design/task-tint</span><span class="sp"></span><button type="button" class="btn">Submit review</button></div></div>`,
+  L('Plan card branch rows'),
+  `<div class="taskcard"><div class="task" style="--vh-bg:${PB_REST[7]}"><span class="livedot"></span><span class="ttl" style="font-size:12px;font-weight:500">Links surface redesign</span><span class="key">KIRA-420</span></div>
+   ${['teal', 'magenta', 'amber'].map((n, i) => `<div class="brow" style="padding-left:30px">${chip(mode, n)}<span class="br">feat/links-v2</span><span>${['ahead 7', 'ahead 2', 'behind 1'][i]}</span></div>`).join('')}</div>`,
+  L('Branch tooltip / gate / run (chip on elevated ground)'),
+  `<div class="picker" style="flex-direction:row;gap:6px;align-items:center">${chip(mode, 'magenta')}<span class="br">test/mariadb-matrix</span><span class="sp"></span><span class="bdg">gate passed</span></div>`,
+].join('');
+html += sec(4, 'Repo chips',
+  'Band ground with neutral text (recommended), or keep coloured text?',
+  'Today: 12% tint + ink text (third tint recipe). Recommended reuses the band and its proven contrast (fg on rest band 11.16).',
+  col('Today', 'cur', '12% tint + muted ink text', q4col('today')) +
+  col('Band ground + fg text', 'rec', 'repo rest band, neutral text', q4col('band')) +
+  col('Keep coloured text', 'alt', '12% tint + Pure-B ink text', q4col('ink')), '');
+
+/* Q5 */
+const tabsRow = (mark, bandTabs) => `<div class="ts">${[['orders', 'blue', IC.table], ['List orders', 'amber', IC.globe], ['seed-db', 'magenta', IC.term]].map(([t, n, ic], i) => {
+  const p = pp(n);
+  const style = bandTabs ? `--tb-bg:${p.band};` : '';
+  return `<span class="tb${i === 0 ? ' on' : ''}" style="${style}">${bandTabs ? '' : `<span class="${mark}" style="--ink:${p.ink}"></span>`}${ic}${t}</span>`;
+}).join('')}</div>`;
+const treeRows = (bandRows) => ['orders-prod|blue|postgres', 'analytics|violet|clickhouse', 'cache|red|redis'].map((s, i) => {
+  const [n, c, k] = s.split('|');
+  const p = pp(c);
+  return `<div class="row${i === 0 ? ' on' : ''}" style="--ink:${p.ink};${bandRows && i !== 0 ? `background:${p.band}` : ''}">${bandRows ? '' : '<span class="rail"></span>'}${IC.db}<span>${n}</span><span class="sub">${k}</span></div>`;
+}).join('');
+const sessionsGroup = (mark) => [[4, 'MariaDB least-privilege matrix'], [1, 'Split comment re-anchoring'], [7, 'Docker context switch']]
+  .map(([s, t]) => `<div class="row" style="--ink:${PB_INK[s]}"><span class="${mark}"></span><span>${t}</span><span class="sub">2 sessions</span></div>`).join('');
+const q5col = (tabMark, listMark, bands) => [
+  L('Studio tab strip'), `<div class="pane">${tabsRow(tabMark, bands)}<div class="vbody" style="height:10px"></div></div>`,
+  L('Project tree (4px rail)'), `<div class="pane" style="padding:2px 0">${treeRows(bands)}</div>`,
+  L('ADE all-sessions groups / branch tooltip marks'), `<div class="pane" style="padding:2px 0">${bands ? sessionsGroup('mline').replace(/<span class="mline"><\/span>/g, '').replace(/class="row" style="--ink:([^"]+)"/g, (_m, ink) => `class="row" style="background:${PB_REST[PB_INK.indexOf(ink)]}"`) : sessionsGroup(listMark)}</div>`,
+].join('');
+html += sec(5, 'Tabs and list rails: small marks, one shape',
+  'Tabs and list rails stay small marks (recommended)? And one mark shape: today\'s 16x3 task mark and the 2x14 tab bar both exist.',
+  'Marks recommended; the shape is the owner\'s pick (audit names no preference). Rails (4px row edge) stay in every mark option. Last column shows why bands do not suit tabs and rows: they collide with active and selected grounds.',
+  col('Today', 'cur', '2x14 tab bar + 16x3 task mark', q5col('mbar', 'mline', false)) +
+  col('Marks, one shape: 2x14 bar', 'rec', 'tab bar shape everywhere', q5col('mbar', 'mbar', false)) +
+  col('Marks, one shape: 16x3 line', 'rec', 'task mark shape everywhere', q5col('mline', 'mline', false)) +
+  col('Bands on tabs and rows', 'alt', 'ground per tab / row', q5col('mbar', 'mbar', true)), 'four');
+
+/* Q6 */
+const ENG = [
+  { lead: IC.db, icon: IC.table, pre: 'public.', title: 'orders', c: 'blue', b: 'postgres' },
+  { lead: IC.leaf, icon: IC.file, pre: 'shop.', title: 'carts', c: 'green', b: 'mongodb' },
+  { lead: IC.key, icon: IC.key, pre: 'db0 / ', title: 'session:*', c: 'red', b: 'redis' },
+  { lead: IC.stream, icon: IC.stream, pre: 'events.', title: 'order-placed', c: 'violet', b: 'kafka' },
+];
+const q6col = (mode, inkIcon, pal) => ENG.map((e) => `<div class="pane">${vh({ mode, c: pal(e.c), lead: e.lead, iconInk: inkIcon, icon: e.icon, pre: e.pre, title: e.title, badges: [e.b], actions: ['Refresh'] })}</div>`).join('') +
+  L('Start panel recent tables (no band; keeps ink icon in every option)') +
+  `<div class="pane" style="padding:2px 0">${ENG.slice(0, 2).map((e) => `<div class="row" style="--ink:${pal(e.c).ink}"><span class="mbar"></span><span class="ico" style="--ico:${pal(e.c).ink}">${e.lead}</span><span>${e.title}</span><span class="sub">${e.b}</span></div>`).join('')}</div>`;
+html += sec(6, 'Engine icon in a banded head',
+  'Engine icon inside a banded head: neutral (recommended) or keep the connection ink?',
+  'Controls stay neutral; the band already carries the hue. Cost: StudioStart keeps the ink icon, so one connection reads two ways.',
+  col('Today', 'cur', 'muted ink icon, dot + line', q6col('line', true, pm)) +
+  col('Neutral icon', 'rec', 'fg-muted icon on the band', q6col('band', false, pp)) +
+  col('Ink icon on band', 'alt', 'hue in ground and icon', q6col('band', true, pp)));
+
+/* Q7 */
+const STATUSES = [['In progress', 'blue'], ['Review', 'violet'], ['Waiting', 'amber'], ['Done', 'green'], ['Backlog', 'grey']];
+const q7col = (sep) => {
+  const stInk = (n) => (sep ? ST[n] : n === 'grey' ? 'var(--kira-fg-muted)' : PB[n].ink);
+  return [
+    L('Board cards: task band + status chip'),
+    taskHead(4, 'MariaDB least-privilege matrix', 'KIRA-377', stInk('blue'), 'In progress'),
+    taskHead(3, 'Split comment re-anchoring', 'KIRA-398', stInk('violet'), 'Review'),
+    taskHead(2, 'Phone plan card polish', 'KIRA-440', stInk('amber'), 'Waiting'),
+    L('Status menu'),
+    `<div class="picker">${STATUSES.map(([s, n]) => `<div class="mi"><span class="sw" style="--ink:${stInk(n)}"></span>${s}</div>`).join('')}</div>`,
+    L(sep ? 'Status palette (16, oklch 0.78 0.095) under Pure-B bands' : 'Pure-B inks reused for status'),
+    `<div class="strip">${(sep ? Object.values(ST) : PB_INK).map((c) => `<span style="--ink:${c}"></span>`).join('')}</div>`,
+    `<div class="strip bands">${PB_REST.map((b) => `<span style="--b:${b}"></span>`).join('')}</div>`,
+  ].join('');
+};
+html += sec(7, 'Task status colours next to bands',
+  'Task status colours stay a separate palette (recommended)?',
+  'Status is meaning, not identity (P411, own 16 hues, lighter and softer). Merged, a blue "In progress" chip sits on a blue task band in the same hue family and reads as the task\'s colour.',
+  col('Separate status palette', 'rec', 'today, unchanged', q7col(true)) +
+  col('Status from Pure-B inks', 'alt', 'one palette for both', q7col(false)));
+
+document.getElementById('root').innerHTML = html;
+</script>
+</body>
+</html>
