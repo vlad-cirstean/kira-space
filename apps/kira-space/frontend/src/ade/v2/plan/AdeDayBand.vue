@@ -21,7 +21,8 @@ const props = defineProps<{
   spans: {
     taskId: string;
     title: string;
-    color: string;
+    band: string;
+    bandHover: string;
     note: string;
     merges: boolean;
     tip: string;
@@ -154,7 +155,7 @@ const ruleClass = computed(() => {
         v-for="h in history"
         :key="h.key"
         variant="toolbar"
-        class="h-row w-auto justify-start gap-1.5 border border-transparent px-2 font-normal data-[selected]:bg-select"
+        class="h-row w-auto justify-start gap-1.5 border border-transparent px-2 font-normal bg-(--task-band) hover:bg-(--task-band-hover) data-[selected]:bg-(--task-band-hover)"
         :data-selected="ui.selectedTaskId === h.key || undefined"
         :data-task-id="h.key"
         data-testid="ade-history-row"
@@ -220,7 +221,7 @@ const ruleClass = computed(() => {
         variant="toolbar"
         class="h-row w-auto justify-start gap-1.5 px-2 font-normal data-[selected]:bg-select"
         :class="[TASK_EDGE, ui.selectedTaskId === s.taskId && TASK_EDGE_SELECTED]"
-        :style="{ '--task-color': s.color }"
+        :style="{ '--task-band': s.band, '--task-band-hover': s.bandHover }"
         :data-task-id="s.taskId"
         :data-selected="ui.selectedTaskId === s.taskId || undefined"
         data-testid="ade-span-row"

@@ -45,12 +45,11 @@ import AdeTaskTitle from './AdeTaskTitle.vue';
 import { TASK_TAG_GLYPH } from './glyphs';
 import {
   GROUND_CARD,
-  GROUND_ROW,
-  GROUND_SELECTED,
+  GROUND_HEAD,
+  GROUND_HEAD_SELECTED,
   HOVER_OVERLAY,
   TASK_ACTION_CELL,
   TASK_EDGE,
-  TASK_EDGE_RIPPLE,
   TASK_EDGE_SELECTED,
   TASK_LEAD,
   TASK_STATUS_CELL,
@@ -65,7 +64,7 @@ const emit = defineEmits<{ select: []; forcePush: [row: BranchRowModel] }>();
 
 const ui = useAdeBoardUiStore();
 const dialogs = useAdeDialogsStore();
-const { view, boardQuery, rippleIds } = usePlanModel();
+const { view, boardQuery } = usePlanModel();
 const approvalsStore = useApprovalsStore();
 const { byTask } = useTaskUpdates();
 const taskUpdates = computed(() => byTask.value.get(props.card.task.id) ?? []);
@@ -114,7 +113,6 @@ const draftRepoIds = computed(() =>
   props.card.rows.filter((r) => r.branch.name === '').map((r) => r.branch.codeRepoId),
 );
 const selected = computed(() => ui.selectedTaskId === props.card.task.id);
-const inRipple = computed(() => rippleIds.value.tasks.has(props.card.task.id));
 const headSelected = computed(() => selected.value && ui.selectedBranchId === null);
 const p = computed(() => props.card.progress);
 const segClass = (state: string): string => {
@@ -128,7 +126,7 @@ const boxClass = computed(() => {
     'bg-chrome cursor-grab',
     TASK_EDGE,
     GROUND_CARD,
-    selected.value ? TASK_EDGE_SELECTED : inRipple.value ? TASK_EDGE_RIPPLE : '',
+    selected.value ? TASK_EDGE_SELECTED : '',
   ];
 });
 </script>
@@ -146,7 +144,7 @@ const boxClass = computed(() => {
       :data-task-id="card.task.id"
       class="box-border flex min-w-0 flex-1 flex-col overflow-hidden in-[.sortable-fallback]:max-h-board-row in-[.sortable-fallback]:max-w-64 in-[.sortable-fallback]:shadow-kira"
       :class="boxClass"
-      :style="{ '--task-color': card.color }"
+      :style="{ '--task-band': card.band, '--task-band-hover': card.bandHover }"
       :aria-current="selected || undefined"
       data-testid="ade-card"
       @contextmenu="taskMenu.open"
@@ -156,7 +154,7 @@ const boxClass = computed(() => {
         v-if="!card.review"
         ref="head"
         class="group/head box-border flex h-board-row w-full items-center gap-1.5 px-2"
-        :class="headSelected ? GROUND_SELECTED : GROUND_ROW"
+        :class="headSelected ? GROUND_HEAD_SELECTED : GROUND_HEAD"
         role="button"
         tabindex="0"
         :aria-label="t('space.ade.plan.card.open.aria', { title: card.title })"

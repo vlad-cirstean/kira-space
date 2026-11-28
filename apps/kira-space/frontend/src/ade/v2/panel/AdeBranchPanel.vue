@@ -280,7 +280,7 @@ useKeptScroll(() => `ade:branch:${props.row.id}`, bodyEl);
 <template>
   <AdePanelFrame
     v-model="tab"
-    :color="card.review ? 'var(--kira-info)' : card.color"
+    :color-slot="card.task.color"
     :tabs="[
       { value: 'details', label: t('common.details.title') },
       { value: 'sessions', label: t('space.common.sessions.label'), count: sessionCount },

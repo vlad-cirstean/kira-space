@@ -113,7 +113,7 @@ const label = computed(() =>
 <template>
   <AdePanelFrame
     v-model="tab"
-    :color="card.color"
+    :color-slot="card.task.color"
     :tabs="[
       { value: 'main', label: t('common.main.label') },
       { value: 'details', label: t('common.details.title') },

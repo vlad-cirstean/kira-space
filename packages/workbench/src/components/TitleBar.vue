@@ -14,6 +14,12 @@
 // component owns only the `<Teleport to="body">` wrapper around whatever the `#settings` slot
 // renders, so "Settings teleports to body, not the title bar's own stacking context" is one
 // shared fact instead of two identical Teleport calls.
+//
+// Two roots, so `class` does not fall through: the `class` prop lands on the bar (a task band passes
+// `bg-transparent`).
+import { cn } from '@theme/lib/utils';
+
+defineProps<{ class?: string }>();
 </script>
 
 <template>
@@ -22,7 +28,12 @@
        both for free. Inert (ordinary DOM) on Linux dev builds and under tests/ui (a static file
        server, no Wails window at all). -->
   <div
-    class="relative flex items-center shrink-0 wails-drag h-titlebar min-h-titlebar pl-titlebar-inset pr-1.5 bg-chrome"
+    :class="
+      cn(
+        'relative flex items-center shrink-0 wails-drag h-titlebar min-h-titlebar pl-titlebar-inset pr-1.5 bg-chrome',
+        $props.class,
+      )
+    "
   >
     <slot />
   </div>

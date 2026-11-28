@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { LATER } from '../../frontend/src/ade/v2/board/calendar';
-import {
-  buildTimeline,
-  rippleOf,
-  type TimelineInput,
-} from '../../frontend/src/ade/v2/board/timeline';
+import { buildTimeline, type TimelineInput } from '../../frontend/src/ade/v2/board/timeline';
 import type { Board } from '../../frontend/src/ade/v2/wire';
 import {
   DEFAULT_STATUS_DEFAULTS,
@@ -323,24 +319,7 @@ describe('history', () => {
   });
 });
 
-describe('ripple', () => {
-  test('lists stacked children and branches that must rebase after the selection', () => {
-    const b = board([
-      { id: 'a', day: 0 },
-      { id: 'kid', day: 1 },
-      { id: 'sharer', day: 2 },
-    ]);
-    const kid = b.branches.find((x) => x.id === 'b_kid');
-    if (kid) kid.baseBranchId = 'b_a';
-    b.pairs = [{ a: 'b_a', b: 'b_sharer', shared: ['src/x.ts'], conflicts: [] }];
-    const v = view(b);
-    const r = rippleOf(v, { kind: 'task', id: 'a' });
-    expect(r.branchIds.sort()).toEqual(['b_kid', 'b_sharer']);
-    expect(r.taskIds.sort()).toEqual(['kid', 'sharer']);
-    expect(r.text).toBe('Rebase b_kid, b_sharer');
-    expect(rippleOf(v, { kind: 'task', id: 'sharer' }).text).toBe('Nothing to rebase');
-  });
-
+describe('base cycle', () => {
   test('a base cycle neither recurses without end nor drops its rows', () => {
     const b = board([
       { id: 'a', day: 0 },
@@ -354,19 +333,7 @@ describe('ripple', () => {
       if (br) br.baseBranchId = base;
     }
     const v = view(b);
-    expect(rippleOf(v, { kind: 'task', id: 'a' }).branchIds).toEqual(['b_kid']);
     expect(v.branchRows('a').map((r) => r.id)).toEqual(['b_a']);
     expect(v.branchRows('kid').map((r) => r.id)).toEqual(['b_kid']);
-  });
-
-  test('review and parked selections show a dash', () => {
-    const v = view(
-      board([
-        { id: 'p', kind: 'parked' },
-        { id: 'r', kind: 'review' },
-      ]),
-    );
-    expect(rippleOf(v, { kind: 'task', id: 'p' }).text).toBe('—');
-    expect(rippleOf(v, { kind: 'branch', id: 'b_r' }).text).toBe('—');
   });
 });

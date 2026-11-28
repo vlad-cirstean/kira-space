@@ -1,7 +1,7 @@
 import { t } from '@theme/i18n';
 import type { Settings } from '../../../state/settingsDomain';
 import type { Board, Branch, HistoryEntry } from '../wire';
-import { type BranchGraph, isDraft, shortBranchName } from './branchGraph';
+import { type BranchGraph, isDraft } from './branchGraph';
 import {
   type Calendar,
   dateParts,
@@ -390,65 +390,4 @@ function historyItems(
     codeRepoIds: h.codeRepoIds,
     mergedAt: h.mergedAt,
   }));
-}
-
-export interface Ripple {
-  branchIds: string[];
-  taskIds: string[];
-  /** `—` when the selection is not a `mine` task/branch; else `rebase a, b` or `nothing to rebase`. */
-  text: string;
-  tone: 'amber' | 'grey';
-}
-
-/** Selection ripple and the "On merge" line: branches that must rebase when the selection merges. */
-export function rippleOf(
-  view: Pick<TimelineView, 'after' | 'graph'>,
-  selection: { kind: 'task' | 'branch'; id: string },
-): Ripple {
-  const { graph, after } = view;
-  const roots: string[] = [];
-  if (selection.kind === 'task') {
-    const t = graph.byTask.get(selection.id);
-    if (!t || !isWorkKind(t.kind)) return { branchIds: [], taskIds: [], text: '—', tone: 'grey' };
-    for (const id of t.branchIds) if (graph.byBranch.get(id)?.kind === 'mine') roots.push(id);
-  } else {
-    const b = graph.byBranch.get(selection.id);
-    if (b?.kind !== 'mine') return { branchIds: [], taskIds: [], text: '—', tone: 'grey' };
-    roots.push(selection.id);
-  }
-  const rootSet = new Set(roots);
-  const out: string[] = [];
-  const add = (id: string): void => {
-    if (!rootSet.has(id) && !out.includes(id)) out.push(id);
-  };
-  const seen = new Set<string>();
-  const down = (id: string): void => {
-    if (seen.has(id)) return;
-    seen.add(id);
-    for (const c of graph.kids.get(id) ?? []) {
-      if (graph.byBranch.get(c)?.kind !== 'mine') continue;
-      add(c);
-      down(c);
-    }
-  };
-  for (const r of roots) down(r);
-  for (const [bid, a] of after) {
-    if (!rootSet.has(a.id)) continue;
-    add(bid);
-    down(bid);
-  }
-  const names = out.map((id) => shortBranchName(graph.byBranch.get(id)?.name ?? id));
-  const taskIds: string[] = [];
-  for (const id of out) {
-    const tid = graph.byBranch.get(id)?.taskId;
-    if (tid !== undefined && !taskIds.includes(tid)) taskIds.push(tid);
-  }
-  return {
-    branchIds: out,
-    taskIds,
-    text: out.length
-      ? t('space.ade.board.rebaseList.label', { names: names.join(', ') })
-      : t('space.ade.board.nothingToRebase.label'),
-    tone: out.length ? 'amber' : 'grey',
-  };
 }

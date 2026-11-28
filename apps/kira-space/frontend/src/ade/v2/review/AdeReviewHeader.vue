@@ -7,14 +7,13 @@ import TooltipIconButton from '@theme/components/TooltipIconButton.vue';
 import { Badge } from '@theme/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@theme/components/ui/tooltip';
 import { t } from '@theme/i18n';
-import ColorLine from '@workbench/components/ColorLine.vue';
 import Identifier from '@workbench/components/Identifier.vue';
 import TitleBarBase from '@workbench/components/TitleBar.vue';
 import TitleBarTitle from '@workbench/components/TitleBarTitle.vue';
 import { computed } from 'vue';
 import AdeRepoTag from '../AdeRepoTag.vue';
+import AdeTaskBand from '../AdeTaskBand.vue';
 import { taskTitle } from '../board/labels';
-import { taskColor } from '../palette';
 import { useAdeReviewWindowStore } from '../state/adeReviewWindow';
 import type { ReviewWindowTarget } from '../wire';
 import AdeReviewActions from './AdeReviewActions.vue';
@@ -54,78 +53,78 @@ const headHint = computed(() => {
 </script>
 
 <template>
-  <TitleBarBase>
-    <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-review-header">
-      <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
-      <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
-      <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
-        target.branch
-      }}</span>
-      <TextTooltip :text="remoteBaseHint"
-        ><span class="shrink-0 text-kira-sm text-muted-foreground" data-testid="ade-review-base">{{
-          t('space.ade.review.header.base.label', { base: target.base })
-        }}</span></TextTooltip
-      >
-      <AdeReviewSync :target="target" />
-      <TextTooltip v-if="dirtyCount > 0" :text="hint"
-        ><Badge
-          variant="warn"
-          tabindex="0"
-          class="wails-no-drag shrink-0"
-          :aria-label="hint"
-          data-testid="ade-review-uncommitted"
+  <AdeTaskBand :color-slot="task?.color">
+    <TitleBarBase class="bg-transparent">
+      <div class="flex min-w-0 flex-1 items-center gap-2" data-testid="ade-review-header">
+        <TitleBarTitle data-testid="ade-review-title">{{ title }}</TitleBarTitle>
+        <AdeRepoTag :code-repo-id="target.codeRepoId" :label="repoLabel" />
+        <span class="min-w-0 truncate font-data text-kira-sm" data-testid="ade-review-branch">{{
+          target.branch
+        }}</span>
+        <TextTooltip :text="remoteBaseHint"
+          ><span
+            class="shrink-0 text-kira-sm text-muted-foreground"
+            data-testid="ade-review-base"
+            >{{
+              t('space.ade.review.header.base.label', { base: target.base })
+            }}</span
+          ></TextTooltip
         >
-          {{ t('space.ade.review.header.uncommitted.label', { count: dirtyCount }) }}
-        </Badge></TextTooltip
-      >
-      <Tooltip v-if="head">
-        <TooltipTrigger as-child>
-          <Badge
-            :variant="head.state === 'stale' ? 'warn' : 'default'"
+        <AdeReviewSync :target="target" />
+        <TextTooltip v-if="dirtyCount > 0" :text="hint"
+          ><Badge
+            variant="warn"
             tabindex="0"
             class="wails-no-drag shrink-0"
-            :aria-label="headHint"
-            :data-head="head.state"
-            data-testid="ade-review-head"
+            :aria-label="hint"
+            data-testid="ade-review-uncommitted"
           >
-            <template v-if="head.state === 'stale'">{{ t('common.stale.status') }}</template>
-            <template v-else>
-              <CodiconIcon name="check" :size="12" />
-              {{ t('space.ade.review.header.headCurrent.label', { short: head.short }) }}
-            </template>
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div class="flex flex-col gap-1">
-            <span>{{ headHint }}</span>
-            <span v-if="head.state === 'stale'" class="flex items-center gap-1.5 text-kira-sm">
-              <Identifier :value="head.local" :short="shortSha" />
-              <CodiconIcon name="arrow-right" :size="12" />
-              <Identifier :value="head.host" :short="shortSha" />
-            </span>
-            <Identifier v-else :value="head.host" :short="shortSha" />
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-    <div class="wails-no-drag flex shrink-0 items-center gap-1">
-      <AdeReviewActions :target="target" />
-      <TooltipIconButton
-        :icon="store.agentPanelVisible ? 'layout-sidebar-right' : 'layout-sidebar-right-off'"
-        :label="t('space.ade.review.agentPanel.toggle.label')"
-        :icon-size="16"
-        variant="title"
-        size="title"
-        :aria-pressed="store.agentPanelVisible"
-        data-testid="ade-review-toggle-agent"
-        @click="store.toggleAgentPanel()"
-      />
-    </div>
-    <ColorLine
-      v-if="task"
-      variant="under"
-      :color="taskColor(task.color)"
-      data-testid="ade-review-task-colour"
-    />
-  </TitleBarBase>
+            {{ t('space.ade.review.header.uncommitted.label', { count: dirtyCount }) }}
+          </Badge></TextTooltip
+        >
+        <Tooltip v-if="head">
+          <TooltipTrigger as-child>
+            <Badge
+              :variant="head.state === 'stale' ? 'warn' : 'default'"
+              tabindex="0"
+              class="wails-no-drag shrink-0"
+              :aria-label="headHint"
+              :data-head="head.state"
+              data-testid="ade-review-head"
+            >
+              <template v-if="head.state === 'stale'">{{ t('common.stale.status') }}</template>
+              <template v-else>
+                <CodiconIcon name="check" :size="12" />
+                {{ t('space.ade.review.header.headCurrent.label', { short: head.short }) }}
+              </template>
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div class="flex flex-col gap-1">
+              <span>{{ headHint }}</span>
+              <span v-if="head.state === 'stale'" class="flex items-center gap-1.5 text-kira-sm">
+                <Identifier :value="head.local" :short="shortSha" />
+                <CodiconIcon name="arrow-right" :size="12" />
+                <Identifier :value="head.host" :short="shortSha" />
+              </span>
+              <Identifier v-else :value="head.host" :short="shortSha" />
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div class="wails-no-drag flex shrink-0 items-center gap-1">
+        <AdeReviewActions :target="target" />
+        <TooltipIconButton
+          :icon="store.agentPanelVisible ? 'layout-sidebar-right' : 'layout-sidebar-right-off'"
+          :label="t('space.ade.review.agentPanel.toggle.label')"
+          :icon-size="16"
+          variant="title"
+          size="title"
+          :aria-pressed="store.agentPanelVisible"
+          data-testid="ade-review-toggle-agent"
+          @click="store.toggleAgentPanel()"
+        />
+      </div>
+    </TitleBarBase>
+  </AdeTaskBand>
 </template>

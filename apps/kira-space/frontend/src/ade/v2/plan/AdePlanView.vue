@@ -102,7 +102,8 @@ interface BandProps {
   spans: {
     taskId: string;
     title: string;
-    color: string;
+    band: string;
+    bandHover: string;
     note: string;
     merges: boolean;
     tip: string;
@@ -122,7 +123,8 @@ function spansOf(m: PlanModel, band: TimelineBand): BandProps['spans'] {
     return {
       taskId: s.taskId,
       title: card.title,
-      color: card.color,
+      band: card.band,
+      bandHover: card.bandHover,
       note: t(
         s.merges
           ? 'space.ade.plan.view.spanNoteMerges.label'

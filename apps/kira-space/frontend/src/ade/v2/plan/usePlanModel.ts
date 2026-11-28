@@ -42,14 +42,12 @@ import { buildStepBlocks, type StepBlock } from '../board/stepBlocks';
 import { type TaskSessions, taskSessionsOf } from '../board/taskSessions';
 import {
   buildTimeline,
-  type Ripple,
-  rippleOf,
   type TimelineEntry,
   type TimelineView,
   WINDOW_DAYS,
 } from '../board/timeline';
 import { localIso, localIsoOfMs } from '../localDay';
-import { taskColor } from '../palette';
+import { taskBand, taskColor } from '../palette';
 import { useBoard, useChangeRequests, useSessions, useWorkflows } from '../queries';
 import { useBoardHistory } from '../readQueries';
 import { useAdeBoardUiStore } from '../state/adeBoardUi';
@@ -108,6 +106,9 @@ export interface CardModel {
   task: Task;
   entry: TimelineEntry;
   color: string;
+  /** Header band ground at rest and when hovered or selected. */
+  band: string;
+  bandHover: string;
   title: string;
   /** Title with no custom name set: the Name field placeholder. */
   defaultTitle: string;
@@ -278,6 +279,8 @@ function buildCard(c: Ctx, id: string): CardModel | null {
     task,
     entry,
     color: taskColor(task.color),
+    band: taskBand(task.color).rest,
+    bandHover: taskBand(task.color).hover,
     title,
     defaultTitle: taskTitle({ ...task, title: '' }, first, first ? c.prTitle(first.id) : ''),
     progress,
@@ -399,17 +402,6 @@ function buildPlanModel() {
     });
   });
 
-  /** Selection ripple, apart from the model: selecting a task never rebuilds the cards. */
-  const ripple = computed<Ripple | null>(() => {
-    const v = timeline.value;
-    const id = ui.selectedTaskId;
-    return v && id ? rippleOf(v, { kind: 'task', id }) : null;
-  });
-  const rippleIds = computed(() => ({
-    tasks: new Set(ripple.value?.taskIds),
-    branches: new Set(ripple.value?.branchIds),
-  }));
-
   const workflowMap = computed(() => {
     const out = new Map<string, Workflow>();
     for (const e of workflows.data.value?.workflows ?? []) {
@@ -520,7 +512,6 @@ function buildPlanModel() {
     needs,
     history,
     view: timeline,
-    rippleIds,
     sessions,
     today,
     now,

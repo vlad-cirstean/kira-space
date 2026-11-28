@@ -8408,18 +8408,12 @@
         "newTask": {
           "label": "New task"
         },
-        "nothingToRebase": {
-          "label": "Nothing to rebase"
-        },
         "notMerging": {
           "label": "Not merging"
         },
         "passDone": {
           "label": "Pass done",
           "tooltip": "This pass is finished; start the next one when you are ready"
-        },
-        "rebaseList": {
-          "label": "Rebase {names}"
         },
         "reviewChoice": {
           "createFirst": {

@@ -1,7 +1,7 @@
 #!/bin/sh
 # P138: `ade` colours are `--kira-*` tokens; the only literals allowed are data values that encode
-# queue state, not theme (P129 Part 1 §2.1): the 20-slot work
-# palette. Tones are theme tokens. Any other colour literal under `ade/`, comments included, fails. So does an allowlist entry with no hit left, keeping the list exactly the kept
+# queue state, not theme (P129 Part 1 §2.1): the 10-slot work
+# palette (inks and header bands). Tones are theme tokens. Any other colour literal under `ade/`, comments included, fails. So does an allowlist entry with no hit left, keeping the list exactly the kept
 # set. A kept value reused as chrome (selection, link, error text) is not visible here; review it.
 # Docs: git show bd0c224688d9:docs/v2.0/plans/P138-ade-theme-tokens.md §4.
 set -e
@@ -15,27 +15,39 @@ export LC_ALL=C
 
 # Lines starting with `;` are group comments.
 grep -v '^;' >"$TMP/allow.raw" <<'EOF'
-; work palette (`PALETTE`, palette.ts)
-#d38261
-#d2a155
-#b4b04d
-#90ba66
-#64b477
-#57b1a0
-#56a6c2
-#5a8fd5
-#727ed7
-#9676d1
-#bc72cb
-#d36fa4
-#d56c7e
-#b18765
-#95a269
-#669d8e
-#8092b0
-#a182b7
-#cc9191
-#a4aab2
+; work palette inks (`PALETTE`, palette.ts)
+#dd7577
+#09adb4
+#cfae42
+#af81d6
+#7d92e8
+#d48140
+#cf76ac
+#31b182
+#81a749
+#31a3dd
+; task band rest (`TASK_BAND`)
+#2d1717
+#052325
+#241e09
+#23192b
+#181d2f
+#2b1a0d
+#2a1722
+#0c231a
+#19210f
+#0c212c
+; task band hover (`TASK_BAND_HOVER`)
+#341819
+#012729
+#292105
+#281b32
+#1a2037
+#321b0a
+#311827
+#08281c
+#1b260d
+#082534
 EOF
 sort -u "$TMP/allow.raw" >"$TMP/allow"
 
