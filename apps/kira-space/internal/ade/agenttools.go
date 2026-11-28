@@ -443,18 +443,33 @@ func (b *TaskBoard) taskRow(ctx context.Context, tc *taskCtx, cfgs []model.AdeRe
 		named, _ := taskRepoRows(tc, id, branch)
 		return named, id, nil
 	}
+	found, shown, err := b.findWorktreeRow(ctx, tc, worktree)
+	if err != nil {
+		return nil, "", err
+	}
+	if found < 0 {
+		return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q is not a worktree of this task. Its worktrees: %s.", worktree, joinOrNone(nonEmpty(shown))))
+	}
+	row := &tc.branches[found]
+	if err := b.checkWorktreeAgrees(tc, cfgs, row, repo, branch, worktree); err != nil {
+		return nil, "", err
+	}
+	return row, row.CodeRepoID, nil
+}
+
+// findWorktreeRow returns the index of the task row whose own worktree folder is worktree, else the
+// row whose attached folder is, or -1. shown lists each row's displayed folder, filled by the first pass.
+func (b *TaskBoard) findWorktreeRow(ctx context.Context, tc *taskCtx, worktree string) (found int, shown []string, err error) {
 	want := filepath.Clean(worktree)
 	cache := b.newAttachCache()
-	found := -1
-	var shown []string
-	for pass := 0; pass < 2 && found < 0; pass++ {
+	for pass := 0; pass < 2; pass++ {
 		for i, row := range tc.branches {
 			if row.Name == "" {
 				continue
 			}
 			at, err := cache.worktree(ctx, row)
 			if err != nil {
-				return nil, "", err
+				return -1, nil, err
 			}
 			if pass == 0 {
 				shown = append(shown, cmpNonEmpty(at.attached, at.own))
@@ -464,34 +479,38 @@ func (b *TaskBoard) taskRow(ctx context.Context, tc *taskCtx, cfgs []model.AdeRe
 				cand = at.attached
 			}
 			if cand != "" && filepath.Clean(cand) == want {
-				found = i
-				break
+				return i, shown, nil
 			}
 		}
 	}
-	if found < 0 {
-		var paths []string
-		for _, p := range shown {
-			if p != "" {
-				paths = append(paths, p)
-			}
-		}
-		return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q is not a worktree of this task. Its worktrees: %s.", worktree, joinOrNone(paths)))
-	}
-	row := &tc.branches[found]
+	return -1, shown, nil
+}
+
+// checkWorktreeAgrees errors when a given repo or branch disagrees with the row the worktree names.
+func (b *TaskBoard) checkWorktreeAgrees(tc *taskCtx, cfgs []model.AdeRepoConfig, row *model.AdeTaskBranch, repo, branch, worktree string) error {
 	if repo != "" {
 		id, err := resolveRepoRef(repo, b.taskCandidates(tc, cfgs), "task")
 		if err != nil {
-			return nil, "", err
+			return err
 		}
 		if id != row.CodeRepoID {
-			return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q belongs to %s, not %s.", worktree, tc.nick[row.CodeRepoID], repo))
+			return agentmcp.ToolError(fmt.Sprintf("Worktree %q belongs to %s, not %s.", worktree, tc.nick[row.CodeRepoID], repo))
 		}
 	}
 	if branch != "" && branch != row.Name {
-		return nil, "", agentmcp.ToolError(fmt.Sprintf("Worktree %q holds branch %s, not %s.", worktree, row.Name, branch))
+		return agentmcp.ToolError(fmt.Sprintf("Worktree %q holds branch %s, not %s.", worktree, row.Name, branch))
 	}
-	return row, row.CodeRepoID, nil
+	return nil
+}
+
+func nonEmpty(in []string) []string {
+	var out []string
+	for _, p := range in {
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // recentRun is one run as state.yaml shows it. Outcome is the stored outcome, nil while the run has none.
