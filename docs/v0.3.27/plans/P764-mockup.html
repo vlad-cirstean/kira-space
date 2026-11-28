@@ -74,14 +74,18 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .col h3 span { font-weight: 400; color: var(--kira-fg-subtle); font-size: 11px; }
 .ground { background: var(--kira-bg-chrome); border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
 
-/* Intensity knobs: html[data-tint] picks strong (14/18) or soft (10/14). Current column ignores them. */
-:root { --tt: 14%; --tth: 18%; }
-:root[data-tint="soft"] { --tt: 10%; --tth: 14%; }
+/* Tint knobs per option. Tint = opaque mix of task colour over chrome. */
 .tinted {
-  --task-tint: color-mix(in srgb, var(--task-color) var(--tt), var(--kira-bg-chrome));
-  --task-tint-hover: color-mix(in srgb, var(--task-color) var(--tth), var(--kira-bg-chrome));
-  --task-edge: color-mix(in srgb, var(--task-color) 40%, var(--kira-bg-chrome));
+  --task-tint: color-mix(in srgb, var(--task-color) var(--tt, 10%), var(--kira-bg-chrome));
+  --task-tint-hover: color-mix(in srgb, var(--task-color) var(--tth, 14%), var(--kira-bg-chrome));
+  --task-edge: color-mix(in srgb, var(--task-color) var(--te, 40%), var(--kira-bg-chrome));
 }
+.soft { --tt: 10%; --tth: 14%; }
+.oa { --tt: 6%; --tth: 10%; --te: 30%; }
+.oc { --tt: 12%; --tth: 14%; }
+.od { --tt: 10%; --tth: 10%; }
+/* B: precomputed per-slot grounds (fixed OKLCH lightness, low chroma, task hue). */
+.ob .tinted { --task-tint: var(--bt); --task-tint-hover: var(--bth); }
 
 /* ---- Task card ---- */
 .card { position: relative; border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--task-edge); --row-ground: var(--task-tint); background: var(--row-ground); }
@@ -90,6 +94,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .head:hover, .head.hov, .brow:hover { background: var(--task-tint-hover); }
 .head:focus-visible, .brow:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: 2px; }
 .card.ripple { border-style: dashed; }
+
 
 .lead { width: 24px; display: inline-flex; justify-content: center; flex-shrink: 0; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kira-ok); }
@@ -112,27 +117,24 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .brow .tag { color: var(--kira-fg-subtle); }
 .cardlabel { font-size: 10px; color: var(--kira-fg-subtle); margin: 2px 0 -2px 2px; }
 
-/* Current (today) */
+/* Today (reference) */
 .cur .card { border-color: var(--task-color); --row-ground: var(--kira-bg-chrome); }
 .cur .head:hover, .cur .head.hov, .cur .brow:hover { background: var(--kira-bg-input); }
 .cur .card.sel { outline: 2px solid var(--task-color); }
+/* S1 neutral ring, every new option: inset 2px fg outline, ground at hover level. */
+.nw .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--kira-fg); outline-offset: -2px; }
+/* B: neutral edge. */
+.ob .card { border-color: var(--kira-border); }
+/* C: only the head is tinted; rows and border neutral. */
+.oc .card { border-color: var(--kira-border); --row-ground: var(--kira-bg-chrome); }
+.oc .card.sel { --row-ground: var(--kira-bg-chrome); }
+.oc .head { background: var(--task-tint); }
+.oc .brow:hover { background: var(--kira-bg-input); }
+.oc .head:hover, .oc .head.hov, .oc .card.sel .head { background: var(--task-tint-hover); }
+/* D: neutral at rest, 1px 40% edge; tint on hover and selection. */
+.od .card { --row-ground: var(--kira-bg-chrome); }
+.od .card.sel { --row-ground: var(--task-tint-hover); }
 .cur .card.sel .head { background: var(--kira-select); }
-
-/* S1 neutral ring */
-.s1 .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--kira-fg); outline-offset: -2px; }
-/* S2 colour ring */
-.s2 .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--task-color); outline-offset: -2px; }
-/* S3 lifted */
-.s3 .card.sel { --row-ground: var(--task-tint-hover); border-color: var(--kira-select-edge); box-shadow: 0 6px 18px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.06); }
-/* S4 solid head */
-.s4 .card.sel .head { background: var(--task-color); }
-.s4 .card.sel .head .title, .s4 .card.sel .head .key, .s4 .card.sel .head .chip,
-.s4 .card.sel .head .step, .s4 .card.sel .head .meta, .s4 .card.sel .head .est { color: var(--kira-bg-chrome); }
-.s4 .card.sel .head .segs i { background: color-mix(in srgb, var(--kira-bg-chrome) 35%, transparent); }
-.s4 .card.sel .head .segs i.d, .s4 .card.sel .head .segs i.n { background: var(--kira-bg-chrome); }
-.s4 .card.sel .head .act { background: transparent; border-color: var(--kira-bg-chrome); color: var(--kira-bg-chrome); }
-.s4 .card.sel .head .dot.idle { border-color: var(--kira-bg-chrome); }
-
 
 /* ---- Shared band: AdeTaskBand (no colour line) ---- */
 .band { position: relative; background: var(--task-tint); }
@@ -211,56 +213,58 @@ table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
 <body>
 <div class="page">
   <header class="top">
-    <h1>P764 task tint, iteration 2</h1>
-    <fieldset class="seg"><legend class="sr">Tint intensity</legend>
-      <button type="button" data-tint-btn="strong" aria-pressed="true">Strong 14/18</button>
-      <button type="button" data-tint-btn="soft" aria-pressed="false">Soft 10/14</button>
-    </fieldset>
+    <h1>P764 task tint, iteration 3: calmer options</h1>
     <fieldset class="seg"><legend class="sr">Theme</legend>
       <button type="button" data-theme-btn="auto" aria-pressed="true">Auto</button>
       <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
       <button type="button" data-theme-btn="light" aria-pressed="false">Light</button>
     </fieldset>
   </header>
-  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Tint: <code>color-mix(in srgb, task colour N%, chrome)</code>. Strong (default): rest 14%, hover and selected ground 18%, adjusted palette. Soft: rest 10%, hover 14%, original palette. Colour lines under headers are gone; the tint alone marks the task. Hover any card head or branch row.</p>
+  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Today and Soft are reference columns. A-D are the calmer candidates; C is recommended. Every new option selects with the neutral ring (S1, decided) and has no colour line under the details head or review title bar. Hover any card head or branch row.</p>
 
-  <h2>1. Selected card: current vs four options</h2>
-  <p class="note">Seven slots: light-ish yellow (2), saturated blue (7) and pink (11), orange (0), grey (19), and same-hue neighbours green 3 and olive 14 (the selected card sits right above its neighbour). Card 2 has head hover pinned. S1 is the recommendation.</p>
+  <h2>1. Cards at rest, hover, selected</h2>
+  <p class="note">Seven slots: orange (0), light yellow (2, head hover pinned), green (3, selected) above its same-hue neighbour olive (14), saturated blue (7), pink (11, ripple), grey (19). Figures: worst-case text contrast of 20 slots (fg / muted / subtle) at rest, then median OKLab distance between slot grounds.</p>
   <div class="grid" id="sel"></div>
 
-  <h2>2. Selection in the details panel context</h2>
-  <p class="note">The plan list on the left with the selected card; the details panel on the right shows the same task. The band (<code>AdeTaskBand</code>) stays at the resting tint for every option, with no colour line.</p>
+  <h2>2. Details panel context</h2>
+  <p class="note">Plan list with the selected card; the details panel shows the same task. The panel head is the <code>AdeTaskBand</code>: the option's resting tint, no colour line.</p>
   <div class="grid wide" id="ctx"></div>
 
   <h2>3. Review window title bar</h2>
-  <p class="note">Same <code>AdeTaskBand</code> as the details head. Title bar tinted, no colour line; gutter, tab strip and panes neutral.</p>
-  <div class="grid" id="review" style="grid-template-columns: 1fr"></div>
+  <p class="note">Same <code>AdeTaskBand</code> as the details head; gutter, tab strip and panes neutral.</p>
+  <div class="grid wide" id="review"></div>
 
-  <h2>4. Palette before and after</h2>
-  <p class="note">Rows: original colour, adjusted colour, then rest and hover tints of the palette the current intensity uses. Only OKLCH lightness moved; slots 8, 9, 12 unchanged.</p>
+  <h2>4. Palette and grounds</h2>
+  <p class="note">Rows per slot: original colour, A calm colour (OKLCH chroma x0.75, lightness and hue held), A rest 6%, B rest ground, C head 12%.</p>
   <div class="pal" id="pal"></div>
-  <table class="cr" aria-label="Contrast summary">
-    <tr><th>Dark, worst of 20 slots</th><th>fg</th><th>muted</th><th>subtle</th></tr>
-    <tr><td>today chrome</td><td>12.56</td><td>7.24</td><td>5.71</td></tr>
-    <tr><td>today selected select grey</td><td>8.12</td><td>4.68</td><td class="fail">3.70</td></tr>
-    <tr><td>original palette 18%</td><td>9.10</td><td>5.25</td><td class="fail">4.14</td></tr>
-    <tr><td>soft rest 10% (original)</td><td>10.71</td><td>6.18</td><td>4.88</td></tr>
-    <tr><td>soft hover 14% (original)</td><td>9.90</td><td>5.71</td><td>4.51</td></tr>
-    <tr><td>strong rest 14% (adjusted)</td><td>10.53</td><td>6.07</td><td>4.79</td></tr>
-    <tr><td>strong hover/selected 18% (adjusted)</td><td>9.90</td><td>5.71</td><td>4.51</td></tr>
-    <tr><td>S4 solid head, chrome text</td><td colspan="3">5.02 (one grade only)</td></tr>
+  <table class="cr" aria-label="Contrast and distinguishability">
+    <tr><th>Dark, worst of 20 slots</th><th>fg</th><th>muted</th><th>subtle</th><th>median dE</th><th>closest pair</th></tr>
+    <tr><td>Today chrome (ref)</td><td>12.56</td><td>7.24</td><td>5.71</td><td>0 (edge only)</td><td>n/a</td></tr>
+    <tr><td>Today selected, grey select (ref)</td><td>8.12</td><td>4.68</td><td class="fail">3.70</td><td>n/a</td><td>n/a</td></tr>
+    <tr><td>Soft rest 10% / hover 14% (ref)</td><td>10.71 / 9.90</td><td>6.18 / 5.71</td><td>4.88 / 4.51</td><td>0.0197</td><td>0.0067</td></tr>
+    <tr><td>A calm rest 6% / hover+sel 10%</td><td>11.49 / 10.71</td><td>6.63 / 6.17</td><td>5.23 / 4.87</td><td>0.0092</td><td>0.0032</td></tr>
+    <tr><td>B muted rest / hover+sel</td><td>12.24 / 11.82</td><td>7.06 / 6.82</td><td>5.57 / 5.38</td><td>0.0132</td><td class="fail">0 (7=16, 12=18)</td></tr>
+    <tr><td>C head 12% / 14%; rows chrome, hover field <b class="rec">recommended</b></td><td>10.31 / 9.90</td><td>5.95 / 5.71</td><td>4.69 / 4.51</td><td>0.0234</td><td>0.0080</td></tr>
+    <tr><td>D rest chrome / hover+sel 10%</td><td>12.56 / 10.71</td><td>7.24 / 6.18</td><td>5.71 / 4.88</td><td>0 ground (edge 0.0679)</td><td>n/a</td></tr>
+    <tr><td>S1 ring on selected ground</td><td colspan="5">9.90 (C) / 10.71 (A, D) / 11.82 (B)</td></tr>
   </table>
 </div>
 <script>
 const ORIG = ['#d38261','#d2a155','#b4b04d','#90ba66','#64b477','#57b1a0','#56a6c2','#5a8fd5','#727ed7','#9676d1','#bc72cb','#d36fa4','#d56c7e','#b18765','#95a269','#669d8e','#8092b0','#a182b7','#cc9191','#a4aab2'];
-const NEW = ['#c97858','#b38436','#948f28','#6f9744','#4d9d61','#409b8b','#4696b2','#598ed4','#727ed7','#9676d1','#bb71c9','#d16da2','#d56c7e','#ac8361','#849058','#5f9587','#7a8ba9','#9e7fb3','#b67c7d','#858a92'];
+const CALM = ['#c68970','#c9a46e','#b1af6a','#97b779','#76af82','#6eada0','#6ba3b8','#688fc4','#7781c4','#937cc0','#b37cbe','#c57aa0','#c67783','#a98a71','#96a076','#729a8e','#8492a8','#9d86ae','#c29695','#a5aab0'];
+const BREST = ['#1a1412','#181511','#161611','#141612','#121713','#111716','#111719','#13161a','#14151a','#161519','#181418','#191416','#1a1414','#191511','#151611','#111715','#13161a','#171419','#1a1414','#151516'];
+const BHOV = ['#201612','#1e1810','#1a1a10','#161b12','#131b15','#101c19','#101b1f','#131921','#161821','#1a1720','#1d161e','#1f161a','#201617','#1f1711','#181a11','#101c18','#141921','#1c171f','#211616','#18191a'];
+const BLREST = ['#f7eeeb','#f4efe9','#f1f1e9','#eef2eb','#ecf2ed','#eaf3f0','#e9f2f5','#ecf1f7','#eef0f7','#f1eff6','#f3eef4','#f6eef1','#f7eeef','#f6efea','#eff1ea','#eaf3f0','#ecf0f7','#f2eef5','#f7eeee','#f0f0f1'];
+const BLHOV = ['#f6e7e1','#f1e9dd','#ebebde','#e6ede1','#e2eee4','#deefeb','#deedf3','#e3ebf7','#e7eaf7','#ece8f5','#f0e7f2','#f4e6ec','#f6e6e7','#f4e8df','#e9ecdf','#dfeeea','#e4ebf7','#eee7f3','#f6e6e5','#e9eaec'];
 const OPTS = [
-  ['cur', 'Current', 'chrome, 1px colour edge, 2px colour outline, grey head; subtle 3.70 on selected head'],
-  ['s1', 'S1 Neutral ring', 'recommended: 18% ground, 2px inset fg ring; text 9.90 / 5.71 / 4.51, ring 9.90'],
-  ['s2', 'S2 Colour ring', '18% ground, 2px inset full-colour ring; text as S1, ring 4.02 on tint'],
-  ['s3', 'S3 Lifted', '18% ground, select-edge border, shadow; text as S1, border 3.84'],
-  ['s4', 'S4 Solid head', 'full-colour head, chrome text 5.02; rows stay tinted'],
+  ['cur', 'Today (reference)', 'chrome, 1px full-colour edge, grey selected head; subtle 3.70 on selected'],
+  ['soft', 'Soft (reference)', 'whole card 10%, hover 14%; 10.71 / 6.18 / 4.88; dE 0.0197'],
+  ['oa', 'A Calm tint', 'whole card 6%, hover 10%, calm palette; 11.49 / 6.63 / 5.23; dE 0.0092'],
+  ['ob', 'B Muted hue', 'fixed-lightness grey, task hue at chroma 0.010; 12.24 / 7.06 / 5.57; dE 0.0132, 2 pairs equal'],
+  ['oc', 'C Header-only', 'head 12%, hover 14%, rows neutral; 10.31 / 5.95 / 4.69; dE 0.0234'],
+  ['od', 'D Hover and selection only', 'chrome at rest, 1px 40% edge, 10% on hover; 12.56 / 7.24 / 5.71 at rest'],
 ];
+const REC = 'oc';
 const TASKS = [
   {slot:0, title:'Retry backoff for host sync', key:'KIRA-412', chip:'In progress', step:'Implement', segs:'ddn--', meta:'2 branches', est:'6h', branch:'feat/sync-backoff', repo:'kira-space', tag:'ahead 3', live:true},
   {slot:2, title:'Split comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open', hov:true},
@@ -272,11 +276,12 @@ const TASKS = [
 ];
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const segs = (s) => `<span class="segs">${[...s].map((c) => `<i class="${c === 'd' ? 'd' : c === 'n' ? 'n' : ''}"></i>`).join('')}</span>`;
-const colour = (opt, slot) => `var(--${opt === 'cur' ? 'o' : 'p'}${slot})`;
+const vars = (opt, slot) => `--task-color:var(--${opt === 'oa' ? 'c' : 'o'}${slot});--bt:var(--br${slot});--bth:var(--bh${slot})`;
+const cls = (k) => (k === 'cur' ? 'cur' : `nw ${k}`);
 function card(t, opt, labels) {
-  const cls = ['card', 'tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
-  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.slot === 14 ? '<div class="cardlabel">rest, same-hue neighbour</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
-  return `${label}<div class="${cls}" style="--task-color:${colour(opt, t.slot)}" aria-current="${t.sel ? 'true' : 'false'}">
+  const c = ['card', 'tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
+  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.slot === 14 ? '<div class="cardlabel">rest, same-hue neighbour of the selected card</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
+  return `${label}<div class="${c}" style="${vars(opt, t.slot)}" aria-current="${t.sel ? 'true' : 'false'}">
     <div class="head${t.hov ? ' hov' : ''}" tabindex="0" role="button" aria-label="Open ${esc(t.title)}">
       <span class="lead"><span class="dot${t.live ? '' : ' idle'}"></span></span>
       <span class="lines">
@@ -288,7 +293,7 @@ function card(t, opt, labels) {
   </div>`;
 }
 function detailsPanel(opt) {
-  return `<div class="panel-pane tinted" style="--task-color:${colour(opt, 3)}">
+  return `<div class="panel-pane tinted" style="${vars(opt, 3)}">
     <div class="band panel">
       <div class="row1"><span class="status">In progress</span><span class="pttl">Faint task colours</span><span class="key">KIRA-421</span></div>
       <div class="fwd">Forward to <b>Implement</b> · handover drafted 12 min ago</div>
@@ -297,70 +302,55 @@ function detailsPanel(opt) {
     <div class="tabs"><span class="tab">Main</span><span class="tab on">Details</span><span class="tab">Sessions 1</span><span class="sp"></span><button class="btn" type="button">Review code</button></div>
     <div class="pbody">
       <div class="sect"><h4>Notes and handovers</h4>
-        <div class="ev"><span class="when">10:42</span><span>Plan: tint 14/18, palette tweak, S1 ring.</span></div>
+        <div class="ev"><span class="when">10:42</span><span>Plan: calmer tint, S1 ring.</span></div>
         <div class="ev"><span class="when">09:15</span><span>Owner: drop the colour line.</span></div></div>
     </div>
   </div>`;
 }
 function reviewWindow(opt) {
-  return `<div class="win tinted" style="--task-color:${colour(opt, 3)}">
+  return `<div class="win tinted" style="${vars(opt, 3)}">
     <div class="band"><div class="tbar">
       <span class="lights" aria-hidden="true"><span class="lt"></span><span class="lt"></span><span class="lt"></span></span>
       <span class="wttl">Faint task colours</span><span class="repotag">kira-space</span>
       <span class="br">design/task-tint</span><span class="base">into main</span>
-      <span class="badge warn">2 uncommitted</span><span class="badge">&#10003; a1b2c3d</span>
+      <span class="badge warn">2 uncommitted</span>
       <span class="sp"></span><button class="btn" type="button">Submit review</button>
     </div><span class="cline" aria-hidden="true"></span></div>
     <div class="wbody">
       <section class="pane files" aria-label="Files">
         <div class="frow on"><span class="st">M</span><span class="fn">taskGrid.ts</span></div>
         <div class="frow"><span class="st a">A</span><span class="fn">AdeTaskBand.vue</span></div>
-        <div class="frow"><span class="st">M</span><span class="fn">palette.ts</span></div>
       </section>
       <section class="pane diff" aria-label="Diffs">
-        <div class="tstrip"><span class="wtab on">taskGrid.ts</span><span class="wtab">palette.ts</span></div>
+        <div class="tstrip"><span class="wtab on">taskGrid.ts</span></div>
         <div class="dl"><span class="ln">17</span>  export const TASK_EDGE =</div>
         <div class="dl del"><span class="ln">18</span>-   'border border-(--task-color)';</div>
-        <div class="dl add"><span class="ln">18</span>+   'border border-(--task-edge)';</div>
-        <div class="dl"><span class="ln">19</span></div>
-      </section>
-      <section class="pane agent" aria-label="Agent">
-        <div class="ag"><b>Review agent</b><span>1 comment</span></div>
+        <div class="dl add"><span class="ln">18</span>+   'border border-border';</div>
       </section>
     </div>
   </div>`;
 }
 const head3 = (name, sub, rec) => `<h3>${name}${rec ? ' <b class="rec">recommended</b>' : ''} <span>${sub}</span></h3>`;
 document.getElementById('sel').innerHTML = OPTS.map(([k, n, s]) =>
-  `<div class="col ${k}">${head3(n, s, k === 's1')}<div class="ground">${TASKS.map((t) => card(t, k, true)).join('')}</div></div>`).join('');
+  `<div class="col ${cls(k)}">${head3(n, s, k === REC)}<div class="ground">${TASKS.map((t) => card(t, k, true)).join('')}</div></div>`).join('');
 const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4]].map((t) => ({ ...t, hov: false, ripple: false }));
 document.getElementById('ctx').innerHTML = OPTS.map(([k, n]) =>
-  `<div class="col ${k}">${head3(n, '', k === 's1')}<div class="ctx"><div class="list">${CTX_TASKS.map((t) => card(t, k, false)).join('')}</div>${detailsPanel(k)}</div></div>`).join('');
-document.getElementById('review').innerHTML = [['cur', 'Current', '3px colour line under a chrome bar'], ['s1', 'New', 'tinted bar, no line (same for every selection option)']]
-  .map(([k, n, s]) => `<div class="col ${k}">${head3(n, s, false)}${reviewWindow(k)}</div>`).join('');
+  `<div class="col ${cls(k)}">${head3(n, '', k === REC)}<div class="ctx"><div class="list">${CTX_TASKS.map((t) => card(t, k, false)).join('')}</div>${detailsPanel(k)}</div></div>`).join('');
+document.getElementById('review').innerHTML = OPTS.map(([k, n]) =>
+  `<div class="col ${cls(k)}">${head3(n, k === 'cur' ? '3px colour line under a chrome bar' : 'tinted bar, no line', k === REC)}${reviewWindow(k)}</div>`).join('');
+
+const decl = (dark) => ORIG.map((o, i) => `--o${i}:${o};--c${i}:${CALM[i]};--br${i}:${(dark ? BREST : BLREST)[i]};--bh${i}:${(dark ? BHOV : BLHOV)[i]};`).join('');
+const st = document.createElement('style');
+st.textContent = `:root{${decl(true)}}@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){${decl(false)}}}:root[data-theme="light"]{${decl(false)}}`;
+document.head.append(st);
+document.getElementById('pal').innerHTML = ORIG.map((o, i) => `<div class="sw">
+  <div class="full" style="background:${o}">${i} ${o}</div>
+  <div class="full" style="background:${CALM[i]}">${CALM[i]}</div>
+  <div style="background:color-mix(in srgb, ${CALM[i]} 6%, var(--kira-bg-chrome))">A 6%</div>
+  <div style="background:var(--br${i})">B rest</div>
+  <div style="background:color-mix(in srgb, ${o} 12%, var(--kira-bg-chrome))">C 12%</div></div>`).join('');
 
 const root = document.documentElement;
-function applyPalette(tint) {
-  const pal = tint === 'soft' ? ORIG : NEW;
-  for (let i = 0; i < 20; i++) {
-    root.style.setProperty(`--p${i}`, pal[i]);
-    root.style.setProperty(`--o${i}`, ORIG[i]);
-  }
-  document.getElementById('pal').innerHTML = ORIG.map((o, i) => `<div class="sw" style="--task-color:${pal[i]}">
-    <div class="full" style="background:${o}">${i} ${o}</div>
-    <div class="full" style="background:${NEW[i]}">${NEW[i] === o ? 'same' : NEW[i]}</div>
-    <div style="background:color-mix(in srgb, ${pal[i]} var(--tt), var(--kira-bg-chrome))">rest</div>
-    <div style="background:color-mix(in srgb, ${pal[i]} var(--tth), var(--kira-bg-chrome))">hover/sel</div></div>`).join('');
-}
-const tintBtns = document.querySelectorAll('[data-tint-btn]');
-function setTint(v) {
-  root.setAttribute('data-tint', v);
-  for (const b of tintBtns) b.setAttribute('aria-pressed', String(b.dataset.tintBtn === v));
-  applyPalette(v);
-}
-for (const b of tintBtns) b.addEventListener('click', () => setTint(b.dataset.tintBtn));
-setTint('strong');
-
 const themeBtns = document.querySelectorAll('[data-theme-btn]');
 function setTheme(v) {
   if (v === 'auto') root.removeAttribute('data-theme');
