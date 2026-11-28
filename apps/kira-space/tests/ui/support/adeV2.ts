@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import type { ContractJson } from '@workbench/testing/ui/contract';
+import { TASK_BAND, TASK_BAND_HOVER } from '../../../frontend/src/ade/v2/palette';
 import type { KiraApp, RelaunchOptions } from '../fixtures';
 import { contract } from './contract';
 import { calls } from './ipcCalls';
@@ -18,6 +19,28 @@ const FIXTURE_DIR = resolve(__dirname, '../../fixtures/ade-v2');
 export function adeFixture<T = unknown>(name: string): T {
   return JSON.parse(readFileSync(resolve(FIXTURE_DIR, `${name}.json`), 'utf8')) as T;
 }
+
+/** `rgb(r, g, b)` of a `#rrggbb` hex, as `getComputedStyle` prints it. */
+export function rgbOf(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** Computed header band of a fixture task: rest and hover/selected. */
+export function bandOfTask(taskId: string): { rest: string; hover: string } {
+  const slot = adeFixture<{ tasks: { id: string; color: number }[] }>('board').tasks.find(
+    (x) => x.id === taskId,
+  )?.color;
+  if (slot === undefined) throw new Error(`fixture task ${taskId} missing`);
+  return { rest: rgbOf(TASK_BAND[slot] as string), hover: rgbOf(TASK_BAND_HOVER[slot] as string) };
+}
+
+/** Computed width of the 1.5px selection ring: the engine snaps it to a whole device pixel (1px at 1x). */
+export const RING_WIDTH = /^1(\.5)?px$/;
+export const RING_OFFSET = /^-1(\.5)?px$/;
+
+/** Every rest band, as computed colours. */
+export const BAND_RGB = TASK_BAND.map(rgbOf);
 
 /** A task with no pending panel edits: the forward bar stays hidden. */
 const NO_PANEL_FORWARD = {

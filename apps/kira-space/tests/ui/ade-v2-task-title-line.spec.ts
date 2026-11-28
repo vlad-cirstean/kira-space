@@ -2,23 +2,23 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { adeBoardSnapshot, openPlan, openTask } from './support/adeV2';
 
-// Panel header title never touches the colour line, at any title length, width or app font size.
-// Pure layout: no IPC or state change, so no backend half.
+// Panel header title stays inside the task colour band, clear of the tab row, at any title length,
+// width or app font size. Pure layout: no IPC or state change, so no backend half.
 
 const t = (id: string) => `[data-testid="${id}"]`;
 const LONG = 'Gypsy hypergraph typography query pyramid '.repeat(8).trim();
 
 async function expectClear(page: Page): Promise<void> {
-  const [head, line, title, tab] = await Promise.all([
-    page.locator(t('ade-panel-head')).boundingBox(),
-    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
+  const [band, title, tab] = await Promise.all([
+    page.locator(`${t('ade-panel-head')} ${t('ade-task-band')}`).boundingBox(),
     page.locator(t('ade-panel-title')).boundingBox(),
     page.locator('[data-testid^="ade-panel-tab-"]').first().boundingBox(),
   ]);
-  if (!head || !line || !title || !tab) throw new Error('panel header boxes missing');
-  expect(line.y).toBeGreaterThanOrEqual(title.y + title.height + 2);
-  expect(Math.abs(line.y + line.height - (head.y + head.height))).toBeLessThanOrEqual(1);
-  expect(tab.y).toBeGreaterThanOrEqual(line.y + line.height - 1);
+  if (!band || !title || !tab) throw new Error('panel header boxes missing');
+  expect(title.y).toBeGreaterThanOrEqual(band.y);
+  expect(title.y + title.height).toBeLessThanOrEqual(band.y + band.height + 1);
+  expect(tab.y).toBeGreaterThanOrEqual(band.y + band.height - 1);
+  await expect(page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`)).toHaveCount(0);
   const lineHeight = await page
     .locator(t('ade-panel-title'))
     .evaluate((el) => Number.parseFloat(getComputedStyle(el).lineHeight));
@@ -31,7 +31,7 @@ const setFont = (page: Page, px: number) =>
     px,
   );
 
-test('a long task title stays clear of the colour line at every width and font size', async ({
+test('a long task title stays inside the colour band at every width and font size', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch, [
@@ -57,7 +57,7 @@ test('a long task title stays clear of the colour line at every width and font s
   }
 });
 
-test('a wrapped long branch name stays clear of the colour line', async ({ relaunch }) => {
+test('a wrapped long branch name stays inside the colour band', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, [
     adeBoardSnapshot((b) => {
       const branch = b.branches.find((x) => x.id === 'b_cart');

@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { defaultLayout } from '@shared/domain/layout';
 import { expect, test } from './fixtures';
-import { adeBoard, openPlan } from './support/adeV2';
+import { adeBoard, bandOfTask, openPlan, RING_WIDTH, rgbOf } from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -153,7 +153,9 @@ test('a Later shelf row leads with the slot, shows status text and sends the pat
 
 const heads = (page: Page) => page.locator(`${t('ade-card')} ${t('ade-card-head')}`);
 
-test('a task card wears its colour as its 1px edge, on the plan ground', async ({ relaunch }) => {
+test('a task card has a neutral 1px edge and a head band in its colour, branch rows stay on the plan ground', async ({
+  relaunch,
+}) => {
   const { window: page } = await openPlan(relaunch, [
     {
       channel: IPC.adeTaskBoard,
@@ -164,53 +166,79 @@ test('a task card wears its colour as its 1px edge, on the plan ground', async (
     },
   ]);
   await page.locator(t('ade-load-all')).click();
-  const planBg = await page
-    .locator(t('ade-plan'))
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  const [planBg, borderColor] = await Promise.all([
+    page.locator(t('ade-plan')).evaluate((el) => getComputedStyle(el).backgroundColor),
+    page.evaluate(() => {
+      const span = document.createElement('span');
+      span.style.color = 'var(--kira-border)';
+      document.body.appendChild(span);
+      const color = getComputedStyle(span).color;
+      span.remove();
+      return color;
+    }),
+  ]);
   const read = () =>
     page.locator(t('ade-card')).evaluateAll((els) =>
       els.map((e) => {
         const cs = getComputedStyle(e);
         const head = e.querySelector('[data-testid="ade-card-head"]');
+        const row = e.querySelector('[data-testid="ade-branch-row"]');
         return {
           id: e.getAttribute('data-task-id'),
           left: cs.borderLeftWidth,
           top: cs.borderTopWidth,
           topStyle: cs.borderTopStyle,
           topColor: cs.borderTopColor,
-          inline: (e as HTMLElement).style.getPropertyValue('--task-color'),
+          band: (e as HTMLElement).style.getPropertyValue('--task-band'),
+          bandHover: (e as HTMLElement).style.getPropertyValue('--task-band-hover'),
           outline: cs.outlineStyle === 'none' ? 'none' : cs.outlineWidth,
           leftColor: cs.borderLeftColor,
           bg: cs.backgroundColor,
+          headBg: head ? getComputedStyle(head).backgroundColor : '',
+          rowBg: row ? getComputedStyle(row).backgroundColor : planBg,
           marks: head?.querySelectorAll('[data-testid="ade-task-line"]').length ?? 0,
           swatches: e.querySelectorAll('[data-testid="ade-task-swatch"]').length,
         };
       }),
     );
+  await page.mouse.move(2, 2);
   const cards = await read();
   expect(cards.length).toBeGreaterThan(0);
   for (const c of cards) {
     expect(c.left).toBe('1px');
     expect(c.top).toBe('1px');
-    expect(c.topColor).toBe(c.leftColor);
-    expect(c.inline).not.toBe('');
+    expect(c.topColor).toBe(borderColor);
+    expect(c.leftColor).toBe(borderColor);
+    expect(c.band).not.toBe('');
     expect(c.bg).toBe(planBg);
+    expect(c.rowBg).toBe(planBg);
     expect(c.marks).toBe(0);
     expect(c.swatches).toBe(0);
+    // Rest band, or the hover band while the head is under the pointer or mid-transition.
+    if (c.headBg) expect([rgbOf(c.band), rgbOf(c.bandHover)]).toContain(c.headBg);
   }
+  await expect(page.locator(head('T_bill'))).toHaveCSS(
+    'background-color',
+    bandOfTask('T_bill').rest,
+  );
   // Parked is no line style: the same solid edge, and the card says so with its tag glyph.
   for (const c of cards) expect(c.topStyle).toBe('solid');
   await expect(
     page.locator(`${card('T_deps')} ${t('ade-tag')}[data-kind="notMerging"]`),
   ).toHaveCount(1);
   const before = cards.find((c) => c.id === 'T_bill');
+  await page.locator(head('T_bill')).hover();
+  await expect(page.locator(head('T_bill'))).toHaveCSS(
+    'background-color',
+    bandOfTask('T_bill').hover,
+  );
   await page.locator(head('T_bill')).click();
   await expect(page.locator(card('T_bill'))).toHaveAttribute('aria-current', 'true');
   const after = (await read()).find((c) => c.id === 'T_bill');
   expect(after?.topColor).toBe(before?.topColor);
   expect(after?.leftColor).toBe(before?.leftColor);
   expect(before?.outline).toBe('none');
-  expect(after?.outline).toBe('2px');
+  expect(after?.outline).toMatch(RING_WIDTH);
 });
 
 test('card head buttons stay inside the card with the panel open', async ({ relaunch }) => {

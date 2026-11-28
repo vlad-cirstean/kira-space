@@ -1,5 +1,13 @@
 import { expect, test } from './fixtures';
-import { adeFixture, archivedTaskFx, FIXED_NOW, openPlan, openTask } from './support/adeV2';
+import {
+  adeFixture,
+  archivedTaskFx,
+  BAND_RGB,
+  bandOfTask,
+  FIXED_NOW,
+  openPlan,
+  openTask,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 import { line, openCard } from './support/links';
@@ -79,19 +87,23 @@ async function openDetails(page: import('@playwright/test').Page): Promise<void>
   await expect(page.locator(t('ade-details-tab'))).toBeVisible();
 }
 
-async function expectLineUnderTitle(page: import('@playwright/test').Page): Promise<void> {
-  const [headBox, lineBox, titleBox, tabBox] = await Promise.all([
-    page.locator(t('ade-panel-head')).boundingBox(),
-    page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`).boundingBox(),
+async function expectBandUnderTitle(page: import('@playwright/test').Page): Promise<string> {
+  const band = page.locator(`${t('ade-panel-head')} ${t('ade-task-band')}`);
+  const [bandBox, titleBox, tabBox] = await Promise.all([
+    band.boundingBox(),
     page.locator(t('ade-panel-title')).boundingBox(),
     page.locator('[data-testid^="ade-panel-tab-"]').first().boundingBox(),
   ]);
-  expect(lineBox?.height).toBe(3);
-  expect(
-    Math.abs((lineBox?.y ?? 0) + 3 - ((headBox?.y ?? 0) + (headBox?.height ?? 0))),
-  ).toBeLessThanOrEqual(1);
-  expect(lineBox?.y ?? 0).toBeGreaterThanOrEqual((titleBox?.y ?? 0) + (titleBox?.height ?? 0) - 1);
-  expect((tabBox?.y ?? 0) - ((lineBox?.y ?? 0) + 3)).toBeLessThanOrEqual(5);
+  expect(titleBox?.y ?? 0).toBeGreaterThanOrEqual(bandBox?.y ?? 0);
+  expect((titleBox?.y ?? 0) + (titleBox?.height ?? 0)).toBeLessThanOrEqual(
+    (bandBox?.y ?? 0) + (bandBox?.height ?? 0) + 1,
+  );
+  expect((tabBox?.y ?? 0) - ((bandBox?.y ?? 0) + (bandBox?.height ?? 0))).toBeLessThanOrEqual(5);
+  await expect(page.locator(`${t('ade-panel-head')} ${t('ade-task-line')}`)).toHaveCount(0);
+  // The details head wears one of the 10 task bands.
+  const bg = await band.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(BAND_RGB).toContain(bg);
+  return bg;
 }
 
 test('the tabs are Main, Details and Sessions, Main first, and Files is an icon', async ({
@@ -106,14 +118,14 @@ test('the tabs are Main, Details and Sessions, Main first, and Files is an icon'
   await expect(page.locator('[data-testid^="ade-panel-tab-"]')).toHaveCount(3);
   await expect(page.locator(t('ade-panel-tab-files'))).toHaveCount(0);
   await expect(page.locator(t('ade-panel-title'))).toBeVisible();
-  await expectLineUnderTitle(page);
+  expect(await expectBandUnderTitle(page)).toBe(bandOfTask('T_alerts').rest);
 });
 
-test('branch panel: the task colour line sits under the title', async ({ relaunch }) => {
+test('branch panel: the task colour band holds the title', async ({ relaunch }) => {
   const { window: page } = await openPlan(relaunch, panel());
   await page.locator('[data-testid="ade-branch-row"][data-branch-id="b_cart"]').first().click();
   await expect(page.locator(t('ade-branch-details'))).toBeVisible();
-  await expectLineUnderTitle(page);
+  await expectBandUnderTitle(page);
 });
 
 test('Files is a header icon: no tab, no right-click or More entry', async ({ relaunch }) => {

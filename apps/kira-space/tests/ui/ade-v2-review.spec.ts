@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { AGENT_PANEL_ON, expect, reviewTest, test } from './fixtures';
-import { adeFixture, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
+import { adeFixture, BAND_RGB, emitAgentEvent, emitAgentSessions, openPlan } from './support/adeV2';
 import { contract } from './support/contract';
 import { gitStreamEmit, gitStreamParams, gitStreamRequests } from './support/gitStreamMock';
 import { calls } from './support/ipcCalls';
@@ -54,15 +54,13 @@ reviewTest('a review window boots three panes for its branch', async ({ relaunch
   await expect(bar.locator(t('ade-review-title'))).toBeVisible();
   await expect(bar.locator(t('ade-review-branch'))).toBeVisible();
   expect((await bar.boundingBox())?.height).toBe(34);
-  const [barBox, lineBox] = await Promise.all([
-    bar.boundingBox(),
-    page.locator(t('ade-review-task-colour')).boundingBox(),
-  ]);
-  expect(lineBox?.height).toBe(3);
-  // The line sits directly under the title bar, above the content.
-  expect(
-    Math.abs((lineBox?.y ?? 0) + 3 - ((barBox?.y ?? 0) + (barBox?.height ?? 99))),
-  ).toBeLessThanOrEqual(1);
+  // The bar sits on a task band; no colour line under it.
+  const band = page.locator(t('ade-task-band'));
+  expect(BAND_RGB).toContain(await band.evaluate((el) => getComputedStyle(el).backgroundColor));
+  await expect(bar).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const [barBox, bandBox] = await Promise.all([bar.boundingBox(), band.boundingBox()]);
+  expect(bandBox?.height).toBe(barBox?.height);
+  await expect(page.locator(t('ade-task-line'))).toHaveCount(0);
   await expect(page.getByText('Review · ')).toHaveCount(0);
 });
 

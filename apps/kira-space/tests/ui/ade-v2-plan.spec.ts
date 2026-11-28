@@ -1,7 +1,15 @@
 import type { Page } from '@playwright/test';
 import { defaultLayout } from '@shared/domain/layout';
 import { expect, test } from './fixtures';
-import { adeBoard, adeFixture, bandOf, FIXED_NOW, openPlan } from './support/adeV2';
+import {
+  adeBoard,
+  adeFixture,
+  bandOf,
+  FIXED_NOW,
+  openPlan,
+  RING_OFFSET,
+  RING_WIDTH,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
@@ -396,7 +404,7 @@ test('the day-off confirm says what moves, offers Cancel and Escape leaves the p
   expect(control.log().filter((e) => e.channel === IPC.adeTaskSetPlan)).toHaveLength(0);
 });
 
-test('a card is a 6px rounded box with a 1px task colour edge on the plan ground, 8px from its same-day neighbour', async ({
+test('a card is a 6px rounded box with a 1px neutral edge on the plan ground, 8px from its same-day neighbour', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -427,7 +435,7 @@ test('a card is a 6px rounded box with a 1px task colour edge on the plan ground
   });
   expect(style.topColor).toBe(style.leftColor);
   expect(style.topColor).not.toBe('rgba(0, 0, 0, 0)');
-  expect(style.topColor).not.toBe(borderColor);
+  expect(style.topColor).toBe(borderColor);
   const [chrome, plan] = await Promise.all([
     page.evaluate(() => {
       const span = document.createElement('span');
@@ -459,6 +467,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
+  const fgColor = 'rgb(212, 212, 216)'; // --kira-fg
   const marked = page.locator('[data-testid="ade-card"][aria-current="true"]');
   const frame = (loc: ReturnType<typeof card>) =>
     loc.evaluate((el) => {
@@ -467,6 +476,7 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
         width: c.outlineWidth,
         style: c.outlineStyle,
         color: c.outlineColor,
+        offset: c.outlineOffset,
         border: c.borderLeftColor,
       };
     });
@@ -475,9 +485,10 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
   await expect(card(page, 'T_search')).toHaveAttribute('aria-current', 'true');
   await expect(marked).toHaveCount(1);
   const searchFrame = await frame(card(page, 'T_search'));
-  expect(searchFrame.width).toBe('2px');
+  expect(searchFrame.width).toMatch(RING_WIDTH);
   expect(searchFrame.style).toBe('solid');
-  expect(searchFrame.color).toBe(searchFrame.border);
+  expect(searchFrame.offset).toMatch(RING_OFFSET);
+  expect(searchFrame.color).toBe(fgColor);
 
   await card(page, 'T_push').locator('[data-testid="ade-card-head"]').click();
   await expect(card(page, 'T_push')).toHaveAttribute('aria-current', 'true');
@@ -502,12 +513,13 @@ test('the task open in the panel is marked on its card, spans and branch rows', 
       width: c.outlineWidth,
       style: c.outlineStyle,
       color: c.outlineColor,
-      border: c.borderLeftColor,
+      offset: c.outlineOffset,
     };
   });
-  expect(spanFrame.width).toBe('2px');
+  expect(spanFrame.width).toMatch(RING_WIDTH);
   expect(spanFrame.style).toBe('solid');
-  expect(spanFrame.color).toBe(spanFrame.border);
+  expect(spanFrame.offset).toMatch(RING_OFFSET);
+  await expect(span).toHaveCSS('outline-color', fgColor);
 });
 
 test('pressing a card shows no ring, border or outline; keyboard focus still rings', async ({
@@ -566,7 +578,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
   }
   const after = await cardFrame();
   expect(after).toEqual(before);
-  expect(after.width).toBe('2px');
+  expect(after.width).toMatch(RING_WIDTH);
   expect(after.style).toBe('solid');
 
   await page.keyboard.press('Tab');
@@ -579,7 +591,7 @@ test('pressing a card shows no ring, border or outline; keyboard focus still rin
   expect(ring).toEqual({ visible: true, style: 'solid', color: focusColor });
 });
 
-test('plan cards use colour only for the task colour line, status, problems and the repo badge', async ({
+test('plan cards use colour only for the head band, status, problems and the repo badge', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);

@@ -14,11 +14,12 @@ import { openHttpMode } from './studio/support/apiMode';
 import { gutterCell } from './studio/support/grid';
 import { openSettings } from './studio/support/settings';
 import { connectionRow, expandRow, findRow, openRowMenu } from './studio/support/tree';
-import { FIXED_NOW, openPlan } from './support/adeV2';
+import { bandOfTask, FIXED_NOW, openPlan, RING_WIDTH } from './support/adeV2';
 import { seedApprovals } from './support/approvals';
 import { contract } from './support/contract';
 import { IPC } from './support/ipcChannels';
 
+// P764: a selected plan card holds its hover band and a 1.5px neutral ring.
 // P710: selection is one neutral grey (--kira-select #36363c, edge #71717a, text #45454d), hover
 // stays --kira-bg-input. Computed colours only. Renderer styling: no IPC, no backend half.
 const SELECT = 'rgb(54, 54, 60)';
@@ -32,11 +33,12 @@ const OFF_EDGE = 'rgb(62, 62, 69)';
 const KNOB = 'rgb(107, 107, 115)';
 const FOCUS = 'rgb(161, 161, 170)';
 const FIELD = 'rgb(39, 39, 44)';
+const FG = 'rgb(212, 212, 216)';
 
 const head = (id: string) =>
   `[data-testid="ade-card"][data-task-id="${id}"] [data-testid="ade-card-head"]`;
 
-test('a selected plan card paints the grey fill and a task colour frame, hover is lighter than idle', async ({
+test('a selected plan card holds its hover band inside a neutral 1.5px ring, hover is lighter than idle', async ({
   relaunch,
 }) => {
   const { window: page } = await openPlan(relaunch);
@@ -47,14 +49,20 @@ test('a selected plan card paints the grey fill and a task colour frame, hover i
   );
   await page.mouse.move(5, 5);
   const selected = page.locator(head('T_search'));
-  await expect(selected).toHaveCSS('background-color', SELECT);
+  await expect(selected).toHaveCSS('background-color', bandOfTask('T_search').hover);
   const box = page.locator('[data-testid="ade-card"][data-task-id="T_search"]');
-  await expect(box).toHaveCSS('outline-width', '2px');
-  const edge = await box.evaluate((el) => getComputedStyle(el).borderLeftColor);
-  await expect(box).toHaveCSS('outline-color', edge);
+  await expect(box).toHaveCSS('outline-width', RING_WIDTH);
+  await expect(box).toHaveCSS('outline-color', FG);
   const other = page.locator(head('T_auth'));
+  await expect(other).toHaveCSS('background-color', bandOfTask('T_auth').rest);
   await other.hover();
-  await expect(other).toHaveCSS('background-color', HOVER);
+  await expect(other).toHaveCSS('background-color', bandOfTask('T_auth').hover);
+  const row = box.locator('[data-testid="ade-branch-row"]').first();
+  await row.click();
+  await expect(row).toHaveAttribute('data-selected', 'true');
+  await page.mouse.move(5, 5);
+  await expect(row).toHaveCSS('background-color', FIELD);
+  await expect(row).toHaveCSS('box-shadow', /inset/);
 });
 
 test('text selection is the grey --kira-select-text', async ({ relaunch }) => {

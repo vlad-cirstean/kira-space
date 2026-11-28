@@ -1,5 +1,12 @@
 import { expect, taskFilesWindowTest, test } from './fixtures';
-import { adeFixture, FILES_TASK, openFilesWindow, openPlan, openTask } from './support/adeV2';
+import {
+  adeFixture,
+  BAND_RGB,
+  FILES_TASK,
+  openFilesWindow,
+  openPlan,
+  openTask,
+} from './support/adeV2';
 import { contract } from './support/contract';
 import { calls } from './support/ipcCalls';
 import { IPC } from './support/ipcChannels';
@@ -80,14 +87,10 @@ taskFilesWindowTest(
     await expect(page.locator(t('ade-files-window-title'))).toHaveText(/\S/);
     await expect(page.locator(t('ade-files-body'))).toBeVisible();
     await expect(page.locator(t('ade-plan'))).toHaveCount(0);
-    // The task colour is a 3px line directly under the title bar.
-    const [bar, line] = await Promise.all([
-      page.locator('.wails-drag').boundingBox(),
-      page.locator(t('ade-files-window-colour')).boundingBox(),
-    ]);
-    expect(line?.height).toBe(3);
-    expect(
-      Math.abs((line?.y ?? 0) + 3 - ((bar?.y ?? 0) + (bar?.height ?? 99))),
-    ).toBeLessThanOrEqual(1);
+    // The title bar sits on the task band; no colour line under it.
+    const band = page.locator(t('ade-task-band'));
+    expect(BAND_RGB).toContain(await band.evaluate((el) => getComputedStyle(el).backgroundColor));
+    await expect(page.locator('.wails-drag')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(page.locator(t('ade-task-line'))).toHaveCount(0);
   },
 );
