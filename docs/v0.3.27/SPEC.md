@@ -15,7 +15,9 @@ review and iterate on; implementation follows the owner's sign-off.
 | P763 | Redesign links to show the host too (design for review) | Pending |
 | P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
 | P765 | Repo files window opens without a worktree and starts fully collapsed | Done |
-| P766 | Chapter close | Pending |
+| P766 | Unify colour components: one module owns palette, band, mark and selection ring so a later colour change is one edit | Pending |
+| P767 | Apply the faint colour band to Studio, API, repos and every other coloured surface, with screenshots | Pending |
+| P768 | Chapter close | Pending |
 
 ## P762
 
@@ -55,4 +57,16 @@ keys `list#main`, `noMainWorktree`; UI specs `ade-v2-task-files`, `ade-v2-task-f
 
 ## P766
 
-Chapter close, by hand per `CLAUDE.md`, after P763 and P764 ship.
+Owner request: unify the colour components so a future colour change is modular and simple. One
+module owns palette, band, mark and selection ring; every coloured surface consumes it. Runs after
+P764 ships, builds on its shared band component. Plan audits every current colour consumer.
+
+## P767
+
+Owner request: apply the P764 faint-band design to the other parts of the app: Studio, API, repos,
+and any other coloured surface the audit finds. Deliver screenshots of every changed surface.
+Runs after P766.
+
+## P768
+
+Chapter close, by hand per `CLAUDE.md`, after P763, P764, P766 and P767 ship.
