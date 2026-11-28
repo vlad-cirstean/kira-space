@@ -53,7 +53,7 @@ type AdeTask struct {
 	WorkflowJSON string
 	WorkflowHash string
 	Est          string
-	Color        int
+	Color        int // slot 0-9
 	CreatedAt    int64
 	ArchivedAt   *int64
 	// ParentID is the orchestrator that spawned the task; "" for any other task.

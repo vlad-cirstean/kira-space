@@ -56,8 +56,8 @@ func (e *BranchHeldError) Error() string {
 
 func (e *BranchHeldError) Unwrap() error { return ErrBranchOnTask }
 
-// maxColorSlots is the task colour slot count (0-19).
-const maxColorSlots = 20
+// maxColorSlots is the task colour slot count (0-9).
+const maxColorSlots = 10
 
 // MaxEstHours and MaxEstDays bound an estimate: a longer one makes the Plan span thousands of days.
 const (
