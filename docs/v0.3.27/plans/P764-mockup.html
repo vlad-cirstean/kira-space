@@ -69,7 +69,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .note { color: var(--kira-fg-subtle); font-size: 11px; margin: 0 0 8px; max-width: 980px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
 .grid.wide { grid-template-columns: repeat(auto-fit, minmax(640px, 1fr)); }
-.grid.four { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
+.grid.four { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
 @media (max-width: 700px) { .grid, .grid.wide, .grid.four { grid-template-columns: 1fr; } }
 .col h3 { font-size: 12px; font-weight: 600; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
 .col h3 span { font-weight: 400; color: var(--kira-fg-subtle); font-size: 11px; }
@@ -81,9 +81,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
   --task-tint-hover: color-mix(in srgb, var(--task-color) var(--tth, 14%), var(--kira-bg-chrome));
   --task-edge: color-mix(in srgb, var(--task-color) var(--te, 40%), var(--kira-bg-chrome));
 }
-.oa { --tt: 6%; --tth: 10%; --te: 30%; }
-.oc { --tt: 12%; --tth: 14%; }
-.oac { --tt: 8%; --tth: 12%; }
+.lo, .mo { --tt: 8%; --tth: 12%; }
 
 /* ---- Task card ---- */
 .card { position: relative; border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--task-edge); --row-ground: var(--task-tint); background: var(--row-ground); }
@@ -121,7 +119,7 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .cur .card.sel { outline: 2px solid var(--task-color); }
 /* S1 neutral ring, every new option: inset 2px fg outline, ground at hover level. */
 .nw .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--kira-fg); outline-offset: -2px; }
-/* C and A+C: only the head is tinted; rows and border neutral. */
+/* New sets: only the head is tinted; rows and border neutral. */
 .hd .card { border-color: var(--kira-border); --row-ground: var(--kira-bg-chrome); }
 .hd .card.sel { --row-ground: var(--kira-bg-chrome); }
 .hd .head { background: var(--task-tint); }
@@ -206,21 +204,21 @@ table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
 <body>
 <div class="page">
   <header class="top">
-    <h1>P764 task tint, iteration 4: A+C</h1>
+    <h1>P764 task tint, iteration 6: 10 colours</h1>
     <fieldset class="seg"><legend class="sr">Theme</legend>
       <button type="button" data-theme-btn="auto" aria-pressed="true">Auto</button>
       <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
       <button type="button" data-theme-btn="light" aria-pressed="false">Light</button>
     </fieldset>
   </header>
-  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Today, A and C are reference columns. A+C is the target: header-only tint (C) on the calm palette (A, chroma x0.75) at 8% rest and 12% hover and selected. Every new column selects with the neutral ring (S1) and has no colour line under the details head or review title bar. Hover any card head or branch row. Soft, B and D numbers are in the plan only.</p>
+  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Today (slots 0-9 of the current 20) is the reference. Both new sets: 10 colours, hues 36 deg apart, header-only band at 8% rest and 12% hover and selected, neutral body, neutral S1 ring, no colour line. Less saturated: chroma 0.090. More saturated (recommended): chroma 0.125-0.150. Hover any card head or branch row.</p>
 
   <h2>1. Cards at rest, hover, selected</h2>
-  <p class="note">Seven slots: orange (0), light yellow (2, head hover pinned), green (3, selected) above its same-hue neighbour olive (14), saturated blue (7), pink (11, ripple), grey (19). Figures: worst-case text contrast of 20 slots (fg / muted / subtle) at rest, median OKLab distance between slot grounds, closest pair, and slot 3 vs 14.</p>
+  <p class="note">All 10 slots in slot order. Slot 1 has head hover pinned, slot 3 is selected. Figures: worst-case text contrast at 8% (fg / muted / subtle), then minimum and median OKLab distance of the 8% grounds.</p>
   <div class="grid four" id="sel"></div>
 
   <h2>2. Details panel context</h2>
-  <p class="note">Plan list with the selected card; the details panel shows the same task. The panel head is the <code>AdeTaskBand</code>: the option's resting tint, no colour line.</p>
+  <p class="note">Plan list with the selected card; the details panel shows the same task. The panel head is the <code>AdeTaskBand</code>: the set's resting tint, no colour line.</p>
   <div class="grid wide" id="ctx"></div>
 
   <h2>3. Review window title bar</h2>
@@ -228,45 +226,48 @@ table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
   <div class="grid wide" id="review"></div>
 
   <h2>4. Palette and grounds</h2>
-  <p class="note">Rows per slot: original colour, calm colour (OKLCH chroma x0.75, lightness and hue held), A+C band rest 8%, A+C band hover and selected 12%, C head 12% (original palette).</p>
-  <div class="pal" id="pal"></div>
+  <p class="note">Per set and slot: full colour (ink) with name, 8% band, 12% band. Today shows its slots 0-9 for reference.</p>
+  <div id="pal"></div>
   <table class="cr" aria-label="Contrast and distinguishability">
-    <tr><th>Dark, worst of 20 slots</th><th>fg</th><th>muted</th><th>subtle</th><th>median dE</th><th>closest pair</th><th>3 vs 14</th></tr>
-    <tr><td>Today chrome (ref)</td><td>12.56</td><td>7.24</td><td>5.71</td><td>0 (edge only)</td><td>n/a</td><td>n/a</td></tr>
-    <tr><td>Today selected, grey select (ref)</td><td>8.12</td><td>4.68</td><td class="fail">3.70</td><td>n/a</td><td>n/a</td><td>n/a</td></tr>
-    <tr><td>A whole card 6% / 10% (ref)</td><td>11.49 / 10.71</td><td>6.63 / 6.17</td><td>5.23 / 4.87</td><td>0.0092</td><td>0.0032</td><td>0.0051</td></tr>
-    <tr><td>C head 12% / 14%, original palette (ref)</td><td>10.31 / 9.90</td><td>5.95 / 5.71</td><td>4.69 / 4.51</td><td>0.0234</td><td>0.0080</td><td>0.0107</td></tr>
-    <tr><td>A+C head 8% / 12%, calm palette <b class="rec">target</b></td><td>11.10 / 10.30</td><td>6.40 / 5.94</td><td>5.05 / 4.69</td><td>0.0121 / 0.0177</td><td>0.0042 / 0.0061</td><td>0.0067 / 0.0098</td></tr>
-    <tr><td>Rows in C and A+C: chrome / field hover</td><td>12.56 / 10.06</td><td>7.24 / 5.80</td><td>5.71 / 4.58</td><td colspan="3">neutral</td></tr>
-    <tr><td>S1 ring on selected head</td><td colspan="6">10.30 (A+C) / 9.90 (C) / 10.71 (A)</td></tr>
+    <tr><th>Dark, worst case</th><th>8% fg / muted / subtle</th><th>12% fg / muted / subtle</th><th>8% grounds min / median</th><th>12% grounds min / median</th><th>ink min / median</th><th>adjacent slots min (8%)</th></tr>
+    <tr><td>Today, 20 colours</td><td>11.11 / 6.41 / 5.06</td><td>10.31 / 5.95 / 4.69</td><td>0.0054 / 0.0160</td><td>0.0080 / 0.0234</td><td>0.050 / 0.146</td><td>0.0056</td></tr>
+    <tr><td>Round 4 calm, 20 (rejected)</td><td>11.10 / 6.40 / 5.05</td><td>10.30 / 5.94 / 4.69</td><td>0.0042 / 0.0121</td><td>0.0061 / 0.0177</td><td>0.037 / 0.116</td><td>0.0042</td></tr>
+    <tr><td>Less saturated, 10</td><td>10.94 / 6.31 / 4.98</td><td>10.05 / 5.80 / 4.57</td><td>0.0108 / 0.0184</td><td>0.0159 / 0.0268</td><td>0.105 / 0.171</td><td>0.0113</td></tr>
+    <tr><td>More saturated, 10 <b class="rec">recommended</b></td><td>10.94 / 6.31 / 4.98</td><td>10.05 / 5.80 / 4.57</td><td>0.0129 / 0.0285</td><td>0.0188 / 0.0415</td><td>0.118 / 0.241</td><td>0.0156</td></tr>
+    <tr><td>Highest passing tint</td><td colspan="6">14% today; 12% both new sets (subtle 4.57); S1 ring 10.05 on 12%</td></tr>
   </table>
 </div>
 <script>
 const ORIG = ['#d38261','#d2a155','#b4b04d','#90ba66','#64b477','#57b1a0','#56a6c2','#5a8fd5','#727ed7','#9676d1','#bc72cb','#d36fa4','#d56c7e','#b18765','#95a269','#669d8e','#8092b0','#a182b7','#cc9191','#a4aab2'];
-const CALM = ['#c68970','#c9a46e','#b1af6a','#97b779','#76af82','#6eada0','#6ba3b8','#688fc4','#7781c4','#937cc0','#b37cbe','#c57aa0','#c67783','#a98a71','#96a076','#729a8e','#8492a8','#9d86ae','#c29695','#a5aab0'];
+const LESS = ['#4eada8','#eea3ad','#8ccca0','#ca8a6b','#7d9cd4','#d4b273','#78c7e7','#96a362','#c189b6','#c1aeed'];
+const LESS_N = ['teal','rose','mint','terracotta','blue','sand','sky','olive','orchid','lavender'];
+const MORE = ['#a2a203','#b3a6fe','#03b7a4','#e87652','#75d47e','#f3aa36','#fe91b1','#539ef5','#12cff6','#ca78cd'];
+const MORE_N = ['citron','lavender','teal','vermilion','green','amber','pink','blue','cyan','magenta'];
 const OPTS = [
-  ['cur', 'Today (reference)', 'chrome, 1px full-colour edge, grey selected head; subtle 3.70 on selected'],
-  ['oa', 'A Calm tint (reference)', 'whole card 6%, hover 10%, calm palette; 11.49 / 6.63 / 5.23; dE 0.0092, closest 0.0032, 3 vs 14 0.0051'],
-  ['oc', 'C Header-only (reference)', 'head 12%, hover 14%, original palette; 10.31 / 5.95 / 4.69; dE 0.0234, closest 0.0080, 3 vs 14 0.0107'],
-  ['oac', 'A+C Header-only, calm', 'head 8%, hover and selected 12%, calm palette, rows neutral; 11.10 / 6.40 / 5.05; dE 0.0121, closest 0.0042, 3 vs 14 0.0067'],
+  ['cur', 'Today (reference)', 'slots 0-9 of 20; chrome, 1px full-colour edge, grey selected head; subtle 3.70 on selected'],
+  ['lo', 'Less saturated', 'chroma 0.090; 10.94 / 6.31 / 4.98; min 0.0108, median 0.0184'],
+  ['mo', 'More saturated', 'chroma 0.125-0.150; 10.94 / 6.31 / 4.98; min 0.0129, median 0.0285'],
 ];
-const REC = 'oac';
+const REC = 'mo';
 const TASKS = [
   {slot:0, title:'Retry backoff for host sync', key:'KIRA-412', chip:'In progress', step:'Implement', segs:'ddn--', meta:'2 branches', est:'6h', branch:'feat/sync-backoff', repo:'kira-space', tag:'ahead 3', live:true},
-  {slot:2, title:'Split comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open', hov:true},
+  {slot:1, title:'Split comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open', hov:true},
+  {slot:2, title:'Links surface redesign', key:'KIRA-420', chip:'In progress', step:'Implement', segs:'dn---', meta:'2 repos', est:'1d', branch:'feat/links-v2', repo:'kira-space', tag:'ahead 7'},
   {slot:3, title:'Faint task colours', key:'KIRA-421', chip:'In progress', step:'Plan', segs:'n----', meta:'notes', est:'4h', branch:'design/task-tint', repo:'kira-space', tag:'draft', sel:true, live:true},
-  {slot:14, title:'Links surface redesign', key:'KIRA-420', chip:'In progress', step:'Implement', segs:'dn---', meta:'2 repos', est:'1d', branch:'feat/links-v2', repo:'kira-space', tag:'ahead 7'},
-  {slot:7, title:'MariaDB least-privilege matrix', key:'KIRA-377', chip:'In progress', step:'Test', segs:'ddn--', meta:'adapters', est:'2d', branch:'test/mariadb-matrix', repo:'adapters', tag:'behind 1', live:true},
-  {slot:11, title:'Phone plan card polish', key:'', chip:'Waiting', step:'Review', segs:'dddn-', meta:'mobile', est:'2h', branch:'ui/phone-card', repo:'kira-mobile', tag:'rebase', ripple:true, chipColor:'var(--kira-status-amber)'},
-  {slot:19, title:'Archive old review rounds', key:'KIRA-350', chip:'Backlog', step:'—', segs:'-----', meta:'backlog', est:'', branch:'chore/archive-rounds', repo:'kira-space', tag:'no worktree', chipColor:'var(--kira-status-grey)'},
+  {slot:4, title:'MariaDB least-privilege matrix', key:'KIRA-377', chip:'In progress', step:'Test', segs:'ddn--', meta:'adapters', est:'2d', branch:'test/mariadb-matrix', repo:'adapters', tag:'behind 1', live:true},
+  {slot:5, title:'Phone plan card polish', key:'', chip:'Waiting', step:'Review', segs:'dddn-', meta:'mobile', est:'2h', branch:'ui/phone-card', repo:'kira-mobile', tag:'rebase', ripple:true, chipColor:'var(--kira-status-amber)'},
+  {slot:6, title:'Archive old review rounds', key:'KIRA-350', chip:'Backlog', step:'—', segs:'-----', meta:'backlog', est:'', branch:'chore/archive-rounds', repo:'kira-space', tag:'no worktree', chipColor:'var(--kira-status-grey)'},
+  {slot:7, title:'Docker context switch', key:'KIRA-430', chip:'In progress', step:'Implement', segs:'dn---', meta:'infra', est:'3h', branch:'feat/docker-ctx', repo:'kira-space', tag:'ahead 2', live:true},
+  {slot:8, title:'Jira sync retries', key:'KIRA-433', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #61', est:'5h', branch:'fix/jira-retry', repo:'kira-space', tag:'PR open'},
+  {slot:9, title:'Snapshot diff viewer', key:'KIRA-436', chip:'In progress', step:'Plan', segs:'n----', meta:'notes', est:'1d', branch:'feat/snap-diff', repo:'kira-space', tag:'draft'},
 ];
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const segs = (s) => `<span class="segs">${[...s].map((c) => `<i class="${c === 'd' ? 'd' : c === 'n' ? 'n' : ''}"></i>`).join('')}</span>`;
-const vars = (opt, slot) => `--task-color:var(--${opt === 'oa' || opt === 'oac' ? 'c' : 'o'}${slot})`;
-const cls = (k) => (k === 'cur' ? 'cur' : `nw ${k}${k === 'oc' || k === 'oac' ? ' hd' : ''}`);
+const vars = (opt, slot) => `--task-color:var(--${opt === 'lo' ? 'l' : opt === 'mo' ? 'm' : 'o'}${slot})`;
+const cls = (k) => (k === 'cur' ? 'cur' : `nw hd ${k}`);
 function card(t, opt, labels) {
   const c = ['card', 'tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
-  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.slot === 14 ? '<div class="cardlabel">rest, same-hue neighbour of the selected card</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
+  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
   return `${label}<div class="${c}" style="${vars(opt, t.slot)}" aria-current="${t.sel ? 'true' : 'false'}">
     <div class="head${t.hov ? ' hov' : ''}" tabindex="0" role="button" aria-label="Open ${esc(t.title)}">
       <span class="lead"><span class="dot${t.live ? '' : ' idle'}"></span></span>
@@ -316,25 +317,24 @@ function reviewWindow(opt) {
     </div>
   </div>`;
 }
-const head3 = (name, sub, rec) => `<h3>${name}${rec ? ' <b class="rec">target</b>' : ''} <span>${sub}</span></h3>`;
+const head3 = (name, sub, rec) => `<h3>${name}${rec ? ' <b class="rec">recommended</b>' : ''} <span>${sub}</span></h3>`;
 document.getElementById('sel').innerHTML = OPTS.map(([k, n, s]) =>
   `<div class="col ${cls(k)}">${head3(n, s, k === REC)}<div class="ground">${TASKS.map((t) => card(t, k, true)).join('')}</div></div>`).join('');
-const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4]].map((t) => ({ ...t, hov: false, ripple: false }));
+const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4], TASKS[7]].map((t) => ({ ...t, hov: false, ripple: false }));
 document.getElementById('ctx').innerHTML = OPTS.map(([k, n]) =>
   `<div class="col ${cls(k)}">${head3(n, '', k === REC)}<div class="ctx"><div class="list">${CTX_TASKS.map((t) => card(t, k, false)).join('')}</div>${detailsPanel(k)}</div></div>`).join('');
 document.getElementById('review').innerHTML = OPTS.map(([k, n]) =>
   `<div class="col ${cls(k)}">${head3(n, k === 'cur' ? '3px colour line under a chrome bar' : 'tinted bar, no line', k === REC)}${reviewWindow(k)}</div>`).join('');
 
-const decl = ORIG.map((o, i) => `--o${i}:${o};--c${i}:${CALM[i]};`).join('');
+const decl = LESS.map((l, i) => `--o${i}:${ORIG[i]};--l${i}:${l};--m${i}:${MORE[i]};`).join('');
 const st = document.createElement('style');
 st.textContent = `:root{${decl}}`;
 document.head.append(st);
-document.getElementById('pal').innerHTML = ORIG.map((o, i) => `<div class="sw">
-  <div class="full" style="background:${o}">${i} ${o}</div>
-  <div class="full" style="background:${CALM[i]}">${CALM[i]}</div>
-  <div style="background:color-mix(in srgb, ${CALM[i]} 8%, var(--kira-bg-chrome))">A+C 8%</div>
-  <div style="background:color-mix(in srgb, ${CALM[i]} 12%, var(--kira-bg-chrome))">A+C 12%</div>
-  <div style="background:color-mix(in srgb, ${o} 12%, var(--kira-bg-chrome))">C 12%</div></div>`).join('');
+const strip = (label, pal, names) => `<h3>${label}</h3><div class="pal">${pal.map((c, i) => `<div class="sw">
+  <div class="full" style="background:${c}">${i} ${names ? names[i] : ''} ${c}</div>
+  <div style="background:color-mix(in srgb, ${c} 8%, var(--kira-bg-chrome))">8%</div>
+  <div style="background:color-mix(in srgb, ${c} 12%, var(--kira-bg-chrome))">12%</div></div>`).join('')}</div>`;
+document.getElementById('pal').innerHTML = strip('Today, slots 0-9', ORIG.slice(0, 10), null) + strip('Less saturated', LESS, LESS_N) + strip('More saturated (recommended)', MORE, MORE_N);
 
 const root = document.documentElement;
 const themeBtns = document.querySelectorAll('[data-theme-btn]');
