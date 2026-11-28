@@ -81,9 +81,8 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
   --task-tint-hover: color-mix(in srgb, var(--task-color) var(--tth, 14%), var(--kira-bg-chrome));
   --task-edge: color-mix(in srgb, var(--task-color) var(--te, 40%), var(--kira-bg-chrome));
 }
-.mo, .pa { --tt: 8%; --tth: 12%; }
-/* Pure-B, Pure-B+: precomputed OKLCH fixed-lightness band per slot. */
-.pb .tinted, .pp .tinted { --task-tint: var(--bt); --task-tint-hover: var(--bth); }
+/* Pure-B: precomputed OKLCH fixed-lightness band per slot. */
+.nw .tinted { --task-tint: var(--bt); --task-tint-hover: var(--bth); }
 
 /* ---- Task card ---- */
 .card { position: relative; border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--task-edge); --row-ground: var(--task-tint); background: var(--row-ground); }
@@ -91,7 +90,6 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .brow { display: grid; grid-template-columns: 24px 80px minmax(0,1fr) auto; align-items: center; gap: 6px; height: 28px; padding: 0 8px; background: var(--row-ground); font-size: 11px; cursor: pointer; }
 .head:hover, .head.hov, .brow:hover { background: var(--task-tint-hover); }
 .head:focus-visible, .brow:focus-visible { outline: 2px solid var(--kira-focus); outline-offset: 2px; }
-.card.ripple { border-style: dashed; }
 
 
 .lead { width: 24px; display: inline-flex; justify-content: center; flex-shrink: 0; }
@@ -119,8 +117,11 @@ h2 { font-size: 13px; font-weight: 600; margin: 28px 0 8px; }
 .cur .card { border-color: var(--task-color); --row-ground: var(--kira-bg-chrome); }
 .cur .head:hover, .cur .head.hov, .cur .brow:hover { background: var(--kira-bg-input); }
 .cur .card.sel { outline: 2px solid var(--task-color); }
-/* S1 neutral ring, every new option: inset 2px fg outline, ground at hover level. */
-.nw .card.sel { --row-ground: var(--task-tint-hover); outline: 2px solid var(--kira-fg); outline-offset: -2px; }
+/* Neutral ring inside the card edge; width per column (--ring). */
+.nw { --ring: 1.5px; }
+.nw.r1 { --ring: 1px; }
+.nw.r2 { --ring: 2px; }
+.nw .card.sel { --row-ground: var(--task-tint-hover); outline: var(--ring) solid var(--kira-fg); outline-offset: calc(-1 * var(--ring)); }
 /* New sets: only the head is tinted; rows and border neutral. */
 .hd .card { border-color: var(--kira-border); --row-ground: var(--kira-bg-chrome); }
 .hd .card.sel { --row-ground: var(--kira-bg-chrome); }
@@ -206,17 +207,17 @@ table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
 <body>
 <div class="page">
   <header class="top">
-    <h1>P764 task tint, iteration 7: purer, calm 10 colours</h1>
+    <h1>P764 task tint, iteration 9: Pure-B, slim ring</h1>
     <fieldset class="seg"><legend class="sr">Theme</legend>
       <button type="button" data-theme-btn="auto" aria-pressed="true">Auto</button>
       <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
       <button type="button" data-theme-btn="light" aria-pressed="false">Light</button>
     </fieldset>
   </header>
-  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). All columns: 10 colours, header-only band, neutral body, neutral S1 ring, no colour line. Reference: the round 6 More set with an 8% / 12% <code>color-mix</code> band. Pure inks: 10 named hues 36 deg apart, one lightness (0.68; amber 0.76) and one chroma (0.13). Pure-A: pure inks, <code>color-mix</code> band. Pure-B: pure inks, band defined in OKLCH at fixed lightness 0.235 (hover 0.250), chroma 0.035 (hover 0.045). Pure-B+ (recommended): same at chroma 0.045 (hover 0.055). Each card column is a realistic board column, so judge overall calm, not only swatches.</p>
+  <p class="lede">Dark uses the shipping tokens from <code>packages/theme/src/tokens.css</code>; light is a preview only (no light theme ships, P138). Decided: Pure-B. 10 pure inks (OKLCH L 0.68, amber 0.76, C 0.13, hues 36 deg apart). Header-only band in OKLCH at L 0.235 C 0.035 (rest) and L 0.250 C 0.045 (hover and selected). Neutral body, no colour line, no ripple edge. Ring width compared: 2px (today's width), 1.5px (chosen), 1px. Render at 2x zoom or on a Retina screen to judge 1.5px. Today is the reference.</p>
 
   <h2>1. Cards at rest, hover, selected</h2>
-  <p class="note">Board column: all 10 slots in assignment order (slot 0 first). Slot 1 has head hover pinned, slot 3 is selected. Figures: worst-case text at rest (fg / muted / subtle), then band-ground min / median OKLab distance.</p>
+  <p class="note">Board column: all 10 slots in assignment order (slot 0 first). Slot 1 has head hover pinned, slot 3 is selected. Its neighbours above and below show the ring against unselected cards.</p>
   <div class="grid four" id="sel"></div>
 
   <h2>2. Details panel context</h2>
@@ -228,43 +229,38 @@ table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
   <div class="grid wide" id="review"></div>
 
   <h2>4. Palette and grounds</h2>
-  <p class="note">Per set and slot: ink with name, rest band, hover/selected band.</p>
+  <p class="note">Per slot: ink with name, rest band, hover/selected band. Today shows its slots 0-9.</p>
   <div id="pal"></div>
-  <table class="cr" aria-label="Contrast, distinguishability and circus check">
-    <tr><th>Dark, worst case</th><th>rest fg / muted / subtle</th><th>hover fg / muted / subtle</th><th>band rest min / median</th><th>band hover min / median</th><th>ink min / median</th><th>adjacent min</th><th>ink C max / spread</th><th>ink L spread</th><th>ink on chrome</th><th>band C</th></tr>
-    <tr><td>More set (ref)</td><td>10.99 / 6.34 / 5.00</td><td>10.06 / 5.80 / 4.58</td><td>0.0136 / 0.0275</td><td>0.0185 / 0.0398</td><td>0.118 / 0.241</td><td>0.0158</td><td>0.150 / 0.026</td><td>0.10</td><td>6.26</td><td>0.014-0.023</td></tr>
-    <tr><td>Pure-A</td><td>11.12 / 6.41 / 5.06</td><td>10.22 / 5.89 / 4.65</td><td>0.0077 / 0.0234</td><td>0.0114 / 0.0342</td><td>0.077 / 0.209</td><td>0.0081</td><td>0.131 / 0.016</td><td>0.08</td><td>6.04</td><td>0.012-0.019</td></tr>
-    <tr><td>Pure-B</td><td>11.16 / 6.43 / 5.08</td><td>10.68 / 6.16 / 4.86</td><td>0.0193 / 0.0564</td><td>0.0260 / 0.0712</td><td>0.077 / 0.209</td><td>0.0220</td><td>0.131 / 0.016</td><td>0.08</td><td>6.04</td><td>0.034-0.037</td></tr>
-    <tr><td>Pure-B+ <b class="rec">recommended</b></td><td>11.07 / 6.39 / 5.04</td><td>10.65 / 6.14 / 4.85</td><td>0.0261 / 0.0715</td><td>0.0299 / 0.0848</td><td>0.077 / 0.209</td><td>0.0270</td><td>0.131 / 0.016</td><td>0.08</td><td>6.04</td><td>0.040-0.046</td></tr>
+  <table class="cr" aria-label="Contrast and distinguishability">
+    <tr><th>Dark, worst case</th><th>rest fg / muted / subtle</th><th>hover fg / muted / subtle</th><th>band rest min / median</th><th>band hover min / median</th><th>ink min / median</th><th>adjacent min</th><th>ink C max / spread</th><th>ink on chrome</th></tr>
+    <tr><td>Today (20 colours)</td><td>12.56 / 7.24 / 5.71</td><td>selected subtle <span class="fail">3.70</span></td><td>0 (edge only)</td><td>n/a</td><td>0.050 / 0.146</td><td>n/a</td><td>0.150 / 0.136</td><td>5.02</td></tr>
+    <tr><td>Pure-B <b class="rec">decided</b></td><td>11.16 / 6.43 / 5.08</td><td>10.68 / 6.16 / 4.86</td><td>0.0193 / 0.0564</td><td>0.0260 / 0.0712</td><td>0.077 / 0.209</td><td>0.0220</td><td>0.131 / 0.016</td><td>6.04</td></tr>
+    <tr><td>Ring (any width)</td><td colspan="8">fg 12.56 on chrome rows, 10.68 on the selected band (min), 8.63x the neighbours' rest border #323237 (1.46 on chrome)</td></tr>
   </table>
 </div>
 <script>
-const MORE = ['#a2a203','#b3a6fe','#03b7a4','#e87652','#75d47e','#f3aa36','#fe91b1','#539ef5','#12cff6','#ca78cd'];
-const MORE_N = ['citron','lavender','teal','vermilion','green','amber','pink','blue','cyan','magenta'];
+const ORIG = ["#d38261","#d2a155","#b4b04d","#90ba66","#64b477","#57b1a0","#56a6c2","#5a8fd5","#727ed7","#9676d1"];
 const PURE = ["#dd7577", "#09adb4", "#cfae42", "#af81d6", "#7d92e8", "#d48140", "#cf76ac", "#31b182", "#81a749", "#31a3dd"];
 const PURE_N = ["red", "teal", "amber", "violet", "blue", "orange", "magenta", "green", "lime", "sky"];
 const B_REST = ["#2d1717", "#052325", "#241e09", "#23192b", "#181d2f", "#2b1a0d", "#2a1722", "#0c231a", "#19210f", "#0c212c"];
 const B_HOV = ["#341819", "#012729", "#292105", "#281b32", "#1a2037", "#321b0a", "#311827", "#08281c", "#1b260d", "#082534"];
-const P_REST = ["#301515", "#002425", "#261d02", "#24182e", "#171c33", "#2e1807", "#2d1523", "#042518", "#182209", "#042130"];
-const P_HOV = ["#381516", "#012729", "#2a2000", "#291a36", "#191f3c", "#351904", "#331628", "#01291b", "#1a2606", "#012537"];
 const B_LREST = ["#ffebea", "#d6f8f9", "#f8f0d6", "#f5ecff", "#ebf0ff", "#ffece0", "#ffe9f5", "#dcf8ea", "#e9f5dc", "#e1f3ff"];
 const B_LHOV = ["#ffe2e1", "#c8f3f5", "#f4e9c8", "#f1e3ff", "#e2e9ff", "#ffe4d2", "#ffdff0", "#cff4e2", "#e1f0d0", "#d4eeff"];
-const P_LREST = ["#ffebea", "#cefafc", "#fbf0cf", "#f5ecff", "#ebf0ff", "#ffece0", "#ffe9f5", "#d6fae8", "#e7f7d7", "#e1f3ff"];
-const P_LHOV = ["#ffe2e1", "#bff5f8", "#f7e9c0", "#f1e3ff", "#e2e9ff", "#ffe4d2", "#ffdff0", "#c9f6e0", "#dff1ca", "#d4eeff"];
 const OPTS = [
-  ['mo', 'More set (reference)', 'round 6 inks, color-mix 8% / 12%; 10.99 / 6.34 / 5.00; band 0.0136 / 0.0275'],
-  ['pa', 'Pure-A', 'pure inks, color-mix 8% / 12%; 11.12 / 6.41 / 5.06; band 0.0077 / 0.0234'],
-  ['pb', 'Pure-B', 'pure inks, OKLCH band L 0.235 C 0.035; 11.16 / 6.43 / 5.08; band 0.0193 / 0.0564'],
-  ['pp', 'Pure-B+', 'pure inks, OKLCH band L 0.235 C 0.045; 11.07 / 6.39 / 5.04; band 0.0261 / 0.0715'],
+  ['cur', 'Today (reference)', 'slots 0-9 of 20; 1px full-colour edge, 2px colour outline, grey selected head'],
+  ['pb r2', 'Pure-B, 2px ring', "today's width, neutral fg ring inside the edge"],
+  ['pb', 'Pure-B, 1.5px ring', 'chosen; 11.16 / 6.43 / 5.08 rest; band 0.0193 / 0.0564'],
+  ['pb r1', 'Pure-B, 1px ring', 'same weight as the rest border'],
 ];
-const REC = 'pp';
+const REC = 'pb';
+const CTX_OPTS = [OPTS[0], OPTS[2]];
 const TASKS = [
   {slot:0, title:'Retry backoff for host sync', key:'KIRA-412', chip:'In progress', step:'Implement', segs:'ddn--', meta:'2 branches', est:'6h', branch:'feat/sync-backoff', repo:'kira-space', tag:'ahead 3', live:true},
   {slot:1, title:'Split comment re-anchoring', key:'KIRA-398', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #57', est:'1d', branch:'fix/reanchor-fanout', repo:'kira-space', tag:'PR open', hov:true},
   {slot:2, title:'Links surface redesign', key:'KIRA-420', chip:'In progress', step:'Implement', segs:'dn---', meta:'2 repos', est:'1d', branch:'feat/links-v2', repo:'kira-space', tag:'ahead 7'},
   {slot:3, title:'Faint task colours', key:'KIRA-421', chip:'In progress', step:'Plan', segs:'n----', meta:'notes', est:'4h', branch:'design/task-tint', repo:'kira-space', tag:'draft', sel:true, live:true},
   {slot:4, title:'MariaDB least-privilege matrix', key:'KIRA-377', chip:'In progress', step:'Test', segs:'ddn--', meta:'adapters', est:'2d', branch:'test/mariadb-matrix', repo:'adapters', tag:'behind 1', live:true},
-  {slot:5, title:'Phone plan card polish', key:'', chip:'Waiting', step:'Review', segs:'dddn-', meta:'mobile', est:'2h', branch:'ui/phone-card', repo:'kira-mobile', tag:'rebase', ripple:true, chipColor:'var(--kira-status-amber)'},
+  {slot:5, title:'Phone plan card polish', key:'', chip:'Waiting', step:'Review', segs:'dddn-', meta:'mobile', est:'2h', branch:'ui/phone-card', repo:'kira-mobile', tag:'rebase', chipColor:'var(--kira-status-amber)'},
   {slot:6, title:'Archive old review rounds', key:'KIRA-350', chip:'Backlog', step:'—', segs:'-----', meta:'backlog', est:'', branch:'chore/archive-rounds', repo:'kira-space', tag:'no worktree', chipColor:'var(--kira-status-grey)'},
   {slot:7, title:'Docker context switch', key:'KIRA-430', chip:'In progress', step:'Implement', segs:'dn---', meta:'infra', est:'3h', branch:'feat/docker-ctx', repo:'kira-space', tag:'ahead 2', live:true},
   {slot:8, title:'Jira sync retries', key:'KIRA-433', chip:'Review', step:'Review', segs:'dddn-', meta:'PR #61', est:'5h', branch:'fix/jira-retry', repo:'kira-space', tag:'PR open'},
@@ -272,11 +268,11 @@ const TASKS = [
 ];
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const segs = (s) => `<span class="segs">${[...s].map((c) => `<i class="${c === 'd' ? 'd' : c === 'n' ? 'n' : ''}"></i>`).join('')}</span>`;
-const vars = (opt, slot) => `--task-color:var(--${opt === 'mo' ? 'm' : 'u'}${slot});--bt:var(--${opt === 'pp' ? 'p' : 'b'}${slot});--bth:var(--${opt === 'pp' ? 'p' : 'b'}h${slot})`;
+const vars = (opt, slot) => `--task-color:var(--${opt === 'cur' ? 'o' : 'u'}${slot});--bt:var(--b${slot});--bth:var(--bh${slot})`;
 const cls = (k) => (k === 'cur' ? 'cur' : `nw hd ${k}`);
 function card(t, opt, labels) {
-  const c = ['card', 'tinted', t.sel ? 'sel' : '', t.ripple ? 'ripple' : ''].join(' ');
-  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : t.ripple ? '<div class="cardlabel">ripple</div>' : '';
+  const c = ['card', 'tinted', t.sel ? 'sel' : ''].join(' ');
+  const label = !labels ? '' : t.hov ? '<div class="cardlabel">hover (pinned)</div>' : t.sel ? '<div class="cardlabel">selected</div>' : '';
   return `${label}<div class="${c}" style="${vars(opt, t.slot)}" aria-current="${t.sel ? 'true' : 'false'}">
     <div class="head${t.hov ? ' hov' : ''}" tabindex="0" role="button" aria-label="Open ${esc(t.title)}">
       <span class="lead"><span class="dot${t.live ? '' : ' idle'}"></span></span>
@@ -329,26 +325,23 @@ function reviewWindow(opt) {
 const head3 = (name, sub, rec) => `<h3>${name}${rec ? ' <b class="rec">recommended</b>' : ''} <span>${sub}</span></h3>`;
 document.getElementById('sel').innerHTML = OPTS.map(([k, n, s]) =>
   `<div class="col ${cls(k)}">${head3(n, s, k === REC)}<div class="ground">${TASKS.map((t) => card(t, k, true)).join('')}</div></div>`).join('');
-const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4], TASKS[7]].map((t) => ({ ...t, hov: false, ripple: false }));
-document.getElementById('ctx').innerHTML = OPTS.map(([k, n]) =>
+const CTX_TASKS = [TASKS[2], TASKS[3], TASKS[4], TASKS[7]].map((t) => ({ ...t, hov: false }));
+document.getElementById('ctx').innerHTML = CTX_OPTS.map(([k, n]) =>
   `<div class="col ${cls(k)}">${head3(n, '', k === REC)}<div class="ctx"><div class="list">${CTX_TASKS.map((t) => card(t, k, false)).join('')}</div>${detailsPanel(k)}</div></div>`).join('');
-document.getElementById('review').innerHTML = OPTS.map(([k, n]) =>
+document.getElementById('review').innerHTML = CTX_OPTS.map(([k, n]) =>
   `<div class="col ${cls(k)}">${head3(n, k === 'cur' ? '3px colour line under a chrome bar' : 'tinted bar, no line', k === REC)}${reviewWindow(k)}</div>`).join('');
 
-const decl = (dark) => MORE.map((m, i) => `--m${i}:${m};--u${i}:${PURE[i]};--b${i}:${(dark ? B_REST : B_LREST)[i]};--bh${i}:${(dark ? B_HOV : B_LHOV)[i]};--p${i}:${(dark ? P_REST : P_LREST)[i]};--ph${i}:${(dark ? P_HOV : P_LHOV)[i]};`).join('');
+const decl = (dark) => PURE.map((u, i) => `--o${i}:${ORIG[i]};--u${i}:${u};--b${i}:${(dark ? B_REST : B_LREST)[i]};--bh${i}:${(dark ? B_HOV : B_LHOV)[i]};`).join('');
 const st = document.createElement('style');
 st.textContent = `:root{${decl(true)}}@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){${decl(false)}}}:root[data-theme="light"]{${decl(false)}}`;
 document.head.append(st);
-const mixBand = (c, p) => `color-mix(in srgb, ${c} ${p}%, var(--kira-bg-chrome))`;
 const strip = (label, inks, names, rest, hov) => `<h3>${label}</h3><div class="pal">${inks.map((c, i) => `<div class="sw">
   <div class="full" style="background:${c}">${i} ${names[i]} ${c}</div>
   <div style="background:${rest(i)}">rest</div>
   <div style="background:${hov(i)}">hover</div></div>`).join('')}</div>`;
 document.getElementById('pal').innerHTML =
-  strip('More set (reference), color-mix 8% / 12%', MORE, MORE_N, (i) => mixBand(MORE[i], 8), (i) => mixBand(MORE[i], 12)) +
-  strip('Pure-A, color-mix 8% / 12%', PURE, PURE_N, (i) => mixBand(PURE[i], 8), (i) => mixBand(PURE[i], 12)) +
-  strip('Pure-B, OKLCH band C 0.035 / 0.045', PURE, PURE_N, (i) => `var(--b${i})`, (i) => `var(--bh${i})`) +
-  strip('Pure-B+ (recommended), OKLCH band C 0.045 / 0.055', PURE, PURE_N, (i) => `var(--p${i})`, (i) => `var(--ph${i})`);
+  strip('Today, slots 0-9 (ink on chrome)', ORIG, ORIG.map(() => ''), () => 'var(--kira-bg-chrome)', () => 'var(--kira-bg-input)') +
+  strip('Pure-B (decided), OKLCH band C 0.035 / 0.045', PURE, PURE_N, (i) => `var(--b${i})`, (i) => `var(--bh${i})`);
 
 const root = document.documentElement;
 const themeBtns = document.querySelectorAll('[data-theme-btn]');
