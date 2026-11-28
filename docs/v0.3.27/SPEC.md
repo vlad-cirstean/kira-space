@@ -14,7 +14,8 @@ review and iterate on; implementation follows the owner's sign-off.
 | P762 | Branches MCP cannot target a worktree when a repo has several branches | Done |
 | P763 | Redesign links to show the host too (design for review) | Pending |
 | P764 | Redesign task colours with a faint background, shared by task details and review window (design for review) | Pending |
-| P765 | Chapter close | Pending |
+| P765 | Repo files window opens without a worktree and starts fully collapsed | Pending |
+| P766 | Chapter close | Pending |
 
 ## P762
 
@@ -41,4 +42,9 @@ design. Design first: mockup and plan, no implementation until the owner approve
 
 ## P765
 
-Chapter close, by hand per `CLAUDE.md`, after the owner signs off P763 and P764 and they ship.
+Repo files window: make it available when the repo has no worktree (it opens the main one), and
+stop auto-expanding the first folder row; every folder starts collapsed.
+
+## P766
+
+Chapter close, by hand per `CLAUDE.md`, after P763 and P764 ship.
