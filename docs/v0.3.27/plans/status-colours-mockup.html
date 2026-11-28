@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P766 Status Colours</title>
+<style>
+/* Dark: shipping values from packages/theme/src/tokens.css (as P764-mockup.html). Dark only: no
+   light theme ships (ARCHITECTURE "Known open items", P138). */
+:root {
+  --kira-bg: #1b1b1e;
+  --kira-bg-elevated: #212125;
+  --kira-bg-chrome: #131315;
+  --kira-bg-dialog: #141416;
+  --kira-bg-input: #27272c;
+  --kira-fg: #d4d4d8;
+  --kira-fg-muted: #a1a1aa;
+  --kira-fg-subtle: #8e8e97;
+  --kira-border: #323237;
+  --kira-focus: #a1a1aa;
+  --kira-select: #36363c;
+  --kira-select-edge: #71717a;
+  --kira-ok: #57bc8a;
+  --kira-shadow: 0 4px 16px rgb(0 0 0 / 0.24);
+  --kira-radius-sm: 4px;
+  --kira-radius: 6px;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Ubuntu, sans-serif;
+  --font-data: Menlo, ui-monospace, monospace;
+
+  /* Proposed P766 status block (§2 "Tokens: status block"). */
+  --kira-task-status-grey: var(--kira-fg-muted);
+  --kira-task-status-red: #ff544c;
+  --kira-task-status-orange: #ff8a3f;
+  --kira-task-status-amber: #ffbf00;
+  --kira-task-status-green: #3ce169;
+  --kira-task-status-cyan: #00e5f7;
+  --kira-task-status-blue: #2a8eff;
+  --kira-task-status-purple: #b76efe;
+  --kira-task-status-pink: #ff5ca8;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--kira-bg-chrome); color: var(--kira-fg); font: 12px/1.4 var(--font-ui); }
+.page { max-width: 1320px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 16px; font-weight: 600; margin: 0 0 8px; }
+p.lede { color: var(--kira-fg-muted); margin: 0 0 16px; max-width: 980px; }
+h2 { font-size: 13px; font-weight: 600; margin: 28px 0 6px; }
+h3 { font-size: 12px; font-weight: 600; margin: 0 0 6px; }
+h3 span { font-weight: 400; color: var(--kira-fg-subtle); font-size: 11px; }
+.note { color: var(--kira-fg-subtle); font-size: 11px; margin: 0 0 10px; max-width: 980px; }
+.rec { color: var(--kira-ok); font-weight: 600; }
+.warn { color: #d5b449; }
+code { font-family: var(--font-data); font-size: 11px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 12px; }
+.grid > div, .list { min-width: 0; }
+table.cr { display: block; overflow-x: auto; }
+.ground { background: var(--kira-bg-chrome); border: 1px dashed var(--kira-border); border-radius: var(--kira-radius); padding: 8px; }
+
+/* 1. Swatch strips */
+.strip { display: grid; grid-template-columns: 96px repeat(10, minmax(0, 1fr)); gap: 6px; align-items: stretch; margin-bottom: 6px; }
+.strip .lbl { font-size: 11px; color: var(--kira-fg-muted); display: flex; align-items: center; }
+.sw { border-radius: var(--kira-radius-sm); overflow: hidden; border: 1px solid var(--kira-border); font-size: 10px; min-width: 0; }
+.sw .ink { height: 34px; display: flex; flex-direction: column; justify-content: center; padding: 0 5px; color: #131315; font-family: var(--font-data); white-space: nowrap; overflow: hidden; }
+.sw .ink b { font-family: var(--font-ui); font-weight: 600; font-size: 11px; }
+.sw .sub { height: 20px; display: flex; align-items: center; padding: 0 5px; color: var(--kira-fg-subtle); font-family: var(--font-data); white-space: nowrap; overflow: hidden; }
+.sw.empty { border-style: dashed; opacity: 0.4; }
+@media (max-width: 800px) { .strip { grid-template-columns: 64px repeat(5, minmax(0, 1fr)); } .strip .lbl { grid-row: span 2; } }
+.pairs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pair { display: flex; align-items: center; gap: 0; border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); overflow: hidden; font-size: 10px; }
+.pair i { width: 22px; height: 22px; display: block; }
+.pair span { padding: 0 6px; color: var(--kira-fg-muted); font-family: var(--font-data); }
+
+/* Chips */
+.chip { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 11px; font-weight: 500; white-space: nowrap; line-height: 1; }
+.chip.solid { background: var(--c); color: #131315; }
+.chip.tint { background: color-mix(in srgb, var(--c) 18%, var(--g, var(--kira-bg-chrome))); color: var(--c); }
+.chip.old { background: color-mix(in srgb, var(--c) 15%, var(--g, var(--kira-bg-elevated))); color: var(--c); }
+.chiprow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-radius: var(--kira-radius-sm); }
+.chiprow .gl { font-size: 10px; color: var(--kira-fg-subtle); width: 84px; flex-shrink: 0; font-family: var(--font-data); }
+table.cr { border-collapse: collapse; font-size: 11px; margin-top: 8px; width: 100%; }
+table.cr td, table.cr th { border: 1px solid var(--kira-border); padding: 3px 6px; text-align: left; font-variant-numeric: tabular-nums; }
+table.cr th { color: var(--kira-fg-muted); font-weight: 500; }
+.lo { color: #ff544c; font-weight: 600; }
+
+/* 3a. Plan board cards (P764 Pure-B head band) */
+.card { border-radius: var(--kira-radius); overflow: hidden; border: 1px solid var(--kira-border); background: var(--kira-bg-chrome); margin-bottom: 6px; }
+.card:last-child { margin-bottom: 0; }
+.head { display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px; background: var(--band); }
+.head:hover { background: var(--band-hover); }
+.lead { width: 16px; display: inline-flex; justify-content: center; flex-shrink: 0; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--kira-ok); }
+.dot.idle { background: transparent; border: 1px solid var(--kira-select-edge); }
+.lines { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.l1, .l2 { display: flex; align-items: center; gap: 6px; height: 18px; min-width: 0; }
+.title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.key { font-family: var(--font-data); font-size: 11px; color: var(--kira-fg-subtle); flex-shrink: 0; }
+.step { font-size: 11px; color: var(--kira-fg-muted); white-space: nowrap; }
+.meta { font-size: 11px; color: var(--kira-fg-subtle); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brow { display: flex; gap: 8px; height: 26px; align-items: center; padding: 0 8px 0 30px; font-size: 11px; }
+.brow .bn { font-family: var(--font-data); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brow .tag { color: var(--kira-fg-subtle); margin-left: auto; white-space: nowrap; }
+
+/* 3b. Statuses editor */
+.dialog { background: var(--kira-bg-dialog); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); box-shadow: var(--kira-shadow); }
+.dialog .dh { padding: 10px 12px; font-weight: 600; font-size: 13px; border-bottom: 1px solid var(--kira-border); }
+.srow { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; }
+.srow:hover { background: var(--kira-bg-input); }
+.srow .grip { color: var(--kira-fg-subtle); width: 10px; font-size: 10px; letter-spacing: -2px; }
+.srow .sdot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+.srow .nm { flex: 1; min-width: 0; height: 22px; display: flex; align-items: center; padding: 0 6px; border: 1px solid var(--kira-border); background: var(--kira-bg-input); border-radius: var(--kira-radius-sm); }
+.srow .role { font-size: 10px; color: var(--kira-fg-subtle); width: 58px; }
+.srow.open { background: var(--kira-bg-input); }
+.picker { display: flex; gap: 6px; padding: 6px 12px 10px 48px; }
+.picker i { width: 16px; height: 16px; border-radius: 50%; background: var(--c); display: block; }
+.picker i.on { outline: 2px solid var(--kira-fg); outline-offset: 2px; }
+
+/* 3c. Status menu */
+.menu { background: var(--kira-bg-elevated); border: 1px solid var(--kira-border); border-radius: var(--kira-radius); box-shadow: var(--kira-shadow); padding: 4px; width: 220px; }
+.mi { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: var(--kira-radius-sm); }
+.mi:hover, .mi.hl { background: var(--kira-bg-input); }
+.mi .ck { margin-left: auto; color: var(--kira-fg-muted); font-size: 11px; }
+.mi .kb { margin-left: auto; color: var(--kira-fg-subtle); font-family: var(--font-data); font-size: 10px; }
+.trigger { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); background: var(--kira-bg-input); margin-bottom: 6px; }
+.ico { width: 14px; height: 14px; flex-shrink: 0; color: var(--c); }
+
+/* 3d. Board column header */
+.board { display: flex; gap: 8px; overflow-x: auto; }
+.colm { width: 220px; flex-shrink: 0; background: var(--kira-bg); border-radius: var(--kira-radius); padding: 6px; }
+.ch { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px; }
+.ch .cn { font-weight: 600; }
+.ch .cc { color: var(--kira-fg-subtle); font-variant-numeric: tabular-nums; }
+.ch .add { margin-left: auto; color: var(--kira-fg-subtle); }
+.ch .bar { flex: 1; }
+.mini { border: 1px solid var(--kira-border); border-radius: var(--kira-radius-sm); margin-top: 4px; overflow: hidden; background: var(--kira-bg-chrome); }
+.mini .mh { height: 28px; display: flex; align-items: center; padding: 0 8px; background: var(--band); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 3e. List rows */
+.list { background: var(--kira-bg); border-radius: var(--kira-radius); overflow: hidden; }
+.lr { display: grid; grid-template-columns: 18px 72px minmax(0, 1fr) 96px 64px; gap: 8px; align-items: center; height: 28px; padding: 0 10px; border-bottom: 1px solid var(--kira-border); font-size: 12px; }
+.lr:last-child { border-bottom: 0; }
+.lr:hover { background: var(--kira-bg-input); }
+.lr .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr .sn { font-size: 11px; color: var(--c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr .tb { width: 3px; height: 16px; border-radius: 2px; background: var(--tink); justify-self: end; }
+.lr.hd { color: var(--kira-fg-subtle); font-size: 11px; height: 24px; }
+.lr.hd:hover { background: transparent; }
+
+/* 5. Mapping */
+.map { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 6px; }
+.mrow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--kira-bg); border-radius: var(--kira-radius-sm); }
+.mrow .arrow { color: var(--kira-fg-subtle); }
+.mrow .why { margin-left: auto; color: var(--kira-fg-subtle); font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>P766 task status colours: 9 saturated inks, own family</h1>
+  <p class="lede">Proposal from <code>docs/v0.3.27/plans/P766.md</code> §2 "Tokens: status block". Nine names (grey plus 8 hues), down from 16. Recipe <code>oklch(L 0.21 h)</code> clamped to sRGB at each hue's chroma peak; hex precomputed. Status chroma 0.143-0.210 vs task inks &le; 0.131; pairwise status distance &ge; 0.111, &ge; 0.08 from every task ink. Grounds and task inks/bands are the shipping dark tokens and P764 Pure-B values.</p>
+
+  <h2>1. Status inks next to the 10 task inks</h2>
+  <p class="note">Top: the 9 proposed status inks. Middle: the 10 Pure-B task inks with their rest band. Status inks sit higher in chroma and away from task hues. Bottom: each status beside its nearest task ink with OKLab distance (plan table).</p>
+  <div class="ground">
+    <div class="strip" id="stStrip"></div>
+    <div class="strip" id="tkStrip"></div>
+    <div class="pairs" id="pairs"></div>
+  </div>
+
+  <h2>2. Chip styles</h2>
+  <p class="note">Left, <b class="rec">recommended</b>: solid ink chip, <code>bg-task-status-x text-chrome</code> (#131315 text). Right, alternative: 18% tint of the ink over the ground with ink text, the current treatment's shape at stronger chroma. <span class="warn">Lightness caveat:</span> the tint chip reads as another band, and low-lightness inks (blue L 0.65, red 0.68, purple 0.68) lose contrast against their own tint, worst on task bands and row hover. Contrast numbers below are computed live.</p>
+  <div class="grid">
+    <div><h3>Solid ink chip <b class="rec">recommended</b> <span>dark text on ink</span></h3><div class="ground" id="solidChips"></div></div>
+    <div><h3>Tinted chip <span>alternative; ink text on 18% tint</span></h3><div class="ground" id="tintChips"></div></div>
+  </div>
+  <table class="cr" id="crTable" aria-label="Chip text contrast"></table>
+
+  <h2>3. In context</h2>
+  <p class="note">Realistic density. Card head band is the task colour (P764 Pure-B rest band, hover band on pointer); the status chip inside is solid. The status family never paints a band.</p>
+  <div class="grid">
+    <div><h3>a. Plan board cards <span>task band head, solid status chip</span></h3><div class="ground" id="cards"></div></div>
+    <div><h3>b. Statuses editor <span>dot per row, picker open on "Blocked"</span></h3><div class="dialog" id="editor"></div></div>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <div><h3>c. Status menu <span>trigger text plus glyph; menu on elevated</span></h3><div class="ground" id="menu"></div></div>
+    <div><h3>e. List rows <span>status glyph and name, task ink tick at the end</span></h3><div class="list" id="list"></div></div>
+  </div>
+  <div style="margin-top:12px"><h3>d. Board column headers <span>glyph, name, count; cards keep the task band</span></h3><div class="ground board" id="board"></div></div>
+
+  <h2>4. Before: today's 16 status colours</h2>
+  <p class="note">P411 palette <code>oklch(0.78 0.095 h)</code>, chip <code>bg-status-x/15 text-status-x</code>, here on elevated and on a task band. Neighbours at 15-30 deg (amber/yellow, teal/cyan/sky, blue/indigo/violet) are hard to tell apart, and the pastel tint sits close to the task bands.</p>
+  <div class="ground" id="before"></div>
+
+  <h2>5. Retired names</h2>
+  <p class="note">Migration <code>0113_p766_status_colours.sql</code> rewrites stored rows to the nearest OKLCH hue. Grey, red, orange, amber, green, cyan, blue, purple and pink keep their names (new hex).</p>
+  <div class="map" id="map"></div>
+</div>
+<script>
+const STATUS = [
+  ['grey', '#a1a1aa', 'teal', 0.119],
+  ['red', '#ff544c', 'red', 0.081],
+  ['orange', '#ff8a3f', 'orange', 0.081],
+  ['amber', '#ffbf00', 'amber', 0.093],
+  ['green', '#3ce169', 'green', 0.152],
+  ['cyan', '#00e5f7', 'teal', 0.164],
+  ['blue', '#2a8eff', 'blue', 0.083],
+  ['purple', '#b76efe', 'violet', 0.080],
+  ['pink', '#ff5ca8', 'magenta', 0.091],
+];
+const S = Object.fromEntries(STATUS.map(([n, h]) => [n, h]));
+const TASK_N = ['red', 'teal', 'amber', 'violet', 'blue', 'orange', 'magenta', 'green', 'lime', 'sky'];
+const TASK = ['#dd7577', '#09adb4', '#cfae42', '#af81d6', '#7d92e8', '#d48140', '#cf76ac', '#31b182', '#81a749', '#31a3dd'];
+const B_REST = ['#2d1717', '#052325', '#241e09', '#23192b', '#181d2f', '#2b1a0d', '#2a1722', '#0c231a', '#19210f', '#0c212c'];
+const B_HOV = ['#341819', '#012729', '#292105', '#281b32', '#1a2037', '#321b0a', '#311827', '#08281c', '#1b260d', '#082534'];
+const T = Object.fromEntries(TASK_N.map((n, i) => [n, i]));
+const OLD = [
+  ['grey', '#a1a1aa'], ['brown', '#d1b099'], ['red', '#eea099'], ['orange', '#e9a680'], ['amber', '#dbaf71'],
+  ['yellow', '#cab76f'], ['lime', '#a9c27f'], ['green', '#8bc997'], ['teal', '#6cccba'], ['cyan', '#65c9d4'],
+  ['sky', '#6fc4e5'], ['blue', '#8ebaf4'], ['indigo', '#a5b3f4'], ['violet', '#bbacee'], ['purple', '#cfa5e1'], ['pink', '#e69ec0'],
+];
+const O = Object.fromEntries(OLD);
+const GROUNDS = [
+  ['chrome', '#131315'], ['dialog', '#141416'], ['bg', '#1b1b1e'], ['elevated', '#212125'], ['input', '#27272c'],
+];
+
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const lum = (h) => { const [r, g, b] = rgb(h).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+const mix = (a, b, p) => '#' + rgb(a).map((v, i) => Math.round(v * p + rgb(b)[i] * (1 - p)).toString(16).padStart(2, '0')).join('');
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+
+// Status glyphs (shape by role, colour by status).
+const GLYPH = {
+  todo: '<circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.2 1.6"/>',
+  open: '<circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  half: '<circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 3.5a3.5 3.5 0 0 1 0 7z" fill="currentColor"/>',
+  most: '<circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M7 3.5a3.5 3.5 0 1 1-3.5 3.5H7z" fill="currentColor"/>',
+  done: '<circle cx="7" cy="7" r="6" fill="currentColor"/><path d="M4.3 7.2l1.8 1.8 3.6-3.8" fill="none" stroke="#131315" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+  stop: '<circle cx="7" cy="7" r="6" fill="currentColor"/><rect x="4.2" y="6.2" width="5.6" height="1.6" rx=".6" fill="#131315"/>',
+};
+const ico = (g, c) => `<svg class="ico" viewBox="0 0 14 14" style="--c:${c}" aria-hidden="true">${GLYPH[g]}</svg>`;
+const solid = (label, c) => `<span class="chip solid" style="--c:${c}">${esc(label)}</span>`;
+
+// A realistic user status set: seeds plus additions, all 9 colours used.
+const SET = [
+  ['Backlog', 'grey', 'todo', 'new'],
+  ['Todo', 'grey', 'open', ''],
+  ['In progress', 'amber', 'half', 'step'],
+  ['Waiting on CI', 'cyan', 'half', ''],
+  ['In review', 'blue', 'most', 'review'],
+  ['Needs design', 'purple', 'open', ''],
+  ['Blocked', 'red', 'stop', ''],
+  ['Rework', 'orange', 'half', ''],
+  ['Ready to ship', 'pink', 'most', ''],
+  ['Done', 'green', 'done', 'finished'],
+];
+const ST = Object.fromEntries(SET.map((s) => [s[0], s]));
+
+// 1. strips
+document.getElementById('stStrip').innerHTML = '<div class="lbl">Status (9)</div>' + STATUS.map(([n, h]) =>
+  `<div class="sw"><div class="ink" style="background:${h}"><b>${n}</b>${h}</div><div class="sub">status</div></div>`).join('') + '<div class="sw empty"><div class="sub">&nbsp;</div></div>';
+document.getElementById('tkStrip').innerHTML = '<div class="lbl">Task ink (10)</div>' + TASK.map((h, i) =>
+  `<div class="sw"><div class="ink" style="background:${h}"><b>${i} ${TASK_N[i]}</b>${h}</div><div class="sub" style="background:${B_REST[i]}">band</div></div>`).join('');
+document.getElementById('pairs').innerHTML = STATUS.map(([n, h, tn, d]) =>
+  `<div class="pair"><i style="background:${h}"></i><i style="background:${TASK[T[tn]]}"></i><span>${n} / ${tn} &Delta;E ${d.toFixed(3)}</span></div>`).join('');
+
+// 2. chips
+const BAND_G = [['band red', B_REST[0]], ['band blue hov', B_HOV[4]]];
+const chipGrounds = [...GROUNDS, ...BAND_G];
+document.getElementById('solidChips').innerHTML = chipGrounds.map(([gn, g]) =>
+  `<div class="chiprow" style="background:${g}"><span class="gl">${gn}</span>${STATUS.map(([n, h]) => solid(cap(n), h)).join('')}</div>`).join('');
+document.getElementById('tintChips').innerHTML = chipGrounds.map(([gn, g]) =>
+  `<div class="chiprow" style="background:${g}"><span class="gl">${gn}</span>${STATUS.map(([n, h]) => `<span class="chip tint" style="--c:${h};--g:${g}">${cap(n)}</span>`).join('')}</div>`).join('');
+const crRows = STATUS.map(([n, h]) => {
+  const s = cr('#131315', h);
+  const tints = chipGrounds.map(([, g]) => cr(h, mix(h, g, 0.18)));
+  const tmin = Math.min(...tints);
+  return `<tr><td>${n}</td><td>${s.toFixed(2)}</td><td class="${tmin < 4.5 ? 'lo' : ''}">${tmin.toFixed(2)}</td>${tints.map((v) => `<td class="${v < 4.5 ? 'lo' : ''}">${v.toFixed(2)}</td>`).join('')}</tr>`;
+}).join('');
+document.getElementById('crTable').innerHTML = `<tr><th>Status</th><th>solid: chrome text on ink</th><th>tint: min</th>${chipGrounds.map(([gn]) => `<th>tint on ${gn}</th>`).join('')}</tr>${crRows}`;
+
+// 3a. cards
+const CARDS = [
+  [0, 'Retry backoff for host sync', 'KIRA-412', 'In progress', 'Implement', '2 branches', 'feat/sync-backoff', 'ahead 3', true],
+  [1, 'Split comment re-anchoring', 'KIRA-398', 'In review', 'Review', 'PR #57', 'fix/reanchor-fanout', 'PR open', false],
+  [2, 'Links surface redesign', 'KIRA-420', 'Needs design', 'Plan', '2 repos', 'feat/links-v2', 'draft', false],
+  [3, 'Faint task colours', 'KIRA-421', 'Blocked', 'Implement', 'waits on P764', 'design/task-tint', 'ahead 1', true],
+  [4, 'MariaDB least-privilege matrix', 'KIRA-377', 'Waiting on CI', 'Test', 'adapters', 'test/mariadb-matrix', 'CI running', true],
+  [5, 'Phone plan card polish', '', 'Rework', 'Implement', 'mobile', 'ui/phone-card', 'rebase', false],
+  [6, 'Archive old review rounds', 'KIRA-350', 'Backlog', '—', 'backlog', 'chore/archive-rounds', 'no worktree', false],
+  [7, 'Docker context switch', 'KIRA-430', 'Ready to ship', 'Ship', 'infra', 'feat/docker-ctx', 'approved', false],
+  [8, 'Jira sync retries', 'KIRA-433', 'Done', 'Done', 'merged', 'fix/jira-retry', 'merged', false],
+];
+document.getElementById('cards').innerHTML = CARDS.map(([slot, title, key, status, step, meta, br, tag, live]) => {
+  const c = S[ST[status][1]];
+  return `<div class="card" style="--band:${B_REST[slot]};--band-hover:${B_HOV[slot]}">
+    <div class="head"><span class="lead"><span class="dot${live ? '' : ' idle'}"></span></span>
+      <span class="lines"><span class="l1"><span class="title">${esc(title)}</span>${key ? `<span class="key">${key}</span>` : ''}</span>
+      <span class="l2">${solid(status, c)}<span class="step">${step}</span><span class="meta">${esc(meta)}</span></span></span></div>
+    <div class="brow"><span class="bn">${br}</span><span class="tag">${tag}</span></div></div>`;
+}).join('');
+
+// 3b. editor
+document.getElementById('editor').innerHTML = '<div class="dh">Task statuses</div>' + SET.map(([name, col, , role]) => {
+  const open = name === 'Blocked';
+  const row = `<div class="srow${open ? ' open' : ''}"><span class="grip">&#8942;&#8942;</span><span class="sdot" style="--c:${S[col]}"></span><span class="nm">${esc(name)}</span><span class="role">${role}</span></div>`;
+  const picker = open ? `<div class="picker" role="radiogroup" aria-label="Colour">${STATUS.map(([n, h]) => `<i style="--c:${h}" class="${n === col ? 'on' : ''}" title="${n}"></i>`).join('')}</div>` : '';
+  return row + picker;
+}).join('');
+
+// 3c. menu
+const cur = ST['In progress'];
+document.getElementById('menu').innerHTML = `<div class="trigger">${ico(cur[2], S[cur[1]])}<span style="color:${S[cur[1]]}">${cur[0]}</span><span style="color:var(--kira-fg-subtle)">&#9662;</span></div>
+  <div class="menu" role="menu">${SET.map(([n, col, g], i) => `<div class="mi${n === 'Waiting on CI' ? ' hl' : ''}" role="menuitem">${ico(g, S[col])}<span>${esc(n)}</span>${n === cur[0] ? '<span class="ck">&#10003;</span>' : `<span class="kb">${i < 9 ? i + 1 : ''}</span>`}</div>`).join('')}</div>`;
+
+// 3d. board
+const COLS = [['Todo', ['Archive old review rounds', 'Search history cap']], ['In progress', ['Retry backoff for host sync', 'Docker context switch', 'Host key rotation']], ['Waiting on CI', ['MariaDB least-privilege matrix']], ['In review', ['Split comment re-anchoring', 'Jira sync retries']], ['Blocked', ['Faint task colours']], ['Done', ['Snapshot diff viewer', 'Phone plan card polish']]];
+let sl = 0;
+document.getElementById('board').innerHTML = COLS.map(([n, items]) => {
+  const [, col, g] = ST[n];
+  return `<div class="colm"><div class="ch">${ico(g, S[col])}<span class="cn">${n}</span><span class="cc">${items.length}</span><span class="add">+</span></div>
+    ${items.map((t) => { const s = sl++ % 10; return `<div class="mini" style="--band:${B_REST[s]}"><div class="mh">${esc(t)}</div></div>`; }).join('')}</div>`;
+}).join('');
+
+// 3e. list
+const ROWS = [
+  ['KIRA-412', 'Retry backoff for host sync', 'In progress', 0, '2h ago'],
+  ['KIRA-398', 'Split comment re-anchoring', 'In review', 1, '3h ago'],
+  ['KIRA-420', 'Links surface redesign', 'Needs design', 2, 'yesterday'],
+  ['KIRA-421', 'Faint task colours', 'Blocked', 3, '12 min'],
+  ['KIRA-377', 'MariaDB least-privilege matrix', 'Waiting on CI', 4, '5 min'],
+  ['KIRA-402', 'Phone plan card polish', 'Rework', 5, '1d'],
+  ['KIRA-350', 'Archive old review rounds', 'Backlog', 6, '2w'],
+  ['KIRA-430', 'Docker context switch', 'Ready to ship', 7, '40 min'],
+  ['KIRA-433', 'Jira sync retries', 'Done', 8, '3d'],
+  ['KIRA-436', 'Snapshot diff viewer', 'Todo', 9, '4d'],
+];
+document.getElementById('list').innerHTML = '<div class="lr hd"><span></span><span>Key</span><span>Title</span><span>Status</span><span style="text-align:right">Updated</span></div>' +
+  ROWS.map(([k, t, s, slot, u]) => { const [, col, g] = ST[s]; return `<div class="lr">${ico(g, S[col])}<span class="key">${k}</span><span class="t">${esc(t)}</span><span class="sn" style="--c:${S[col]}">${s}</span><span class="key" style="text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center">${u}<span class="tb" style="--tink:${TASK[slot]}"></span></span></div>`; }).join('');
+
+// 4. before
+const oldChip = (n, h, g) => `<span class="chip old" style="--c:${h};--g:${g}">${cap(n)}</span>`;
+document.getElementById('before').innerHTML = [['elevated', '#212125'], ['band red', B_REST[0]], ['band teal', B_REST[1]]].map(([gn, g]) =>
+  `<div class="chiprow" style="background:${g}"><span class="gl">${gn}</span>${OLD.map(([n, h]) => oldChip(n, h, g)).join('')}</div>`).join('') +
+  `<div class="chiprow"><span class="gl">after</span>${STATUS.map(([n, h]) => solid(cap(n), h)).join('')}</div>`;
+
+// 5. mapping
+const MAP = [['brown', 'orange', 'desaturated orange'], ['yellow', 'amber', 'nearest hue'], ['lime', 'green', 'nearest hue'], ['teal', 'cyan', 'nearest hue'], ['sky', 'cyan', 'nearest hue'], ['indigo', 'blue', 'nearest hue'], ['violet', 'purple', 'nearest hue']];
+document.getElementById('map').innerHTML = MAP.map(([o, n, why]) =>
+  `<div class="mrow">${oldChip(o, O[o], '#1b1b1e')}<span class="arrow">to</span>${solid(cap(n), S[n])}<span class="why">${why}</span></div>`).join('');
+</script>
+</body>
+</html>
